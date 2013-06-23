@@ -1,0 +1,142 @@
+LIBRARY
+EXPORTS
+	; Globals
+	; -------
+	PROJECT_NAME
+	PROJECT_NAME_SHORT
+	PROJECT_VERSION
+	PROJECT_VERSION_STRING
+	runconfig_set
+	runconfig_get
+
+	; SHA-256
+	; -------
+	sha256_init
+	sha256_update
+	sha256_final
+
+	; Memory patching
+	; ---------------
+
+	; PE structures
+	; -------------
+	GetNtHeader
+	GetDllImportDesc
+	GetDllExportDesc
+	GetSectionHeader
+
+	; IAT patching
+	; ------------
+	func_patch
+	func_patch_by_name
+	func_patch_by_ptr
+
+	iat_patch_funcs
+	iat_patch_funcs_var
+
+	; JSON extensions
+	; ---------------
+	json_hex_value
+	json_array_get_hex
+	json_array_get_string
+	json_object_get_create
+	json_object_get_string
+	json_object_get_hex
+	json_object_merge
+	json_object_get_keys_sorted
+	json_loadb_report
+	json_load_file_report
+	json_dump_log
+
+	; Identification
+	; --------------
+	identify
+	identify_by_hash
+	identify_by_size
+
+	; Patch files
+	; -----------
+	file_read
+	patch_file_exists
+	patch_file_blacklisted
+	patch_file_load
+	patch_json_load
+	patch_file_store
+	patch_json_store
+	stack_gamefile_resolve
+	stack_json_resolve
+	
+	; Hooks
+	; -----
+	patchhook_register
+	patchhooks_build
+	patchhooks_run
+
+	; Injection
+	; ---------
+	thcrap_inject
+	thcrap_init
+
+	; Binary hacks
+	; ------------
+	is_valid_hex
+	binhack_calc_size
+	binhack_render
+	GetExportedFunctions
+	binhacks_apply
+
+	; Breakpoints
+	; -----------
+	reg
+	breakpoint_process
+	breakpoints_apply
+	breakpoints_remove
+	breakpoint_register
+
+	; File breakpoints
+	; ----------------
+	BP_file_name
+	BP_file_buffer
+	BP_file_size
+	BP_file_size_patch
+	BP_file_load
+	BP_file_loaded
+	bp_file_init
+
+	; Logging
+	; -------
+	log_print
+	log_wprint
+	log_nprint
+	log_printf
+	log_wprintf
+	log_mbox
+	log_mboxf
+	log_init
+	log_exit
+
+	; String utility functions
+	; ------------------------
+	str_num_base
+	str_slash_normalize
+	str_slash_normalize_win
+	str_num_digits
+
+	; Text display
+	; ------------
+	textdisp_CreateFontA
+	textdisp_SelectObject
+	textdisp_CreateCompatibleDC
+	textdisp_DeleteDC
+
+	GetTextExtent
+	patch_fonts_load
+
+	textdisp_init
+	textdisp_patch
+	textdisp_exit
+
+	; Plugins
+	; -------
+	plugins_load
+	plugins_close

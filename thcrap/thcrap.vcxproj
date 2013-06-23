@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8D7455CC-BE95-4F59-9047-D390454C7261}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>thcrap</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <IntDir>$(SolutionDir)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <TargetName>$(RootNamespace)_d</TargetName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(SolutionDir)\thcrap.props" />
+  </ImportGroup>
+  <PropertyGroup>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>thcrap.h</PrecompiledHeaderFile>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>thcrap.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\mempatch.c" />
+    <ClCompile Include="src\binhack.c" />
+    <ClCompile Include="src\bp_file.c" />
+    <ClCompile Include="src\breakpoint.c" />
+    <ClCompile Include="src\init.c" />
+    <ClCompile Include="src\log.c" />
+    <ClCompile Include="src\global.c">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\jansson_ex.c" />
+    <ClCompile Include="src\patchfile.c" />
+    <ClCompile Include="src\plugin.c" />
+    <ClCompile Include="src\sha256.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\inject.c" />
+    <ClCompile Include="src\strutil.c" />
+    <ClCompile Include="src\textdisp.c" />
+    <ClCompile Include="src\win32_patch.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="config.h" />
+    <ClInclude Include="src\mempatch.h" />
+    <ClInclude Include="src\binhack.h" />
+    <ClInclude Include="src\bp_file.h" />
+    <ClInclude Include="src\breakpoint.h" />
+    <ClInclude Include="src\global.h" />
+    <ClInclude Include="src\init.h" />
+    <ClInclude Include="src\jansson_ex.h" />
+    <ClInclude Include="src\log.h" />
+    <ClInclude Include="src\patchfile.h" />
+    <ClInclude Include="src\plugin.h" />
+    <ClInclude Include="src\sha256.h" />
+    <ClInclude Include="src\inject.h" />
+    <ClInclude Include="src\strutil.h" />
+    <ClInclude Include="src\textdisp.h" />
+    <ClInclude Include="src\thcrap.h" />
+    <ClInclude Include="src\win32_patch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="thcrap.def" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,20 @@
+LIBRARY
+EXPORTS
+	thcrap_init_plugin	@1
+
+	inet_init
+	inet_exit
+
+	ServerGetFirst
+	ServerGetNumActive
+	ServerDisable
+
+	ServerDownloadFileW
+	ServerDownloadFileA
+
+	ServerInit
+
+	patch_update
+
+	UpdateThread
+	BP_update_poll

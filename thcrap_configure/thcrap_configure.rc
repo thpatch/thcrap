@@ -1,0 +1,25 @@
+#include <windows.h>
+
+0 ICON "..\\gfx\\abstractcactus\\icon_01.ico"
+
+10 VERSIONINFO
+    FILEVERSION     0,8,3,0
+    PRODUCTVERSION  0,8,3,0
+    FILEOS          VOS_NT_WINDOWS32
+    FILETYPE        VFT_APP
+    FILESUBTYPE     VFT2_UNKNOWN
+    FILEFLAGSMASK   0x0000003F
+    FILEFLAGS       0x00000020
+{
+    BLOCK "StringFileInfo"
+    {
+        BLOCK "040904E4"
+        {
+            VALUE "ProductName", "Touhou Community Reliant Automatic Patcher - Configuration tool\0"
+        }
+    }
+    BLOCK "VarFileInfo"
+    {
+        VALUE "Translation", 0x0409, 0x04E4
+    }
+}

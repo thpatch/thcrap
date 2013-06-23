@@ -1,0 +1,44 @@
+LIBRARY
+EXPORTS
+	w32u8_set_fallback_codepage @1
+
+	; Unicode
+	; -------
+	StringToUTF16
+	StringToUTF16_VLA
+	StringToUTF8
+
+	; gdi32.dll
+	; ---------
+	CreateFontU
+	TextOutU
+	GetTextExtentPoint32U
+
+	; user32.dll
+	; ----------
+	CharNextU
+	CreateWindowExU
+	MessageBoxU
+	RegisterClassU
+	RegisterClassExU
+	SetWindowTextU
+			
+	; kernel32.dll
+	; ------------
+	CreateDirectoryU
+	CreateFileU
+	CreateProcessU
+	GetModuleFileNameU
+	SetCurrentDirectoryU
+	GetCurrentDirectoryU
+	GetStartupInfoU
+	FormatMessageU
+	FindFirstFileU
+	FindNextFileU
+	LoadLibraryU
+
+	; shlwapi.dll
+	; -----------
+	PathFileExistsU
+	PathMatchSpecU
+	PathRemoveFileSpecU

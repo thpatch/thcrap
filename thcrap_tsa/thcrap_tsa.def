@@ -1,0 +1,12 @@
+LIBRARY
+EXPORTS
+	thcrap_init_plugin	@1
+
+	; Encraption
+	; ----------
+	simple_xor
+	util_xor
+
+	; Format patchers
+	; ---------------
+	patch_msg
