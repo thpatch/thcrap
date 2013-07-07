@@ -9,8 +9,8 @@
   * These breakpoint can be used for replacing data files in any game that
   * loads complete data files into a single block of memory.
   *
-  * Note that parameters are always passed through the other breakpoint
-  * functions called by one function.
+  * Note that parameters are always passed through to other breakpoint
+  * functions called by a function.
   */
 
 #pragma once
@@ -140,7 +140,8 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
 int BP_file_load(x86_reg_t *regs, json_t *bp_info);
 
 /**
-  * Placed, this breakpoint...
+  * Placed at a position where a complete file is loaded into a single block
+  * of memory, this breakpoint...
   * - applies a JSON patch on top of it if available
   * - dumps the original file (unless [dat_dump] in the run configuration is false)
   *

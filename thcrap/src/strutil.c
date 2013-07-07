@@ -31,15 +31,15 @@ void str_slash_normalize_win(char *str)
 
 unsigned int str_num_digits(int number)
 {
-    unsigned int digits = 0;
-    if (number < 0) {
+	unsigned int digits = 0;
+	if (number < 0) {
 		digits = 1; // remove this line if '-' counts as a digit
 	}
-    while (number) {
-        number /= 10;
-        digits++;
-    }
-    return digits;
+	while (number) {
+		number /= 10;
+		digits++;
+	}
+	return digits;
 }
 
 int str_num_base(const char *str)

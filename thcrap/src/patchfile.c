@@ -287,20 +287,17 @@ int patchhook_register(const char *wildcard, func_patch_t patch_func)
 json_t* patchhooks_build(const char *fn)
 {
 	json_t *ret = NULL;
+	const char *key;
+	json_t *val;
 	if(!fn) {
 		return NULL;
 	}
-	{
-		const char *key;
-		json_t *val;
-
-		json_object_foreach(json_object_get(run_cfg, PATCH_HOOKS), key, val) {
-			if(PathMatchSpec(fn, key)) {
-				if(!ret) {
-					ret = json_array();
-				}
-				json_array_extend(ret, val);
+	json_object_foreach(json_object_get(run_cfg, PATCH_HOOKS), key, val) {
+		if(PathMatchSpec(fn, key)) {
+			if(!ret) {
+				ret = json_array();
 			}
+			json_array_extend(ret, val);
 		}
 	}
 	return ret;

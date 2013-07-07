@@ -30,12 +30,12 @@ BOOL STDAPICALLTYPE PathRemoveFileSpecU(
 {
 	// Hey, let's re-write the function to also handle forward slashes
 	// while we're at it!
-    LPSTR newPath = PathFindFileNameA(pszPath);
-    if((newPath) && (newPath != pszPath)) {
-        newPath[0] = TEXT('\0');
-        return 1;
-    }
-    return 0;
+	LPSTR newPath = PathFindFileNameA(pszPath);
+	if((newPath) && (newPath != pszPath)) {
+		newPath[0] = TEXT('\0');
+		return 1;
+	}
+	return 0;
 }
 
 BOOL STDAPICALLTYPE PathFileExistsU(

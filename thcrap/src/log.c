@@ -183,8 +183,8 @@ static void OpenConsole()
 	*stdout = *hf;
 	setvbuf(stdout, NULL, _IONBF, 0);
 
-	// This breaks all normal, unlogged printf() calls to stdout!
-	/// _setmode(_fileno(stdout), _O_U16TEXT);
+	/// This breaks all normal, unlogged printf() calls to stdout!
+	// _setmode(_fileno(stdout), _O_U16TEXT);
 
 	console_open = 1;
 }
@@ -192,7 +192,7 @@ static void OpenConsole()
 void log_init(int console)
 {
 	log_file = fopen(LOG, "wb");
-#ifdef DEBUG
+#ifdef _DEBUG
 	OpenConsole();
 #else
 	if(console) {

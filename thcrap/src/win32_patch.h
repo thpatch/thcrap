@@ -1,5 +1,6 @@
 /**
-  * Win32 UTF-8 wrapper
+  * Touhou Community Reliant Automatic Patcher
+  * Main DLL
   *
   * ----
   *

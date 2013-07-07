@@ -33,12 +33,12 @@ HFONT WINAPI textdisp_CreateFontA(
 	__in int cOrientation,
 	__in int cWeight,
 	__in DWORD bItalic,
-    __in DWORD bUnderline,
+	__in DWORD bUnderline,
 	__in DWORD bStrikeOut,
 	__in DWORD iCharSet,
 	__in DWORD iOutPrecision,
 	__in DWORD iClipPrecision,
-    __in DWORD iQuality,
+	__in DWORD iQuality,
 	__in DWORD iPitchAndFamily,
 	__in_opt LPCSTR pszFaceName
 	)
@@ -60,6 +60,12 @@ HFONT WINAPI textdisp_CreateFontA(
 		replaced = 1;
 	}
 
+	/**
+	  * As long as we convert "ＭＳ ゴシック" to UTF-16, it will work on Western
+	  * systems, too, provided that Japanese support is installed in the first place.
+	  * No need to add an intransparent font substitution which annoys those
+	  * who don't want to use translation patches at all.
+	  */
 	/*
 	const wchar_t *japfonts = L"ＭＳ";
 	// ＭＳ ゴシック
@@ -141,11 +147,11 @@ void patch_fonts_load(const json_t *patch_info, const json_t *patch_js)
 			log_printf("(Font) Loading %s (%d bytes)...\n", font_fn, font_size);
 			AddFontMemResourceEx(font_buffer, font_size, NULL, &ret);
 			SAFE_FREE(font_buffer);
-			/*
-			 * "However, when the process goes away, the system will unload the fonts
-			 * even if the process did not call RemoveFontMemResource."
-			 * http://msdn.microsoft.com/en-us/library/windows/desktop/dd183325%28v=vs.85%29.aspx
-			 */
+			/**
+			  * "However, when the process goes away, the system will unload the fonts
+			  * even if the process did not call RemoveFontMemResource."
+			  * http://msdn.microsoft.com/en-us/library/windows/desktop/dd183325%28v=vs.85%29.aspx
+			  */
 		}
 	}
 }

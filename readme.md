@@ -11,7 +11,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * Easy **DLL injection** of the main engine and plug-ins into the target process.
 
-* Using **JSON for all patch configuration data**, making the patches themselves open-source by design. By recursively merging JSON objects, this gives us...
+* Uses **JSON for all patch configuration data**, making the patches themselves open-source by design. By recursively merging JSON objects, this gives us...
 
 * **Patch stacking** - apply any number of patches at the same time, sorted by a priority list. Supports wildcard-based blacklisting of files in certain patches through the run configuration.
 
