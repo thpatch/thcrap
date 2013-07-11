@@ -74,10 +74,17 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 	}
 	{
 		BreakpointFunc_t ret = NULL;
-		VLA(char, bp_key, strlen(key) + strlen("BP_") + 1);
+		size_t key_len = strlen(key) + 1;
+		VLA(char, bp_key, key_len + strlen("BP_") + 1);
+
+		// Multi-slot support
+		const char *slot = strchr(key, '#');
+		if(slot) {
+			key_len = slot - key;
+		}
 
 		strcpy(bp_key, "BP_");
-		strcat(bp_key, key);
+		strncat(bp_key, key, key_len);
 		ret = (BreakpointFunc_t)runconfig_func_get(bp_key);
 		VLA_FREE(bp_key);
 		return ret;

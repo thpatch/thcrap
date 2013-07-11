@@ -52,6 +52,8 @@ size_t* reg(x86_reg_t *regs, const char *regname);
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
 
 // Looks up the breakpoint function for [key] in the list of exported functions.
+// [key] is delimited by the first '#' character. This can be used to call a
+// single breakpoint function at any number of points in the original code.
 BreakpointFunc_t breakpoint_func_get(const char *key);
 
 // Main breakpoint hook function. A CALL to this function is written to every
