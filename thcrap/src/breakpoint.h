@@ -63,6 +63,3 @@ int breakpoints_apply();
 
 // Removes all breakpoints
 int breakpoints_remove();
-
-// Links the breakpoint [bp_name] to the function [func]
-int breakpoint_register(const char *bp_name, BreakpointFunc_t func);

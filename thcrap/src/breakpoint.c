@@ -280,16 +280,3 @@ int breakpoints_remove()
 	VirtualFree(BP_CodeCave, 0, MEM_RELEASE);
 	return 0;
 }
-
-int breakpoint_register(const char *bp_name, BreakpointFunc_t func)
-{
-	json_t *breakpoints;
-	json_t *json_bp;
-
-	if(!run_cfg || !bp_name || !func) {
-		return -1;
-	}
-	breakpoints = json_object_get_create(run_cfg, BREAKPOINTS, json_object());
-	json_bp = json_object_get_create(breakpoints, bp_name, json_object());
-	return json_object_set_new_nocheck(json_bp, "fp", json_integer((size_t)func));
-}

@@ -42,7 +42,6 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 {
 	inet_init();
 
-	breakpoint_register("update_poll", BP_update_poll);
 	BP_update_poll(NULL, NULL);
 	return 0;
 }

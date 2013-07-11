@@ -361,10 +361,6 @@ int thcrap_init(const char *setup_fn)
 
 	log_printf("\nInitializing plug-ins...\n");
 
-	// Load core stuff
-#ifdef HAVE_BP_FILE
-	bp_file_init();
-#endif
 	plugins_load();
 	
 	/**

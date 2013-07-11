@@ -159,5 +159,3 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
   * Clears a file_rep_t object.
   */
 int file_rep_clear(file_rep_t *pf);
-
-int bp_file_init();

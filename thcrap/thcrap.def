@@ -93,7 +93,6 @@ EXPORTS
 	breakpoint_process
 	breakpoints_apply
 	breakpoints_remove
-	breakpoint_register
 
 	; File breakpoints
 	; ----------------
@@ -103,7 +102,6 @@ EXPORTS
 	BP_file_size_patch
 	BP_file_load
 	BP_file_loaded
-	bp_file_init
 
 	; Logging
 	; -------

@@ -260,14 +260,3 @@ int file_rep_clear(file_rep_t *fr)
 	SAFE_FREE(fr->name);
 	return 1;
 }
-
-int bp_file_init()
-{
-	breakpoint_register("file_name", BP_file_name);
-	breakpoint_register("file_size", BP_file_size);
-	breakpoint_register("file_size_patch", BP_file_size_patch);
-	breakpoint_register("file_buffer", BP_file_buffer);
-	breakpoint_register("file_load", BP_file_load);
-	breakpoint_register("file_loaded", BP_file_loaded);
-	return 0;
-}
