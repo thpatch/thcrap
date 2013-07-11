@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Globals and compile-time constants.
+  * Globals, compile-time constants and runconfig abstractions.
   */
 
 #include "thcrap.h"
@@ -39,4 +39,10 @@ json_t* runconfig_get()
 void runconfig_set(json_t *new_run_cfg)
 {
 	run_cfg = new_run_cfg;
+}
+
+void* runconfig_func_get(const char *name)
+{
+	json_t *funcs = json_object_get(run_cfg, "funcs");
+	return (void*)json_object_get_hex(funcs, name);
 }

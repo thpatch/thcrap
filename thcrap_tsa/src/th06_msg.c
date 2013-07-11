@@ -133,7 +133,7 @@ op_cmd_t op_str_to_cmd(const char *str)
 	return OP_UNKNOWN;
 }
 
-int patch_msg_state_init(patch_msg_state_t *state, json_t *format, json_t *funcs)
+int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 {
 	json_t *encryption = NULL;
 	json_t *opcodes = NULL;
@@ -171,7 +171,7 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format, json_t *funcs
 		// Resolve function
 		encryption_func = json_object_get_string(encryption, "func");
 		if(encryption_func) {
-			state->enc_func = (EncryptionFunc_t)json_object_get_hex(funcs, encryption_func);
+			state->enc_func = (EncryptionFunc_t)runconfig_func_get(encryption_func);
 		}
 
 		encryption_vars = json_object_get(encryption, "vars");
@@ -377,11 +377,8 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 		return 1;
 	}
 
-	{
-		json_t *funcs = json_object_get(run_cfg, "funcs");
-		if(patch_msg_state_init(&state, format, funcs)) {
-			return 1;
-		}
+	if(patch_msg_state_init(&state, format)) {
+		return 1;
 	}
 
 	// Make a copy of the input buffer

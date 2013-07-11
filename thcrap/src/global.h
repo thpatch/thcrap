@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Globals and compile-time constants.
+  * Globals, compile-time constants and runconfig abstractions.
   */
 
 #pragma once
@@ -22,3 +22,7 @@ const char* PROJECT_VERSION_STRING();
 
 json_t* runconfig_get();
 void runconfig_set(json_t *new_run_cfg);
+
+// Returns a pointer to a function named [func] in the list of exported functions.
+// Basically a GetProcAddress across the engine and all loaded plug-ins.
+void* runconfig_func_get(const char *name);
