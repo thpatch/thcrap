@@ -89,6 +89,7 @@ EXPORTS
 	; Breakpoints
 	; -----------
 	reg
+	breakpoint_func_get
 	breakpoint_process
 	breakpoints_apply
 	breakpoints_remove

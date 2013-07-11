@@ -67,6 +67,23 @@ size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *ke
 	return reg(regs, regname);
 }
 
+BreakpointFunc_t breakpoint_func_get(const char *key)
+{
+	if(!key) {
+		return NULL;
+	}
+	{
+		BreakpointFunc_t ret = NULL;
+		VLA(char, bp_key, strlen(key) + strlen("BP_") + 1);
+
+		strcpy(bp_key, "BP_");
+		strcat(bp_key, key);
+		ret = (BreakpointFunc_t)runconfig_func_get(bp_key);
+		VLA_FREE(bp_key);
+		return ret;
+	}
+}
+
 __declspec(naked) void breakpoint_process()
 {
 	json_t *bp;
@@ -95,7 +112,7 @@ __declspec(naked) void breakpoint_process()
 		add regs, 4
 	}
 
-	// Initialize
+	// Initialize (needs to be here because of __declspec(naked))
 	bp = NULL;
 	i = 0;
 	cave_exec = 1;
@@ -107,7 +124,7 @@ __declspec(naked) void breakpoint_process()
 		i++;
 	}
 
-	bp_function = (BreakpointFunc_t)json_object_get_hex(bp, "fp");
+	bp_function = (BreakpointFunc_t)breakpoint_func_get(key);
 	esp_save = regs->esp;
 	if(bp_function) {
 		cave_exec = bp_function(regs, bp);
