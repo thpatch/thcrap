@@ -11,6 +11,7 @@ EXPORTS
 	; ------
 	BP_spell_id
 	BP_spell_name
+	BP_spell_comment_line
 	spells_init
 	spells_exit
 

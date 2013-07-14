@@ -81,6 +81,35 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info);
 int BP_spell_name(x86_reg_t *regs, json_t *bp_info);
 
 /**
+  * Writes a single translated spell comment line.
+  *
+  * Own JSON parameters
+  * -------------------
+  *	[str]
+  *		Register to write to.
+  *		Type: register
+  *
+  *	[comment_num]
+  *		Comment number. Gets prefixed with "comment_" to make up the JSON key.
+  *		Must be at least 1.
+  *		Type: hex
+  *
+  *	[line_num]
+  *		Line number. Array element in the JSON array of [comment_num].
+  *		Type: hex
+  *
+  *	[cave_exec]
+  *		Set to false to disable the execution of the code cave
+  *		if the spell name is replaced.
+  *		Type: bool
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	BP_spell_id
+  */
+int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
+
+/**
   * For now, this is merely a dummy hook to make sure that the spell files are
   * reloaded at the beginning of a stage.
   * We don't want to hook ECL files because newer games use more than one per
