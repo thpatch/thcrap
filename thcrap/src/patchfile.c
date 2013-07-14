@@ -328,7 +328,9 @@ int patchhooks_run(const json_t *hook_array, BYTE* file_inout, size_t size_out, 
 	json_t *val;
 	size_t i;
 
-	if(!hook_array || !file_inout || !patch || !run_cfg) {
+	// We don't check [patch] here - hooks should be run even if there is no
+	// dedicated patch file.
+	if(!hook_array || !file_inout || !run_cfg) {
 		return -1;
 	}
 	json_array_foreach(hook_array, i, val) {
