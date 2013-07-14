@@ -28,11 +28,11 @@ typedef struct {
 	char *name;
 
 	// Size of the thing we're replacing the game's file with
-	size_t local_size;
+	size_t rep_size;
 	// Size of the game's own file in the game's own memory
 	size_t game_size;
 
-	void *local_buffer;
+	void *rep_buffer;
 	void *game_buffer;
 
 	// Pointer to an object of the game's file class.

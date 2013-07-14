@@ -16,9 +16,6 @@ EXPORTS
 	sha256_update
 	sha256_final
 
-	; Memory patching
-	; ---------------
-
 	; PE structures
 	; -------------
 	GetNtHeader
@@ -89,6 +86,7 @@ EXPORTS
 	; Breakpoints
 	; -----------
 	reg
+	json_object_get_register
 	breakpoint_func_get
 	breakpoint_process
 	breakpoints_apply

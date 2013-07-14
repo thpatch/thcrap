@@ -128,7 +128,7 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	DWORD *func_ptrs = NULL;
 	DWORD *name_ptrs = NULL;
 	WORD *name_indices = NULL;
-	DWORD dll_base = (DWORD)hDll;	// All this type-casting is annoying
+	DWORD dll_base = (DWORD)hDll; // All this type-casting is annoying
 	WORD i, j; // can only ever be 16-bit values
 
 	if(!funcs) {
