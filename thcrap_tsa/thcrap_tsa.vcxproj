@@ -49,6 +49,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\encraption.c" />
+    <ClCompile Include="src\spells.c" />
     <ClCompile Include="src\th06_msg.c" />
     <ClCompile Include="src\thcrap_tsa.c" />
   </ItemGroup>

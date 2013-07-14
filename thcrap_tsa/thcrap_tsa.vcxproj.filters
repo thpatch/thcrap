@@ -20,6 +20,9 @@
     <ClCompile Include="src\th06_msg.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\spells.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_tsa.def">

@@ -7,6 +7,14 @@ EXPORTS
 	simple_xor
 	util_xor
 
+	; Spells
+	; ------
+	BP_spell_id
+	BP_spell_name
+	spells_init
+	spells_exit
+
 	; Format patchers
 	; ---------------
 	patch_msg
+	patch_std
