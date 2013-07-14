@@ -55,14 +55,16 @@ EXPORTS
 	; Patch files
 	; -----------
 	file_read
+	game_file_fullname
 	patch_file_exists
 	patch_file_blacklisted
 	patch_file_load
 	patch_json_load
 	patch_file_store
 	patch_json_store
-	stack_gamefile_resolve
 	stack_json_resolve
+	stack_game_file_resolve
+	stack_game_json_resolve
 	
 	; Hooks
 	; -----

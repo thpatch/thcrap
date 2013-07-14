@@ -42,34 +42,20 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 		VLA_FREE(fn_w);
 	}
 
-	fr.rep_buffer = stack_gamefile_resolve(fr.name, &fr.rep_size);
+	fr.rep_buffer = stack_game_file_resolve(fr.name, &fr.rep_size);
 	fr.hooks = patchhooks_build(fr.name);
 	if(fr.hooks) {
-		const char *game_id;
-		size_t patch_fn_len = 0;
-		size_t patch_size = 0;
-
-		game_id = json_object_get_string(run_cfg, "game");
-		if(game_id) {
-			patch_fn_len += strlen(game_id) + 1;
-		}
-		patch_fn_len += fn_len + strlen(".jdiff") + 1;
+		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
+		size_t diff_size = 0;
 
 		{
-			VLA(char, patch_fn, patch_fn_len);
-			patch_fn[0] = 0;	// Because strcat
-
-			if(game_id) {
-				strcpy(patch_fn, game_id);
-				PathAddBackslashA(patch_fn);
-			}
-			strcat(patch_fn, fr.name);
-			strcat(patch_fn, ".jdiff");
-
-			fr.patch = stack_json_resolve(patch_fn, &patch_size);
-			VLA_FREE(patch_fn);
+			VLA(char, diff_fn, diff_fn_len);
+			strcpy(diff_fn, fr.name);
+			strcat(diff_fn, ".jdiff");
+			fr.patch = stack_game_json_resolve(diff_fn, &diff_size);
+			VLA_FREE(diff_fn);
 		}
-		fr.rep_size += patch_size;
+		fr.rep_size += diff_size;
 	}
 	// Print the type of the file
 	if(fr.patch) {

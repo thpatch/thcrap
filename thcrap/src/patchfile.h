@@ -38,6 +38,14 @@ typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, j
 // Return value has to be free()d by the caller!
 void* file_read(const char *fn, size_t *file_size);
 
+/// ----------
+/// File names
+/// ----------
+// Returns the full patch-relative name of a game-relative file.
+// Return value has to be free()d by the caller!
+char* game_file_fullname(const char *fn);
+/// ----------
+
 /// ------------------------
 /// Single-patch file access
 /// ------------------------
@@ -61,15 +69,18 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 /// ----------------------
 /// Patch stack evaluators
 /// ----------------------
-// Search the patch stack configured in <run_cfg> for a replacement for the game data file [fn].
-// Returns the loaded patch file or NULL if the file is not to be patched.
-void* stack_gamefile_resolve(const char *fn, size_t *file_size);
-
 // Walks through the patch stack configured in <run_cfg>,
 // merging every file with the filename [fn] into a single JSON object.
 // Returns the merged JSON object or NULL if there is no matching file in the patch stack.
 // If given, [file_size] receives a _rough estimate_ of the JSON file size.
 json_t* stack_json_resolve(const char *fn, size_t *file_size);
+
+// Search the patch stack configured in <run_cfg> for a replacement for the game data file [fn].
+// Returns the loaded patch file or NULL if the file is not to be patched.
+void* stack_game_file_resolve(const char *fn, size_t *file_size);
+
+// Resolves a game-local JSON file.
+json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 /// ----------------------
 
 /// -----

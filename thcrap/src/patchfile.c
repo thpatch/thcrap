@@ -44,6 +44,26 @@ void* file_read(const char *fn, size_t *file_size)
 	return ret;
 }
 
+char* game_file_fullname(const char *fn)
+{
+	const char *game_id;
+	char *full_fn;
+
+	if(!fn) {
+		return NULL;
+	}
+	game_id = json_object_get_string(run_cfg, "game");
+	full_fn = (char*)malloc(strlen(game_id) + 1 + strlen(fn) + 1);
+
+	full_fn[0] = 0; // Because strcat
+	if(game_id) {
+		strcpy(full_fn, game_id);
+		strcat(full_fn, "/");
+	}
+	strcat(full_fn, fn);
+	return full_fn;
+}
+
 char* patch_file_fullname(const json_t *patch_info, const char *fn)
 {
 	size_t archive_len;
@@ -158,43 +178,6 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 	return 0;
 }
 
-void* stack_gamefile_resolve(const char *fn, size_t *file_size)
-{
-	const char *game_id;
-	void *ret = NULL;
-
-	if(!run_cfg || !fn) {
-		return NULL;
-	}
-	// Game ID
-	game_id = json_object_get_string(run_cfg, "game");
-	if(!game_id) {
-		return NULL;
-	}
-	{
-		int i;
-		json_t *patch_array;
-
-		// Build full file name (id + / + fn)
-		VLA(char, full_fn, strlen(game_id) + 1 + strlen(fn) + 1);
-
-		sprintf(full_fn, "%s/%s", game_id, fn);
-
-		// Patch stack has to be traversed backwards
-		// because later patches take priority over earlier ones
-		patch_array = json_object_get(run_cfg, "patches");
-
-		for(i = json_array_size(patch_array) - 1; i > -1; i--) {
-			ret = patch_file_load(json_array_get(patch_array, i), full_fn, file_size);
-			if(ret) {
-				break;
-			}
-		}
-		VLA_FREE(full_fn);
-	}
-	return ret;
-}
-
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size)
 {
 	size_t json_size;
@@ -269,6 +252,43 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	if(file_size) {
 		*file_size = json_size;
 	}
+	return ret;
+}
+
+void* stack_game_file_resolve(const char *fn, size_t *file_size)
+{
+	char *full_fn;
+	const char *full_fn_ptr;
+	void *ret = NULL;
+	int i;
+	json_t *patch_array = json_object_get(run_cfg, "patches");
+
+	if(!fn) {
+		return NULL;
+	}
+	full_fn = game_file_fullname(fn);
+	// Meh, const correctness.
+	full_fn_ptr = full_fn;
+	if(!full_fn_ptr) {
+		full_fn_ptr = fn;
+	}
+	// Patch stack has to be traversed backwards
+	// because later patches take priority over earlier ones
+	for(i = json_array_size(patch_array) - 1; i > -1; i--) {
+		ret = patch_file_load(json_array_get(patch_array, i), full_fn_ptr, file_size);
+		if(ret) {
+			break;
+		}
+	}
+	SAFE_FREE(full_fn);
+	return ret;
+}
+
+json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
+{
+	char *full_fn = game_file_fullname(fn);
+	json_t *ret = stack_json_resolve(full_fn, file_size);
+	SAFE_FREE(full_fn);
 	return ret;
 }
 
