@@ -138,7 +138,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 				"\nUm... you _really_ do not want to mess with base_tsa.\n"
 				"This patch supplies the foundation for every other patch offered here.\n"
 				"If you remove it, none of those will work.\n\n");
-			system("pause");
+			pause();
 		} else {
 			if(patch_id > json_array_size(selected)) {
 				json_array_append(selected, patch);

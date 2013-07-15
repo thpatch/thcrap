@@ -59,7 +59,15 @@ void cls(SHORT top)
 	// put the cursor at (0, 0)
 	SetConsoleCursorPosition(hConsole, coordScreen);
 	return;
-}	
+}
+
+// Because I've now learned how bad pause() can be
+void pause()
+{
+	int ret;
+	printf("Press ENTER to continue . . . ");
+	while((ret = getchar()) != '\n' && ret != EOF);
+}
 
 json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remote_servers)
 {
@@ -318,7 +326,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 			}
 		}
 	}
-	system("pause");
+	pause();
 
 	{
 		DWORD remote_server_js_size;
@@ -339,7 +347,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		} else {
 			printf("Download of server.js failed.\nUsing local server definitions...\n");
 			server_js = local_server_js;
-			system("pause");
+			pause();
 		}
 
 		remote_servers = ServerInit(server_js);
@@ -412,7 +420,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	json_dump_log(run_cfg, JSON_INDENT(2));
 	log_printf("\n\n");
 	
-	system("pause");
+	pause();
 
 	runconfig_set(run_cfg);
 
@@ -438,6 +446,6 @@ end:
 
 	VLA_FREE(cur_dir);
 	
-	system("pause");
+	pause();
 	return 0;
 }
