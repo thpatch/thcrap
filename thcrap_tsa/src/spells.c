@@ -13,8 +13,8 @@
 // Lookup cache
 static json_t *spells = NULL;
 static json_t *spellcomments = NULL;
-static size_t cache_spell_id;
-static size_t cache_spell_id_real;
+static size_t cache_spell_id = 0;
+static size_t cache_spell_id_real = 0;
 
 int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 {
@@ -47,7 +47,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 	BP_spell_id(regs, bp_info);
 	// -----------------
 
-	if(spell_name) {
+	if(spell_name && cache_spell_id_real >= cache_spell_id) {
 		const char *new_name = NULL;
 		size_t i = cache_spell_id_real;
 
