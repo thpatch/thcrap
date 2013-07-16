@@ -130,6 +130,8 @@ EXPORTS
 	textdisp_DeleteDC
 
 	GetTextExtent
+	GetTextExtentForFont
+
 	patch_fonts_load
 
 	textdisp_init

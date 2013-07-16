@@ -115,7 +115,7 @@ BOOL WINAPI textdisp_DeleteDC( __in HDC hdc)
 	return 1;
 }
 
-DWORD __stdcall GetTextExtent(const char *str)
+size_t __stdcall GetTextExtent(const char *str)
 {
 	SIZE size;
 	size_t str_len = strlen(str) + 1;
@@ -129,6 +129,14 @@ DWORD __stdcall GetTextExtent(const char *str)
 	GetTextExtentPoint32(text_dc, str, str_len, &size);
 	log_printf("GetTextExtent('%s') = %d -> %d\n", str, size.cx, size.cx / 2);
 	return (size.cx / 2);
+}
+
+size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font)
+{
+	HGDIOBJ prev_font = textdisp_SelectObject(text_dc, font);
+	size_t ret = GetTextExtent(str);
+	textdisp_SelectObject(text_dc, prev_font);
+	return ret;
 }
 
 void patch_fonts_load(const json_t *patch_info, const json_t *patch_js)
