@@ -103,10 +103,8 @@ __declspec(naked) void breakpoint_process()
 	BreakpointFunc_t bp_function;
 
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
-	// to be able to manipulate it. Needs to be global because we have cleared
-	// the function stack once this is really needed.
-	// TODO: And what about thread-safety?
-	static size_t esp_save;
+	// to be able to manipulate it. 
+	size_t esp_prev;
 
 	__asm {
 		// Save registers, allocate local variables
@@ -115,14 +113,13 @@ __declspec(naked) void breakpoint_process()
 		mov ebp, esp
 		sub esp, __LOCAL_SIZE
 		mov regs, ebp
-		// Skip over flags register (which we don't include for... what reason again?)
-		add regs, 4
 	}
 
 	// Initialize (needs to be here because of __declspec(naked))
 	bp = NULL;
 	i = 0;
 	cave_exec = 1;
+	esp_prev = regs->esp;
 
 	json_object_foreach(BP_Object, key, bp) {
 		if(json_object_get_hex(bp, "addr") == (regs->retaddr - 5)) {
@@ -132,7 +129,6 @@ __declspec(naked) void breakpoint_process()
 	}
 
 	bp_function = (BreakpointFunc_t)breakpoint_func_get(key);
-	esp_save = regs->esp;
 	if(bp_function) {
 		cave_exec = bp_function(regs, bp);
 	}
@@ -142,15 +138,19 @@ __declspec(naked) void breakpoint_process()
 		// inside the codecave - it will jump back on its own
 		regs->retaddr = (size_t)(BP_CodeCave) + (i * BP_Offset);
 	}
-	if(esp_save != regs->esp) {
-		memcpy((size_t*)(regs->esp), &regs->retaddr, 4);
+	if(esp_prev != regs->esp) {
+		// ESP change requested.
+		// Shift down the regs structure by the requested amount
+		size_t esp_diff = regs->esp - esp_prev;
+		memmove((BYTE*)(regs) + esp_diff, regs, sizeof(x86_reg_t));
+		__asm {
+			add ebp, esp_diff
+		}
 	}
-	esp_save = regs->esp - esp_save;
 	__asm {
 		mov esp, ebp
 		popfd
 		popad
-		add esp, esp_save
 		retn
 	}
 }

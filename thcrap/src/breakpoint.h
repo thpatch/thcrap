@@ -9,8 +9,9 @@
 
 #pragma once
 
-// Register structure in PUSHAD order at the beginning of a function
+// Register structure in PUSHAD+PUSHFD order at the beginning of a function
 typedef struct {
+	size_t flags;
 	size_t edi;
 	size_t esi;
 	size_t ebp;
