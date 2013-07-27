@@ -57,17 +57,6 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 		}
 		fr.rep_size += diff_size;
 	}
-	// Print the type of the file
-	if(fr.patch) {
-		log_printf("(Patch) ");
-	} else if(fr.rep_buffer && fr.rep_size) {
-		log_printf("(External) ");
-	} else {
-		log_printf("(Archive) ");
-	}
-	if(fr.name) {
-		log_printf("Loading %s ", fr.name);
-	}
 	return 1;
 }
 
@@ -102,9 +91,6 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 	} else if(fr.rep_buffer && fr.rep_size) {
 		// Set size of replacement file
 		*file_size = fr.rep_size;
-	}
-	if(fr.name) {
-		log_printf("(%d bytes)...\n", fr.rep_size ? fr.rep_size : *file_size);
 	}
 	return 1;
 }
