@@ -112,6 +112,16 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 			out[1] = (a << 4) | r;
 			out[0] = (g << 4) | b;
 		}
+	} else if(format == FORMAT_RGB565) {
+		png_uint_16p out16 = (png_uint_16p)data;
+
+		for(i = 0; i < pixels; ++i, in += 4, ++out16) {
+			const unsigned char b = in[0] >> 3;
+			const unsigned char g = in[1] >> 2;
+			const unsigned char r = in[2] >> 3;
+
+			out16[0] = (r << 11) | (g << 5) | b;
+		}
 	}
 }
 /// -------
@@ -130,7 +140,8 @@ int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t
 	// Only support for single-texture images right now
 	if(
 		thtx->format != FORMAT_BGRA8888 &&
-		thtx->format != FORMAT_ARGB4444
+		thtx->format != FORMAT_ARGB4444 &&
+		thtx->format != FORMAT_RGB565
 	) {
 		log_printf("No patching support for texture format %d at this point.\n", thtx->format);
 		return 1;
