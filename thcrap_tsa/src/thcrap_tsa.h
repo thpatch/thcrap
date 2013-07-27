@@ -33,8 +33,6 @@ typedef void (*EncryptionFunc_t)(
 	BYTE *data, size_t data_len, const BYTE *params, size_t params_count
 );
 
-int patch_msg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *format);
-
 /// ------
 /// Spells
 /// ------
@@ -117,8 +115,14 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
   * We also don't just do this once on plug-in initialization because the files
   * may be changed by an automatic update at any time.
   */
-int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *format);
+int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 
 void spells_init();
 void spells_exit();
 /// ------
+
+/// Format patchers
+/// ---------------
+int patch_msg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_anm(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+/// ---------------

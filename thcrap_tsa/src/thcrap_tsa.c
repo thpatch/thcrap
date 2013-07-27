@@ -15,6 +15,7 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 	patchhook_register("msg*.dat", patch_msg);
 	patchhook_register("*.msg", patch_msg);
 	patchhook_register("*.std", patch_std);
+	patchhook_register("*.anm", patch_anm);
 	spells_init();
 	return 0;
 }

@@ -15,7 +15,12 @@ EXPORTS
 	spells_init
 	spells_exit
 
+	; Images
+	; ------
+	patch_thtx
+
 	; Format patchers
 	; ---------------
 	patch_msg
 	patch_std
+	patch_anm

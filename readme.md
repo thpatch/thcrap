@@ -42,7 +42,11 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 As of now, all subprojects only include a Visual C++ 2010 project file for building. SP1 is recommended, if only for correct version identification in Explorer. Build configurations for different systems are always welcome.
 
-The only dependency is [Jansson] (http://www.digip.org/jansson/), which is required for every module apart from `win32_utf8`. Compile it from the [latest source] (https://github.com/akheron/jansson), then add its include and library directories to every project.
+#### Dependencies ####
+
+* [Jansson] (http://www.digip.org/jansson/) is required for every module apart from `win32_utf8`. Compile it from the [latest source] (https://github.com/akheron/jansson), then add its include and library directories to every project.
+
+* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** is also required by `thcrap_tsa` for image patching.
 
 ### License ###
 
