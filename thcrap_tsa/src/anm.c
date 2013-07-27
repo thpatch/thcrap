@@ -92,6 +92,21 @@ unsigned int format_Bpp(format_t format)
 	}
 }
 
+unsigned int format_png_equiv(format_t format)
+{
+    switch(format) {
+		case FORMAT_BGRA8888:
+		case FORMAT_ARGB4444:
+		case FORMAT_RGB565:
+			return PNG_FORMAT_BGRA;
+		case FORMAT_GRAY8:
+			return PNG_FORMAT_GRAY;
+		default:
+			log_printf("unknown format: %u\n", format);
+			return 0;
+	}
+}
+
 // Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 {
@@ -100,7 +115,6 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 
 	if(format == FORMAT_ARGB4444) {
 		png_bytep out = data;
-
 		for(i = 0; i < pixels; ++i, in += 4, out += 2) {
 			// I don't see the point in doing any "rounding" here. Let's rather focus on
 			// writing understandable code independent of endianness assumptions.
@@ -114,7 +128,6 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 		}
 	} else if(format == FORMAT_RGB565) {
 		png_uint_16p out16 = (png_uint_16p)data;
-
 		for(i = 0; i < pixels; ++i, in += 4, ++out16) {
 			const unsigned char b = in[0] >> 3;
 			const unsigned char g = in[1] >> 2;
@@ -123,6 +136,7 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 			out16[0] = (r << 11) | (g << 5) | b;
 		}
 	}
+	// FORMAT_GRAY8 is fully handled by libpng
 }
 /// -------
 
@@ -130,6 +144,7 @@ int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t
 {
 	png_image rep_png;
 	png_bytep rep_png_buffer = NULL;
+	int format_bpp;
 
 	if(!thtx || !rep_buffer) {
 		return -1;
@@ -137,15 +152,12 @@ int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t
 	if(strncmp(thtx->magic, "THTX", sizeof(thtx->magic))) {
 		return -2;
 	}
-	// Only support for single-texture images right now
-	if(
-		thtx->format != FORMAT_BGRA8888 &&
-		thtx->format != FORMAT_ARGB4444 &&
-		thtx->format != FORMAT_RGB565
-	) {
-		log_printf("No patching support for texture format %d at this point.\n", thtx->format);
+
+	format_bpp = format_Bpp(thtx->format);
+	if(!format_bpp) {
 		return 1;
 	} else if(x || y) {
+		// Only support for single-texture images right now
 		log_printf("No patching support for multi-texture images at this point.\n");
 		return 1;
 	}
@@ -156,9 +168,9 @@ int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t
 	if(png_image_begin_read_from_memory(&rep_png, rep_buffer, rep_size)) {
 		size_t rep_png_size;
 		
-		rep_png.format = PNG_FORMAT_BGRA;
+		rep_png.format = format_png_equiv(thtx->format);
 		rep_png_size = PNG_IMAGE_SIZE(rep_png);
-		if(rep_png.width * rep_png.height * format_Bpp(thtx->format) == thtx->size) {
+		if(rep_png.width * rep_png.height * format_bpp == thtx->size) {
 			rep_png_buffer = (png_bytep)malloc(rep_png_size);
 
 			if(rep_png_buffer) {
