@@ -20,8 +20,7 @@
 typedef enum {
 	FORMAT_BGRA8888 = 1,
 	FORMAT_RGB565 = 3,
-	// 0xGB 0xAR
-	FORMAT_ARGB4444 = 5,
+	FORMAT_ARGB4444 = 5, // 0xGB 0xAR
 	FORMAT_GRAY8 = 7
 } format_t;
 /// -----
@@ -32,16 +31,16 @@ typedef struct {
 #ifdef PACK_PRAGMA
 #pragma pack(push,1)
 #endif
-    char magic[4];
-    WORD zero;
-    WORD format;
-    /* These may be different from the parent entry. */
-    WORD w, h;
-    DWORD size;
+	char magic[4];
+	WORD zero;
+	WORD format;
+	/* These may be different from the parent entry. */
+	WORD w, h;
+	DWORD size;
 #ifdef PACK_PRAGMA
 #pragma pack(pop)
 #endif
-    unsigned char data[];
+	unsigned char data[];
 } PACK_ATTRIBUTE thtx_header_t;
 /// ----------
 
@@ -122,7 +121,7 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 			const unsigned char g = in[1] >> 4;
 			const unsigned char r = in[2] >> 4;
 			const unsigned char a = in[3] >> 4;
-
+			// Yes, we start with the second byte. "Little-endian ARGB", mind you.
 			out[1] = (a << 4) | r;
 			out[0] = (g << 4) | b;
 		}
@@ -140,59 +139,79 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 }
 /// -------
 
-int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t rep_size)
+png_bytep png_load_for_thtx(png_imagep png, const char *fn, thtx_header_t *thtx)
 {
-	png_image rep_png;
-	png_bytep rep_png_buffer = NULL;
+	void *file_buffer = NULL;
+	png_bytep png_buffer = NULL;
+	size_t file_size;
 	int format_bpp;
 
-	if(!thtx || !rep_buffer) {
-		return -1;
+	if(!png || !fn || !thtx) {
+		return NULL;
 	}
 	if(strncmp(thtx->magic, "THTX", sizeof(thtx->magic))) {
-		return -2;
+		return NULL;
 	}
 
-	format_bpp = format_Bpp(thtx->format);
-	if(!format_bpp) {
-		return 1;
-	} else if(x || y) {
-		// Only support for single-texture images right now
-		log_printf("No patching support for multi-texture images at this point.\n");
-		return 1;
+	file_buffer = stack_game_file_resolve(fn, &file_size);
+	if(!file_buffer) {
+		return NULL;
 	}
 
-	ZeroMemory(&rep_png, sizeof(png_image));
-	rep_png.version = PNG_IMAGE_VERSION;
+	ZeroMemory(png, sizeof(png_image));
+	png->version = PNG_IMAGE_VERSION;
 
-	if(png_image_begin_read_from_memory(&rep_png, rep_buffer, rep_size)) {
-		size_t rep_png_size;
+	if(png_image_begin_read_from_memory(png, file_buffer, file_size)) {
+		size_t png_size;
 		
-		rep_png.format = format_png_equiv(thtx->format);
-		rep_png_size = PNG_IMAGE_SIZE(rep_png);
-		if(rep_png.width * rep_png.height * format_bpp == thtx->size) {
-			rep_png_buffer = (png_bytep)malloc(rep_png_size);
+		png->format = format_png_equiv(thtx->format);
+		if(png->format) {
+			png_size = PNG_IMAGE_SIZE(*png);
+			png_buffer = (png_bytep)malloc(png_size);
 
-			if(rep_png_buffer) {
-				png_image_finish_read(&rep_png, 0, rep_png_buffer, 0, NULL);
+			if(png_buffer) {
+				png_image_finish_read(png, 0, png_buffer, 0, NULL);
 			}
-		} else {
-			log_printf(
-				"Image size mismatch, patching not supported yet!\n"
-				"\t(format: %d, original: %d, replacement: %d)\n",
-				thtx->format, thtx->size, rep_png_size
-			);
 		}
 	}
-
-	if(rep_png_buffer) {
-		format_from_bgra(rep_png_buffer, rep_png.width * rep_png.height, thtx->format);
-
-		memcpy(thtx->data, rep_png_buffer, thtx->size);
-
-		SAFE_FREE(rep_png_buffer);
+	SAFE_FREE(file_buffer);
+	if(png_buffer) {
+		format_from_bgra(png_buffer, png->width * png->height, thtx->format);
 	}
-	png_image_free(&rep_png);
+	return png_buffer;
+}
+
+// Patches a [png] image prepared by <png_load_for_thtx> into [thtx], starting at [x],[y].
+// [png_buffer] is assumed to have the same bit depth as [thtx].
+int patch_thtx(thtx_header_t *thtx, const size_t x, const size_t y, png_imagep png, png_bytep png_buffer)
+{
+	int bpp;
+
+	if(!thtx || !png || !png_buffer || x >= png->width || y >= png->height) {
+		return -1;
+	}
+
+	bpp = format_Bpp(thtx->format);
+	if(!bpp) {
+		return 1;
+	}
+
+	if(x == 0 && y == 0 && (thtx->w == png->width) && (thtx->h == png->height)) {
+		// Optimization for the most frequent case
+		memcpy(thtx->data, png_buffer, thtx->size);
+	} else {
+		png_bytep in = png_buffer + (y * png->width * bpp);
+		png_bytep out = thtx->data;
+		size_t png_stride = png->width * bpp;
+		size_t thtx_stride = thtx->w * bpp;
+		size_t row;
+		for(row = 0; row < min(thtx->h, (png->height - y)); row++) {
+			memcpy(out, in + (x * bpp), min(png_stride, thtx_stride));
+
+			in += png_stride;
+			out += thtx_stride;
+		}
+	}
 	return 0;
 }
 
@@ -202,8 +221,8 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 	// Some ANMs reference the same file name multiple times in a row
 	char *name_prev = NULL;
-	void *rep_buffer = NULL;
-	size_t rep_size;
+	png_bytep png_buffer = NULL;
+	png_image png;
 
 	BYTE *anm_entry_out = file_inout;
 
@@ -235,23 +254,25 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			char *name = (char*)(anm_entry_out + nameoffset);
 			thtx_header_t *thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
 
+			// Load a new replacement image, if necessary
 			if(!name_prev || strcmp(name, name_prev)) {
-				SAFE_FREE(rep_buffer);
-				rep_buffer = stack_game_file_resolve(name, &rep_size);
+				png_image_free(&png);
+				SAFE_FREE(png_buffer);
+				png_buffer = png_load_for_thtx(&png, name, thtx);
 				name_prev = name;
 			}
-			if(rep_buffer) {
-				patch_thtx(thtx, x, y, rep_buffer, rep_size);
+			// ... and patch it
+			if(png_buffer) {
+				patch_thtx(thtx, x, y, &png, png_buffer);
 			}
 		}
-
 		if(!nextoffset) {
 			break;
 		} else {
 			anm_entry_out += nextoffset;
 		}
 	}
-	SAFE_FREE(rep_buffer);
+	SAFE_FREE(png_buffer);
 	log_printf("-------------\n");
 	return 1;
 }
