@@ -22,17 +22,16 @@ int plugins_load()
 
 	hFind = FindFirstFile("*.dll", &w32fd);
 	while( (hFind != INVALID_HANDLE_VALUE) && (GetLastError() != ERROR_NO_MORE_FILES) ) {
-		thcrap_init_plugin_type func;
 		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
-		if(!plugin) {
-			continue;
-		}
-		func = (thcrap_init_plugin_type)GetProcAddress(plugin, "thcrap_init_plugin");
-		if(func && !func(run_cfg)) {
-			log_printf("\t%s\n", w32fd.cFileName);
-			json_object_set_new(plugins, w32fd.cFileName, json_integer((int)plugin));
-		} else {
-			FreeLibrary(plugin);
+		if(plugin) {
+			thcrap_init_plugin_type func;
+			func = (thcrap_init_plugin_type)GetProcAddress(plugin, "thcrap_init_plugin");
+			if(func && !func(run_cfg)) {
+				log_printf("\t%s\n", w32fd.cFileName);
+				json_object_set_new(plugins, w32fd.cFileName, json_integer((int)plugin));
+			} else {
+				FreeLibrary(plugin);
+			}
 		}
 		FindNextFile(hFind, &w32fd);
 	}
