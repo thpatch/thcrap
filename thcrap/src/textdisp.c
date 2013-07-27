@@ -48,11 +48,6 @@ HFONT WINAPI textdisp_CreateFontA(
 	
 	iCharSet = DEFAULT_CHARSET;
 
-	// Keep the width definition for Courier New from the th11 English patch...
-	if(strcmp(pszFaceName, "Courier New")) {
-		cWidth = 0;
-	}
-	
 	// Read external font
 	run_font = json_object_get(run_cfg, "font");
 	if(json_is_string(run_font)) {
