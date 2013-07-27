@@ -142,7 +142,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 		json_t *server_time;
 
 		// Loop back
-		if(i > json_array_size(servers)) {
+		if(i >= json_array_size(servers)) {
 			i = 0;
 		}
 
