@@ -16,11 +16,13 @@
 
 /// Enums
 /// -----
+// All of the 16-bit formats are little-endian.
 typedef enum {
-    FORMAT_BGRA8888 = 1,
-    FORMAT_BGR565 = 3,
-    FORMAT_BGRA4444 = 5,
-    FORMAT_GRAY8 = 7
+	FORMAT_BGRA8888 = 1,
+	FORMAT_RGB565 = 3,
+	// 0xGB 0xAR
+	FORMAT_ARGB4444 = 5,
+	FORMAT_GRAY8 = 7
 } format_t;
 /// -----
 
@@ -72,6 +74,48 @@ int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 	struct_get(&(val), sizeof(type), anm_entry_out, json_object_get(spec_obj, #val))
 /// --------------------------------
 
+/// Formats
+/// -------
+unsigned int format_Bpp(format_t format)
+{
+    switch(format) {
+		case FORMAT_BGRA8888:
+			return 4;
+		case FORMAT_ARGB4444:
+		case FORMAT_RGB565:
+			return 2;
+		case FORMAT_GRAY8:
+			return 1;
+		default:
+			log_printf("unknown format: %u\n", format);
+			return 0;
+	}
+}
+
+// Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
+void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
+{
+	unsigned int i = 0;
+	png_bytep in = data;
+
+	if(format == FORMAT_ARGB4444) {
+		png_bytep out = data;
+
+		for(i = 0; i < pixels; ++i, in += 4, out += 2) {
+			// I don't see the point in doing any "rounding" here. Let's rather focus on
+			// writing understandable code independent of endianness assumptions.
+			const unsigned char b = in[0] >> 4;
+			const unsigned char g = in[1] >> 4;
+			const unsigned char r = in[2] >> 4;
+			const unsigned char a = in[3] >> 4;
+
+			out[1] = (a << 4) | r;
+			out[0] = (g << 4) | b;
+		}
+	}
+}
+/// -------
+
 int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t rep_size)
 {
 	png_image rep_png;
@@ -83,8 +127,11 @@ int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t
 	if(strncmp(thtx->magic, "THTX", sizeof(thtx->magic))) {
 		return -2;
 	}
-	// Only support for BGRA8888, single-texture images right now
-	if(thtx->format != FORMAT_BGRA8888) {
+	// Only support for single-texture images right now
+	if(
+		thtx->format != FORMAT_BGRA8888 &&
+		thtx->format != FORMAT_ARGB4444
+	) {
 		log_printf("No patching support for texture format %d at this point.\n", thtx->format);
 		return 1;
 	} else if(x || y) {
@@ -100,7 +147,7 @@ int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t
 		
 		rep_png.format = PNG_FORMAT_BGRA;
 		rep_png_size = PNG_IMAGE_SIZE(rep_png);
-		if(rep_png_size == thtx->size) {
+		if(rep_png.width * rep_png.height * format_Bpp(thtx->format) == thtx->size) {
 			rep_png_buffer = (png_bytep)malloc(rep_png_size);
 
 			if(rep_png_buffer) {
@@ -115,11 +162,13 @@ int patch_thtx(thtx_header_t *thtx, size_t x, size_t y, void *rep_buffer, size_t
 		}
 	}
 
-	// Do format conversions on the rep_png_buffer...
+	if(rep_png_buffer) {
+		format_from_bgra(rep_png_buffer, rep_png.width * rep_png.height, thtx->format);
 
-	memcpy(thtx->data, rep_png_buffer, thtx->size);
+		memcpy(thtx->data, rep_png_buffer, thtx->size);
 
-	SAFE_FREE(rep_png_buffer);
+		SAFE_FREE(rep_png_buffer);
+	}
 	png_image_free(&rep_png);
 	return 0;
 }
@@ -136,6 +185,8 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	BYTE *anm_entry_out = file_inout;
 
 	format = json_object_get(json_object_get(run_cfg, "formats"), "anm");
+
+	log_printf("---- ANM ----\n");
 
 	while(anm_entry_out < file_inout + size_in) {
 		size_t x;
@@ -178,5 +229,6 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 		}
 	}
 	SAFE_FREE(rep_buffer);
+	log_printf("-------------\n");
 	return 1;
 }
