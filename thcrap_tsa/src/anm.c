@@ -11,38 +11,9 @@
   */
 
 #include <thcrap.h>
-#include "thcrap_tsa.h"
 #include <png.h>
-
-/// Enums
-/// -----
-// All of the 16-bit formats are little-endian.
-typedef enum {
-	FORMAT_BGRA8888 = 1,
-	FORMAT_RGB565 = 3,
-	FORMAT_ARGB4444 = 5, // 0xGB 0xAR
-	FORMAT_GRAY8 = 7
-} format_t;
-/// -----
-
-/// Structures
-/// ----------
-typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
-	char magic[4];
-	WORD zero;
-	WORD format;
-	/* These may be different from the parent entry. */
-	WORD w, h;
-	DWORD size;
-#ifdef PACK_PRAGMA
-#pragma pack(pop)
-#endif
-	unsigned char data[];
-} PACK_ATTRIBUTE thtx_header_t;
-/// ----------
+#include "thcrap_tsa.h"
+#include "anm.h"
 
 /// JSON-based structure data access
 /// --------------------------------
@@ -75,7 +46,7 @@ int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 
 /// Formats
 /// -------
-unsigned int format_Bpp(format_t format)
+unsigned int format_Bpp(WORD format)
 {
     switch(format) {
 		case FORMAT_BGRA8888:
@@ -91,7 +62,7 @@ unsigned int format_Bpp(format_t format)
 	}
 }
 
-unsigned int format_png_equiv(format_t format)
+unsigned int format_png_equiv(WORD format)
 {
     switch(format) {
 		case FORMAT_BGRA8888:
@@ -107,9 +78,9 @@ unsigned int format_png_equiv(format_t format)
 }
 
 // Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
-void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
+void format_from_bgra(png_bytep data, unsigned int pixels, WORD format)
 {
-	unsigned int i = 0;
+	unsigned int i;
 	png_bytep in = data;
 
 	if(format == FORMAT_ARGB4444) {
@@ -139,77 +110,73 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 }
 /// -------
 
-png_bytep png_load_for_thtx(png_imagep png, const char *fn, thtx_header_t *thtx)
+int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 {
 	void *file_buffer = NULL;
-	png_bytep png_buffer = NULL;
 	size_t file_size;
-	int format_bpp;
 
-	if(!png || !fn || !thtx) {
-		return NULL;
+	if(!image || !fn || !thtx) {
+		return -1;
 	}
+
+	SAFE_FREE(image->buf);
+	png_image_free(&image->img);
+	ZeroMemory(&image->img, sizeof(png_image));
+	image->img.version = PNG_IMAGE_VERSION;
+
 	if(strncmp(thtx->magic, "THTX", sizeof(thtx->magic))) {
-		return NULL;
+		return 1;
 	}
 
 	file_buffer = stack_game_file_resolve(fn, &file_size);
 	if(!file_buffer) {
-		return NULL;
+		return 0;
 	}
 
-	ZeroMemory(png, sizeof(png_image));
-	png->version = PNG_IMAGE_VERSION;
-
-	if(png_image_begin_read_from_memory(png, file_buffer, file_size)) {
+	if(png_image_begin_read_from_memory(&image->img, file_buffer, file_size)) {
 		size_t png_size;
 		
-		png->format = format_png_equiv(thtx->format);
-		if(png->format) {
-			png_size = PNG_IMAGE_SIZE(*png);
-			png_buffer = (png_bytep)malloc(png_size);
+		image->img.format = format_png_equiv(thtx->format);
+		if(image->img.format) {
+			png_size = PNG_IMAGE_SIZE(image->img);
+			image->buf = (png_bytep)malloc(png_size);
 
-			if(png_buffer) {
-				png_image_finish_read(png, 0, png_buffer, 0, NULL);
+			if(image->buf) {
+				png_image_finish_read(&image->img, 0, image->buf, 0, NULL);
 			}
 		}
 	}
 	SAFE_FREE(file_buffer);
-	if(png_buffer) {
-		format_from_bgra(png_buffer, png->width * png->height, thtx->format);
+	if(image->buf) {
+		format_from_bgra(image->buf, image->img.width * image->img.height, thtx->format);
 	}
-	return png_buffer;
+	return 0;
 }
 
-// Patches a [png] image prepared by <png_load_for_thtx> into [thtx], starting at [x],[y].
-// [png_buffer] is assumed to have the same bit depth as [thtx].
-int patch_thtx(thtx_header_t *thtx, const size_t x, const size_t y, png_imagep png, png_bytep png_buffer)
+// Patches an [image] prepared by <png_load_for_thtx> into [thtx], starting at [x],[y].
+// [png] is assumed to have the same bit depth as [thtx].
+int patch_thtx(thtx_header_t *thtx, const size_t x, const size_t y, png_image_exp image)
 {
-	int bpp;
-
-	if(!thtx || !png || !png_buffer || x >= png->width || y >= png->height) {
+	if(!thtx || !image || !image->buf || x >= image->img.width || y >= image->img.height) {
 		return -1;
 	}
+	{
+		int bpp = format_Bpp(thtx->format);
+		if(x == 0 && y == 0 && (thtx->w == image->img.width) && (thtx->h == image->img.height)) {
+			// Optimization for the most frequent case
+			memcpy(thtx->data, image->buf, thtx->size);
+		} else {
+			png_bytep in = image->buf + (y * image->img.width * bpp);
+			png_bytep out = thtx->data;
+			size_t png_stride = image->img.width * bpp;
+			size_t thtx_stride = thtx->w * bpp;
+			size_t row;
+			for(row = 0; row < min(thtx->h, (image->img.height - y)); row++) {
+				memcpy(out, in + (x * bpp), min(png_stride, thtx_stride));
 
-	bpp = format_Bpp(thtx->format);
-	if(!bpp) {
-		return 1;
-	}
-
-	if(x == 0 && y == 0 && (thtx->w == png->width) && (thtx->h == png->height)) {
-		// Optimization for the most frequent case
-		memcpy(thtx->data, png_buffer, thtx->size);
-	} else {
-		png_bytep in = png_buffer + (y * png->width * bpp);
-		png_bytep out = thtx->data;
-		size_t png_stride = png->width * bpp;
-		size_t thtx_stride = thtx->w * bpp;
-		size_t row;
-		for(row = 0; row < min(thtx->h, (png->height - y)); row++) {
-			memcpy(out, in + (x * bpp), min(png_stride, thtx_stride));
-
-			in += png_stride;
-			out += thtx_stride;
+				in += png_stride;
+				out += thtx_stride;
+			}
 		}
 	}
 	return 0;
@@ -221,12 +188,18 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 	// Some ANMs reference the same file name multiple times in a row
 	char *name_prev = NULL;
-	png_bytep png_buffer = NULL;
-	png_image png;
+	
+	png_image_ex png;
 
 	BYTE *anm_entry_out = file_inout;
+	thtx_header_t *thtx = NULL;
 
 	format = json_object_get(json_object_get(run_cfg, "formats"), "anm");
+	if(!format) {
+		return 1;
+	}
+
+	ZeroMemory(&png, sizeof(png));
 
 	log_printf("---- ANM ----\n");
 
@@ -247,23 +220,20 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			STRUCT_GET(size_t, nextoffset, anm_entry_out, format)
 		) {
 			log_printf("Corrupt ANM file or format definition, aborting ...\n");
-			return -2;
+			break;
 		}
-
 		if(hasdata && thtxoffset) {
 			char *name = (char*)(anm_entry_out + nameoffset);
-			thtx_header_t *thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
+			thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
 
-			// Load a new replacement image, if necessary
+			// Load a new replacement image, if necessary...
 			if(!name_prev || strcmp(name, name_prev)) {
-				png_image_free(&png);
-				SAFE_FREE(png_buffer);
-				png_buffer = png_load_for_thtx(&png, name, thtx);
+				png_load_for_thtx(&png, name, thtx);
 				name_prev = name;
 			}
-			// ... and patch it
-			if(png_buffer) {
-				patch_thtx(thtx, x, y, &png, png_buffer);
+			// ... and patch it.
+			if(png.buf) {
+				patch_thtx(thtx, x, y, &png);
 			}
 		}
 		if(!nextoffset) {
@@ -272,7 +242,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			anm_entry_out += nextoffset;
 		}
 	}
-	SAFE_FREE(png_buffer);
+	SAFE_FREE(png.buf);
 	log_printf("-------------\n");
-	return 1;
+	return 0;
 }
