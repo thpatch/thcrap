@@ -269,30 +269,34 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 
 void box_end(patch_msg_state_t *state)
 {
+	if(!state->last_line_op) {
+		return;
+	}
+
 	// Do we have any extra lines in the patch file?
 	while(state->cur_line < json_array_size(state->diff_lines)) {
 		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line);
 		if(json_line) {
 			th06_msg_t *new_line_cmd;
 			ptrdiff_t move_len;
+			int hard_line;
+			size_t line_offset;
 
 			new_line_cmd = (th06_msg_t*)((BYTE*)state->last_line_cmd + th06_msg_full_len(state->last_line_cmd));
 			move_len = (BYTE*)state->cmd_out + th06_msg_full_len(state->cmd_out) - (BYTE*)new_line_cmd;
 
-			if(state->last_line_op) {
-				int hard_line = (state->last_line_op->cmd == OP_HARD_LINE);
-				size_t line_offset = sizeof(th06_msg_t) + (hard_line ? 4 : 0);
+			hard_line = (state->last_line_op->cmd == OP_HARD_LINE);
+			line_offset = sizeof(th06_msg_t) + (hard_line ? 4 : 0);
 
-				// Make room for the new line
-				memmove(
-					(BYTE*)(new_line_cmd) + line_offset + strlen(json_line) + 1, 
-					new_line_cmd,
-					move_len
-				);
-				memcpy(new_line_cmd, state->last_line_cmd, line_offset);
-				process_line(new_line_cmd, state, hard_line ? replace_hard_line : replace_auto_line);
-				state->cmd_out = (th06_msg_t*)((BYTE*)state->cmd_out + th06_msg_full_len(new_line_cmd));
-			}
+			// Make room for the new line
+			memmove(
+				(BYTE*)(new_line_cmd) + line_offset + strlen(json_line) + 1,
+				new_line_cmd,
+				move_len
+			);
+			memcpy(new_line_cmd, state->last_line_cmd, line_offset);
+			process_line(new_line_cmd, state, hard_line ? replace_hard_line : replace_auto_line);
+			state->cmd_out = (th06_msg_t*)((BYTE*)state->cmd_out + th06_msg_full_len(new_line_cmd));
 		}
 	}
 	state->diff_code = NULL;
