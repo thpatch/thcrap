@@ -123,6 +123,8 @@ void spells_exit();
 
 /// Format patchers
 /// ---------------
-int patch_msg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_msg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *format);
+int patch_msg_dlg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_msg_end(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 int patch_anm(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 /// ---------------

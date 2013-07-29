@@ -38,5 +38,8 @@ EXPORTS
 	; Format patchers
 	; ---------------
 	patch_msg
+	patch_msg_dlg
+	patch_msg_end
+
 	patch_std
 	patch_anm

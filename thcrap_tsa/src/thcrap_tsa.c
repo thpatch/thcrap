@@ -12,10 +12,15 @@
 
 int __stdcall thcrap_init_plugin(json_t *run_cfg)
 {
-	patchhook_register("msg*.dat", patch_msg);
-	patchhook_register("*.msg", patch_msg);
+	// th06_msg
+	patchhook_register("msg*.dat", patch_msg_dlg); // th06-08
+	patchhook_register("p*.msg", patch_msg_dlg); // th09
+	patchhook_register("s*.msg", patch_msg_dlg); // lowest common denominator for th10+
+	patchhook_register("e*.msg", patch_msg_end); // th10+ endings
+
 	patchhook_register("*.std", patch_std);
 	patchhook_register("*.anm", patch_anm);
+
 	spells_init();
 	return 0;
 }

@@ -350,10 +350,8 @@ int process_op(op_info_t *cur_op, patch_msg_state_t* state)
 	return 1;
 }
 
-int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format)
 {
-	json_t *format;
-	
 	DWORD* msg_out = (DWORD*)file_inout;
 	DWORD* msg_in;
 	int entry_new = 1;
@@ -366,11 +364,10 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	
 	patch_msg_state_t state;
 
-	if(!msg_out || !patch || !run_cfg) {
+	if(!msg_out || !patch || !format) {
 		return 1;
 	}
 
-	format = json_object_get(json_object_get(run_cfg, "formats"), "msg");
 	// Read format info
 	entry_offset_mul = json_object_get_hex(format, "entry_offset_mul");
 	if(!entry_offset_mul) {
@@ -501,4 +498,16 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	HeapFree(GetProcessHeap(), 0, msg_in);
 	patch_msg_state_clear(&state);
 	return 0;
+}
+
+int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+{
+	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "msg");
+	return patch_msg(file_inout, size_out, size_in, patch, format);
+}
+
+int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+{
+	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "end");
+	return patch_msg(file_inout, size_out, size_in, patch, format);
 }
