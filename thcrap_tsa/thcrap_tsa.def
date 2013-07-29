@@ -15,6 +15,17 @@ EXPORTS
 	spells_init
 	spells_exit
 
+	; Bounds
+	; ------
+	bounds_init
+	bounds_resize
+	bounds_fullname
+	bounds_draw_line
+	bounds_draw_hline
+	bounds_draw_vline
+	bounds_draw_rect
+	bounds_store
+
 	; Images
 	; ------
 	struct_get

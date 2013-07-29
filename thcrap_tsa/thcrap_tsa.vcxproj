@@ -49,6 +49,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\anm.c" />
+    <ClCompile Include="src\anm_bounds.c" />
     <ClCompile Include="src\encraption.c" />
     <ClCompile Include="src\spells.c" />
     <ClCompile Include="src\th06_msg.c" />

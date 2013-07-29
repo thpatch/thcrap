@@ -185,14 +185,18 @@ int patch_thtx(thtx_header_t *thtx, const size_t x, const size_t y, png_image_ex
 int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
 	json_t *format;
+	size_t headersize;
 
 	// Some ANMs reference the same file name multiple times in a row
 	char *name_prev = NULL;
 	
 	png_image_ex png;
+	png_image_ex bounds;
 
 	BYTE *anm_entry_out = file_inout;
 	thtx_header_t *thtx = NULL;
+
+	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
 
 	format = json_object_get(json_object_get(run_cfg, "formats"), "anm");
 	if(!format) {
@@ -200,8 +204,14 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	}
 
 	ZeroMemory(&png, sizeof(png));
+	ZeroMemory(&bounds, sizeof(bounds));
 
 	log_printf("---- ANM ----\n");
+
+	headersize = json_object_get_hex(format, "headersize");
+	if(!headersize) {
+		log_printf("(no ANM header size given, sprite-local patching disabled)\n");
+	}
 
 	while(anm_entry_out < file_inout + size_in) {
 		size_t x;
@@ -210,6 +220,9 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 		size_t thtxoffset;
 		size_t hasdata;
 		size_t nextoffset;
+		size_t sprites;
+
+		size_t i;
 
 		if(
 			STRUCT_GET(size_t, x, anm_entry_out, format) ||
@@ -217,7 +230,8 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			STRUCT_GET(size_t, nameoffset, anm_entry_out, format) ||
 			STRUCT_GET(size_t, thtxoffset, anm_entry_out, format) ||
 			STRUCT_GET(size_t, hasdata, anm_entry_out, format) ||
-			STRUCT_GET(size_t, nextoffset, anm_entry_out, format)
+			STRUCT_GET(size_t, nextoffset, anm_entry_out, format) ||
+			STRUCT_GET(size_t, sprites, anm_entry_out, format)
 		) {
 			log_printf("Corrupt ANM file or format definition, aborting ...\n");
 			break;
@@ -229,7 +243,21 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			// Load a new replacement image, if necessary...
 			if(!name_prev || strcmp(name, name_prev)) {
 				png_load_for_thtx(&png, name, thtx);
+
+				if(!json_is_false(dat_dump)) {
+					bounds_store(name_prev, &bounds);
+					bounds_init(&bounds, thtx, name);
+				}
 				name_prev = name;
+			}
+			// ... add texture boundaries...
+			if(headersize) {
+				DWORD *sprite_ptr = (DWORD*)(anm_entry_out + headersize);
+				bounds_resize(&bounds, x + thtx->w, y + thtx->h);
+				for(i = 0; i < sprites; i++) {
+					bounds_draw_rect(&bounds, x, y, (sprite_t*)(anm_entry_out + sprite_ptr[0]));
+					sprite_ptr++;
+				}
 			}
 			// ... and patch it.
 			if(png.buf) {
@@ -237,11 +265,13 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			}
 		}
 		if(!nextoffset) {
+			bounds_store(name_prev, &bounds);
 			break;
 		} else {
 			anm_entry_out += nextoffset;
 		}
 	}
+	SAFE_FREE(bounds.buf);
 	SAFE_FREE(png.buf);
 	log_printf("-------------\n");
 	return 0;
