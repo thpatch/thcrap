@@ -115,6 +115,10 @@ size_t __stdcall GetTextExtent(const char *str)
 	SIZE size;
 	size_t str_len = strlen(str) + 1;
 
+	if(!str) {
+		return 0;
+	}
+
 	ZeroMemory(&size, sizeof(SIZE));
 
 	if(!text_dc) {
