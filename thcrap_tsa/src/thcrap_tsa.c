@@ -27,11 +27,13 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 
 int InitDll(HMODULE hDll)
 {
+	layout_init(hDll);
 	return 0;
 }
 
 void ExitDll(HMODULE hDll)
 {
+	layout_exit();
 	spells_exit();
 }
 

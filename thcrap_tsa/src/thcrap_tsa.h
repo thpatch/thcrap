@@ -128,3 +128,9 @@ int patch_msg_dlg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch,
 int patch_msg_end(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 int patch_anm(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 /// ---------------
+
+/// Text layout
+/// -----------
+void layout_init(HMODULE hMod);
+void layout_exit();
+/// -----------

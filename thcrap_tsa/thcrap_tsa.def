@@ -35,6 +35,12 @@ EXPORTS
 	png_load_for_thtx
 	patch_thtx
 
+	; Layout
+	; ------
+	layout_match_set
+	layout_match
+	layout_TextOutU
+
 	; Format patchers
 	; ---------------
 	patch_msg

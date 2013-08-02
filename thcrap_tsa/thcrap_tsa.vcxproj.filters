@@ -29,6 +29,9 @@
     <ClCompile Include="src\anm_bounds.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\layout.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_tsa.def">
