@@ -10,13 +10,22 @@
 
 int StringToUTF16(wchar_t *str_w, const char *str_mb, size_t str_len)
 {
-	size_t str_w_len = str_len * sizeof(wchar_t);
 	int ret;
 	extern UINT fallback_codepage;
 
-	ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str_mb, -1, str_w, str_w_len);
+	if(!str_mb || !str_len) {
+		return 0;
+	}
+
+	ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str_mb, str_len, str_w, str_len);
 	if(!ret) {
-		ret = MultiByteToWideChar(fallback_codepage, MB_PRECOMPOSED, str_mb, -1, str_w, str_w_len);
+		if(str_mb[str_len - 1] != 0) {
+			// The previous conversion attempt still lingers in [str_w].
+			// If we don't clear it in case the original string isn't null-terminated,
+			// garbage may show up at the end of the converted string...
+			ZeroMemory(str_w, str_len * sizeof(wchar_t));
+		}
+		ret = MultiByteToWideChar(fallback_codepage, MB_PRECOMPOSED, str_mb, str_len, str_w, str_len);
 	}
 	return ret;
 }

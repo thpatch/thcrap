@@ -11,7 +11,7 @@
 // Maximum length of the largest wchar_t in UTF-8
 #define UTF8_MUL 4
 
-// Converts a "narrow" string to UTF-16.
+// Converts [str_len] characters of the "narrow" string [str_mb] to UTF-16.
 // Input can either be in UTF-8 or the fallback codepage specified by a call
 // to w32u8_set_fallback_codepage().
 int StringToUTF16(wchar_t *str_w, const char *str_mb, size_t str_len);
