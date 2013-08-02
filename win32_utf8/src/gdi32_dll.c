@@ -48,7 +48,8 @@ BOOL WINAPI TextOutU(
 	BOOL ret;
 	size_t lpString_len = c + 1;
 	VLA(wchar_t, lpString_w, lpString_len);
-	StringToUTF16(lpString_w, lpString, lpString_len);
+	ZeroMemory(lpString_w, lpString_len * sizeof(wchar_t));
+	StringToUTF16(lpString_w, lpString, c);
 	ret = TextOutW(hdc, x, y, lpString_w, wcslen(lpString_w));
 	VLA_FREE(lpString_w);
 	return ret;
@@ -64,7 +65,8 @@ BOOL APIENTRY GetTextExtentPoint32U(
 	BOOL ret;
 	size_t lpString_len = c + 1;
 	VLA(wchar_t, lpString_w, lpString_len);
-	StringToUTF16(lpString_w, lpString, lpString_len);
+	ZeroMemory(lpString_w, lpString_len * sizeof(wchar_t));
+	StringToUTF16(lpString_w, lpString, c);
 	ret = GetTextExtentPoint32W(hdc, lpString_w, wcslen(lpString_w), psizl);
 	VLA_FREE(lpString_w);
 	return ret;
