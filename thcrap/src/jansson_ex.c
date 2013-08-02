@@ -40,6 +40,21 @@ wchar_t* json_string_value_utf16(const json_t *str_object)
 	return str_utf16;
 }
 
+int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
+{
+	size_t arr_size = json_array_size(arr);
+	if(ind >= arr_size) {
+		int ret;
+		size_t i;
+		for(i = arr_size; i <= ind; i++) {
+			ret = json_array_append(arr, value);
+		}
+		return ret;
+	} else {
+		return json_array_set(arr, ind, value);
+	}
+}
+
 size_t json_array_get_hex(json_t *arr, const size_t ind)
 {
 	const char *str;

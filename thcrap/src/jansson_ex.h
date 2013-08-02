@@ -20,6 +20,9 @@ wchar_t* json_string_value_utf16(const json_t *str_object);
 
 /// Arrays
 /// ------
+// Like json_array_set, but expands the array if necessary.
+int json_array_set_expand(json_t *arr, size_t ind, json_t *value);
+
 // Get the integer value of [ind] in [array],
 // automatically converting the JSON value to an integer if necessary.
 size_t json_array_get_hex(json_t *arr, const size_t ind);

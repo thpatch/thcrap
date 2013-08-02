@@ -35,6 +35,7 @@ EXPORTS
 	; JSON extensions
 	; ---------------
 	json_hex_value
+	json_array_set_expand
 	json_array_get_hex
 	json_array_get_string
 	json_object_get_create
