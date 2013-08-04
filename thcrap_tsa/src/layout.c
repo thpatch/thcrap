@@ -59,7 +59,7 @@ size_t layout_match(json_t *arr, const char *str, size_t len)
 	len = end - str;
 	s = str + 1;
 	for(i = 1, p = s; i < len; i++, p++) {
-		if(str[i] == '|') {
+		if(str[i] == '$') {
 			layout_match_set(arr, ind, s, p - s);
 			s = p + 1;
 			ind++;
