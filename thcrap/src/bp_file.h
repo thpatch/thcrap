@@ -41,6 +41,17 @@ typedef struct {
 } file_rep_t;
 
 /**
+  * Clears a file_rep_t object.
+  */
+int file_rep_clear(file_rep_t *pf);
+
+/// Thread-local storage
+/// --------------------
+file_rep_t* fr_tls_get();
+void fr_tls_free();
+/// --------------------
+
+/**
   * Takes a file name and resolves a complete local replacement
   * or JSON patch file.
   *
@@ -155,7 +166,5 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
-/**
-  * Clears a file_rep_t object.
-  */
-int file_rep_clear(file_rep_t *pf);
+int bp_file_init();
+int bp_file_exit();

@@ -97,12 +97,20 @@ EXPORTS
 
 	; File breakpoints
 	; ----------------
+	file_rep_clear
+
+	fr_tls_get
+	fr_tls_free
+
 	BP_file_name
 	BP_file_buffer
 	BP_file_size
 	BP_file_size_patch
 	BP_file_load
 	BP_file_loaded
+
+	bp_file_init
+	bp_file_exit
 
 	; Logging
 	; -------

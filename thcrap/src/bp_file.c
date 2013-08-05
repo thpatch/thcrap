@@ -10,24 +10,70 @@
 #include "thcrap.h"
 #include "bp_file.h"
 
-// For now, this should be enough; needs to be changed as soon as one game
-// requires thread-safety!
-static file_rep_t fr;
+int file_rep_clear(file_rep_t *fr)
+{
+	if(!fr) {
+		return -1;
+	}
+	SAFE_FREE(fr->rep_buffer);
+	json_decref(fr->patch);
+	fr->patch = NULL;
+	json_decref(fr->hooks);
+	fr->hooks = NULL;
+	fr->rep_size = 0;
+	fr->game_size = 0;
+	fr->object = NULL;
+	SAFE_FREE(fr->name);
+	return 0;
+}
+
+/// Thread-local storage
+/// --------------------
+// TLS index of the global file_rep_t object.
+// (Yeah, we *could* use __declspec(thread)... if we didn't have to accommodate
+// for Windows XP users. See http://www.nynaeve.net/?p=187.)
+static DWORD fr_tls = 0xffffffff;
+
+file_rep_t* fr_tls_get()
+{
+	file_rep_t *fr = (file_rep_t*)TlsGetValue(fr_tls);
+	if(!fr) {
+		fr = (file_rep_t*)malloc(sizeof(file_rep_t));
+		if(fr) {
+			ZeroMemory(fr, sizeof(file_rep_t));
+		}
+		TlsSetValue(fr_tls, fr);
+	}
+	return fr;
+}
+
+void fr_tls_free()
+{
+	file_rep_t *fr = (file_rep_t*)TlsGetValue(fr_tls);
+	if(fr) {
+		file_rep_clear(fr);
+		SAFE_FREE(fr);
+		TlsSetValue(fr_tls, fr);
+	}
+}
+/// --------------------
 
 int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 {
+	file_rep_t *fr = fr_tls_get();
+	
+	size_t fn_len;
+
 	// Parameters
 	// ----------
 	char **file_name = (char**)json_object_get_register(bp_info, regs, "file_name");
 	// ----------
 
-	size_t fn_len;
-
 	if(!file_name) {
 		return 1;
 	}
-	if(fr.name) {
-		file_rep_clear(&fr);
+	if(fr->name) {
+		file_rep_clear(fr);
 	}
 
 	fn_len = strlen(*file_name) + 1;
@@ -37,31 +83,33 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 		VLA(wchar_t, fn_w, fn_len);
 		StringToUTF16(fn_w, *file_name, fn_len);
 
-		fr.name = (char*)malloc(fn_len * UTF8_MUL * sizeof(char));
-		StringToUTF8(fr.name, fn_w, fn_len);
+		fr->name = (char*)malloc(fn_len * UTF8_MUL * sizeof(char));
+		StringToUTF8(fr->name, fn_w, fn_len);
 		VLA_FREE(fn_w);
 	}
 
-	fr.rep_buffer = stack_game_file_resolve(fr.name, &fr.rep_size);
-	fr.hooks = patchhooks_build(fr.name);
-	if(fr.hooks) {
+	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->rep_size);
+	fr->hooks = patchhooks_build(fr->name);
+	if(fr->hooks) {
 		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
 		size_t diff_size = 0;
 
 		{
 			VLA(char, diff_fn, diff_fn_len);
-			strcpy(diff_fn, fr.name);
+			strcpy(diff_fn, fr->name);
 			strcat(diff_fn, ".jdiff");
-			fr.patch = stack_game_json_resolve(diff_fn, &diff_size);
+			fr->patch = stack_game_json_resolve(diff_fn, &diff_size);
 			VLA_FREE(diff_fn);
 		}
-		fr.rep_size += diff_size;
+		fr->rep_size += diff_size;
 	}
 	return 1;
 }
 
 int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 {
+	file_rep_t *fr = fr_tls_get();
+
 	// Parameters
 	// ----------
 	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
@@ -77,51 +125,56 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
-	fr.game_size = *file_size;
+	fr->game_size = *file_size;
 
-	if(fr.patch) {
+	if(fr->patch) {
 		// If we only have a patch and no replacement file, the replacement size
 		// doesn't yet include the actual base file part
-		if(!fr.rep_buffer) {
-			fr.rep_size += fr.game_size;
+		if(!fr->rep_buffer) {
+			fr->rep_size += fr->game_size;
 		}
 		if(set_patch_size) {
-			*file_size = fr.rep_size;
+			*file_size = fr->rep_size;
 		}
-	} else if(fr.rep_buffer && fr.rep_size) {
+	} else if(fr->rep_buffer && fr->rep_size) {
 		// Set size of replacement file
-		*file_size = fr.rep_size;
+		*file_size = fr->rep_size;
 	}
 	return 1;
 }
 
 int BP_file_size_patch(x86_reg_t *regs, json_t *bp_info)
 {
+	file_rep_t *fr = fr_tls_get();
+
 	// Parameters
 	// ----------
 	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
 	// ----------
-	if(file_size && fr.rep_size && fr.game_size != fr.rep_size) {
-		*file_size = fr.rep_size;
+	if(file_size && fr->rep_size && fr->game_size != fr->rep_size) {
+		*file_size = fr->rep_size;
 	}
 	return 1;
 }
 
 int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 {
+	file_rep_t *fr = fr_tls_get();
+
 	// Parameters
 	// ----------
-	BYTE **file_buffer;
+	BYTE **file_buffer = (BYTE**)json_object_get_register(bp_info, regs, "file_buffer");
 	// ----------
-	file_buffer = (BYTE**)json_object_get_register(bp_info, regs, "file_buffer");
 	if(file_buffer) {
-		fr.game_buffer = *file_buffer;
+		fr->game_buffer = *file_buffer;
 	}
 	return 1;
 }
 
 int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 {
+	file_rep_t *fr = fr_tls_get();
+
 	// Parameters
 	// ----------
 	size_t *file_buffer_addr_copy = json_object_get_register(bp_info, regs, "file_buffer_addr_copy");
@@ -134,25 +187,25 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	BP_file_buffer(regs, bp_info);
 	// -----------------
 
-	if(!fr.game_buffer || !fr.rep_buffer || !fr.rep_size) {
+	if(!fr->game_buffer || !fr->rep_buffer || !fr->rep_size) {
 		return 1;
 	}
 
 	// Let's do it
-	memcpy(fr.game_buffer, fr.rep_buffer, fr.rep_size);
+	memcpy(fr->game_buffer, fr->rep_buffer, fr->rep_size);
 
-	patchhooks_run(fr.hooks, fr.game_buffer, fr.rep_size, fr.game_size, fr.patch, run_cfg);
+	patchhooks_run(fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch, run_cfg);
 	
 	if(eip_jump_dist) {
 		regs->retaddr += eip_jump_dist;
 	}
 	if(file_buffer_addr_copy) {
-		*file_buffer_addr_copy = (size_t)fr.game_buffer;
+		*file_buffer_addr_copy = (size_t)fr->game_buffer;
 	}
 	if(stack_clear_size) {
 		regs->esp += stack_clear_size;
 	}
-	file_rep_clear(&fr);
+	fr_tls_free();
 	return 0;
 }
 
@@ -190,6 +243,7 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
+	file_rep_t *fr = fr_tls_get();
 	json_t *dat_dump;
 
 	// Other breakpoints
@@ -197,30 +251,27 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	BP_file_buffer(regs, bp_info);
 	// -----------------
 
-	if(!fr.game_buffer) {
+	if(!fr->game_buffer) {
 		return 1;
 	}
 	dat_dump = json_object_get(run_cfg, "dat_dump");
 	if(!json_is_false(dat_dump)) {
-		DumpDatFile(json_string_value(dat_dump), &fr);
+		DumpDatFile(json_string_value(dat_dump), fr);
 	}
 	
-	patchhooks_run(fr.hooks, fr.game_buffer, fr.rep_size, fr.game_size, fr.patch, run_cfg);
+	patchhooks_run(fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch, run_cfg);
 
-	file_rep_clear(&fr);
+	fr_tls_free();
 	return 1;
 }
 
-int file_rep_clear(file_rep_t *fr)
+int bp_file_init()
 {
-	SAFE_FREE(fr->rep_buffer);
-	json_decref(fr->patch);
-	fr->patch = NULL;
-	json_decref(fr->hooks);
-	fr->hooks = NULL;
-	fr->rep_size = 0;
-	fr->game_size = 0;
-	fr->object = NULL;
-	SAFE_FREE(fr->name);
-	return 1;
+	fr_tls = TlsAlloc();
+	return 0;
+}
+
+int bp_file_exit()
+{
+	return TlsFree(fr_tls);
 }

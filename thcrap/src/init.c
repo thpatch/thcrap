@@ -361,6 +361,10 @@ int thcrap_init(const char *setup_fn)
 
 	log_printf("\nInitializing plug-ins...\n");
 
+#ifdef HAVE_BP_FILE
+	bp_file_init();
+#endif
+
 	plugins_load();
 	
 	/**
@@ -390,7 +394,7 @@ int thcrap_init(const char *setup_fn)
 		
 		log_printf("Functions available to binary hacks:\n");
 		log_printf("------------------------------------\n");
-		
+
 		GetExportedFunctions(run_funcs, hThcrap);
 		json_object_foreach(json_object_get(run_cfg, "plugins"), key, val) {
 			log_printf("\n%s:\n\n", key);
@@ -458,6 +462,10 @@ void ExitDll(HMODULE hDll)
 	json_decref(run_cfg);
 
 	DeleteCriticalSection(&cs_file_access);
+
+#ifdef HAVE_BP_FILE
+	bp_file_exit();
+#endif
 
 	SAFE_FREE(dll_dir);
 #ifdef _WIN32
