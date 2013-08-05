@@ -133,37 +133,23 @@ wchar_t* json_object_get_string_utf16(const json_t *object, const char *key)
 	return json_string_value_utf16(json_object_get(object, key));
 }
 
-int json_object_merge(json_t *dest, json_t *src)
+int json_object_merge(json_t *old_obj, json_t *new_obj)
 {
-	const char *src_key;
-	json_t *src_obj;
+	const char *key;
+	json_t *new_val;
 	
-	if(!dest || !src) {
+	if(!old_obj || !new_obj) {
 		return -1;
 	}
-	json_object_foreach(src, src_key, src_obj) {
-		json_t *dest_obj = json_object_get(dest, src_key);
-		if(dest_obj) {
-			if(json_is_object(dest_obj)) {
-				// Recursion!
-				json_object_merge(dest_obj, src_obj);
-			/**
-			  * Yes, arrays should be completely overwritten, too.
-			  * Any objections?
-			  */
-			/*
-			} else if(json_is_array(src_obj) && json_is_array(dest_obj)) {
-				json_array_extend(dest_obj, json_deep_copy(src_obj));
-			}*/
-			} else {
-				json_object_set_new_nocheck(dest, src_key, json_deep_copy(src_obj));
-			}
-		}
-		else {
-			json_object_set_new_nocheck(dest, src_key, json_deep_copy(src_obj));
+	json_object_foreach(new_obj, key, new_val) {
+		json_t *old_val = json_object_get(old_obj, key);
+		if(json_is_object(old_val)) {
+			// Recursion!
+			json_object_merge(old_val, new_val);
+		} else {
+			json_object_set_nocheck(old_obj, key, new_val);
 		}
 	}
-	
 	return 0;
 }
 

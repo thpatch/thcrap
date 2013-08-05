@@ -51,10 +51,10 @@ const char* json_object_get_string(const json_t *object, const char *key);
 // Return value has to be free()d by the caller!
 wchar_t* json_object_get_string_utf16(const json_t *object, const char *key);
 
-// Merge [src] recursively into [dest].
-// [src] has priority; any element of [src] that is already present in [dest]
-// and is *not* an object itself is overwritten.
-int json_object_merge(json_t *dest, json_t *src);
+// Merge [new_obj] recursively into [old_obj].
+// [new_obj] has priority; any element of [new_obj] that is already present
+// in [old_obj] and is *not* an object itself is overwritten.
+int json_object_merge(json_t *old_obj, json_t *new_obj);
 
 // Return an alphabetically sorted JSON array of the keys in [object].
 json_t* json_object_get_keys_sorted(const json_t *object);

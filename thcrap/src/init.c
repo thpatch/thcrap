@@ -260,7 +260,7 @@ int thcrap_init(const char *setup_fn)
 				if(json_is_string(format_link)) {
 					json_t *format = json_object_get(formats_js, json_string_value(format_link));
 					if(format) {
-						json_object_set_new_nocheck(game_formats, key, json_deep_copy(format));
+						json_object_set_nocheck(game_formats, key, format);
 					}
 				}
 			}
