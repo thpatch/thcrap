@@ -97,21 +97,30 @@ BOOL WINAPI layout_TextOutU(
 	}
 
 	while(i < c) {
-		LPCSTR cur_str = lpString + i;
-		int cur_len = c - i;
-		int match_len = layout_match(match, cur_str, cur_len);
-		size_t cur_w;
+		LPCSTR draw_str = lpString + i;
+		int draw_str_len = c - i;
+		int advance_len = draw_str_len;
+		int match_len;
+		size_t cur_w = 0;
 		SIZE str_size;
 
+		json_array_clear(match);
+		match_len = layout_match(match, draw_str, draw_str_len);
 		// Only do layout processing when everything up to the token has been printed
 		if(match_len) {
 			const char *cmd = json_array_get_string(match, 0);
 			const char *p1 = json_array_get_string(match, 1);
 			const char *p2 = json_array_get_string(match, 2);
-			json_int_t tab_end;
+			// Absolute x-end position of the current tab
+			size_t tab_end;
 
-			GetTextExtentPoint32(hdc, p1, strlen(p1), &str_size);
-			cur_w = str_size.cx;
+			if(p1) {
+				advance_len = match_len;
+				draw_str_len = strlen(p1) + 1;
+
+				GetTextExtentPoint32(hdc, p1, draw_str_len, &str_size);
+				cur_w = str_size.cx;
+			}
 
 			if(p2) {
 				// Use full bitmap with empty second parameter
@@ -123,57 +132,61 @@ BOOL WINAPI layout_TextOutU(
 					tab_end = cur_x + str_size.cx;
 				}
 			} else if(cur_tab < json_array_size(Layout_Tabs)) {
-				tab_end = json_integer_value(json_array_get(Layout_Tabs, cur_tab));
+				tab_end = json_integer_value(json_array_get(Layout_Tabs, cur_tab)) + orig_x;
 			} else if(json_array_size(Layout_Tabs) > 0) {
 				tab_end = bitmap_width;
 			} else {
 				tab_end = cur_x + cur_w;
 			}
 
-			if(p1) {
-				switch(cmd[0]) {
-					case 't':
-					case 's':
-						tab_end = cur_x + cur_w;
-						json_array_set_expand(Layout_Tabs, cur_tab, json_integer(tab_end));
-						if(cmd[0] == 's') {
+			if(p1 && cmd) {
+				const char *p = cmd;
+				while(*p) {
+					switch(p[0]) {
+						case 's':
 							// Don't actually print anything
-							cur_w = 0;
+							tab_end = cur_w = 0;
 							p1 = NULL;
-							cur_tab--;
-						}
-						break;
-					case 'c':
-						cur_x += ((tab_end - cur_x) / 2) - (cur_w / 2);
-						break;
-					case 'r':
-						cur_x = (tab_end - cur_w);
-						break;
+							break;
+						case 't':
+							// Tabstop definition
+							tab_end = cur_x + cur_w;
+							json_array_set_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
+							break;
+						case 'c':
+							// Center alignment
+							cur_x += ((tab_end - cur_x) / 2) - (cur_w / 2);
+							break;
+						case 'r':
+							// Right alignment
+							cur_x = (tab_end - cur_w);
+							break;
+					}
+					p++;
 				}
-				cur_tab++;
-				cur_str = p1;
-				cur_len = match_len;
-				cur_w = tab_end - cur_x;
+				if(tab_end) {
+					cur_tab++;
+					cur_w = tab_end - cur_x;
+				}
+				draw_str = p1;
 			}
 		}
 		// This matches both the standard case without any alignment, as well as
 		// the case where the layout markup doesn't contain any parameters.
 		// The last one is especially important, as it still lets people write
 		// "<text>" without that being swallowed by the layout parser.
-		if(!match_len || cur_str == lpString + i) {
-			if(cur_str[0] != '<') {
-				char *cmd_start = memchr(cur_str, '<', cur_len);
-				if(cmd_start) {
-					cur_len = cmd_start - cur_str;
-				}
+		if(!match_len || draw_str == lpString + i) {
+			char *cmd_start = (char*)memchr(draw_str + 1, '<', advance_len - 1);
+			if(cmd_start) {
+				draw_str_len = advance_len = cmd_start - draw_str;
 			}
-			GetTextExtentPoint32(hdc, cur_str, cur_len, &str_size);
+			GetTextExtentPoint32(hdc, draw_str, draw_str_len, &str_size);
 			cur_w = str_size.cx;
 		}
-		ret = TextOutU(hdc, cur_x, orig_y, cur_str, cur_len);
+		ret = TextOutU(hdc, cur_x, orig_y, draw_str, draw_str_len);
 
 		cur_x += cur_w;
-		i += cur_len;
+		i += advance_len;
 	}
 	json_decref(match);
 	return ret;
