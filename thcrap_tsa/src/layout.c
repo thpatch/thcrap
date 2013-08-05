@@ -77,7 +77,10 @@ BOOL WINAPI layout_TextOutU(
 	__in_ecount(c) LPCSTR lpString,
 	__in int c
 ) {
-	HBITMAP hBitmap;
+	HBITMAP hBitmap = (HBITMAP)GetCurrentObject(hdc, OBJ_BITMAP);
+	HFONT hFontOrig = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
+	HFONT hFontNew = NULL;
+
 	BOOL ret;
 	json_t *match = json_array();
 	LONG bitmap_width;
@@ -85,8 +88,8 @@ BOOL WINAPI layout_TextOutU(
 	int i = 0;
 	int cur_x = orig_x;
 	size_t cur_tab = 0;
+	int font_recreate = 0;
 
-	hBitmap = GetCurrentObject(hdc, OBJ_BITMAP);
 	if(hBitmap) {
 		// TODO: This gets the full width of the rendering backbuffer.
 		// In-game text rendering mostly only uses a shorter width, though.
@@ -141,6 +144,9 @@ BOOL WINAPI layout_TextOutU(
 
 			if(p1 && cmd) {
 				const char *p = cmd;
+				LOGFONT font;
+
+				GetObject(hFontOrig, sizeof(LOGFONT), &font);
 				while(*p) {
 					switch(p[0]) {
 						case 's':
@@ -161,8 +167,24 @@ BOOL WINAPI layout_TextOutU(
 							// Right alignment
 							cur_x = (tab_end - cur_w);
 							break;
+						case 'b':
+							// Bold font
+							font.lfWeight *= 2;
+							font_recreate = 1;
+							break;
+						case 'i':
+							// Italic font
+							font.lfItalic = TRUE;
+							font_recreate = 1;
+							break;
 					}
 					p++;
+				}
+				if(font_recreate) {
+					hFontNew = CreateFontIndirect(&font);
+					SelectObject(hdc, hFontNew);
+					GetTextExtentPoint32(hdc, p1, draw_str_len, &str_size);
+					tab_end = cur_x + str_size.cx;
 				}
 				if(tab_end) {
 					cur_tab++;
@@ -185,6 +207,11 @@ BOOL WINAPI layout_TextOutU(
 		}
 		ret = TextOutU(hdc, cur_x, orig_y, draw_str, draw_str_len);
 
+		if(font_recreate) {
+			SelectObject(hdc, hFontOrig);
+			DeleteObject(hFontNew);
+			hFontNew = NULL;
+		}
 		cur_x += cur_w;
 		i += advance_len;
 	}
