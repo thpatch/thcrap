@@ -21,7 +21,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * **Binary hacks** for arbitrary in-memory modifications of the original program (mostly used for custom assembly).
 
-* **Breakpoints** to call a custom DLL function at any instruction of the original code. This function can read and modify the current CPU register state.
+* **Breakpoints** to call custom DLL functions at any instruction of the original code. These functions can read and modify the current CPU register state.
 
  * **File breakpoints** to replace data files in memory with replacements from patches.
 
