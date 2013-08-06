@@ -17,9 +17,10 @@ EXPORTS
 
 	; Bounds
 	; ------
+	fn_for_bounds
+
 	bounds_init
 	bounds_resize
-	bounds_fullname
 	bounds_draw_line
 	bounds_draw_hline
 	bounds_draw_vline

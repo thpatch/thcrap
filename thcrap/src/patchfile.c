@@ -44,7 +44,7 @@ void* file_read(const char *fn, size_t *file_size)
 	return ret;
 }
 
-char* game_file_fullname(const char *fn)
+char* fn_for_game(const char *fn)
 {
 	const char *game_id;
 	char *full_fn;
@@ -74,7 +74,7 @@ void log_print_patch_fn(json_t *patch_obj, const char *fn, int level)
 	log_printf("\n%*s+ %s%s", (level + 1), " ", archive, fn);
 }
 
-char* patch_file_fullname(const json_t *patch_info, const char *fn)
+char* fn_for_patch(const json_t *patch_info, const char *fn)
 {
 	size_t archive_len;
 	const char *archive = NULL;
@@ -109,7 +109,7 @@ int patch_file_exists(const json_t *patch_info, const char *fn)
 	if(!patch_info || !fn) {
 		return 0;
 	}
-	patch_fn = patch_file_fullname(patch_info, fn);
+	patch_fn = fn_for_patch(patch_info, fn);
 	ret = PathFileExists(patch_fn);
 	SAFE_FREE(patch_fn);
 	return ret;
@@ -142,7 +142,7 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 		return NULL;
 	}
 	*file_size = 0;
-	patch_fn = patch_file_fullname(patch_info, fn);
+	patch_fn = fn_for_patch(patch_info, fn);
 	if(!patch_fn) {
 		return NULL;
 	}
@@ -163,7 +163,7 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 		return -1;
 	}
 
-	patch_fn = patch_file_fullname(patch_info, fn);
+	patch_fn = fn_for_patch(patch_info, fn);
 	if(!patch_fn) {
 		return -2;
 	}
@@ -280,7 +280,7 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 		return NULL;
 	}
 
-	full_fn = game_file_fullname(fn);
+	full_fn = fn_for_game(fn);
 	// Meh, const correctness.
 	full_fn_ptr = full_fn;
 	if(!full_fn_ptr) {
@@ -309,7 +309,7 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 
 json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 {
-	char *full_fn = game_file_fullname(fn);
+	char *full_fn = fn_for_game(fn);
 	json_t *ret = stack_json_resolve(full_fn, file_size);
 	SAFE_FREE(full_fn);
 	return ret;

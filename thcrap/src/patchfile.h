@@ -43,7 +43,7 @@ void* file_read(const char *fn, size_t *file_size);
 /// ----------
 // Returns the full patch-relative name of a game-relative file.
 // Return value has to be free()d by the caller!
-char* game_file_fullname(const char *fn);
+char* fn_for_game(const char *fn);
 /// ----------
 
 /// ------------------------

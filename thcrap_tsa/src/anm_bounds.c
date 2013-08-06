@@ -26,7 +26,7 @@ png_bytep bounds_init(png_image_exp image, thtx_header_t *thtx, const char *fn)
 
 	// Still needing this one?
 	{
-		char *bounds_fn = bounds_fullname(fn);
+		char *bounds_fn = fn_for_bounds(fn);
 		int ret = PathFileExists(bounds_fn);
 		SAFE_FREE(bounds_fn);
 		if(ret) {
@@ -96,7 +96,7 @@ png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t ne
 	return image->buf;
 }
 
-char* bounds_fullname(const char *fn)
+char* fn_for_bounds(const char *fn)
 {
 	const char *dir;
 	const char *prefix = "bounds-";
@@ -110,7 +110,7 @@ char* bounds_fullname(const char *fn)
 	}
 
 	dir = json_object_get_string(runconfig_get(), "dat_dump");
-	game_fn = game_file_fullname(fn);
+	game_fn = fn_for_game(fn);
 
 	if(!game_fn) {
 		return ret;
@@ -206,7 +206,7 @@ int bounds_store(const char *fn, png_image_exp image)
 	if(!fn || !image || !image->buf) {
 		return -1;
 	}
-	bounds_fn = bounds_fullname(fn);
+	bounds_fn = fn_for_bounds(fn);
 	if(!bounds_fn) {
 		return 1;
 	}
