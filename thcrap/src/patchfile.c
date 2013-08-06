@@ -147,7 +147,6 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 		return NULL;
 	}
 	if(!patch_file_blacklisted(patch_info, fn)) {
-		// Got a file!
 		ret = file_read(patch_fn, file_size);
 	}
 	SAFE_FREE(patch_fn);
@@ -185,7 +184,7 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 	}
 	LeaveCriticalSection(&cs_file_access);
 
-	return 0;
+	return ret;
 }
 
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size)
@@ -220,6 +219,25 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 	return ret;
 }
 
+// Helper function for stack_json_resolve.
+size_t stack_json_load(json_t **json_inout, json_t *patch_obj, const char *fn, size_t level)
+{
+	size_t file_size = 0;
+	if(fn && json_inout) {
+		json_t *json_new = patch_json_load(patch_obj, fn, &file_size);
+		if(json_new) {
+			log_print_patch_fn(patch_obj, fn, level);
+			if(!*json_inout) {
+				*json_inout = json_new;
+			} else {
+				json_object_merge(*json_inout, json_new);
+				json_decref(json_new);
+			}
+		}
+	}
+	return file_size;
+}
+
 json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
 	json_t *ret = NULL;
@@ -236,20 +254,8 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	patch_array = json_object_get(run_cfg, "patches");
 
 	json_array_foreach(patch_array, i, patch_obj) {
-		size_t cur_size = 0;
-		json_t *cur_json = patch_json_load(patch_obj, fn, &cur_size);
 
-		if(!cur_json) {
-			continue;
-		}
-		log_print_patch_fn(patch_obj, fn, i);
-		json_size += cur_size;
-		if(!ret) {
-			ret = cur_json;
-		} else {
-			json_object_merge(ret, cur_json);
-			json_decref(cur_json);
-		}
+		json_size += stack_json_load(&ret, patch_obj, fn, i);
 	}
 	if(!ret) {
 		log_printf("not found\n");
