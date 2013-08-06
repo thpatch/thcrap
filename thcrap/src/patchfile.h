@@ -41,6 +41,10 @@ void* file_read(const char *fn, size_t *file_size);
 /// ----------
 /// File names
 /// ----------
+// Returns the alternate file name for [fn] specific to the
+// currently running build. Return value has to be free()d by the caller!
+char* fn_for_build(const char *fn);
+
 // Returns the full patch-relative name of a game-relative file.
 // Return value has to be free()d by the caller!
 char* fn_for_game(const char *fn);

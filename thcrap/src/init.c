@@ -130,16 +130,17 @@ json_t* identify(const char *exe_fn)
 		log_printf("Invalid version format!");
 		goto end;
 	}
-	{
-		json_t *ver_json;
 
-		// Version filename format is <game>.<version>.js
-		size_t ver_fn_len = strlen(game) + 1 + strlen(build) + strlen(".js") + 1;
+	// Store build in the runconfig to be recalled later
+	// for version-dependent patch file resolving.
+	json_object_set(run_cfg, "build", json_array_get(id_array, 1));
+
+	{
+		size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
 		VLA(char, ver_fn, ver_fn_len);
 
 		log_printf("→ %s %s %s\n", game, build, variety);
 			
-		// Get the base game file
 		if(stricmp(PathFindExtensionA(game), ".js")) {
 			sprintf(ver_fn, "%s.js", game);
 			run_ver = stack_json_resolve(ver_fn, NULL);
@@ -149,14 +150,6 @@ json_t* identify(const char *exe_fn)
 		if(!run_ver) {
 			goto end;
 		}
-		
-		sprintf(ver_fn, "%s.%s.js", game, build);
-
-		// Merge!
-		ver_json = stack_json_resolve(ver_fn, NULL);
-		json_object_merge(run_ver, ver_json);
-		json_decref(ver_json);
-		VLA_FREE(ver_fn);
 	}
 	// Pretty game title
 	{

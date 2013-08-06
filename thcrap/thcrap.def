@@ -56,7 +56,9 @@ EXPORTS
 	; Patch files
 	; -----------
 	file_read
+
 	fn_for_game
+	fn_for_build
 
 	patch_file_exists
 	patch_file_blacklisted

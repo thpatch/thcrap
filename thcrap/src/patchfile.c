@@ -44,6 +44,35 @@ void* file_read(const char *fn, size_t *file_size)
 	return ret;
 }
 
+char* fn_for_build(const char *fn)
+{
+	const char *build = json_object_get_string(run_cfg, "build");
+	size_t name_len;
+	size_t ret_len;
+	const char *first_ext;
+	char *ret;
+
+	if(!fn || !build) {
+		return NULL;
+	}
+	ret_len = strlen(fn) + 1 + strlen(build) + 1;
+	ret = (char*)malloc(ret_len);
+	if(!ret) {
+		return NULL;
+	}
+
+	// We need to do this on our own here because the build ID should be placed
+	// *before* the first extension.
+	first_ext = fn;
+	while(*first_ext && *first_ext != '.') {
+		first_ext++;
+	}
+	name_len = (first_ext - fn);
+	strncpy(ret, fn, name_len);
+	sprintf(ret + name_len, ".%s%s", build, first_ext);
+	return ret;
+}
+
 char* fn_for_game(const char *fn)
 {
 	const char *game_id;
@@ -254,8 +283,12 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	patch_array = json_object_get(run_cfg, "patches");
 
 	json_array_foreach(patch_array, i, patch_obj) {
+		char *fn_build = fn_for_build(fn);
 
 		json_size += stack_json_load(&ret, patch_obj, fn, i);
+		json_size += stack_json_load(&ret, patch_obj, fn_build, i);
+
+		SAFE_FREE(fn_build);
 	}
 	if(!ret) {
 		log_printf("not found\n");
@@ -270,8 +303,9 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
-	char *full_fn;
-	const char *full_fn_ptr;
+	char *fn_common;
+	char *fn_build;
+	const char *fn_common_ptr;
 	void *ret = NULL;
 	int i;
 	json_t *patch_array = json_object_get(run_cfg, "patches");
@@ -280,25 +314,36 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 		return NULL;
 	}
 
-	full_fn = fn_for_game(fn);
+	fn_common = fn_for_game(fn);
+	fn_build = fn_for_build(fn);
+
 	// Meh, const correctness.
-	full_fn_ptr = full_fn;
-	if(!full_fn_ptr) {
-		full_fn_ptr = fn;
+	fn_common_ptr = fn_common;
+	if(!fn_common_ptr) {
+		fn_common_ptr = fn;
 	}
 
-	log_printf("(Data) Resolving %s... ", full_fn_ptr);
-	// Patch stack has to be traversed backwards
-	// because later patches take priority over earlier ones
+	log_printf("(Data) Resolving %s... ", fn_common_ptr);
+	// Patch stack has to be traversed backwards because later patches take
+	// priority over earlier ones, and build-specific files are preferred.
 	for(i = json_array_size(patch_array) - 1; i > -1; i--) {
 		json_t *patch_obj = json_array_get(patch_array, i);
-		ret = patch_file_load(patch_obj, full_fn_ptr, file_size);
+
+		if(fn_build) {
+			ret = patch_file_load(patch_obj, fn_build, file_size);
+			if(ret) {
+				log_print_patch_fn(patch_obj, fn_build, i);
+				break;
+			}
+		}
+		ret = patch_file_load(patch_obj, fn_common_ptr, file_size);
 		if(ret) {
-			log_print_patch_fn(patch_obj, full_fn_ptr, i);
+			log_print_patch_fn(patch_obj, fn_common_ptr, i);
 			break;
 		}
 	}
-	SAFE_FREE(full_fn);
+	SAFE_FREE(fn_common);
+	SAFE_FREE(fn_build);
 	if(!ret) {
 		log_printf("not found\n");
 	} else {
