@@ -12,10 +12,10 @@
 static json_t *stringdefs = NULL;
 static json_t *stringlocs = NULL;
 
-const char *strings_lookup(const char *in)
-{
 #define addr_key_len 2 + 8 + 1
 
+const char *strings_lookup(const char *in, size_t *out_len)
+{
 	char addr_key[addr_key_len];
 	const char *id_key = NULL;
 	const char *ret = in;
@@ -31,6 +31,9 @@ const char *strings_lookup(const char *in)
 		if(new_str && new_str[0]) {
 			ret = new_str;
 		}
+	}
+	if(out_len) {
+		*out_len = strlen(ret) + 1;
 	}
 	return ret;
 }

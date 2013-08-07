@@ -91,11 +91,7 @@ BOOL WINAPI layout_TextOutU(
 	int font_recreate = 0;
 
 	if(c >= strlen(lpString)) {
-		const char *new_str = strings_lookup(lpString);
-		if(new_str) {
-			c = strlen(new_str);
-			lpString = new_str;
-		}
+		lpString = strings_lookup(lpString, &c);
 	}
 
 	if(hBitmap) {
