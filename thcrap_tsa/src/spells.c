@@ -13,15 +13,16 @@
 // Lookup cache
 static json_t *spells = NULL;
 static json_t *spellcomments = NULL;
-static size_t cache_spell_id = 0;
-static size_t cache_spell_id_real = 0;
+static int cache_spell_id = 0;
+static int cache_spell_id_real = 0;
 
 int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	size_t *spell_id = json_object_get_register(bp_info, regs, "spell_id");
-	size_t *spell_id_real = json_object_get_register(bp_info, regs, "spell_id_real");
+	int *spell_id = (int*)json_object_get_register(bp_info, regs, "spell_id");
+	int *spell_id_real = (int*)json_object_get_register(bp_info, regs, "spell_id_real");
+	int *spell_rank = (int*)json_object_get_register(bp_info, regs, "spell_rank");
 	// ----------
 
 	if(spell_id) {
@@ -30,6 +31,9 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 	}
 	if(spell_id_real) {
 		cache_spell_id_real = *spell_id_real;
+	}
+	if(spell_rank) {
+		cache_spell_id = cache_spell_id_real - *spell_rank;
 	}
 	return 1;
 }
@@ -49,7 +53,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 
 	if(spell_name && cache_spell_id_real >= cache_spell_id) {
 		const char *new_name = NULL;
-		size_t i = cache_spell_id_real;
+		int i = cache_spell_id_real;
 
 		// Count down from the real number to the given number
 		// until we find something
@@ -57,7 +61,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 			char key_str[16];
 			_itoa(i, key_str, 10);
 			new_name = json_object_get_string(spells, key_str);
-		} while( (i-- > cache_spell_id) && !new_name );
+		} while( (i-- > cache_spell_id) && i >= 0 && !new_name );
 
 		if(new_name) {
 			*spell_name = new_name;

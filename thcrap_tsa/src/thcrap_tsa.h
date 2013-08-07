@@ -52,6 +52,12 @@ typedef void (*EncryptionFunc_t)(
   *		Used as the maximum value for the name search.
   *		Type: register
   *
+  *	[spell_rank]
+  *		The difficulty level ID offset.
+  *		Used to calculate [spell_id] from [spell_id_real]
+  *		if that parameter not available.
+  *		Type: register
+  *
   * Other breakpoints called
   * ------------------------
   *	None
