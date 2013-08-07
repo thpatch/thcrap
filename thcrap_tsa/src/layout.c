@@ -156,6 +156,15 @@ BOOL WINAPI layout_TextOutU(
 							break;
 						case 't':
 							// Tabstop definition
+							{
+								// The width of the first parameter is already in cur_w, so...
+								size_t j = 2;
+								const char *str = NULL;
+								for(; j < json_array_size(match) && (str = json_array_get_string(match, j)); j++) {
+									GetTextExtentPoint32(hdc, str, strlen(str), &str_size);
+									cur_w = max(str_size.cx, cur_w);
+								}
+							}
 							tab_end = cur_x + cur_w;
 							json_array_set_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
 							break;
