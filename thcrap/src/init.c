@@ -70,18 +70,20 @@ int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
 	}
 	
 	json_latest = json_object_get(run_ver, "latest");
-	json_latest_count = json_array_size(json_latest);
-
-	if(json_latest_count == 0) {
-		json_latest_count = 1;
+	if(!json_latest) {
+		return -1;
 	}
+
+	json_latest_count = json_array_size(json_latest);
+	if(json_latest_count == 0) {
+		*latest = json_string_value(json_latest);
+	}
+
 	for(i = 0; i < json_latest_count; i++) {
 		if(json_is_array(json_latest)) {
 			*latest = json_array_get_string(json_latest, i);
-		} else {
-			*latest = json_string_value(json_latest);
 		}
-		if(!strcmp(*latest, build)) {
+		if(*latest && !strcmp(*latest, build)) {
 			return 1;
 		}
 	}
