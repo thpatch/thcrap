@@ -113,11 +113,13 @@ BOOL WINAPI textdisp_DeleteDC( __in HDC hdc)
 size_t __stdcall GetTextExtent(const char *str)
 {
 	SIZE size;
-	size_t str_len = strlen(str) + 1;
+	size_t str_len;
 
 	if(!str) {
 		return 0;
 	}
+	str = strings_lookup(str);
+	str_len = strlen(str) + 1;
 
 	ZeroMemory(&size, sizeof(SIZE));
 

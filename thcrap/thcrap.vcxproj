@@ -59,6 +59,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\inject.c" />
+    <ClCompile Include="src\strings.c" />
     <ClCompile Include="src\strutil.c" />
     <ClCompile Include="src\textdisp.c" />
     <ClCompile Include="src\win32_patch.c" />
@@ -77,6 +78,7 @@
     <ClInclude Include="src\plugin.h" />
     <ClInclude Include="src\sha256.h" />
     <ClInclude Include="src\inject.h" />
+    <ClInclude Include="src\strings.h" />
     <ClInclude Include="src\strutil.h" />
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />

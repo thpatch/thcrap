@@ -357,7 +357,9 @@ int thcrap_init(const char *setup_fn)
 #ifdef HAVE_BP_FILE
 	bp_file_init();
 #endif
-
+#ifdef HAVE_STRINGS
+	strings_init();
+#endif
 	plugins_load();
 	
 	/**
@@ -459,7 +461,9 @@ void ExitDll(HMODULE hDll)
 #ifdef HAVE_BP_FILE
 	bp_file_exit();
 #endif
-
+#ifdef HAVE_STRINGS
+	strings_exit();
+#endif
 	SAFE_FREE(dll_dir);
 #ifdef _WIN32
 #ifdef _DEBUG

@@ -115,6 +115,13 @@ EXPORTS
 	bp_file_init
 	bp_file_exit
 
+	; Hardcoded string translation
+	; ----------------------------
+	strings_lookup
+
+	strings_init
+	strings_exit
+
 	; Logging
 	; -------
 	log_print

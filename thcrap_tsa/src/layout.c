@@ -90,6 +90,14 @@ BOOL WINAPI layout_TextOutU(
 	size_t cur_tab = 0;
 	int font_recreate = 0;
 
+	if(c >= strlen(lpString)) {
+		const char *new_str = strings_lookup(lpString);
+		if(new_str) {
+			c = strlen(new_str);
+			lpString = new_str;
+		}
+	}
+
 	if(hBitmap) {
 		// TODO: This gets the full width of the rendering backbuffer.
 		// In-game text rendering mostly only uses a shorter width, though.
