@@ -19,7 +19,7 @@
 /// --------------------------------
 int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 {
-	if(!dest || !dest_size || !src || !spec || !spec) {
+	if(!dest || !dest_size || !src || !spec) {
 		return -1;
 	}
 	{
@@ -134,11 +134,9 @@ int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 	}
 
 	if(png_image_begin_read_from_memory(&image->img, file_buffer, file_size)) {
-		size_t png_size;
-		
 		image->img.format = format_png_equiv(thtx->format);
 		if(image->img.format) {
-			png_size = PNG_IMAGE_SIZE(image->img);
+			size_t png_size = PNG_IMAGE_SIZE(image->img);
 			image->buf = (png_bytep)malloc(png_size);
 
 			if(image->buf) {
@@ -222,8 +220,6 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 		size_t nextoffset;
 		size_t sprites;
 
-		size_t i;
-
 		if(
 			STRUCT_GET(size_t, x, anm_entry_out, format) ||
 			STRUCT_GET(size_t, y, anm_entry_out, format) ||
@@ -252,6 +248,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			}
 			// ... add texture boundaries...
 			if(headersize) {
+				size_t i;
 				DWORD *sprite_ptr = (DWORD*)(anm_entry_out + headersize);
 				bounds_resize(&bounds, x + thtx->w, y + thtx->h);
 				for(i = 0; i < sprites; i++) {

@@ -21,6 +21,7 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 	patchhook_register("*.std", patch_std);
 	patchhook_register("*.anm", patch_anm);
 
+	// All component initialization functions that require runconfig values
 	spells_init();
 	return 0;
 }

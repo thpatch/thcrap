@@ -92,7 +92,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 
 		size_t cmt_key_str_len = strlen("comment_") + 16 + 1;
 		VLA(char, cmt_key_str, cmt_key_str_len);
-		sprintf(cmt_key_str, "comment_%d", comment_num);
+		sprintf(cmt_key_str, "comment_%u", comment_num);
 
 		// Count down from the real number to the given number
 		// until we find something
