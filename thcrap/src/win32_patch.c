@@ -13,17 +13,18 @@ void win32_patch(HMODULE hMod)
 {
 	// After that Norton incident, I've become a bit scared of AV software,
 	// so no patching of CreateProcess and LoadLibrary until we need it
-	iat_patch_funcs_var(hMod, "kernel32.dll", 8,
+	iat_patch_funcs_var(hMod, "kernel32.dll", 9,
 		"CreateFileA", CreateFileU,
 		"GetModuleFileNameA", GetModuleFileNameU,
 		"SetCurrentDirectoryA", SetCurrentDirectoryU,
 		"GetCurrentDirectoryA", GetCurrentDirectoryU,
+		"GetEnvironmentVariableA", GetEnvironmentVariableU,
 		"GetStartupInfoA", GetStartupInfoU,
 		"FindFirstFileA", FindFirstFileU,
 		"FindNextFileA", FindNextFileU,
 		"FormatMessageA", FormatMessageU
 	);
-	
+
 	iat_patch_funcs_var(hMod, "gdi32.dll", 3,
 		"CreateFontA", CreateFontU,
 		"TextOutA", TextOutU,

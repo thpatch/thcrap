@@ -75,6 +75,14 @@ DWORD WINAPI GetCurrentDirectoryU(
 #undef GetCurrentDirectory
 #define GetCurrentDirectory GetCurrentDirectoryU
 
+DWORD WINAPI GetEnvironmentVariableU(
+    __in_opt LPCSTR lpName,
+    __out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
+    __in DWORD nSize
+);
+#undef GetEnvironmentVariable
+#define GetEnvironmentVariable GetEnvironmentVariableU
+
 DWORD WINAPI GetModuleFileNameU(
 	__in_opt HMODULE hModule,
 	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,

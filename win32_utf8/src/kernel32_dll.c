@@ -239,6 +239,22 @@ DWORD WINAPI GetCurrentDirectoryU(
 	return ret;
 }
 
+DWORD WINAPI GetEnvironmentVariableU(
+    __in_opt LPCSTR lpName,
+    __out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
+    __in DWORD nSize
+)
+{
+	DWORD ret;
+	WCHAR_T_DEC(lpName);
+	VLA(wchar_t, lpBuffer_w, nSize);
+	StringToUTF16(lpName_w, lpName, lpName_len);
+
+	ret = GetEnvironmentVariableW(lpName_w, lpBuffer_w, nSize);
+	// Return the converted size (!)
+	return StringToUTF8(lpBuffer, lpBuffer_w, nSize);
+}
+
 DWORD WINAPI GetModuleFileNameU(
 	__in_opt HMODULE hModule,
 	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,
