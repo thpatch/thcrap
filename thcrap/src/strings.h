@@ -17,5 +17,14 @@
 // if not NULL.
 const char* strings_lookup(const char *in, size_t *out_len);
 
+// Safe and persistent sprintf handler.
+// This function should be inserted via binary hacks everywhere a game
+// calls sprintf, as it guarantees a sufficiently large buffer for the result.
+// [format] and [va] are the respective parameters of vsprintf, [addr] is the
+// storage slot. This can be any value, but calling this function again with 
+// the same [addr] deletes the result from the previous call.
+// Returns a pointer to the resulting string.
+const char* strings_vsprintf(const size_t addr, const char *format, va_list va);
+
 void strings_init();
 void strings_exit();
