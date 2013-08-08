@@ -31,6 +31,10 @@ HWND WINAPI CreateWindowExU(
 #undef CreateWindowEx
 #define CreateWindowEx CreateWindowExU
 
+// Yep, both original functions use the same parameters
+#undef DefWindowProc
+#define DefWindowProc DefWindowProcW
+
 int WINAPI MessageBoxU(
 	__in_opt HWND hWnd,
 	__in_opt LPCSTR lpText,
@@ -58,7 +62,3 @@ BOOL WINAPI SetWindowTextU(
 );
 #undef SetWindowText
 #define SetWindowText SetWindowTextU
-
-// Yep, both original functions use the same parameters
-#undef DefWindowProc
-#define DefWindowProc DefWindowProcW

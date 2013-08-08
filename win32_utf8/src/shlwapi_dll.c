@@ -24,6 +24,18 @@ BOOL STDAPICALLTYPE PathMatchSpecU(
 	return ret;
 }
 
+BOOL STDAPICALLTYPE PathFileExistsU(
+	__in LPCSTR pszPath
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(pszPath);
+	StringToUTF16(pszPath_w, pszPath, pszPath_len);
+	ret = PathFileExistsW(pszPath_w);
+	VLA_FREE(pszPath_w);
+	return ret;
+}
+
 BOOL STDAPICALLTYPE PathRemoveFileSpecU(
 	__inout LPSTR pszPath
 )
@@ -36,16 +48,4 @@ BOOL STDAPICALLTYPE PathRemoveFileSpecU(
 		return 1;
 	}
 	return 0;
-}
-
-BOOL STDAPICALLTYPE PathFileExistsU(
-	__in LPCSTR pszPath
-)
-{
-	BOOL ret;
-	WCHAR_T_DEC(pszPath);
-	StringToUTF16(pszPath_w, pszPath, pszPath_len);
-	ret = PathFileExistsW(pszPath_w);
-	VLA_FREE(pszPath_w);
-	return ret;
 }

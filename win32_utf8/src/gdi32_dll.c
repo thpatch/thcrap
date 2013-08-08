@@ -37,6 +37,23 @@ HFONT WINAPI CreateFontU(
 	return ret;
 }
 
+BOOL APIENTRY GetTextExtentPoint32U(
+	__in HDC hdc,
+	__in_ecount(c) LPCSTR lpString,
+	__in int c,
+	__out LPSIZE psizl
+)
+{
+	BOOL ret;
+	size_t lpString_len = c + 1;
+	VLA(wchar_t, lpString_w, lpString_len);
+	ZeroMemory(lpString_w, lpString_len * sizeof(wchar_t));
+	StringToUTF16(lpString_w, lpString, c);
+	ret = GetTextExtentPoint32W(hdc, lpString_w, wcslen(lpString_w), psizl);
+	VLA_FREE(lpString_w);
+	return ret;
+}
+
 BOOL WINAPI TextOutU(
 	__in HDC hdc,
 	__in int x,
@@ -51,23 +68,6 @@ BOOL WINAPI TextOutU(
 	ZeroMemory(lpString_w, lpString_len * sizeof(wchar_t));
 	StringToUTF16(lpString_w, lpString, c);
 	ret = TextOutW(hdc, x, y, lpString_w, wcslen(lpString_w));
-	VLA_FREE(lpString_w);
-	return ret;
-}
-
-BOOL APIENTRY GetTextExtentPoint32U(
-	__in HDC hdc,
-	__in_ecount(c) LPCSTR lpString,
-	__in int c,
-	__out LPSIZE psizl
-)
-{
-	BOOL ret;
-	size_t lpString_len = c + 1;
-	VLA(wchar_t, lpString_w, lpString_len);
-	ZeroMemory(lpString_w, lpString_len * sizeof(wchar_t));
-	StringToUTF16(lpString_w, lpString, c);
-	ret = GetTextExtentPoint32W(hdc, lpString_w, wcslen(lpString_w), psizl);
 	VLA_FREE(lpString_w);
 	return ret;
 }

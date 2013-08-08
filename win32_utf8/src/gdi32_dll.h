@@ -27,6 +27,15 @@ HFONT WINAPI CreateFontU(
 #undef CreateFont
 #define CreateFont CreateFontU
 
+BOOL APIENTRY GetTextExtentPoint32U(
+	__in HDC hdc,
+	__in_ecount(c) LPCSTR lpString,
+	__in int c,
+	__out LPSIZE psizl
+);
+#undef GetTextExtentPoint32
+#define GetTextExtentPoint32 GetTextExtentPoint32U
+
 BOOL WINAPI TextOutU(
 	__in HDC hdc,
 	__in int x,
@@ -36,12 +45,3 @@ BOOL WINAPI TextOutU(
 );
 #undef TextOut
 #define TextOut TextOutU
-
-BOOL APIENTRY GetTextExtentPoint32U(
-	__in HDC hdc,
-	__in_ecount(c) LPCSTR lpString,
-	__in int c,
-	__out LPSIZE psizl
-);
-#undef GetTextExtentPoint32
-#define GetTextExtentPoint32 GetTextExtentPoint32U

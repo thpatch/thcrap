@@ -14,14 +14,14 @@ BOOL STDAPICALLTYPE PathMatchSpecU(
 #undef PathMatchSpec
 #define PathMatchSpec PathMatchSpecU
 
-BOOL STDAPICALLTYPE PathRemoveFileSpecU(
-	__inout LPSTR pszPath
-);
-#undef PathRemoveFileSpec
-#define PathRemoveFileSpec PathRemoveFileSpecU
-
 BOOL STDAPICALLTYPE PathFileExistsU(
 	__in LPCSTR pszPath
 );
 #undef PathFileExists
 #define PathFileExists PathFileExistsU
+
+BOOL STDAPICALLTYPE PathRemoveFileSpecU(
+	__inout LPSTR pszPath
+);
+#undef PathRemoveFileSpec
+#define PathRemoveFileSpec PathRemoveFileSpecU

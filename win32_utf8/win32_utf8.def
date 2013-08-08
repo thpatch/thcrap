@@ -11,8 +11,8 @@ EXPORTS
 	; gdi32.dll
 	; ---------
 	CreateFontU
-	TextOutU
 	GetTextExtentPoint32U
+	TextOutU
 
 	; user32.dll
 	; ----------
@@ -28,14 +28,14 @@ EXPORTS
 	CreateDirectoryU
 	CreateFileU
 	CreateProcessU
-	GetModuleFileNameU
-	SetCurrentDirectoryU
-	GetCurrentDirectoryU
-	GetStartupInfoU
-	FormatMessageU
 	FindFirstFileU
 	FindNextFileU
+	FormatMessageU
+	GetCurrentDirectoryU
+	GetModuleFileNameU
+	GetStartupInfoU
 	LoadLibraryU
+	SetCurrentDirectoryU
 
 	; shlwapi.dll
 	; -----------
