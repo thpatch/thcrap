@@ -44,15 +44,23 @@ HFONT WINAPI textdisp_CreateFontA(
 	)
 {
 	int replaced = 0;
+	const char *string_font;
 	json_t *run_font;
 	
 	iCharSet = DEFAULT_CHARSET;
 
-	// Read external font
-	run_font = json_object_get(run_cfg, "font");
-	if(json_is_string(run_font)) {
-		pszFaceName = json_string_value(run_font);
+	// Check hardcoded strings and the run configuration for a replacement font.
+	// Hardcoded strings take priority here.
+	string_font = strings_lookup(pszFaceName, NULL);
+	if(string_font != pszFaceName) {
+		pszFaceName = string_font;
 		replaced = 1;
+	} else {
+		run_font = json_object_get(run_cfg, "font");
+		if(json_is_string(run_font)) {
+			pszFaceName = json_string_value(run_font);
+			replaced = 1;
+		}
 	}
 
 	/**
