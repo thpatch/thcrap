@@ -293,7 +293,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"Touhou Community Reliant Automatic Patcher.\n"
 		"\n"
 		"Unfortunately, we didn't manage to create a nice, graphical user interface\n"
-		"for patch configuration in time for the Double Dealing Character trial release.\n"
+		"for patch configuration in time for the Double Dealing Character release.\n"
 		"We hope that this will still be user-friendly enough for initial configuration.\n"
 		"\n"
 		"\n"
