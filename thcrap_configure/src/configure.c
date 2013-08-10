@@ -410,7 +410,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	SetCurrentDirectory(cur_dir);
 
 	// Other default run_cfg settings
-	json_object_set_new(run_cfg, "console", json_true());
+	json_object_set_new(run_cfg, "console", json_false());
 	json_object_set_new(run_cfg, "dat_dump", json_false());
 
 	run_cfg_fn = run_cfg_fn_build(patch_stack);
