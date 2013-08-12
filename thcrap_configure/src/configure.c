@@ -103,7 +103,7 @@ json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remot
 		VLA(char, remote_patch_fn, remote_patch_fn_len);
 		sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
 
-		patch_js_buffer = (char*)ServerDownloadFileA(remote_servers, remote_patch_fn, &patch_js_size);
+		patch_js_buffer = (char*)ServerDownloadFileA(remote_servers, remote_patch_fn, &patch_js_size, NULL);
 		// TODO: Nice, friendly error
 
 		VLA_FREE(remote_patch_fn);
@@ -332,7 +332,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		DWORD remote_server_js_size;
 		void *remote_server_js_buffer;
 
-		remote_server_js_buffer = ServerDownloadFileA(local_servers, "server.js", &remote_server_js_size);
+		remote_server_js_buffer = ServerDownloadFileA(local_servers, "server.js", &remote_server_js_size, NULL);
 		if(remote_server_js_buffer) {
 			FILE *local_server_js_file = NULL;
 

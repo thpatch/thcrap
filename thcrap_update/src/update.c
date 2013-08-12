@@ -10,6 +10,7 @@
 #include <thcrap.h>
 #include <MMSystem.h>
 #include <WinInet.h>
+#include <zlib.h>
 #include "update.h"
 
 HINTERNET hINet = NULL;
@@ -112,7 +113,7 @@ const int ServerGetFirst(const json_t *servers)
 	}
 }
 
-void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
+void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, DWORD *exp_crc)
 {
 	HINTERNET hFile = NULL;
 	DWORD http_stat;
@@ -137,6 +138,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 	servers_left = json_array_size(servers);
 	for(i = servers_first; servers_left; i++) {
 		DWORD time, time_start;
+		DWORD crc = 0;
 		json_t *server;
 		const char *server_url;
 		json_t *server_time;
@@ -214,8 +216,9 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 
 		read_size = *file_size;
 		while(read_size) {
-			ret = InternetReadFile(hFile, file_buffer, *file_size, &byte_ret);
+			ret = InternetReadFile(hFile, p, *file_size, &byte_ret);
 			if(ret) {
+				crc = crc32(crc, p, byte_ret);
 				read_size -= byte_ret;
 				p += byte_ret;
 			} else {
@@ -232,12 +235,18 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 
 		json_object_set_new(server, "time", json_integer(time));
 		InternetCloseHandle(hFile);
-		return file_buffer;
+
+		if(exp_crc && *exp_crc != crc) {
+			ServerDisable(server);
+			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
+		} else {
+			return file_buffer;
+		}
 	}
 	return NULL;
 }
 
-void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size)
+void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size, DWORD* exp_crc)
 {
 	if(!fn) {
 		return NULL;
@@ -246,7 +255,7 @@ void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size)
 		void *ret;
 		WCHAR_T_DEC(fn);
 		fn_w = StringToUTF16_VLA(fn_w, fn, fn_len);
-		ret = ServerDownloadFileW(servers, fn_w, file_size);
+		ret = ServerDownloadFileW(servers, fn_w, file_size, exp_crc);
 		VLA_FREE(fn_w);
 		return ret;
 	}
@@ -350,7 +359,7 @@ int patch_update(const json_t *patch_info)
 	// Init local servers for bootstrapping
 	local_servers = ServerInit(local_patch_js);
 	
-	remote_patch_js_buffer = ServerDownloadFileA(local_servers, main_fn, &remote_patch_js_size);
+	remote_patch_js_buffer = ServerDownloadFileA(local_servers, main_fn, &remote_patch_js_size, NULL);
 	if(!remote_patch_js_buffer) {
 		// All servers offline...
 		ret = 3;
@@ -403,6 +412,7 @@ int patch_update(const json_t *patch_info)
 		DWORD file_size;
 		json_t *local_val;
 		
+		
 		if(!ServerGetNumActive(remote_servers)) {
 			ret = 3;
 			break;
@@ -415,7 +425,14 @@ int patch_update(const json_t *patch_info)
 		i++;
 
 		log_printf("(%*d/%*d) ", file_digits, i, file_digits, file_count);
-		file_buffer = ServerDownloadFileA(remote_servers, key, &file_size);
+
+		if(json_is_integer(remote_val)) {
+			DWORD remote_crc;
+			remote_crc = json_integer_value(remote_val);
+			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, &remote_crc);
+		} else {
+			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, NULL);
+		}
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
 			SAFE_FREE(file_buffer);
@@ -432,7 +449,7 @@ int patch_update(const json_t *patch_info)
 	// I thought 15 minutes about this, and considered it appropriate
 end_update:
 	if(ret == 3) {
-		log_printf("Can't reach any server at the moment.\nCancelling update...\n");
+		log_printf("Can't reach any valid server at the moment.\nCancelling update...\n");
 	}
 	SAFE_FREE(remote_patch_js_buffer);
 	json_decref(remote_patch_js);

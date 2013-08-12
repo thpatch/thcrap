@@ -46,7 +46,9 @@ As of now, all subprojects only include a Visual C++ 2010 project file for build
 
 * [Jansson] (http://www.digip.org/jansson/) is required for every module apart from `win32_utf8`. Compile it from the [latest source] (https://github.com/akheron/jansson), then add its include and library directories to every project.
 
-* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** is also required by `thcrap_tsa` for image patching.
+* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** is required by `thcrap_tsa` for image patching.
+
+* [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
 ### License ###
 

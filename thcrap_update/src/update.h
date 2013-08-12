@@ -29,10 +29,13 @@ size_t ServerGetNumActive(const json_t *servers);
 int ServerDisable(json_t *server);
 
 // Tries to download the given [fn] from any server in <servers>.
+// [exp_crc] can be optionally given to enforce the downloaded file to have a
+// certain checksum. If it doesn't match for one server, another one is tried,
+// until are no one left. To disable this check, simply pass NULL.
 // Has separate W and A versions because I don't want to have a dependency on
 // wininet.dll in win32_utf8 for now
-void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size);
-void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size);
+void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, DWORD *exp_crc);
+void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size, DWORD *exp_crc);
 
 // Updates the [patch] in [patch_info].
 int patch_update(const json_t *patch_info);
