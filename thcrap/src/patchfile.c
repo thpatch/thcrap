@@ -269,6 +269,7 @@ size_t stack_json_load(json_t **json_inout, json_t *patch_obj, const char *fn, s
 
 json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
+	char *fn_build = NULL;
 	json_t *ret = NULL;
 	json_t *patch_array;
 	json_t *patch_obj;
@@ -278,17 +279,14 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	if(!fn) {
 		return NULL;
 	}
+	fn_build = fn_for_build(fn);
 	log_printf("(JSON) Resolving %s... ", fn);
 
 	patch_array = json_object_get(run_cfg, "patches");
 
 	json_array_foreach(patch_array, i, patch_obj) {
-		char *fn_build = fn_for_build(fn);
-
 		json_size += stack_json_load(&ret, patch_obj, fn, i);
 		json_size += stack_json_load(&ret, patch_obj, fn_build, i);
-
-		SAFE_FREE(fn_build);
 	}
 	if(!ret) {
 		log_printf("not found\n");
@@ -298,6 +296,7 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	if(file_size) {
 		*file_size = json_size;
 	}
+	SAFE_FREE(fn_build);
 	return ret;
 }
 
