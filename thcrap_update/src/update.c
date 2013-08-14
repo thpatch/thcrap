@@ -17,6 +17,8 @@ HINTERNET hINet = NULL;
 
 int inet_init()
 {
+	DWORD ignore = 1;
+
 	// DWORD timeout = 500;
 	const char *project_name = PROJECT_NAME(); 
 	size_t agent_len = strlen(project_name) + strlen(" (--) " ) + 16 + 1;
@@ -35,6 +37,12 @@ int inet_init()
 	InternetSetOption(hINet, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
 	InternetSetOption(hINet, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
 	*/
+
+	// This is necessary when Internet Explorer is set to "work offline"... which
+	// will essentially block all wininet HTTP accesses on handles that do not
+	// explicitly ignore this setting.
+	InternetSetOption(hINet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
+
 	VLA_FREE(agent);
 	return 0;
 }
