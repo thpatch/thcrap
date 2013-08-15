@@ -29,6 +29,7 @@ const char* strings_lookup(const char *in, size_t *out_len);
 // the same [addr] deletes the result from the previous call.
 // Returns a pointer to the resulting string.
 const char* strings_vsprintf(const size_t addr, const char *format, va_list va);
+const char* strings_sprintf(const size_t addr, const char *format, ...);
 
 void strings_init();
 void strings_exit();

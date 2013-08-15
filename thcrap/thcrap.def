@@ -121,6 +121,7 @@ EXPORTS
 	; ----------------------------
 	strings_get
 	strings_lookup
+	strings_sprintf
 	strings_vsprintf
 
 	strings_init
