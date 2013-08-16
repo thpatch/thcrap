@@ -215,7 +215,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, 
 		}
 	
 		HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
-		if(file_size == 0) {
+		if(*file_size == 0) {
 			log_printf(" 0-byte file! %s\n", servers_left ? "Trying next server..." : "");
 			ServerDisable(server);
 			continue;
