@@ -314,30 +314,32 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 	}
 
 	fn_common = fn_for_game(fn);
-	fn_build = fn_for_build(fn);
 
 	// Meh, const correctness.
 	fn_common_ptr = fn_common;
 	if(!fn_common_ptr) {
 		fn_common_ptr = fn;
 	}
+	fn_build = fn_for_build(fn_common_ptr);
 
 	log_printf("(Data) Resolving %s... ", fn_common_ptr);
 	// Patch stack has to be traversed backwards because later patches take
 	// priority over earlier ones, and build-specific files are preferred.
 	for(i = json_array_size(patch_array) - 1; i > -1; i--) {
 		json_t *patch_obj = json_array_get(patch_array, i);
+		const char *log_fn = NULL;
+		ret = NULL;
 
 		if(fn_build) {
 			ret = patch_file_load(patch_obj, fn_build, file_size);
-			if(ret) {
-				log_print_patch_fn(patch_obj, fn_build, i);
-				break;
-			}
+			log_fn = fn_build;
 		}
-		ret = patch_file_load(patch_obj, fn_common_ptr, file_size);
+		if(!ret) {
+			ret = patch_file_load(patch_obj, fn_common_ptr, file_size);
+			log_fn = fn_common_ptr;
+		}
 		if(ret) {
-			log_print_patch_fn(patch_obj, fn_common_ptr, i);
+			log_print_patch_fn(patch_obj, log_fn, i);
 			break;
 		}
 	}
