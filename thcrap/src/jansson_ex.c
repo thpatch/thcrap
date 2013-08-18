@@ -80,6 +80,15 @@ const char* json_array_get_string(const json_t *arr, const size_t ind)
 	return json_string_value(json_array_get(arr, ind));
 }
 
+const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
+{
+	const char *ret = json_array_get_string(arr, ind);
+	if(!ret) {
+		ret = "";
+	}
+	return ret;
+}
+
 wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind)
 {
 	return json_string_value_utf16(json_array_get(arr, ind));

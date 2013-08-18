@@ -100,14 +100,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 		} while( (i-- > cache_spell_id) && !json_is_array(json_cmt) );
 
 		if(json_is_array(json_cmt)) {
-			const char *new_str;
-
-			if(line_num >= json_array_size(json_cmt)) {
-				new_str = "";
-			} else {
-				new_str = json_array_get_string(json_cmt, line_num);
-			}
-			*str = new_str;
+			*str = json_array_get_string_safe(json_cmt, line_num);
 			return !json_is_false(cave_exec);
 		}
 	}

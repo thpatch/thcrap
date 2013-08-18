@@ -30,6 +30,10 @@ size_t json_array_get_hex(json_t *arr, const size_t ind);
 // Convenience function for json_string_value(json_array_get(object, ind));
 const char* json_array_get_string(const json_t *arr, const size_t ind);
 
+// Same as json_array_get_string(), but returns an empty string ("")
+// if element #[ind] in [arr] is no valid string.
+const char* json_array_get_string_safe(const json_t *arr, const size_t ind);
+
 // Convert the [index]th value in [array] to UTF-16.
 // Return value has to be free()d by the caller!
 wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind);
