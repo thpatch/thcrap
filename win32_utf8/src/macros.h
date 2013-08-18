@@ -65,6 +65,7 @@
 #ifndef strdup
 # define strdup _strdup
 #endif
+# define snprintf _snprintf
 # define strnicmp _strnicmp
 # define stricmp _stricmp
 # define strlwr _strlwr

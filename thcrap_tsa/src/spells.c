@@ -58,9 +58,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 		// Count down from the real number to the given number
 		// until we find something
 		do {
-			char key_str[16];
-			_itoa(i, key_str, 10);
-			new_name = json_object_get_string(spells, key_str);
+			new_name = json_string_value(json_object_get_numkey(spells, i));
 		} while( (i-- > cache_spell_id) && i >= 0 && !new_name );
 
 		if(new_name) {
@@ -97,10 +95,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 		// Count down from the real number to the given number
 		// until we find something
 		do {
-			char key_str[16];
-			_itoa(i, key_str, 10);
-
-			json_cmt = json_object_get(spellcomments, key_str);
+			json_cmt = json_object_get_numkey(spellcomments, i);
 			json_cmt = json_object_get(json_cmt, cmt_key_str);
 		} while( (i-- > cache_spell_id) && !json_is_array(json_cmt) );
 

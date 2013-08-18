@@ -40,6 +40,9 @@ wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind);
 // Same as json_object_get, but creates a [new_object] if the [key] doesn't exist
 json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object);
 
+// json_object_get for numeric keys
+json_t *json_object_get_numkey(json_t *object, const json_int_t key);
+
 // Get the integer value of [key] in [object], automatically
 // converting the JSON value to an integer if necessary.
 size_t json_object_get_hex(json_t *object, const char *key);
