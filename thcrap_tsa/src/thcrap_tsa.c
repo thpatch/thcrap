@@ -23,6 +23,7 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 
 	// All component initialization functions that require runconfig values
 	spells_init();
+	music_init();
 	return 0;
 }
 
@@ -34,8 +35,9 @@ int InitDll(HMODULE hDll)
 
 void ExitDll(HMODULE hDll)
 {
-	layout_exit();
+	music_exit();
 	spells_exit();
+	layout_exit();
 }
 
 // Yes, this _has_ to be included in every project.

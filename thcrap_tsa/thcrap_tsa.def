@@ -36,6 +36,13 @@ EXPORTS
 	png_load_for_thtx
 	patch_thtx
 
+	; Music
+	; -----
+	BP_music_cmt
+
+	music_init
+	music_exit
+
 	; Layout
 	; ------
 	layout_match_set

@@ -140,3 +140,9 @@ int patch_anm(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, jso
 void layout_init(HMODULE hMod);
 void layout_exit();
 /// -----------
+
+/// Music Room
+/// ----------
+void music_init();
+void music_exit();
+/// ----------
