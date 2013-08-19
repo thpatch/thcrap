@@ -15,7 +15,12 @@ static json_t *sprintf_storage = NULL;
 
 #define addr_key_len 2 + 8 + 1
 
-const char *strings_lookup(const char *in, size_t *out_len)
+const char* strings_get(const char *id)
+{
+	return json_object_get_string(stringdefs, id);
+}
+
+const char* strings_lookup(const char *in, size_t *out_len)
 {
 	char addr_key[addr_key_len];
 	const char *id_key = NULL;
@@ -28,7 +33,7 @@ const char *strings_lookup(const char *in, size_t *out_len)
 	_snprintf(addr_key, addr_key_len, "0x%x", in);
 	id_key = json_object_get_string(stringlocs, addr_key);
 	if(id_key) {
-		const char *new_str = json_object_get_string(stringdefs, id_key);
+		const char *new_str = strings_get(id_key);
 		if(new_str && new_str[0]) {
 			ret = new_str;
 		}

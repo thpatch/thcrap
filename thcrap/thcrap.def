@@ -119,6 +119,7 @@ EXPORTS
 
 	; Hardcoded string translation
 	; ----------------------------
+	strings_get
 	strings_lookup
 	strings_vsprintf
 
