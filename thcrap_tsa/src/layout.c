@@ -75,6 +75,43 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 	return ret;
 }
 
+// Split the string into an array of tokens to render in a sequence.
+// These are either strings (= direct text)
+// or arrays in itself (= layout commands).
+json_t* layout_tokenize(const char *str, size_t len)
+{
+	json_t *ret;
+	size_t i = 0;
+	if(!str || !len) {
+		return NULL;
+	}
+	ret = json_array();
+	while(i < len) {
+		const char *cur_str = str + i;
+		size_t cur_len = len - i;
+
+		json_t *match = layout_match(&cur_len, cur_str, cur_len);
+
+		// Requiring at least 2 parameters for a layout command still lets people
+		// write "<text>" without that being swallowed by the layout parser.
+		if(json_array_size(match) > 1) {
+			json_array_append_new(ret, match);
+		} else {
+			char *cmd_start = (char*)memchr(cur_str + 1, '<', cur_len - 1);
+			if(cmd_start) {
+				cur_len = cmd_start - cur_str;
+			}
+			{
+				char *cur_str_token = EnsureUTF8(cur_str, cur_len);
+				json_array_append_new(ret, json_string(cur_str_token));
+				SAFE_FREE(cur_str_token);
+			}
+		}
+		i += cur_len;
+	}
+	return ret;
+}
+
 // Outputs the ruby annotation [top_str], relative to [bottom_str] starting at
 // [bottom_x], at [top_y] with [hFontRuby] on [hdc]. :)
 BOOL layout_textout_ruby(
@@ -133,7 +170,7 @@ BOOL WINAPI layout_TextOutU(
 	json_t *token;
 	LONG bitmap_width;
 
-	int i = 0;
+	size_t i = 0;
 	int cur_x = orig_x;
 	int ruby_y;
 	size_t cur_tab = 0;
@@ -159,33 +196,7 @@ BOOL WINAPI layout_TextOutU(
 		GetObject(hFontOrig, sizeof(LOGFONT), &font_orig);
 	}
 
-	tokens = json_array();
-
-	// Split the string into an array of tokens to render in a sequence.
-	// These are either strings (= direct text) or arrays in itself (= layout commands).
-	while(i < c) {
-		LPCSTR cur_str = lpString + i;
-		size_t cur_len = c - i;
-
-		json_t *match = layout_match(&cur_len, cur_str, cur_len);
-
-		// Requiring at least 2 parameters for a layout command still lets people
-		// write "<text>" without that being swallowed by the layout parser.
-		if(json_array_size(match) > 1) {
-			json_array_append_new(tokens, match);
-		} else {
-			char *cmd_start = (char*)memchr(cur_str + 1, '<', cur_len - 1);
-			if(cmd_start) {
-				cur_len = cmd_start - cur_str;
-			}
-			{
-				char *cur_str_token = EnsureUTF8(cur_str, cur_len);
-				json_array_append_new(tokens, json_string(cur_str_token));
-				SAFE_FREE(cur_str_token);
-			}
-		}
-		i += cur_len;
-	}
+	tokens = layout_tokenize(lpString, c);
 
 	// Preprocessing
 	json_array_foreach(tokens, i, token) {
