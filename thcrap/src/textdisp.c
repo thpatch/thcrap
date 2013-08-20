@@ -29,7 +29,6 @@ HFONT WINAPI textdisp_CreateFontA(
 {
 	int replaced = 0;
 	const char *string_font;
-	json_t *run_font;
 	
 	iCharSet = DEFAULT_CHARSET;
 
@@ -40,7 +39,7 @@ HFONT WINAPI textdisp_CreateFontA(
 		pszFaceName = string_font;
 		replaced = 1;
 	} else {
-		run_font = json_object_get(run_cfg, "font");
+		json_t *run_font = json_object_get(run_cfg, "font");
 		if(json_is_string(run_font)) {
 			pszFaceName = json_string_value(run_font);
 			replaced = 1;

@@ -46,7 +46,7 @@ int layout_match_set(json_t *arr, size_t ind, const char *str, size_t len)
 		strncpy(arg, str, len);
 		arg[len] = 0;
 		json_str = json_string(arg);
-
+		VLA_FREE(arg);
 		return json_array_set_expand(arr, ind, json_str);
 	}
 }

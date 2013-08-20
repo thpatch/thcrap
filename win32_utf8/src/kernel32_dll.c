@@ -250,9 +250,11 @@ DWORD WINAPI GetEnvironmentVariableU(
 	VLA(wchar_t, lpBuffer_w, nSize);
 	StringToUTF16(lpName_w, lpName, lpName_len);
 
-	ret = GetEnvironmentVariableW(lpName_w, lpBuffer_w, nSize);
+	GetEnvironmentVariableW(lpName_w, lpBuffer_w, nSize);
 	// Return the converted size (!)
-	return StringToUTF8(lpBuffer, lpBuffer_w, nSize);
+	ret = StringToUTF8(lpBuffer, lpBuffer_w, nSize);
+	VLA_FREE(lpBuffer_w);
+	return ret;
 }
 
 DWORD WINAPI GetModuleFileNameU(

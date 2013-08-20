@@ -136,14 +136,14 @@ json_t* identify(const char *exe_fn)
 	json_object_set(run_cfg, "build", json_array_get(id_array, 1));
 
 	{
-		size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
-		VLA(char, ver_fn, ver_fn_len);
-
 		log_printf("→ %s %s %s\n", game, build, variety);
-			
+
 		if(stricmp(PathFindExtensionA(game), ".js")) {
+			size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
+			VLA(char, ver_fn, ver_fn_len);
 			sprintf(ver_fn, "%s.js", game);
 			run_ver = stack_json_resolve(ver_fn, NULL);
+			VLA_FREE(ver_fn);
 		} else {
 			run_ver = stack_json_resolve(game, NULL);
 		}
@@ -239,7 +239,6 @@ int thcrap_init(const char *setup_fn)
 		json_decref(run_cfg);
 		run_cfg = run_ver;
 	}
-
 	{
 		// Copy format links from formats.js
 		json_t *game_formats = json_object_get(run_cfg, "formats");
@@ -258,7 +257,6 @@ int thcrap_init(const char *setup_fn)
 			json_decref(formats_js);
 		}
 	}
-	
 	log_printf("Initializing patches...\n");
 	{
 		json_t *patches = json_object_get(run_cfg, "patches");

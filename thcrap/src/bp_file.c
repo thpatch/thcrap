@@ -75,7 +75,6 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 	if(fr->name) {
 		file_rep_clear(fr);
 	}
-
 	fn_len = strlen(*file_name) + 1;
 	fr->name = EnsureUTF8(*file_name, fn_len);
 	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->rep_size);
@@ -83,7 +82,6 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 	if(fr->hooks) {
 		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
 		size_t diff_size = 0;
-
 		{
 			VLA(char, diff_fn, diff_fn_len);
 			strcpy(diff_fn, fr->name);

@@ -36,7 +36,6 @@ typedef void (*EncryptionFunc_t)(
 /// ------
 /// Spells
 /// ------
-
 /**
   * Reads a spell card ID.
   *
