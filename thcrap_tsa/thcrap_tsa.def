@@ -47,6 +47,7 @@ EXPORTS
 	; ------
 	layout_match_set
 	layout_match
+	layout_textout_ruby
 	layout_TextOutU
 
 	; Format patchers

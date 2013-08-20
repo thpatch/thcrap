@@ -75,6 +75,46 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 	return ret;
 }
 
+// Outputs the ruby annotation [top_str], relative to [bottom_str] starting at
+// [bottom_x], at [top_y] with [hFontRuby] on [hdc]. :)
+BOOL layout_textout_ruby(
+	__in HDC hdc,
+	__in int bottom_x,
+	__in_ecount(c) LPCSTR bottom_str,
+	__in int top_y,
+	__in_ecount(c) LPCSTR top_str,
+	__in HFONT hFontRuby
+) {
+	if(!bottom_str || !top_str) {
+		return 0;
+	}
+	{
+		HFONT hFontOrig;
+		SIZE str_size;
+		size_t bottom_w;
+		size_t top_w;
+		int top_x;
+		size_t bottom_len = strlen(bottom_str) + 1;
+		size_t top_len = strlen(top_str) + 1;
+		BOOL ret;
+
+		GetTextExtentPoint32(hdc, bottom_str, bottom_len, &str_size);
+		bottom_w = str_size.cx;
+
+		hFontOrig = SelectObject(hdc, hFontRuby);
+
+		GetTextExtentPoint32(hdc, top_str, top_len, &str_size);
+		top_w = str_size.cx;
+
+		top_x = (bottom_w / 2) - (top_w / 2) + bottom_x;
+
+		ret = TextOutU(hdc, top_x, top_y, top_str, top_len);
+
+		SelectObject(hdc, hFontOrig);
+		return ret;
+	}
+}
+
 BOOL WINAPI layout_TextOutU(
 	__in HDC hdc,
 	__in int orig_x,
@@ -84,6 +124,9 @@ BOOL WINAPI layout_TextOutU(
 ) {
 	HBITMAP hBitmap = (HBITMAP)GetCurrentObject(hdc, OBJ_BITMAP);
 	HFONT hFontOrig = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
+	HFONT hFontRuby = NULL;
+
+	LOGFONT font_orig;
 
 	BOOL ret;
 	json_t *tokens;
@@ -92,6 +135,7 @@ BOOL WINAPI layout_TextOutU(
 
 	int i = 0;
 	int cur_x = orig_x;
+	int ruby_y;
 	size_t cur_tab = 0;
 
 	if(!lpString || !c) {
@@ -109,6 +153,10 @@ BOOL WINAPI layout_TextOutU(
 		DIBSECTION dibsect;
 		GetObject(hBitmap, sizeof(DIBSECTION), &dibsect);
 		bitmap_width = dibsect.dsBm.bmWidth;
+	}
+	if(hFontOrig) {
+		// could change after a layout command
+		GetObject(hFontOrig, sizeof(LOGFONT), &font_orig);
 	}
 
 	tokens = json_array();
@@ -139,10 +187,30 @@ BOOL WINAPI layout_TextOutU(
 		i += cur_len;
 	}
 
+	// Preprocessing
+	json_array_foreach(tokens, i, token) {
+		if(json_is_array(token)) {
+			const char *cmd = json_array_get_string(token, 0);
+			// If we have ruby, derive a smaller font from the current one
+			// and shift down orig_y
+			if(!hFontRuby && strchr(cmd, 'f')) {
+				LOGFONT font_ruby;
+				memcpy(&font_ruby, &font_orig, sizeof(LOGFONT));
+				font_ruby.lfHeight /= 2.25;
+				font_ruby.lfWidth /= 2.25;
+				font_ruby.lfWeight = 0;
+				font_ruby.lfQuality = NONANTIALIASED_QUALITY;
+				hFontRuby = CreateFontIndirect(&font_ruby);
+				ruby_y = orig_y;
+				orig_y += font_ruby.lfHeight / 2.5;
+			}
+		}
+	}
+
+	// Layout!
 	json_array_foreach(tokens, i, token) {
 		const char *draw_str = NULL;
 		HFONT hFontNew = NULL;
-		int font_recreate = 0;
 		size_t cur_w = 0;
 		SIZE str_size;
 
@@ -155,10 +223,11 @@ BOOL WINAPI layout_TextOutU(
 			size_t tab_end;
 			// We're guaranteed to have at least p1 if we come here
 			size_t p1_len = strlen(p1) + 1;
-			LOGFONT font;
 
-			// could change after a layout command
-			GetObject(hFontOrig, sizeof(LOGFONT), &font);
+			LOGFONT font_new;
+			int font_recreate = 0;
+
+			memcpy(&font_new, &font_orig, sizeof(LOGFONT));
 
 			GetTextExtentPoint32(hdc, p1, p1_len, &str_size);
 			cur_w = str_size.cx;
@@ -212,19 +281,24 @@ BOOL WINAPI layout_TextOutU(
 						break;
 					case 'b':
 						// Bold font
-						font.lfWeight *= 2;
+						font_new.lfWeight *= 2;
 						font_recreate = 1;
 						break;
 					case 'i':
 						// Italic font
-						font.lfItalic = TRUE;
+						font_new.lfItalic = TRUE;
 						font_recreate = 1;
+						break;
+					case 'f':
+						// Ruby
+						layout_textout_ruby(hdc, cur_x, p1, ruby_y, p2, hFontRuby);
+						tab_end = 0;
 						break;
 				}
 				p++;
 			}
 			if(font_recreate) {
-				hFontNew = CreateFontIndirect(&font);
+				hFontNew = CreateFontIndirect(&font_new);
 				SelectObject(hdc, hFontNew);
 				GetTextExtentPoint32(hdc, p1, p1_len, &str_size);
 				tab_end = cur_x + str_size.cx;
@@ -241,12 +315,15 @@ BOOL WINAPI layout_TextOutU(
 		if(draw_str) {
 			ret = TextOutU(hdc, cur_x, orig_y, draw_str, strlen(draw_str));
 		}
-		if(font_recreate) {
+		if(hFontNew) {
 			SelectObject(hdc, hFontOrig);
 			DeleteObject(hFontNew);
 			hFontNew = NULL;
 		}
 		cur_x += cur_w;
+	}
+	if(hFontRuby) {
+		DeleteObject(hFontRuby);
 	}
 	json_decref(tokens);
 	return ret;
