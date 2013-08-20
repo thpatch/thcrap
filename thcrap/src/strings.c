@@ -56,19 +56,16 @@ const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
 	}
 	str_len = _vscprintf(format, va) + 1;
 	{
-		VLA(char, str, str_len * UTF8_MUL);
-		VLA(wchar_t, str_w, str_len);
+		VLA(char, str, str_len);
+		char *str_utf8 = NULL;
 		char addr_key[addr_key_len];
 
 		sprintf(addr_key, "0x%x", addr);
-
 		vsprintf(str, format, va);
-		// Ensure UTF-8. *Very important*, since json_string verifies the string
-		// and returns zero if it's invalid UTF-8!
-		StringToUTF16(str_w, str, str_len);
-		StringToUTF8(str, str_w, str_len);
 
-		json_object_set_new(sprintf_storage, addr_key, json_string(str));
+		str_utf8 = EnsureUTF8(str, str_len);
+		json_object_set_new(sprintf_storage, addr_key, json_string(str_utf8));
+		SAFE_FREE(str_utf8);
 
 		ret = json_object_get_string(sprintf_storage, addr_key);
 		if(!ret) {
@@ -76,7 +73,6 @@ const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
 			ret = format;
 		}
 		VLA_FREE(str);
-		VLA_FREE(str_w);
 	}
 	return ret;
 }

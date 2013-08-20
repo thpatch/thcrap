@@ -77,17 +77,7 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	fn_len = strlen(*file_name) + 1;
-
-	{
-		// Make a copy of the file name, ensuring UTF-8 in the process
-		VLA(wchar_t, fn_w, fn_len);
-		StringToUTF16(fn_w, *file_name, fn_len);
-
-		fr->name = (char*)malloc(fn_len * UTF8_MUL * sizeof(char));
-		StringToUTF8(fr->name, fn_w, fn_len);
-		VLA_FREE(fn_w);
-	}
-
+	fr->name = EnsureUTF8(*file_name, fn_len);
 	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->rep_size);
 	fr->hooks = patchhooks_build(fr->name);
 	if(fr->hooks) {

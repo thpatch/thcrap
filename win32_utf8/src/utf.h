@@ -22,3 +22,7 @@ wchar_t* StringToUTF16_VLA(wchar_t *str_w, const char *str_mb, size_t str_len);
 
 // Converts a UTF-16 string to UTF-8
 int StringToUTF8(char *str_utf8, const wchar_t *str_w, size_t str_len);
+
+// Returns [str] in UTF-8.
+// Return value has to be free()d by the caller!
+char* EnsureUTF8(const char *str, size_t str_len);
