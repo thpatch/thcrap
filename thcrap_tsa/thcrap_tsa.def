@@ -56,6 +56,7 @@ EXPORTS
 	layout_DeleteDC
 	layout_TextOutU
 
+	GetTextExtentBase
 	GetTextExtent
 	GetTextExtentForFont
 

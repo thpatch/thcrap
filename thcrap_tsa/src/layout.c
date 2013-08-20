@@ -386,7 +386,7 @@ BOOL WINAPI layout_TextOutU(
 }
 /// ----------------
 
-size_t __stdcall GetTextExtent(const char *str)
+size_t __stdcall GetTextExtentBase(const char *str)
 {
 	SIZE size;
 	size_t str_len = 0;
@@ -397,6 +397,28 @@ size_t __stdcall GetTextExtent(const char *str)
 	GetTextExtentPoint32(text_dc, str, str_len, &size);
 	log_printf("GetTextExtent('%s') = %d -> %d\n", str, size.cx, size.cx / 2);
 	return (size.cx / 2);
+}
+
+size_t __stdcall GetTextExtent(const char *str)
+{
+	json_t *tokens = layout_tokenize(str, strlen(str));
+	json_t *token;
+	size_t i;
+	size_t ret = 0;
+	if(!tokens) {
+		return NULL;
+	}
+	json_array_foreach(tokens, i, token) {
+		if(json_is_array(token)) {
+			// p1 is the one that's going to be printed.
+			// TODO: full layout width calculations all over again?
+			ret += GetTextExtentBase(json_array_get_string(token, 1));
+		} else if(json_is_string(token)) {
+			ret += GetTextExtentBase(json_string_value(token));
+		}
+	}
+	json_decref(tokens);
+	return ret;
 }
 
 size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font)

@@ -22,8 +22,11 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len);
 json_t* layout_tokenize(const char *str, size_t len);
 /// ------------
 
+// Raw text width calculation, without taking layout markup into account.
+size_t __stdcall GetTextExtentBase(const char *str);
+
 // Calculates the rendered length of [str] on the current text DC
-// with the currently selected font.
+// with the currently selected font, taking layout markup into account.
 size_t __stdcall GetTextExtent(const char *str);
 
 // GetTextExtent with an additional font parameter.
