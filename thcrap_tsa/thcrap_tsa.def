@@ -38,6 +38,10 @@ EXPORTS
 
 	; Music
 	; -----
+	music_title_get
+	music_title_print
+
+	BP_music_title
 	BP_music_cmt
 
 	music_init
