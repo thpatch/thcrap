@@ -149,18 +149,8 @@ EXPORTS
 	; Text display
 	; ------------
 	textdisp_CreateFontA
-	textdisp_SelectObject
-	textdisp_CreateCompatibleDC
-	textdisp_DeleteDC
-
-	GetTextExtent
-	GetTextExtentForFont
-
 	patch_fonts_load
-
-	textdisp_init
 	textdisp_patch
-	textdisp_exit
 
 	; Plugins
 	; -------

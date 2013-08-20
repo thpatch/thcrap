@@ -9,6 +9,7 @@
 
 #include <thcrap.h>
 #include "thcrap_tsa.h"
+#include "layout.h"
 
 int __stdcall thcrap_init_plugin(json_t *run_cfg)
 {

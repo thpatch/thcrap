@@ -8,14 +8,31 @@
   */
 
 #include <thcrap.h>
-#include <textdisp.h>
+#include "layout.h"
+
+/// Functions
+/// ---------
+// Types
+typedef HDC (WINAPI *DLL_FUNC_TYPE(gdi32, CreateCompatibleDC))(HDC);
+typedef BOOL (WINAPI *DLL_FUNC_TYPE(gdi32, DeleteDC))(HDC);
+typedef HGDIOBJ (WINAPI *DLL_FUNC_TYPE (gdi32, SelectObject))(HDC, HGDIOBJ);
+
+// Pointers
+DLL_FUNC_DEF(gdi32, CreateCompatibleDC);
+DLL_FUNC_DEF(gdi32, DeleteDC);
+DLL_FUNC_DEF(gdi32, SelectObject);
+/// ---------
 
 /// Static global variables
 /// -----------------------
 // Array of absolute tabstop positions.
 json_t *Layout_Tabs = NULL;
+// Default device context for text rendering; referenced by GetTextExtent
+static HDC text_dc = NULL;
 /// -----------------------
 
+/// Tokenization
+/// ------------
 int layout_match_set(json_t *arr, size_t ind, const char *str, size_t len)
 {
 	// We explicitly _don't_ check for len == 0 here!
@@ -34,9 +51,6 @@ int layout_match_set(json_t *arr, size_t ind, const char *str, size_t len)
 	}
 }
 
-// Matches at most [len] bytes of layout markup at the beginning of [str].
-// Returns an array with the layout parameters and, optionally,
-// the full length of the layout markup in [str] in [match_len].
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
 {
 	const char *end = NULL;
@@ -75,9 +89,6 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 	return ret;
 }
 
-// Split the string into an array of tokens to render in a sequence.
-// These are either strings (= direct text)
-// or arrays in itself (= layout commands).
 json_t* layout_tokenize(const char *str, size_t len)
 {
 	json_t *ret;
@@ -111,6 +122,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 	}
 	return ret;
 }
+/// ------------
 
 // Outputs the ruby annotation [top_str], relative to [bottom_str] starting at
 // [bottom_x], at [top_y] with [hFontRuby] on [hdc]. :)
@@ -149,6 +161,39 @@ BOOL layout_textout_ruby(
 
 		SelectObject(hdc, hFontOrig);
 		return ret;
+	}
+}
+
+/// Hooked functions
+/// ----------------
+// Games prior to MoF call this every time a text is rendered.
+// However, we require the DC to be present at all times for GetTextExtent.
+// Thus, we keep only one DC in memory (the game doesn't need more anyway).
+HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
+{
+	if(!text_dc) {
+		HDC ret = DLL_FUNC(gdi32, CreateCompatibleDC)(hdc);
+		text_dc = ret;
+		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
+	}
+	return text_dc;
+}
+
+BOOL WINAPI layout_DeleteDC( __in HDC hdc)
+{
+	// Bypass this function - we delete our DC on layout_exit()
+	return 1;
+}
+
+HGDIOBJ WINAPI layout_SelectObject(
+	__in HDC hdc,
+	__in HGDIOBJ h
+	)
+{
+	if(h == GetStockObject(SYSTEM_FONT)) {
+		return GetCurrentObject(hdc, OBJ_FONT);
+	} else {
+		return DLL_FUNC(gdi32, SelectObject)(hdc, h);
 	}
 }
 
@@ -339,12 +384,46 @@ BOOL WINAPI layout_TextOutU(
 	json_decref(tokens);
 	return ret;
 }
+/// ----------------
 
-void layout_init(HMODULE hMod)
+size_t __stdcall GetTextExtent(const char *str)
 {
+	SIZE size;
+	size_t str_len = 0;
+	if(!str) {
+		return 0;
+	}
+	str = strings_lookup(str, &str_len);
+	GetTextExtentPoint32(text_dc, str, str_len, &size);
+	log_printf("GetTextExtent('%s') = %d -> %d\n", str, size.cx, size.cx / 2);
+	return (size.cx / 2);
+}
+
+size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font)
+{
+	HGDIOBJ prev_font = layout_SelectObject(text_dc, font);
+	size_t ret = GetTextExtent(str);
+	layout_SelectObject(text_dc, prev_font);
+	return ret;
+}
+
+int layout_init(HMODULE hMod)
+{
+	HMODULE hGDI32 = GetModuleHandleA("gdi32.dll");
+	if(!hGDI32) {
+		return -1;
+	}
+	// Required functions
+	DLL_GET_PROC_ADDRESS(hGDI32, gdi32, CreateCompatibleDC);
+	DLL_GET_PROC_ADDRESS(hGDI32, gdi32, DeleteDC);
+	DLL_GET_PROC_ADDRESS(hGDI32, gdi32, SelectObject);
+
 	Layout_Tabs = json_array();
 
-	iat_patch_funcs_var(GetModuleHandle(NULL), "gdi32.dll", 1,
+	return iat_patch_funcs_var(GetModuleHandle(NULL), "gdi32.dll", 4,
+		"CreateCompatibleDC", layout_CreateCompatibleDC,
+		"DeleteDC", layout_DeleteDC,
+		"SelectObject", layout_SelectObject,
 		"TextOutA", layout_TextOutU
 	);
 }
@@ -352,4 +431,7 @@ void layout_init(HMODULE hMod)
 void layout_exit()
 {
 	json_decref(Layout_Tabs);
+	if(DLL_FUNC(gdi32, DeleteDC) && text_dc) {
+		DLL_FUNC(gdi32, DeleteDC)(text_dc);
+	}
 }

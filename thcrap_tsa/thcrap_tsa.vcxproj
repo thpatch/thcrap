@@ -61,6 +61,7 @@
     <None Include="thcrap_tsa.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\layout.h" />
     <ClInclude Include="src\thcrap_tsa.h" />
   </ItemGroup>
 </Project>

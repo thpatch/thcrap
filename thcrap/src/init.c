@@ -227,9 +227,7 @@ int thcrap_init(const char *setup_fn)
 	log_printf("Run configuration file: %s\n\n", setup_fn);
 
 	win32_patch(hProc);
-	if(!textdisp_init(hProc)) {
-		textdisp_patch(hProc);
-	}
+	textdisp_patch(hProc);
 	
 	GetModuleFileName(NULL, exe_fn, MAX_PATH * 4);
 	log_printf("EXE file name: %s\n", exe_fn);

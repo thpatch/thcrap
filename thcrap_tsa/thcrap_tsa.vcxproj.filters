@@ -45,5 +45,8 @@
     <ClInclude Include="src\thcrap_tsa.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\layout.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

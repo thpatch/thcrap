@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Format patcher declarations.
+  * Main include file.
   */
 
 #pragma once
@@ -134,16 +134,6 @@ int patch_msg_dlg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch,
 int patch_msg_end(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 int patch_anm(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 /// ---------------
-
-/// Text layout
-/// -----------
-// Split [str] into an array of tokens to render in a sequence. These are
-// either strings (= direct text) or arrays in itself (= layout commands).
-json_t* layout_tokenize(const char *str, size_t len);
-
-void layout_init(HMODULE hMod);
-void layout_exit();
-/// -----------
 
 /// Music Room
 /// ----------
