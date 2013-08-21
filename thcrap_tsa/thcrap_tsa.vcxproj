@@ -56,6 +56,7 @@
     <ClCompile Include="src\spells.c" />
     <ClCompile Include="src\th06_msg.c" />
     <ClCompile Include="src\thcrap_tsa.c" />
+    <ClCompile Include="src\win32_tsa.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_tsa.def" />

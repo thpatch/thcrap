@@ -31,6 +31,7 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 int InitDll(HMODULE hDll)
 {
 	layout_init(hDll);
+	win32_tsa_patch(GetModuleHandle(NULL));
 	return 0;
 }
 

@@ -35,6 +35,9 @@
     <ClCompile Include="src\music.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\win32_tsa.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_tsa.def">
