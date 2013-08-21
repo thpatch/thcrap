@@ -31,15 +31,17 @@ void win32_patch(HMODULE hMod)
 		"GetTextExtentPoint32A", GetTextExtentPoint32U
 	);
 
-	iat_patch_funcs_var(hMod, "user32.dll", 7,
-		"RegisterClassA", RegisterClassU,
-		"RegisterClassExA", RegisterClassExU,
+	iat_patch_funcs_var(hMod, "user32.dll", 9,
+		"CharNextA", CharNextU,
+		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,
-		"SetWindowTextA", SetWindowTextU,
 		// Yep, both original functions use the same parameters
 		"DefWindowProcA", DefWindowProcW,
+		"DialogBoxParamA", DialogBoxParamU,
 		"MessageBoxA", MessageBoxU,
-		"CharNextA", CharNextU
+		"RegisterClassA", RegisterClassU,
+		"RegisterClassExA", RegisterClassExU,
+		"SetWindowTextA", SetWindowTextU
 	);
 
 	iat_patch_funcs_var(hMod, "shlwapi.dll", 3,

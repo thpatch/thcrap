@@ -18,7 +18,9 @@ EXPORTS
 	; user32.dll
 	; ----------
 	CharNextU
+	CreateDialogParamU
 	CreateWindowExU
+	DialogBoxParamU
 	MessageBoxU
 	RegisterClassU
 	RegisterClassExU
