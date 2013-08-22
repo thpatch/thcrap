@@ -389,25 +389,24 @@ BOOL WINAPI layout_TextOutU(
 size_t __stdcall GetTextExtentBase(const char *str)
 {
 	SIZE size;
-	size_t str_len = 0;
 	if(!str) {
 		return 0;
 	}
-	str = strings_lookup(str, &str_len);
-	GetTextExtentPoint32(text_dc, str, str_len, &size);
+	GetTextExtentPoint32(text_dc, str, strlen(str), &size);
 	log_printf("GetTextExtent('%s') = %d -> %d\n", str, size.cx, size.cx / 2);
 	return (size.cx / 2);
 }
 
 size_t __stdcall GetTextExtent(const char *str)
 {
-	json_t *tokens = layout_tokenize(str, strlen(str));
+	json_t *tokens;
 	json_t *token;
 	size_t i;
 	size_t ret = 0;
-	if(!tokens) {
-		return NULL;
-	}
+	size_t str_len;
+
+	str = strings_lookup(str, &str_len);
+	tokens = layout_tokenize(str, str_len);
 	json_array_foreach(tokens, i, token) {
 		if(json_is_array(token)) {
 			// p1 is the one that's going to be printed.
