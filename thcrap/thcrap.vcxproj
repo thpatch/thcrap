@@ -43,6 +43,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\dialog.c" />
     <ClCompile Include="src\mempatch.c" />
     <ClCompile Include="src\binhack.c" />
     <ClCompile Include="src\bp_file.c" />
@@ -66,6 +67,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h" />
+    <ClInclude Include="src\dialog.h" />
     <ClInclude Include="src\mempatch.h" />
     <ClInclude Include="src\binhack.h" />
     <ClInclude Include="src\bp_file.h" />

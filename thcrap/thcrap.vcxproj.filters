@@ -59,6 +59,9 @@
     <ClCompile Include="src\strings.c">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="src\dialog.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\binhack.h">
@@ -113,6 +116,9 @@
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\strings.h">
+      <Filter>Source files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dialog.h">
       <Filter>Source files</Filter>
     </ClInclude>
   </ItemGroup>
