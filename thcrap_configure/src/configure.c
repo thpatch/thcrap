@@ -255,12 +255,18 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	}
 
 	{
-		// Double the height of the console window
+		// Maximize the height of the console window
 		CONSOLE_SCREEN_BUFFER_INFO sbi = {0};
+		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+		COORD largest = GetLargestConsoleWindowSize(console);
+		HWND console_wnd = GetConsoleWindow();
+		RECT console_rect;
 
-		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &sbi);
-		sbi.srWindow.Bottom *= 2;
-		SetConsoleWindowInfo(GetStdHandle(STD_OUTPUT_HANDLE), TRUE, &sbi.srWindow);
+		GetWindowRect(console_wnd, &console_rect);
+		SetWindowPos(console_wnd, NULL, console_rect.left, 0, 0, 0, SWP_NOSIZE);
+		GetConsoleScreenBufferInfo(console, &sbi);
+		sbi.srWindow.Bottom = largest.Y - 4;
+		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
 	}
 
 	inet_init();
