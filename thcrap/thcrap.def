@@ -152,6 +152,23 @@ EXPORTS
 	patch_fonts_load
 	textdisp_patch
 
+	; Win32 dialogs
+	; -------------
+	sz_or_ord_size
+	sz_or_ord_build
+
+	dialog_template_ex_size
+	dialog_template_ex_build
+
+	dialog_item_template_ex_size
+	dialog_item_template_ex_build
+
+	dialog_translate
+
+	dialog_CreateDialogParamA
+	dialog_DialogBoxParamA
+	dialog_patch
+
 	; Plugins
 	; -------
 	plugins_load

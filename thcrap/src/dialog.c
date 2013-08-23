@@ -10,18 +10,68 @@
 #include <thcrap.h>
 #include "dialog.h"
 
-// * DLGTEMPLATE(EX) are not real structures
-// * These are models with correct pointers, blah
+/**
+  * Oh boy. Where should I start.
+  *
+  * Win32 dialog resources consist of one DLGTEMPLATE(EX) followed by a number
+  * of DLGITEMTEMPLATE(EX) structures. All structures are DWORD-aligned.
+  * Now, these aren't actual C structures... because all their strings (which,
+  * luckily, are always UTF-16) are *directly placed inside the structure*, in
+  * all their variable-width glory.
+  *
+  * The only way to patch these is to rebuild all these structures completely,
+  * replacing strings as needed.
+  *
+  * But wait, how much memory do we need for the new replacement dialog?
+  *
+  * This leaves us with 3 options:
+  *
+  *	1. Build accessible C structures from the resorce data, set translations,
+  *	   get the target size, allocate the target buffer, and build (3 loops)
+  *	2. Get the size of all original structures with translations applied,
+  *	   allocate the target buffer, and build (2 loops)
+  *	3. Just build the target buffer dynamically, reallocating space
+  *	   on every step (1 loop)
+  *
+  * I went with option 2 here. 
+  *
+  * All that, however, doesn't help against the fact that Win32 dialog patching
+  * is scary stuff. Every single line of code here has the potential to crash
+  * the game or simply make the dialog not appear at all. So let's make the code
+  * as as concise, abstracted, consistent and readable as possible:
+  *
+  *	* There are three data types we care about: sz_Or_Ord (= everything that
+  *	  can be a string), DLGTEMPLATEEX and DLGITEMTEMPLATEEX.
+  *	* Each of these types has a _size function (to calculate the size of the
+  *	  structure with applied translations) and a _build function (to actually
+  *	  build that new translated structure).
+  *
+  *	* [src] is always advanced by helper functions.
+  *	* Helper functions always return the patched length, which the callers
+  *	  use to advance [dst].
+  *
+  *	All replacement strings are pulled from the string definition table.
+  *	A dialog specification file ("dialog_<resourcename>.js") contains IDs of
+  *	all translatable strings. The IDs for the DLGITEMTEMPLATEEX structures are
+  *	stored in the array "items", in the order in which they appear in the
+  *	original resource.
+  */
 
+/// Structures
+/// ----------
+// Ordinal-or-string structure
 typedef union {
 	struct {
 		WORD ord_flag;
-		// If ord_flag is 0x0000, this isn't even there
+		// If ord_flag is 0x0000, this is not present,
+		// and the structure is just 2 bytes long.
 		WORD ord;
 	};
-	LPCWSTR sz;
+	// Null-terminated string, stored in-place.
+	wchar_t sz;
 } sz_Or_Ord;
 
+// Constant-width part of the dialog header structure
 typedef struct {
 #ifdef PACK_PRAGMA
 #pragma pack(push,1)
@@ -36,24 +86,32 @@ typedef struct {
 	short y;
 	short cx;
 	short cy;
+/**
+  * Variable parts of the structure that follow:
+  *
 	// name or ordinal of a menu resource
 	sz_Or_Ord menu;
 	// name or ordinal of a window class
 	sz_Or_Ord windowClass;
 	// title string of the dialog box
-	LPCWSTR title;
+	wchar_t title[];
 
-	// The following need DS_SETFONT to be set in [style].
+	// The following are only present if DS_SETFONT to be set in [style].
 	WORD pointsize;
 	WORD weight;
 	BYTE italic;
 	BYTE charset;
-	LPCWSTR typeface;
+	wchar_t typeface[];
+*/
 #ifdef PACK_PRAGMA
 #pragma pack(pop)
 #endif
-} PACK_ATTRIBUTE DLGTEMPLATEEX_MOD;
+} PACK_ATTRIBUTE DLGTEMPLATEEX_START;
 
+#define DLGTEMPLATEEX_FONT_BLOCK_LEN \
+	sizeof(WORD) + sizeof(WORD) + sizeof(BYTE) + sizeof(BYTE)
+
+// Constant-width part of the dialog item structure
 typedef struct {
 #ifdef PACK_PRAGMA
 #pragma pack(push,1)
@@ -66,204 +124,189 @@ typedef struct {
 	short cx;
 	short cy;
 	DWORD id;
+/**
+  * Variable parts of the structure that follow:
+  *
 	sz_Or_Ord windowClass;
 	sz_Or_Ord title;
 	WORD extraCount;
-	const void *extraData;
+	BYTE extraData[];
+*/
 #ifdef PACK_PRAGMA
 #pragma pack(pop)
 #endif
-} PACK_ATTRIBUTE DLGITEMTEMPLATEEX_MOD;
+} PACK_ATTRIBUTE DLGITEMTEMPLATEEX_START;
+/// ----------
 
-unsigned char* memcpy_advance_src(void *dst, const void *src, size_t num)
+/// Helper functions
+/// ----------------
+size_t dword_align(const size_t val)
 {
-	memcpy(dst, src, num);
-	return (unsigned char*)src + num;
+	return (val + 3) & ~3;
 }
 
-unsigned char* memcpy_advance_dst(void *dst, const void *src, size_t num)
+BYTE* ptr_dword_align(const BYTE *in)
 {
-	memcpy(dst, src, num);
-	return (unsigned char*)dst + num;
+	return (BYTE*)dword_align((UINT_PTR)in);
 }
 
-const BYTE* wcs_assign_advance_src(const wchar_t **dst, const wchar_t *src)
+size_t ptr_advance(const unsigned char **src, size_t num)
 {
-	*dst = src;
-	// Pointer arithmetic!
-	return (const BYTE*)src + (wcslen(*dst) + 1) * 2;
+	*src += num;
+	return num;
 }
 
-// Returns [src] plus its actual size.
-const BYTE* sz_or_ord_parse(sz_Or_Ord* dst, const sz_Or_Ord* src)
+size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num)
 {
-	if(!dst || !src) {
-		return NULL;
-	}
-	if(src->ord_flag == 0) {
-		dst->ord_flag = 0;
-		dst->ord = 0;
-		return (BYTE*)(src) + sizeof(WORD);
-	} else if(src->ord_flag == 0xffff) {
-		return memcpy_advance_src(dst, src, sizeof(sz_Or_Ord));
+	memcpy(dst, *src, num);
+	return ptr_advance(src, num);
+}
+/// ----------------
+
+/// sz_or_Ord
+/// ---------
+size_t sz_or_ord_size(const BYTE **src, const char *rep)
+{
+	if(src) {
+		const sz_Or_Ord *src_sz = (sz_Or_Ord*)*src;
+		size_t ret;
+		if(src_sz->ord_flag == 0) {
+			ret = 2;
+		} else if(src_sz->ord_flag == 0xffff) {
+			ret = 4;
+		} else {
+			ret = (wcslen(&src_sz->sz) + 1) * sizeof(wchar_t);
+		}
+		*src += ret;
+		if(rep) {
+			ret = StringToUTF16(NULL, rep, -1) * sizeof(wchar_t);
+		}
+		return ret;
 	} else {
-		return wcs_assign_advance_src(&dst->sz, (LPCWSTR)&src->sz);
-	}
-}
-
-size_t sz_or_ord_rep(const sz_Or_Ord* obj, const char *rep)
-{
-	if(!obj) {
-		return 0;
-	} else if(rep) {
-		return MultiByteToWideChar(CP_UTF8, 0, rep, -1, NULL, 0) * sizeof(wchar_t);
-	} else if(obj->ord_flag == 0) {
-		return 2;
-	} else if(obj->ord_flag == 0xffff) {
-		return 4;
-	} else {
-		return (wcslen(obj->sz) + 1) * sizeof(wchar_t);
-	}
-}
-
-BYTE* sz_or_ord_build(BYTE* dst, const sz_Or_Ord* src, const char *rep)
-{
-	size_t dst_len = sz_or_ord_rep(src, rep);
-	if(!dst || !src) {
-		return NULL;
-	}
-	if(rep) {
-		StringToUTF16((wchar_t*)dst, rep, strlen(rep) + 1);
-	} else if(src->ord_flag == 0 || src->ord_flag == 0xffff) {
-		memcpy(dst, src, dst_len);
-	} else {
-		memcpy(dst, src->sz, dst_len);
-	}
-	return dst + dst_len;
-}
-
-// Returns [src] plus its actual size.
-const BYTE* dialog_template_ex_parse(DLGTEMPLATEEX_MOD *dst, const BYTE *src)
-{
-	size_t first_len = offsetof(DLGTEMPLATEEX_MOD, menu);
-	if(!dst || !src) {
-		return NULL;
-	}
-	ZeroMemory(dst, sizeof(DLGTEMPLATEEX_MOD));
-	// Copy everything up to the first mixed-type values
-	src = memcpy_advance_src(dst, src, first_len);
-
-	src = sz_or_ord_parse(&dst->menu, (sz_Or_Ord*)src);
-	src = sz_or_ord_parse(&dst->windowClass, (sz_Or_Ord*)src);
-
-	src = wcs_assign_advance_src(&dst->title, (const wchar_t*)src);
-
-	if(dst->style & DS_SETFONT) {
-		src = memcpy_advance_src(&dst->pointsize, src, sizeof(dst->pointsize));
-		src = memcpy_advance_src(&dst->weight, src, sizeof(dst->weight));
-		src = memcpy_advance_src(&dst->italic, src, sizeof(dst->italic));
-		src = memcpy_advance_src(&dst->charset, src, sizeof(dst->charset));
-		src = wcs_assign_advance_src(&dst->typeface, (const wchar_t*)src);
-	}
-	return (BYTE*)(((UINT_PTR)src + 3) & ~3);
-}
-
-size_t dialog_template_ex_rep(DLGTEMPLATEEX_MOD *dst, json_t *trans)
-{
-	size_t ret = offsetof(DLGTEMPLATEEX_MOD, menu);
-	const char *trans_title = strings_get(json_object_get_string(trans, "title"));
-
-	if(!dst) {
 		return 0;
 	}
-	ret += sz_or_ord_rep(&dst->menu, NULL);
-	ret += sz_or_ord_rep(&dst->windowClass, NULL);
-	ret += sz_or_ord_rep((sz_Or_Ord*)&dst->title, trans_title);
-
-	if(dst->style & DS_SETFONT) {
-		ret += sizeof(WORD) + sizeof(WORD) + sizeof(BYTE) + sizeof(BYTE);
-		ret += (wcslen(dst->typeface) + 1) * sizeof(wchar_t);
-	}
-	return (ret + 3) & ~3;
 }
 
-BYTE* dialog_template_ex_build(BYTE *dst, const DLGTEMPLATEEX_MOD *src, json_t *trans)
+size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const char *rep)
 {
-	size_t first_len = offsetof(DLGTEMPLATEEX_MOD, menu);
-	const char *trans_title = strings_get(json_object_get_string(trans, "title"));
+	if(dst && src) {
+		const sz_Or_Ord *src_sz = (sz_Or_Ord*)*src;
+		size_t dst_len = sz_or_ord_size(src, rep);
 
-	if(!dst || !src) {
-		return NULL;
-	}
-	dst = memcpy_advance_dst(dst, src, first_len);
-	dst = sz_or_ord_build(dst, &src->menu, NULL);
-	dst = sz_or_ord_build(dst, &src->windowClass, NULL);
-	dst = sz_or_ord_build(dst, (sz_Or_Ord*)&src->title, trans_title);
-
-	if(src->style & DS_SETFONT) {
-		dst = memcpy_advance_dst(dst, &src->pointsize, sizeof(src->pointsize));
-		dst = memcpy_advance_dst(dst, &src->weight, sizeof(src->weight));
-		dst = memcpy_advance_dst(dst, &src->italic, sizeof(src->italic));
-		dst = memcpy_advance_dst(dst, &src->charset, sizeof(src->charset));
-		dst = memcpy_advance_dst(dst, src->typeface, (wcslen(src->typeface) + 1) * sizeof(wchar_t));
-	}
-	return (BYTE*)(((UINT_PTR)dst + 3) & ~3);
-}
-
-const BYTE* dialog_item_template_ex_parse(DLGITEMTEMPLATEEX_MOD *dst, const BYTE *src)
-{
-	size_t first_len = offsetof(DLGITEMTEMPLATEEX_MOD, windowClass);
-	if(!dst || !src) {
-		return NULL;
-	}
-	ZeroMemory(dst, sizeof(DLGITEMTEMPLATEEX_MOD));
-	// Copy everything up to the first mixed-type values
-	src = memcpy_advance_src(dst, src, first_len);
-
-	src = sz_or_ord_parse(&dst->windowClass, (sz_Or_Ord*)src);
-	src = sz_or_ord_parse(&dst->title, (sz_Or_Ord*)src);
-
-	src = memcpy_advance_src(&dst->extraCount, src, sizeof(dst->extraCount));
-	if(dst->extraCount) {
-		dst->extraData = src;
-		src += dst->extraCount;
-	}
-	return (BYTE*)(((UINT_PTR)src + 3) & ~3);
-}
-
-size_t dialog_item_template_ex_rep(DLGITEMTEMPLATEEX_MOD *dst, json_t *trans)
-{
-	size_t ret = offsetof(DLGITEMTEMPLATEEX_MOD, windowClass);
-	const char *trans_title = strings_get(json_string_value(trans));
-	if(!dst) {
+		if(rep) {
+			StringToUTF16((wchar_t*)dst, rep, strlen(rep) + 1);
+		} else if(src_sz->ord_flag == 0 || src_sz->ord_flag == 0xffff) {
+			memcpy(dst, src_sz, dst_len);
+		} else {
+			memcpy(dst, &src_sz->sz, dst_len);
+		}
+		return dst_len;
+	} else {
 		return 0;
 	}
-	ret += sz_or_ord_rep(&dst->windowClass, NULL);
-	ret += sz_or_ord_rep(&dst->title, trans_title);
-	ret += sizeof(dst->extraCount);
-	ret += dst->extraCount;
-	return (ret + 3) & ~3;
 }
+/// ---------
 
-BYTE* dialog_item_template_ex_build(BYTE *dst, const DLGITEMTEMPLATEEX_MOD *src, json_t *trans)
+/// DLGTEMPLATEEX
+/// -------------
+size_t dialog_template_ex_size(const BYTE **src, WORD *dlg_items, json_t *trans)
 {
-	size_t first_len = offsetof(DLGITEMTEMPLATEEX_MOD, windowClass);
-	const char *trans_title = strings_get(json_string_value(trans));
-	if(!dst || !src) {
-		return NULL;
-	}
-	dst = memcpy_advance_dst(dst, src, first_len);
-	dst = sz_or_ord_build(dst, &src->windowClass, NULL);
-	dst = sz_or_ord_build(dst, &src->title, trans_title);
+	if(src) {
+		size_t ret = 0;
+		const DLGTEMPLATEEX_START *dlg_struct = (DLGTEMPLATEEX_START*)*src;
+		const char *trans_title = strings_get(json_object_get_string(trans, "title"));
+		const char *trans_font = strings_get(json_object_get_string(trans, "font"));
+	
+		ret += ptr_advance(src, sizeof(DLGTEMPLATEEX_START));
+		ret += sz_or_ord_size(src, NULL); // menu
+		ret += sz_or_ord_size(src, NULL); // windowClass
+		ret += sz_or_ord_size(src, trans_title); // title
 
-	dst = memcpy_advance_dst(dst, &src->extraCount, sizeof(src->extraCount));
-	if(src->extraCount) {
-		dst = memcpy_advance_dst(dst, src->extraData, src->extraCount);
+		if(dlg_struct->style & DS_SETFONT) {
+			ret += ptr_advance(src, DLGTEMPLATEEX_FONT_BLOCK_LEN);
+			ret += sz_or_ord_size(src, trans_font); // typeface
+		}
+		if(dlg_items) {
+			*dlg_items = dlg_struct->cDlgItems;
+		}
+		*src = ptr_dword_align(*src);
+		return dword_align(ret);
+	} else {
+		return 0;
 	}
-	return (BYTE*)(((UINT_PTR)dst + 3) & ~3);
 }
 
-void* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
+size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, json_t *trans)
+{
+	if(dst && src && *src) {
+		BYTE *dst_start = dst;
+		DLGTEMPLATEEX_START *dst_header = (DLGTEMPLATEEX_START*)dst_start;
+		const char *trans_title = strings_get(json_object_get_string(trans, "title"));
+		const char *trans_font = strings_get(json_object_get_string(trans, "font"));
+
+		dst += memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_START));
+		dst += sz_or_ord_build(dst, src, NULL); // menu
+		dst += sz_or_ord_build(dst, src, NULL); // windowClass
+		dst += sz_or_ord_build(dst, src, trans_title);
+
+		if(dlg_struct->style & DS_SETFONT) {
+			dst += memcpy_advance_src(dst, src, DLGTEMPLATEEX_FONT_BLOCK_LEN);
+			dst += sz_or_ord_build(dst, src, trans_font); // typeface
+		}
+		*src = ptr_dword_align(*src);
+		return ptr_dword_align(dst) - dst_start;
+	} else {
+		return 0;
+	}
+}
+/// -------------
+
+/// DLGITEMTEMPLATEEX
+/// -----------------
+size_t dialog_item_template_ex_size(const BYTE **src, json_t *trans)
+{
+	if(src) {
+		size_t ret = 0;
+		WORD extraCount;
+		const char *trans_title = strings_get(json_string_value(trans));
+	
+		ret += ptr_advance(src, sizeof(DLGITEMTEMPLATEEX_START));
+		ret += sz_or_ord_size(src, NULL); // windowClass
+		ret += sz_or_ord_size(src, trans_title); // title
+	
+		extraCount = *(WORD*)*src;
+		ret += ptr_advance(src, sizeof(WORD) + extraCount);
+
+		*src = ptr_dword_align(*src);
+		return dword_align(ret);
+	} else {
+		return 0;
+	}
+}
+
+size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, json_t *trans)
+{
+	if(dst && src && *src) {
+		BYTE *dst_start = dst;
+		WORD extraCount;
+		const char *trans_title = strings_get(json_string_value(trans));
+
+		dst += memcpy_advance_src(dst, src, sizeof(DLGITEMTEMPLATEEX_START));
+		dst += sz_or_ord_build(dst, src, NULL); // windowClass
+		dst += sz_or_ord_build(dst, src, trans_title);
+
+		extraCount = *((WORD*)*src);
+		dst += memcpy_advance_src(dst, src, extraCount + sizeof(WORD));
+
+		*src = ptr_dword_align(*src);
+		return ptr_dword_align(dst) - dst_start;
+	} else {
+		return 0;
+	}
+}
+/// -----------------
+
+DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 {
 	void *dlg_out = NULL;
 	json_t *trans = NULL;
@@ -300,38 +343,36 @@ void* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 		trans = stack_game_json_resolve(fn, NULL);
 	}
 	if(trans) {
-		const BYTE *src = (BYTE*)hDlg;
-		const DLGTEMPLATEEX_MOD *dlg_in = (DLGTEMPLATEEX_MOD*)hDlg;
+		const DLGTEMPLATEEX_START *dlg_in = (DLGTEMPLATEEX_START*)hDlg;
 		json_t *trans_controls = json_object_get(trans, "items");
 
 #ifdef _DEBUG
 	Sleep(10000);
 #endif
 		if(dlg_in->dlgVer == 1 && dlg_in->signature == 0xffff) {
-			void *dst;
-			DLGTEMPLATEEX_MOD dlg_model;
-			DLGITEMTEMPLATEEX_MOD *dlg_item_model = NULL;
-			size_t trans_size = 0;
+			const BYTE *src = (BYTE*)hDlg;
+			BYTE *dst;
 			size_t i;
+			WORD dlg_items;
+			size_t dlg_out_len = 0;
 
-			src = dialog_template_ex_parse(&dlg_model, src);
-			trans_size += dialog_template_ex_rep(&dlg_model, trans);
+			dlg_out_len += dialog_template_ex_size(&src, &dlg_items, trans);
 
-			dlg_item_model = calloc(dlg_model.cDlgItems, sizeof(DLGITEMTEMPLATEEX_MOD));
-			for(i = 0; i < dlg_model.cDlgItems; i++) {
+			for(i = 0; i < dlg_items; i++) {
 				json_t *trans_item = json_array_get(trans_controls, i);
-				src = dialog_item_template_ex_parse(&dlg_item_model[i], src);
-				trans_size += dialog_item_template_ex_rep(&dlg_item_model[i], trans_item);
+				dlg_out_len += dialog_item_template_ex_size(&src, trans_item);
 			}
 
-			dst = dlg_out = malloc(trans_size);
+			dlg_out = malloc(dlg_out_len);
 
-			dst = dialog_template_ex_build((BYTE*)dst, &dlg_model, trans);
-			for(i = 0; i < dlg_model.cDlgItems; i++) {
+			dst = (BYTE*)dlg_out;
+			src = (BYTE*)hDlg;
+
+			dst += dialog_template_ex_build(dst, &src, trans);
+			for(i = 0; i < dlg_items; i++) {
 				json_t *trans_item = json_array_get(trans_controls, i);
-				dst = dialog_item_template_ex_build((BYTE*)dst, &dlg_item_model[i], trans_item);
-			}
-			SAFE_FREE(dlg_item_model);
+				dst += dialog_item_template_ex_build(dst, &src, trans_item);
+			};
 		}
 	}
 	json_decref(trans);
@@ -354,8 +395,8 @@ HWND WINAPI dialog_CreateDialogParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = CreateDialogParamW(
-			hInstance, (LPCWSTR)lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
+		ret = CreateDialogParamU(
+			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
 	return ret;

@@ -10,7 +10,6 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
-#include <stddef.h>
 #include <shlwapi.h>
 #include <win32_utf8.h>
 #include <jansson.h>
