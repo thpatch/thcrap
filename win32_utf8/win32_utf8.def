@@ -21,6 +21,7 @@ EXPORTS
 	CreateDialogParamU
 	CreateWindowExU
 	DialogBoxParamU
+	DrawTextU
 	MessageBoxU
 	RegisterClassU
 	RegisterClassExU

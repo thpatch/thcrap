@@ -55,6 +55,16 @@ INT_PTR WINAPI DialogBoxParamU(
 #undef DialogBoxParam
 #define DialogBoxParam DialogBoxParamU
 
+int WINAPI DrawTextU(
+    __in HDC hdc,
+    __inout_ecount_opt(cchText) LPCSTR lpchText,
+    __in int cchText,
+    __inout LPRECT lprc,
+    __in UINT format
+);
+#undef DrawText
+#define DrawText DrawTextU
+
 int WINAPI MessageBoxU(
 	__in_opt HWND hWnd,
 	__in_opt LPCSTR lpText,

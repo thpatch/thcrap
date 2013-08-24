@@ -104,6 +104,21 @@ INT_PTR WINAPI DialogBoxParamU(
 	return DialogBoxParamW(hInstance, lptn_w, hWndParent, lpDialogFunc, dwInitParam);
 }
 
+int WINAPI DrawTextU(
+    __in HDC hdc,
+    __inout_ecount_opt(cchText) LPCSTR lpchText,
+    __in int cchText,
+    __inout LPRECT lprc,
+    __in UINT format
+)
+{
+	int ret;
+	FixedLengthStringConvert(lpchText, cchText);
+	ret = DrawTextW(hdc, lpchText_w, wcslen(lpchText_w) + 1, lprc, format);
+	VLA_FREE(lpchText_w);
+	return ret;
+}
+
 int WINAPI MessageBoxU(
 	__in_opt HWND hWnd,
 	__in_opt LPCSTR lpText,
