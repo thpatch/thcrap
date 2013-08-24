@@ -212,12 +212,16 @@ void dialog_adjust(
 	const char *str_new
 )
 {
-	SIZE str_size;
+	RECT rect = {0};
+	UINT draw_flags;
+	BYTE button_style;
 	if(!adj || !adj->hDC || !item || !str_new) {
 		return;
 	}
-
-	GetTextExtentPoint32(adj->hDC, str_new, strlen(str_new), &str_size);
+	rect.right = item->cx;
+	draw_flags = DT_CALCRECT | (strchr(str_new, '\n') ? DT_WORDBREAK : 0);
+	DrawText(adj->hDC, str_new, -1, &rect, draw_flags);
+	button_style = item->style & 0xff;
 	/**
 	  * Why, Microsoft. Why.
 	  * There seems to be *no way* to determine this programmatically.
@@ -225,19 +229,17 @@ void dialog_adjust(
 	  * depend on that value being roughly 12, so...
 	  */
 	if(
-		item->style & BS_CHECKBOX ||
-		item->style & BS_AUTOCHECKBOX ||
-		item->style & BS_RADIOBUTTON ||
-		item->style & BS_AUTORADIOBUTTON
+		(button_style == BS_CHECKBOX || button_style == BS_AUTOCHECKBOX ||
+		 button_style == BS_RADIOBUTTON || button_style == BS_AUTORADIOBUTTON)
 	) {
-		str_size.cx += 12;
+		rect.right += 12;
+	} else if(button_style == BS_PUSHBUTTON || button_style == BS_DEFPUSHBUTTON) {
+		rect.right += 4;
 	}
-	if(str_size.cx > item->cx) {
-		item->cx = str_size.cx;
-	}
-	if(item->cx > adj->dst_header->cx) {
-		adj->dst_header->cx = item->cx;
-	}
+	item->cx = max(rect.right, item->cx);
+	item->cy = max(rect.bottom, item->cy);
+	adj->dst_header->cx = max(item->x + item->cx, adj->dst_header->cx);
+	adj->dst_header->cy = max(item->y + item->cy, adj->dst_header->cy);
 }
 
 void dialog_adjust_clear(dialog_adjust_t *adj)
