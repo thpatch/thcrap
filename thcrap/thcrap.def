@@ -154,6 +154,10 @@ EXPORTS
 
 	; Win32 dialogs
 	; -------------
+	dialog_adjust_init
+	dialog_adjust
+	dialog_adjust_clear
+
 	sz_or_ord_size
 	sz_or_ord_build
 

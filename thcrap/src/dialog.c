@@ -96,20 +96,32 @@ typedef struct {
 	// title string of the dialog box
 	wchar_t title[];
 
-	// The following are only present if DS_SETFONT to be set in [style].
-	WORD pointsize;
-	WORD weight;
-	BYTE italic;
-	BYTE charset;
-	wchar_t typeface[];
+	// Only present if DS_SETFONT to be set in [style].
+	DLGTEMPLATEEX_FONT font;
 */
 #ifdef PACK_PRAGMA
 #pragma pack(pop)
 #endif
 } PACK_ATTRIBUTE DLGTEMPLATEEX_START;
 
-#define DLGTEMPLATEEX_FONT_BLOCK_LEN \
-	sizeof(WORD) + sizeof(WORD) + sizeof(BYTE) + sizeof(BYTE)
+// Font definition structure.
+typedef struct {
+#ifdef PACK_PRAGMA
+#pragma pack(push,1)
+#endif
+	WORD pointsize;
+	WORD weight;
+	BYTE italic;
+	BYTE charset;
+/**
+  * Variable parts of the structure that follow:
+  *
+	wchar_t typeface[];
+*/
+#ifdef PACK_PRAGMA
+#pragma pack(pop)
+#endif
+} PACK_ATTRIBUTE DLGTEMPLATEEX_FONT;
 
 // Constant-width part of the dialog item structure
 typedef struct {
@@ -136,6 +148,13 @@ typedef struct {
 #pragma pack(pop)
 #endif
 } PACK_ATTRIBUTE DLGITEMTEMPLATEEX_START;
+
+// Size adjustment state.
+typedef struct {
+	DLGTEMPLATEEX_START *dst_header;
+	HDC hDC;
+	HFONT hFont;
+} dialog_adjust_t;
 /// ----------
 
 /// Helper functions
@@ -162,6 +181,74 @@ size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t 
 	return ptr_advance(src, num);
 }
 /// ----------------
+
+/// dialog_adjust_t
+/// ---------------
+void dialog_adjust_init(
+	dialog_adjust_t *adj,
+	DLGTEMPLATEEX_START *dst_header,
+	const DLGTEMPLATEEX_FONT *font,
+	const sz_Or_Ord *typeface
+)
+{
+	if(!adj || !dst_header || !font || !typeface) {
+		return;
+	}
+	ZeroMemory(adj, sizeof(*adj));
+	adj->dst_header = dst_header;
+	adj->hDC = GetDC(0);
+	adj->hFont = CreateFontW(
+		font->pointsize, 0, 0, 0, font->weight, font->italic, FALSE, FALSE,
+		DEFAULT_CHARSET, 0, 0, PROOF_QUALITY, FF_DONTCARE, &typeface->sz
+	);
+	if(adj->hFont) {
+		SelectObject(adj->hDC, adj->hFont);
+	}
+}
+
+void dialog_adjust(
+	dialog_adjust_t *adj,
+	DLGITEMTEMPLATEEX_START *item,
+	const char *str_new
+)
+{
+	SIZE str_size;
+	if(!adj || !adj->hDC || !item || !str_new) {
+		return;
+	}
+
+	GetTextExtentPoint32(adj->hDC, str_new, strlen(str_new), &str_size);
+	/**
+	  * Why, Microsoft. Why.
+	  * There seems to be *no way* to determine this programmatically.
+	  * ... oh well, there are tons of dialog templates out there that implicitly
+	  * depend on that value being roughly 12, so...
+	  */
+	if(
+		item->style & BS_CHECKBOX ||
+		item->style & BS_AUTOCHECKBOX ||
+		item->style & BS_RADIOBUTTON ||
+		item->style & BS_AUTORADIOBUTTON
+	) {
+		str_size.cx += 12;
+	}
+	if(str_size.cx > item->cx) {
+		item->cx = str_size.cx;
+	}
+	if(item->cx > adj->dst_header->cx) {
+		adj->dst_header->cx = item->cx;
+	}
+}
+
+void dialog_adjust_clear(dialog_adjust_t *adj)
+{
+	if(!adj) {
+		return;
+	}
+	DeleteObject(adj->hFont);
+	ZeroMemory(adj, sizeof(*adj));
+}
+/// --------------
 
 /// sz_or_Ord
 /// ---------
@@ -223,7 +310,7 @@ size_t dialog_template_ex_size(const BYTE **src, WORD *dlg_items, json_t *trans)
 		ret += sz_or_ord_size(src, trans_title); // title
 
 		if(dlg_struct->style & DS_SETFONT) {
-			ret += ptr_advance(src, DLGTEMPLATEEX_FONT_BLOCK_LEN);
+			ret += ptr_advance(src, sizeof(DLGTEMPLATEEX_FONT));
 			ret += sz_or_ord_size(src, trans_font); // typeface
 		}
 		if(dlg_items) {
@@ -236,7 +323,7 @@ size_t dialog_template_ex_size(const BYTE **src, WORD *dlg_items, json_t *trans)
 	}
 }
 
-size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, json_t *trans)
+size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *adj, json_t *trans)
 {
 	if(dst && src && *src) {
 		BYTE *dst_start = dst;
@@ -249,9 +336,14 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, json_t *trans)
 		dst += sz_or_ord_build(dst, src, NULL); // windowClass
 		dst += sz_or_ord_build(dst, src, trans_title);
 
-		if(dlg_struct->style & DS_SETFONT) {
-			dst += memcpy_advance_src(dst, src, DLGTEMPLATEEX_FONT_BLOCK_LEN);
-			dst += sz_or_ord_build(dst, src, trans_font); // typeface
+		if(dst_header->style & DS_SETFONT) {
+			DLGTEMPLATEEX_FONT *font = (DLGTEMPLATEEX_FONT*)*src;
+			size_t font_len;
+
+			dst += memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_FONT));
+			font_len = sz_or_ord_build(dst, src, trans_font); // typeface
+			dialog_adjust_init(adj, dst_header, font, (sz_Or_Ord*)dst);
+			dst += font_len;
 		}
 		*src = ptr_dword_align(*src);
 		return ptr_dword_align(dst) - dst_start;
@@ -284,7 +376,7 @@ size_t dialog_item_template_ex_size(const BYTE **src, json_t *trans)
 	}
 }
 
-size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, json_t *trans)
+size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *adj, json_t *trans)
 {
 	if(dst && src && *src) {
 		BYTE *dst_start = dst;
@@ -293,8 +385,10 @@ size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, json_t *trans)
 
 		dst += memcpy_advance_src(dst, src, sizeof(DLGITEMTEMPLATEEX_START));
 		dst += sz_or_ord_build(dst, src, NULL); // windowClass
-		dst += sz_or_ord_build(dst, src, trans_title);
 
+		dialog_adjust(adj, (DLGITEMTEMPLATEEX_START*)dst_start, trans_title);
+
+		dst += sz_or_ord_build(dst, src, trans_title);
 		extraCount = *((WORD*)*src);
 		dst += memcpy_advance_src(dst, src, extraCount + sizeof(WORD));
 
@@ -352,6 +446,7 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 		if(dlg_in->dlgVer == 1 && dlg_in->signature == 0xffff) {
 			const BYTE *src = (BYTE*)hDlg;
 			BYTE *dst;
+			dialog_adjust_t adj = {0};
 			size_t i;
 			WORD dlg_items;
 			size_t dlg_out_len = 0;
@@ -366,13 +461,15 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 			dlg_out = malloc(dlg_out_len);
 
 			dst = (BYTE*)dlg_out;
-			src = (BYTE*)hDlg;
+			src = (BYTE*)hDlg; // reset
 
-			dst += dialog_template_ex_build(dst, &src, trans);
+			dst += dialog_template_ex_build(dst, &src, &adj, trans);
+
 			for(i = 0; i < dlg_items; i++) {
 				json_t *trans_item = json_array_get(trans_controls, i);
-				dst += dialog_item_template_ex_build(dst, &src, trans_item);
+				dst += dialog_item_template_ex_build(dst, &src, &adj, trans_item);
 			};
+			dialog_adjust_clear(&adj);
 		}
 	}
 	json_decref(trans);
