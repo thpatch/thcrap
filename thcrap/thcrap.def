@@ -124,7 +124,10 @@ EXPORTS
 	strings_sprintf
 	strings_vsprintf
 
+	strings_MessageBoxA
+
 	strings_init
+	strings_patch
 	strings_exit
 
 	; Logging

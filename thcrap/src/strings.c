@@ -86,11 +86,33 @@ const char* strings_sprintf(const size_t addr, const char *format, ...)
 	return ret;
 }
 
+/// String lookup hooks
+/// -------------------
+int WINAPI strings_MessageBoxA(
+	__in_opt HWND hWnd,
+	__in_opt LPCSTR lpText,
+	__in_opt LPCSTR lpCaption,
+	__in UINT uType
+)
+{
+	lpText = strings_lookup(lpText, NULL);
+	lpCaption = strings_lookup(lpCaption, NULL);
+	return MessageBoxU(hWnd, lpText, lpCaption, uType);
+}
+/// -------------------
+
 void strings_init()
 {
 	stringdefs = stack_json_resolve("stringdefs.js", NULL);
 	stringlocs = stack_game_json_resolve("stringlocs.js", NULL);
 	sprintf_storage = json_object();
+}
+
+int strings_patch(HMODULE hMod)
+{
+	return iat_patch_funcs_var(hMod, "user32.dll", 1,
+		"MessageBoxA", strings_MessageBoxA
+	);
 }
 
 void strings_exit()

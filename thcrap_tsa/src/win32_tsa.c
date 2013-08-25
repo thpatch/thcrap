@@ -90,7 +90,7 @@ HWND WINAPI tsa_CreateWindowExA(
 		Y = screens.bottom - nHeight;
 	}
 	return CreateWindowExU(
-		dwExStyle, lpClassName, lpWindowName, dwStyle, X, Y,
+		dwExStyle, lpClassName, strings_lookup(lpWindowName, NULL), dwStyle, X, Y,
 		nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
 	);
 }
