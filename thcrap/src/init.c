@@ -132,26 +132,29 @@ json_t* identify(const char *exe_fn)
 		goto end;
 	}
 
-	// Store build in the runconfig to be recalled later
-	// for version-dependent patch file resolving.
+	// Store build in the runconfig to be recalled later for
+	// version-dependent patch file resolving. Needs be directly written to
+	// run_cfg because we already require it down below to resolve ver_fn.
 	json_object_set(run_cfg, "build", json_array_get(id_array, 1));
 
-	{
-		log_printf("→ %s %s %s\n", game, build, variety);
+	log_printf("→ %s %s %s\n", game, build, variety);
 
-		if(stricmp(PathFindExtensionA(game), ".js")) {
-			size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
-			VLA(char, ver_fn, ver_fn_len);
-			sprintf(ver_fn, "%s.js", game);
-			run_ver = stack_json_resolve(ver_fn, NULL);
-			VLA_FREE(ver_fn);
-		} else {
-			run_ver = stack_json_resolve(game, NULL);
-		}
-		if(!run_ver) {
-			goto end;
-		}
+	if(stricmp(PathFindExtensionA(game), ".js")) {
+		size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
+		VLA(char, ver_fn, ver_fn_len);
+		sprintf(ver_fn, "%s.js", game);
+		run_ver = stack_json_resolve(ver_fn, NULL);
+		VLA_FREE(ver_fn);
+	} else {
+		run_ver = stack_json_resolve(game, NULL);
 	}
+
+	if(!run_ver) {
+		// Create a dummy configuration with at least a "game" key
+		run_ver = json_object();
+		json_object_set_new(run_ver, "game", json_string(game));
+	}
+
 	// Pretty game title
 	{
 		const char *game_title = json_object_get_string(run_ver, "title");
