@@ -86,7 +86,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 
 	if(str && comment_num) {
 		json_t *json_cmt = NULL;
-		size_t i = cache_spell_id_real;
+		int i = cache_spell_id_real;
 
 		size_t cmt_key_str_len = strlen("comment_") + 16 + 1;
 		VLA(char, cmt_key_str, cmt_key_str_len);

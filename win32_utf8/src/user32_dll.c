@@ -42,12 +42,17 @@ LPSTR WINAPI CharNextU(
 // all these calls to their wide versions and be done with it.
 // Instead, there is some maintenance to do...
 #define ResourceBaseConvert(lpTemplateName) \
-	LPCWSTR lptn_w; \
-	if(HIWORD(lpTemplateName) == 0) { \
-		lptn_w = (LPCWSTR)lpTemplateName; \
-	} else { \
+	LPWSTR lptn_w = NULL; \
+	if(HIWORD(lpTemplateName) != 0) { \
 		WCHAR_T_DEC(lpTemplateName); \
 		lptn_w = StringToUTF16_VLA(lpTemplateName_w, lpTemplateName, lpTemplateName_len); \
+	} else { \
+		lptn_w = (LPWSTR)lpTemplateName; \
+	}
+
+#define ResourceBaseClean(lpTemplateName) \
+	if(HIWORD(lpTemplateName) != 0) { \
+		VLA_FREE(lptn_w); \
 	}
 
 HWND WINAPI CreateDialogParamU(
@@ -58,8 +63,11 @@ HWND WINAPI CreateDialogParamU(
     __in LPARAM dwInitParam
 )
 {
+	HWND ret;
 	ResourceBaseConvert(lpTemplateName);
-	return CreateDialogParamW(hInstance, lptn_w, hWndParent, lpDialogFunc, dwInitParam);
+	ret = CreateDialogParamW(hInstance, lptn_w, hWndParent, lpDialogFunc, dwInitParam);
+	ResourceBaseClean(lpTemplateName);
+	return ret;
 }
 
 HWND WINAPI CreateWindowExU(
@@ -100,8 +108,11 @@ INT_PTR WINAPI DialogBoxParamU(
     __in LPARAM dwInitParam
 )
 {
+	INT_PTR ret;
 	ResourceBaseConvert(lpTemplateName);
-	return DialogBoxParamW(hInstance, lptn_w, hWndParent, lpDialogFunc, dwInitParam);
+	ret = DialogBoxParamW(hInstance, lptn_w, hWndParent, lpDialogFunc, dwInitParam);
+	ResourceBaseClean(lpTemplateName);
+	return ret;
 }
 
 int WINAPI DrawTextU(

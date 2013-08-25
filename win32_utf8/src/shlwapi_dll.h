@@ -9,7 +9,8 @@
 #pragma once
 
 BOOL STDAPICALLTYPE PathMatchSpecU(
-	__in LPCSTR pszFile, __in LPCSTR pszSpec
+	__in LPCSTR pszFile,
+	__in LPCSTR pszSpec
 );
 #undef PathMatchSpec
 #define PathMatchSpec PathMatchSpecU

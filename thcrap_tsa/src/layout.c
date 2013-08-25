@@ -278,7 +278,7 @@ BOOL WINAPI layout_TextOutU(
 			// Absolute x-end position of the current tab
 			size_t tab_end;
 			// We're guaranteed to have at least p1 if we come here
-			size_t p1_len = strlen(p1) + 1;
+			STRLEN_DEC(p1);
 
 			LOGFONT font_new;
 			int font_recreate = 0;

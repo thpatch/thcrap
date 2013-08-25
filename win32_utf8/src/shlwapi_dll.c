@@ -10,7 +10,8 @@
 #include "win32_utf8.h"
 
 BOOL STDAPICALLTYPE PathMatchSpecU(
-	__in LPCSTR pszFile, __in LPCSTR pszSpec
+	__in LPCSTR pszFile,
+	__in LPCSTR pszSpec
 )
 {
 	BOOL ret;

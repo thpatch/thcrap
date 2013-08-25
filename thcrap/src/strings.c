@@ -30,7 +30,7 @@ const char* strings_lookup(const char *in, size_t *out_len)
 		return in;
 	}
 
-	_snprintf(addr_key, addr_key_len, "0x%x", in);
+	snprintf(addr_key, addr_key_len, "0x%x", in);
 	id_key = json_object_get_string(stringlocs, addr_key);
 	if(id_key) {
 		const char *new_str = strings_get(id_key);

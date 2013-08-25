@@ -442,9 +442,6 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 		const DLGTEMPLATEEX_START *dlg_in = (DLGTEMPLATEEX_START*)hDlg;
 		json_t *trans_controls = json_object_get(trans, "items");
 
-#ifdef _DEBUG
-	Sleep(10000);
-#endif
 		if(dlg_in->dlgVer == 1 && dlg_in->signature == 0xffff) {
 			const BYTE *src = (BYTE*)hDlg;
 			BYTE *dst;

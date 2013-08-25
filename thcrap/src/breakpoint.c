@@ -74,7 +74,7 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 	}
 	{
 		BreakpointFunc_t ret = NULL;
-		size_t key_len = strlen(key) + 1;
+		STRLEN_DEC(key);
 		VLA(char, bp_key, key_len + strlen("BP_") + 1);
 
 		// Multi-slot support

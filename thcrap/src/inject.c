@@ -684,8 +684,6 @@ DWORD thcrap_inject(HANDLE hProcess, const char *setup_fn)
 #else
 	const wchar_t *inj_dll = L"thcrap.dll";
 #endif
-
-	size_t setup_fn_len;
 	DWORD cur_dir_len = GetCurrentDirectoryW(0, NULL) + 1;
 	VLA(wchar_t, cur_dir, cur_dir_len);
 
@@ -704,10 +702,9 @@ DWORD thcrap_inject(HANDLE hProcess, const char *setup_fn)
 	} else {
 		inj_dir = cur_dir;
 	}
-	setup_fn_len = strlen(setup_fn) + 1;
-
 	{
 		DWORD ret;
+		STRLEN_DEC(setup_fn);
 		size_t full_setup_fn_len = (cur_dir_len * UTF8_MUL) + 1 + setup_fn_len + 1;
 		VLA(char, abs_setup_fn, full_setup_fn_len);
 		const char *full_setup_fn;
