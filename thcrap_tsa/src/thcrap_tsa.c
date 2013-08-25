@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <commctrl.h>
 #include "thcrap_tsa.h"
 #include "layout.h"
 
@@ -30,6 +31,12 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 
 int InitDll(HMODULE hDll)
 {
+	// custom.exe bugfix
+	INITCOMMONCONTROLSEX icce = {
+		sizeof(icce), ICC_STANDARD_CLASSES
+	};
+	InitCommonControlsEx(&icce);
+
 	layout_init(hDll);
 	win32_tsa_patch(GetModuleHandle(NULL));
 	return 0;
