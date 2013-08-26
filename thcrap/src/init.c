@@ -233,6 +233,7 @@ int thcrap_init(const char *setup_fn)
 	win32_patch(hProc);
 	textdisp_patch(hProc);
 	dialog_patch(hProc);
+	strings_patch(hProc);
 	
 	GetModuleFileName(NULL, exe_fn, MAX_PATH * 4);
 	log_printf("EXE file name: %s\n", exe_fn);
