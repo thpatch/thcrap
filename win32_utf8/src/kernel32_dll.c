@@ -22,10 +22,13 @@ BOOL WINAPI CreateDirectoryU(
 	// Hey, let's make this recursive while we're at it.
 	BOOL ret;
 	size_t i;
+	size_t lpPathName_w_len;
 	WCHAR_T_DEC(lpPathName);
 	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
 
-	for(i = 0; i < wcslen(lpPathName_w); i++) {
+	// no, this isn't optimized away
+	lpPathName_w_len = wcslen(lpPathName_w);
+	for(i = 0; i < lpPathName_w_len; i++) {
 		if(lpPathName_w[i] == L'\\' || lpPathName_w[i] == L'/') {
 			wchar_t old_c = lpPathName_w[i + 1];
 			lpPathName_w[i + 1] = L'\0';
@@ -34,6 +37,8 @@ BOOL WINAPI CreateDirectoryU(
 			lpPathName_w[i + 1] = old_c;
 		}
 	}
+	// Final directory
+	ret = CreateDirectoryW(lpPathName_w, NULL);
 	VLA_FREE(lpPathName_w);
 	return ret;
 }

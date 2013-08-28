@@ -103,6 +103,27 @@ void log_print_patch_fn(json_t *patch_obj, const char *fn, int level)
 	log_printf("\n%*s+ %s%s", (level + 1), " ", archive, fn);
 }
 
+int dir_create_for_fn(const char *fn)
+{
+	int ret = -1;
+	if(fn) {
+		STRLEN_DEC(fn);
+		char *fn_dir = PathFindFileNameA(fn);
+		if(fn_dir && (fn_dir != fn)) {
+			VLA(char, fn_copy, fn_len);
+			int fn_pos = fn_dir - fn;
+
+			strncpy(fn_copy, fn, fn_len);
+			fn_copy[fn_pos] = '\0';
+			ret = CreateDirectory(fn_copy, NULL);
+			VLA_FREE(fn_copy);
+		} else {
+			ret = CreateDirectory(fn, NULL);
+		}
+	}
+	return ret;
+}
+
 char* fn_for_patch(const json_t *patch_info, const char *fn)
 {
 	size_t archive_len;
@@ -196,7 +217,7 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 	if(!patch_fn) {
 		return -2;
 	}
-	CreateDirectory(patch_fn, NULL);
+	dir_create_for_fn(patch_fn);
 
 	EnterCriticalSection(&cs_file_access);
 	{

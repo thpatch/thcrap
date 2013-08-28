@@ -62,6 +62,8 @@ EXPORTS
 	fn_for_game
 	fn_for_build
 
+	dir_create_for_fn
+
 	patch_file_exists
 	patch_file_blacklisted
 	patch_file_load

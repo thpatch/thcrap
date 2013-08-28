@@ -213,7 +213,7 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 		VLA(char, fn, fn_len);
 
 		sprintf(fn, "%s/%s", dir, fr->name);
-		CreateDirectory(fn, NULL);
+		dir_create_for_fn(fn);
 
 		hFile = CreateFile(
 			fn, GENERIC_WRITE, 0, NULL, CREATE_NEW, 

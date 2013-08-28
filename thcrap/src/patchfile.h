@@ -50,6 +50,13 @@ char* fn_for_build(const char *fn);
 char* fn_for_game(const char *fn);
 /// ----------
 
+/// -----------
+/// Directories
+/// -----------
+// Recursively creates directories until [fn] can be stored.
+int dir_create_for_fn(const char *fn);
+/// -----------
+
 /// ------------------------
 /// Single-patch file access
 /// ------------------------
