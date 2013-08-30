@@ -11,11 +11,13 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
+#include <psapi.h>
 
 #include "macros.h"
 #include "utf.h"
 
 #include "kernel32_dll.h"
+#include "psapi_dll.h"
 #include "user32_dll.h"
 #include "shlwapi_dll.h"
 #include "gdi32_dll.h"

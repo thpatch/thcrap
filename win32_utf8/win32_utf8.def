@@ -38,9 +38,14 @@ EXPORTS
 	GetCurrentDirectoryU
 	GetEnvironmentVariableU
 	GetModuleFileNameU
+	GetModuleFileNameExU
 	GetStartupInfoU
 	LoadLibraryU
 	SetCurrentDirectoryU
+
+	; psapi.dll
+	; ---------
+	GetModuleFileNameExU
 
 	; shlwapi.dll
 	; -----------
