@@ -191,14 +191,21 @@ void dialog_adjust_init(
 	const sz_Or_Ord *typeface
 )
 {
+	int font_height;
 	if(!adj || !dst_header || !font || !typeface) {
 		return;
 	}
 	ZeroMemory(adj, sizeof(*adj));
 	adj->dst_header = dst_header;
 	adj->hDC = GetDC(0);
+
+	// I don't know why every other piece of code I've seen using this algorithm,
+	// including MSDN and Wine, puts a minus sign in front of the MulDiv call,
+	// but a positive return value is a lot closer to what we want here.
+	font_height = MulDiv(font->pointsize, GetDeviceCaps(adj->hDC, LOGPIXELSY), 72);
+
 	adj->hFont = CreateFontW(
-		font->pointsize, 0, 0, 0, font->weight, font->italic, FALSE, FALSE,
+		font_height, 0, 0, 0, font->weight, font->italic, FALSE, FALSE,
 		DEFAULT_CHARSET, 0, 0, PROOF_QUALITY, FF_DONTCARE, &typeface->sz
 	);
 	if(adj->hFont) {
@@ -226,15 +233,15 @@ void dialog_adjust(
 	  * Why, Microsoft. Why.
 	  * There seems to be *no way* to determine this programmatically.
 	  * ... oh well, there are tons of dialog templates out there that implicitly
-	  * depend on that value being roughly 12, so...
+	  * depend on that value being roughly 8, so...
 	  */
 	if(
 		(button_style == BS_CHECKBOX || button_style == BS_AUTOCHECKBOX ||
 		 button_style == BS_RADIOBUTTON || button_style == BS_AUTORADIOBUTTON)
 	) {
-		rect.right += 12;
+		rect.right += 8;
 	} else if(button_style == BS_PUSHBUTTON || button_style == BS_DEFPUSHBUTTON) {
-		rect.right += 4;
+		rect.right += 3;
 	}
 	item->cx = max(rect.right, item->cx);
 	item->cy = max(rect.bottom, item->cy);
