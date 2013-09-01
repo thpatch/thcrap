@@ -339,6 +339,7 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 		DLGTEMPLATEEX_START *dst_header = (DLGTEMPLATEEX_START*)dst_start;
 		const char *trans_title = strings_get(json_object_get_string(trans, "title"));
 		const char *trans_font = strings_get(json_object_get_string(trans, "font"));
+		WORD trans_font_size = json_object_get_hex(trans, "font_size");
 
 		dst += memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_START));
 		dst += sz_or_ord_build(dst, src, NULL); // menu
@@ -347,12 +348,17 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 
 		if(dst_header->style & DS_SETFONT) {
 			DLGTEMPLATEEX_FONT *font = (DLGTEMPLATEEX_FONT*)*src;
-			size_t font_len;
+			size_t len;
 
-			dst += memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_FONT));
-			font_len = sz_or_ord_build(dst, src, trans_font); // typeface
+			len = memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_FONT));
+			if(trans_font_size) {
+				((DLGTEMPLATEEX_FONT*)dst)->pointsize = trans_font_size;
+			}
+			dst += len;
+
+			len = sz_or_ord_build(dst, src, trans_font); // typeface
 			dialog_adjust_init(adj, dst_header, font, (sz_Or_Ord*)dst);
-			dst += font_len;
+			dst += len;
 		}
 		*src = ptr_dword_align(*src);
 		return ptr_dword_align(dst) - dst_start;
