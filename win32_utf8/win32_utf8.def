@@ -15,18 +15,6 @@ EXPORTS
 	GetTextExtentPoint32U
 	TextOutU
 
-	; user32.dll
-	; ----------
-	CharNextU
-	CreateDialogParamU
-	CreateWindowExU
-	DialogBoxParamU
-	DrawTextU
-	MessageBoxU
-	RegisterClassU
-	RegisterClassExU
-	SetWindowTextU
-			
 	; kernel32.dll
 	; ------------
 	CreateDirectoryU
@@ -52,3 +40,15 @@ EXPORTS
 	PathFileExistsU
 	PathMatchSpecU
 	PathRemoveFileSpecU
+
+	; user32.dll
+	; ----------
+	CharNextU
+	CreateDialogParamU
+	CreateWindowExU
+	DialogBoxParamU
+	DrawTextU
+	MessageBoxU
+	RegisterClassU
+	RegisterClassExU
+	SetWindowTextU

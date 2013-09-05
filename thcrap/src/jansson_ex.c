@@ -57,22 +57,16 @@ int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
 
 size_t json_array_get_hex(json_t *arr, const size_t ind)
 {
-	const char *str;
-	size_t ret;
-
-	json_t *value = json_array_get(arr, ind);
-	if(!value) {
-		return 0;
+	json_t *val = json_array_get(arr, ind);
+	if(val) {
+		size_t ret = json_hex_value(val);
+		if(json_is_string(val)) {
+			// Rewrite the JSON value
+			json_array_set_new(arr, ind, json_integer(ret));
+		}
+		return ret;
 	}
-	str = json_string_value(value);
-	if(str) {
-		// Convert the string value to integer and rewrite the JSON value
-		ret = strtol(str, NULL, str_num_base(str));
-		json_array_set_new(arr, ind, json_integer(ret));
-	} else {
-		ret = (size_t)json_integer_value(value);
-	}
-	return ret;
+	return 0;
 }
 
 const char* json_array_get_string(const json_t *arr, const size_t ind)
@@ -115,22 +109,16 @@ json_t* json_object_numkey_get(json_t *object, const json_int_t key)
 
 size_t json_object_get_hex(json_t *object, const char *key)
 {
-	const char *str;
-	size_t ret;
-
-	json_t *value = json_object_get(object, key);
-	if(!value) {
-		return 0;
+	json_t *val = json_object_get(object, key);
+	if(val) {
+		size_t ret = json_hex_value(val);
+		if(json_is_string(val)) {
+			 // Rewrite the JSON value
+			json_object_set_new_nocheck(object, key, json_integer(ret));
+		}
+		return ret;
 	}
-	str = json_string_value(value);
-	if(str) {
-		// Convert the string value to integer and rewrite the JSON value
-		ret = strtol(str, NULL, str_num_base(str));
-		json_object_set_new_nocheck(object, key, json_integer(ret));
-	} else {
-		ret = (size_t)json_integer_value(value);
-	}
-	return ret;
+	return 0;
 }
 
 const char* json_object_get_string(const json_t *object, const char *key)

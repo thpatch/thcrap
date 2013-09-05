@@ -391,7 +391,7 @@ int patchhook_register(const char *wildcard, func_patch_t patch_func)
 	}
 	patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());
 	hook_array = json_object_get_create(patch_hooks, wildcard, json_array());
-	return json_array_append_new(hook_array, json_integer((int)patch_func));
+	return json_array_append_new(hook_array, json_integer((size_t)patch_func));
 }
 
 json_t* patchhooks_build(const char *fn)

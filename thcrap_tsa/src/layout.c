@@ -299,7 +299,7 @@ BOOL WINAPI layout_TextOutU(
 					tab_end = cur_x + str_size.cx;
 				}
 			} else if(cur_tab < json_array_size(Layout_Tabs)) {
-				tab_end = json_integer_value(json_array_get(Layout_Tabs, cur_tab)) + orig_x;
+				tab_end = json_array_get_hex(Layout_Tabs, cur_tab) + orig_x;
 			} else if(json_array_size(Layout_Tabs) > 0) {
 				tab_end = bitmap_width;
 			} else {

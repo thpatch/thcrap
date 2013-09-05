@@ -56,7 +56,7 @@
   *
   * The function that is called in the injected DLL -MUST- return, the loader
   * waits for the thread to terminate before removing the allocated space and 
-  * eturning control to the Loader. This method of DLL injection also adds error
+  * returning control to the loader. This method of DLL injection also adds error
   * handling, so the end user knows if something went wrong.
   */
 

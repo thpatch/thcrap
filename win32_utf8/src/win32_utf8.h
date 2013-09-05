@@ -16,11 +16,11 @@
 #include "macros.h"
 #include "utf.h"
 
+#include "gdi32_dll.h"
 #include "kernel32_dll.h"
 #include "psapi_dll.h"
-#include "user32_dll.h"
 #include "shlwapi_dll.h"
-#include "gdi32_dll.h"
+#include "user32_dll.h"
 
 // Sets a custom codepage for wide char conversion, which is used if the input
 // to a *U function is not valid UTF-8.

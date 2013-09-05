@@ -165,7 +165,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	  * On Vista and above however, this loads apphelp.dll into our process.
 	  * This DLL sandboxes our application by hooking GetProcAddress and a whole
 	  * bunch of other functions.
-	  * In turn, thcrap.Inject gets wrong pointers to the system functions used in
+	  * In turn, thcrap_inject gets wrong pointers to the system functions used in
 	  * the injection process, crashing the game as soon as it calls one of those.
 	  * ----
 	  */

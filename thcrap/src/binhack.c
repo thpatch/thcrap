@@ -85,25 +85,20 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 		}
 		else if(fs && (*c == ']' || *c == '>')) {
 			VLA(char, function, (c - fs) + 1);
-			json_t *json_fp;
-			unsigned long fp = 0;
+			size_t fp = 0;
 
 			strncpy(function, fs, c - fs);
 			function[c - fs] = 0;
 
-			json_fp = json_object_get(inj_funcs, function);
-			if(json_fp) {
-				fp = (unsigned long)json_integer_value(json_fp);
+			fp = json_object_get_hex(inj_funcs, function);
+			if(fp) {
 				if(func_rel) {
 					fp -= target_addr + written + 4;
 				}
-			}
-			if(fp) {
 				memcpy(binhack_buf, &fp, 4);
 				binhack_buf += 4;
 				written += 4;
-			}
-			else {
+			} else {
 				log_printf("ERROR: No pointer for function '%s'...\n", function);
 				ret = 2;
 			}

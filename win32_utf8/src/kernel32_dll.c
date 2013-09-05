@@ -56,7 +56,6 @@ HANDLE WINAPI CreateFileU(
 	HANDLE ret;
 	WCHAR_T_DEC(lpFileName);
 	StringToUTF16(lpFileName_w, lpFileName, lpFileName_len);
-	// log_printf("CreateFileU(\"%s\")\n", lpFileName);
 	ret = CreateFileW(
 		lpFileName_w, dwDesiredAccess, dwShareMode | FILE_SHARE_READ, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
@@ -271,7 +270,6 @@ DWORD WINAPI GetModuleFileNameU(
 	VLA(wchar_t, lpFilename_w, nSize);
 	DWORD ret = GetModuleFileNameW(hModule, lpFilename_w, nSize);
 	StringToUTF8(lpFilename, lpFilename_w, nSize);
-	// log_printf("GetModuleFileNameU() -> %s\n", lpFilename);
 	VLA_FREE(lpFilename_w);
 	return ret;
 }
@@ -320,7 +318,6 @@ BOOL WINAPI SetCurrentDirectoryU(
 	BOOL ret;
 	WCHAR_T_DEC(lpPathName);
 	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
-	// log_printf("SetCurrentDirectoryU(\"%s\")\n", lpPathName);
 	ret = SetCurrentDirectoryW(lpPathName_w);
 	VLA_FREE(lpPathName_w);
 	return ret;

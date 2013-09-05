@@ -30,15 +30,16 @@ LPSTR WINAPI CharNextU(
 		ret = lpsz + 1;
 		if(!IsDBCSLeadByteEx(fallback_codepage, ret[0])) {
 			// Get next UTF-8 char
-			while((*ret & 0xc0) == 0x80)
+			while((*ret & 0xc0) == 0x80) {
 				++ret;
+			}
 		}
 	}
 	return ret;
 }
 
-// Now, if Microsoft would have just used integer identifiers for resources
-// instead of names plus the MAKEINTRESOURCE hack, we could just re-point
+// Now, if Microsoft just had used integer identifiers for resources instead
+// of names plus the MAKEINTRESOURCE hack, we could just re-point
 // all these calls to their wide versions and be done with it.
 // Instead, there is some maintenance to do...
 #define ResourceBaseConvert(lpTemplateName) \
