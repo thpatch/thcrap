@@ -32,7 +32,7 @@ void win32_patch(HMODULE hMod)
 		"GetTextExtentPoint32A", GetTextExtentPoint32U
 	);
 
-	iat_patch_funcs_var(hMod, "user32.dll", 10,
+	iat_patch_funcs_var(hMod, "user32.dll", 14,
 		"CharNextA", CharNextU,
 		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,
@@ -40,9 +40,13 @@ void win32_patch(HMODULE hMod)
 		"DefWindowProcA", DefWindowProcW,
 		"DialogBoxParamA", DialogBoxParamU,
 		"DrawTextA", DrawTextU,
+		"GetWindowLongA", GetWindowLongW,
+		"GetWindowLongPtrA", GetWindowLongPtrW,
 		"MessageBoxA", MessageBoxU,
 		"RegisterClassA", RegisterClassU,
 		"RegisterClassExA", RegisterClassExU,
+		"SetWindowLongA", SetWindowLongW,
+		"SetWindowLongPtrA", SetWindowLongPtrW,
 		"SetWindowTextA", SetWindowTextU
 	);
 
