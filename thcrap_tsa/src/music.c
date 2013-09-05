@@ -77,7 +77,7 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
 		cache_cmt_line = *line_num;
 	}
 	if(str && *str) {
-		json_t *cmt = json_object_get_numkey(musiccmt, cache_track);
+		json_t *cmt = json_object_numkey_get(musiccmt, cache_track);
 		if(json_is_array(cmt)) {
 			*str = json_array_get_string_safe(cmt, cache_cmt_line);
 

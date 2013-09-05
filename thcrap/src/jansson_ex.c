@@ -106,7 +106,7 @@ json_t* json_object_get_create(json_t *object, const char *key, json_t *new_obje
 	return ret;
 }
 
-json_t* json_object_get_numkey(json_t *object, const json_int_t key)
+json_t* json_object_numkey_get(json_t *object, const json_int_t key)
 {
 	char key_str[64];
 	snprintf(key_str, 64, "%lld", key);

@@ -455,7 +455,7 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			for(i = 0; i < entry_count; ++i) {
 				if (offset_in == entry_offsets_in[i * entry_offset_mul]) {
 					state.entry = i;
-					state.diff_entry = json_object_get_numkey(patch, state.entry);
+					state.diff_entry = json_object_numkey_get(patch, state.entry);
 					entry_offsets_out[i * entry_offset_mul] = offset_out;
 					break;
 				}

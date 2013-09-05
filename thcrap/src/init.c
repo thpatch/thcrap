@@ -55,7 +55,7 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 
 json_t* identify_by_size(size_t file_size, json_t *versions)
 {
-	return json_object_get_numkey(json_object_get(versions, "sizes"), file_size);
+	return json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
 }
 
 int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
