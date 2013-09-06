@@ -46,8 +46,9 @@ const char* strings_lookup(const char *in, size_t *out_len)
 
 const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
 {
-	const char *ret = NULL;
+	char *ret = NULL;
 	size_t str_len;
+	char addr_key[addr_key_len];
 
 	format = strings_lookup(format, NULL);
 
@@ -55,26 +56,28 @@ const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
 		return NULL;
 	}
 	str_len = _vscprintf(format, va) + 1;
-	{
-		VLA(char, str, str_len);
-		char *str_utf8 = NULL;
-		char addr_key[addr_key_len];
 
-		sprintf(addr_key, "0x%x", addr);
-		vsprintf(str, format, va);
+	// We shouldn't use JSON strings here because Jansson forces them to be
+	// in UTF-8, and we'd like to sprintf regardless of encoding.
+	// Thus, we have to store char pointers as JSON integers and reallocate
+	// memory if necessary.
 
-		str_utf8 = EnsureUTF8(str, str_len);
-		json_object_set_new(sprintf_storage, addr_key, json_string(str_utf8));
-		SAFE_FREE(str_utf8);
+	sprintf(addr_key, "0x%x", addr);
+	ret = (char*)json_object_get_hex(sprintf_storage, addr_key);
 
-		ret = json_object_get_string(sprintf_storage, addr_key);
-		if(!ret) {
-			// Try to save the situation at least somewhat...
-			ret = format;
-		}
-		VLA_FREE(str);
+	// MSVCRT's realloc implementation moves the buffer every time, even if the
+	// new length is shorter...
+	if(!ret || (strlen(ret) + 1 < str_len)) {
+		ret = (char*)realloc(ret, str_len);
+		json_object_set_new(sprintf_storage, addr_key, json_integer((size_t)ret));
 	}
-	return ret;
+	if(ret) {
+		vsprintf(ret, format, va);
+		return ret;
+	} else {
+		// Try to save the situation at least somewhat...
+		return format;
+	}
 }
 
 const char* strings_sprintf(const size_t addr, const char *format, ...)
@@ -117,7 +120,13 @@ int strings_patch(HMODULE hMod)
 
 void strings_exit()
 {
+	const char *key;
+	json_t *val;
+
 	json_decref(stringdefs);
 	json_decref(stringlocs);
+	json_object_foreach(sprintf_storage, key, val) {
+		free((void*)json_hex_value(val));
+	}
 	json_decref(sprintf_storage);
 }
