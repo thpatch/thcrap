@@ -13,7 +13,7 @@ static json_t *stringdefs = NULL;
 static json_t *stringlocs = NULL;
 static json_t *sprintf_storage = NULL;
 
-#define addr_key_len 2 + 8 + 1
+#define addr_key_len 2 + (sizeof(void*) * 2) + 1
 
 const char* strings_get(const char *id)
 {

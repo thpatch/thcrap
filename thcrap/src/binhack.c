@@ -38,7 +38,7 @@ size_t binhack_calc_size(const char *binhack_str)
 			fs = c + 1;
 		}
 		else if(fs && (*c == ']' || *c == '>')) {
-			size += 4;
+			size += sizeof(void*);
 			fs = NULL;
 		}
 		c++;
@@ -93,11 +93,11 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			fp = json_object_get_hex(inj_funcs, function);
 			if(fp) {
 				if(func_rel) {
-					fp -= target_addr + written + 4;
+					fp -= target_addr + written + sizeof(void*);
 				}
-				memcpy(binhack_buf, &fp, 4);
-				binhack_buf += 4;
-				written += 4;
+				memcpy(binhack_buf, &fp, sizeof(void*));
+				binhack_buf += sizeof(void*);
+				written += sizeof(void*);
 			} else {
 				log_printf("ERROR: No pointer for function '%s'...\n", function);
 				ret = 2;
