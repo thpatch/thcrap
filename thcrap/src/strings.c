@@ -22,7 +22,6 @@ const char* strings_get(const char *id)
 
 const char* strings_lookup(const char *in, size_t *out_len)
 {
-	char addr_key[addr_key_len];
 	const char *id_key = NULL;
 	const char *ret = in;
 
@@ -30,8 +29,7 @@ const char* strings_lookup(const char *in, size_t *out_len)
 		return in;
 	}
 
-	snprintf(addr_key, addr_key_len, "0x%x", in);
-	id_key = json_object_get_string(stringlocs, addr_key);
+	id_key = json_string_value(json_object_hexkey_get(stringlocs, (size_t)in));
 	if(id_key) {
 		const char *new_str = strings_get(id_key);
 		if(new_str && new_str[0]) {

@@ -47,6 +47,10 @@ json_t* json_object_get_create(json_t *object, const char *key, json_t *new_obje
 // json_object_get for numeric keys
 json_t* json_object_numkey_get(json_t *object, const json_int_t key);
 
+// json_object_get for hexadecimal keys.
+// These *must* have the format "0x%x". Padding %x with zeroes will *not* work.
+json_t* json_object_hexkey_get(json_t *object, const size_t key);
+
 // Get the integer value of [key] in [object], automatically
 // converting the JSON value to an integer if necessary.
 size_t json_object_get_hex(json_t *object, const char *key);
