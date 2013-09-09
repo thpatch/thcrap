@@ -9,9 +9,17 @@
 
 #pragma once
 
-// Unfortunately, JSON doesn't support native hexadecimal values.
-// This function takes both strings and integers and returns the
-// correct number.
+/**
+  * Unfortunately, JSON doesn't support native hexadecimal values.
+  * This function works with both string and integer values and returns the
+  * correct, positive number at the machine's word size.
+  * The following string prefixes are supported:
+  *
+  *	- "0x": Hexadecimal, as expected.
+  *	- "Rx": Hexadecimal value relative to the base address of the main module
+  *	        of the current process.
+  *	- Everything else is parsed as a decimal number.
+  */
 size_t json_hex_value(json_t *val);
 
 // Convert JSON string [object] to UTF-16.
@@ -48,7 +56,8 @@ json_t* json_object_get_create(json_t *object, const char *key, json_t *new_obje
 json_t* json_object_numkey_get(json_t *object, const json_int_t key);
 
 // json_object_get for hexadecimal keys.
-// These *must* have the format "0x%x". Padding %x with zeroes will *not* work.
+// These *must* have the format "0x%x" or "Rx%x" (for values relative to the
+// base address, see json_hex_value()). Padding %x with zeroes will *not* work.
 json_t* json_object_hexkey_get(json_t *object, const size_t key);
 
 // Get the integer value of [key] in [object], automatically

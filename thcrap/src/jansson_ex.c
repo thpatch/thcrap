@@ -11,14 +11,25 @@
 
 size_t json_hex_value(json_t *val)
 {
-	const char *str;
-
-	if(!val) {
-		return 0;
-	}
-	str = json_string_value(val);
+	const char *str = json_string_value(val);
 	if(str) {
-		return strtol(str, NULL, str_num_base(str));
+		int base = 10;
+		size_t offset = 0;
+		size_t ret = 0;
+
+		if(strlen(str) > 2) {
+			// Module-relative hex values
+			if(!strnicmp(str, "Rx", 2)) {
+				ret += (size_t)GetModuleHandle(NULL);
+				base = 16;
+				offset = 2;
+			} else if(!strnicmp(str, "0x", 2)) {
+				base = 16;
+				offset = 2;
+			}
+		}
+		ret += strtol(str + offset, NULL, base);
+		return ret;
 	}
 	return (size_t)json_integer_value(val);
 }
@@ -111,8 +122,15 @@ json_t* json_object_hexkey_get(json_t *object, const size_t key)
 {
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 	char key_str[addr_key_len];
-	snprintf(key_str, addr_key_len, "0x%x", key);
-	return json_object_get(object, key_str);
+	json_t *ret = NULL;
+
+	snprintf(key_str, addr_key_len, "Rx%x", key - (size_t)GetModuleHandle(NULL));
+	ret = json_object_get(object, key_str);
+	if(!ret) {
+		snprintf(key_str, addr_key_len, "0x%x", key);
+		ret = json_object_get(object, key_str);
+	}
+	return ret;
 }
 
 size_t json_object_get_hex(json_t *object, const char *key)
