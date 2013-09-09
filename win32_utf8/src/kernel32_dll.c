@@ -267,9 +267,41 @@ DWORD WINAPI GetModuleFileNameU(
 	__in DWORD nSize
 )
 {
-	VLA(wchar_t, lpFilename_w, nSize);
-	DWORD ret = GetModuleFileNameW(hModule, lpFilename_w, nSize);
-	StringToUTF8(lpFilename, lpFilename_w, nSize);
+	/**
+	  * And here we are, the most stupid Win32 API function I've seen so far.
+	  *
+	  * This wrapper adds the "GetCurrentDirectory functionality" the original
+	  * function unfortunately lacks. Pass NULL for [lpFilename] or [nSize] to
+	  * get the size required for a buffer to hold the module name in UTF-8.
+	  *
+	  * ... and unless there is any alternative function I don't know of, the
+	  * only way to actually calculate this size is to repeatedly increase a
+	  * buffer and to check whether that has been enough.
+	  *
+	  * In practice though, this length should never exceed MAX_PATH. I failed to
+	  * create any test case where the path would be larger. But just in case it
+	  * is or this becomes more frequent some day, the code is here.
+	  */
+
+	DWORD ret = nSize ? nSize : MAX_PATH;
+	VLA(wchar_t, lpFilename_w, ret);
+
+	if(lpFilename && nSize) {
+		GetModuleFileNameW(hModule, lpFilename_w, nSize);
+	} else {
+		BOOL error = 1;
+		while(error) {
+			GetModuleFileNameW(hModule, lpFilename_w, ret);
+			error = GetLastError() == ERROR_INSUFFICIENT_BUFFER;
+			if(error) {
+				VLA(wchar_t, lpFilename_VLA, ret += MAX_PATH);
+				VLA_FREE(lpFilename_w);
+				lpFilename_w = lpFilename_VLA;
+			}
+		}
+		nSize = 0;
+	}
+	ret = StringToUTF8(lpFilename, lpFilename_w, nSize); 
 	VLA_FREE(lpFilename_w);
 	return ret;
 }

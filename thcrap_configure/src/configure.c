@@ -162,12 +162,10 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 #else
 	const char *loader_exe = "thcrap_loader.exe";
 #endif
-	size_t self_fn_len;
-	char self_fn[MAX_PATH * 4];
+	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
+	VLA(char, self_fn, self_fn_len);
 
-	GetModuleFileName(NULL, self_fn, MAX_PATH * 4);
-	self_fn_len = strlen(self_fn) + 1;
-
+	GetModuleFileNameU(NULL, self_fn, self_fn_len);
 	PathRemoveFileSpec(self_fn);
 	PathAddBackslashA(self_fn);
 

@@ -211,12 +211,14 @@ end:
 
 int thcrap_init(const char *setup_fn)
 {
-	char exe_fn[MAX_PATH * 4];
 	json_t *run_ver = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
 
+	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
+	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
+	GetModuleFileNameU(NULL, exe_fn, exe_fn_len);
 	GetCurrentDirectory(game_dir_len, game_dir);
 
 	SetCurrentDirectory(dll_dir);
@@ -235,7 +237,6 @@ int thcrap_init(const char *setup_fn)
 	dialog_patch(hProc);
 	strings_patch(hProc);
 	
-	GetModuleFileName(NULL, exe_fn, MAX_PATH * 4);
 	log_printf("EXE file name: %s\n", exe_fn);
 
 	run_ver = identify(exe_fn);

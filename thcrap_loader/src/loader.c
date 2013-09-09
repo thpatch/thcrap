@@ -172,21 +172,17 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	// SetEnvironmentVariable(L"__COMPAT_LAYER", L"ApplicationLocale");
 	// SetEnvironmentVariable(L"AppLocaleID", L"0411");
 
+	// Load games.js
 	{
-		// GetModuleFileName sucks, to hell with portability
-		wchar_t *self_fn = _wpgmptr;
+		size_t games_js_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1 + strlen("games.js") + 1;
+		VLA(char, games_js_fn, games_js_fn_len);
 
-		if(self_fn) {
-			size_t games_js_fn_len = (wcslen(self_fn) + 1 + strlen("games.js")) * UTF8_MUL + 1;
-			VLA(char, games_js_fn, games_js_fn_len);
-			StringToUTF8(games_js_fn, self_fn, games_js_fn_len);
-
-			PathRemoveFileSpec(games_js_fn);
-			PathAddBackslashA(games_js_fn);
-			strcat(games_js_fn, "games.js");
-			games_js = json_load_file_report(games_js_fn);
-			VLA_FREE(games_js_fn);
-		}
+		GetModuleFileNameU(NULL, games_js_fn, games_js_fn_len);
+		PathRemoveFileSpec(games_js_fn);
+		PathAddBackslashA(games_js_fn);
+		strcat(games_js_fn, "games.js");
+		games_js = json_load_file_report(games_js_fn);
+		VLA_FREE(games_js_fn);
 	}
 
 	// Parse command line
