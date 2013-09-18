@@ -17,9 +17,10 @@ EXPORTS
 
 	; Bounds
 	; ------
+	fn_for_bounds
+
 	bounds_init
 	bounds_resize
-	bounds_fullname
 	bounds_draw_line
 	bounds_draw_hline
 	bounds_draw_vline
@@ -35,11 +36,36 @@ EXPORTS
 	png_load_for_thtx
 	patch_thtx
 
+	; Music
+	; -----
+	music_title_get
+	music_title_print
+
+	BP_music_title
+	BP_music_cmt
+
+	music_init
+	music_exit
+
 	; Layout
 	; ------
 	layout_match_set
 	layout_match
+	layout_tokenize
+	
+	layout_textout_ruby
+
+	layout_SelectObject
+	layout_CreateCompatibleDC
+	layout_DeleteDC
 	layout_TextOutU
+
+	GetTextExtentBase
+	GetTextExtent
+	GetTextExtentForFont
+
+	layout_init
+	layout_exit
 
 	; Format patchers
 	; ---------------

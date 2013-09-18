@@ -14,6 +14,16 @@ LPSTR WINAPI CharNextU(
 #undef CharNext
 #define CharNext CharNextU
 
+HWND WINAPI CreateDialogParamU(
+    __in_opt HINSTANCE hInstance,
+    __in LPCSTR lpTemplateName,
+    __in_opt HWND hWndParent,
+    __in_opt DLGPROC lpDialogFunc,
+    __in LPARAM dwInitParam
+);
+#undef CreateDialogParam
+#define CreateDialogParam CreateDialogParamU
+
 HWND WINAPI CreateWindowExU(
 	__in DWORD dwExStyle,
 	__in_opt LPCSTR lpClassName,
@@ -30,6 +40,30 @@ HWND WINAPI CreateWindowExU(
 );
 #undef CreateWindowEx
 #define CreateWindowEx CreateWindowExU
+
+// Yep, both original functions use the same parameters
+#undef DefWindowProc
+#define DefWindowProc DefWindowProcW
+
+INT_PTR WINAPI DialogBoxParamU(
+    __in_opt HINSTANCE hInstance,
+    __in LPCSTR lpTemplateName,
+    __in_opt HWND hWndParent,
+    __in_opt DLGPROC lpDialogFunc,
+    __in LPARAM dwInitParam
+);
+#undef DialogBoxParam
+#define DialogBoxParam DialogBoxParamU
+
+int WINAPI DrawTextU(
+    __in HDC hdc,
+    __inout_ecount_opt(cchText) LPCSTR lpchText,
+    __in int cchText,
+    __inout LPRECT lprc,
+    __in UINT format
+);
+#undef DrawText
+#define DrawText DrawTextU
 
 int WINAPI MessageBoxU(
 	__in_opt HWND hWnd,
@@ -58,7 +92,3 @@ BOOL WINAPI SetWindowTextU(
 );
 #undef SetWindowText
 #define SetWindowText SetWindowTextU
-
-// Yep, both original functions use the same parameters
-#undef DefWindowProc
-#define DefWindowProc DefWindowProcW

@@ -38,7 +38,7 @@ size_t binhack_calc_size(const char *binhack_str)
 			fs = c + 1;
 		}
 		else if(fs && (*c == ']' || *c == '>')) {
-			size += 4;
+			size += sizeof(void*);
 			fs = NULL;
 		}
 		c++;
@@ -85,25 +85,20 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 		}
 		else if(fs && (*c == ']' || *c == '>')) {
 			VLA(char, function, (c - fs) + 1);
-			json_t *json_fp;
-			unsigned long fp = 0;
+			size_t fp = 0;
 
 			strncpy(function, fs, c - fs);
 			function[c - fs] = 0;
 
-			json_fp = json_object_get(inj_funcs, function);
-			if(json_fp) {
-				fp = (unsigned long)json_integer_value(json_fp);
-				if(func_rel) {
-					fp -= target_addr + written + 4;
-				}
-			}
+			fp = json_object_get_hex(inj_funcs, function);
 			if(fp) {
-				memcpy(binhack_buf, &fp, 4);
-				binhack_buf += 4;
-				written += 4;
-			}
-			else {
+				if(func_rel) {
+					fp -= target_addr + written + sizeof(void*);
+				}
+				memcpy(binhack_buf, &fp, sizeof(void*));
+				binhack_buf += sizeof(void*);
+				written += sizeof(void*);
+			} else {
 				log_printf("ERREUR: Pas de pointeur pour la fonction '%s'...\n", function);
 				ret = 2;
 			}

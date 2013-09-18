@@ -34,6 +34,9 @@
     <ClInclude Include="src\macros.h">
       <Filter>General</Filter>
     </ClInclude>
+    <ClInclude Include="src\psapi_dll.h">
+      <Filter>Wrappers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\utf.c">
@@ -53,6 +56,9 @@
     </ClCompile>
     <ClCompile Include="src\win32_utf8.c">
       <Filter>General</Filter>
+    </ClCompile>
+    <ClCompile Include="src\psapi_dll.c">
+      <Filter>Wrappers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -11,14 +11,25 @@
 
 size_t json_hex_value(json_t *val)
 {
-	const char *str;
-
-	if(!val) {
-		return 0;
-	}
-	str = json_string_value(val);
+	const char *str = json_string_value(val);
 	if(str) {
-		return strtol(str, NULL, str_num_base(str));
+		int base = 10;
+		size_t offset = 0;
+		size_t ret = 0;
+
+		if(strlen(str) > 2) {
+			// Module-relative hex values
+			if(!strnicmp(str, "Rx", 2)) {
+				ret += (size_t)GetModuleHandle(NULL);
+				base = 16;
+				offset = 2;
+			} else if(!strnicmp(str, "0x", 2)) {
+				base = 16;
+				offset = 2;
+			}
+		}
+		ret += strtol(str + offset, NULL, base);
+		return ret;
 	}
 	return (size_t)json_integer_value(val);
 }
@@ -57,27 +68,30 @@ int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
 
 size_t json_array_get_hex(json_t *arr, const size_t ind)
 {
-	const char *str;
-	size_t ret;
-
-	json_t *value = json_array_get(arr, ind);
-	if(!value) {
-		return 0;
+	json_t *val = json_array_get(arr, ind);
+	if(val) {
+		size_t ret = json_hex_value(val);
+		if(json_is_string(val)) {
+			// Rewrite the JSON value
+			json_array_set_new(arr, ind, json_integer(ret));
+		}
+		return ret;
 	}
-	str = json_string_value(value);
-	if(str) {
-		// Convert the string value to integer and rewrite the JSON value
-		ret = strtol(str, NULL, str_num_base(str));
-		json_array_set_new(arr, ind, json_integer(ret));
-	} else {
-		ret = (size_t)json_integer_value(value);
-	}
-	return ret;
+	return 0;
 }
 
 const char* json_array_get_string(const json_t *arr, const size_t ind)
 {
 	return json_string_value(json_array_get(arr, ind));
+}
+
+const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
+{
+	const char *ret = json_array_get_string(arr, ind);
+	if(!ret) {
+		ret = "";
+	}
+	return ret;
 }
 
 wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind)
@@ -97,24 +111,40 @@ json_t* json_object_get_create(json_t *object, const char *key, json_t *new_obje
 	return ret;
 }
 
-size_t json_object_get_hex(json_t *object, const char *key)
+json_t* json_object_numkey_get(json_t *object, const json_int_t key)
 {
-	const char *str;
-	size_t ret;
+	char key_str[64];
+	snprintf(key_str, 64, "%lld", key);
+	return json_object_get(object, key_str);
+}
 
-	json_t *value = json_object_get(object, key);
-	if(!value) {
-		return 0;
-	}
-	str = json_string_value(value);
-	if(str) {
-		// Convert the string value to integer and rewrite the JSON value
-		ret = strtol(str, NULL, str_num_base(str));
-		json_object_set_new_nocheck(object, key, json_integer(ret));
-	} else {
-		ret = (size_t)json_integer_value(value);
+json_t* json_object_hexkey_get(json_t *object, const size_t key)
+{
+#define addr_key_len 2 + (sizeof(void*) * 2) + 1
+	char key_str[addr_key_len];
+	json_t *ret = NULL;
+
+	snprintf(key_str, addr_key_len, "Rx%x", key - (size_t)GetModuleHandle(NULL));
+	ret = json_object_get(object, key_str);
+	if(!ret) {
+		snprintf(key_str, addr_key_len, "0x%x", key);
+		ret = json_object_get(object, key_str);
 	}
 	return ret;
+}
+
+size_t json_object_get_hex(json_t *object, const char *key)
+{
+	json_t *val = json_object_get(object, key);
+	if(val) {
+		size_t ret = json_hex_value(val);
+		if(json_is_string(val)) {
+			 // Rewrite the JSON value
+			json_object_set_new_nocheck(object, key, json_integer(ret));
+		}
+		return ret;
+	}
+	return 0;
 }
 
 const char* json_object_get_string(const json_t *object, const char *key)
@@ -133,37 +163,23 @@ wchar_t* json_object_get_string_utf16(const json_t *object, const char *key)
 	return json_string_value_utf16(json_object_get(object, key));
 }
 
-int json_object_merge(json_t *dest, json_t *src)
+int json_object_merge(json_t *old_obj, json_t *new_obj)
 {
-	const char *src_key;
-	json_t *src_obj;
+	const char *key;
+	json_t *new_val;
 	
-	if(!dest || !src) {
+	if(!old_obj || !new_obj) {
 		return -1;
 	}
-	json_object_foreach(src, src_key, src_obj) {
-		json_t *dest_obj = json_object_get(dest, src_key);
-		if(dest_obj) {
-			if(json_is_object(dest_obj)) {
-				// Recursion!
-				json_object_merge(dest_obj, src_obj);
-			/**
-			  * Yes, arrays should be completely overwritten, too.
-			  * Any objections?
-			  */
-			/*
-			} else if(json_is_array(src_obj) && json_is_array(dest_obj)) {
-				json_array_extend(dest_obj, json_deep_copy(src_obj));
-			}*/
-			} else {
-				json_object_set_new_nocheck(dest, src_key, json_deep_copy(src_obj));
-			}
-		}
-		else {
-			json_object_set_new_nocheck(dest, src_key, json_deep_copy(src_obj));
+	json_object_foreach(new_obj, key, new_val) {
+		json_t *old_val = json_object_get(old_obj, key);
+		if(json_is_object(old_val)) {
+			// Recursion!
+			json_object_merge(old_val, new_val);
+		} else {
+			json_object_set_nocheck(old_obj, key, new_val);
 		}
 	}
-	
 	return 0;
 }
 

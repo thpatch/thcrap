@@ -35,16 +35,17 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tsa.def</ModuleDefinitionFile>
+      <AdditionalDependencies>libpng16.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <Link>
-      <AdditionalDependencies>thcrap_d.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>thcrap_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <Link>
-      <AdditionalDependencies>thcrap.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>thcrap.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -52,14 +53,17 @@
     <ClCompile Include="src\anm_bounds.c" />
     <ClCompile Include="src\encraption.c" />
     <ClCompile Include="src\layout.c" />
+    <ClCompile Include="src\music.c" />
     <ClCompile Include="src\spells.c" />
     <ClCompile Include="src\th06_msg.c" />
     <ClCompile Include="src\thcrap_tsa.c" />
+    <ClCompile Include="src\win32_tsa.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_tsa.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\layout.h" />
     <ClInclude Include="src\thcrap_tsa.h" />
   </ItemGroup>
 </Project>

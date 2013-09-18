@@ -75,25 +75,13 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 	if(fr->name) {
 		file_rep_clear(fr);
 	}
-
 	fn_len = strlen(*file_name) + 1;
-
-	{
-		// Make a copy of the file name, ensuring UTF-8 in the process
-		VLA(wchar_t, fn_w, fn_len);
-		StringToUTF16(fn_w, *file_name, fn_len);
-
-		fr->name = (char*)malloc(fn_len * UTF8_MUL * sizeof(char));
-		StringToUTF8(fr->name, fn_w, fn_len);
-		VLA_FREE(fn_w);
-	}
-
+	fr->name = EnsureUTF8(*file_name, fn_len);
 	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->rep_size);
 	fr->hooks = patchhooks_build(fr->name);
 	if(fr->hooks) {
 		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
 		size_t diff_size = 0;
-
 		{
 			VLA(char, diff_fn, diff_fn_len);
 			strcpy(diff_fn, fr->name);
@@ -225,7 +213,7 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 		VLA(char, fn, fn_len);
 
 		sprintf(fn, "%s/%s", dir, fr->name);
-		CreateDirectory(fn, NULL);
+		dir_create_for_fn(fn);
 
 		hFile = CreateFile(
 			fn, GENERIC_WRITE, 0, NULL, CREATE_NEW, 

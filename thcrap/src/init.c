@@ -12,6 +12,7 @@
 #include "binhack.h"
 #include "sha256.h"
 #include "bp_file.h"
+#include "dialog.h"
 #include "textdisp.h"
 #include "win32_patch.h"
 
@@ -54,9 +55,7 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 
 json_t* identify_by_size(size_t file_size, json_t *versions)
 {
-	char file_size_str[32];
-	itoa(file_size, file_size_str, 10);
-	return json_object_get(json_object_get(versions, "sizes"), file_size_str);
+	return json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
 }
 
 int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
@@ -70,18 +69,20 @@ int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
 	}
 	
 	json_latest = json_object_get(run_ver, "latest");
-	json_latest_count = json_array_size(json_latest);
-
-	if(json_latest_count == 0) {
-		json_latest_count = 1;
+	if(!json_latest) {
+		return -1;
 	}
+
+	json_latest_count = json_array_size(json_latest);
+	if(json_latest_count == 0) {
+		*latest = json_string_value(json_latest);
+	}
+
 	for(i = 0; i < json_latest_count; i++) {
 		if(json_is_array(json_latest)) {
 			*latest = json_array_get_string(json_latest, i);
-		} else {
-			*latest = json_string_value(json_latest);
 		}
-		if(!strcmp(*latest, build)) {
+		if(*latest && !strcmp(*latest, build)) {
 			return 1;
 		}
 	}
@@ -130,34 +131,30 @@ json_t* identify(const char *exe_fn)
 		log_printf("Format de version Invalide!");
 		goto end;
 	}
-	{
-		json_t *ver_json;
 
-		// Version filename format is <game>.<version>.js
-		size_t ver_fn_len = strlen(game) + 1 + strlen(build) + strlen(".js") + 1;
+	// Store build in the runconfig to be recalled later for
+	// version-dependent patch file resolving. Needs be directly written to
+	// run_cfg because we already require it down below to resolve ver_fn.
+	json_object_set(run_cfg, "build", json_array_get(id_array, 1));
+
+	log_printf("→ %s %s %s\n", game, build, variety);
+
+	if(stricmp(PathFindExtensionA(game), ".js")) {
+		size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
 		VLA(char, ver_fn, ver_fn_len);
-
-		log_printf("→ %s %s %s\n", game, build, variety);
-			
-		// Get the base game file
-		if(stricmp(PathFindExtensionA(game), ".js")) {
-			sprintf(ver_fn, "%s.js", game);
-			run_ver = stack_json_resolve(ver_fn, NULL);
-		} else {
-			run_ver = stack_json_resolve(game, NULL);
-		}
-		if(!run_ver) {
-			goto end;
-		}
-		
-		sprintf(ver_fn, "%s.%s.js", game, build);
-
-		// Merge!
-		ver_json = stack_json_resolve(ver_fn, NULL);
-		json_object_merge(run_ver, ver_json);
-		json_decref(ver_json);
+		sprintf(ver_fn, "%s.js", game);
+		run_ver = stack_json_resolve(ver_fn, NULL);
 		VLA_FREE(ver_fn);
+	} else {
+		run_ver = stack_json_resolve(game, NULL);
 	}
+
+	if(!run_ver) {
+		// Create a dummy configuration with at least a "game" key
+		run_ver = json_object();
+		json_object_set_new(run_ver, "game", json_string(game));
+	}
+
 	// Pretty game title
 	{
 		const char *game_title = json_object_get_string(run_ver, "title");
@@ -214,12 +211,14 @@ end:
 
 int thcrap_init(const char *setup_fn)
 {
-	char exe_fn[MAX_PATH * 4];
 	json_t *run_ver = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
 
+	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
+	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
+	GetModuleFileNameU(NULL, exe_fn, exe_fn_len);
 	GetCurrentDirectory(game_dir_len, game_dir);
 
 	SetCurrentDirectory(dll_dir);
@@ -234,11 +233,10 @@ int thcrap_init(const char *setup_fn)
 	log_printf("Fichier de configuration: %s\n\n", setup_fn);
 
 	win32_patch(hProc);
-	if(!textdisp_init(hProc)) {
-		textdisp_patch(hProc);
-	}
+	textdisp_patch(hProc);
+	dialog_patch(hProc);
+	strings_patch(hProc);
 	
-	GetModuleFileName(NULL, exe_fn, MAX_PATH * 4);
 	log_printf("Nom du fichier EXE: %s\n", exe_fn);
 
 	run_ver = identify(exe_fn);
@@ -248,7 +246,6 @@ int thcrap_init(const char *setup_fn)
 		json_decref(run_cfg);
 		run_cfg = run_ver;
 	}
-
 	{
 		// Copy format links from formats.js
 		json_t *game_formats = json_object_get(run_cfg, "formats");
@@ -260,14 +257,13 @@ int thcrap_init(const char *setup_fn)
 				if(json_is_string(format_link)) {
 					json_t *format = json_object_get(formats_js, json_string_value(format_link));
 					if(format) {
-						json_object_set_new_nocheck(game_formats, key, json_deep_copy(format));
+						json_object_set_nocheck(game_formats, key, format);
 					}
 				}
 			}
 			json_decref(formats_js);
 		}
 	}
-	
 	log_printf("Initialisation des patchs...\n");
 	{
 		json_t *patches = json_object_get(run_cfg, "patches");
@@ -364,7 +360,9 @@ int thcrap_init(const char *setup_fn)
 #ifdef HAVE_BP_FILE
 	bp_file_init();
 #endif
-
+#ifdef HAVE_STRINGS
+	strings_init();
+#endif
 	plugins_load();
 	
 	/**
@@ -466,7 +464,9 @@ void ExitDll(HMODULE hDll)
 #ifdef HAVE_BP_FILE
 	bp_file_exit();
 #endif
-
+#ifdef HAVE_STRINGS
+	strings_exit();
+#endif
 	SAFE_FREE(dll_dir);
 #ifdef _WIN32
 #ifdef _DEBUG

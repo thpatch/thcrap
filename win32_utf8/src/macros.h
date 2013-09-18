@@ -65,6 +65,7 @@
 #ifndef strdup
 # define strdup _strdup
 #endif
+# define snprintf _snprintf
 # define strnicmp _strnicmp
 # define stricmp _stricmp
 # define strlwr _strlwr
@@ -74,3 +75,11 @@
 
 // Our strlen has error-checking!
 #define strlen(s) (s ? strlen(s) : 0)
+
+// Convenience macro to convert one fixed-length string to UTF-16.
+// TODO: place this somewhere else?
+#define FixedLengthStringConvert(str_in, str_len) \
+	size_t str_in##_len = (str_len != -1 ? str_len : strlen(str_in)) + 1; \
+	VLA(wchar_t, str_in##_w, str_in##_len); \
+	ZeroMemory(str_in##_w, str_in##_len * sizeof(wchar_t)); \
+	StringToUTF16(str_in##_w, str_in, str_len);

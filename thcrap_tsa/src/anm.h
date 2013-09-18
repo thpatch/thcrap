@@ -70,7 +70,7 @@ void format_from_bgra(png_bytep data, unsigned int pixels, WORD format);
 png_bytep bounds_init(png_image_exp bounds, thtx_header_t *thtx, const char *fn);
 png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t new_h);
 
-char* bounds_fullname(const char *fn);
+char* fn_for_bounds(const char *fn);
 
 int bounds_draw_line(
 	png_image_exp image,

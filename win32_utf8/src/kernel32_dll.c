@@ -22,10 +22,13 @@ BOOL WINAPI CreateDirectoryU(
 	// Hey, let's make this recursive while we're at it.
 	BOOL ret;
 	size_t i;
+	size_t lpPathName_w_len;
 	WCHAR_T_DEC(lpPathName);
 	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
 
-	for(i = 0; i < wcslen(lpPathName_w); i++) {
+	// no, this isn't optimized away
+	lpPathName_w_len = wcslen(lpPathName_w);
+	for(i = 0; i < lpPathName_w_len; i++) {
 		if(lpPathName_w[i] == L'\\' || lpPathName_w[i] == L'/') {
 			wchar_t old_c = lpPathName_w[i + 1];
 			lpPathName_w[i + 1] = L'\0';
@@ -34,6 +37,8 @@ BOOL WINAPI CreateDirectoryU(
 			lpPathName_w[i + 1] = old_c;
 		}
 	}
+	// Final directory
+	ret = CreateDirectoryW(lpPathName_w, NULL);
 	VLA_FREE(lpPathName_w);
 	return ret;
 }
@@ -51,7 +56,6 @@ HANDLE WINAPI CreateFileU(
 	HANDLE ret;
 	WCHAR_T_DEC(lpFileName);
 	StringToUTF16(lpFileName_w, lpFileName, lpFileName_len);
-	// log_printf("CreateFileU(\"%s\")\n", lpFileName);
 	ret = CreateFileW(
 		lpFileName_w, dwDesiredAccess, dwShareMode | FILE_SHARE_READ, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
@@ -122,83 +126,6 @@ BOOL WINAPI CreateProcessU(
 	return ret;
 }
 
-DWORD WINAPI GetModuleFileNameU(
-	__in_opt HMODULE hModule,
-	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,
-	__in DWORD nSize
-)
-{
-	VLA(wchar_t, lpFilename_w, nSize);
-	DWORD ret = GetModuleFileNameW(hModule, lpFilename_w, nSize);
-	StringToUTF8(lpFilename, lpFilename_w, nSize);
-	// log_printf("GetModuleFileNameU() -> %s\n", lpFilename);
-	VLA_FREE(lpFilename_w);
-	return ret;
-}
-
-BOOL WINAPI SetCurrentDirectoryU(
-	__in LPCSTR lpPathName
-)
-{
-	BOOL ret;
-	WCHAR_T_DEC(lpPathName);
-	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
-	// log_printf("SetCurrentDirectoryU(\"%s\")\n", lpPathName);
-	ret = SetCurrentDirectoryW(lpPathName_w);
-	VLA_FREE(lpPathName_w);
-	return ret;
-}
-
-DWORD WINAPI GetCurrentDirectoryU(
-	__in DWORD nBufferLength,
-	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
-)
-{
-	DWORD ret;
-	VLA(wchar_t, lpBuffer_w, nBufferLength);
-
-	if(!lpBuffer) {
-		lpBuffer_w = NULL;
-	}
-	ret = GetCurrentDirectoryW(nBufferLength, lpBuffer_w);
-	if(lpBuffer) {
-		StringToUTF8(lpBuffer, lpBuffer_w, nBufferLength);
-	} else {
-		// Hey, let's be nice and return the _actual_ length.
-		VLA(wchar_t, lpBufferReal_w, ret);
-		GetCurrentDirectoryW(ret, lpBufferReal_w);
-		ret = StringToUTF8(NULL, lpBufferReal_w, 0);
-		VLA_FREE(lpBufferReal_w);
-	}
-	VLA_FREE(lpBuffer_w);
-	return ret;
-}
-
-VOID WINAPI GetStartupInfoU(
-	__out LPSTARTUPINFOA lpSI
-)
-{
-	STARTUPINFOW si_w;
-	GetStartupInfoW(&si_w);
-
-	// I would have put this code into kernel32_init, but apparently
-	// GetStartupInfoW is "not safe to be called inside DllMain".
-	// So unsafe in fact that Wine segfaults when I tried it
-	if(!startupinfo_desktop) {
-		size_t lpDesktop_len = wcslen(si_w.lpDesktop) + 1;
-		startupinfo_desktop = (char*)malloc(lpDesktop_len * UTF8_MUL * sizeof(char));
-		StringToUTF8(startupinfo_desktop, si_w.lpDesktop, lpDesktop_len);
-	}
-	if(!startupinfo_title) {
-		size_t lpTitle_len = wcslen(si_w.lpTitle) + 1;
-		startupinfo_title = (char*)malloc(lpTitle_len * UTF8_MUL * sizeof(char));
-		StringToUTF8(startupinfo_title, si_w.lpTitle, lpTitle_len);
-	}
-	memcpy(lpSI, &si_w, sizeof(STARTUPINFOA));
-	lpSI->lpDesktop = startupinfo_desktop;
-	lpSI->lpTitle = startupinfo_title;
-}
-
 static void CopyFindDataWToA(
 	__out LPWIN32_FIND_DATAA w32fd_a,
 	__in LPWIN32_FIND_DATAW w32fd_w
@@ -257,18 +184,6 @@ BOOL WINAPI FindNextFileU(
 	return ret;
 }
 
-HMODULE WINAPI LoadLibraryU(
-	__in LPCSTR lpLibFileName
-)
-{
-	HMODULE ret;
-	WCHAR_T_DEC(lpLibFileName);
-	StringToUTF16(lpLibFileName_w, lpLibFileName, lpLibFileName_len);
-	ret = LoadLibraryW(lpLibFileName_w);
-	VLA_FREE(lpLibFileName_w);
-	return ret;
-}
-
 DWORD WINAPI FormatMessageU(
 	__in DWORD dwFlags,
 	__in_opt LPCVOID lpSource,
@@ -300,6 +215,143 @@ DWORD WINAPI FormatMessageU(
 	}
 	ret = StringToUTF8(lpBuffer, lpBufferW, ret);
 	LocalFree(lpBufferW);
+	return ret;
+}
+
+DWORD WINAPI GetCurrentDirectoryU(
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
+)
+{
+	DWORD ret;
+	VLA(wchar_t, lpBuffer_w, nBufferLength);
+
+	if(!lpBuffer) {
+		lpBuffer_w = NULL;
+	}
+	ret = GetCurrentDirectoryW(nBufferLength, lpBuffer_w);
+	if(lpBuffer) {
+		StringToUTF8(lpBuffer, lpBuffer_w, nBufferLength);
+	} else {
+		// Hey, let's be nice and return the _actual_ length.
+		VLA(wchar_t, lpBufferReal_w, ret);
+		GetCurrentDirectoryW(ret, lpBufferReal_w);
+		ret = StringToUTF8(NULL, lpBufferReal_w, 0);
+		VLA_FREE(lpBufferReal_w);
+	}
+	VLA_FREE(lpBuffer_w);
+	return ret;
+}
+
+DWORD WINAPI GetEnvironmentVariableU(
+    __in_opt LPCSTR lpName,
+    __out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
+    __in DWORD nSize
+)
+{
+	DWORD ret;
+	WCHAR_T_DEC(lpName);
+	VLA(wchar_t, lpBuffer_w, nSize);
+	StringToUTF16(lpName_w, lpName, lpName_len);
+
+	GetEnvironmentVariableW(lpName_w, lpBuffer_w, nSize);
+	// Return the converted size (!)
+	ret = StringToUTF8(lpBuffer, lpBuffer_w, nSize);
+	VLA_FREE(lpBuffer_w);
+	return ret;
+}
+
+DWORD WINAPI GetModuleFileNameU(
+	__in_opt HMODULE hModule,
+	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,
+	__in DWORD nSize
+)
+{
+	/**
+	  * And here we are, the most stupid Win32 API function I've seen so far.
+	  *
+	  * This wrapper adds the "GetCurrentDirectory functionality" the original
+	  * function unfortunately lacks. Pass NULL for [lpFilename] or [nSize] to
+	  * get the size required for a buffer to hold the module name in UTF-8.
+	  *
+	  * ... and unless there is any alternative function I don't know of, the
+	  * only way to actually calculate this size is to repeatedly increase a
+	  * buffer and to check whether that has been enough.
+	  *
+	  * In practice though, this length should never exceed MAX_PATH. I failed to
+	  * create any test case where the path would be larger. But just in case it
+	  * is or this becomes more frequent some day, the code is here.
+	  */
+
+	DWORD ret = nSize ? nSize : MAX_PATH;
+	VLA(wchar_t, lpFilename_w, ret);
+
+	if(lpFilename && nSize) {
+		GetModuleFileNameW(hModule, lpFilename_w, nSize);
+	} else {
+		BOOL error = 1;
+		while(error) {
+			GetModuleFileNameW(hModule, lpFilename_w, ret);
+			error = GetLastError() == ERROR_INSUFFICIENT_BUFFER;
+			if(error) {
+				VLA(wchar_t, lpFilename_VLA, ret += MAX_PATH);
+				VLA_FREE(lpFilename_w);
+				lpFilename_w = lpFilename_VLA;
+			}
+		}
+		nSize = 0;
+	}
+	ret = StringToUTF8(lpFilename, lpFilename_w, nSize); 
+	VLA_FREE(lpFilename_w);
+	return ret;
+}
+
+VOID WINAPI GetStartupInfoU(
+	__out LPSTARTUPINFOA lpSI
+)
+{
+	STARTUPINFOW si_w;
+	GetStartupInfoW(&si_w);
+
+	// I would have put this code into kernel32_init, but apparently
+	// GetStartupInfoW is "not safe to be called inside DllMain".
+	// So unsafe in fact that Wine segfaults when I tried it
+	if(!startupinfo_desktop) {
+		size_t lpDesktop_len = wcslen(si_w.lpDesktop) + 1;
+		startupinfo_desktop = (char*)malloc(lpDesktop_len * UTF8_MUL * sizeof(char));
+		StringToUTF8(startupinfo_desktop, si_w.lpDesktop, lpDesktop_len);
+	}
+	if(!startupinfo_title) {
+		size_t lpTitle_len = wcslen(si_w.lpTitle) + 1;
+		startupinfo_title = (char*)malloc(lpTitle_len * UTF8_MUL * sizeof(char));
+		StringToUTF8(startupinfo_title, si_w.lpTitle, lpTitle_len);
+	}
+	memcpy(lpSI, &si_w, sizeof(STARTUPINFOA));
+	lpSI->lpDesktop = startupinfo_desktop;
+	lpSI->lpTitle = startupinfo_title;
+}
+
+HMODULE WINAPI LoadLibraryU(
+	__in LPCSTR lpLibFileName
+)
+{
+	HMODULE ret;
+	WCHAR_T_DEC(lpLibFileName);
+	StringToUTF16(lpLibFileName_w, lpLibFileName, lpLibFileName_len);
+	ret = LoadLibraryW(lpLibFileName_w);
+	VLA_FREE(lpLibFileName_w);
+	return ret;
+}
+
+BOOL WINAPI SetCurrentDirectoryU(
+	__in LPCSTR lpPathName
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(lpPathName);
+	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
+	ret = SetCurrentDirectoryW(lpPathName_w);
+	VLA_FREE(lpPathName_w);
 	return ret;
 }
 

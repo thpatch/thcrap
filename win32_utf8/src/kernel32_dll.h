@@ -42,33 +42,6 @@ BOOL WINAPI CreateProcessU(
 #undef CreateProcess
 #define CreateProcess CreateProcessU
 
-DWORD WINAPI GetModuleFileNameU(
-	__in_opt HMODULE hModule,
-	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,
-	__in     DWORD nSize
-);
-#undef GetModuleFileName
-#define GetModuleFileName GetModuleFileNameU
-
-BOOL WINAPI SetCurrentDirectoryU(
-	__in LPCSTR lpPathName
-);
-#undef SetCurrentDirectory
-#define SetCurrentDirectory SetCurrentDirectoryU
-
-DWORD WINAPI GetCurrentDirectoryU(
-	__in DWORD nBufferLength,
-	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
-);
-#undef GetCurrentDirectory
-#define GetCurrentDirectory GetCurrentDirectoryU
-
-VOID WINAPI GetStartupInfoU(
-	__out LPSTARTUPINFOA lpStartupInfo
-);
-#undef GetStartupInfo
-#define GetStartupInfo GetStartupInfoU
-
 HANDLE WINAPI FindFirstFileU(
     __in  LPCSTR lpFileName,
     __out LPWIN32_FIND_DATAA lpFindFileData
@@ -95,11 +68,46 @@ DWORD WINAPI FormatMessageU(
 #undef FormatMessage
 #define FormatMessage FormatMessageU
 
+DWORD WINAPI GetCurrentDirectoryU(
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
+);
+#undef GetCurrentDirectory
+#define GetCurrentDirectory GetCurrentDirectoryU
+
+DWORD WINAPI GetEnvironmentVariableU(
+    __in_opt LPCSTR lpName,
+    __out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
+    __in DWORD nSize
+);
+#undef GetEnvironmentVariable
+#define GetEnvironmentVariable GetEnvironmentVariableU
+
+DWORD WINAPI GetModuleFileNameU(
+	__in_opt HMODULE hModule,
+	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,
+	__in     DWORD nSize
+);
+#undef GetModuleFileName
+#define GetModuleFileName GetModuleFileNameU
+
+VOID WINAPI GetStartupInfoU(
+	__out LPSTARTUPINFOA lpStartupInfo
+);
+#undef GetStartupInfo
+#define GetStartupInfo GetStartupInfoU
+
 HMODULE WINAPI LoadLibraryU(
 	__in LPCSTR lpLibFileName
 );
 #undef LoadLibrary
 #define LoadLibrary LoadLibraryU
+
+BOOL WINAPI SetCurrentDirectoryU(
+	__in LPCSTR lpPathName
+);
+#undef SetCurrentDirectory
+#define SetCurrentDirectory SetCurrentDirectoryU
 
 // Patchers
 int kernel32_init(HMODULE hMod);

@@ -40,12 +40,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <Link>
-      <AdditionalDependencies>thcrap_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>thcrap_d.lib;zlibwapid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <Link>
-      <AdditionalDependencies>thcrap.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>thcrap.lib;zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

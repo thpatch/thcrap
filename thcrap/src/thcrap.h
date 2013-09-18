@@ -22,4 +22,5 @@
 #include "breakpoint.h"
 #include "strutil.h"
 #include "mempatch.h"
+#include "strings.h"
 #include "init.h"

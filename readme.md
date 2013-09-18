@@ -46,7 +46,9 @@ Jusqu'à maintenant, tout les sous-projets ne sont constitués que d'un fichier 
 
 * [Jansson] (http://www.digip.org/jansson/) est nécessaire pour tout les modules sauf `win32_utf8`. Compilez le à partir de la [dernière source] (https://github.com/akheron/jansson), et ensuite ajoutez ses includes et dossiers de bibliothèques à chaque projet.
 
-* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** est également requis par `thcrap_tsa` pour le patching d'images.
+* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** est requis par `thcrap_tsa` pour le patching d'images.
+
+* [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
 ### Licence ###
 

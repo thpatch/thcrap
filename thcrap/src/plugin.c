@@ -28,7 +28,7 @@ int plugins_load()
 			func = (thcrap_init_plugin_type)GetProcAddress(plugin, "thcrap_init_plugin");
 			if(func && !func(run_cfg)) {
 				log_printf("\t%s\n", w32fd.cFileName);
-				json_object_set_new(plugins, w32fd.cFileName, json_integer((int)plugin));
+				json_object_set_new(plugins, w32fd.cFileName, json_integer((size_t)plugin));
 			} else {
 				FreeLibrary(plugin);
 			}

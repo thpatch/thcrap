@@ -8,7 +8,9 @@
   */
 
 #include <thcrap.h>
+#include <commctrl.h>
 #include "thcrap_tsa.h"
+#include "layout.h"
 
 int __stdcall thcrap_init_plugin(json_t *run_cfg)
 {
@@ -21,20 +23,30 @@ int __stdcall thcrap_init_plugin(json_t *run_cfg)
 	patchhook_register("*.std", patch_std);
 	patchhook_register("*.anm", patch_anm);
 
+	// All component initialization functions that require runconfig values
 	spells_init();
+	music_init();
 	return 0;
 }
 
 int InitDll(HMODULE hDll)
 {
+	// custom.exe bugfix
+	INITCOMMONCONTROLSEX icce = {
+		sizeof(icce), ICC_STANDARD_CLASSES
+	};
+	InitCommonControlsEx(&icce);
+
 	layout_init(hDll);
+	win32_tsa_patch(GetModuleHandle(NULL));
 	return 0;
 }
 
 void ExitDll(HMODULE hDll)
 {
-	layout_exit();
+	music_exit();
 	spells_exit();
+	layout_exit();
 }
 
 // Yes, this _has_ to be included in every project.

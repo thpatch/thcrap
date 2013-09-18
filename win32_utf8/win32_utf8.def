@@ -7,38 +7,48 @@ EXPORTS
 	StringToUTF16
 	StringToUTF16_VLA
 	StringToUTF8
+	EnsureUTF8
 
 	; gdi32.dll
 	; ---------
 	CreateFontU
-	TextOutU
 	GetTextExtentPoint32U
+	TextOutU
 
-	; user32.dll
-	; ----------
-	CharNextU
-	CreateWindowExU
-	MessageBoxU
-	RegisterClassU
-	RegisterClassExU
-	SetWindowTextU
-			
 	; kernel32.dll
 	; ------------
 	CreateDirectoryU
 	CreateFileU
 	CreateProcessU
-	GetModuleFileNameU
-	SetCurrentDirectoryU
-	GetCurrentDirectoryU
-	GetStartupInfoU
-	FormatMessageU
 	FindFirstFileU
 	FindNextFileU
+	FormatMessageU
+	GetCurrentDirectoryU
+	GetEnvironmentVariableU
+	GetModuleFileNameU
+	GetModuleFileNameExU
+	GetStartupInfoU
 	LoadLibraryU
+	SetCurrentDirectoryU
+
+	; psapi.dll
+	; ---------
+	GetModuleFileNameExU
 
 	; shlwapi.dll
 	; -----------
 	PathFileExistsU
 	PathMatchSpecU
 	PathRemoveFileSpecU
+
+	; user32.dll
+	; ----------
+	CharNextU
+	CreateDialogParamU
+	CreateWindowExU
+	DialogBoxParamU
+	DrawTextU
+	MessageBoxU
+	RegisterClassU
+	RegisterClassExU
+	SetWindowTextU

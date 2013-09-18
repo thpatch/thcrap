@@ -16,7 +16,8 @@ static const char BREAKPOINTS[] = "breakpoints";
 static BYTE *BP_CodeCave = NULL;
 
 #define BP_Offset 32
-static const size_t BP_CodeCave_Limits[2] = {5, (BP_Offset - 5)};
+#define CALL_LEN (sizeof(void*) + 1)
+static const size_t BP_CodeCave_Limits[2] = {CALL_LEN, (BP_Offset - CALL_LEN)};
 static json_t *BP_Object = NULL;
 // -----------------------
 
@@ -74,7 +75,7 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 	}
 	{
 		BreakpointFunc_t ret = NULL;
-		size_t key_len = strlen(key) + 1;
+		STRLEN_DEC(key);
 		VLA(char, bp_key, key_len + strlen("BP_") + 1);
 
 		// Multi-slot support
@@ -122,7 +123,7 @@ __declspec(naked) void breakpoint_process()
 	esp_prev = regs->esp;
 
 	json_object_foreach(BP_Object, key, bp) {
-		if(json_object_get_hex(bp, "addr") == (regs->retaddr - 5)) {
+		if(json_object_get_hex(bp, "addr") == (regs->retaddr - CALL_LEN)) {
 			break;
 		}
 		i++;
@@ -166,9 +167,9 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 		size_t dist_old, dist_new;
 		
 		dist_old = *((size_t*)(cave + 1));
-		dist_new = (dist_old + (bp_addr + 5)) - ((size_t)cave + 5);
+		dist_new = (dist_old + (bp_addr + CALL_LEN)) - ((size_t)cave + CALL_LEN);
 
-		memcpy(cave + 1, &dist_new, 4);
+		memcpy(cave + 1, &dist_new, sizeof(dist_new));
 
 		log_printf("réparation de l'adresse relative de 0x%08x a 0x%08x... ", dist_old, dist_new);
 	}
@@ -235,7 +236,7 @@ int breakpoints_apply()
 
 		// Calculate values for cave
 		cave = BP_CodeCave + ((i - 1) * BP_Offset);
-		cave_dist = (addr + cavesize) - ((DWORD)cave + cavesize + 5);
+		cave_dist = (addr + cavesize) - ((DWORD)cave + cavesize + CALL_LEN);
 
 		// Copy old code to cave
 		memcpy(cave, UlongToPtr(addr), cavesize);
@@ -243,18 +244,18 @@ int breakpoints_apply()
 
 		// JMP addr
 		cave[cavesize] = 0xe9;
-		memcpy(cave + cavesize + 1, &cave_dist, 4);
+		memcpy(cave + cavesize + 1, &cave_dist, sizeof(cave_dist));
 
 		// Build breakpoint asm
 		{
 			BYTE bp_asm[BP_Offset];
 			memset(bp_asm, 0x90, cavesize);
 
-			bp_dist = (size_t)(breakpoint_process) - ((DWORD)addr + 5);
+			bp_dist = (size_t)(breakpoint_process) - ((DWORD)addr + CALL_LEN);
 
 			// CALL breakpoint_process
 			bp_asm[0] = 0xe8;
-			memcpy(bp_asm + 1, &bp_dist, 4);
+			memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
 			PatchRegionNoCheck((void*)addr, bp_asm, cavesize);
 		}
 		log_printf("OK\n");

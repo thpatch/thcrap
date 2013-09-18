@@ -32,17 +32,17 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader />
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>PSAPI_VERSION=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(ProjectDir)..\src\win32_utf8;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalDependencies>psapi.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>win32_utf8.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -81,6 +81,7 @@
     <ClInclude Include="src\gdi32_dll.h" />
     <ClInclude Include="src\kernel32_dll.h" />
     <ClInclude Include="src\macros.h" />
+    <ClInclude Include="src\psapi_dll.h" />
     <ClInclude Include="src\shlwapi_dll.h" />
     <ClInclude Include="src\user32_dll.h" />
     <ClInclude Include="src\utf.h" />
@@ -89,6 +90,7 @@
   <ItemGroup>
     <ClCompile Include="src\gdi32_dll.c" />
     <ClCompile Include="src\kernel32_dll.c" />
+    <ClCompile Include="src\psapi_dll.c" />
     <ClCompile Include="src\shlwapi_dll.c" />
     <ClCompile Include="src\user32_dll.c" />
     <ClCompile Include="src\utf.c" />

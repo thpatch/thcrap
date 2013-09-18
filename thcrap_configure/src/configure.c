@@ -103,7 +103,7 @@ json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remot
 		VLA(char, remote_patch_fn, remote_patch_fn_len);
 		sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
 
-		patch_js_buffer = (char*)ServerDownloadFileA(remote_servers, remote_patch_fn, &patch_js_size);
+		patch_js_buffer = (char*)ServerDownloadFileA(remote_servers, remote_patch_fn, &patch_js_size, NULL);
 		// TODO: Nice, friendly error
 
 		VLA_FREE(remote_patch_fn);
@@ -162,12 +162,10 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 #else
 	const char *loader_exe = "thcrap_loader.exe";
 #endif
-	size_t self_fn_len;
-	char self_fn[MAX_PATH * 4];
+	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
+	VLA(char, self_fn, self_fn_len);
 
-	GetModuleFileName(NULL, self_fn, MAX_PATH * 4);
-	self_fn_len = strlen(self_fn) + 1;
-
+	GetModuleFileNameU(NULL, self_fn, self_fn_len);
 	PathRemoveFileSpec(self_fn);
 	PathAddBackslashA(self_fn);
 
@@ -255,12 +253,18 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	}
 
 	{
-		// Double the height of the console window
+		// Maximize the height of the console window
 		CONSOLE_SCREEN_BUFFER_INFO sbi = {0};
+		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
+		COORD largest = GetLargestConsoleWindowSize(console);
+		HWND console_wnd = GetConsoleWindow();
+		RECT console_rect;
 
-		GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &sbi);
-		sbi.srWindow.Bottom *= 2;
-		SetConsoleWindowInfo(GetStdHandle(STD_OUTPUT_HANDLE), TRUE, &sbi.srWindow);
+		GetWindowRect(console_wnd, &console_rect);
+		SetWindowPos(console_wnd, NULL, console_rect.left, 0, 0, 0, SWP_NOSIZE);
+		GetConsoleScreenBufferInfo(console, &sbi);
+		sbi.srWindow.Bottom = largest.Y - 4;
+		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
 	}
 
 	inet_init();
@@ -311,7 +315,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"Patcheur automatique de la communaute Touhou\n"
 		"\n"
 		"Malheureusement, nous n'avons pas reussi a creer a temps une belle interface graphique\n"
-		"pour la configuration des patch a l'occasion de la sortie de la demo de Double Dealing Character.\n"
+		"pour la configuration des patch a l'occasion de la sortie de Double Dealing Character.\n"
 		"Nous esperons tout de meme que ceci sera toujours suffisamment intuitif pour la configuration basique.\n"
 		"\n"
 		"\n"
@@ -350,7 +354,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		DWORD remote_server_js_size;
 		void *remote_server_js_buffer;
 
-		remote_server_js_buffer = ServerDownloadFileA(local_servers, "server.js", &remote_server_js_size);
+		remote_server_js_buffer = ServerDownloadFileA(local_servers, "server.js", &remote_server_js_size, NULL);
 		if(remote_server_js_buffer) {
 			FILE *local_server_js_file = NULL;
 
@@ -428,7 +432,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	SetCurrentDirectory(cur_dir);
 
 	// Other default run_cfg settings
-	json_object_set_new(run_cfg, "console", json_true());
+	json_object_set_new(run_cfg, "console", json_false());
 	json_object_set_new(run_cfg, "dat_dump", json_false());
 
 	run_cfg_fn = run_cfg_fn_build(patch_stack);

@@ -10,62 +10,47 @@
 #include <thcrap.h>
 #include <inject.h>
 
-
-/*
-size_t GetModuleBase(HANDLE hProc, wchar_t *module) 
-{ 
-	HMODULE *hModules = NULL;
-	wchar_t cur_module[MAX_MODULE_NAME32]; 
-	DWORD cModules; 
-	DWORD dwBase = -1;
-	//------ 
-
-	EnumProcessModules(hProc, hModules, 0, &cModules); 
-	hModules = (HMODULE*)malloc(cModules); 
-
-	if(EnumProcessModules(hProc, hModules, cModules/sizeof(HMODULE), &cModules)) {
-		int i;
-		for(i = 0; i < cModules/sizeof(HMODULE); i++) { 
-			if(GetModuleBaseName(hProc, hModules[i], cur_module, sizeof(cur_module))) { 
-				if(!wcscmp(module, cur_module)) { 
-					dwBase = (DWORD)hModules[i]; 
-					break; 
-				}
-			} 
-		} 
-	}
-	free(hModules);
-	return dwBase; 
-}
-*/
-
-int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread)
+/// Entry point determination
+/// -------------------------
+// After creating a process in suspended state, EAX is guaranteed to contain
+// the correct address of the entry point, even when the executable has the
+// DYNAMICBASE flag activated in its header.
+//
+// (Works on Windows, but not on Wine)
+void* entry_from_context(HANDLE hThread)
 {
-	// TODO: Read entry point from .exe file
-	int ret = 0;
-	const DWORD base_addr = 0x400000;
-	void *entry_addr;
-	BYTE entry_asm_orig[2];
-	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
-	DWORD byte_ret;
+	CONTEXT context;
 
+	ZeroMemory(&context, sizeof(CONTEXT));
+	context.ContextFlags = CONTEXT_FULL;
+	if(GetThreadContext(hThread, &context)) {
+		return (void*)context.Eax;
+	}
+	return NULL;
+}
+
+// Reads the entry point from the PE header.
+//
+// (Works always, provided that [base_addr] is correct)
+void* entry_from_header(HANDLE hProcess, void *base_addr)
+{
 	void *pe_header = NULL;
+	void *ret = NULL;
 	MEMORY_BASIC_INFORMATION mbi;
 	PIMAGE_DOS_HEADER pDosH;
 	PIMAGE_NT_HEADERS pNTH;
-	DWORD old_prot;
+	DWORD byte_ret;
 
 	// Read the entire PE header
-	if(!VirtualQueryEx(hProcess, (LPVOID)base_addr, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
-		return -2;
+	if(!VirtualQueryEx(hProcess, base_addr, &mbi, sizeof(mbi))) {
+		goto end;
 	}
 	pe_header = malloc(mbi.RegionSize);
-	ReadProcessMemory(hProcess, (LPVOID)base_addr, pe_header, mbi.RegionSize, &byte_ret);
+	ReadProcessMemory(hProcess, base_addr, pe_header, mbi.RegionSize, &byte_ret);
 	pDosH = (PIMAGE_DOS_HEADER)pe_header;
 
 	// Verify that the PE is valid by checking e_magic's value
 	if(pDosH->e_magic != IMAGE_DOS_SIGNATURE) {
-		ret = -3;
 		goto end;
 	}
 
@@ -74,42 +59,107 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread)
 
 	// Verify that the NT Header is correct
 	if(pNTH->Signature != IMAGE_NT_SIGNATURE) {
-		ret = -4;
 		goto end;
 	}
 
 	// Alright, we have the entry point now
-	entry_addr = pNTH->OptionalHeader.AddressOfEntryPoint + pNTH->OptionalHeader.ImageBase;
-	SAFE_FREE(pe_header);
-
-	if(!VirtualQueryEx(hProcess, entry_addr, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
-		ret = -5;
-		goto end;
-	}
-	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &old_prot);
-	ReadProcessMemory(hProcess, entry_addr, entry_asm_orig, 2, &byte_ret);
-	WriteProcessMemory(hProcess, entry_addr, entry_asm_delay, 2, &byte_ret);
-	FlushInstructionCache(hProcess, entry_addr, 2);
-	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, old_prot, &old_prot);
-
-	{
-		CONTEXT context;
-		ZeroMemory(&context, sizeof(CONTEXT));
-		context.ContextFlags = CONTEXT_CONTROL;
-		while(context.Eip != (DWORD)entry_addr) {
-			ResumeThread(hThread);
-			Sleep(10);
-			SuspendThread(hThread);
-			GetThreadContext(hThread, &context);
-		}
-
-		// Write back the original code
-		WriteProcessMemory(hProcess, entry_addr, entry_asm_orig, 2, &byte_ret);
-		FlushInstructionCache(hProcess, entry_addr, 2);
-	}
+	ret = (void*)(pNTH->OptionalHeader.AddressOfEntryPoint + (DWORD)base_addr);
 end:
 	SAFE_FREE(pe_header);
 	return ret;
+}
+
+// Returns the base address of the module with the given title in [hProcess].
+//
+// (Works on Wine, but not on Windows immediately after the target process was
+//  created in suspended state.)
+void* module_base_get(HANDLE hProcess, const char *module) 
+{ 
+	HMODULE *hModules = NULL;
+	DWORD cModules; 
+	void *ret = NULL;
+	//------ 
+
+	EnumProcessModules(hProcess, hModules, 0, &cModules); 
+	hModules = (HMODULE*)malloc(cModules); 
+
+	if(EnumProcessModules(hProcess, hModules, cModules / sizeof(HMODULE), &cModules)) {
+		size_t i;
+		for(i = 0; i < cModules / sizeof(HMODULE); i++) { 
+			char cur_module[MAX_PATH];
+			if(GetModuleFileNameEx(hProcess, hModules[i], cur_module, sizeof(cur_module))) {
+				if(!strcmp(module, cur_module)) { 
+					ret = hModules[i]; 
+					break; 
+				}
+			} 
+		} 
+	}
+	SAFE_FREE(hModules);
+	return ret;
+}
+/// -------------------------
+
+int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
+{
+	CONTEXT context;
+	BYTE entry_asm_orig[2];
+	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
+	MEMORY_BASIC_INFORMATION mbi;
+	DWORD byte_ret;
+	DWORD old_prot;
+
+	if(!VirtualQueryEx(hProcess, addr, &mbi, sizeof(mbi))) {
+		return 1;
+	}
+	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &old_prot);
+	ReadProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
+	WriteProcessMemory(hProcess, addr, entry_asm_delay, sizeof(entry_asm_delay), &byte_ret);
+	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_delay));
+	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, old_prot, &old_prot);
+
+	ZeroMemory(&context, sizeof(CONTEXT));
+	context.ContextFlags = CONTEXT_CONTROL;
+	while(context.Eip != (DWORD)addr) {
+		ResumeThread(hThread);
+		Sleep(10);
+		SuspendThread(hThread);
+		GetThreadContext(hThread, &context);
+	}
+
+	// Write back the original code
+	WriteProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
+	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_orig));
+	return 0;
+}
+
+int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
+{
+	// Try to get the entry point by various means, sorted by both efficiency
+	// and probability of them working.
+	void *entry_addr = NULL;
+
+	if(!(entry_addr = entry_from_context(hThread))) {
+		void *module_base;
+
+		if(!(module_base = module_base_get(hProcess, module))) {
+			// shit, gotta take a guess and hope it works
+			module_base = (void*)0x400000;
+		}
+		entry_addr = entry_from_header(hProcess, module_base);
+	}
+
+	if(entry_addr) {
+		return ThreadWaitUntil(hProcess, hThread, entry_addr);
+	} else {
+		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+			"Couldn't determine the entry point of %s!\n"
+			"\n"
+			"Seems as if %s won't work with this game on your system.\n",
+			PathFindFileNameA(module), PROJECT_NAME_SHORT()
+		);
+		return 1;
+	}
 }
 
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
@@ -165,28 +215,24 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	  * On Vista and above however, this loads apphelp.dll into our process.
 	  * This DLL sandboxes our application by hooking GetProcAddress and a whole
 	  * bunch of other functions.
-	  * In turn, thcrap.Inject gets wrong pointers to the system functions used in
+	  * In turn, thcrap_inject gets wrong pointers to the system functions used in
 	  * the injection process, crashing the game as soon as it calls one of those.
 	  * ----
 	  */
 	// SetEnvironmentVariable(L"__COMPAT_LAYER", L"ApplicationLocale");
 	// SetEnvironmentVariable(L"AppLocaleID", L"0411");
 
+	// Load games.js
 	{
-		// GetModuleFileName sucks, to hell with portability
-		wchar_t *self_fn = _wpgmptr;
+		size_t games_js_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1 + strlen("games.js") + 1;
+		VLA(char, games_js_fn, games_js_fn_len);
 
-		if(self_fn) {
-			size_t games_js_fn_len = (wcslen(self_fn) + 1 + strlen("games.js")) * UTF8_MUL + 1;
-			VLA(char, games_js_fn, games_js_fn_len);
-			StringToUTF8(games_js_fn, self_fn, games_js_fn_len);
-
-			PathRemoveFileSpec(games_js_fn);
-			PathAddBackslashA(games_js_fn);
-			strcat(games_js_fn, "games.js");
-			games_js = json_load_file_report(games_js_fn);
-			VLA_FREE(games_js_fn);
-		}
+		GetModuleFileNameU(NULL, games_js_fn, games_js_fn_len);
+		PathRemoveFileSpec(games_js_fn);
+		PathAddBackslashA(games_js_fn);
+		strcat(games_js_fn, "games.js");
+		games_js = json_load_file_report(games_js_fn);
+		VLA_FREE(games_js_fn);
 	}
 
 	// Parse command line
@@ -284,9 +330,12 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			final_exe_fn_local, game_dir, NULL, NULL, TRUE,
 			CREATE_SUSPENDED, NULL, game_dir, &si, &pi
 		);
-		VLA_FREE(game_dir);
-		VLA_FREE(final_exe_fn_local);
-		if(!ret) {
+		if(ret) {
+			if(!WaitUntilEntryPoint(pi.hProcess, pi.hThread, final_exe_fn_local)) {
+				thcrap_inject(pi.hProcess, run_cfg_fn);
+			}
+			ResumeThread(pi.hThread);
+		} else {
 			char *msg_str;
 
 			ret = GetLastError();
@@ -306,11 +355,9 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			LocalFree(msg_str);
 			ret = -4;
 			goto end;
-		} else {
-			WaitUntilEntryPoint(pi.hProcess, pi.hThread);
-			thcrap_inject(pi.hProcess, run_cfg_fn);
-			ResumeThread(pi.hThread);
 		}
+		VLA_FREE(game_dir);
+		VLA_FREE(final_exe_fn_local);
 	}
 	ret = 0;
 end:

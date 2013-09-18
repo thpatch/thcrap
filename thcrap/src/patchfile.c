@@ -44,7 +44,36 @@ void* file_read(const char *fn, size_t *file_size)
 	return ret;
 }
 
-char* game_file_fullname(const char *fn)
+char* fn_for_build(const char *fn)
+{
+	const char *build = json_object_get_string(run_cfg, "build");
+	size_t name_len;
+	size_t ret_len;
+	const char *first_ext;
+	char *ret;
+
+	if(!fn || !build) {
+		return NULL;
+	}
+	ret_len = strlen(fn) + 1 + strlen(build) + 1;
+	ret = (char*)malloc(ret_len);
+	if(!ret) {
+		return NULL;
+	}
+
+	// We need to do this on our own here because the build ID should be placed
+	// *before* the first extension.
+	first_ext = fn;
+	while(*first_ext && *first_ext != '.') {
+		first_ext++;
+	}
+	name_len = (first_ext - fn);
+	strncpy(ret, fn, name_len);
+	sprintf(ret + name_len, ".%s%s", build, first_ext);
+	return ret;
+}
+
+char* fn_for_game(const char *fn)
 {
 	const char *game_id;
 	char *full_fn;
@@ -74,7 +103,28 @@ void log_print_patch_fn(json_t *patch_obj, const char *fn, int level)
 	log_printf("\n%*s+ %s%s", (level + 1), " ", archive, fn);
 }
 
-char* patch_file_fullname(const json_t *patch_info, const char *fn)
+int dir_create_for_fn(const char *fn)
+{
+	int ret = -1;
+	if(fn) {
+		STRLEN_DEC(fn);
+		char *fn_dir = PathFindFileNameA(fn);
+		if(fn_dir && (fn_dir != fn)) {
+			VLA(char, fn_copy, fn_len);
+			int fn_pos = fn_dir - fn;
+
+			strncpy(fn_copy, fn, fn_len);
+			fn_copy[fn_pos] = '\0';
+			ret = CreateDirectory(fn_copy, NULL);
+			VLA_FREE(fn_copy);
+		} else {
+			ret = CreateDirectory(fn, NULL);
+		}
+	}
+	return ret;
+}
+
+char* fn_for_patch(const json_t *patch_info, const char *fn)
 {
 	size_t archive_len;
 	const char *archive = NULL;
@@ -109,7 +159,7 @@ int patch_file_exists(const json_t *patch_info, const char *fn)
 	if(!patch_info || !fn) {
 		return 0;
 	}
-	patch_fn = patch_file_fullname(patch_info, fn);
+	patch_fn = fn_for_patch(patch_info, fn);
 	ret = PathFileExists(patch_fn);
 	SAFE_FREE(patch_fn);
 	return ret;
@@ -142,12 +192,11 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 		return NULL;
 	}
 	*file_size = 0;
-	patch_fn = patch_file_fullname(patch_info, fn);
+	patch_fn = fn_for_patch(patch_info, fn);
 	if(!patch_fn) {
 		return NULL;
 	}
 	if(!patch_file_blacklisted(patch_info, fn)) {
-		// Got a file!
 		ret = file_read(patch_fn, file_size);
 	}
 	SAFE_FREE(patch_fn);
@@ -164,11 +213,11 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 		return -1;
 	}
 
-	patch_fn = patch_file_fullname(patch_info, fn);
+	patch_fn = fn_for_patch(patch_info, fn);
 	if(!patch_fn) {
 		return -2;
 	}
-	CreateDirectory(patch_fn, NULL);
+	dir_create_for_fn(patch_fn);
 
 	EnterCriticalSection(&cs_file_access);
 	{
@@ -185,7 +234,7 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 	}
 	LeaveCriticalSection(&cs_file_access);
 
-	return 0;
+	return ret;
 }
 
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size)
@@ -220,8 +269,28 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 	return ret;
 }
 
+// Helper function for stack_json_resolve.
+size_t stack_json_load(json_t **json_inout, json_t *patch_obj, const char *fn, size_t level)
+{
+	size_t file_size = 0;
+	if(fn && json_inout) {
+		json_t *json_new = patch_json_load(patch_obj, fn, &file_size);
+		if(json_new) {
+			log_print_patch_fn(patch_obj, fn, level);
+			if(!*json_inout) {
+				*json_inout = json_new;
+			} else {
+				json_object_merge(*json_inout, json_new);
+				json_decref(json_new);
+			}
+		}
+	}
+	return file_size;
+}
+
 json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
+	char *fn_build = NULL;
 	json_t *ret = NULL;
 	json_t *patch_array;
 	json_t *patch_obj;
@@ -231,25 +300,14 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	if(!fn) {
 		return NULL;
 	}
+	fn_build = fn_for_build(fn);
 	log_printf("(JSON) Recherche de %s... ", fn);
 
 	patch_array = json_object_get(run_cfg, "patches");
 
 	json_array_foreach(patch_array, i, patch_obj) {
-		size_t cur_size = 0;
-		json_t *cur_json = patch_json_load(patch_obj, fn, &cur_size);
-
-		if(!cur_json) {
-			continue;
-		}
-		log_print_patch_fn(patch_obj, fn, i);
-		json_size += cur_size;
-		if(!ret) {
-			ret = cur_json;
-		} else {
-			json_object_merge(ret, cur_json);
-			json_decref(cur_json);
-		}
+		json_size += stack_json_load(&ret, patch_obj, fn, i);
+		json_size += stack_json_load(&ret, patch_obj, fn_build, i);
 	}
 	if(!ret) {
 		log_printf("introuvable\n");
@@ -259,13 +317,15 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	if(file_size) {
 		*file_size = json_size;
 	}
+	SAFE_FREE(fn_build);
 	return ret;
 }
 
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
-	char *full_fn;
-	const char *full_fn_ptr;
+	char *fn_common;
+	char *fn_build;
+	const char *fn_common_ptr;
 	void *ret = NULL;
 	int i;
 	json_t *patch_array = json_object_get(run_cfg, "patches");
@@ -274,25 +334,38 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 		return NULL;
 	}
 
-	full_fn = game_file_fullname(fn);
-	// Meh, const correctness.
-	full_fn_ptr = full_fn;
-	if(!full_fn_ptr) {
-		full_fn_ptr = fn;
-	}
+	fn_common = fn_for_game(fn);
 
-	log_printf("(Data) Résolution de %s en cours... ", full_fn_ptr);
-	// Patch stack has to be traversed backwards
-	// because later patches take priority over earlier ones
+	// Meh, const correctness.
+	fn_common_ptr = fn_common;
+	if(!fn_common_ptr) {
+		fn_common_ptr = fn;
+	}
+	fn_build = fn_for_build(fn_common_ptr);
+
+	log_printf("(Data) Résolution de %s en cours... ", fn_common_ptr);
+	// Patch stack has to be traversed backwards because later patches take
+	// priority over earlier ones, and build-specific files are preferred.
 	for(i = json_array_size(patch_array) - 1; i > -1; i--) {
 		json_t *patch_obj = json_array_get(patch_array, i);
-		ret = patch_file_load(patch_obj, full_fn_ptr, file_size);
+		const char *log_fn = NULL;
+		ret = NULL;
+
+		if(fn_build) {
+			ret = patch_file_load(patch_obj, fn_build, file_size);
+			log_fn = fn_build;
+		}
+		if(!ret) {
+			ret = patch_file_load(patch_obj, fn_common_ptr, file_size);
+			log_fn = fn_common_ptr;
+		}
 		if(ret) {
-			log_print_patch_fn(patch_obj, full_fn_ptr, i);
+			log_print_patch_fn(patch_obj, log_fn, i);
 			break;
 		}
 	}
-	SAFE_FREE(full_fn);
+	SAFE_FREE(fn_common);
+	SAFE_FREE(fn_build);
 	if(!ret) {
 		log_printf("Introuvable\n");
 	} else {
@@ -303,7 +376,7 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 
 json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 {
-	char *full_fn = game_file_fullname(fn);
+	char *full_fn = fn_for_game(fn);
 	json_t *ret = stack_json_resolve(full_fn, file_size);
 	SAFE_FREE(full_fn);
 	return ret;
@@ -318,7 +391,7 @@ int patchhook_register(const char *wildcard, func_patch_t patch_func)
 	}
 	patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());
 	hook_array = json_object_get_create(patch_hooks, wildcard, json_array());
-	return json_array_append_new(hook_array, json_integer((int)patch_func));
+	return json_array_append_new(hook_array, json_integer((size_t)patch_func));
 }
 
 json_t* patchhooks_build(const char *fn)

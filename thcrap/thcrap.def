@@ -38,7 +38,10 @@ EXPORTS
 	json_array_set_expand
 	json_array_get_hex
 	json_array_get_string
+	json_array_get_string_safe
 	json_object_get_create
+	json_object_numkey_get
+	json_object_hexkey_get
 	json_object_get_string
 	json_object_get_hex
 	json_object_merge
@@ -56,7 +59,12 @@ EXPORTS
 	; Patch files
 	; -----------
 	file_read
-	game_file_fullname
+
+	fn_for_game
+	fn_for_build
+
+	dir_create_for_fn
+
 	patch_file_exists
 	patch_file_blacklisted
 	patch_file_load
@@ -112,6 +120,19 @@ EXPORTS
 	bp_file_init
 	bp_file_exit
 
+	; Hardcoded string translation
+	; ----------------------------
+	strings_get
+	strings_lookup
+	strings_sprintf
+	strings_vsprintf
+
+	strings_MessageBoxA
+
+	strings_init
+	strings_patch
+	strings_exit
+
 	; Logging
 	; -------
 	log_print
@@ -134,18 +155,29 @@ EXPORTS
 	; Text display
 	; ------------
 	textdisp_CreateFontA
-	textdisp_SelectObject
-	textdisp_CreateCompatibleDC
-	textdisp_DeleteDC
-
-	GetTextExtent
-	GetTextExtentForFont
-
 	patch_fonts_load
-
-	textdisp_init
 	textdisp_patch
-	textdisp_exit
+
+	; Win32 dialogs
+	; -------------
+	dialog_adjust_init
+	dialog_adjust
+	dialog_adjust_clear
+
+	sz_or_ord_size
+	sz_or_ord_build
+
+	dialog_template_ex_size
+	dialog_template_ex_build
+
+	dialog_item_template_ex_size
+	dialog_item_template_ex_build
+
+	dialog_translate
+
+	dialog_CreateDialogParamA
+	dialog_DialogBoxParamA
+	dialog_patch
 
 	; Plugins
 	; -------

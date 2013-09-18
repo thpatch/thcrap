@@ -10,7 +10,8 @@
 #include "win32_utf8.h"
 
 BOOL STDAPICALLTYPE PathMatchSpecU(
-	__in LPCSTR pszFile, __in LPCSTR pszSpec
+	__in LPCSTR pszFile,
+	__in LPCSTR pszSpec
 )
 {
 	BOOL ret;
@@ -21,6 +22,18 @@ BOOL STDAPICALLTYPE PathMatchSpecU(
 	ret = PathMatchSpecW(pszFile_w, pszSpec_w);
 	VLA_FREE(pszFile_w);
 	VLA_FREE(pszSpec_w);
+	return ret;
+}
+
+BOOL STDAPICALLTYPE PathFileExistsU(
+	__in LPCSTR pszPath
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(pszPath);
+	StringToUTF16(pszPath_w, pszPath, pszPath_len);
+	ret = PathFileExistsW(pszPath_w);
+	VLA_FREE(pszPath_w);
 	return ret;
 }
 
@@ -36,16 +49,4 @@ BOOL STDAPICALLTYPE PathRemoveFileSpecU(
 		return 1;
 	}
 	return 0;
-}
-
-BOOL STDAPICALLTYPE PathFileExistsU(
-	__in LPCSTR pszPath
-)
-{
-	BOOL ret;
-	WCHAR_T_DEC(pszPath);
-	StringToUTF16(pszPath_w, pszPath, pszPath_len);
-	ret = PathFileExistsW(pszPath_w);
-	VLA_FREE(pszPath_w);
-	return ret;
 }

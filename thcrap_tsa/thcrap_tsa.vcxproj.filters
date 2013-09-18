@@ -32,6 +32,12 @@
     <ClCompile Include="src\layout.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\music.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\win32_tsa.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_tsa.def">
@@ -40,6 +46,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\thcrap_tsa.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\layout.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

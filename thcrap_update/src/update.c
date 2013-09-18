@@ -10,12 +10,15 @@
 #include <thcrap.h>
 #include <MMSystem.h>
 #include <WinInet.h>
+#include <zlib.h>
 #include "update.h"
 
 HINTERNET hINet = NULL;
 
 int inet_init()
 {
+	DWORD ignore = 1;
+
 	// DWORD timeout = 500;
 	const char *project_name = PROJECT_NAME(); 
 	size_t agent_len = strlen(project_name) + strlen(" (--) " ) + 16 + 1;
@@ -34,6 +37,12 @@ int inet_init()
 	InternetSetOption(hINet, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
 	InternetSetOption(hINet, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
 	*/
+
+	// This is necessary when Internet Explorer is set to "work offline"... which
+	// will essentially block all wininet HTTP accesses on handles that do not
+	// explicitly ignore this setting.
+	InternetSetOption(hINet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
+
 	VLA_FREE(agent);
 	return 0;
 }
@@ -112,7 +121,7 @@ const int ServerGetFirst(const json_t *servers)
 	}
 }
 
-void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
+void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, DWORD *exp_crc)
 {
 	HINTERNET hFile = NULL;
 	DWORD http_stat;
@@ -137,6 +146,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 	servers_left = json_array_size(servers);
 	for(i = servers_first; servers_left; i++) {
 		DWORD time, time_start;
+		DWORD crc = 0;
 		json_t *server;
 		const char *server_url;
 		json_t *server_time;
@@ -205,6 +215,11 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 		}
 	
 		HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
+		if(*file_size == 0) {
+			log_printf(" 0-byte file! %s\n", servers_left ? "Trying next server..." : "");
+			ServerDisable(server);
+			continue;
+		}
 
 		file_buffer = (BYTE*)malloc(*file_size);
 		if(!file_buffer) {
@@ -214,8 +229,9 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 
 		read_size = *file_size;
 		while(read_size) {
-			ret = InternetReadFile(hFile, file_buffer, *file_size, &byte_ret);
+			ret = InternetReadFile(hFile, p, *file_size, &byte_ret);
 			if(ret) {
+				crc = crc32(crc, p, byte_ret);
 				read_size -= byte_ret;
 				p += byte_ret;
 			} else {
@@ -232,12 +248,18 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 
 		json_object_set_new(server, "time", json_integer(time));
 		InternetCloseHandle(hFile);
-		return file_buffer;
+
+		if(exp_crc && *exp_crc != crc) {
+			ServerDisable(server);
+			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
+		} else {
+			return file_buffer;
+		}
 	}
 	return NULL;
 }
 
-void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size)
+void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size, DWORD *exp_crc)
 {
 	if(!fn) {
 		return NULL;
@@ -246,7 +268,7 @@ void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size)
 		void *ret;
 		WCHAR_T_DEC(fn);
 		fn_w = StringToUTF16_VLA(fn_w, fn, fn_len);
-		ret = ServerDownloadFileW(servers, fn_w, file_size);
+		ret = ServerDownloadFileW(servers, fn_w, file_size, exp_crc);
 		VLA_FREE(fn_w);
 		return ret;
 	}
@@ -350,7 +372,7 @@ int patch_update(const json_t *patch_info)
 	// Init local servers for bootstrapping
 	local_servers = ServerInit(local_patch_js);
 	
-	remote_patch_js_buffer = ServerDownloadFileA(local_servers, main_fn, &remote_patch_js_size);
+	remote_patch_js_buffer = ServerDownloadFileA(local_servers, main_fn, &remote_patch_js_size, NULL);
 	if(!remote_patch_js_buffer) {
 		// All servers offline...
 		ret = 3;
@@ -415,7 +437,14 @@ int patch_update(const json_t *patch_info)
 		i++;
 
 		log_printf("(%*d/%*d) ", file_digits, i, file_digits, file_count);
-		file_buffer = ServerDownloadFileA(remote_servers, key, &file_size);
+
+		if(json_is_integer(remote_val)) {
+			DWORD remote_crc;
+			remote_crc = json_integer_value(remote_val);
+			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, &remote_crc);
+		} else {
+			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, NULL);
+		}
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
 			SAFE_FREE(file_buffer);
