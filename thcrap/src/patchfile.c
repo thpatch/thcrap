@@ -231,7 +231,7 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	if(!fn) {
 		return NULL;
 	}
-	log_printf("(JSON) Resolving %s... ", fn);
+	log_printf("(JSON) Recherche de %s... ", fn);
 
 	patch_array = json_object_get(run_cfg, "patches");
 
@@ -252,7 +252,7 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 		}
 	}
 	if(!ret) {
-		log_printf("not found\n");
+		log_printf("introuvable\n");
 	} else {
 		log_printf("\n");
 	}
@@ -281,7 +281,7 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 		full_fn_ptr = fn;
 	}
 
-	log_printf("(Data) Resolving %s... ", full_fn_ptr);
+	log_printf("(Data) Résolution de %s en cours... ", full_fn_ptr);
 	// Patch stack has to be traversed backwards
 	// because later patches take priority over earlier ones
 	for(i = json_array_size(patch_array) - 1; i > -1; i--) {
@@ -294,7 +294,7 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 	}
 	SAFE_FREE(full_fn);
 	if(!ret) {
-		log_printf("not found\n");
+		log_printf("Introuvable\n");
 	} else {
 		log_printf("\n");
 	}

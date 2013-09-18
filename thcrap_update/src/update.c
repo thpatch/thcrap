@@ -188,7 +188,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 		}
 		if(!hFile) {
 			DWORD inet_ret = GetLastError();
-			log_printf("WinInet error %d\n", inet_ret);
+			log_printf("Erreur WinInet %d\n", inet_ret);
 			ServerDisable(server);
 			continue;
 		}
@@ -220,7 +220,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size)
 				p += byte_ret;
 			} else {
 				SAFE_FREE(file_buffer);
-				log_printf("\nReading error #%d!", GetLastError());
+				log_printf("\nLecture des erreurs #%d!", GetLastError());
 				ServerDisable(server);
 				read_size = 0;
 				return NULL;
@@ -343,7 +343,7 @@ int patch_update(const json_t *patch_info)
 	{
 		const char *patch_name = json_object_get_string(local_patch_js, "id");
 		if(patch_name) {
-			log_printf("Checking for updates of %s...\n", patch_name);
+			log_printf("Recherche de mises à jour pour %s...\n", patch_name);
 		}
 	}
 
@@ -389,13 +389,13 @@ int patch_update(const json_t *patch_info)
 	}
 	if(!file_count) {
 		// Nice, we're up-to-date!
-		log_printf("Everything up-to-date.\n", file_count);
+		log_printf("Tout est à jour\n", file_count);
 		ret = 0;
 		goto end_update;
 	}
 
 	file_digits = str_num_digits(file_count);
-	log_printf("Need to get %d files.\n", file_count);
+	log_printf("%d fichiers à récuperer\n", file_count);
 
 	i = 0;
 	json_object_foreach(remote_files, key, remote_val) {
@@ -426,13 +426,13 @@ int patch_update(const json_t *patch_info)
 	}
 	if(i == file_count) {
 		patch_file_store(patch_info, main_fn, remote_patch_js_buffer, remote_patch_js_size);
-		log_printf("Update completed.\n");
+		log_printf("Mise à jour terminée\n");
 	}
 
 	// I thought 15 minutes about this, and considered it appropriate
 end_update:
 	if(ret == 3) {
-		log_printf("Can't reach any server at the moment.\nCancelling update...\n");
+		log_printf("Aucun serveur trouvé pour le moment.\nAnnulation de la mise à jour\n");
 	}
 	SAFE_FREE(remote_patch_js_buffer);
 	json_decref(remote_patch_js);

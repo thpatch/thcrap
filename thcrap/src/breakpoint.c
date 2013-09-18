@@ -170,7 +170,7 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 
 		memcpy(cave + 1, &dist_new, 4);
 
-		log_printf("fixing rel.addr. 0x%08x to 0x%08x... ", dist_old, dist_new);
+		log_printf("réparation de l'adresse relative de 0x%08x a 0x%08x... ", dist_old, dist_new);
 	}
 	/// ------------------
 }
@@ -190,19 +190,20 @@ int breakpoints_apply()
 	breakpoint_count = json_object_size(breakpoints);
 
 	if(!breakpoint_count) {
-		log_printf("No breakpoints to set up.\n");
+		log_printf("Aucun point d'arrêt à définir.\n");
 		return 0;
 	}
 	// Don't set up twice
 	if(BP_CodeCave) {
-		log_printf("Breakpoints already set up.\n");
+		log_printf("Les points d'arrêt sont déjà définis.\n");
+
 		return 0;
 	}
 
 	BP_CodeCave = (BYTE*)VirtualAlloc(0, breakpoint_count * BP_Offset, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 	memset(BP_CodeCave, 0xcc, breakpoint_count * BP_Offset);
 
-	log_printf("Setting up breakpoints... (code cave at 0x%08x)\n", BP_CodeCave);
+	log_printf("Définition des points d'arrêt (code cave at 0x%08x)\n", BP_CodeCave);
 	log_printf("-------------------------\n");
 
 	json_object_foreach(breakpoints, key, bp) {
@@ -223,11 +224,11 @@ int breakpoints_apply()
 		}
 		log_printf("(%2d/%2d) 0x%08x %s... ", i, breakpoint_count, addr, key);
 		if(!cavesize) {
-			log_printf("ERROR: no cavesize specified!\n");
+			log_printf("ERREUR: aucune cavesize spécifiée\n");
 			continue;
 		}
 		if(cavesize < BP_CodeCave_Limits[0] || cavesize > BP_CodeCave_Limits[1]) {
-			log_printf("ERROR: cavesize exceeds limits! (given: %d, min: %d, max: %d)\n",
+			log_printf("ERREUR: la cavesize excède la limite! (spécifiée: %d, min: %d, max: %d)\n",
 				cavesize, BP_CodeCave_Limits[0], BP_CodeCave_Limits[1]);
 			continue;
 		}
@@ -274,12 +275,12 @@ int breakpoints_remove()
 	}
 	breakpoint_count = json_object_size(breakpoints);
 	if(!breakpoint_count) {
-		log_printf("No breakpoints to remove.\n");
+		log_printf("Aucun point d'arrêt à supprimer\n");
 		return 0;
 	}
 
 	log_printf(
-		"Removing breakpoints...\n"
+		"Suppression des points d'arrêt\n"
 		"-----------------------\n"
 	);
 	// TODO: Implement!

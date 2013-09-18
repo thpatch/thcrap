@@ -151,7 +151,7 @@ void patch_fonts_load(const json_t *patch_info, const json_t *patch_js)
 
 		if(font_buffer) {
 			DWORD ret;
-			log_printf("(Font) Loading %s (%d bytes)...\n", font_fn, font_size);
+			log_printf("(Police) Chargement de %s (%d octets)...\n", font_fn, font_size);
 			AddFontMemResourceEx(font_buffer, font_size, NULL, &ret);
 			SAFE_FREE(font_buffer);
 			/**

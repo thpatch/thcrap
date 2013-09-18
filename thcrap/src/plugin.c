@@ -45,7 +45,7 @@ int plugins_close()
 	json_t *val;
 	json_t *plugins = json_object_get(run_cfg, PLUGINS);
 
-	log_printf("Removing plug-ins...\n");
+	log_printf("Suppression des plug-ins\n");
 
 	json_object_foreach(plugins, key, val) {
 		HINSTANCE hInst = (HINSTANCE)json_integer_value(val);

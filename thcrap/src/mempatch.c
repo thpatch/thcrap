@@ -275,7 +275,7 @@ int iat_patch_funcs(HMODULE hMod, const char *dll_name, iat_patch_t *patch, cons
 	pOrigThunk = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->OriginalFirstThunk);
 	pImpThunk  = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->FirstThunk);
 
-	log_printf("Patching DLL exports (%s)...\n", dll_name);
+	log_printf("Patchage des exports DLL (%s) en cours...\n", dll_name);
 
 	// We _only_ patch by comparing exported names.
 	// Has the advantages that we can override any existing patches,
@@ -285,7 +285,7 @@ int iat_patch_funcs(HMODULE hMod, const char *dll_name, iat_patch_t *patch, cons
 		DWORD local_ret = func_patch_by_name(hMod, pOrigThunk, pImpThunk, patch[c].old_func, patch[c].new_ptr);
 		log_printf(
 			"(%2d/%2d) %s... %s\n",
-			c + 1, patch_count, patch[c].old_func, local_ret ? "OK" : "not found"
+			c + 1, patch_count, patch[c].old_func, local_ret ? "OK" : "Non trouvé"
 		);
 		ret -= local_ret;
 	}

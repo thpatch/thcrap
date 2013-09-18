@@ -217,11 +217,11 @@ json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const
 	ret = json_loadb((char*)buffer, buflen, JSON_DISABLE_EOF_CHECK, &error);
 	if(!ret) {
 		log_mboxf(NULL, MB_OK | MB_ICONSTOP,
-			"JSON parsing error:\n"
+			"Erreur de syntaxe JSON:\n"
 			"\n"
 			"\t%s\n"
 			"\n"
-			"(%s%sline %d, column %d)",
+			"(%s%sligne %d, colonne %d)",
 			error.text, source ? source : "", source ? ", " : "", error.line, error.column
 		);
 	}

@@ -32,7 +32,7 @@ size_t binhack_calc_size(const char *binhack_str)
 		}
 		else if(*c == '[' || *c == '<') {
 			if(fs) {
-				log_printf("ERROR: Nested function pointers near %s!\n", c);
+				log_printf("ERREUR: Pointeurs de fonction imbriqués pres de %s!\n", c);
 				return 0;
 			}
 			fs = c + 1;
@@ -44,7 +44,7 @@ size_t binhack_calc_size(const char *binhack_str)
 		c++;
 	}
 	if(fs) {
-		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
+		log_printf("ERREUR: le nom de fonction '%s' n\'aboutit pas...\n", fs);
 		size = 0;
 	}
 	return size;
@@ -77,7 +77,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 		}
 		else if(*c == '[' || *c == '<') {
 			if(fs) {
-				log_printf("ERROR: Nested function pointers near %s!\n", c);
+				log_printf("ERREUR: Pointeurs de fonction imbriqués pres de %s!\n", c);
 				return 0;
 			}
 			func_rel = (*c == '[');
@@ -104,7 +104,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				written += 4;
 			}
 			else {
-				log_printf("ERROR: No pointer for function '%s'...\n", function);
+				log_printf("ERREUR: Pas de pointeur pour la fonction '%s'...\n", function);
 				ret = 2;
 			}
 			fs = NULL;
@@ -116,7 +116,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 		c++;
 	}
 	if(fs) {
-		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
+		log_printf("ERREUR: Le nom de fonction '%s' n\'a pas de fin\n", fs);
 		ret = 1;
 	}
 	return ret;
@@ -185,11 +185,11 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 	binhack_count = json_object_size(binhacks);
 
 	if(!binhack_count) {
-		log_printf("No binary hacks to apply.\n");
+		log_printf("Aucun hack binaire à appliquer\n");
 		return 0;
 	}
 
-	log_printf("Applying binary hacks...\n");
+	log_printf("Appliquation des hacks binaires...\n");
 	log_printf("------------------------\n");
 
 	json_object_foreach(binhacks, key, hack)

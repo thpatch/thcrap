@@ -17,7 +17,7 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 
 		loc = json_object_iter_key(json_object_iter(locs));
 		variety = json_object_get_string(locs, loc);
-		log_printf("Found %s (%s) at %s\n", id, variety, loc);
+		log_printf("%s trouve (%s) a %s\n", id, variety, loc);
 
 		return loc;
 	} else if(num_versions > 1) {
@@ -26,7 +26,7 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		size_t i = 0;
 		size_t loc_num;
 				
-		log_printf("Found %d versions of %s:\n\n", num_versions, id);
+		log_printf("%d versions de %s trouvees:\n\n", num_versions, id);
 				
 		json_object_foreach(locs, loc, val) {
 			log_printf(" [%2d] %s: %s\n", ++i, loc, json_string_value(val));
@@ -34,7 +34,7 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		printf("\n");
 		while(1) {
 			char buf[16];
-			printf("Pick a version to run the patch on: (1 - %u): ", num_versions);
+			printf("Choisissez une version sur laquelle executer le patch (1 - %u): ", num_versions);
 
 			fgets(buf, sizeof(buf), stdin);
 			if(
@@ -63,7 +63,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	cls(0);
 
 	log_printf("--------------\n");
-	log_printf("Locating games\n");
+	log_printf("Localisation des jeux\n");
 	log_printf("--------------\n");
 	log_printf(
 		"\n"
@@ -72,41 +72,42 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 
 	games = json_load_file_report("games.js");
 	if(json_object_size(games) != 0) {
-		log_printf("You already have a %s with the following contents:\n\n", games_js_fn);
+		log_printf("Vous disposez deja de %s avec les contenus suivant\n\n", games_js_fn);
 		json_dump_log(games, JSON_INDENT(2) | JSON_SORT_KEYS);
 		log_printf("\n\n");
-		if(Ask("Should the paths of these games be re-scanned?")) {
+		if(Ask("Recommencer le scan de l'emplacement de ces jeux?")) {
 			json_object_clear(games);
-		} else if(!Ask("Should new games be added to this list?")) {
+		} else if(!Ask("Ajouter de nouveaux jeux a cette liste?")) {
 			return games;
 		}
 	} else {
 		games = json_object();
 		log_printf(
-			"You don't have a %s yet.\n"
+			"Vous n'avez pas encore le %s\n"
 			"\n"
-			"Thus, I now need to search for all Touhou games installed on your system.\n"
-			"This only has to be done once - unless, of course, you later move the games to\n"
-			"different directories.\n"
+			"Nous avons donc besoin de rechercher tout les jeux Touhou installes sur votre ordinateur.\n"
+			"Cela n'a besoin d'etre fait qu'une seule fois - a moins que vous ne changiez vos jeux de\n"
+			"dossier plus tard\n"
+
 			"\n"
-			"Depending on the number of drives and your directory structure,\n"
-			"this may take a while. You can speed up this process by giving me the\n"
-			"_common_ root path all of your Touhou games share.\n"
+			"Cela peut prendre un moment selon le nombre de disque dur present\n"
+			"et la structure de vos dossiers. Vous pouvez accelerer le processus en\n"
+			"indiquant le dossier racine de tous vos jeux Touhou.\n"
 			"\n"
-			"For example, if you have 'Double Dealing Character' in \n"
+			"Par exemple, si vous avez 'Double Dealing Character' dans\n"
 			"\n"
 				"\tC:\\Games\\Touhou\\DDC\\\n"
 			"\n"
-			"and 'Imperishable Night' in\n"
+			"et 'Imperisable Night' dans\n"
 			"\n"
 				"\tC:\\Games\\Touhou\\IN\\\n"
 			"\n"
-			"you would now specify \n"
+			"Vous devez indiquer\n"
 			"\n"
 				"\tC:\\Games\\Touhou\\\n"
 			"\n"
-			"... unless, of course, your Touhou games are spread out all over your drives -\n"
-			"in which case there's no way around a complete search.\n"
+			"... a moins que vos jeux Touhou ne soient eparpilles partout sur vos disques durs -\n"
+			"auquel cas, vous n'aurez pas d'autre choix que de faire un scan complet.\n"
 			"\n"
 			"\n",
 			games_js_fn
@@ -119,8 +120,8 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		{
 			size_t search_path_len;
 			log_printf(
-				"Root path for search\n"
-				" (keep empty to search entire system): "
+				"Dossier racine pour la recherche\n"
+				"( laisser vide pour un scan complet du systeme )"
 			);
 			fgets(search_path, sizeof(search_path), stdin);
 			log_printf("\n");
@@ -144,12 +145,12 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			PathAddBackslashA(search_path);
 
 			if(!PathFileExists(search_path)) {
-				log_printf("Hmm, that path (%s) does not exist.\n", search_path);
+				log_printf("Ahem... L'emplacement indique (%s) n'existe pas\n", search_path);
 			} else {
 				break;
 			}
 		}
-		log_printf("Searching... this may take a while...\n\n");
+		log_printf("Recherche en cours... cela peut prendre un moment\n\n");
 		found = SearchForGames(search_path, games);
 	}
 	{
@@ -174,12 +175,12 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		fputs(games_js_str, games_js_file);
 		fclose(games_js_file);
 		
-		log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
+		log_printf("Les emplacements des jeux suivants ont ete identifies et ajoutes a %s:\n", games_js_fn);
 		log_printf(games_js_str);
 		log_printf("\n");
 		SAFE_FREE(games_js_str);
 	} else {
-		log_printf("No new game locations found.\n");
+		log_printf("Aucun nouvel emplacement de jeux trouve\n");
 	}
 	json_decref(found);
 	return games;

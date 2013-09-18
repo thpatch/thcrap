@@ -20,13 +20,13 @@
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
 static const char *update_url_message =
-	"The new version can be found at\n"
+	"La nouvelle version peut-être trouvée à\n"
 	"\n"
 	"\t";
 static const char *mbox_copy_message =
 	"\n"
 	"\n"
-	"(Press Ctrl+C to copy the text of this message box and the URL)";
+	"(Faites CTRL+C pour copier le texte et l'URL de cette boîte de dialogue dans le presse-papiers)";
 // -----------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
@@ -105,17 +105,17 @@ json_t* identify(const char *exe_fn)
 	if(!versions_js) {
 		goto end;
 	}
-	log_printf("Hashing executable... ");
+	log_printf("Hashing des exécutables... ");
 
 	id_array = identify_by_hash(exe_fn, &exe_size, versions_js);
 	if(!id_array) {
 		size_cmp = 1;
-		log_printf("failed!\n");
-		log_printf("File size lookup... ");
+		log_printf("Echec!\n");
+		log_printf("Vérification de la taille des fichiers... ");
 		id_array = identify_by_size(exe_size, versions_js);
 
 		if(!id_array) {
-			log_printf("failed!\n");
+			log_printf("Echec!\n");
 			goto end;
 		}
 	}
@@ -127,7 +127,7 @@ json_t* identify(const char *exe_fn)
 	}
 
 	if(!game || !build) {
-		log_printf("Invalid version format!");
+		log_printf("Format de version Invalide!");
 		goto end;
 	}
 	{
@@ -167,22 +167,22 @@ json_t* identify(const char *exe_fn)
 	}
 
 	if(size_cmp) {
-		int ret = log_mboxf("Unknown version detected", MB_YESNO | MB_ICONQUESTION,
-			"You have attached %s to an unknown game version.\n"
-			"According to the file size, this is most likely\n"
+		int ret = log_mboxf("Version inconnue détectée", MB_YESNO | MB_ICONQUESTION,
+			"Vous avez assigné %s à une version inconnue\n"
+			"D'après la taille du fichier, il y a de bonnes chances pour qu'il s'agisse de\n"
 			"\n"
 			"\t%s %s %s\n"
 			"\n"
-			"but we haven't tested this exact variety yet and thus can't confirm that the patches will work.\n"
-			"They might crash the game, damage your save files or cause even worse problems.\n"
+			"Cependant, nous ne l'avons pas encore testé cette version de jeu et nous ne pouvons pas vous assurer que le patch fonctionnera\n"
+			"Cela peut faire planter le jeu, endommager vos fichiers de sauvegarde, ou même engendrer des problèmes plus graves\n"
 			"\n"
-			"Please send <%s> to\n"
+			"Envoyez <%s> a\n"
 			"\n"
 			"\tsubmissions@thpatch.net\n"
 			"\n"
-			"We will take a look at it, and add support if possible.\n"
+			"Nous nous pencherons dessus, et le rendrons compatible si possible.\n"
 			"\n"
-			"Apply patches for the identified game version regardless (on your own risk)?",
+			"Voulez-vous appliquer les patchs pour les versions de jeux identifiées malgre tout? (à vos risques et périls)",
 			PROJECT_NAME_SHORT(), game, build, variety, exe_fn
 		);
 		if(ret == IDNO) {
@@ -194,11 +194,11 @@ json_t* identify(const char *exe_fn)
 		const char *latest = NULL;
 		if(IsLatestBuild(build, &latest, run_ver) == 0) {
 			const char *url_update = json_object_get_string(run_ver, "url_update");
-			log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION, 
-				"You are running an old version of %s (%s).\n"
+			log_mboxf("Version obsolète détectée", MB_OK | MB_ICONINFORMATION,
+				"Vous utilisez une version obsolète de %s (%s).\n"
 				"\n"
-				"While %s is confirmed to work with this version, we recommend updating "
-				"your game to the latest official version (%s).%s%s%s%s",
+				"Bien qu'il soit confirmé que %s fonctionne sous cette version, nous vous recommandons de mettre à jour"
+				"votre jeu vers la version officielle la plus récente (%s).%s%s%s%s",
 				game, build, PROJECT_NAME_SHORT(), latest,
 				url_update ? "\n\n": "",
 				url_update ? update_url_message : "",
@@ -231,7 +231,7 @@ int thcrap_init(const char *setup_fn)
 		log_init(json_is_true(console_val));
 	}
 
-	log_printf("Run configuration file: %s\n\n", setup_fn);
+	log_printf("Fichier de configuration: %s\n\n", setup_fn);
 
 	win32_patch(hProc);
 	if(!textdisp_init(hProc)) {
@@ -239,7 +239,7 @@ int thcrap_init(const char *setup_fn)
 	}
 	
 	GetModuleFileName(NULL, exe_fn, MAX_PATH * 4);
-	log_printf("EXE file name: %s\n", exe_fn);
+	log_printf("Nom du fichier EXE: %s\n", exe_fn);
 
 	run_ver = identify(exe_fn);
 	// Alright, smash our run configuration on top
@@ -268,7 +268,7 @@ int thcrap_init(const char *setup_fn)
 		}
 	}
 	
-	log_printf("Initializing patches...\n");
+	log_printf("Initialisation des patchs...\n");
 	{
 		json_t *patches = json_object_get(run_cfg, "patches");
 		size_t i;
@@ -318,11 +318,11 @@ int thcrap_init(const char *setup_fn)
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
 			str_hexdate_format(format, min_build);
-			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION, 
-				"A new version (%s) of the %s is available.\n"
+			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
+				"Une nouvelle version (%s) de %s est disponible\n"
 				"\n"
-				"This update contains new features and important bug fixes "
-				"for your current patch configuration.%s%s%s%s",
+				"Cette mise à jour contient de nouvelles fonctionalités et d'importantes corrections de bugs"
+				"pour votre patch actuel.%s%s%s%s",
 				format, PROJECT_NAME(),
 				url_engine ? "\n\n": "",
 				url_engine ? update_url_message : "",
@@ -343,12 +343,12 @@ int thcrap_init(const char *setup_fn)
 				strcat(rem_arcs_str, "\n");
 			}
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"Some patches in your configuration could not be found:\n"
+				"Certains patchs n'ont pas été trouvés dans votre configuration:\n"
 				"\n"
 				"%s"
 				"\n"
-				"Please reconfigure your patch stack - either by running the configuration tool, "
-				"or by simply editing your run configuration file (%s).",
+				"Veuillez reconfigurer votre sélection de patchs - soit en executant l'outil de configuration,"
+				"soit en éditant votre fichier de configuration à la main (%s).",
 				rem_arcs_str, setup_fn
 			);
 			json_decref(rem_arcs);
@@ -356,10 +356,10 @@ int thcrap_init(const char *setup_fn)
 		}
 	}
 	
-	log_printf("Game directory: %s\n", game_dir);
-	log_printf("Plug-in directory: %s\n", dll_dir);
+	log_printf("Dossier du jeu: %s\n", game_dir);
+	log_printf("Dossier du Plug-in: %s\n", dll_dir);
 
-	log_printf("\nInitializing plug-ins...\n");
+	log_printf("\nInitialisation des plug-ins\n");
 
 #ifdef HAVE_BP_FILE
 	bp_file_init();
@@ -392,8 +392,8 @@ int thcrap_init(const char *setup_fn)
 
 		// Print this separately from the run configuration
 		
-		log_printf("Functions available to binary hacks:\n");
-		log_printf("------------------------------------\n");
+		log_printf("Fonctions disponibles pour le hack binaire:\n");
+		log_printf("-------------------------------------------\n");
 
 		GetExportedFunctions(run_funcs, hThcrap);
 		json_object_foreach(json_object_get(run_cfg, "plugins"), key, val) {
@@ -401,18 +401,18 @@ int thcrap_init(const char *setup_fn)
 			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
 		}
 		
-		log_printf("------------------------------------\n");
+		log_printf("-------------------------------------------\n");
 		log_printf("\n");
 		
 		binhacks_apply(json_object_get(run_cfg, "binhacks"), run_funcs);
 		breakpoints_apply();
 
 		// -----------------
-		log_printf("---------------------------\n");
-		log_printf("Complete run configuration:\n");
-		log_printf("---------------------------\n");
+		log_printf("--------------------------------------\n");
+		log_printf("Configuration de l'exécution complête:\n");
+		log_printf("--------------------------------------\n");
 		json_dump_log(run_cfg, JSON_INDENT(2));
-		log_printf("---------------------------\n");
+		log_printf("--------------------------------------\n");
 		SetCurrentDirectory(game_dir);
 
 		json_object_set_new(run_ver, "funcs", run_funcs);

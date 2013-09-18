@@ -14,7 +14,7 @@ json_t* run_cfg = NULL;
 
 const char* PROJECT_NAME()
 {
-	return "Touhou Community Reliant Automatic Patcher";
+	return "Patcheur automatique de la communauté Touhou francophone";
 }
 const char* PROJECT_NAME_SHORT()
 {

@@ -212,19 +212,19 @@ void log_init(int console)
 		line[i*3] = 0;
 
 		fprintf(log_file, "%s\n", line);
-		fprintf(log_file, "%s logfile\n", PROJECT_NAME());
-		fprintf(log_file, "Version: %s\n", PROJECT_VERSION_STRING());
-		fprintf(log_file, "Build time: "  __TIMESTAMP__ "\n");
+		fprintf(log_file, "%s fichier log\n", PROJECT_NAME());
+		fprintf(log_file, "version: %s\n", PROJECT_VERSION_STRING());
+		fprintf(log_file, "temps de construction: "  __TIMESTAMP__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
 			size_t builder_len = wcslen(BUILDER_NAME_W) + 1;
 			VLA(char, builder, builder_len * UTF8_MUL);
 			StringToUTF8(builder, BUILDER_NAME_W, builder_len);
-			fprintf(log_file, "Built by: %s\n", builder);
+			fprintf(log_file, "construit par: %s\n", builder);
 			VLA_FREE(builder);
 		}
 #elif defined(BUILDER_NAME)
-		fprintf(log_file, "Built by: %s\n", BUILDER_NAME);
+		fprintf(log_file, "construit par: %s\n", BUILDER_NAME);
 #endif
 		fprintf(log_file, "%s\n\n", line);
 		fflush(log_file);

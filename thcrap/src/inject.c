@@ -145,9 +145,9 @@ int Inject(HANDLE hProcess, const wchar_t *dll_dir, const wchar_t *dll_name, con
 // you can upgrade the functions or ignore them
 
 	// Build error messages
-	wcscpy(injectError1, L"Could not load the dll: ");
+	wcscpy(injectError1, L"Impossible de charger le DLL: ");
 	wcscat(injectError1, dll_name);
-	sprintf(injectError2A, "Could not load the function: %s", func_name);
+	sprintf(injectError2A, "Impossible de charger la fonction: %s", func_name);
 	StringToUTF16(injectError2, injectError2A, MAX_PATH + 1);
 
 	// Create the workspace

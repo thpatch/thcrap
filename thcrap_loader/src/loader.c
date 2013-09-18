@@ -131,17 +131,17 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
 	if(__argc < 2) {
 		log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
-			"This is the command-line loader component of the %s.\n"
+			"Ceci est le composant de chargement par lignes de commande de %s.\n"
 			"\n"
-			"You are probably looking for the configuration tool to set up shortcuts for the simple usage of the patcher - that would be thcrap_configure.\n"
+			"Vous recherchez probablement l'outil de configuration pour mettre en place des raccourcis pour l'usage simplifié du patcheur - il s'agit dans ce cas de thcrap_configure.\n"
 			"\n"
-			"If not, this is how to use the loader directly:\n"
+			"Sinon, Voici comment utiliser le loader directement:\n"
 			"\n"
 			"\tthcrap_loader runconfig.js [game_id] [game.exe]\n"
 			"\n"
-			"- The run configuration file must end in .js\n"
-			"- If [game_id] is given, the location of the game executable is read from games.js\n"
-			"- Later command-line parameters take priority over earlier ones\n",
+			"- le fichier de configuration doit se terminer par .js\n"
+			"- Si [game_id] est donné, l'emplacement de l'exécutable du jeu est lu depuis games.js\n"
+			"- les derniers paramètres des lignes de commande ont priorité sur les premiers\n",
 			PROJECT_NAME()
 		);
 		ret = -1;
@@ -224,9 +224,9 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
 	if(!run_cfg) {
 		log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"No valid run configuration file given!\n"
+			"Aucun fichier de configuration valide donné!\n"
 			"\n"
-			"If you do not have one yet, use the thcrap_configure tool to create one.\n"
+			"Si vous n'en avez pas encore, utilisez l'outil thcrap_configure pour en créer un.\n"
 		);
 		ret = -2;
 		goto end;
@@ -253,11 +253,11 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	// Still none?
 	if(!final_exe_fn) {
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"No game executable file given!\n"
+			"Aucun fichier de jeu exécutable donné!\n"
 			"\n"
-			"This could either be given as a command line argument "
-			"(just add something ending in .exe), "
-			"or as an \"exe\" value in your run configuration (%s).\n",
+			"Celui-ci peut-être donné en argument de ligne de commande"
+			"(Ajoutez simplement quelque chose se terminant par .exe), "
+			"ou en tant que \"exe\" dans votre configuration de lancement (%s).\n",
 			run_cfg_fn
 		);
 		ret = -3;
@@ -300,7 +300,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			);
 
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"Failed to start %s: %s",
+				"Echec du lancement de %s: %s",
 				final_exe_fn, msg_str
 			);
 			LocalFree(msg_str);

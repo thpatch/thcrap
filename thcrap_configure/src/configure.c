@@ -15,7 +15,7 @@ int Ask(const char *question)
 		if(question) {
 			log_printf(question);
 		}
-		log_printf(" (y/n) ");
+		log_printf(" oui(y)/non(n) ");
 
 		fgets(buf, sizeof(buf), stdin);
 		// Flush stdin (because fflush(stdin) is "undefined behavior")
@@ -65,7 +65,7 @@ void cls(SHORT top)
 void pause()
 {
 	int ret;
-	printf("Press ENTER to continue . . . ");
+	printf("Appuyez sur ENTER pour continuer");
 	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
@@ -181,7 +181,7 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 
 		strcat(self_fn, loader_exe);
 
-		log_printf("Creating shortcuts");
+		log_printf("Creation des raccourcis");
 
 		json_object_foreach(games, key, cur_game) {
 			const char *game_fn = json_object_get_string(games, key);
@@ -274,8 +274,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	local_server_js = json_load_file_report(local_server_js_fn);
 	if(!local_server_js) {
 		log_mboxf(NULL, MB_ICONSTOP | MB_OK,
-			"No %s file found in the current directory (%s).\n"
-			"You can download one from\n"
+			"Le fichier %s n'a pas ete trouve dans le dossier (%s).\n"
+			"vous pouvez le telecharger sur\n"
 			"\n"
 			"\t\thttp://srv.thpatch.net/server.js\n", local_server_js_fn, cur_dir
 		);
@@ -284,23 +284,41 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	}
 
 	log_printf(
-		"==========================================\n"
-		"Touhou Community Reliant Automatic Patcher - Patch configuration tool\n"
-		"==========================================\n"
+		"==============================================================================\n"
+		"Patcheur automatique de la communaute Touhou - Outil de configuration de patch\n"
+		"==============================================================================\n"
+		"Outil cree par Touhou Patch Center. http://thpatch.net\n"
 		"\n"
 		"\n"
-		"This tool will create a new patch configuration for the\n"
-		"Touhou Community Reliant Automatic Patcher.\n"
+		"Traduction en francais par Touhou-Online:\n"
 		"\n"
-		"Unfortunately, we didn't manage to create a nice, graphical user interface\n"
-		"for patch configuration in time for the Double Dealing Character trial release.\n"
-		"We hope that this will still be user-friendly enough for initial configuration.\n"
+		" @@@@@@@@          @@                       @@@@         @@ @@             \n"
+		"    @@             @@                      @@@@@@        @@ @@             \n"
+		"    @@             @@                      @@  @@        @@                \n"
+		"    @@   @@  @@ @@ @@@@    @@  @@ @@       @@  @@  @@@@  @@ @@  @@@@   @@  \n"
+		"    @@  @@@@ @@ @@ @@@@@  @@@@ @@ @@       @@  @@ @@@@@@ @@ @@ @@@@@@ @@@@ \n"
+		"    @@  @  @ @@ @@ @@  @@ @  @ @@ @@  @@@  @@  @@ @@  @@ @@ @@ @@  @@ @  @ \n"
+		"    @@  @  @ @@ @@ @@  @@ @  @ @@ @@       @@  @@ @@  @@ @@ @@ @@  @@ @  @ \n"
+		"    @@  @  @ @@ @@ @@  @@ @  @ @@ @@       @@  @@ @@  @@ @@ @@ @@  @@ @@@  \n"
+		"    @@  @  @ @@ @@ @@  @@ @  @ @@ @@       @@  @@ @@  @@ @@ @@ @@  @@ @    \n"
+		"    @@  @@@@ @@ @@ @@  @@ @@@@ @@ @@       @@@@@@ @@  @@ @@ @@ @@  @@ @@   \n"
+		"    @@   @@   @@@@ @@  @@  @@   @@@@        @@@@  @@  @@ @@ @@ @@  @@  @@@ \n"
+		"\n"
+		"=> http://www.touhou-online.net\n"
 		"\n"
 		"\n"
-		"This process has two steps:\n"
+		"Cet outil va creer un nouvelle configuration de patch pour le\n"
+		"Patcheur automatique de la communaute Touhou\n"
 		"\n"
-		"\t\t1. Selecting patches\n"
-		"\t\t2. Locating game installations\n"
+		"Malheureusement, nous n'avons pas reussi a creer a temps une belle interface graphique\n"
+		"pour la configuration des patch a l'occasion de la sortie de la demo de Double Dealing Character.\n"
+		"Nous esperons tout de meme que ceci sera toujours suffisamment intuitif pour la configuration basique.\n"
+		"\n"
+		"\n"
+		"Ce processus se fera en deux etapes:\n"
+		"\n"
+		"\t\t1. Selection des patchs\n"
+		"\t\t2. Localisation des dossiers d'installation des jeux\n"
 		"\n"
 		"\n"
 		"\n"
@@ -314,11 +332,11 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 			const char *server_first_url = json_object_get_string(server_first, "url");
 			if(server_first_url) {
 				log_printf(
-					"Using the definitions in [%s], we're going to pull patches from\n"
+					"En utilisant les definitions contenues dans [%s], nous allons extraire les patchs depuis\n"
 					"\n"
 					"\t%s\n"
 					"\n"
-					"You can specify a different server definition file as a command-line parameter.\n"
+					"Vous pouvez specifier un autre fichier d'informations serveur en argument de ligne de commande.\n"
 					"\n"
 					"\n",
 					local_server_js_fn, server_first_url
@@ -345,7 +363,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 			SAFE_FREE(remote_server_js_buffer);
 			json_decref(local_server_js);
 		} else {
-			printf("Download of server.js failed.\nUsing local server definitions...\n");
+			printf("Echec du telechargement de server.js\nUtilisation des definitions du serveur local...\n");
 			server_js = local_server_js;
 			pause();
 		}
@@ -395,7 +413,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		run_cfg = json_object();
 		run_cfg_patches = json_object_get_create(run_cfg, "patches", json_array());
 
-		log_printf("Bootstrapping selected patches...\n");
+		log_printf("Bootstrapping des patchs selectionnes...\n");
 		json_array_foreach(patch_stack, i, json_val) {
 			const char *patch_id = json_string_value(json_val);
 			json_t *patch_info = BootstrapPatch(patch_id, patch_dir, remote_servers);
@@ -416,7 +434,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	run_cfg_fn = run_cfg_fn_build(patch_stack);
 
 	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2));
-	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn);
+	log_printf("\n\nLa configuration suivante a ete ecrite dans %s:\n", run_cfg_fn);
 	json_dump_log(run_cfg, JSON_INDENT(2));
 	log_printf("\n\n");
 	
@@ -430,8 +448,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	if(json_object_size(games) > 0) 	{
 		CreateShortcuts(run_cfg_fn, games);
 		log_printf(
-			"\n\nDone. You can now start the respective games with your selected configuration\n"
-			"through the shortcuts created in the current directory\n"
+			"\n\nTermine. Vous pouvez maintenant lancer les differents jeux patches avec la configuration selectionnee\n"
+			"en double-cliquant sur les raccourcis crees dans le dossier actuel\n"
 			"(%s).\n", cur_dir
 		);
 	}

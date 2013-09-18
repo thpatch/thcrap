@@ -57,7 +57,7 @@ unsigned int format_Bpp(WORD format)
 		case FORMAT_GRAY8:
 			return 1;
 		default:
-			log_printf("unknown format: %u\n", format);
+			log_printf("Format inconnu: %u\n", format);
 			return 0;
 	}
 }
@@ -72,7 +72,7 @@ unsigned int format_png_equiv(WORD format)
 		case FORMAT_GRAY8:
 			return PNG_FORMAT_GRAY;
 		default:
-			log_printf("unknown format: %u\n", format);
+			log_printf("Format inconnu: %u\n", format);
 			return 0;
 	}
 }
@@ -210,7 +210,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 	headersize = json_object_get_hex(format, "headersize");
 	if(!headersize) {
-		log_printf("(no ANM header size given, sprite-local patching disabled)\n");
+		log_printf("(Aucune taille d\'en-tête ANM donnée, patching du sprite-local désactivé)\n");
 	}
 
 	while(anm_entry_out < file_inout + size_in) {
@@ -233,7 +233,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			STRUCT_GET(size_t, nextoffset, anm_entry_out, format) ||
 			STRUCT_GET(size_t, sprites, anm_entry_out, format)
 		) {
-			log_printf("Corrupt ANM file or format definition, aborting ...\n");
+			log_printf("Définition du format ou fichier ANM corrompu, abandon ...\n");
 			break;
 		}
 		if(hasdata && thtxoffset) {

@@ -179,9 +179,9 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	state.versions = stack_json_resolve(versions_js_fn, NULL);
 	if(!state.versions) {
 		log_printf(
-			"ERROR: No version definition file (%s) found!\n"
-			"Seems as if base_tsa didn't download correctly.\n"
-			"Try deleting the thpatch directory and running this program again.\n", versions_js_fn
+			"ERREUR: Aucun fichier de la version (%s) trouve!\n"
+			"Il semblerait que base_tsa n'ait pas ete telecharge correctement.\n"
+			"essayez de supprimer le dossier de thpatch et de relancer le programme.\n", versions_js_fn
 		);
 		return NULL;
 	}

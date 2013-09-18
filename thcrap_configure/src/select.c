@@ -34,7 +34,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 	json_t *patches = json_object_get(server_js, "patches");
 
 	if(!patches || !json_object_size(patches)) {
-		log_printf("\nNo patches available -.-\n");
+		log_printf("\nAucun patch disponible -.-\n");
 		return 0;
 	}
 	if(!json_is_array(selected)) {
@@ -46,7 +46,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 	cls(0);
 
 	log_printf("-----------------\n");
-	log_printf("Selecting patches\n");
+	log_printf("Selection des patchs\n");
 	log_printf("-----------------\n");
 	log_printf(
 		"\n"
@@ -59,7 +59,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 		const char *url_desc = json_object_get_string(server_js, "url_desc");
 		if(url_desc) {
 			log_printf(
-				"For more information on these patches, visit\n"
+				"Pour plus d'informations a propos de ces patchs, allez sur:\n"
 				"\n"
 				"\t%s"
 				"\n"
@@ -87,7 +87,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 			size_t i;
 			json_t *json_val;
 
-			printf("Selected patches (in ascending order of priority):\n\n");
+			printf("Patchs selectionnes (Par ordre croissant de priorite):\n\n");
 
 			json_array_foreach(selected, i, json_val) {
 				const char *patch_id = json_string_value(json_val);
@@ -103,7 +103,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 		if(json_array_size(selected) < json_object_size(patches)) {
 			json_t *json_val;
 			size_t i;
-			printf("Available patches:\n\n");
+			printf("Patchs disponibles\n\n");
 
 			json_array_foreach(patches_sorted, i, json_val) {
 				const char *patch_id = json_string_value(json_val);
@@ -119,8 +119,9 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 		}
 
 		printf(
-			"Select a patch to add to the stack"
-			"\n (1 - %u, select a number again to remove, anything else to cancel): ",
+			"Choisissez un Patch a ajouter a votre selection"
+			"\n (1 - %u, Choisissez le nombre a nouveau pour retirer, entrez n'importe quoi d'autre pour annuler): ",
+
 		patch_count);
 
 		fgets(buf, sizeof(buf), stdin);
@@ -135,9 +136,9 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 
 		if(!strcmp(json_string_value(patch), "base_tsa")) {
 			printf(
-				"\nUm... you _really_ do not want to mess with base_tsa.\n"
-				"This patch supplies the foundation for every other patch offered here.\n"
-				"If you remove it, none of those will work.\n\n");
+				"\nAhem... Vous ne devriez _vraiment_ pas bidouiller base_tsa\n"
+				"ce patch sert de base a tous les autres patchs presents ici.\n"
+				"Si vous le supprimez, aucun d\'eux ne fonctionnera\n\n");
 			pause();
 		} else {
 			if(patch_id > json_array_size(selected)) {
