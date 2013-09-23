@@ -230,6 +230,7 @@ int thcrap_init(const char *setup_fn)
 		log_init(json_is_true(console_val));
 	}
 
+	json_object_set_new(run_cfg, "run_cfg_fn", json_string(setup_fn));
 	log_printf("Run configuration file: %s\n\n", setup_fn);
 
 	win32_patch(hProc);
