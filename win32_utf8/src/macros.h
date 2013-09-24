@@ -54,10 +54,17 @@
 #define STRLEN_DEC(src_char) \
 	size_t src_char##_len = strlen(src_char) + 1
 
-// Convenient "create-wchar_t-from-strlen" macro
+/// Convenient wchar_t conversion macros
+/// ------------------------------------
+// "create-wchar_t-from-strlen"
 #define WCHAR_T_DEC(src_char) \
 	STRLEN_DEC(src_char); \
 	VLA(wchar_t, src_char##_w, src_char##_len)
+
+// StringToUTF16 using standard variable names
+#define WCHAR_T_CONV(src_char) \
+	StringToUTF16(src_char##_w, src_char, src_char##_len);
+/// ------------------------------------
 
 // Define Visual C++ warnings away
 #if (_MSC_VER >= 1600)

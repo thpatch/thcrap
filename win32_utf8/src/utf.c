@@ -62,7 +62,7 @@ char* EnsureUTF8(const char *str, int str_len)
 		char *str_utf8 = (char*)malloc(str_utf8_len);
 		ZeroMemory(str_w, str_w_len * sizeof(wchar_t));
 		ZeroMemory(str_utf8, str_utf8_len * sizeof(char));
-		StringToUTF16(str_w, str, str_len);
+		WCHAR_T_CONV(str);
 		StringToUTF8(str_utf8, str_w, str_len);
 		VLA_FREE(str_w);
 		return str_utf8;

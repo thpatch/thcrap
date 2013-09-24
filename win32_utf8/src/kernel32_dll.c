@@ -24,7 +24,7 @@ BOOL WINAPI CreateDirectoryU(
 	size_t i;
 	size_t lpPathName_w_len;
 	WCHAR_T_DEC(lpPathName);
-	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
+	WCHAR_T_CONV(lpPathName);
 
 	// no, this isn't optimized away
 	lpPathName_w_len = wcslen(lpPathName_w);
@@ -55,7 +55,7 @@ HANDLE WINAPI CreateFileU(
 {
 	HANDLE ret;
 	WCHAR_T_DEC(lpFileName);
-	StringToUTF16(lpFileName_w, lpFileName, lpFileName_len);
+	WCHAR_T_CONV(lpFileName);
 	ret = CreateFileW(
 		lpFileName_w, dwDesiredAccess, dwShareMode | FILE_SHARE_READ, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
@@ -159,7 +159,7 @@ HANDLE WINAPI FindFirstFileU(
 	WIN32_FIND_DATAW lpFindFileDataW;
 
 	WCHAR_T_DEC(lpFileName);
-	StringToUTF16(lpFileName_w, lpFileName, lpFileName_len);
+	WCHAR_T_CONV(lpFileName);
 	ret = FindFirstFileW(lpFileName_w, &lpFindFileDataW);
 	last_error = GetLastError();
 	CopyFindDataWToA(lpFindFileData, &lpFindFileDataW);
@@ -252,7 +252,7 @@ DWORD WINAPI GetEnvironmentVariableU(
 	DWORD ret;
 	WCHAR_T_DEC(lpName);
 	VLA(wchar_t, lpBuffer_w, nSize);
-	StringToUTF16(lpName_w, lpName, lpName_len);
+	WCHAR_T_CONV(lpName);
 
 	GetEnvironmentVariableW(lpName_w, lpBuffer_w, nSize);
 	// Return the converted size (!)
@@ -337,7 +337,7 @@ HMODULE WINAPI LoadLibraryU(
 {
 	HMODULE ret;
 	WCHAR_T_DEC(lpLibFileName);
-	StringToUTF16(lpLibFileName_w, lpLibFileName, lpLibFileName_len);
+	WCHAR_T_CONV(lpLibFileName);
 	ret = LoadLibraryW(lpLibFileName_w);
 	VLA_FREE(lpLibFileName_w);
 	return ret;
@@ -349,7 +349,7 @@ BOOL WINAPI SetCurrentDirectoryU(
 {
 	BOOL ret;
 	WCHAR_T_DEC(lpPathName);
-	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
+	WCHAR_T_CONV(lpPathName);
 	ret = SetCurrentDirectoryW(lpPathName_w);
 	VLA_FREE(lpPathName_w);
 	return ret;
