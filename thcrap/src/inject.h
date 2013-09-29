@@ -11,4 +11,4 @@
 #pragma once
 
 // Injects thcrap into the given [hProcess], and passes [setup_fn].
-void thcrap_inject(HANDLE hProcess, const char *setup_fn);
+int thcrap_inject(HANDLE hProcess, const char *setup_fn);

@@ -638,32 +638,23 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	return injRet;
 }
 
-// Injects thcrap into the given [hProcess], and passes [setup_fn] as parameter.
-DWORD thcrap_inject(HANDLE hProcess, const char *setup_fn)
+int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 {
 #ifdef _DEBUG
 	const char *inj_dll = "thcrap_d.dll";
 #else
 	const char *inj_dll = "thcrap.dll";
 #endif
-	const char *inj_dir;
-	size_t prog_dir_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
+	int ret;
+	HMODULE inj_mod = GetModuleHandleA(inj_dll);
+	size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
-	VLA(char, cur_dir, cur_dir_len);
-	VLA(char, prog_dir, prog_dir_len);
+	VLA(char, inj_dir, inj_dir_len);
 
-	GetModuleFileNameU(NULL, prog_dir, prog_dir_len);
-	GetCurrentDirectory(cur_dir_len, cur_dir);
-
-	if(prog_dir) {
-		PathRemoveFileSpec(prog_dir);
-		PathAddBackslashA(prog_dir);
-		inj_dir = prog_dir;
-	} else {
-		inj_dir = cur_dir;
-	}
+	GetModuleFileNameU(inj_mod, inj_dir, inj_dir_len);
+	PathRemoveFileSpec(inj_dir);
+	PathAddBackslashA(inj_dir);
 	{
-		DWORD ret;
 		STRLEN_DEC(setup_fn);
 		size_t full_setup_fn_len = cur_dir_len + setup_fn_len;
 		VLA(char, abs_setup_fn, full_setup_fn_len);
@@ -671,7 +662,7 @@ DWORD thcrap_inject(HANDLE hProcess, const char *setup_fn)
 
 		// Account for relative directory names
 		if(PathIsRelativeA(setup_fn)) {
-			strncpy(abs_setup_fn, cur_dir, cur_dir_len);
+			GetCurrentDirectory(cur_dir_len, abs_setup_fn);
 			PathAppendA(abs_setup_fn, setup_fn);
 			full_setup_fn = abs_setup_fn;
 		} else {
@@ -679,8 +670,8 @@ DWORD thcrap_inject(HANDLE hProcess, const char *setup_fn)
 			full_setup_fn_len = setup_fn_len;
 		}
 		ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", full_setup_fn, full_setup_fn_len);
-		VLA_FREE(cur_dir);
 		VLA_FREE(abs_setup_fn);
-		return ret;
 	}
+	VLA_FREE(inj_dir);
+	return ret;
 }
