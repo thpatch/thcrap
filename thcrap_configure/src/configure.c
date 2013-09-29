@@ -74,23 +74,15 @@ json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remot
 	const char *main_fn = "patch.js";
 
 	json_t *patch_info;
-	size_t patch_len;
-	size_t local_dir_len;
 
 	if(!patch_id || !base_dir) {
 		return NULL;
 	}
 	patch_info = json_object();
-	patch_len = strlen(patch_id) + 1;
-	local_dir_len = strlen(base_dir) + 1 + patch_len + 1;
 
 	{
-		VLA(char, local_dir, local_dir_len);
-		strcpy(local_dir, base_dir);
-		strcat(local_dir, patch_id);
-		strcat(local_dir, "/");
-		json_object_set_new(patch_info, "archive", json_string(local_dir));
-		VLA_FREE(local_dir);
+		json_t *local_dir = json_pack("s++", base_dir, patch_id, "/");
+		json_object_set_new(patch_info, "archive", local_dir);
 	}
 
 	if(patch_update(patch_info) == 1) {
@@ -98,6 +90,7 @@ json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remot
 		char *patch_js_buffer;
 		DWORD patch_js_size;
 		json_t *patch_js;
+		size_t patch_len = strlen(patch_id) + 1;
 
 		size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
 		VLA(char, remote_patch_fn, remote_patch_fn_len);

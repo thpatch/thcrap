@@ -58,27 +58,14 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 		{
 			const char *build = json_array_get_string(ver, 1);
 			const char *variety = json_array_get_string(ver, 2);
-			size_t id_str_len = 0;
-	
-			if(build) {
-				id_str_len += strlen(build) + 1;
-			}
-			if(variety) {
-				id_str_len += strlen(variety) + 1;
-			}
-			{
-				VLA(char, id_str, id_str_len);
-				id_str[0] = 0;
-				if(build) {
-					strcpy(id_str, build);
-				}
-				if(variety) {
-					strcat(id_str, " ");
-					strcat(id_str, variety);
-				}
-				json_object_set_new(game_val, exe_fn, json_string(id_str));
-				VLA_FREE(id_str);
-			}
+
+			json_t *id_str = json_pack("s++",
+				build ? build : "",
+				build && variety ? " " : "",
+				variety ? variety : ""
+			);
+
+			json_object_set_new(game_val, exe_fn, id_str);
 		}
 		LeaveCriticalSection(&state.cs_result);
 		VLA_FREE(exe_fn);

@@ -40,13 +40,7 @@ int layout_match_set(json_t *arr, size_t ind, const char *str, size_t len)
 		return -1;
 	}
 	{
-		VLA(char, arg, len + 1);
-		json_t *json_str;
-
-		strncpy(arg, str, len);
-		arg[len] = 0;
-		json_str = json_string(arg);
-		VLA_FREE(arg);
+		json_t *json_str = json_pack("s#", str, len);
 		return json_array_set_expand(arr, ind, json_str);
 	}
 }
