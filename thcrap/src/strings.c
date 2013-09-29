@@ -67,7 +67,10 @@ const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
 	// new length is shorter...
 	if(!ret || (strlen(ret) + 1 < str_len)) {
 		ret = (char*)realloc(ret, str_len);
-		json_object_set_new(sprintf_storage, addr_key, json_integer((size_t)ret));
+		// Yes, this correctly handles a realloc failure.
+		if(ret) {
+			json_object_set_new(sprintf_storage, addr_key, json_integer((size_t)ret));
+		}
 	}
 	if(ret) {
 		vsprintf(ret, format, va);
