@@ -640,25 +640,28 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 
 int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 {
-#ifdef _DEBUG
-	const char *inj_dll = "thcrap_d.dll";
-#else
-	const char *inj_dll = "thcrap.dll";
-#endif
-	int ret;
-	HMODULE inj_mod = GetModuleHandleA(inj_dll);
-	size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
-	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
-	VLA(char, inj_dir, inj_dir_len);
+	int ret = -1;
+	HMODULE inj_mod = NULL;
 
-	GetModuleFileNameU(inj_mod, inj_dir, inj_dir_len);
-	PathRemoveFileSpec(inj_dir);
-	PathAddBackslashA(inj_dir);
-	{
+	if(GetModuleHandleEx(
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+		(LPTSTR)thcrap_inject,
+		&inj_mod
+	)) {
+		size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
+		size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
+		VLA(char, inj_dll, inj_dir_len);
+		VLA(char, inj_dir, inj_dir_len);
+
 		STRLEN_DEC(setup_fn);
 		size_t full_setup_fn_len = cur_dir_len + setup_fn_len;
 		VLA(char, abs_setup_fn, full_setup_fn_len);
 		const char *full_setup_fn;
+
+		GetModuleFileNameU(inj_mod, inj_dir, inj_dir_len);
+		strncpy(inj_dll, PathFindFileNameA(inj_dir), inj_dir_len);
+		PathRemoveFileSpec(inj_dir);
+		PathAddBackslashA(inj_dir);
 
 		// Account for relative directory names
 		if(PathIsRelativeA(setup_fn)) {
@@ -671,7 +674,8 @@ int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 		}
 		ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", full_setup_fn, full_setup_fn_len);
 		VLA_FREE(abs_setup_fn);
+		VLA_FREE(inj_dir);
+		VLA_FREE(inj_dll);
 	}
-	VLA_FREE(inj_dir);
 	return ret;
 }
