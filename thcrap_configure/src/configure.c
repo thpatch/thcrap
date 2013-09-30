@@ -221,7 +221,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	char *run_cfg_fn = NULL;
 
-	json_t *args = json_array();
+	json_t *args = json_array_from_wchar_array(argc, wargv);
 
 	log_init(1);
 
@@ -232,18 +232,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	GetCurrentDirectory(cur_dir_len, cur_dir);
 	PathAddBackslashA(cur_dir);
 	str_slash_normalize(cur_dir);
-
-	// Convert command-line arguments
-	{
-		int i;
-		for(i = 0; i < argc; i++) {
-			size_t arg_len = (wcslen(wargv[i]) * UTF8_MUL) + 1;
-			VLA(char, arg, arg_len);
-			StringToUTF8(arg, __wargv[i], arg_len);
-			json_array_append_new(args, json_string(arg));
-			VLA_FREE(arg);
-		}
-	}
 
 	{
 		// Maximize the height of the console window
@@ -262,7 +250,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	inet_init();
 
-	if(argc > 1) {
+	if(json_array_size(args) > 1) {
 		local_server_js_fn = json_array_get_string(args, 1);
 	} else {
 		local_server_js_fn = "server.js";

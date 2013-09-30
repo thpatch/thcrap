@@ -39,6 +39,7 @@ EXPORTS
 	json_array_get_hex
 	json_array_get_string
 	json_array_get_string_safe
+	json_array_from_wchar_array
 	json_object_get_create
 	json_object_numkey_get
 	json_object_hexkey_get

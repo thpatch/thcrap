@@ -165,7 +165,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
 	int ret;
-
+	json_t *args = NULL;
 	json_t *games_js = NULL;
 
 	const char *run_cfg_fn = NULL;
@@ -174,8 +174,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	const char *cmd_exe_fn = NULL;
 	const char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
-
-	json_t *args = json_array();
 
 	int i;
 
@@ -198,14 +196,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		goto end;
 	}
 
-	// Convert command-line arguments
-	for(i = 0; i < __argc; i++) {
-		size_t arg_len = (wcslen(__wargv[i]) * UTF8_MUL) + 1;
-		VLA(char, arg, arg_len);
-		StringToUTF8(arg, __wargv[i], arg_len);
-		json_array_append_new(args, json_string(arg));
-		VLA_FREE(arg);
-	}
+	args = json_array_from_wchar_array(__argc, __wargv);
 
 	/** 
 	  * ---
@@ -236,7 +227,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	}
 
 	// Parse command line
-	for(i = 1; i < __argc; i++) {
+	for(i = 1; i < json_array_size(args); i++) {
 		const char *arg = json_array_get_string(args, i);
 		const char *param_ext = PathFindExtensionA(arg);
 		const char *new_exe_fn = NULL;
@@ -282,7 +273,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
 	/*
 	// Recursively apply the passed runconfigs
-	for(i = 1; i < __argc; i++)
+	for(i = 1; i < json_array_size(args); i++)
 	{
 		json_t *cur_cfg = json_load_file_report(args[i]);
 		if(!cur_cfg) {

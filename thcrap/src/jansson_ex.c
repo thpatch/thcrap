@@ -99,6 +99,26 @@ wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind)
 	return json_string_value_utf16(json_array_get(arr, ind));
 }
 
+json_t* json_array_from_wchar_array(int argc, const wchar_t *wargv[])
+{
+	json_t *ret = NULL;
+	int i;
+
+	if(!argc || !wargv) {
+		return ret;
+	}
+
+	ret = json_array();
+	for(i = 0; i < argc; i++) {
+		size_t arg_len = (wcslen(wargv[i]) * UTF8_MUL) + 1;
+		VLA(char, arg, arg_len);
+		StringToUTF8(arg, wargv[i], arg_len);
+		json_array_append_new(ret, json_string(arg));
+		VLA_FREE(arg);
+	}
+	return ret;
+}
+
 json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object)
 {
 	json_t *ret = json_object_get(object, key);
