@@ -23,4 +23,5 @@
 #include "strutil.h"
 #include "mempatch.h"
 #include "strings.h"
+#include "inject.h"
 #include "init.h"

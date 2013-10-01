@@ -679,3 +679,173 @@ int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 	}
 	return ret;
 }
+
+/// Entry point determination
+/// -------------------------
+void* entry_from_context(HANDLE hThread)
+{
+	CONTEXT context;
+
+	ZeroMemory(&context, sizeof(CONTEXT));
+	context.ContextFlags = CONTEXT_FULL;
+	if(GetThreadContext(hThread, &context)) {
+		return (void*)context.Eax;
+	}
+	return NULL;
+}
+
+void* entry_from_header(HANDLE hProcess, void *base_addr)
+{
+	void *pe_header = NULL;
+	void *ret = NULL;
+	MEMORY_BASIC_INFORMATION mbi;
+	PIMAGE_DOS_HEADER pDosH;
+	PIMAGE_NT_HEADERS pNTH;
+	DWORD byte_ret;
+
+	// Read the entire PE header
+	if(!VirtualQueryEx(hProcess, base_addr, &mbi, sizeof(mbi))) {
+		goto end;
+	}
+	pe_header = malloc(mbi.RegionSize);
+	ReadProcessMemory(hProcess, base_addr, pe_header, mbi.RegionSize, &byte_ret);
+	pDosH = (PIMAGE_DOS_HEADER)pe_header;
+
+	// Verify that the PE is valid by checking e_magic's value
+	if(pDosH->e_magic != IMAGE_DOS_SIGNATURE) {
+		goto end;
+	}
+
+	// Find the NT Header by using the offset of e_lfanew value from hMod
+	pNTH = (PIMAGE_NT_HEADERS) ((DWORD) pDosH + (DWORD) pDosH->e_lfanew);
+
+	// Verify that the NT Header is correct
+	if(pNTH->Signature != IMAGE_NT_SIGNATURE) {
+		goto end;
+	}
+
+	// Alright, we have the entry point now
+	ret = (void*)(pNTH->OptionalHeader.AddressOfEntryPoint + (DWORD)base_addr);
+end:
+	SAFE_FREE(pe_header);
+	return ret;
+}
+
+void* module_base_get(HANDLE hProcess, const char *module)
+{
+	HMODULE *hModules = NULL;
+	DWORD cModules;
+	void *ret = NULL;
+	//------
+
+	EnumProcessModules(hProcess, hModules, 0, &cModules);
+	hModules = (HMODULE*)malloc(cModules);
+
+	if(EnumProcessModules(hProcess, hModules, cModules / sizeof(HMODULE), &cModules)) {
+		size_t i;
+		for(i = 0; i < cModules / sizeof(HMODULE); i++) {
+			char cur_module[MAX_PATH];
+			if(GetModuleFileNameEx(hProcess, hModules[i], cur_module, sizeof(cur_module))) {
+				if(!strcmp(module, cur_module)) {
+					ret = hModules[i];
+					break;
+				}
+			}
+		}
+	}
+	SAFE_FREE(hModules);
+	return ret;
+}
+/// -------------------------
+
+int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
+{
+	CONTEXT context;
+	BYTE entry_asm_orig[2];
+	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
+	MEMORY_BASIC_INFORMATION mbi;
+	DWORD byte_ret;
+	DWORD old_prot;
+
+	if(!VirtualQueryEx(hProcess, addr, &mbi, sizeof(mbi))) {
+		return 1;
+	}
+	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &old_prot);
+	ReadProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
+	WriteProcessMemory(hProcess, addr, entry_asm_delay, sizeof(entry_asm_delay), &byte_ret);
+	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_delay));
+	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, old_prot, &old_prot);
+
+	ZeroMemory(&context, sizeof(CONTEXT));
+	context.ContextFlags = CONTEXT_CONTROL;
+	while(context.Eip != (DWORD)addr) {
+		ResumeThread(hThread);
+		Sleep(10);
+		SuspendThread(hThread);
+		GetThreadContext(hThread, &context);
+	}
+
+	// Write back the original code
+	WriteProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
+	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_orig));
+	return 0;
+}
+
+int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
+{
+	// Try to get the entry point by various means, sorted by both efficiency
+	// and probability of them working.
+	void *entry_addr = NULL;
+
+	if(!(entry_addr = entry_from_context(hThread))) {
+		void *module_base;
+
+		if(!(module_base = module_base_get(hProcess, module))) {
+			// shit, gotta take a guess and hope it works
+			module_base = (void*)0x400000;
+		}
+		entry_addr = entry_from_header(hProcess, module_base);
+	}
+
+	if(entry_addr) {
+		return ThreadWaitUntil(hProcess, hThread, entry_addr);
+	} else {
+		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+			"Couldn't determine the entry point of %s!\n"
+			"\n"
+			"Seems as if %s won't work with this game on your system.\n",
+			PathFindFileNameA(module), PROJECT_NAME_SHORT()
+		);
+		return 1;
+	}
+}
+
+BOOL WINAPI inject_CreateProcessU(
+	__in_opt LPCSTR lpAppName,
+	__inout_opt LPSTR lpCmdLine,
+	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in BOOL bInheritHandles,
+	__in DWORD dwCreationFlags,
+	__in_opt LPVOID lpEnvironment,
+	__in_opt LPCSTR lpCurrentDirectory,
+	__in LPSTARTUPINFOA lpSI,
+	__out LPPROCESS_INFORMATION lpPI
+)
+{
+	BOOL ret = CreateProcessU(
+		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
+		dwCreationFlags | CREATE_SUSPENDED,
+		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
+	);
+	if(ret) {
+		const char *run_cfg_fn = json_object_get_string(run_cfg, "run_cfg_fn");
+		if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
+			thcrap_inject(lpPI->hProcess, run_cfg_fn);
+		}
+		if(~dwCreationFlags & CREATE_SUSPENDED) {
+			ResumeThread(lpPI->hThread);
+		}
+	}
+	return ret;
+}

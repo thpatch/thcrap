@@ -84,6 +84,15 @@ EXPORTS
 
 	; Injection
 	; ---------
+	entry_from_context
+	entry_from_header
+	module_base_get
+
+	ThreadWaitUntil
+	WaitUntilEntryPoint
+
+	inject_CreateProcessU
+
 	thcrap_inject
 	thcrap_init
 
