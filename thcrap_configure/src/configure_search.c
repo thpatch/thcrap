@@ -25,9 +25,9 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		json_t *val;
 		size_t i = 0;
 		size_t loc_num;
-				
+
 		log_printf("Found %d versions of %s:\n\n", num_versions, id);
-				
+
 		json_object_foreach(locs, loc, val) {
 			log_printf(" [%2d] %s: %s\n", ++i, loc, json_string_value(val));
 		}
@@ -161,8 +161,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			printf("\n");
 		}
 	}
-	if(json_object_size(found))
-	{
+	if(json_object_size(found)) {
 		char *games_js_str = NULL;
 		FILE* games_js_file;
 
@@ -173,7 +172,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		games_js_file = fopen(games_js_fn, "w");
 		fputs(games_js_str, games_js_file);
 		fclose(games_js_file);
-		
+
 		log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
 		log_printf(games_js_str);
 		log_printf("\n");

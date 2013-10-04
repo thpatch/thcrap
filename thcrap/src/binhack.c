@@ -139,7 +139,7 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	func_ptrs = (DWORD*)(ExportDesc->AddressOfFunctions + dll_base);
 	name_ptrs = (DWORD*)(ExportDesc->AddressOfNames + dll_base);
 	name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
-	
+
 	for(i = 0; i < ExportDesc->NumberOfFunctions; i++) {
 		DWORD name_ptr = 0;
 		const char *name;
@@ -213,7 +213,7 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 		} else {
 			binhack_count += json_addr_count - 1;
 		}
-		
+
 		for(i = 0; i < json_addr_count; i++) {
 			const char *title = json_object_get_string(hack, "title");
 			// buffer for the rendered assembly code

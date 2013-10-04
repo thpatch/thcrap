@@ -75,7 +75,7 @@ EXPORTS
 	stack_json_resolve
 	stack_game_file_resolve
 	stack_game_json_resolve
-	
+
 	; Hooks
 	; -----
 	patchhook_register

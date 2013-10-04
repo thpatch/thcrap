@@ -46,7 +46,7 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 	sha256_update(&sha256_ctx, file_buffer, *file_size);
 	sha256_final(&sha256_ctx, hash);
 	SAFE_FREE(file_buffer);
-	
+
 	for(i = 0; i < 32; i++) {
 		sprintf(hash_str + (i * 2), "%02x", hash[i]);
 	}
@@ -67,7 +67,7 @@ int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
 	if(!build || !run_ver || !latest) {
 		return -1;
 	}
-	
+
 	json_latest = json_object_get(run_ver, "latest");
 	if(!json_latest) {
 		return -1;
@@ -97,7 +97,7 @@ json_t* identify(const char *exe_fn)
 	const char *game = NULL;
 	const char *build = NULL;
 	const char *variety = NULL;
-	
+
 	// Result of the EXE identification (array)
 	json_t *id_array = NULL;
 	int size_cmp = 0;
@@ -191,7 +191,7 @@ json_t* identify(const char *exe_fn)
 		const char *latest = NULL;
 		if(IsLatestBuild(build, &latest, run_ver) == 0) {
 			const char *url_update = json_object_get_string(run_ver, "url_update");
-			log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION, 
+			log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION,
 				"You are running an old version of %s (%s).\n"
 				"\n"
 				"While %s is confirmed to work with this version, we recommend updating "
@@ -237,7 +237,7 @@ int thcrap_init(const char *setup_fn)
 	textdisp_patch(hProc);
 	dialog_patch(hProc);
 	strings_patch(hProc);
-	
+
 	log_printf("EXE file name: %s\n", exe_fn);
 
 	run_ver = identify(exe_fn);
@@ -315,7 +315,7 @@ int thcrap_init(const char *setup_fn)
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
 			str_hexdate_format(format, min_build);
-			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION, 
+			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 				"A new version (%s) of the %s is available.\n"
 				"\n"
 				"This update contains new features and important bug fixes "
@@ -352,7 +352,7 @@ int thcrap_init(const char *setup_fn)
 			VLA_FREE(rem_arcs_str);
 		}
 	}
-	
+
 	log_printf("Game directory: %s\n", game_dir);
 	log_printf("Plug-in directory: %s\n", dll_dir);
 
@@ -365,7 +365,7 @@ int thcrap_init(const char *setup_fn)
 	strings_init();
 #endif
 	plugins_load();
-	
+
 	/**
 	  * Potentially dangerous stuff. Do not want!
 	  */
@@ -390,7 +390,7 @@ int thcrap_init(const char *setup_fn)
 		json_t *run_funcs = json_object();
 
 		// Print this separately from the run configuration
-		
+
 		log_printf("Functions available to binary hacks:\n");
 		log_printf("------------------------------------\n");
 
@@ -399,10 +399,10 @@ int thcrap_init(const char *setup_fn)
 			log_printf("\n%s:\n\n", key);
 			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
 		}
-		
+
 		log_printf("------------------------------------\n");
 		log_printf("\n");
-		
+
 		binhacks_apply(json_object_get(run_cfg, "binhacks"), run_funcs);
 		breakpoints_apply();
 
@@ -421,13 +421,13 @@ int thcrap_init(const char *setup_fn)
 }
 
 int InitDll(HMODULE hDll)
-{	
+{
 	size_t dll_dir_len;
 
 	w32u8_set_fallback_codepage(932);
 
 	InitializeCriticalSection(&cs_file_access);
-	
+
 #ifdef _WIN32
 #ifdef _DEBUG
 	// Activate memory leak debugging
@@ -439,7 +439,7 @@ int InitDll(HMODULE hDll)
 	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
 #endif
 #endif
-	
+
 	hThcrap = hDll;
 
 	// Store the DLL's own directory to load plug-ins later

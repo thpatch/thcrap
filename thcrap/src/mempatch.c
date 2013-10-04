@@ -133,7 +133,7 @@ PIMAGE_IMPORT_DESCRIPTOR WINAPI GetDllImportDesc(HMODULE hMod, const char *DLLNa
 		return NULL;
 	}
 	// iat patching
-	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)hMod + 
+	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)hMod +
 		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress));
 
 	if(pImportDesc == (PIMAGE_IMPORT_DESCRIPTOR)pNTH) {
@@ -161,7 +161,7 @@ PIMAGE_EXPORT_DIRECTORY WINAPI GetDllExportDesc(HMODULE hMod)
 	if(!pNTH) {
 		return NULL;
 	}
-	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)hMod + 
+	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)hMod +
 		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress));
 }
 

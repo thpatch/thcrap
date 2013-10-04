@@ -33,7 +33,7 @@ static json_t *BP_Object = NULL;
 size_t* reg(x86_reg_t *regs, const char *regname)
 {
 	char cmp[4];
-	
+
 	if(!regname) {
 		return NULL;
 	}
@@ -104,7 +104,7 @@ __declspec(naked) void breakpoint_process()
 	BreakpointFunc_t bp_function;
 
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
-	// to be able to manipulate it. 
+	// to be able to manipulate it.
 	size_t esp_prev;
 
 	__asm {
@@ -165,7 +165,7 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 	if(cave[0] == 0xe8 || cave[0] == 0xe9)
 	{
 		size_t dist_old, dist_new;
-		
+
 		dist_old = *((size_t*)(cave + 1));
 		dist_new = (dist_old + (bp_addr + CALL_LEN)) - ((size_t)cave + CALL_LEN);
 

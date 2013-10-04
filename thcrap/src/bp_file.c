@@ -61,7 +61,7 @@ void fr_tls_free()
 int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
-	
+
 	size_t fn_len;
 
 	// Parameters
@@ -183,7 +183,7 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	memcpy(fr->game_buffer, fr->rep_buffer, fr->rep_size);
 
 	patchhooks_run(fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch, run_cfg);
-	
+
 	if(eip_jump_dist) {
 		regs->retaddr += eip_jump_dist;
 	}
@@ -216,7 +216,7 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 		dir_create_for_fn(fn);
 
 		hFile = CreateFile(
-			fn, GENERIC_WRITE, 0, NULL, CREATE_NEW, 
+			fn, GENERIC_WRITE, 0, NULL, CREATE_NEW,
 			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 		);
 		if(hFile != INVALID_HANDLE_VALUE) {
@@ -246,7 +246,7 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	if(!json_is_false(dat_dump)) {
 		DumpDatFile(json_string_value(dat_dump), fr);
 	}
-	
+
 	patchhooks_run(fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch, run_cfg);
 
 	fr_tls_free();

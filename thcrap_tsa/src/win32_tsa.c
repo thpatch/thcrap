@@ -26,7 +26,7 @@
   * The best solution seems to be replacing GetWindowRect() with
   * GetWindowPlacement(), which always reports the expected window coordinates,
   * even when the window in question is minimized.
-  */ 
+  */
 BOOL WINAPI tsa_GetWindowRect(
     __in HWND hWnd,
     __out LPRECT lpRect

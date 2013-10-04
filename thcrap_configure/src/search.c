@@ -53,7 +53,7 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 		// Alright, found a game!
 		// Add it into the result object
 		game_val = json_object_get_create(state.found, key, json_object());
-		
+
 		EnterCriticalSection(&state.cs_result);
 		{
 			const char *build = json_array_get_string(ver, 1);
@@ -83,7 +83,7 @@ DWORD WINAPI SearchThread(void *param)
 	// Add the asterisk
 	size_t dir_len = strlen(param_dir) + 2 + 1;
 	VLA(char, local_dir, dir_len);
-	
+
 	BOOL ret = 1;
 
 	strcpy(local_dir, param_dir);
@@ -107,7 +107,7 @@ DWORD WINAPI SearchThread(void *param)
 			continue;
 		}
 		local_dir[dir_len - 3] = 0;
-		
+
 		if(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 			DWORD thread_id;
 			size_t cur_file_len = dir_len + strlen(w32fd.cFileName) + 2;
@@ -215,7 +215,7 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	while(state.cur_threads) {
 		Sleep(100);
 	}
-	
+
 	DeleteCriticalSection(&state.cs_result);
 	DeleteCriticalSection(&state.cs_count);
 	json_decref(state.versions);

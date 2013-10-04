@@ -187,7 +187,7 @@ int json_object_merge(json_t *old_obj, json_t *new_obj)
 {
 	const char *key;
 	json_t *new_val;
-	
+
 	if(!old_obj || !new_obj) {
 		return -1;
 	}
@@ -271,7 +271,7 @@ json_t* json_load_file_report(const char *json_fn)
 	BYTE *json_p;
 	json_t *json = NULL;
 	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf};
-	
+
 	json_p = json_buffer = file_read(json_fn, &json_size);
 	if(!json_buffer || !json_size) {
 		return NULL;

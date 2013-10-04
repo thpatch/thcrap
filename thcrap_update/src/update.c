@@ -20,7 +20,7 @@ int inet_init()
 	DWORD ignore = 1;
 
 	// DWORD timeout = 500;
-	const char *project_name = PROJECT_NAME(); 
+	const char *project_name = PROJECT_NAME();
 	size_t agent_len = strlen(project_name) + strlen(" (--) " ) + 16 + 1;
 	VLA(char, agent, agent_len);
 	sprintf(
@@ -204,7 +204,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, 
 		}
 
 		HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &http_stat, &byte_ret, 0);
-	
+
 		log_printf("%d", http_stat);
 
 		if(http_stat != 200) {
@@ -213,7 +213,7 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, 
 			log_printf("\n");
 			continue;
 		}
-	
+
 		HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
 		if(*file_size == 0) {
 			log_printf(" 0-byte file! %s\n", servers_left ? "Trying next server..." : "");
@@ -371,7 +371,7 @@ int patch_update(const json_t *patch_info)
 
 	// Init local servers for bootstrapping
 	local_servers = ServerInit(local_patch_js);
-	
+
 	remote_patch_js_buffer = ServerDownloadFileA(local_servers, main_fn, &remote_patch_js_size, NULL);
 	if(!remote_patch_js_buffer) {
 		// All servers offline...
@@ -410,7 +410,6 @@ int patch_update(const json_t *patch_info)
 		}
 	}
 	if(!file_count) {
-		// Nice, we're up-to-date!
 		log_printf("Everything up-to-date.\n", file_count);
 		ret = 0;
 		goto end_update;
@@ -424,8 +423,7 @@ int patch_update(const json_t *patch_info)
 		void *file_buffer;
 		DWORD file_size;
 		json_t *local_val;
-		
-		
+
 		if(!ServerGetNumActive(remote_servers)) {
 			ret = 3;
 			break;
@@ -440,8 +438,7 @@ int patch_update(const json_t *patch_info)
 		log_printf("(%*d/%*d) ", file_digits, i, file_digits, file_count);
 
 		if(json_is_integer(remote_val)) {
-			DWORD remote_crc;
-			remote_crc = json_integer_value(remote_val);
+			DWORD remote_crc = json_integer_value(remote_val);
 			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, &remote_crc);
 		} else {
 			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, NULL);
@@ -449,7 +446,7 @@ int patch_update(const json_t *patch_info)
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
 			SAFE_FREE(file_buffer);
-			
+
 			json_object_set(local_files, key, remote_val);
 			patch_json_store(patch_info, main_fn, local_patch_js);
 		}

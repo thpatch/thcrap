@@ -22,7 +22,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	const char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
 
-	int i;
+	size_t i;
 
 	if(__argc < 2) {
 		log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
@@ -45,7 +45,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 
 	args = json_array_from_wchar_array(__argc, __wargv);
 
-	/** 
+	/**
 	  * ---
 	  * "Activate AppLocale layer in case it's installed."
 	  *
@@ -152,12 +152,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		STRLEN_DEC(final_exe_fn);
 		VLA(char, game_dir, final_exe_fn_len);
 		VLA(char, final_exe_fn_local, final_exe_fn_len);
-
-		STARTUPINFOA si;
-		PROCESS_INFORMATION pi;
-
-		ZeroMemory(&si, sizeof(STARTUPINFOA));
-		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+		STARTUPINFOA si = {0};
+		PROCESS_INFORMATION pi = {0};
 
 		strcpy(final_exe_fn_local, final_exe_fn);
 		str_slash_normalize_win(final_exe_fn_local);
@@ -172,7 +168,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			char *msg_str;
 
 			ret = GetLastError();
-		
+
 			FormatMessage(
 				FORMAT_MESSAGE_FROM_SYSTEM |
 				FORMAT_MESSAGE_ALLOCATE_BUFFER |

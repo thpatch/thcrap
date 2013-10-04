@@ -29,7 +29,7 @@ HFONT WINAPI textdisp_CreateFontA(
 {
 	int replaced = 0;
 	const char *string_font;
-	
+
 	iCharSet = DEFAULT_CHARSET;
 
 	// Check hardcoded strings and the run configuration for a replacement font.
@@ -60,7 +60,7 @@ HFONT WINAPI textdisp_CreateFontA(
 	}
 	*/
 	log_printf(
-		"CreateFontA: %s%s %d (Weight %d, PitchAndFamily 0x%0x)\n", 
+		"CreateFontA: %s%s %d (Weight %d, PitchAndFamily 0x%0x)\n",
 		pszFaceName, replaced ? " (repl.)" : "", cHeight, cWeight, iPitchAndFamily
 	);
 	return CreateFont(

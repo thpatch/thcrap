@@ -9,7 +9,7 @@
 
 #include <thcrap.h>
 #include "thcrap_tsa.h"
-  
+
 // Lookup cache
 static json_t *spells = NULL;
 static json_t *spellcomments = NULL;

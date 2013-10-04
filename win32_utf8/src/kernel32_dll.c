@@ -65,16 +65,16 @@ HANDLE WINAPI CreateFileU(
 }
 
 BOOL WINAPI CreateProcessU(
-	__in_opt    LPCSTR lpAppName,
+	__in_opt LPCSTR lpAppName,
 	__inout_opt LPSTR lpCmdLine,
-	__in_opt    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-	__in_opt    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in        BOOL bInheritHandles,
-	__in        DWORD dwCreationFlags,
-	__in_opt    LPVOID lpEnvironment,
-	__in_opt    LPCSTR lpCurrentDirectory,
-	__in        LPSTARTUPINFOA lpSI,
-	__out       LPPROCESS_INFORMATION lpProcessInformation
+	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in BOOL bInheritHandles,
+	__in DWORD dwCreationFlags,
+	__in_opt LPVOID lpEnvironment,
+	__in_opt LPCSTR lpCurrentDirectory,
+	__in LPSTARTUPINFOA lpSI,
+	__out LPPROCESS_INFORMATION lpProcessInformation
 )
 {
 	BOOL ret;
@@ -301,7 +301,7 @@ DWORD WINAPI GetModuleFileNameU(
 		}
 		nSize = 0;
 	}
-	ret = StringToUTF8(lpFilename, lpFilename_w, nSize); 
+	ret = StringToUTF8(lpFilename, lpFilename_w, nSize);
 	VLA_FREE(lpFilename_w);
 	return ret;
 }

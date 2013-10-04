@@ -33,12 +33,12 @@
   *	3. Just build the target buffer dynamically, reallocating space
   *	   on every step (1 loop)
   *
-  * I went with option 2 here. 
+  * I went with option 2 here.
   *
   * All that, however, doesn't help against the fact that Win32 dialog patching
   * is scary stuff. Every single line of code here has the potential to crash
   * the game or simply make the dialog not appear at all. So let's make the code
-  * as as concise, abstracted, consistent and readable as possible:
+  * as concise, abstracted, consistent and readable as possible:
   *
   *	* There are three data types we care about: sz_Or_Ord (= everything that
   *	  can be a string), DLGTEMPLATEEX and DLGITEMTEMPLATEEX.
@@ -96,7 +96,7 @@ typedef struct {
 	// title string of the dialog box
 	wchar_t title[];
 
-	// Only present if DS_SETFONT to be set in [style].
+	// Only present if DS_SETFONT is set in [style].
 	DLGTEMPLATEEX_FONT font;
 */
 #ifdef PACK_PRAGMA

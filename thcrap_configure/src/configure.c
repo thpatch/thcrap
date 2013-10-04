@@ -20,7 +20,7 @@ int Ask(const char *question)
 		fgets(buf, sizeof(buf), stdin);
 		// Flush stdin (because fflush(stdin) is "undefined behavior")
 		while((ret = getchar()) != '\n' && ret != EOF);
-		
+
 		ret = tolower(buf[0]);
 	}
 	return ret == 'y';
@@ -30,7 +30,7 @@ int Ask(const char *question)
 void cls(SHORT top)
 {
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	
+
 	// here's where we'll home the cursor
 	COORD coordScreen = {0, top};
 
@@ -38,7 +38,7 @@ void cls(SHORT top)
 	// to get buffer info
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	// number of character cells in the current buffer
-	DWORD dwConSize;                 
+	DWORD dwConSize;
 
 	// get the number of character cells in the current buffer
 	GetConsoleScreenBufferInfo(hConsole, &csbi);
@@ -182,7 +182,7 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 			size_t link_args_len = 1 + run_cfg_fn_len + 2 + game_len + 1;
 			VLA(char, link_fn, link_fn_len);
 			VLA(char, link_args, link_args_len);
-			
+
 			log_printf(".");
 
 			sprintf(link_fn, "%s-%s", key, run_cfg_fn);
@@ -225,7 +225,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	log_init(1);
 
-	// We need to do this here to allow *any* input of localized characters
+	// Necessary to correctly process *any* input of non-ASCII characters
 	// in the console subsystem
 	w32u8_set_fallback_codepage(GetOEMCP());
 
@@ -404,7 +404,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn);
 	json_dump_log(run_cfg, JSON_INDENT(2));
 	log_printf("\n\n");
-	
+
 	pause();
 
 	runconfig_set(run_cfg);
@@ -430,7 +430,7 @@ end:
 	json_decref(args);
 
 	VLA_FREE(cur_dir);
-	
+
 	pause();
 	return 0;
 }

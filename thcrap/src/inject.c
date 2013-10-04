@@ -55,7 +55,7 @@
   *		__declspec(dllexport) void FunctionName(void*)
   *
   * The function that is called in the injected DLL -MUST- return, the loader
-  * waits for the thread to terminate before removing the allocated space and 
+  * waits for the thread to terminate before removing the allocated space and
   * returning control to the loader. This method of DLL injection also adds error
   * handling, so the end user knows if something went wrong.
   */
@@ -133,13 +133,13 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	LPBYTE error2Addr = 0;
 
 	// Where the codecave execution should begin at
-	void *codecaveExecAddr = 0;
+	LPTHREAD_START_ROUTINE codecaveExecAddr = 0;
 
 	// Handle to the thread we create in the process
 	HANDLE hThread = NULL;
 
 	// Old protection on page we are writing to in the process and the bytes written
-	DWORD oldProtect = 0;	
+	DWORD oldProtect = 0;
 	DWORD byte_ret = 0;
 
 	// Return code of injection function
@@ -149,13 +149,13 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 // Variable initialization.                 //
 //------------------------------------------//
 
-// This section will cause compiler warnings on VS8, 
+// This section will cause compiler warnings on VS8,
 // you can upgrade the functions or ignore them
 
 	// Build error messages
 	sprintf(injectError1, injectError1Format, dll_name);
 	sprintf(injectError2, injectError2Format, func_name);
-	
+
 	workspaceSize += (
 		strlen(dll_dir) + 1 + strlen(dll_name) + 1 + strlen(func_name) + 1 +
 		param_size + strlen(injectError1) + 1 + strlen(injectError2) + 1
@@ -231,7 +231,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	*p++ = 0xCC;
 
 	// Store where the codecave execution should begin
-	codecaveExecAddr = (p - workspace) + codecaveAddress;
+	codecaveExecAddr = (LPTHREAD_START_ROUTINE)((p - workspace) + codecaveAddress);
 
 // For debugging - infinite loop, attach onto process and step over
 	//*p++ = 0xEB;
@@ -364,7 +364,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 		*p++ = 0x83;
 		*p++ = 0xc1;
 		*p++ = 0x04;
-		
+
 		/// "Allocate" ecx bytes on stack and store buffer pointer to ebx
 
 		// sub esp, ecx
@@ -397,14 +397,14 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 		*p++ = 0xD6;
 	}
 
-	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibraryA
+	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibrary
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, dllNameAddr);
 
 	// MOV EAX, ADDRESS - Move the address of LoadLibrary into EAX
 	*p++ = 0xB8;
 	p = ptrcpy_advance_dst(p, loadlibrary);
-	
+
 	// CALL EAX - Call LoadLibrary
 	*p++ = 0xFF;
 	*p++ = 0xD0;
@@ -556,7 +556,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	// PUSH 0x000000 - Push the address of the function parameter
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, funcParamAddr);
-	
+
 	// CALL EAX - Call [func_name]
 	*p++ = 0xFF;
 	*p++ = 0xD0;
@@ -624,7 +624,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 
 	// Execute the thread now and wait for it to exit, note we execute where the code starts, and not the codecave start
 	// (since we wrote strings at the start of the codecave)
-	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)(codecaveExecAddr), 0, 0, NULL);
+	hThread = CreateRemoteThread(hProcess, NULL, 0, codecaveExecAddr, 0, 0, NULL);
 	WaitForSingleObject(hThread, INFINITE);
 
 	GetExitCodeThread(hThread, &injRet);
@@ -684,9 +684,7 @@ int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 /// -------------------------
 void* entry_from_context(HANDLE hThread)
 {
-	CONTEXT context;
-
-	ZeroMemory(&context, sizeof(CONTEXT));
+	CONTEXT context = {0};
 	context.ContextFlags = CONTEXT_FULL;
 	if(GetThreadContext(hThread, &context)) {
 		return (void*)context.Eax;
@@ -760,7 +758,7 @@ void* module_base_get(HANDLE hProcess, const char *module)
 
 int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 {
-	CONTEXT context;
+	CONTEXT context = {0};
 	BYTE entry_asm_orig[2];
 	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
 	MEMORY_BASIC_INFORMATION mbi;
@@ -776,7 +774,6 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_delay));
 	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, old_prot, &old_prot);
 
-	ZeroMemory(&context, sizeof(CONTEXT));
 	context.ContextFlags = CONTEXT_CONTROL;
 	while(context.Eip != (DWORD)addr) {
 		ResumeThread(hThread);
