@@ -34,23 +34,6 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
-wchar_t* json_string_value_utf16(const json_t *str_object)
-{
-	size_t str_len;
-	const char *str_utf8;
-	wchar_t *str_utf16 = NULL;
-
-	if(!json_is_string(str_object)) {
-		return NULL;
-	}
-	str_utf8 = json_string_value(str_object);
-	str_len = strlen(str_utf8) + 1;
-	str_utf16 = (wchar_t*)malloc(str_len * sizeof(wchar_t));
-
-	StringToUTF16(str_utf16, str_utf8, str_len);
-	return str_utf16;
-}
-
 int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
@@ -92,11 +75,6 @@ const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
 		ret = "";
 	}
 	return ret;
-}
-
-wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind)
-{
-	return json_string_value_utf16(json_array_get(arr, ind));
 }
 
 json_t* json_array_from_wchar_array(int argc, const wchar_t *wargv[])
@@ -173,14 +151,6 @@ const char* json_object_get_string(const json_t *object, const char *key)
 		return NULL;
 	}
 	return json_string_value(json_object_get(object, key));
-}
-
-wchar_t* json_object_get_string_utf16(const json_t *object, const char *key)
-{
-	if(!key) {
-		return NULL;
-	}
-	return json_string_value_utf16(json_object_get(object, key));
 }
 
 int json_object_merge(json_t *old_obj, json_t *new_obj)

@@ -146,10 +146,8 @@ EXPORTS
 	; Logging
 	; -------
 	log_print
-	log_wprint
 	log_nprint
 	log_printf
-	log_wprintf
 	log_mbox
 	log_mboxf
 	log_init

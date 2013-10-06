@@ -30,21 +30,6 @@ void log_print(const char *str)
 	}
 }
 
-void log_wprint(const wchar_t *str)
-{
-	size_t str_len;
-	if(!str) {
-		return;
-	}
-	str_len = wcslen(str) + 1;
-	{
-		VLA(char, str_utf8, str_len * UTF8_MUL);
-		StringToUTF8(str_utf8, str, str_len);
-		log_print(str_utf8);
-		VLA_FREE(str_utf8);
-	}
-}
-
 void log_nprint(const char *str, size_t n)
 {
 	fwrite(str, n, 1, stdout);
@@ -73,25 +58,6 @@ void log_printf(const char *str, ...)
 	}
 }
 
-void log_wprintf(const wchar_t *str, ...)
-{
-	va_list va;
-	size_t str_full_len;
-
-	if(!str) {
-		return;
-	}
-	va_start(va, str);
-	str_full_len = _vscwprintf(str, va) + 1;
-	{
-		VLA(wchar_t, str_full, str_full_len);
-		vsnwprintf(str_full, str_full_len, str, va);
-		va_end(va);
-		log_wprint(str_full);
-		VLA_FREE(str_full);
-	}
-}
-
 /**
   * Message box functions.
   */
@@ -105,24 +71,6 @@ int log_mbox(const char *caption, const UINT type, const char *text)
 	log_printf("%s\n", text);
 	log_print("---------------------------\n");
 	return MessageBox(NULL, text, caption, type);
-}
-
-int log_wmbox(const wchar_t *caption, const UINT type, const wchar_t *text)
-{
-	int ret;
-	const char *project_name = PROJECT_NAME();
-	WCHAR_T_DEC(project_name);
-
-	if(!text) {
-		return 0;
-	}
-	if(!caption) {
-		caption = StringToUTF16_VLA(project_name_w, project_name, project_name_len);
-	}
-	log_wprint(text); // why not
-	ret = MessageBoxW(NULL, text, caption, type);
-	VLA_FREE(project_name_w);
-	return ret;
 }
 
 int log_mboxf(const char *caption, const UINT type, const char *text, ...)
@@ -142,27 +90,6 @@ int log_mboxf(const char *caption, const UINT type, const char *text, ...)
 		vsprintf(text_full, text, va);
 		va_end(va);
 		ret = log_mbox(caption, type, text_full);
-		VLA_FREE(text_full);
-		return ret;
-	}
-}
-
-int log_wmboxf(const wchar_t *caption, const UINT type, const wchar_t *text, ...)
-{
-	va_list va;
-	size_t text_full_len;
-
-	if(!text) {
-		return 0;
-	}
-	va_start(va, text);
-	text_full_len = _vscwprintf(text, va) + 1;
-	{
-		int ret;
-		VLA(wchar_t, text_full, text_full_len);
-		vsnwprintf(text_full, text_full_len, text, va);
-		va_end(va);
-		ret = log_wmbox(caption, type, text_full);
 		VLA_FREE(text_full);
 		return ret;
 	}

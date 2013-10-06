@@ -22,10 +22,6 @@
   */
 size_t json_hex_value(json_t *val);
 
-// Convert JSON string [object] to UTF-16.
-// Return value has to be free()d by the caller!
-wchar_t* json_string_value_utf16(const json_t *str_object);
-
 /// Arrays
 /// ------
 // Like json_array_set, but expands the array if necessary.
@@ -41,10 +37,6 @@ const char* json_array_get_string(const json_t *arr, const size_t ind);
 // Same as json_array_get_string(), but returns an empty string ("")
 // if element #[ind] in [arr] is no valid string.
 const char* json_array_get_string_safe(const json_t *arr, const size_t ind);
-
-// Convert the [index]th value in [array] to UTF-16.
-// Return value has to be free()d by the caller!
-wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind);
 
 // Convert [argc] UTF-16 strings from [wargv] to a JSON array containing
 // UTF-8 strings. Useful for dealing with command-line parameters on Windows.
@@ -70,10 +62,6 @@ size_t json_object_get_hex(json_t *object, const char *key);
 
 // Convenience function for json_string_value(json_object_get(object, key));
 const char* json_object_get_string(const json_t *object, const char *key);
-
-// Convert the value of [key] in [object] to UTF-16.
-// Return value has to be free()d by the caller!
-wchar_t* json_object_get_string_utf16(const json_t *object, const char *key);
 
 // Merge [new_obj] recursively into [old_obj].
 // [new_obj] has priority; any element of [new_obj] that is already present
