@@ -11,6 +11,7 @@
 #include <MMSystem.h>
 #include <WinInet.h>
 #include <zlib.h>
+#include "wininet_dll.h"
 #include "update.h"
 
 HINTERNET hINet = NULL;
@@ -121,7 +122,7 @@ const int ServerGetFirst(const json_t *servers)
 	}
 }
 
-void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, DWORD *exp_crc)
+void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWORD *exp_crc)
 {
 	HINTERNET hFile = NULL;
 	DWORD http_stat;
@@ -130,7 +131,6 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, 
 	BOOL ret;
 	BYTE *file_buffer = NULL, *p;
 	size_t i;
-	URL_COMPONENTS uc;
 
 	int servers_left;
 	int servers_first;
@@ -169,32 +169,28 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, 
 		InternetCloseHandle(hFile);
 
 		{
-			size_t server_len = strlen(server_url) + 1;
+			URL_COMPONENTSA uc = {0};
+			STRLEN_DEC(server_url);
 			// * 3 because characters may be URL-encoded
-			DWORD url_len = server_len + 1 + (wcslen(fn) * 3) + 1;
-			VLA(wchar_t, server_w, server_len);
-			VLA(wchar_t, server_host, server_len);
-			VLA(wchar_t, url, url_len);
+			DWORD url_len = server_url_len + 1 + (strlen(fn) * 3) + 1;
+			VLA(char, server_host, server_url_len);
+			VLA(char, url, url_len);
 
-			StringToUTF16(server_w, server_url, server_len);
+			InternetCombineUrl(server_url, fn, url, &url_len, 0);
 
-			InternetCombineUrl(server_w, fn, url, &url_len, 0);
-
-			ZeroMemory(&uc, sizeof(URL_COMPONENTS));
-			uc.dwStructSize = sizeof(URL_COMPONENTS);
+			uc.dwStructSize = sizeof(uc);
 			uc.lpszHostName = server_host;
-			uc.dwHostNameLength = server_len;
+			uc.dwHostNameLength = server_url_len;
 
-			InternetCrackUrl(server_w, 0, 0, &uc);
+			InternetCrackUrl(server_url, 0, 0, &uc);
 
-			log_wprintf(L"%s (%s)... ", fn, uc.lpszHostName);
+			log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
 			time_start = timeGetTime();
 
 			hFile = InternetOpenUrl(hINet, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
 			VLA_FREE(url);
 			VLA_FREE(server_host);
-			VLA_FREE(server_w);
 		}
 		if(!hFile) {
 			DWORD inet_ret = GetLastError();
@@ -257,21 +253,6 @@ void* ServerDownloadFileW(json_t *servers, const wchar_t *fn, DWORD *file_size, 
 		}
 	}
 	return NULL;
-}
-
-void* ServerDownloadFileA(json_t *servers, const char *fn, DWORD *file_size, DWORD* exp_crc)
-{
-	if(!fn) {
-		return NULL;
-	}
-	{
-		void *ret;
-		WCHAR_T_DEC(fn);
-		fn_w = StringToUTF16_VLA(fn_w, fn, fn_len);
-		ret = ServerDownloadFileW(servers, fn_w, file_size, exp_crc);
-		VLA_FREE(fn_w);
-		return ret;
-	}
 }
 
 json_t* ServerInit(json_t *patch_js)
@@ -372,7 +353,7 @@ int patch_update(const json_t *patch_info)
 	// Init local servers for bootstrapping
 	local_servers = ServerInit(local_patch_js);
 
-	remote_patch_js_buffer = ServerDownloadFileA(local_servers, main_fn, &remote_patch_js_size, NULL);
+	remote_patch_js_buffer = ServerDownloadFile(local_servers, main_fn, &remote_patch_js_size, NULL);
 	if(!remote_patch_js_buffer) {
 		// All servers offline...
 		ret = 3;
@@ -439,9 +420,9 @@ int patch_update(const json_t *patch_info)
 
 		if(json_is_integer(remote_val)) {
 			DWORD remote_crc = json_integer_value(remote_val);
-			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, &remote_crc);
+			file_buffer = ServerDownloadFile(remote_servers, key, &file_size, &remote_crc);
 		} else {
-			file_buffer = ServerDownloadFileA(remote_servers, key, &file_size, NULL);
+			file_buffer = ServerDownloadFile(remote_servers, key, &file_size, NULL);
 		}
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
