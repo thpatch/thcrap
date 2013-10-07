@@ -10,19 +10,6 @@
 #include <thcrap.h>
 #include "layout.h"
 
-/// Functions
-/// ---------
-// Types
-typedef HDC (WINAPI *DLL_FUNC_TYPE(gdi32, CreateCompatibleDC))(HDC);
-typedef BOOL (WINAPI *DLL_FUNC_TYPE(gdi32, DeleteDC))(HDC);
-typedef HGDIOBJ (WINAPI *DLL_FUNC_TYPE (gdi32, SelectObject))(HDC, HGDIOBJ);
-
-// Pointers
-DLL_FUNC_DEF(gdi32, CreateCompatibleDC);
-DLL_FUNC_DEF(gdi32, DeleteDC);
-DLL_FUNC_DEF(gdi32, SelectObject);
-/// ---------
-
 /// Static global variables
 /// -----------------------
 // Array of absolute tabstop positions.
@@ -166,7 +153,7 @@ BOOL layout_textout_ruby(
 HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
 {
 	if(!text_dc) {
-		HDC ret = DLL_FUNC(gdi32, CreateCompatibleDC)(hdc);
+		HDC ret = CreateCompatibleDC(hdc);
 		text_dc = ret;
 		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
 	}
@@ -187,7 +174,7 @@ HGDIOBJ WINAPI layout_SelectObject(
 	if(h == GetStockObject(SYSTEM_FONT)) {
 		return GetCurrentObject(hdc, OBJ_FONT);
 	} else {
-		return DLL_FUNC(gdi32, SelectObject)(hdc, h);
+		return SelectObject(hdc, h);
 	}
 }
 
@@ -424,18 +411,9 @@ size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font)
 
 int layout_init(HMODULE hMod)
 {
-	HMODULE hGDI32 = GetModuleHandleA("gdi32.dll");
-	if(!hGDI32) {
-		return -1;
-	}
-	// Required functions
-	DLL_GET_PROC_ADDRESS(hGDI32, gdi32, CreateCompatibleDC);
-	DLL_GET_PROC_ADDRESS(hGDI32, gdi32, DeleteDC);
-	DLL_GET_PROC_ADDRESS(hGDI32, gdi32, SelectObject);
-
 	Layout_Tabs = json_array();
 
-	return iat_patch_funcs_var(GetModuleHandle(NULL), "gdi32.dll", 4,
+	return iat_detour_funcs_var(GetModuleHandle(NULL), "gdi32.dll", 4,
 		"CreateCompatibleDC", layout_CreateCompatibleDC,
 		"DeleteDC", layout_DeleteDC,
 		"SelectObject", layout_SelectObject,
@@ -446,7 +424,7 @@ int layout_init(HMODULE hMod)
 void layout_exit()
 {
 	json_decref(Layout_Tabs);
-	if(DLL_FUNC(gdi32, DeleteDC) && text_dc) {
-		DLL_FUNC(gdi32, DeleteDC)(text_dc);
+	if(text_dc) {
+		DeleteDC(text_dc);
 	}
 }
