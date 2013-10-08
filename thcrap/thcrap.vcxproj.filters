@@ -41,9 +41,6 @@
     <ClCompile Include="src\log.c">
       <Filter>Source files</Filter>
     </ClCompile>
-    <ClCompile Include="src\win32_patch.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
     <ClCompile Include="src\sha256.c">
       <Filter>Source files</Filter>
     </ClCompile>
@@ -62,12 +59,12 @@
     <ClCompile Include="src\dialog.c">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="src\win32_detour.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\binhack.h">
-      <Filter>Source files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\win32_patch.h">
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\bp_file.h">
@@ -119,6 +116,9 @@
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\dialog.h">
+      <Filter>Source files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\win32_detour.h">
       <Filter>Source files</Filter>
     </ClInclude>
   </ItemGroup>

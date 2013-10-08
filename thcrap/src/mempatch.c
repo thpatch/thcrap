@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Direct memory and Import Address Table patching
+  * Direct memory and Import Address Table detouring
   */
 
 #include "thcrap.h"
@@ -132,7 +132,7 @@ PIMAGE_IMPORT_DESCRIPTOR WINAPI GetDllImportDesc(HMODULE hMod, const char *DLLNa
 	if(!pNTH) {
 		return NULL;
 	}
-	// iat patching
+	// iat detouring
 	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)hMod +
 		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress));
 
@@ -194,12 +194,12 @@ PIMAGE_SECTION_HEADER WINAPI GetSectionHeader(HMODULE hMod, const char *section_
 	return NULL;
 }
 
-/// Import Address Table patching
-/// =============================
+/// Import Address Table detouring
+/// ==============================
 
 /// Low-level
 /// ---------
-int func_patch(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
+int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
@@ -210,7 +210,7 @@ int func_patch(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 	return 1;
 }
 
-int func_patch_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr)
+int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr)
 {
 	PIMAGE_THUNK_DATA pOT, pIT;
 
@@ -225,7 +225,7 @@ int func_patch_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_T
                 return 0;
             }
             if(!stricmp(old_func, (char*)pByName->Name)) {
-				return func_patch(pIT, new_ptr);
+				return func_detour(pIT, new_ptr);
 			}
 		}
 	}
@@ -233,7 +233,7 @@ int func_patch_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_T
 	return 0;
 }
 
-int func_patch_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr)
+int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr)
 {
 	PIMAGE_THUNK_DATA Thunk;
 
@@ -243,7 +243,7 @@ int func_patch_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, con
 	}
 	for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {
 		if((DWORD*)Thunk->u1.Function == (DWORD*)old_ptr) {
-			return func_patch(Thunk, new_ptr);
+			return func_detour(Thunk, new_ptr);
 		}
 	}
 	// Function not found
@@ -253,19 +253,19 @@ int func_patch_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, con
 
 /// High-level
 /// ----------
-void iat_patch_set(iat_patch_t *patch, const char *old_func, const void *old_ptr, const void *new_ptr)
+void iat_detour_set(iat_detour_t *detour, const char *old_func, const void *old_ptr, const void *new_ptr)
 {
-	patch->old_func = old_func;
-	patch->old_ptr = old_ptr;
-	patch->new_ptr = new_ptr;
+	detour->old_func = old_func;
+	detour->old_ptr = old_ptr;
+	detour->new_ptr = new_ptr;
 }
 
-int iat_patch_funcs(HMODULE hMod, const char *dll_name, iat_patch_t *patch, const size_t patch_count)
+int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, const size_t detour_count)
 {
 	PIMAGE_IMPORT_DESCRIPTOR ImpDesc;
 	PIMAGE_THUNK_DATA	pOrigThunk;
 	PIMAGE_THUNK_DATA	pImpThunk;
-	int ret = patch_count;
+	int ret = detour_count;
 	UINT c;
 
 	ImpDesc = GetDllImportDesc(hMod, dll_name);
@@ -275,28 +275,28 @@ int iat_patch_funcs(HMODULE hMod, const char *dll_name, iat_patch_t *patch, cons
 	pOrigThunk = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->OriginalFirstThunk);
 	pImpThunk  = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->FirstThunk);
 
-	log_printf("Patching DLL exports (%s)...\n", dll_name);
+	log_printf("Detouring DLL functions (%s)...\n", dll_name);
 
-	// We _only_ patch by comparing exported names.
+	// We _only_ detour by comparing exported names.
 	// Has the advantages that we can override any existing patches,
 	// and that it works on Win9x too (as if that matters).
 
-	for(c = 0; c < patch_count; c++) {
-		DWORD local_ret = func_patch_by_name(hMod, pOrigThunk, pImpThunk, patch[c].old_func, patch[c].new_ptr);
+	for(c = 0; c < detour_count; c++) {
+		DWORD local_ret = func_detour_by_name(hMod, pOrigThunk, pImpThunk, detour[c].old_func, detour[c].new_ptr);
 		log_printf(
 			"(%2d/%2d) %s... %s\n",
-			c + 1, patch_count, patch[c].old_func, local_ret ? "OK" : "not found"
+			c + 1, detour_count, detour[c].old_func, local_ret ? "OK" : "not found"
 		);
 		ret -= local_ret;
 	}
 	return ret;
 }
 
-int iat_patch_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_count, ...)
+int iat_detour_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_count, ...)
 {
 	HMODULE hDll;
 	va_list va;
-	VLA(iat_patch_t, iat_patch, func_count);
+	VLA(iat_detour_t, iat_detour, func_count);
 	size_t i;
 	int ret;
 
@@ -309,13 +309,13 @@ int iat_patch_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_co
 	}
 	va_start(va, func_count);
 	for(i = 0; i < func_count; i++) {
-		iat_patch[i].old_func = va_arg(va, const char*);
-		iat_patch[i].new_ptr = va_arg(va, const void*);
-		iat_patch[i].old_ptr = GetProcAddress(hDll, iat_patch[i].old_func);
+		iat_detour[i].old_func = va_arg(va, const char*);
+		iat_detour[i].new_ptr = va_arg(va, const void*);
+		iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
 	}
 	va_end(va);
-	ret = iat_patch_funcs(hMod, dll_name, iat_patch, func_count);
-	VLA_FREE(iat_patch);
+	ret = iat_detour_funcs(hMod, dll_name, iat_detour, func_count);
+	VLA_FREE(iat_detour);
 	return ret;
 }
 /// ----------

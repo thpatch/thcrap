@@ -33,5 +33,5 @@ const char* strings_sprintf(const size_t addr, const char *format, ...);
 
 void strings_init();
 // Adds string lookup wrappers to functions that don't have them yet.
-int strings_patch(HMODULE hMod);
+int strings_detour(HMODULE hMod);
 void strings_exit();

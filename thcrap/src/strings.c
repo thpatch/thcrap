@@ -112,9 +112,9 @@ void strings_init()
 	sprintf_storage = json_object();
 }
 
-int strings_patch(HMODULE hMod)
+int strings_detour(HMODULE hMod)
 {
-	return iat_patch_funcs_var(hMod, "user32.dll", 1,
+	return iat_detour_funcs_var(hMod, "user32.dll", 1,
 		"MessageBoxA", strings_MessageBoxA
 	);
 }

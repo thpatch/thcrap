@@ -96,9 +96,9 @@ HWND WINAPI tsa_CreateWindowExA(
 }
 /// ---------------------
 
-int win32_tsa_patch(HMODULE hMod)
+int tsa_detour(HMODULE hMod)
 {
-	return iat_patch_funcs_var(hMod, "user32.dll", 2,
+	return iat_detour_funcs_var(hMod, "user32.dll", 2,
 		"CreateWindowExA", tsa_CreateWindowExA,
 		"GetWindowRect", tsa_GetWindowRect
 	);

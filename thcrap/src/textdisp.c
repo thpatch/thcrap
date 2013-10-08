@@ -95,9 +95,9 @@ void patch_fonts_load(const json_t *patch_info, const json_t *patch_js)
 	}
 }
 
-int textdisp_patch(HMODULE hMod)
+int textdisp_detour(HMODULE hMod)
 {
-	return iat_patch_funcs_var(hMod, "gdi32.dll", 1,
+	return iat_detour_funcs_var(hMod, "gdi32.dll", 1,
 		"CreateFontA", textdisp_CreateFontA
 	);
 }

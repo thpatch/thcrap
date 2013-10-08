@@ -63,7 +63,7 @@
     <ClCompile Include="src\strings.c" />
     <ClCompile Include="src\strutil.c" />
     <ClCompile Include="src\textdisp.c" />
-    <ClCompile Include="src\win32_patch.c" />
+    <ClCompile Include="src\win32_detour.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h" />
@@ -84,7 +84,7 @@
     <ClInclude Include="src\strutil.h" />
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
-    <ClInclude Include="src\win32_patch.h" />
+    <ClInclude Include="src\win32_detour.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap.def" />

@@ -4,16 +4,16 @@
   *
   * ----
   *
-  * Import Address Table patch calls for the win32_utf8 functions.
+  * Import Address Table detour calls for the win32_utf8 functions.
   */
 
 #include "thcrap.h"
 
-void win32_patch(HMODULE hMod)
+void win32_detour(HMODULE hMod)
 {
 	// After that Norton incident, I've become a bit scared of AV software,
 	// so no patching of CreateProcess and LoadLibrary until we need it
-	iat_patch_funcs_var(hMod, "kernel32.dll", 10,
+	iat_detour_funcs_var(hMod, "kernel32.dll", 10,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
 		"GetModuleFileNameA", GetModuleFileNameU,
@@ -26,13 +26,13 @@ void win32_patch(HMODULE hMod)
 		"FormatMessageA", FormatMessageU
 	);
 
-	iat_patch_funcs_var(hMod, "gdi32.dll", 3,
+	iat_detour_funcs_var(hMod, "gdi32.dll", 3,
 		"CreateFontA", CreateFontU,
 		"TextOutA", TextOutU,
 		"GetTextExtentPoint32A", GetTextExtentPoint32U
 	);
 
-	iat_patch_funcs_var(hMod, "user32.dll", 14,
+	iat_detour_funcs_var(hMod, "user32.dll", 14,
 		"CharNextA", CharNextU,
 		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,
@@ -50,7 +50,7 @@ void win32_patch(HMODULE hMod)
 		"SetWindowTextA", SetWindowTextU
 	);
 
-	iat_patch_funcs_var(hMod, "shlwapi.dll", 3,
+	iat_detour_funcs_var(hMod, "shlwapi.dll", 3,
 		"PathMatchSpecA", PathMatchSpecU,
 		"PathRemoveFileSpecA", PathRemoveFileSpecU,
 		"PathFileExistsA", PathFileExistsU

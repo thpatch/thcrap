@@ -23,14 +23,14 @@ EXPORTS
 	GetDllExportDesc
 	GetSectionHeader
 
-	; IAT patching
-	; ------------
-	func_patch
-	func_patch_by_name
-	func_patch_by_ptr
+	; IAT detouring
+	; -------------
+	func_detour
+	func_detour_by_name
+	func_detour_by_ptr
 
-	iat_patch_funcs
-	iat_patch_funcs_var
+	iat_detour_funcs
+	iat_detour_funcs_var
 
 	; JSON extensions
 	; ---------------
@@ -140,7 +140,7 @@ EXPORTS
 	strings_MessageBoxA
 
 	strings_init
-	strings_patch
+	strings_detour
 	strings_exit
 
 	; Logging
@@ -164,7 +164,7 @@ EXPORTS
 	; ------------
 	textdisp_CreateFontA
 	patch_fonts_load
-	textdisp_patch
+	textdisp_detour
 
 	; Win32 dialogs
 	; -------------
@@ -185,7 +185,7 @@ EXPORTS
 
 	dialog_CreateDialogParamA
 	dialog_DialogBoxParamA
-	dialog_patch
+	dialog_detour
 
 	; Plugins
 	; -------

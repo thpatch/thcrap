@@ -577,9 +577,9 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 	return ret;
 }
 
-int dialog_patch(HMODULE hMod)
+int dialog_detour(HMODULE hMod)
 {
-	return iat_patch_funcs_var(hMod, "user32.dll", 2,
+	return iat_detour_funcs_var(hMod, "user32.dll", 2,
 		"CreateDialogParamA", dialog_CreateDialogParamA,
 		"DialogBoxParamA", dialog_DialogBoxParamA
 	);

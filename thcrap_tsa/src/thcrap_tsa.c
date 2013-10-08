@@ -38,7 +38,7 @@ int InitDll(HMODULE hDll)
 	InitCommonControlsEx(&icce);
 
 	layout_init(hDll);
-	win32_tsa_patch(GetModuleHandle(NULL));
+	tsa_detour(GetModuleHandle(NULL));
 	return 0;
 }
 

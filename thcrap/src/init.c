@@ -14,7 +14,7 @@
 #include "bp_file.h"
 #include "dialog.h"
 #include "textdisp.h"
-#include "win32_patch.h"
+#include "win32_detour.h"
 
 // Static global variables
 // -----------------------
@@ -233,10 +233,10 @@ int thcrap_init(const char *setup_fn)
 	json_object_set_new(run_cfg, "run_cfg_fn", json_string(setup_fn));
 	log_printf("Run configuration file: %s\n\n", setup_fn);
 
-	win32_patch(hProc);
-	textdisp_patch(hProc);
-	dialog_patch(hProc);
-	strings_patch(hProc);
+	win32_detour(hProc);
+	textdisp_detour(hProc);
+	dialog_detour(hProc);
+	strings_detour(hProc);
 
 	log_printf("EXE file name: %s\n", exe_fn);
 
