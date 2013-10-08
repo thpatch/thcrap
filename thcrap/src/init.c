@@ -209,6 +209,15 @@ end:
 	return run_ver;
 }
 
+void thcrap_detour(HMODULE hProc)
+{
+	win32_detour(hProc);
+	textdisp_detour(hProc);
+	dialog_detour(hProc);
+	strings_detour(hProc);
+	inject_detour(hProc);
+}
+
 int thcrap_init(const char *setup_fn)
 {
 	json_t *run_ver = NULL;
@@ -233,10 +242,7 @@ int thcrap_init(const char *setup_fn)
 	json_object_set_new(run_cfg, "run_cfg_fn", json_string(setup_fn));
 	log_printf("Run configuration file: %s\n\n", setup_fn);
 
-	win32_detour(hProc);
-	textdisp_detour(hProc);
-	dialog_detour(hProc);
-	strings_detour(hProc);
+	thcrap_detour(hProc);
 
 	log_printf("EXE file name: %s\n", exe_fn);
 

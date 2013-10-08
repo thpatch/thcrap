@@ -93,6 +93,7 @@ EXPORTS
 
 	inject_CreateProcessU
 
+	thcrap_detour
 	thcrap_inject
 	thcrap_init
 

@@ -21,4 +21,7 @@ json_t* identify_by_size(size_t exe_size, json_t *versions);
 // NULL on failure or user cancellation.
 json_t* identify(const char *fn);
 
+// All Import Address Table detour calls required by the engine.
+void thcrap_detour(HMODULE hProc);
+
 int thcrap_init(const char *setup_fn);
