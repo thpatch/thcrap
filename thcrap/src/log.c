@@ -19,6 +19,12 @@ static int console_open = 0;
 static const char LOG[] = "thcrap_log.txt";
 // -----------------------
 
+#define VLA_VSPRINTF(str, va) \
+	size_t str##_full_len = _vscprintf(str, va) + 1; \
+	VLA(char, str##_full, str##_full_len); \
+	/* vs*n*printf is not available in msvcrt.dll. Doesn't matter anyway. */ \
+	vsprintf(str##_full, str, va);
+
 void log_print(const char *str)
 {
 	if(console_open) {
@@ -38,23 +44,22 @@ void log_nprint(const char *str, size_t n)
 	}
 }
 
-void log_printf(const char *str, ...)
+void log_vprintf(const char *str, va_list va)
 {
-	va_list va;
-	size_t str_full_len;
-
-	if(!str) {
-		return;
-	}
-	va_start(va, str);
-	str_full_len = _vscprintf(str, va) + 1;
-	{
-		VLA(char, str_full, str_full_len);
-		// vs*n*printf is not available in msvcrt.dll. Doesn't matter anyway.
-		vsprintf(str_full, str, va);
-		va_end(va);
+	if(str) {
+		VLA_VSPRINTF(str, va);
 		log_print(str_full);
 		VLA_FREE(str_full);
+	}
+}
+
+void log_printf(const char *str, ...)
+{
+	if(str) {
+		va_list va;
+		va_start(va, str);
+		log_vprintf(str, va);
+		va_end(va);
 	}
 }
 
@@ -73,26 +78,27 @@ int log_mbox(const char *caption, const UINT type, const char *text)
 	return MessageBox(NULL, text, caption, type);
 }
 
-int log_mboxf(const char *caption, const UINT type, const char *text, ...)
+int log_vmboxf(const char *caption, const UINT type, const char *text, va_list va)
 {
-	va_list va;
-	size_t text_full_len;
-
-	if(!text) {
-		return 0;
-	}
-	va_start(va, text);
-	text_full_len = _vscprintf(text, va) + 1;
-	{
-		int ret;
-		VLA(char, text_full, text_full_len);
-		// vs*n*printf is not available in msvcrt.dll. Doesn't matter anyway.
-		vsprintf(text_full, text, va);
-		va_end(va);
+	int ret = 0;
+	if(text) {
+		VLA_VSPRINTF(text, va);
 		ret = log_mbox(caption, type, text_full);
 		VLA_FREE(text_full);
-		return ret;
 	}
+	return ret;
+}
+
+int log_mboxf(const char *caption, const UINT type, const char *text, ...)
+{
+	int ret = 0;
+	if(text) {
+		va_list va;
+		va_start(va, text);
+		ret = log_vmboxf(caption, type, text, va);
+		va_end(va);
+	}
+	return ret;
 }
 
 static void OpenConsole()

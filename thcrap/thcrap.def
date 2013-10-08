@@ -148,8 +148,10 @@ EXPORTS
 	; -------
 	log_print
 	log_nprint
+	log_vprintf
 	log_printf
 	log_mbox
+	log_vmboxf
 	log_mboxf
 	log_init
 	log_exit
