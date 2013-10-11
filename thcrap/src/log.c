@@ -150,8 +150,8 @@ void log_init(int console)
 		fprintf(log_file, "Build time: "  __TIMESTAMP__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
-			size_t builder_len = wcslen(BUILDER_NAME_W) + 1;
-			VLA(char, builder, builder_len * UTF8_MUL);
+			size_t builder_len = (wcslen(BUILDER_NAME_W) * UTF8_MUL) + 1;
+			VLA(char, builder, builder_len);
 			StringToUTF8(builder, BUILDER_NAME_W, builder_len);
 			fprintf(log_file, "Built by: %s\n", builder);
 			VLA_FREE(builder);

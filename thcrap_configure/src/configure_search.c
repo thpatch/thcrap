@@ -136,8 +136,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 				// Ensure UTF-8
 				VLA(wchar_t, search_path_w, search_path_len);
 				WCHAR_T_CONV(search_path);
-				// We can't use StringToUTF8 for constant memory due to UTF8_MUL, so...
-				WideCharToMultiByte(CP_UTF8, 0, search_path_w, -1, search_path, sizeof(search_path), NULL, NULL);
+				StringToUTF8(search_path, search_path_w, sizeof(search_path));
 			}
 
 			str_slash_normalize_win(search_path);

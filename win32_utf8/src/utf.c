@@ -44,9 +44,8 @@ wchar_t* StringToUTF16_VLA(wchar_t *str_w, const char *str_mb, int str_len)
 	return str_w;
 }
 
-int StringToUTF8(char *str_utf8, const wchar_t *str_w, int str_len)
+int StringToUTF8(char *str_utf8, const wchar_t *str_w, int str_utf8_len)
 {
-	size_t str_utf8_len = str_len * sizeof(char) * UTF8_MUL;
 	return WideCharToMultiByte(CP_UTF8, 0, str_w, -1, str_utf8, str_utf8_len, NULL, NULL);
 }
 
@@ -63,7 +62,7 @@ char* EnsureUTF8(const char *str, int str_len)
 		ZeroMemory(str_w, str_w_len * sizeof(wchar_t));
 		ZeroMemory(str_utf8, str_utf8_len * sizeof(char));
 		WCHAR_T_CONV(str);
-		StringToUTF8(str_utf8, str_w, str_len);
+		StringToUTF8(str_utf8, str_w, str_utf8_len);
 		VLA_FREE(str_w);
 		return str_utf8;
 	}

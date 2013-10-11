@@ -139,9 +139,8 @@ static void CopyFindDataWToA(
 	w32fd_a->nFileSizeLow = w32fd_w->nFileSizeLow;
 	w32fd_a->dwReserved0 = w32fd_w->dwReserved0;
 	w32fd_a->dwReserved1 = w32fd_w->dwReserved1;
-	// We can't use StringToUTF8 for constant memory due to UTF8_MUL, so...
-	WideCharToMultiByte(CP_UTF8, 0, w32fd_w->cFileName, -1, w32fd_a->cFileName, MAX_PATH, NULL, NULL);
-	WideCharToMultiByte(CP_UTF8, 0, w32fd_w->cAlternateFileName, -1, w32fd_a->cAlternateFileName, 14, NULL, NULL);
+	StringToUTF8(w32fd_a->cFileName, w32fd_w->cFileName, sizeof(w32fd_a->cFileName));
+	StringToUTF8(w32fd_a->cAlternateFileName, w32fd_w->cAlternateFileName, sizeof(w32fd_a->cAlternateFileName));
 #ifdef _MAC
 	w32fd_a->dwFileType = w32fd_w->dwReserved1;
 	w32fd_a->dwCreatorType = w32fd_w->dwCreatorType;
@@ -206,9 +205,9 @@ DWORD WINAPI FormatMessageU(
 	if(dwFlags & FORMAT_MESSAGE_ALLOCATE_BUFFER) {
 		LPSTR* lppBuffer = (LPSTR*)lpBuffer;
 
-		ret = max(ret, nSize);
+		ret = max(ret * sizeof(char) * UTF8_MUL, nSize);
 
-		*lppBuffer = LocalAlloc(0, ret * sizeof(char) * UTF8_MUL);
+		*lppBuffer = LocalAlloc(0, ret);
 		lpBuffer = *lppBuffer;
 	} else {
 		ret = min(ret, nSize);

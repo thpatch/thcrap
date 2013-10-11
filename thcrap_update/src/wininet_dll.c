@@ -34,6 +34,16 @@ BOOL WINAPI InternetCombineUrlU(
 		ret = InternetCombineUrlW(
 			lpszBaseUrl_w, lpszRelativeUrl_w, lpszBuffer_w, lpdwBufferLength, dwFlags
 		);
+		/**
+		  * "If the function succeeds, this parameter receives the size of the
+		  * combined URL, in characters, not including the null-terminating character.
+		  * If the function fails, this parameter receives the size of the required buffer,
+		  * in characters (including the null-terminating character).
+		  * (http://msdn.microsoft.com/en-us/library/windows/desktop/aa384355%28v=vs.85%29.aspx)
+		  */
+		if(ret) {
+			(*lpdwBufferLength)++;
+		}
 		last_error = GetLastError();
 		if(lpszBuffer) {
 			*lpdwBufferLength = StringToUTF8(lpszBuffer, lpszBuffer_w, *lpdwBufferLength);
@@ -61,9 +71,7 @@ BOOL WINAPI InternetCombineUrlU(
 
 #define UC_CONVERT_AND_FREE(elm) \
 	if(lpUC->lpsz##elm) { \
-		WideCharToMultiByte( \
-			CP_UTF8, 0, lpUC_w.lpsz##elm, -1, lpUC->lpsz##elm, lpUC->dw##elm##Length, NULL, NULL \
-		); \
+		StringToUTF8(lpUC->lpsz##elm, lpUC_w.lpsz##elm, lpUC->dw##elm##Length	); \
 		VLA_FREE(lpUC_w.lpsz##elm); \
 	}
 
