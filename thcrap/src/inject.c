@@ -731,27 +731,28 @@ end:
 
 void* module_base_get(HANDLE hProcess, const char *module)
 {
-	HMODULE *hModules = NULL;
-	DWORD cModules;
+	HMODULE *modules = NULL;
+	DWORD modules_size;
 	void *ret = NULL;
 	//------
 
-	EnumProcessModules(hProcess, hModules, 0, &cModules);
-	hModules = (HMODULE*)malloc(cModules);
+	EnumProcessModules(hProcess, modules, 0, &modules_size);
+	modules = (HMODULE*)malloc(modules_size);
 
-	if(EnumProcessModules(hProcess, hModules, cModules / sizeof(HMODULE), &cModules)) {
+	if(EnumProcessModules(hProcess, modules, modules_size, &modules_size)) {
 		size_t i;
-		for(i = 0; i < cModules / sizeof(HMODULE); i++) {
+		size_t modules_num = modules_size / sizeof(HMODULE);
+		for(i = 0; i < modules_num; i++) {
 			char cur_module[MAX_PATH];
-			if(GetModuleFileNameEx(hProcess, hModules[i], cur_module, sizeof(cur_module))) {
+			if(GetModuleFileNameEx(hProcess, modules[i], cur_module, sizeof(cur_module))) {
 				if(!strcmp(module, cur_module)) {
-					ret = hModules[i];
+					ret = modules[i];
 					break;
 				}
 			}
 		}
 	}
-	SAFE_FREE(hModules);
+	SAFE_FREE(modules);
 	return ret;
 }
 /// -------------------------
