@@ -29,6 +29,9 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll);
 
 /// Remote
 /// ------
+// Fills [pNTH] with the IMAGE_NT_HEADERS structure of [hMod] in [hProcess].
+int GetRemoteModuleNtHeader(PIMAGE_NT_HEADERS pNTH, HANDLE hProcess, HMODULE hMod);
+
 // Reads the entry point from the PE header.
 void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod);
 

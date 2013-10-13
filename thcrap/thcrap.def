@@ -23,6 +23,7 @@ EXPORTS
 	GetDllExportDesc
 	GetSectionHeader
 	GetExportedFunctions
+	GetRemoteModuleNtHeader
 	GetRemoteModuleEntryPoint
 	GetRemoteModuleHandle
 

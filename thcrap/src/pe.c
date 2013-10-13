@@ -161,42 +161,33 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	return 0;
 }
 
+int GetRemoteModuleNtHeader(PIMAGE_NT_HEADERS pNTH, HANDLE hProcess, HMODULE hMod)
+{
+	BYTE *addr = (BYTE*)hMod;
+	IMAGE_DOS_HEADER DosH;
+
+	if(!pNTH) {
+		return -1;
+	}
+
+	ReadProcessMemory(hProcess, addr, &DosH, sizeof(DosH), NULL);
+	if(DosH.e_magic != IMAGE_DOS_SIGNATURE) {
+		return 2;
+	}
+	addr += DosH.e_lfanew;
+	ReadProcessMemory(hProcess, addr, pNTH, sizeof(IMAGE_NT_HEADERS), NULL);
+
+	return pNTH->Signature != IMAGE_NT_SIGNATURE;
+}
+
 void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod)
 {
-	void *pe_header = NULL;
-	void *ret = NULL;
-	MEMORY_BASIC_INFORMATION mbi;
-	PIMAGE_DOS_HEADER pDosH;
-	PIMAGE_NT_HEADERS pNTH;
-	DWORD byte_ret;
-
 	// No, GetModuleInformation() would not be an equivalent shortcut.
-
-	// Read the entire PE header
-	if(!VirtualQueryEx(hProcess, hMod, &mbi, sizeof(mbi))) {
-		goto end;
+	void *ret = NULL;
+	IMAGE_NT_HEADERS NTH;
+	if(!GetRemoteModuleNtHeader(&NTH, hProcess, hMod)) {
+		ret = (void*)(NTH.OptionalHeader.AddressOfEntryPoint + (DWORD)hMod);
 	}
-	pe_header = malloc(mbi.RegionSize);
-	ReadProcessMemory(hProcess, hMod, pe_header, mbi.RegionSize, &byte_ret);
-	pDosH = (PIMAGE_DOS_HEADER)pe_header;
-
-	// Verify that the PE is valid by checking e_magic's value
-	if(pDosH->e_magic != IMAGE_DOS_SIGNATURE) {
-		goto end;
-	}
-
-	// Find the NT Header by using the offset of e_lfanew value from hMod
-	pNTH = (PIMAGE_NT_HEADERS) ((DWORD) pDosH + (DWORD) pDosH->e_lfanew);
-
-	// Verify that the NT Header is correct
-	if(pNTH->Signature != IMAGE_NT_SIGNATURE) {
-		goto end;
-	}
-
-	// Alright, we have the entry point now
-	ret = (void*)(pNTH->OptionalHeader.AddressOfEntryPoint + (DWORD)hMod);
-end:
-	SAFE_FREE(pe_header);
 	return ret;
 }
 
