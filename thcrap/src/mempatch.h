@@ -22,21 +22,6 @@ int PatchBYTEEx(HANDLE hProcess, void *ptr, BYTE Prev, BYTE val);
 int PatchDWORDEx(HANDLE hProcess, void *ptr, DWORD Prev, DWORD val);
 int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT val);
 
-/// PE structures
-/// -------------
-// Returns the IMAGE_NT_HEADERS structure of [hMod]
-PIMAGE_NT_HEADERS WINAPI GetNtHeader(HMODULE hMod);
-
-// Returns the import descriptor of [DLLName]
-PIMAGE_IMPORT_DESCRIPTOR WINAPI GetDllImportDesc(HMODULE hMod, const char *dll_name);
-
-// Returns the export descriptor of the DLL with the base address [hMod]
-PIMAGE_EXPORT_DIRECTORY WINAPI GetDllExportDesc(HMODULE hMod);
-
-// Returns the section header named [section_name]
-PIMAGE_SECTION_HEADER WINAPI GetSectionHeader(HMODULE hMod, const char *section_name);
-/// -------------
-
 /// DLL function macros
 /// -------------------
 // For external DLL functions, the form [(dll)_(func)] is used for the individual function pointers.

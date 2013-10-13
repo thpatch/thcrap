@@ -22,6 +22,9 @@ EXPORTS
 	GetDllImportDesc
 	GetDllExportDesc
 	GetSectionHeader
+	GetExportedFunctions
+	entry_from_header
+	module_base_get
 
 	; IAT detouring
 	; -------------
@@ -85,8 +88,6 @@ EXPORTS
 	; Injection
 	; ---------
 	entry_from_context
-	entry_from_header
-	module_base_get
 
 	ThreadWaitUntil
 	WaitUntilEntryPoint
@@ -102,7 +103,6 @@ EXPORTS
 	is_valid_hex
 	binhack_calc_size
 	binhack_render
-	GetExportedFunctions
 	binhacks_apply
 
 	; Breakpoints

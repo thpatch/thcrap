@@ -62,6 +62,9 @@
     <ClCompile Include="src\win32_detour.c">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="src\pe.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\binhack.h">
@@ -119,6 +122,9 @@
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\win32_detour.h">
+      <Filter>Source files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\pe.h">
       <Filter>Source files</Filter>
     </ClInclude>
   </ItemGroup>

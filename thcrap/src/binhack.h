@@ -25,9 +25,6 @@ size_t binhack_calc_size(const char *binhack_str);
 // }
 int binhack_render(char *binhack_buf, size_t target_addr, const char *binhack_str, json_t *inj_funcs);
 
-// Fills [funcs] with the names and function pointers of all exported functions of the DLL at [hDll].
-int GetExportedFunctions(json_t *funcs, HMODULE hDll);
-
 // Applies every binary hack in [binhacks] irreversibly on the current process.
 // Function names are resolved using the pointers in [funcs].
 int binhacks_apply(json_t *binhacks, json_t *funcs);

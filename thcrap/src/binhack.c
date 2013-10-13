@@ -117,55 +117,6 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	return ret;
 }
 
-int GetExportedFunctions(json_t *funcs, HMODULE hDll)
-{
-	IMAGE_EXPORT_DIRECTORY *ExportDesc;
-	DWORD *func_ptrs = NULL;
-	DWORD *name_ptrs = NULL;
-	WORD *name_indices = NULL;
-	DWORD dll_base = (DWORD)hDll; // All this type-casting is annoying
-	WORD i, j; // can only ever be 16-bit values
-
-	if(!funcs) {
-		return -1;
-	}
-
-	ExportDesc = GetDllExportDesc(hDll);
-
-	if(!ExportDesc) {
-		return -2;
-	}
-
-	func_ptrs = (DWORD*)(ExportDesc->AddressOfFunctions + dll_base);
-	name_ptrs = (DWORD*)(ExportDesc->AddressOfNames + dll_base);
-	name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
-
-	for(i = 0; i < ExportDesc->NumberOfFunctions; i++) {
-		DWORD name_ptr = 0;
-		const char *name;
-		char auto_name[16];
-
-		// Look up name
-		for(j = 0; (j < ExportDesc->NumberOfNames && !name_ptr); j++) {
-			if(name_indices[j] == i) {
-				name_ptr = name_ptrs[j];
-			}
-		}
-
-		if(name_ptr) {
-			name = (const char*)(dll_base + name_ptr);
-		} else {
-			itoa(i + ExportDesc->Base, auto_name, 10);
-			name = auto_name;
-		}
-
-		log_printf("0x%08x %s\n", dll_base + func_ptrs[i], name);
-
-		json_object_set_new(funcs, name, json_integer(dll_base + func_ptrs[i]));
-	}
-	return 0;
-}
-
 int binhacks_apply(json_t *binhacks, json_t *funcs)
 {
 	const char *key;

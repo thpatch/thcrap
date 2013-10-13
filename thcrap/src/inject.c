@@ -691,82 +691,6 @@ void* entry_from_context(HANDLE hThread)
 	}
 	return NULL;
 }
-
-void* entry_from_header(HANDLE hProcess, void *base_addr)
-{
-	void *pe_header = NULL;
-	void *ret = NULL;
-	MEMORY_BASIC_INFORMATION mbi;
-	PIMAGE_DOS_HEADER pDosH;
-	PIMAGE_NT_HEADERS pNTH;
-	DWORD byte_ret;
-
-	// Read the entire PE header
-	if(!VirtualQueryEx(hProcess, base_addr, &mbi, sizeof(mbi))) {
-		goto end;
-	}
-	pe_header = malloc(mbi.RegionSize);
-	ReadProcessMemory(hProcess, base_addr, pe_header, mbi.RegionSize, &byte_ret);
-	pDosH = (PIMAGE_DOS_HEADER)pe_header;
-
-	// Verify that the PE is valid by checking e_magic's value
-	if(pDosH->e_magic != IMAGE_DOS_SIGNATURE) {
-		goto end;
-	}
-
-	// Find the NT Header by using the offset of e_lfanew value from hMod
-	pNTH = (PIMAGE_NT_HEADERS) ((DWORD) pDosH + (DWORD) pDosH->e_lfanew);
-
-	// Verify that the NT Header is correct
-	if(pNTH->Signature != IMAGE_NT_SIGNATURE) {
-		goto end;
-	}
-
-	// Alright, we have the entry point now
-	ret = (void*)(pNTH->OptionalHeader.AddressOfEntryPoint + (DWORD)base_addr);
-end:
-	SAFE_FREE(pe_header);
-	return ret;
-}
-
-void* module_base_get(HANDLE hProcess, const char *search_module)
-{
-	HMODULE *modules = NULL;
-	DWORD modules_size;
-	void *ret = NULL;
-	STRLEN_DEC(search_module);
-	//------
-
-	if(!search_module) {
-		return ret;
-	}
-
-	EnumProcessModules(hProcess, modules, 0, &modules_size);
-	modules = (HMODULE*)malloc(modules_size);
-
-	if(EnumProcessModules(hProcess, modules, modules_size, &modules_size)) {
-		size_t i;
-		size_t modules_num = modules_size / sizeof(HMODULE);
-		for(i = 0; i < modules_num; i++) {
-			char cur_module[MAX_PATH];
-			if(GetModuleFileNameEx(hProcess, modules[i], cur_module, sizeof(cur_module))) {
-				// Compare the end of the string to [search_module]. This makes the
-				// function easily work with both fully qualified paths and bare file names.
-				STRLEN_DEC(cur_module);
-				int cmp_offset = cur_module_len - search_module_len;
-				if(
-					cmp_offset >= 0
-					&& !strnicmp(search_module, cur_module + cmp_offset, cur_module_len)
-				) {
-					ret = modules[i];
-					break;
-				}
-			}
-		}
-	}
-	SAFE_FREE(modules);
-	return ret;
-}
 /// -------------------------
 
 int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
@@ -807,12 +731,30 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 	// and probability of them working.
 	void *entry_addr = NULL;
 
+	/**
+	  * Method 1: Initial value of EAX
+	  * After creating a process in suspended state, EAX is guaranteed to contain
+	  * the correct address of the entry point, even when the executable has the
+	  * DYNAMICBASE flag activated in its header.
+	  *
+	  * (Works on Windows, but not on Wine)
+	  */
 	if(!(entry_addr = entry_from_context(hThread))) {
-		void *module_base;
+		HMODULE module_base;
 
+		/**
+		  * Method 2: EnumProcessModules, then parse the PE header.
+		  *
+		  * (Works on Wine, but not on Windows immediately after the target process
+		  * was created in suspended state.)
+		  */
 		if(!(module_base = module_base_get(hProcess, module))) {
-			// shit, gotta take a guess and hope it works
-			module_base = (void*)0x400000;
+			/**
+			  * Method 3: Guessing 0x400000
+			  * This is the default value in many compilers and should thus work for
+			  * most non-ASLR Windows applications.
+			  */
+			module_base = (HMODULE)0x400000;
 		}
 		entry_addr = entry_from_header(hProcess, module_base);
 	}

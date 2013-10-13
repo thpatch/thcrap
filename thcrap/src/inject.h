@@ -18,18 +18,6 @@
 //
 // (Works on Windows, but not on Wine)
 void* entry_from_context(HANDLE hThread);
-
-// Reads the entry point from the PE header.
-//
-// (Works always, provided that [base_addr] is correct)
-void* entry_from_header(HANDLE hProcess, void *base_addr);
-
-// Returns the base address of the module with the given title in [hProcess].
-// [search_module] can be both a fully qualified path or a DLL/EXE file name.
-//
-// (Works on Wine, but not on Windows immediately after the target process was
-//  created in suspended state.)
-void* module_base_get(HANDLE hProcess, const char *search_module);
 /// -------------------------
 
 int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr);

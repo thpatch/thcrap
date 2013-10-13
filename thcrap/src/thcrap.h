@@ -22,6 +22,7 @@
 #include "breakpoint.h"
 #include "strutil.h"
 #include "mempatch.h"
+#include "pe.h"
 #include "strings.h"
 #include "inject.h"
 #include "init.h"
