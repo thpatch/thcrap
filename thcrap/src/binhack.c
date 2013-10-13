@@ -65,8 +65,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	}
 
 	conv[2] = 0;
-	while(*c)
-	{
+	while(*c) {
 		if(!fs && is_valid_hex(*c) && is_valid_hex(*(c+1)) ) {
 			memcpy(conv, c, 2);
 			*binhack_buf = (char)strtol(conv, NULL, 16);

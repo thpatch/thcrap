@@ -207,16 +207,13 @@ int breakpoints_apply()
 	log_printf("-------------------------\n");
 
 	json_object_foreach(breakpoints, key, bp) {
-		size_t addr = 0;
-		size_t cavesize = 0;
+		size_t addr = json_object_get_hex(bp, "addr");
+		size_t cavesize = json_object_get_hex(bp, "cavesize");
 		BYTE* cave = NULL;
 		size_t cave_dist;
 		size_t bp_dist;
 
 		i++;
-
-		addr = json_object_get_hex(bp, "addr");
-		cavesize = json_object_get_hex(bp, "cavesize");
 
 		if(!addr) {
 			breakpoint_count--;

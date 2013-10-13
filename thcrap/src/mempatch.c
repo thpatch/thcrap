@@ -155,8 +155,8 @@ void iat_detour_set(iat_detour_t *detour, const char *old_func, const void *old_
 int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, const size_t detour_count)
 {
 	PIMAGE_IMPORT_DESCRIPTOR ImpDesc;
-	PIMAGE_THUNK_DATA	pOrigThunk;
-	PIMAGE_THUNK_DATA	pImpThunk;
+	PIMAGE_THUNK_DATA pOrigThunk;
+	PIMAGE_THUNK_DATA pImpThunk;
 	int ret = detour_count;
 	UINT c;
 

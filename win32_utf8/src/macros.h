@@ -63,7 +63,7 @@
 
 // StringToUTF16 using standard variable names
 #define WCHAR_T_CONV(src_char) \
-	StringToUTF16(src_char##_w, src_char, src_char##_len);
+	StringToUTF16(src_char##_w, src_char, src_char##_len)
 /// ------------------------------------
 
 // Define Visual C++ warnings away

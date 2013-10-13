@@ -16,20 +16,26 @@ void win32_detour(HMODULE hMod)
 	iat_detour_funcs_var(hMod, "kernel32.dll", 10,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
-		"GetModuleFileNameA", GetModuleFileNameU,
-		"SetCurrentDirectoryA", SetCurrentDirectoryU,
-		"GetCurrentDirectoryA", GetCurrentDirectoryU,
-		"GetEnvironmentVariableA", GetEnvironmentVariableU,
-		"GetStartupInfoA", GetStartupInfoU,
 		"FindFirstFileA", FindFirstFileU,
 		"FindNextFileA", FindNextFileU,
-		"FormatMessageA", FormatMessageU
+		"FormatMessageA", FormatMessageU,
+		"GetCurrentDirectoryA", GetCurrentDirectoryU,
+		"GetEnvironmentVariableA", GetEnvironmentVariableU,
+		"GetModuleFileNameA", GetModuleFileNameU,
+		"GetStartupInfoA", GetStartupInfoU,
+		"SetCurrentDirectoryA", SetCurrentDirectoryU
 	);
 
 	iat_detour_funcs_var(hMod, "gdi32.dll", 3,
 		"CreateFontA", CreateFontU,
-		"TextOutA", TextOutU,
-		"GetTextExtentPoint32A", GetTextExtentPoint32U
+		"GetTextExtentPoint32A", GetTextExtentPoint32U,
+		"TextOutA", TextOutU
+	);
+
+	iat_detour_funcs_var(hMod, "shlwapi.dll", 3,
+		"PathMatchSpecA", PathMatchSpecU,
+		"PathRemoveFileSpecA", PathRemoveFileSpecU,
+		"PathFileExistsA", PathFileExistsU
 	);
 
 	iat_detour_funcs_var(hMod, "user32.dll", 14,
@@ -48,11 +54,5 @@ void win32_detour(HMODULE hMod)
 		"SetWindowLongA", SetWindowLongW,
 		"SetWindowLongPtrA", SetWindowLongPtrW,
 		"SetWindowTextA", SetWindowTextU
-	);
-
-	iat_detour_funcs_var(hMod, "shlwapi.dll", 3,
-		"PathMatchSpecA", PathMatchSpecU,
-		"PathRemoveFileSpecA", PathRemoveFileSpecU,
-		"PathFileExistsA", PathFileExistsU
 	);
 }

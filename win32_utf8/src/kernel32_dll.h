@@ -111,5 +111,4 @@ BOOL WINAPI SetCurrentDirectoryU(
 
 // Patchers
 int kernel32_init(HMODULE hMod);
-int kernel32_patch(HMODULE hMod);
 void kernel32_exit();

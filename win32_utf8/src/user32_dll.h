@@ -65,6 +65,14 @@ int WINAPI DrawTextU(
 #undef DrawText
 #define DrawText DrawTextU
 
+// These (and SetWindowLong(Ptr) below) are necessary because Windows otherwise
+//  silently converts certain text parameters for window procedures to ANSI.
+// (see http://blogs.msdn.com/b/oldnewthing/archive/2003/12/01/55900.aspx)
+#undef GetWindowLong
+#undef GetWindowLongPtr
+#define GetWindowLong GetWindowLongW
+#define GetWindowLongPtr GetWindowLongPtrW
+
 int WINAPI MessageBoxU(
 	__in_opt HWND hWnd,
 	__in_opt LPCSTR lpText,
@@ -85,6 +93,11 @@ ATOM WINAPI RegisterClassExU(
 );
 #undef RegisterClassEx
 #define RegisterClassEx RegisterClassExU
+
+#undef SetWindowLong
+#undef SetWindowLongPtr
+#define SetWindowLong SetWindowLongW
+#define SetWindowLongPtr SetWindowLongPtrW
 
 BOOL WINAPI SetWindowTextU(
 	__in HWND hWnd,

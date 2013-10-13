@@ -10,7 +10,7 @@
 #include <thcrap.h>
 
 // Adapted from http://forum.sysinternals.com/createprocess-api-hook_topic13138.html
-PIMAGE_NT_HEADERS WINAPI GetNtHeader(HMODULE hMod)
+PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 {
 	PIMAGE_DOS_HEADER pDosH;
 	PIMAGE_NT_HEADERS pNTH;
@@ -19,7 +19,7 @@ PIMAGE_NT_HEADERS WINAPI GetNtHeader(HMODULE hMod)
 		return 0;
 	}
 	// Get DOS Header
-	pDosH = (PIMAGE_DOS_HEADER) hMod;
+	pDosH = (PIMAGE_DOS_HEADER)hMod;
 
 	// Verify that the PE is valid by checking e_magic's value and DOS Header size
 	if(IsBadReadPtr(pDosH, sizeof(IMAGE_DOS_HEADER))) {
@@ -41,7 +41,7 @@ PIMAGE_NT_HEADERS WINAPI GetNtHeader(HMODULE hMod)
 	return pNTH;
 }
 
-PIMAGE_IMPORT_DESCRIPTOR WINAPI GetDllImportDesc(HMODULE hMod, const char *DLLName)
+PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *DLLName)
 {
 	PIMAGE_NT_HEADERS pNTH;
 	PIMAGE_IMPORT_DESCRIPTOR pImportDesc;
@@ -69,7 +69,7 @@ PIMAGE_IMPORT_DESCRIPTOR WINAPI GetDllImportDesc(HMODULE hMod, const char *DLLNa
 	return NULL;
 }
 
-PIMAGE_EXPORT_DIRECTORY WINAPI GetDllExportDesc(HMODULE hMod)
+PIMAGE_EXPORT_DIRECTORY GetDllExportDesc(HMODULE hMod)
 {
 	PIMAGE_NT_HEADERS pNTH;
 	if(!hMod) {
@@ -83,7 +83,7 @@ PIMAGE_EXPORT_DIRECTORY WINAPI GetDllExportDesc(HMODULE hMod)
 		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress));
 }
 
-PIMAGE_SECTION_HEADER WINAPI GetSectionHeader(HMODULE hMod, const char *section_name)
+PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 {
 	PIMAGE_NT_HEADERS pNTH;
 	PIMAGE_SECTION_HEADER pSH;
@@ -126,7 +126,6 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	}
 
 	ExportDesc = GetDllExportDesc(hDll);
-
 	if(!ExportDesc) {
 		return -2;
 	}
@@ -146,16 +145,13 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 				name_ptr = name_ptrs[j];
 			}
 		}
-
 		if(name_ptr) {
 			name = (const char*)(dll_base + name_ptr);
 		} else {
 			itoa(i + ExportDesc->Base, auto_name, 10);
 			name = auto_name;
 		}
-
 		log_printf("0x%08x %s\n", dll_base + func_ptrs[i], name);
-
 		json_object_set_new(funcs, name, json_integer(dll_base + func_ptrs[i]));
 	}
 	return 0;
@@ -197,7 +193,6 @@ HMODULE GetRemoteModuleHandle(HANDLE hProcess, const char *search_module)
 	DWORD modules_size;
 	HMODULE ret = NULL;
 	STRLEN_DEC(search_module);
-	//------
 
 	if(!search_module) {
 		return ret;

@@ -119,7 +119,7 @@ BOOL layout_textout_ruby(
 		return 0;
 	}
 	{
-		HFONT hFontOrig;
+		HGDIOBJ hFontOrig;
 		SIZE str_size;
 		size_t bottom_w;
 		size_t top_w;

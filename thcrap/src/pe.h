@@ -12,16 +12,16 @@
 /// Local
 /// -----
 // Returns the IMAGE_NT_HEADERS structure of [hMod]
-PIMAGE_NT_HEADERS WINAPI GetNtHeader(HMODULE hMod);
+PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod);
 
 // Returns the import descriptor of [DLLName]
-PIMAGE_IMPORT_DESCRIPTOR WINAPI GetDllImportDesc(HMODULE hMod, const char *dll_name);
+PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *dll_name);
 
 // Returns the export descriptor of the DLL with the base address [hMod]
-PIMAGE_EXPORT_DIRECTORY WINAPI GetDllExportDesc(HMODULE hMod);
+PIMAGE_EXPORT_DIRECTORY GetDllExportDesc(HMODULE hMod);
 
 // Returns the section header named [section_name]
-PIMAGE_SECTION_HEADER WINAPI GetSectionHeader(HMODULE hMod, const char *section_name);
+PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name);
 
 // Fills [funcs] with the names and function pointers of all exported functions of the DLL at [hDll].
 int GetExportedFunctions(json_t *funcs, HMODULE hDll);

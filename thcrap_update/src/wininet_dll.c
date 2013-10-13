@@ -81,7 +81,7 @@ BOOL WINAPI InternetCombineUrlU(
 	macro(UserName); \
 	macro(Password); \
 	macro(UrlPath); \
-	macro(ExtraInfo);
+	macro(ExtraInfo)
 
 BOOL WINAPI InternetCrackUrlU(
 	__in_ecount(dwUrlLength) LPCSTR lpszUrl,
