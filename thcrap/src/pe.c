@@ -200,11 +200,11 @@ end:
 	return ret;
 }
 
-void* module_base_get(HANDLE hProcess, const char *search_module)
+HMODULE GetRemoteModuleHandle(HANDLE hProcess, const char *search_module)
 {
 	HMODULE *modules = NULL;
 	DWORD modules_size;
-	void *ret = NULL;
+	HMODULE ret = NULL;
 	STRLEN_DEC(search_module);
 	//------
 

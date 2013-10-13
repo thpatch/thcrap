@@ -24,7 +24,7 @@ EXPORTS
 	GetSectionHeader
 	GetExportedFunctions
 	GetRemoteModuleEntryPoint
-	module_base_get
+	GetRemoteModuleHandle
 
 	; IAT detouring
 	; -------------

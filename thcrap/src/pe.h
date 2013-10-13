@@ -34,5 +34,5 @@ void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod);
 
 // Returns the base address of the module with the given title in [hProcess].
 // [search_module] can be both a fully qualified path or a DLL/EXE file name.
-void* module_base_get(HANDLE hProcess, const char *search_module);
+HMODULE GetRemoteModuleHandle(HANDLE hProcess, const char *search_module);
 /// ------

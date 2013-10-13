@@ -748,7 +748,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 		  * (Works on Wine, but not on Windows immediately after the target process
 		  * was created in suspended state.)
 		  */
-		if(!(module_base = module_base_get(hProcess, module))) {
+		if(!(module_base = GetRemoteModuleHandle(hProcess, module))) {
 			/**
 			  * Method 3: Guessing 0x400000
 			  * This is the default value in many compilers and should thus work for
