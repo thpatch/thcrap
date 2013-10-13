@@ -729,12 +729,17 @@ end:
 	return ret;
 }
 
-void* module_base_get(HANDLE hProcess, const char *module)
+void* module_base_get(HANDLE hProcess, const char *search_module)
 {
 	HMODULE *modules = NULL;
 	DWORD modules_size;
 	void *ret = NULL;
+	STRLEN_DEC(search_module);
 	//------
+
+	if(!search_module) {
+		return ret;
+	}
 
 	EnumProcessModules(hProcess, modules, 0, &modules_size);
 	modules = (HMODULE*)malloc(modules_size);
@@ -745,7 +750,14 @@ void* module_base_get(HANDLE hProcess, const char *module)
 		for(i = 0; i < modules_num; i++) {
 			char cur_module[MAX_PATH];
 			if(GetModuleFileNameEx(hProcess, modules[i], cur_module, sizeof(cur_module))) {
-				if(!strcmp(module, cur_module)) {
+				// Compare the end of the string to [search_module]. This makes the
+				// function easily work with both fully qualified paths and bare file names.
+				STRLEN_DEC(cur_module);
+				int cmp_offset = cur_module_len - search_module_len;
+				if(
+					cmp_offset >= 0
+					&& !strnicmp(search_module, cur_module + cmp_offset, cur_module_len)
+				) {
 					ret = modules[i];
 					break;
 				}
