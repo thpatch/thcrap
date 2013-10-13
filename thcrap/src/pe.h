@@ -30,7 +30,7 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll);
 /// Remote
 /// ------
 // Reads the entry point from the PE header.
-void* entry_from_header(HANDLE hProcess, void *base_addr);
+void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod);
 
 // Returns the base address of the module with the given title in [hProcess].
 // [search_module] can be both a fully qualified path or a DLL/EXE file name.

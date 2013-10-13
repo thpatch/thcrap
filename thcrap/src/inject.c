@@ -756,7 +756,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 			  */
 			module_base = (HMODULE)0x400000;
 		}
-		entry_addr = entry_from_header(hProcess, module_base);
+		entry_addr = GetRemoteModuleEntryPoint(hProcess, module_base);
 	}
 
 	if(entry_addr) {

@@ -161,7 +161,7 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	return 0;
 }
 
-void* entry_from_header(HANDLE hProcess, void *base_addr)
+void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod)
 {
 	void *pe_header = NULL;
 	void *ret = NULL;
@@ -170,12 +170,14 @@ void* entry_from_header(HANDLE hProcess, void *base_addr)
 	PIMAGE_NT_HEADERS pNTH;
 	DWORD byte_ret;
 
+	// No, GetModuleInformation() would not be an equivalent shortcut.
+
 	// Read the entire PE header
-	if(!VirtualQueryEx(hProcess, base_addr, &mbi, sizeof(mbi))) {
+	if(!VirtualQueryEx(hProcess, hMod, &mbi, sizeof(mbi))) {
 		goto end;
 	}
 	pe_header = malloc(mbi.RegionSize);
-	ReadProcessMemory(hProcess, base_addr, pe_header, mbi.RegionSize, &byte_ret);
+	ReadProcessMemory(hProcess, hMod, pe_header, mbi.RegionSize, &byte_ret);
 	pDosH = (PIMAGE_DOS_HEADER)pe_header;
 
 	// Verify that the PE is valid by checking e_magic's value
@@ -192,7 +194,7 @@ void* entry_from_header(HANDLE hProcess, void *base_addr)
 	}
 
 	// Alright, we have the entry point now
-	ret = (void*)(pNTH->OptionalHeader.AddressOfEntryPoint + (DWORD)base_addr);
+	ret = (void*)(pNTH->OptionalHeader.AddressOfEntryPoint + (DWORD)hMod);
 end:
 	SAFE_FREE(pe_header);
 	return ret;

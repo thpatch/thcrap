@@ -23,7 +23,7 @@ EXPORTS
 	GetDllExportDesc
 	GetSectionHeader
 	GetExportedFunctions
-	entry_from_header
+	GetRemoteModuleEntryPoint
 	module_base_get
 
 	; IAT detouring
