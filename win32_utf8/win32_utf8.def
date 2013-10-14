@@ -27,6 +27,7 @@ EXPORTS
 	GetEnvironmentVariableU
 	GetModuleFileNameU
 	GetModuleFileNameExU
+	GetPrivateProfileIntU
 	GetStartupInfoU
 	LoadLibraryU
 	SetCurrentDirectoryU

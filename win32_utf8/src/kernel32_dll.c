@@ -260,6 +260,26 @@ DWORD WINAPI GetEnvironmentVariableU(
 	return ret;
 }
 
+#define INI_MACRO_EXPAND(macro) \
+	macro(lpAppName); \
+	macro(lpKeyName); \
+	macro(lpFileName)
+
+UINT WINAPI GetPrivateProfileIntU(
+	__in LPCSTR lpAppName,
+	__in LPCSTR lpKeyName,
+	__in INT nDefault,
+	__in_opt LPCSTR lpFileName
+)
+{
+	UINT ret;
+	INI_MACRO_EXPAND(WCHAR_T_DEC);
+	INI_MACRO_EXPAND(WCHAR_T_CONV);
+	ret = GetPrivateProfileIntW(lpAppName_w, lpKeyName_w, nDefault, lpFileName_w);
+	INI_MACRO_EXPAND(WCHAR_T_FREE);
+	return ret;
+}
+
 DWORD WINAPI GetModuleFileNameU(
 	__in_opt HMODULE hModule,
 	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,

@@ -13,7 +13,7 @@ void win32_detour(HMODULE hMod)
 {
 	// After that Norton incident, I've become a bit scared of AV software,
 	// so no patching of CreateProcess and LoadLibrary until we need it
-	iat_detour_funcs_var(hMod, "kernel32.dll", 10,
+	iat_detour_funcs_var(hMod, "kernel32.dll", 11,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
 		"FindFirstFileA", FindFirstFileU,
@@ -22,6 +22,7 @@ void win32_detour(HMODULE hMod)
 		"GetCurrentDirectoryA", GetCurrentDirectoryU,
 		"GetEnvironmentVariableA", GetEnvironmentVariableU,
 		"GetModuleFileNameA", GetModuleFileNameU,
+		"GetPrivateProfileIntA", GetPrivateProfileIntU,
 		"GetStartupInfoA", GetStartupInfoU,
 		"SetCurrentDirectoryA", SetCurrentDirectoryU
 	);

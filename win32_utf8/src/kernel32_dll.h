@@ -91,6 +91,15 @@ DWORD WINAPI GetModuleFileNameU(
 #undef GetModuleFileName
 #define GetModuleFileName GetModuleFileNameU
 
+UINT WINAPI GetPrivateProfileIntU(
+	__in LPCSTR lpAppName,
+	__in LPCSTR lpKeyName,
+	__in INT nDefault,
+	__in_opt LPCSTR lpFileName
+);
+#undef GetPrivateProfileInt
+#define GetPrivateProfileInt GetPrivateProfileIntU
+
 VOID WINAPI GetStartupInfoU(
 	__out LPSTARTUPINFOA lpStartupInfo
 );
