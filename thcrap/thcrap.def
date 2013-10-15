@@ -94,6 +94,8 @@ EXPORTS
 	WaitUntilEntryPoint
 
 	inject_CreateProcessU
+	inject_LoadLibraryU
+	inject_detour
 
 	thcrap_detour
 	thcrap_inject

@@ -801,3 +801,22 @@ BOOL WINAPI inject_CreateProcessU(
 	}
 	return ret;
 }
+
+HMODULE WINAPI inject_LoadLibraryU(
+	__in LPCSTR lpLibFileName
+)
+{
+	HMODULE ret = LoadLibraryU(lpLibFileName);
+	if(ret) {
+		thcrap_detour(ret);
+	}
+	return ret;
+}
+
+int inject_detour(HMODULE hMod)
+{
+	return iat_detour_funcs_var(hMod, "kernel32.dll", 2,
+		"CreateProcessA", inject_CreateProcessU,
+		"LoadLibraryA", inject_LoadLibraryU
+	);
+}

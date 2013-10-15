@@ -40,5 +40,7 @@ BOOL WINAPI inject_CreateProcessU(
 	__out LPPROCESS_INFORMATION lpPI
 );
 
+int inject_detour(HMODULE hMod);
+
 // Injects thcrap into the given [hProcess], and passes [setup_fn].
 int thcrap_inject(HANDLE hProcess, const char *setup_fn);
