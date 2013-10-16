@@ -39,6 +39,10 @@ void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod);
 // [search_module] can be both a fully qualified path or a DLL/EXE file name.
 HMODULE GetRemoteModuleHandle(HANDLE hProcess, const char *search_module);
 
+// GetProcAddress() for remote processes. Works with both names and ordinals,
+// just like the original function.
+FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName);
+
 // Reads a null-terminated string from [hProcess], beginning at [lpBaseAddress].
 // Correctly handles strings crossing memory page boundaries.
 // Return value has to be free()d by the caller!

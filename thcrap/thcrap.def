@@ -26,6 +26,7 @@ EXPORTS
 	GetRemoteModuleNtHeader
 	GetRemoteModuleEntryPoint
 	GetRemoteModuleHandle
+	GetRemoteProcAddress
 	ReadProcessString
 
 	; IAT detouring

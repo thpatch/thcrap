@@ -265,3 +265,77 @@ HMODULE GetRemoteModuleHandle(HANDLE hProcess, const char *search_module)
 	SAFE_FREE(modules);
 	return ret;
 }
+
+FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
+{
+	FARPROC ret = NULL;
+	BYTE *addr = (BYTE*)hMod;
+	IMAGE_NT_HEADERS NTH;
+	PIMAGE_DATA_DIRECTORY pExportPos;
+	IMAGE_EXPORT_DIRECTORY ExportDesc;
+	DWORD *func_ptrs = NULL;
+	DWORD *name_ptrs = NULL;
+	WORD *name_indices = NULL;
+	DWORD i;
+	DWORD ordinal = (DWORD)lpProcName;
+
+	if(!lpProcName) {
+		goto end;
+	}
+	if(GetRemoteModuleNtHeader(&NTH, hProcess, hMod)) {
+		goto end;
+	}
+	if(NTH.OptionalHeader.NumberOfRvaAndSizes >= IMAGE_DIRECTORY_ENTRY_EXPORT + 1) {
+		pExportPos = &NTH.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+	} else {
+		goto end;
+	}
+
+	if(ReadProcessMemory(hProcess, addr + pExportPos->VirtualAddress, &ExportDesc, sizeof(ExportDesc), NULL))
+	{
+		void *func_ptrs_pos = addr + ExportDesc.AddressOfFunctions;
+		void *name_ptrs_pos = addr + ExportDesc.AddressOfNames;
+		void *name_indices_pos = addr + ExportDesc.AddressOfNameOrdinals;
+		size_t func_ptrs_size = ExportDesc.NumberOfFunctions * sizeof(DWORD);
+		size_t name_ptrs_size = ExportDesc.NumberOfNames * sizeof(DWORD);
+		size_t name_indices_size = ExportDesc.NumberOfNames * sizeof(WORD);
+
+		func_ptrs = malloc(func_ptrs_size);
+		name_ptrs = malloc(name_ptrs_size);
+		name_indices = malloc(name_indices_size);
+		if(
+			!func_ptrs || !name_ptrs || !name_indices
+			|| !ReadProcessMemory(hProcess, func_ptrs_pos, func_ptrs, func_ptrs_size, NULL)
+			|| !ReadProcessMemory(hProcess, name_ptrs_pos, name_ptrs, name_ptrs_size, NULL)
+			|| !ReadProcessMemory(hProcess, name_indices_pos, name_indices, name_indices_size, NULL)
+		) {
+			goto end;
+		}
+	} else {
+		goto end;
+	}
+
+	for(i = 0; i < ExportDesc.NumberOfFunctions && !ret; i++) {
+		DWORD name_ptr = 0;
+		WORD j;
+		for(j = 0; j < ExportDesc.NumberOfNames && !name_ptr; j++) {
+			if(name_indices[j] == i) {
+				name_ptr = name_ptrs[j];
+			}
+		}
+		if(name_ptr) {
+			char *name = ReadProcessString(hProcess, addr + name_ptr);
+			if(name && !strcmp(name, lpProcName)) {
+				ret = (FARPROC)(addr + func_ptrs[i]);
+			}
+			SAFE_FREE(name);
+		} else if(HIWORD(ordinal) == 0 && LOWORD(ordinal) == i + ExportDesc.Base) {
+			ret = (FARPROC)(addr + func_ptrs[i]);
+		}
+	}
+end:
+	SAFE_FREE(func_ptrs);
+	SAFE_FREE(name_ptrs);
+	SAFE_FREE(name_indices);
+	return ret;
+}
