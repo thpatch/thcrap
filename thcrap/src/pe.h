@@ -38,4 +38,9 @@ void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod);
 // Returns the base address of the module with the given title in [hProcess].
 // [search_module] can be both a fully qualified path or a DLL/EXE file name.
 HMODULE GetRemoteModuleHandle(HANDLE hProcess, const char *search_module);
+
+// Reads a null-terminated string from [hProcess], beginning at [lpBaseAddress].
+// Correctly handles strings crossing memory page boundaries.
+// Return value has to be free()d by the caller!
+char* ReadProcessString(HANDLE hProcess, LPCVOID lpBaseAddress);
 /// ------

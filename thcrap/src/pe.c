@@ -157,6 +157,47 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	return 0;
 }
 
+char* ReadProcessString(HANDLE hProcess, LPCVOID lpBaseAddress)
+{
+	MEMORY_BASIC_INFORMATION mbi;
+	size_t pos = 0;
+	size_t full_len = 0;
+	size_t region_len = 0;
+	char *ret = NULL;
+	char *addr = (char*)lpBaseAddress;
+
+	do {
+		char *new_ret;
+		pos += region_len;
+		addr += region_len;
+
+		if(!VirtualQueryEx(hProcess, lpBaseAddress, &mbi, sizeof(mbi))) {
+			break;
+		}
+
+		region_len = (size_t)mbi.BaseAddress + mbi.RegionSize - (size_t)addr;
+		full_len += region_len;
+		new_ret = realloc(ret, full_len);
+		if(new_ret) {
+			ret = new_ret;
+		} else {
+			break;
+		}
+		if(!ReadProcessMemory(hProcess, addr, ret + pos, region_len, NULL)) {
+			if(!pos) {
+				SAFE_FREE(ret);
+			}
+			break;
+		}
+	} while(!memchr(ret + pos, 0, region_len));
+	// Make sure the string is null-terminated
+	// (might not be the case if we broke out of the loop)
+	if(ret) {
+		ret[full_len - 1] = 0;
+	}
+	return ret;
+}
+
 int GetRemoteModuleNtHeader(PIMAGE_NT_HEADERS pNTH, HANDLE hProcess, HMODULE hMod)
 {
 	BYTE *addr = (BYTE*)hMod;
