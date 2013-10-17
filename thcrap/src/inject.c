@@ -772,6 +772,37 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 	}
 }
 
+__out_opt HANDLE WINAPI inject_CreateRemoteThread(
+	__in HANDLE hProcess,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in SIZE_T dwStackSize,
+	__in LPTHREAD_START_ROUTINE lpStartAddress,
+	__in_opt LPVOID lpParameter,
+	__in DWORD dwCreationFlags,
+	__out_opt LPDWORD lpThreadId
+)
+{
+#ifdef _DEBUG
+	const char *thcrap_dll = "thcrap_d.dll";
+#else
+	const char *thcrap_dll = "thcrap.dll";
+#endif
+	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
+	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
+
+	if((FARPROC)lpStartAddress == kernel32_LoadLibraryA) {
+		HMODULE hThcrap = GetRemoteModuleHandle(hProcess, thcrap_dll);
+		FARPROC new_func = GetRemoteProcAddress(hProcess, hThcrap, "inject_LoadLibraryU");
+		if(new_func) {
+			lpStartAddress = (LPTHREAD_START_ROUTINE)new_func;
+		}
+	}
+	return CreateRemoteThread(
+		hProcess, lpThreadAttributes, dwStackSize, lpStartAddress,
+		lpParameter, dwCreationFlags, lpThreadId
+	);
+}
+
 BOOL WINAPI inject_CreateProcessU(
 	__in_opt LPCSTR lpAppName,
 	__inout_opt LPSTR lpCmdLine,
@@ -815,8 +846,9 @@ HMODULE WINAPI inject_LoadLibraryU(
 
 int inject_detour(HMODULE hMod)
 {
-	return iat_detour_funcs_var(hMod, "kernel32.dll", 2,
+	return iat_detour_funcs_var(hMod, "kernel32.dll", 3,
 		"CreateProcessA", inject_CreateProcessU,
+		"CreateRemoteThread", inject_CreateRemoteThread,
 		"LoadLibraryA", inject_LoadLibraryU
 	);
 }
