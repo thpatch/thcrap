@@ -34,7 +34,7 @@ int file_rep_clear(file_rep_t *fr)
 // for Windows XP users. See http://www.nynaeve.net/?p=187.)
 static DWORD fr_tls = 0xffffffff;
 
-file_rep_t* fr_tls_get()
+file_rep_t* fr_tls_get(void)
 {
 	file_rep_t *fr = (file_rep_t*)TlsGetValue(fr_tls);
 	if(!fr) {
@@ -47,7 +47,7 @@ file_rep_t* fr_tls_get()
 	return fr;
 }
 
-void fr_tls_free()
+void fr_tls_free(void)
 {
 	file_rep_t *fr = (file_rep_t*)TlsGetValue(fr_tls);
 	if(fr) {
@@ -253,13 +253,13 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int bp_file_init()
+int bp_file_init(void)
 {
 	fr_tls = TlsAlloc();
 	return 0;
 }
 
-int bp_file_exit()
+int bp_file_exit(void)
 {
 	return TlsFree(fr_tls);
 }

@@ -101,7 +101,7 @@ int log_mboxf(const char *caption, const UINT type, const char *text, ...)
 	return ret;
 }
 
-static void OpenConsole()
+static void OpenConsole(void)
 {
 	int hCrt;
 	FILE *hf;
@@ -166,7 +166,7 @@ void log_init(int console)
 #endif
 }
 
-void log_exit()
+void log_exit(void)
 {
 	if(console_open) {
 		FreeConsole();

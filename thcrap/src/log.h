@@ -36,4 +36,4 @@ int log_mboxf(const char *caption, const UINT type, const char *text, ...);
 /// -------------
 
 void log_init(int console);
-void log_exit();
+void log_exit(void);

@@ -12,19 +12,19 @@
 CRITICAL_SECTION cs_file_access;
 json_t* run_cfg = NULL;
 
-const char* PROJECT_NAME()
+const char* PROJECT_NAME(void)
 {
 	return "Touhou Community Reliant Automatic Patcher";
 }
-const char* PROJECT_NAME_SHORT()
+const char* PROJECT_NAME_SHORT(void)
 {
 	return "thcrap";
 }
-const DWORD PROJECT_VERSION()
+const DWORD PROJECT_VERSION(void)
 {
 	return 0x20130825;
 }
-const char* PROJECT_VERSION_STRING()
+const char* PROJECT_VERSION_STRING(void)
 {
 	static char ver_str[11] = {0};
 	if(!ver_str[0]) {
@@ -32,7 +32,7 @@ const char* PROJECT_VERSION_STRING()
 	}
 	return ver_str;
 }
-json_t* runconfig_get()
+json_t* runconfig_get(void)
 {
 	return run_cfg;
 }

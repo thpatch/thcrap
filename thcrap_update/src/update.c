@@ -16,7 +16,7 @@
 
 HINTERNET hINet = NULL;
 
-int inet_init()
+int inet_init(void)
 {
 	DWORD ignore = 1;
 
@@ -48,7 +48,7 @@ int inet_init()
 	return 0;
 }
 
-void inet_exit()
+void inet_exit(void)
 {
 	if(hINet) {
 		InternetCloseHandle(hINet);

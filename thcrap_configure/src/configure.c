@@ -62,7 +62,7 @@ void cls(SHORT top)
 }
 
 // Because I've now learned how bad pause() can be
-void pause()
+void pause(void)
 {
 	int ret;
 	printf("Press ENTER to continue . . . ");

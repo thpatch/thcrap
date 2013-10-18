@@ -31,7 +31,7 @@ const char* strings_lookup(const char *in, size_t *out_len);
 const char* strings_vsprintf(const size_t addr, const char *format, va_list va);
 const char* strings_sprintf(const size_t addr, const char *format, ...);
 
-void strings_init();
+void strings_init(void);
 // Adds string lookup wrappers to functions that don't have them yet.
 int strings_detour(HMODULE hMod);
-void strings_exit();
+void strings_exit(void);

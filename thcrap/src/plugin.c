@@ -12,7 +12,7 @@
 
 static const char PLUGINS[] = "plugins";
 
-int plugins_load()
+int plugins_load(void)
 {
 	HANDLE hFind = NULL;
 	WIN32_FIND_DATAA w32fd;
@@ -39,7 +39,7 @@ int plugins_load()
 	return 0;
 }
 
-int plugins_close()
+int plugins_close(void)
 {
 	const char *key;
 	json_t *val;

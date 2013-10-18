@@ -421,7 +421,7 @@ int layout_init(HMODULE hMod)
 	);
 }
 
-void layout_exit()
+void layout_exit(void)
 {
 	json_decref(Layout_Tabs);
 	if(text_dc) {

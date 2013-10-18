@@ -92,7 +92,7 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 	}
 }
 
-__declspec(naked) void breakpoint_process()
+__declspec(naked) void breakpoint_process(void)
 {
 	json_t *bp;
 	const char *key;
@@ -176,7 +176,7 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 	/// ------------------
 }
 
-int breakpoints_apply()
+int breakpoints_apply(void)
 {
 	json_t *breakpoints;
 	const char *key;
@@ -261,7 +261,7 @@ int breakpoints_apply()
 	return 0;
 }
 
-int breakpoints_remove()
+int breakpoints_remove(void)
 {
 	json_t *breakpoints;
 	size_t breakpoint_count;

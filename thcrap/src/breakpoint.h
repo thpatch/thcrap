@@ -59,10 +59,10 @@ BreakpointFunc_t breakpoint_func_get(const char *key);
 
 // Main breakpoint hook function. A CALL to this function is written to every
 // breakpoint's address.
-void breakpoint_process();
+void breakpoint_process(void);
 
 // Sets up all breakpoints in [breakpoints].
-int breakpoints_apply();
+int breakpoints_apply(void);
 
 // Removes all breakpoints
-int breakpoints_remove();
+int breakpoints_remove(void);

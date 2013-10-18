@@ -381,7 +381,7 @@ int kernel32_init(HMODULE hMod)
 	return 0;
 }
 
-void kernel32_exit()
+void kernel32_exit(void)
 {
 	SAFE_FREE(startupinfo_desktop);
 	SAFE_FREE(startupinfo_title);
