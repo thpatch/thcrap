@@ -51,6 +51,18 @@ BOOL WINAPI inject_CreateProcessU(
 	__in LPSTARTUPINFOA lpSI,
 	__out LPPROCESS_INFORMATION lpPI
 );
+BOOL WINAPI inject_CreateProcessW(
+	__in_opt LPCWSTR lpAppName,
+	__inout_opt LPWSTR lpCmdLine,
+	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in BOOL bInheritHandles,
+	__in DWORD dwCreationFlags,
+	__in_opt LPVOID lpEnvironment,
+	__in_opt LPCWSTR lpCurrentDirectory,
+	__in LPSTARTUPINFOW lpSI,
+	__out LPPROCESS_INFORMATION lpPI
+);
 
 int inject_detour(HMODULE hMod);
 

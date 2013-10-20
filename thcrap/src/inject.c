@@ -803,6 +803,22 @@ __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 	);
 }
 
+// Injection calls shared between the U and W versions
+static void inject_CreateProcess_helper(
+	__in LPPROCESS_INFORMATION lpPI,
+	__in_opt LPCSTR lpAppName,
+	__in DWORD dwCreationFlags
+)
+{
+	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
+		const char *run_cfg_fn = json_object_get_string(run_cfg, "run_cfg_fn");
+		thcrap_inject(lpPI->hProcess, run_cfg_fn);
+	}
+	if(~dwCreationFlags & CREATE_SUSPENDED) {
+		ResumeThread(lpPI->hThread);
+	}
+}
+
 BOOL WINAPI inject_CreateProcessU(
 	__in_opt LPCSTR lpAppName,
 	__inout_opt LPSTR lpCmdLine,
@@ -822,13 +838,34 @@ BOOL WINAPI inject_CreateProcessU(
 		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
 	);
 	if(ret) {
-		const char *run_cfg_fn = json_object_get_string(run_cfg, "run_cfg_fn");
-		if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
-			thcrap_inject(lpPI->hProcess, run_cfg_fn);
-		}
-		if(~dwCreationFlags & CREATE_SUSPENDED) {
-			ResumeThread(lpPI->hThread);
-		}
+		inject_CreateProcess_helper(lpPI, lpAppName, dwCreationFlags);
+	}
+	return ret;
+}
+
+BOOL WINAPI inject_CreateProcessW(
+	__in_opt LPCWSTR lpAppName,
+	__inout_opt LPWSTR lpCmdLine,
+	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in BOOL bInheritHandles,
+	__in DWORD dwCreationFlags,
+	__in_opt LPVOID lpEnvironment,
+	__in_opt LPCWSTR lpCurrentDirectory,
+	__in LPSTARTUPINFOW lpSI,
+	__out LPPROCESS_INFORMATION lpPI
+)
+{
+	BOOL ret = CreateProcessW(
+		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
+		dwCreationFlags | CREATE_SUSPENDED,
+		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
+	);
+	if(ret) {
+		UTF8_DEC(lpAppName);
+		UTF8_CONV(lpAppName);
+		inject_CreateProcess_helper(lpPI, lpAppName_utf8, dwCreationFlags);
+		UTF8_FREE(lpAppName);
 	}
 	return ret;
 }
@@ -846,8 +883,9 @@ HMODULE WINAPI inject_LoadLibraryU(
 
 int inject_detour(HMODULE hMod)
 {
-	return iat_detour_funcs_var(hMod, "kernel32.dll", 3,
+	return iat_detour_funcs_var(hMod, "kernel32.dll", 4,
 		"CreateProcessA", inject_CreateProcessU,
+		"CreateProcessW", inject_CreateProcessW,
 		"CreateRemoteThread", inject_CreateRemoteThread,
 		"LoadLibraryA", inject_LoadLibraryU
 	);
