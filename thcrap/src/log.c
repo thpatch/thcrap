@@ -150,11 +150,11 @@ void log_init(int console)
 		fprintf(log_file, "Build time: "  __TIMESTAMP__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
-			size_t builder_len = (wcslen(BUILDER_NAME_W) * UTF8_MUL) + 1;
-			VLA(char, builder, builder_len);
-			StringToUTF8(builder, BUILDER_NAME_W, builder_len);
-			fprintf(log_file, "Built by: %s\n", builder);
-			VLA_FREE(builder);
+			const wchar_t *builder = BUILDER_NAME_W;
+			UTF8_DEC(builder);
+			UTF8_CONV(builder);
+			fprintf(log_file, "Built by: %s\n", builder_utf8);
+			UTF8_FREE(builder);
 		}
 #elif defined(BUILDER_NAME)
 		fprintf(log_file, "Built by: %s\n", BUILDER_NAME);
