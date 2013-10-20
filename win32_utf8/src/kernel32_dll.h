@@ -43,15 +43,15 @@ BOOL WINAPI CreateProcessU(
 #define CreateProcess CreateProcessU
 
 HANDLE WINAPI FindFirstFileU(
-    __in  LPCSTR lpFileName,
-    __out LPWIN32_FIND_DATAA lpFindFileData
+	__in  LPCSTR lpFileName,
+	__out LPWIN32_FIND_DATAA lpFindFileData
 );
 #undef FindFirstFile
 #define FindFirstFile FindFirstFileU
 
 BOOL WINAPI FindNextFileU(
-    __in  HANDLE hFindFile,
-    __out LPWIN32_FIND_DATAA lpFindFileData
+	__in  HANDLE hFindFile,
+	__out LPWIN32_FIND_DATAA lpFindFileData
 );
 #undef FindNextFile
 #define FindNextFile FindNextFileU
@@ -76,9 +76,9 @@ DWORD WINAPI GetCurrentDirectoryU(
 #define GetCurrentDirectory GetCurrentDirectoryU
 
 DWORD WINAPI GetEnvironmentVariableU(
-    __in_opt LPCSTR lpName,
-    __out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
-    __in DWORD nSize
+	__in_opt LPCSTR lpName,
+	__out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
+	__in DWORD nSize
 );
 #undef GetEnvironmentVariable
 #define GetEnvironmentVariable GetEnvironmentVariableU

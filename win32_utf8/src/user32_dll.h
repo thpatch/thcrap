@@ -15,11 +15,11 @@ LPSTR WINAPI CharNextU(
 #define CharNext CharNextU
 
 HWND WINAPI CreateDialogParamU(
-    __in_opt HINSTANCE hInstance,
-    __in LPCSTR lpTemplateName,
-    __in_opt HWND hWndParent,
-    __in_opt DLGPROC lpDialogFunc,
-    __in LPARAM dwInitParam
+	__in_opt HINSTANCE hInstance,
+	__in LPCSTR lpTemplateName,
+	__in_opt HWND hWndParent,
+	__in_opt DLGPROC lpDialogFunc,
+	__in LPARAM dwInitParam
 );
 #undef CreateDialogParam
 #define CreateDialogParam CreateDialogParamU
@@ -46,21 +46,21 @@ HWND WINAPI CreateWindowExU(
 #define DefWindowProc DefWindowProcW
 
 INT_PTR WINAPI DialogBoxParamU(
-    __in_opt HINSTANCE hInstance,
-    __in LPCSTR lpTemplateName,
-    __in_opt HWND hWndParent,
-    __in_opt DLGPROC lpDialogFunc,
-    __in LPARAM dwInitParam
+	__in_opt HINSTANCE hInstance,
+	__in LPCSTR lpTemplateName,
+	__in_opt HWND hWndParent,
+	__in_opt DLGPROC lpDialogFunc,
+	__in LPARAM dwInitParam
 );
 #undef DialogBoxParam
 #define DialogBoxParam DialogBoxParamU
 
 int WINAPI DrawTextU(
-    __in HDC hdc,
-    __inout_ecount_opt(cchText) LPCSTR lpchText,
-    __in int cchText,
-    __inout LPRECT lprc,
-    __in UINT format
+	__in HDC hdc,
+	__inout_ecount_opt(cchText) LPCSTR lpchText,
+	__in int cchText,
+	__inout LPRECT lprc,
+	__in UINT format
 );
 #undef DrawText
 #define DrawText DrawTextU

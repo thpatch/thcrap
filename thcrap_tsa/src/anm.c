@@ -48,7 +48,7 @@ int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 /// -------
 unsigned int format_Bpp(WORD format)
 {
-    switch(format) {
+	switch(format) {
 		case FORMAT_BGRA8888:
 			return 4;
 		case FORMAT_ARGB4444:
@@ -64,7 +64,7 @@ unsigned int format_Bpp(WORD format)
 
 unsigned int format_png_equiv(WORD format)
 {
-    switch(format) {
+	switch(format) {
 		case FORMAT_BGRA8888:
 		case FORMAT_ARGB4444:
 		case FORMAT_RGB565:

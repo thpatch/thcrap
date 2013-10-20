@@ -67,9 +67,9 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 		case DLL_PROCESS_ATTACH:
 			InitDll(hDll);
 			break;
-	    case DLL_PROCESS_DETACH:
+		case DLL_PROCESS_DETACH:
 			ExitDll(hDll);
 			break;
 	}
-    return TRUE;
+	return TRUE;
 }

@@ -113,10 +113,10 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 	for(pOT = pOrigFirstThunk, pIT = pImpFirstThunk; pOT->u1.Function; pOT++, pIT++) {
 		if((pOT->u1.Ordinal & IMAGE_ORDINAL_FLAG) != IMAGE_ORDINAL_FLAG) {
 			PIMAGE_IMPORT_BY_NAME pByName = (PIMAGE_IMPORT_BY_NAME)((DWORD)hMod+(DWORD)(pOT->u1.AddressOfData));
-            if(pByName->Name[0] == '\0') {
-                return 0;
-            }
-            if(!stricmp(old_func, (char*)pByName->Name)) {
+			if(pByName->Name[0] == '\0') {
+				return 0;
+			}
+			if(!stricmp(old_func, (char*)pByName->Name)) {
 				return func_detour(pIT, new_ptr);
 			}
 		}

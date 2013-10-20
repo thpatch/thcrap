@@ -243,9 +243,9 @@ DWORD WINAPI GetCurrentDirectoryU(
 }
 
 DWORD WINAPI GetEnvironmentVariableU(
-    __in_opt LPCSTR lpName,
-    __out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
-    __in DWORD nSize
+	__in_opt LPCSTR lpName,
+	__out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
+	__in DWORD nSize
 )
 {
 	DWORD ret;

@@ -175,7 +175,7 @@ int json_object_merge(json_t *old_obj, json_t *new_obj)
 
 static int __cdecl object_key_compare_keys(const void *key1, const void *key2)
 {
-    return strcmp(*(const char **)key1, *(const char **)key2);
+	return strcmp(*(const char **)key1, *(const char **)key2);
 }
 
 json_t* json_object_get_keys_sorted(const json_t *object)

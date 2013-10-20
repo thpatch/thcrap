@@ -28,8 +28,8 @@
   * even when the window in question is minimized.
   */
 BOOL WINAPI tsa_GetWindowRect(
-    __in HWND hWnd,
-    __out LPRECT lpRect
+	__in HWND hWnd,
+	__out LPRECT lpRect
 )
 {
 	BOOL ret;
