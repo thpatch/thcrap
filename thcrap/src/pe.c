@@ -7,7 +7,7 @@
   * Parsing of Portable Executable structures.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 
 // Adapted from http://forum.sysinternals.com/createprocess-api-hook_topic13138.html
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)

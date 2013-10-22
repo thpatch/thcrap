@@ -7,7 +7,7 @@
   * Translation of hardcoded strings.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 
 static json_t *stringdefs = NULL;
 static json_t *stringlocs = NULL;

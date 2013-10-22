@@ -7,7 +7,7 @@
   * Win32 dialog patching.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 #include "dialog.h"
 
 /**
