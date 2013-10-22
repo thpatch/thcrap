@@ -61,7 +61,7 @@ void cls(SHORT top)
 	return;
 }
 
-// Because I've now learned how bad pause() can be
+// Because I've now learned how bad system("pause") can be
 void pause(void)
 {
 	int ret;
@@ -216,7 +216,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
-	char *base_dir = NULL;
 	json_t *games = NULL;
 
 	char *run_cfg_fn = NULL;
@@ -412,7 +411,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if(json_object_size(games) > 0) 	{
+	if(json_object_size(games) > 0) {
 		CreateShortcuts(run_cfg_fn, games);
 		log_printf(
 			"\n\nDone. You can now start the respective games with your selected configuration\n"

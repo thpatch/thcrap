@@ -16,8 +16,9 @@
 #include "textdisp.h"
 #include "win32_detour.h"
 
-// Static global variables
-// -----------------------
+/// Static global variables
+/// -----------------------
+// Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
 static const char *update_url_message =
@@ -28,7 +29,7 @@ static const char *mbox_copy_message =
 	"\n"
 	"\n"
 	"(Press Ctrl+C to copy the text of this message box and the URL)";
-// -----------------------
+/// -----------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
@@ -431,7 +432,6 @@ int InitDll(HMODULE hDll)
 	size_t dll_dir_len;
 
 	w32u8_set_fallback_codepage(932);
-
 	InitializeCriticalSection(&cs_file_access);
 
 #ifdef _WIN32

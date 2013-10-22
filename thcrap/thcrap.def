@@ -95,9 +95,9 @@ EXPORTS
 	ThreadWaitUntil
 	WaitUntilEntryPoint
 
+	inject_CreateRemoteThread
 	inject_CreateProcessU
 	inject_CreateProcessW
-	inject_CreateRemoteThread
 	inject_LoadLibraryU
 	inject_detour
 
@@ -166,6 +166,7 @@ EXPORTS
 	; String utility functions
 	; ------------------------
 	str_num_base
+	str_ascii_replace
 	str_slash_normalize
 	str_slash_normalize_win
 	str_num_digits

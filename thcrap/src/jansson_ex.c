@@ -38,7 +38,7 @@ int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
 	if(ind >= arr_size) {
-		int ret;
+		int ret = 0;
 		size_t i;
 		for(i = arr_size; i <= ind; i++) {
 			ret = json_array_append(arr, value);

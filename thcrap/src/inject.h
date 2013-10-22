@@ -4,8 +4,7 @@
   *
   * ----
   *
-  * DLL injector.
-  * Adapted from http://www.codeproject.com/Articles/20084/completeinject
+  * DLL injection.
   */
 
 #pragma once
@@ -22,18 +21,6 @@ void* entry_from_context(HANDLE hThread);
 
 int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr);
 int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module);
-
-// Catch DLL injection (lpStartAddress == LoadLibraryA()) and redirect to
-// inject_LoadLibraryU().
-__out_opt HANDLE WINAPI inject_CreateRemoteThread(
-	__in HANDLE hProcess,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in SIZE_T dwStackSize,
-	__in LPTHREAD_START_ROUTINE lpStartAddress,
-	__in_opt LPVOID lpParameter,
-	__in DWORD dwCreationFlags,
-	__out_opt LPDWORD lpThreadId
-);
 
 // CreateProcess with thcrap DLL injection.
 // Careful! If you call this with CREATE_SUSPENDED set, you *must* resume the
@@ -62,6 +49,22 @@ BOOL WINAPI inject_CreateProcessW(
 	__in_opt LPCWSTR lpCurrentDirectory,
 	__in LPSTARTUPINFOW lpSI,
 	__out LPPROCESS_INFORMATION lpPI
+);
+
+// Catch DLL injection (lpStartAddress == LoadLibraryA()) and redirect to
+// inject_LoadLibraryU().
+__out_opt HANDLE WINAPI inject_CreateRemoteThread(
+	__in HANDLE hProcess,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in SIZE_T dwStackSize,
+	__in LPTHREAD_START_ROUTINE lpStartAddress,
+	__in_opt LPVOID lpParameter,
+	__in DWORD dwCreationFlags,
+	__out_opt LPDWORD lpThreadId
+);
+
+HMODULE WINAPI inject_LoadLibraryU(
+	__in LPCSTR lpLibFileName
 );
 
 int inject_detour(HMODULE hMod);

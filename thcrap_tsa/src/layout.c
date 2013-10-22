@@ -191,14 +191,14 @@ BOOL WINAPI layout_TextOutU(
 
 	LOGFONT font_orig;
 
-	BOOL ret;
+	BOOL ret = FALSE;
 	json_t *tokens;
 	json_t *token;
-	LONG bitmap_width;
+	LONG bitmap_width = 0;
 
 	size_t i = 0;
 	int cur_x = orig_x;
-	int ruby_y;
+	int ruby_y = 0;
 	size_t cur_tab = 0;
 
 	if(!lpString || !c) {

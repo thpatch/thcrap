@@ -44,12 +44,12 @@ BOOL WINAPI CreateDirectoryU(
 }
 
 HANDLE WINAPI CreateFileU(
-	__in     LPCSTR lpFileName,
-	__in     DWORD dwDesiredAccess,
-	__in     DWORD dwShareMode,
+	__in LPCSTR lpFileName,
+	__in DWORD dwDesiredAccess,
+	__in DWORD dwShareMode,
 	__in_opt LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-	__in     DWORD dwCreationDisposition,
-	__in     DWORD dwFlagsAndAttributes,
+	__in DWORD dwCreationDisposition,
+	__in DWORD dwFlagsAndAttributes,
 	__in_opt HANDLE hTemplateFile
 )
 {

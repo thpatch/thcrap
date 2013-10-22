@@ -55,7 +55,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	const char *c = binhack_str;
 	const char *fs = NULL; // function start
 	size_t written = 0;
-	int func_rel; // Relative function pointer flag
+	int func_rel = 0; // Relative function pointer flag
 	char conv[3];
 	int ret = 0;
 

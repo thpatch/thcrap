@@ -9,33 +9,36 @@
 
 #include "thcrap.h"
 
-void str_slash_normalize(char *str)
+void str_ascii_replace(char *str, const char from, const char to)
 {
-	unsigned int i;
-	for(i = 0; i < strlen(str); i++) {
-		if(str[i] == '\\') {
-			str[i] = '/';
+	if(str) {
+		char *p = str;
+		while(*p) {
+			if(p[0] == from) {
+				p[0] = to;
+			}
+			p++;
 		}
 	}
 }
 
+void str_slash_normalize(char *str)
+{
+	str_ascii_replace(str, '\\', '/');
+}
+
 void str_slash_normalize_win(char *str)
 {
-	unsigned int i;
-	for(i = 0; i < strlen(str); i++) {
-		if(str[i] == L'/') {
-			str[i] = L'\\';
-		}
-	}
+	str_ascii_replace(str, '/', '\\');
 }
 
 unsigned int str_num_digits(int number)
 {
 	unsigned int digits = 0;
-	if (number < 0) {
+	if(number < 0) {
 		digits = 1; // remove this line if '-' counts as a digit
 	}
-	while (number) {
+	while(number) {
 		number /= 10;
 		digits++;
 	}

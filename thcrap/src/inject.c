@@ -4,14 +4,14 @@
   *
   * ----
   *
-  * DLL injector.
-  * Adapted from http://www.codeproject.com/Articles/20084/completeinject
+  * DLL injection.
   */
 
 #include "thcrap.h"
 
 /**
   * A more complete DLL injection solution.
+  * Adapted from http://www.codeproject.com/Articles/20084/completeinject.
   *
   * Parameters
   * ----------
@@ -772,37 +772,6 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 	}
 }
 
-__out_opt HANDLE WINAPI inject_CreateRemoteThread(
-	__in HANDLE hProcess,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in SIZE_T dwStackSize,
-	__in LPTHREAD_START_ROUTINE lpStartAddress,
-	__in_opt LPVOID lpParameter,
-	__in DWORD dwCreationFlags,
-	__out_opt LPDWORD lpThreadId
-)
-{
-#ifdef _DEBUG
-	const char *thcrap_dll = "thcrap_d.dll";
-#else
-	const char *thcrap_dll = "thcrap.dll";
-#endif
-	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
-	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
-
-	if((FARPROC)lpStartAddress == kernel32_LoadLibraryA) {
-		HMODULE hThcrap = GetRemoteModuleHandle(hProcess, thcrap_dll);
-		FARPROC new_func = GetRemoteProcAddress(hProcess, hThcrap, "inject_LoadLibraryU");
-		if(new_func) {
-			lpStartAddress = (LPTHREAD_START_ROUTINE)new_func;
-		}
-	}
-	return CreateRemoteThread(
-		hProcess, lpThreadAttributes, dwStackSize, lpStartAddress,
-		lpParameter, dwCreationFlags, lpThreadId
-	);
-}
-
 // Injection calls shared between the U and W versions
 static void inject_CreateProcess_helper(
 	__in LPPROCESS_INFORMATION lpPI,
@@ -868,6 +837,37 @@ BOOL WINAPI inject_CreateProcessW(
 		UTF8_FREE(lpAppName);
 	}
 	return ret;
+}
+
+__out_opt HANDLE WINAPI inject_CreateRemoteThread(
+	__in HANDLE hProcess,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in SIZE_T dwStackSize,
+	__in LPTHREAD_START_ROUTINE lpStartAddress,
+	__in_opt LPVOID lpParameter,
+	__in DWORD dwCreationFlags,
+	__out_opt LPDWORD lpThreadId
+)
+{
+#ifdef _DEBUG
+	const char *thcrap_dll = "thcrap_d.dll";
+#else
+	const char *thcrap_dll = "thcrap.dll";
+#endif
+	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
+	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
+
+	if((FARPROC)lpStartAddress == kernel32_LoadLibraryA) {
+		HMODULE hThcrap = GetRemoteModuleHandle(hProcess, thcrap_dll);
+		FARPROC new_func = GetRemoteProcAddress(hProcess, hThcrap, "inject_LoadLibraryU");
+		if(new_func) {
+			lpStartAddress = (LPTHREAD_START_ROUTINE)new_func;
+		}
+	}
+	return CreateRemoteThread(
+		hProcess, lpThreadAttributes, dwStackSize, lpStartAddress,
+		lpParameter, dwCreationFlags, lpThreadId
+	);
 }
 
 HMODULE WINAPI inject_LoadLibraryU(

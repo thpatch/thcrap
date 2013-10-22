@@ -51,20 +51,23 @@
 	}
 #endif
 
+// Our strlen has error-checking!
+#define strlen(s) (s ? strlen(s) : 0)
+#define wcslen(s) (s ? wcslen(s) : 0)
+
+/// Convenient wchar_t conversion macros
+/// ------------------------------------
 #define STRLEN_DEC(src_char) \
 	size_t src_char##_len = strlen(src_char) + 1
 
 #define WCSLEN_DEC(src_wchar) \
 	size_t src_wchar##_len = (wcslen(src_wchar) * UTF8_MUL) + 1
 
-/// Convenient wchar_t conversion macros
-/// ------------------------------------
 // "create-wchar_t-from-strlen"
 #define WCHAR_T_DEC(src_char) \
 	STRLEN_DEC(src_char); \
 	VLA(wchar_t, src_char##_w, src_char##_len)
 
-// StringToUTF16 using standard variable names
 #define WCHAR_T_CONV(src_char) \
 	StringToUTF16(src_char##_w, src_char, src_char##_len)
 
@@ -96,10 +99,6 @@
 # define vsnwprintf _vsnwprintf
 # define wcsicmp _wcsicmp
 #endif
-
-// Our strlen has error-checking!
-#define strlen(s) (s ? strlen(s) : 0)
-#define wcslen(s) (s ? wcslen(s) : 0)
 
 // Convenience macro to convert one fixed-length string to UTF-16.
 // TODO: place this somewhere else?

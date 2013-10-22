@@ -9,6 +9,9 @@
 
 #pragma once
 
+// Replaces every occurence of the ASCII character [from] in [str] with [to].
+void str_ascii_replace(char *str, const char from, const char to);
+
 // Changes directory slashes in [str] to '/'.
 void str_slash_normalize(char *str);
 
