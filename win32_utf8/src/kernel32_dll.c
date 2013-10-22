@@ -197,7 +197,7 @@ DWORD WINAPI FormatMessageU(
 
 	DWORD ret = FormatMessageW(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER | dwFlags, lpSource,
-		dwMessageId, dwLanguageId, (LPTSTR)&lpBufferW, nSize, Arguments
+		dwMessageId, dwLanguageId, (LPWSTR)&lpBufferW, nSize, Arguments
 	);
 	if(!ret) {
 		return ret;

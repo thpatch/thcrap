@@ -413,7 +413,7 @@ json_t* patchhooks_build(const char *fn)
 	return ret;
 }
 
-int patchhooks_run(const json_t *hook_array, BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
 	json_t *val;
 	size_t i;
