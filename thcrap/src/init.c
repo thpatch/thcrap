@@ -10,6 +10,7 @@
 #include "thcrap.h"
 #include "plugin.h"
 #include "binhack.h"
+#include "exception.h"
 #include "sha256.h"
 #include "bp_file.h"
 #include "dialog.h"
@@ -213,6 +214,7 @@ end:
 void thcrap_detour(HMODULE hProc)
 {
 	win32_detour(hProc);
+	exception_detour(hProc);
 	textdisp_detour(hProc);
 	dialog_detour(hProc);
 	strings_detour(hProc);
@@ -433,6 +435,7 @@ int InitDll(HMODULE hDll)
 
 	w32u8_set_fallback_codepage(932);
 	InitializeCriticalSection(&cs_file_access);
+	exception_init();
 
 #ifdef _WIN32
 #ifdef _DEBUG

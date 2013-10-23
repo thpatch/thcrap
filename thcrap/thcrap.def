@@ -202,3 +202,10 @@ EXPORTS
 	; -------
 	plugins_load
 	plugins_close
+
+	; Exception handler
+	; -----------------
+	exception_init
+	exception_filter
+	exception_SetUnhandledExceptionFilter
+	exception_exit

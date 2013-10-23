@@ -15,6 +15,7 @@
 #include <jansson.h>
 #include "..\config.h"
 #include "macros.h"
+#include "exception.h"
 #include "jansson_ex.h"
 #include "global.h"
 #include "log.h"

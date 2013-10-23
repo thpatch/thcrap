@@ -65,6 +65,9 @@
     <ClCompile Include="src\pe.c">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="src\exception.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\binhack.h">
@@ -125,6 +128,9 @@
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\pe.h">
+      <Filter>Source files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\exception.h">
       <Filter>Source files</Filter>
     </ClInclude>
   </ItemGroup>
