@@ -9,6 +9,20 @@
 
 #include "thcrap.h"
 
+BOOL VirtualCheckRegion(const void *ptr, const size_t len)
+{
+	MEMORY_BASIC_INFORMATION mbi;
+	if(VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
+		return ((size_t)mbi.BaseAddress + mbi.RegionSize) >= ((size_t)ptr + len);
+	}
+	return FALSE;
+}
+
+BOOL VirtualCheckCode(const void *ptr)
+{
+	return VirtualCheckRegion(ptr, 1);
+}
+
 int PatchRegionNoCheck(void *ptr, void *New, size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
@@ -106,8 +120,7 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 {
 	PIMAGE_THUNK_DATA pOT, pIT;
 
-	// Verify that the newFunc is valid
-	if(!new_ptr || IsBadCodePtr((FARPROC)new_ptr)) {
+	if(!new_ptr || !VirtualCheckCode(new_ptr)) {
 		return 0;
 	}
 	for(pOT = pOrigFirstThunk, pIT = pImpFirstThunk; pOT->u1.Function; pOT++, pIT++) {
@@ -128,9 +141,7 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr)
 {
 	PIMAGE_THUNK_DATA Thunk;
-
-	// Verify that the new pointer is valid
-	if(!new_ptr || IsBadCodePtr((FARPROC)new_ptr)) {
+	if(!new_ptr || !VirtualCheckCode(new_ptr)) {
 		return 0;
 	}
 	for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {

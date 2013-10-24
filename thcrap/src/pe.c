@@ -9,7 +9,6 @@
 
 #include "thcrap.h"
 
-// Adapted from http://forum.sysinternals.com/createprocess-api-hook_topic13138.html
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 {
 	PIMAGE_DOS_HEADER pDosH;
@@ -21,21 +20,19 @@ PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 	// Get DOS Header
 	pDosH = (PIMAGE_DOS_HEADER)hMod;
 
-	// Verify that the PE is valid by checking e_magic's value and DOS Header size
-	if(IsBadReadPtr(pDosH, sizeof(IMAGE_DOS_HEADER))) {
-		return 0;
-	}
-	if(pDosH->e_magic != IMAGE_DOS_SIGNATURE) {
+	if(
+		!VirtualCheckRegion(pDosH, sizeof(IMAGE_DOS_HEADER))
+		|| pDosH->e_magic != IMAGE_DOS_SIGNATURE
+	) {
 		return 0;
 	}
 	// Find the NT Header by using the offset of e_lfanew value from hMod
 	pNTH = (PIMAGE_NT_HEADERS)((DWORD)pDosH + (DWORD)pDosH->e_lfanew);
 
-	// Verify that the NT Header is correct
-	if(IsBadReadPtr(pNTH, sizeof(IMAGE_NT_HEADERS))) {
-		return 0;
-	}
-	if(pNTH->Signature != IMAGE_NT_SIGNATURE) {
+	if(
+		!VirtualCheckRegion(pNTH, sizeof(IMAGE_NT_HEADERS))
+		|| pNTH->Signature != IMAGE_NT_SIGNATURE
+	) {
 		return 0;
 	}
 	return pNTH;
@@ -99,7 +96,7 @@ PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 	// OptionalHeader position + SizeOfOptionalHeader = Section headers
 	pSH = (PIMAGE_SECTION_HEADER)((DWORD)(&pNTH->OptionalHeader) + (DWORD)pNTH->FileHeader.SizeOfOptionalHeader);
 
-	if(IsBadReadPtr(pSH, sizeof(IMAGE_SECTION_HEADER) * pNTH->FileHeader.NumberOfSections)) {
+	if(!VirtualCheckRegion(pSH, sizeof(IMAGE_SECTION_HEADER) * pNTH->FileHeader.NumberOfSections)) {
 		return 0;
 	}
 	// Search

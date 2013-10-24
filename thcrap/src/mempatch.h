@@ -9,6 +9,12 @@
 
 #pragma once
 
+// IsBadReadPointer without the flawed implementation.
+// Returns TRUE if [ptr] points to at least [len] bytes of valid memory in the
+// address space of the current process.
+BOOL VirtualCheckRegion(const void *ptr, const size_t len);
+BOOL VirtualCheckCode(const void *ptr);
+
 // Writes [val] to [ptr] in the address space of the current
 // (or another, in case of the *Ex functions) process),
 // if the current value in [ptr] equals [prev]

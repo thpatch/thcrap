@@ -29,6 +29,11 @@ EXPORTS
 	GetRemoteProcAddress
 	ReadProcessString
 
+	; Memory patching
+	; ---------------
+	VirtualCheckRegion
+	VirtualCheckCode
+
 	; IAT detouring
 	; -------------
 	func_detour
