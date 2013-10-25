@@ -25,9 +25,9 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		json_t *val;
 		size_t i = 0;
 		size_t loc_num;
-				
+
 		log_printf("%d versions de %s trouvees:\n\n", num_versions, id);
-				
+
 		json_object_foreach(locs, loc, val) {
 			log_printf(" [%2d] %s: %s\n", ++i, loc, json_string_value(val));
 		}
@@ -136,9 +136,8 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			{
 				// Ensure UTF-8
 				VLA(wchar_t, search_path_w, search_path_len);
-				StringToUTF16(search_path_w, search_path, search_path_len);
-				// We can't use StringToUTF8 for constant memory due to UTF8_MUL, so...
-				WideCharToMultiByte(CP_UTF8, 0, search_path_w, -1, search_path, sizeof(search_path), NULL, NULL);
+				WCHAR_T_CONV(search_path);
+				StringToUTF8(search_path, search_path_w, sizeof(search_path));
 			}
 
 			str_slash_normalize_win(search_path);
@@ -162,8 +161,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			printf("\n");
 		}
 	}
-	if(json_object_size(found))
-	{
+	if(json_object_size(found)) {
 		char *games_js_str = NULL;
 		FILE* games_js_file;
 
@@ -174,7 +172,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		games_js_file = fopen(games_js_fn, "w");
 		fputs(games_js_str, games_js_file);
 		fclose(games_js_file);
-		
+
 		log_printf("Les emplacements des jeux suivants ont ete identifies et ajoutes a %s:\n", games_js_fn);
 		log_printf(games_js_str);
 		log_printf("\n");

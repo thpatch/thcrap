@@ -167,7 +167,7 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 	if(json_is_object(encryption)) {
 		const char *encryption_func;
 		json_t *encryption_vars;
-		
+
 		// Resolve function
 		encryption_func = json_object_get_string(encryption, "func");
 		if(encryption_func) {
@@ -365,7 +365,7 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	size_t entry_count;
 	DWORD *entry_offsets_out;
 	DWORD *entry_offsets_in;
-	
+
 	patch_msg_state_t state;
 
 	if(!msg_out || !patch || !format) {
@@ -422,9 +422,9 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 		state.cmd_out = (th06_msg_t*)(msg_out + 1 + entry_offset_size);
 	}
-	
+
 	for(;;) {
-        const ptrdiff_t offset_in  = (BYTE*)state.cmd_in - (BYTE*)msg_in;
+		const ptrdiff_t offset_in  = (BYTE*)state.cmd_in - (BYTE*)msg_in;
 		const ptrdiff_t offset_out = (BYTE*)state.cmd_out - (BYTE*)msg_out;
 		int advance_out = 1;
 		op_info_t* cur_op;
@@ -433,7 +433,7 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			/*|| (entry_new && state.entry == entry_count - 1)*/
 			// (sounds like a good idea, but breaks th09 Marisa)
 		) {
-            break;
+			break;
 		}
 		if(state.cmd_in->time == 0 && state.cmd_in->type == 0) {
 			// Last command of the entry
@@ -466,9 +466,9 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 		if(state.cmd_in->time != state.time) {
 			// New timecode. Reset index
-            state.time = state.cmd_in->time;
-            state.ind = -1;
-        }
+			state.time = state.cmd_in->time;
+			state.ind = -1;
+		}
 
 		// Firstly, copy this command to the output buffer
 		// If there's anything to change, we do so later

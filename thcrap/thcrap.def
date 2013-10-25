@@ -22,15 +22,26 @@ EXPORTS
 	GetDllImportDesc
 	GetDllExportDesc
 	GetSectionHeader
+	GetExportedFunctions
+	GetRemoteModuleNtHeader
+	GetRemoteModuleEntryPoint
+	GetRemoteModuleHandle
+	GetRemoteProcAddress
+	ReadProcessString
 
-	; IAT patching
-	; ------------
-	func_patch
-	func_patch_by_name
-	func_patch_by_ptr
+	; Memory patching
+	; ---------------
+	VirtualCheckRegion
+	VirtualCheckCode
 
-	iat_patch_funcs
-	iat_patch_funcs_var
+	; IAT detouring
+	; -------------
+	func_detour
+	func_detour_by_name
+	func_detour_by_ptr
+
+	iat_detour_funcs
+	iat_detour_funcs_var
 
 	; JSON extensions
 	; ---------------
@@ -39,6 +50,7 @@ EXPORTS
 	json_array_get_hex
 	json_array_get_string
 	json_array_get_string_safe
+	json_array_from_wchar_array
 	json_object_get_create
 	json_object_numkey_get
 	json_object_hexkey_get
@@ -74,7 +86,7 @@ EXPORTS
 	stack_json_resolve
 	stack_game_file_resolve
 	stack_game_json_resolve
-	
+
 	; Hooks
 	; -----
 	patchhook_register
@@ -83,6 +95,18 @@ EXPORTS
 
 	; Injection
 	; ---------
+	entry_from_context
+
+	ThreadWaitUntil
+	WaitUntilEntryPoint
+
+	inject_CreateRemoteThread
+	inject_CreateProcessU
+	inject_CreateProcessW
+	inject_LoadLibraryU
+	inject_detour
+
+	thcrap_detour
 	thcrap_inject
 	thcrap_init
 
@@ -91,7 +115,6 @@ EXPORTS
 	is_valid_hex
 	binhack_calc_size
 	binhack_render
-	GetExportedFunctions
 	binhacks_apply
 
 	; Breakpoints
@@ -130,17 +153,17 @@ EXPORTS
 	strings_MessageBoxA
 
 	strings_init
-	strings_patch
+	strings_detour
 	strings_exit
 
 	; Logging
 	; -------
 	log_print
-	log_wprint
 	log_nprint
+	log_vprintf
 	log_printf
-	log_wprintf
 	log_mbox
+	log_vmboxf
 	log_mboxf
 	log_init
 	log_exit
@@ -148,6 +171,7 @@ EXPORTS
 	; String utility functions
 	; ------------------------
 	str_num_base
+	str_ascii_replace
 	str_slash_normalize
 	str_slash_normalize_win
 	str_num_digits
@@ -156,7 +180,7 @@ EXPORTS
 	; ------------
 	textdisp_CreateFontA
 	patch_fonts_load
-	textdisp_patch
+	textdisp_detour
 
 	; Win32 dialogs
 	; -------------
@@ -177,9 +201,16 @@ EXPORTS
 
 	dialog_CreateDialogParamA
 	dialog_DialogBoxParamA
-	dialog_patch
+	dialog_detour
 
 	; Plugins
 	; -------
 	plugins_load
 	plugins_close
+
+	; Exception handler
+	; -----------------
+	exception_init
+	exception_filter
+	exception_SetUnhandledExceptionFilter
+	exception_exit

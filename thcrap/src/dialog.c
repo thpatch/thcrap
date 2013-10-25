@@ -7,7 +7,7 @@
   * Win32 dialog patching.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 #include "dialog.h"
 
 /**
@@ -24,7 +24,7 @@
   *
   * But wait, how much memory do we need for the new replacement dialog?
   *
-  * This leaves us with 3 options:
+  * This leaves us with 4 options:
   *
   *	1. Build accessible C structures from the resorce data, set translations,
   *	   get the target size, allocate the target buffer, and build (3 loops)
@@ -32,13 +32,16 @@
   *	   allocate the target buffer, and build (2 loops)
   *	3. Just build the target buffer dynamically, reallocating space
   *	   on every step (1 loop)
+  *	4. Like #2, but with a simplified size calculation - the new dialog can
+  *	   never be bigger than the old dialog plus the size of all translated
+  *	   strings in UTF-8. (1 loop, plus a trivial one)
   *
-  * I went with option 2 here. 
+  * Option 4 clearly wins here.
   *
   * All that, however, doesn't help against the fact that Win32 dialog patching
   * is scary stuff. Every single line of code here has the potential to crash
   * the game or simply make the dialog not appear at all. So let's make the code
-  * as as concise, abstracted, consistent and readable as possible:
+  * as concise, abstracted, consistent and readable as possible:
   *
   *	* There are three data types we care about: sz_Or_Ord (= everything that
   *	  can be a string), DLGTEMPLATEEX and DLGITEMTEMPLATEEX.
@@ -96,7 +99,7 @@ typedef struct {
 	// title string of the dialog box
 	wchar_t title[];
 
-	// Only present if DS_SETFONT to be set in [style].
+	// Only present if DS_SETFONT is set in [style].
 	DLGTEMPLATEEX_FONT font;
 */
 #ifdef PACK_PRAGMA
@@ -367,31 +370,19 @@ size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const char *rep)
 
 /// DLGTEMPLATEEX
 /// -------------
-size_t dialog_template_ex_size(const BYTE **src, WORD *dlg_items, json_t *trans)
+size_t dialog_template_ex_size(json_t *trans)
 {
-	if(src) {
-		size_t ret = 0;
-		const DLGTEMPLATEEX_START *dlg_struct = (DLGTEMPLATEEX_START*)*src;
-		const char *trans_title = strings_get(json_object_get_string(trans, "title"));
-		const char *trans_font = strings_get(json_object_get_string(trans, "font"));
-	
-		ret += ptr_advance(src, sizeof(DLGTEMPLATEEX_START));
-		ret += sz_or_ord_size(src, NULL); // menu
-		ret += sz_or_ord_size(src, NULL); // windowClass
-		ret += sz_or_ord_size(src, trans_title); // title
+	// Yup, everything error-checked already.
+	size_t ret = 0;
 
-		if(dlg_struct->style & DS_SETFONT) {
-			ret += ptr_advance(src, sizeof(DLGTEMPLATEEX_FONT));
-			ret += sz_or_ord_size(src, trans_font); // typeface
-		}
-		if(dlg_items) {
-			*dlg_items = dlg_struct->cDlgItems;
-		}
-		*src = ptr_dword_align(*src);
-		return dword_align(ret);
-	} else {
-		return 0;
-	}
+	const char *trans_title = strings_get(json_object_get_string(trans, "title"));
+	const char *trans_font = strings_get(json_object_get_string(trans, "font"));
+
+	ret += strlen(trans_title) + 1;
+	ret += strlen(trans_font) + 1;
+
+	ret *= sizeof(wchar_t);
+	return dword_align(ret);
 }
 
 size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *adj, json_t *trans)
@@ -431,25 +422,17 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 
 /// DLGITEMTEMPLATEEX
 /// -----------------
-size_t dialog_item_template_ex_size(const BYTE **src, json_t *trans)
+size_t dialog_item_template_ex_size(json_t *trans)
 {
-	if(src) {
-		size_t ret = 0;
-		WORD extraCount;
-		const char *trans_title = strings_get(json_string_value(trans));
-	
-		ret += ptr_advance(src, sizeof(DLGITEMTEMPLATEEX_START));
-		ret += sz_or_ord_size(src, NULL); // windowClass
-		ret += sz_or_ord_size(src, trans_title); // title
-	
-		extraCount = *(WORD*)*src;
-		ret += ptr_advance(src, sizeof(WORD) + extraCount);
+	// Yup, everything error-checked already.
+	size_t ret = 0;
 
-		*src = ptr_dword_align(*src);
-		return dword_align(ret);
-	} else {
-		return 0;
-	}
+	const char *trans_title = strings_get(json_string_value(trans));
+
+	ret += strlen(trans_title) + 1;
+
+	ret *= sizeof(wchar_t);
+	return dword_align(ret);
 }
 
 size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *adj, json_t *trans)
@@ -521,14 +504,13 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 			BYTE *dst;
 			dialog_adjust_t adj = {0};
 			size_t i;
-			WORD dlg_items;
-			size_t dlg_out_len = 0;
+			size_t dlg_out_len = SizeofResource(hInstance, hrsrc);
 
-			dlg_out_len += dialog_template_ex_size(&src, &dlg_items, trans);
+			dlg_out_len += dialog_template_ex_size(trans);
 
-			for(i = 0; i < dlg_items; i++) {
+			for(i = 0; i < dlg_in->cDlgItems; i++) {
 				json_t *trans_item = json_array_get(trans_controls, i);
-				dlg_out_len += dialog_item_template_ex_size(&src, trans_item);
+				dlg_out_len += dialog_item_template_ex_size(trans_item);
 			}
 
 			dlg_out = malloc(dlg_out_len);
@@ -538,7 +520,7 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 
 			dst += dialog_template_ex_build(dst, &src, &adj, trans);
 
-			for(i = 0; i < dlg_items; i++) {
+			for(i = 0; i < dlg_in->cDlgItems; i++) {
 				json_t *trans_item = json_array_get(trans_controls, i);
 				dst += dialog_item_template_ex_build(dst, &src, &adj, trans_item);
 			};
@@ -595,9 +577,9 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 	return ret;
 }
 
-int dialog_patch(HMODULE hMod)
+int dialog_detour(HMODULE hMod)
 {
-	return iat_patch_funcs_var(hMod, "user32.dll", 2,
+	return iat_detour_funcs_var(hMod, "user32.dll", 2,
 		"CreateDialogParamA", dialog_CreateDialogParamA,
 		"DialogBoxParamA", dialog_DialogBoxParamA
 	);

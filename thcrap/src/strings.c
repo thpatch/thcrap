@@ -7,7 +7,7 @@
   * Translation of hardcoded strings.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 
 static json_t *stringdefs = NULL;
 static json_t *stringlocs = NULL;
@@ -67,7 +67,10 @@ const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
 	// new length is shorter...
 	if(!ret || (strlen(ret) + 1 < str_len)) {
 		ret = (char*)realloc(ret, str_len);
-		json_object_set_new(sprintf_storage, addr_key, json_integer((size_t)ret));
+		// Yes, this correctly handles a realloc failure.
+		if(ret) {
+			json_object_set_new(sprintf_storage, addr_key, json_integer((size_t)ret));
+		}
 	}
 	if(ret) {
 		vsprintf(ret, format, va);
@@ -102,21 +105,21 @@ int WINAPI strings_MessageBoxA(
 }
 /// -------------------
 
-void strings_init()
+void strings_init(void)
 {
 	stringdefs = stack_json_resolve("stringdefs.js", NULL);
 	stringlocs = stack_game_json_resolve("stringlocs.js", NULL);
 	sprintf_storage = json_object();
 }
 
-int strings_patch(HMODULE hMod)
+int strings_detour(HMODULE hMod)
 {
-	return iat_patch_funcs_var(hMod, "user32.dll", 1,
+	return iat_detour_funcs_var(hMod, "user32.dll", 1,
 		"MessageBoxA", strings_MessageBoxA
 	);
 }
 
-void strings_exit()
+void strings_exit(void)
 {
 	const char *key;
 	json_t *val;

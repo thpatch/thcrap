@@ -55,7 +55,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	const char *c = binhack_str;
 	const char *fs = NULL; // function start
 	size_t written = 0;
-	int func_rel; // Relative function pointer flag
+	int func_rel = 0; // Relative function pointer flag
 	char conv[3];
 	int ret = 0;
 
@@ -65,8 +65,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	}
 
 	conv[2] = 0;
-	while(*c)
-	{
+	while(*c) {
 		if(!fs && is_valid_hex(*c) && is_valid_hex(*(c+1)) ) {
 			memcpy(conv, c, 2);
 			*binhack_buf = (char)strtol(conv, NULL, 16);
@@ -117,55 +116,6 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	return ret;
 }
 
-int GetExportedFunctions(json_t *funcs, HMODULE hDll)
-{
-	IMAGE_EXPORT_DIRECTORY *ExportDesc;
-	DWORD *func_ptrs = NULL;
-	DWORD *name_ptrs = NULL;
-	WORD *name_indices = NULL;
-	DWORD dll_base = (DWORD)hDll; // All this type-casting is annoying
-	WORD i, j; // can only ever be 16-bit values
-
-	if(!funcs) {
-		return -1;
-	}
-
-	ExportDesc = GetDllExportDesc(hDll);
-
-	if(!ExportDesc) {
-		return -2;
-	}
-
-	func_ptrs = (DWORD*)(ExportDesc->AddressOfFunctions + dll_base);
-	name_ptrs = (DWORD*)(ExportDesc->AddressOfNames + dll_base);
-	name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
-	
-	for(i = 0; i < ExportDesc->NumberOfFunctions; i++) {
-		DWORD name_ptr = 0;
-		const char *name;
-		char auto_name[16];
-
-		// Look up name
-		for(j = 0; (j < ExportDesc->NumberOfNames && !name_ptr); j++) {
-			if(name_indices[j] == i) {
-				name_ptr = name_ptrs[j];
-			}
-		}
-
-		if(name_ptr) {
-			name = (const char*)(dll_base + name_ptr);
-		} else {
-			itoa(i + ExportDesc->Base, auto_name, 10);
-			name = auto_name;
-		}
-
-		log_printf("0x%08x %s\n", dll_base + func_ptrs[i], name);
-
-		json_object_set_new(funcs, name, json_integer(dll_base + func_ptrs[i]));
-	}
-	return 0;
-}
-
 int binhacks_apply(json_t *binhacks, json_t *funcs)
 {
 	const char *key;
@@ -213,7 +163,7 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 		} else {
 			binhack_count += json_addr_count - 1;
 		}
-		
+
 		for(i = 0; i < json_addr_count; i++) {
 			const char *title = json_object_get_string(hack, "title");
 			// buffer for the rendered assembly code

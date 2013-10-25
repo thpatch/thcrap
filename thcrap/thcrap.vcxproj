@@ -38,12 +38,13 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>thcrap.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\dialog.c" />
+    <ClCompile Include="src\exception.c" />
     <ClCompile Include="src\mempatch.c" />
     <ClCompile Include="src\binhack.c" />
     <ClCompile Include="src\bp_file.c" />
@@ -55,6 +56,7 @@
     </ClCompile>
     <ClCompile Include="src\jansson_ex.c" />
     <ClCompile Include="src\patchfile.c" />
+    <ClCompile Include="src\pe.c" />
     <ClCompile Include="src\plugin.c" />
     <ClCompile Include="src\sha256.c">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -63,11 +65,12 @@
     <ClCompile Include="src\strings.c" />
     <ClCompile Include="src\strutil.c" />
     <ClCompile Include="src\textdisp.c" />
-    <ClCompile Include="src\win32_patch.c" />
+    <ClCompile Include="src\win32_detour.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h" />
     <ClInclude Include="src\dialog.h" />
+    <ClInclude Include="src\exception.h" />
     <ClInclude Include="src\mempatch.h" />
     <ClInclude Include="src\binhack.h" />
     <ClInclude Include="src\bp_file.h" />
@@ -77,6 +80,7 @@
     <ClInclude Include="src\jansson_ex.h" />
     <ClInclude Include="src\log.h" />
     <ClInclude Include="src\patchfile.h" />
+    <ClInclude Include="src\pe.h" />
     <ClInclude Include="src\plugin.h" />
     <ClInclude Include="src\sha256.h" />
     <ClInclude Include="src\inject.h" />
@@ -84,7 +88,7 @@
     <ClInclude Include="src\strutil.h" />
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
-    <ClInclude Include="src\win32_patch.h" />
+    <ClInclude Include="src\win32_detour.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap.def" />

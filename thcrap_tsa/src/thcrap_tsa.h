@@ -122,8 +122,8 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
   */
 int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 
-void spells_init();
-void spells_exit();
+void spells_init(void);
+void spells_exit(void);
 /// ------
 
 /// Music Room
@@ -187,19 +187,19 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
 
-void music_init();
-void music_exit();
+void music_init(void);
+void music_exit(void);
 /// ----------
 
 /// Format patchers
 /// ---------------
-int patch_msg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *format);
-int patch_msg_dlg(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-int patch_msg_end(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-int patch_anm(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
+int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 /// ---------------
 
 /// Win32 wrappers
 /// --------------
-int win32_tsa_patch(HMODULE hMod);
+int tsa_detour(HMODULE hMod);
 /// --------------

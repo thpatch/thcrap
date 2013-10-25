@@ -9,8 +9,7 @@ EXPORTS
 	ServerGetNumActive
 	ServerDisable
 
-	ServerDownloadFileW
-	ServerDownloadFileA
+	ServerDownloadFile
 
 	ServerInit
 

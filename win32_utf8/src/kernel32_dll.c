@@ -24,7 +24,7 @@ BOOL WINAPI CreateDirectoryU(
 	size_t i;
 	size_t lpPathName_w_len;
 	WCHAR_T_DEC(lpPathName);
-	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
+	WCHAR_T_CONV(lpPathName);
 
 	// no, this isn't optimized away
 	lpPathName_w_len = wcslen(lpPathName_w);
@@ -44,18 +44,18 @@ BOOL WINAPI CreateDirectoryU(
 }
 
 HANDLE WINAPI CreateFileU(
-	__in     LPCSTR lpFileName,
-	__in     DWORD dwDesiredAccess,
-	__in     DWORD dwShareMode,
+	__in LPCSTR lpFileName,
+	__in DWORD dwDesiredAccess,
+	__in DWORD dwShareMode,
 	__in_opt LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-	__in     DWORD dwCreationDisposition,
-	__in     DWORD dwFlagsAndAttributes,
+	__in DWORD dwCreationDisposition,
+	__in DWORD dwFlagsAndAttributes,
 	__in_opt HANDLE hTemplateFile
 )
 {
 	HANDLE ret;
 	WCHAR_T_DEC(lpFileName);
-	StringToUTF16(lpFileName_w, lpFileName, lpFileName_len);
+	WCHAR_T_CONV(lpFileName);
 	ret = CreateFileW(
 		lpFileName_w, dwDesiredAccess, dwShareMode | FILE_SHARE_READ, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
@@ -65,16 +65,16 @@ HANDLE WINAPI CreateFileU(
 }
 
 BOOL WINAPI CreateProcessU(
-	__in_opt    LPCSTR lpAppName,
+	__in_opt LPCSTR lpAppName,
 	__inout_opt LPSTR lpCmdLine,
-	__in_opt    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-	__in_opt    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in        BOOL bInheritHandles,
-	__in        DWORD dwCreationFlags,
-	__in_opt    LPVOID lpEnvironment,
-	__in_opt    LPCSTR lpCurrentDirectory,
-	__in        LPSTARTUPINFOA lpSI,
-	__out       LPPROCESS_INFORMATION lpProcessInformation
+	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in BOOL bInheritHandles,
+	__in DWORD dwCreationFlags,
+	__in_opt LPVOID lpEnvironment,
+	__in_opt LPCSTR lpCurrentDirectory,
+	__in LPSTARTUPINFOA lpSI,
+	__out LPPROCESS_INFORMATION lpProcessInformation
 )
 {
 	BOOL ret;
@@ -139,9 +139,8 @@ static void CopyFindDataWToA(
 	w32fd_a->nFileSizeLow = w32fd_w->nFileSizeLow;
 	w32fd_a->dwReserved0 = w32fd_w->dwReserved0;
 	w32fd_a->dwReserved1 = w32fd_w->dwReserved1;
-	// We can't use StringToUTF8 for constant memory due to UTF8_MUL, so...
-	WideCharToMultiByte(CP_UTF8, 0, w32fd_w->cFileName, -1, w32fd_a->cFileName, MAX_PATH, NULL, NULL);
-	WideCharToMultiByte(CP_UTF8, 0, w32fd_w->cAlternateFileName, -1, w32fd_a->cAlternateFileName, 14, NULL, NULL);
+	StringToUTF8(w32fd_a->cFileName, w32fd_w->cFileName, sizeof(w32fd_a->cFileName));
+	StringToUTF8(w32fd_a->cAlternateFileName, w32fd_w->cAlternateFileName, sizeof(w32fd_a->cAlternateFileName));
 #ifdef _MAC
 	w32fd_a->dwFileType = w32fd_w->dwReserved1;
 	w32fd_a->dwCreatorType = w32fd_w->dwCreatorType;
@@ -159,7 +158,7 @@ HANDLE WINAPI FindFirstFileU(
 	WIN32_FIND_DATAW lpFindFileDataW;
 
 	WCHAR_T_DEC(lpFileName);
-	StringToUTF16(lpFileName_w, lpFileName, lpFileName_len);
+	WCHAR_T_CONV(lpFileName);
 	ret = FindFirstFileW(lpFileName_w, &lpFindFileDataW);
 	last_error = GetLastError();
 	CopyFindDataWToA(lpFindFileData, &lpFindFileDataW);
@@ -198,7 +197,7 @@ DWORD WINAPI FormatMessageU(
 
 	DWORD ret = FormatMessageW(
 		FORMAT_MESSAGE_ALLOCATE_BUFFER | dwFlags, lpSource,
-		dwMessageId, dwLanguageId, (LPTSTR)&lpBufferW, nSize, Arguments
+		dwMessageId, dwLanguageId, (LPWSTR)&lpBufferW, nSize, Arguments
 	);
 	if(!ret) {
 		return ret;
@@ -206,9 +205,9 @@ DWORD WINAPI FormatMessageU(
 	if(dwFlags & FORMAT_MESSAGE_ALLOCATE_BUFFER) {
 		LPSTR* lppBuffer = (LPSTR*)lpBuffer;
 
-		ret = max(ret, nSize);
+		ret = max(ret * sizeof(char) * UTF8_MUL, nSize);
 
-		*lppBuffer = LocalAlloc(0, ret * sizeof(char) * UTF8_MUL);
+		*lppBuffer = LocalAlloc(0, ret);
 		lpBuffer = *lppBuffer;
 	} else {
 		ret = min(ret, nSize);
@@ -244,20 +243,40 @@ DWORD WINAPI GetCurrentDirectoryU(
 }
 
 DWORD WINAPI GetEnvironmentVariableU(
-    __in_opt LPCSTR lpName,
-    __out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
-    __in DWORD nSize
+	__in_opt LPCSTR lpName,
+	__out_ecount_part_opt(nSize, return + 1) LPSTR lpBuffer,
+	__in DWORD nSize
 )
 {
 	DWORD ret;
 	WCHAR_T_DEC(lpName);
 	VLA(wchar_t, lpBuffer_w, nSize);
-	StringToUTF16(lpName_w, lpName, lpName_len);
+	WCHAR_T_CONV(lpName);
 
 	GetEnvironmentVariableW(lpName_w, lpBuffer_w, nSize);
 	// Return the converted size (!)
 	ret = StringToUTF8(lpBuffer, lpBuffer_w, nSize);
 	VLA_FREE(lpBuffer_w);
+	return ret;
+}
+
+#define INI_MACRO_EXPAND(macro) \
+	macro(lpAppName); \
+	macro(lpKeyName); \
+	macro(lpFileName)
+
+UINT WINAPI GetPrivateProfileIntU(
+	__in LPCSTR lpAppName,
+	__in LPCSTR lpKeyName,
+	__in INT nDefault,
+	__in_opt LPCSTR lpFileName
+)
+{
+	UINT ret;
+	INI_MACRO_EXPAND(WCHAR_T_DEC);
+	INI_MACRO_EXPAND(WCHAR_T_CONV);
+	ret = GetPrivateProfileIntW(lpAppName_w, lpKeyName_w, nDefault, lpFileName_w);
+	INI_MACRO_EXPAND(WCHAR_T_FREE);
 	return ret;
 }
 
@@ -301,7 +320,7 @@ DWORD WINAPI GetModuleFileNameU(
 		}
 		nSize = 0;
 	}
-	ret = StringToUTF8(lpFilename, lpFilename_w, nSize); 
+	ret = StringToUTF8(lpFilename, lpFilename_w, nSize);
 	VLA_FREE(lpFilename_w);
 	return ret;
 }
@@ -337,7 +356,7 @@ HMODULE WINAPI LoadLibraryU(
 {
 	HMODULE ret;
 	WCHAR_T_DEC(lpLibFileName);
-	StringToUTF16(lpLibFileName_w, lpLibFileName, lpLibFileName_len);
+	WCHAR_T_CONV(lpLibFileName);
 	ret = LoadLibraryW(lpLibFileName_w);
 	VLA_FREE(lpLibFileName_w);
 	return ret;
@@ -349,7 +368,7 @@ BOOL WINAPI SetCurrentDirectoryU(
 {
 	BOOL ret;
 	WCHAR_T_DEC(lpPathName);
-	StringToUTF16(lpPathName_w, lpPathName, lpPathName_len);
+	WCHAR_T_CONV(lpPathName);
 	ret = SetCurrentDirectoryW(lpPathName_w);
 	VLA_FREE(lpPathName_w);
 	return ret;
@@ -362,7 +381,7 @@ int kernel32_init(HMODULE hMod)
 	return 0;
 }
 
-void kernel32_exit()
+void kernel32_exit(void)
 {
 	SAFE_FREE(startupinfo_desktop);
 	SAFE_FREE(startupinfo_title);

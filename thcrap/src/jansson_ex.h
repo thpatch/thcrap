@@ -22,10 +22,6 @@
   */
 size_t json_hex_value(json_t *val);
 
-// Convert JSON string [object] to UTF-16.
-// Return value has to be free()d by the caller!
-wchar_t* json_string_value_utf16(const json_t *str_object);
-
 /// Arrays
 /// ------
 // Like json_array_set, but expands the array if necessary.
@@ -42,9 +38,9 @@ const char* json_array_get_string(const json_t *arr, const size_t ind);
 // if element #[ind] in [arr] is no valid string.
 const char* json_array_get_string_safe(const json_t *arr, const size_t ind);
 
-// Convert the [index]th value in [array] to UTF-16.
-// Return value has to be free()d by the caller!
-wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind);
+// Convert [argc] UTF-16 strings from [wargv] to a JSON array containing
+// UTF-8 strings. Useful for dealing with command-line parameters on Windows.
+json_t *json_array_from_wchar_array(int argc, const wchar_t *wargv[]);
 /// ------
 
 /// Objects
@@ -67,10 +63,6 @@ size_t json_object_get_hex(json_t *object, const char *key);
 // Convenience function for json_string_value(json_object_get(object, key));
 const char* json_object_get_string(const json_t *object, const char *key);
 
-// Convert the value of [key] in [object] to UTF-16.
-// Return value has to be free()d by the caller!
-wchar_t* json_object_get_string_utf16(const json_t *object, const char *key);
-
 // Merge [new_obj] recursively into [old_obj].
 // [new_obj] has priority; any element of [new_obj] that is already present
 // in [old_obj] and is *not* an object itself is overwritten.
@@ -83,7 +75,7 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 // Wrapper around json_loadb and json_load_file with indirect UTF-8 filename
 // support and nice error reporting.
 // [source] can be specified to show the source of the JSON buffer in case of an error
-// (since json_error_t::source will just say "<buffer>".
+// (since json_error_t::source would just say "<buffer>").
 json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const char *source);
 json_t* json_load_file_report(const char *json_fn);
 

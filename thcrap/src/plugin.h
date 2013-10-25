@@ -29,6 +29,6 @@
 typedef int (__stdcall *thcrap_init_plugin_type)(json_t *run_config);
 
 // Loads all thcrap plugins from the current directory.
-int plugins_load();
+int plugins_load(void);
 
-int plugins_close();
+int plugins_close(void);

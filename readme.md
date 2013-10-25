@@ -11,11 +11,13 @@ Ce framework est développé pour faciliter l'auto mise à jour, la traduction e
 
 * **Injections DLL** facile du moteur principal et des plug-ins dans le processus cible.
 
+* **Full propagation to child processes**. This allows the usage of other third-party patches which also use DLL injection, together with thcrap. (Yes, this was developed mainly for vpatch.)
+
 * Utilise **JSON pour toute les données de configuration de patch**, rendant les patchs open-source. En fusionnant les objets JSON de façon récursive, cela nous donne...
 
 * **Accumulation de patchs** - Appliquez n'importe quel nombre de patch à la fois, triés par ordre de priorité. Permet la mise en liste noir de fichiers à l'aide de jokers dans certain patchs lors de la configuration.
 
-* Ajoute automatiquement **la gestion transparente des noms de fichier unicode** via un wrapper API Win32 vers le processus du programme cible, sans avoir recours à des programmes comme [AppLocale] (http://en.wikipedia.org/wiki/AppLocale).
+* Automatically adds **transparent Unicode filename support** via Win32 API wrappers to target processes using the Win32 ANSI functions, without the need for programs like [AppLocale] (http://en.wikipedia.org/wiki/AppLocale).
 
 * Les patchs peuvent gérer **plusieurs builds et versions** d'un même programme, identifié par une combinaison de hachage en SHA-256 et de tailles de fichier .EXE.
 

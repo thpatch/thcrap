@@ -26,10 +26,10 @@
   * The best solution seems to be replacing GetWindowRect() with
   * GetWindowPlacement(), which always reports the expected window coordinates,
   * even when the window in question is minimized.
-  */ 
+  */
 BOOL WINAPI tsa_GetWindowRect(
-    __in HWND hWnd,
-    __out LPRECT lpRect
+	__in HWND hWnd,
+	__out LPRECT lpRect
 )
 {
 	BOOL ret;
@@ -59,6 +59,21 @@ BOOL WINAPI tsa_GetWindowRect(
   * and make sure that the window position comes as close as possible to what
   * is actually requested.
   */
+
+// Ensures the visibility of an imaginary, long line with length [w1] starting
+// at [p1] inside a larger line with length [w2] in [p2].
+// ... oh well, it's just a helper for tsa_CreateWindowExA().
+int coord_clamp(int p1, int w1, int p2, int w2)
+{
+	int e2 = p2 + w2;
+	if((p1 + w1) < p2) {
+		p1 = p2;
+	} else if(p1 > e2) {
+		p1 = e2 - w1;
+	}
+	return p1;
+}
+
 HWND WINAPI tsa_CreateWindowExA(
 	__in DWORD dwExStyle,
 	__in_opt LPCSTR lpClassName,
@@ -74,20 +89,17 @@ HWND WINAPI tsa_CreateWindowExA(
 	__in_opt LPVOID lpParam
 )
 {
-	RECT screens;
-	screens.left = GetSystemMetrics(SM_XVIRTUALSCREEN);
-	screens.top = GetSystemMetrics(SM_YVIRTUALSCREEN);
-	screens.right = screens.left + GetSystemMetrics(SM_CXVIRTUALSCREEN);
-	screens.bottom = screens.top + GetSystemMetrics(SM_CYVIRTUALSCREEN);
-	if((X + nWidth) < screens.left) {
-		X = screens.left;
-	} else if(X > screens.right) {
-		X = screens.right - nWidth;
+	if(X != CW_USEDEFAULT) {
+		X = coord_clamp(
+			X, nWidth, GetSystemMetrics(SM_XVIRTUALSCREEN),
+			GetSystemMetrics(SM_CXVIRTUALSCREEN)
+		);
 	}
-	if((Y + nHeight) < screens.top) {
-		Y = screens.top;
-	} else if(Y > screens.bottom) {
-		Y = screens.bottom - nHeight;
+	if(Y != CW_USEDEFAULT) {
+		Y = coord_clamp(
+			Y, nHeight, GetSystemMetrics(SM_YVIRTUALSCREEN),
+			GetSystemMetrics(SM_CYVIRTUALSCREEN)
+		);
 	}
 	return CreateWindowExU(
 		dwExStyle, lpClassName, strings_lookup(lpWindowName, NULL), dwStyle, X, Y,
@@ -96,9 +108,9 @@ HWND WINAPI tsa_CreateWindowExA(
 }
 /// ---------------------
 
-int win32_tsa_patch(HMODULE hMod)
+int tsa_detour(HMODULE hMod)
 {
-	return iat_patch_funcs_var(hMod, "user32.dll", 2,
+	return iat_detour_funcs_var(hMod, "user32.dll", 2,
 		"CreateWindowExA", tsa_CreateWindowExA,
 		"GetWindowRect", tsa_GetWindowRect
 	);

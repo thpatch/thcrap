@@ -11,4 +11,4 @@
 
 void patch_fonts_load(const json_t *patch_info, const json_t *patch_js);
 
-int textdisp_patch(HMODULE hMod);
+int textdisp_detour(HMODULE hMod);

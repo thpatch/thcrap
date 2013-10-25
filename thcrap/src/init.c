@@ -10,14 +10,16 @@
 #include "thcrap.h"
 #include "plugin.h"
 #include "binhack.h"
+#include "exception.h"
 #include "sha256.h"
 #include "bp_file.h"
 #include "dialog.h"
 #include "textdisp.h"
-#include "win32_patch.h"
+#include "win32_detour.h"
 
-// Static global variables
-// -----------------------
+/// Static global variables
+/// -----------------------
+// Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
 static const char *update_url_message =
@@ -28,7 +30,7 @@ static const char *mbox_copy_message =
 	"\n"
 	"\n"
 	"(Faites CTRL+C pour copier le texte et l'URL de cette boîte de dialogue dans le presse-papiers)";
-// -----------------------
+/// -----------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
@@ -46,7 +48,7 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 	sha256_update(&sha256_ctx, file_buffer, *file_size);
 	sha256_final(&sha256_ctx, hash);
 	SAFE_FREE(file_buffer);
-	
+
 	for(i = 0; i < 32; i++) {
 		sprintf(hash_str + (i * 2), "%02x", hash[i]);
 	}
@@ -67,7 +69,7 @@ int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
 	if(!build || !run_ver || !latest) {
 		return -1;
 	}
-	
+
 	json_latest = json_object_get(run_ver, "latest");
 	if(!json_latest) {
 		return -1;
@@ -97,7 +99,7 @@ json_t* identify(const char *exe_fn)
 	const char *game = NULL;
 	const char *build = NULL;
 	const char *variety = NULL;
-	
+
 	// Result of the EXE identification (array)
 	json_t *id_array = NULL;
 	int size_cmp = 0;
@@ -209,6 +211,16 @@ end:
 	return run_ver;
 }
 
+void thcrap_detour(HMODULE hProc)
+{
+	win32_detour(hProc);
+	exception_detour(hProc);
+	textdisp_detour(hProc);
+	dialog_detour(hProc);
+	strings_detour(hProc);
+	inject_detour(hProc);
+}
+
 int thcrap_init(const char *setup_fn)
 {
 	json_t *run_ver = NULL;
@@ -230,13 +242,11 @@ int thcrap_init(const char *setup_fn)
 		log_init(json_is_true(console_val));
 	}
 
+	json_object_set_new(run_cfg, "run_cfg_fn", json_string(setup_fn));
 	log_printf("Fichier de configuration: %s\n\n", setup_fn);
 
-	win32_patch(hProc);
-	textdisp_patch(hProc);
-	dialog_patch(hProc);
-	strings_patch(hProc);
-	
+	thcrap_detour(hProc);
+
 	log_printf("Nom du fichier EXE: %s\n", exe_fn);
 
 	run_ver = identify(exe_fn);
@@ -351,7 +361,7 @@ int thcrap_init(const char *setup_fn)
 			VLA_FREE(rem_arcs_str);
 		}
 	}
-	
+
 	log_printf("Dossier du jeu: %s\n", game_dir);
 	log_printf("Dossier du Plug-in: %s\n", dll_dir);
 
@@ -364,7 +374,7 @@ int thcrap_init(const char *setup_fn)
 	strings_init();
 #endif
 	plugins_load();
-	
+
 	/**
 	  * Potentially dangerous stuff. Do not want!
 	  */
@@ -389,7 +399,7 @@ int thcrap_init(const char *setup_fn)
 		json_t *run_funcs = json_object();
 
 		// Print this separately from the run configuration
-		
+
 		log_printf("Fonctions disponibles pour le hack binaire:\n");
 		log_printf("-------------------------------------------\n");
 
@@ -398,10 +408,10 @@ int thcrap_init(const char *setup_fn)
 			log_printf("\n%s:\n\n", key);
 			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
 		}
-		
+
 		log_printf("-------------------------------------------\n");
 		log_printf("\n");
-		
+
 		binhacks_apply(json_object_get(run_cfg, "binhacks"), run_funcs);
 		breakpoints_apply();
 
@@ -420,13 +430,13 @@ int thcrap_init(const char *setup_fn)
 }
 
 int InitDll(HMODULE hDll)
-{	
+{
 	size_t dll_dir_len;
 
 	w32u8_set_fallback_codepage(932);
-
 	InitializeCriticalSection(&cs_file_access);
-	
+	exception_init();
+
 #ifdef _WIN32
 #ifdef _DEBUG
 	// Activate memory leak debugging
@@ -438,7 +448,7 @@ int InitDll(HMODULE hDll)
 	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
 #endif
 #endif
-	
+
 	hThcrap = hDll;
 
 	// Store the DLL's own directory to load plug-ins later
@@ -485,9 +495,9 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 		case DLL_PROCESS_ATTACH:
 			InitDll(hDll);
 			break;
-	    case DLL_PROCESS_DETACH:
+		case DLL_PROCESS_DETACH:
 			ExitDll(hDll);
 			break;
 	}
-    return TRUE;
+	return TRUE;
 }

@@ -15,6 +15,7 @@
 #include <jansson.h>
 #include "..\config.h"
 #include "macros.h"
+#include "exception.h"
 #include "jansson_ex.h"
 #include "global.h"
 #include "log.h"
@@ -22,5 +23,7 @@
 #include "breakpoint.h"
 #include "strutil.h"
 #include "mempatch.h"
+#include "pe.h"
 #include "strings.h"
+#include "inject.h"
 #include "init.h"

@@ -20,7 +20,7 @@ int Ask(const char *question)
 		fgets(buf, sizeof(buf), stdin);
 		// Flush stdin (because fflush(stdin) is "undefined behavior")
 		while((ret = getchar()) != '\n' && ret != EOF);
-		
+
 		ret = tolower(buf[0]);
 	}
 	return ret == 'y';
@@ -30,7 +30,7 @@ int Ask(const char *question)
 void cls(SHORT top)
 {
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	
+
 	// here's where we'll home the cursor
 	COORD coordScreen = {0, top};
 
@@ -38,7 +38,7 @@ void cls(SHORT top)
 	// to get buffer info
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	// number of character cells in the current buffer
-	DWORD dwConSize;                 
+	DWORD dwConSize;
 
 	// get the number of character cells in the current buffer
 	GetConsoleScreenBufferInfo(hConsole, &csbi);
@@ -61,8 +61,8 @@ void cls(SHORT top)
 	return;
 }
 
-// Because I've now learned how bad pause() can be
-void pause()
+// Because I've now learned how bad system("pause") can be
+void pause(void)
 {
 	int ret;
 	printf("Appuyez sur ENTER pour continuer");
@@ -74,23 +74,15 @@ json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remot
 	const char *main_fn = "patch.js";
 
 	json_t *patch_info;
-	size_t patch_len;
-	size_t local_dir_len;
 
 	if(!patch_id || !base_dir) {
 		return NULL;
 	}
 	patch_info = json_object();
-	patch_len = strlen(patch_id) + 1;
-	local_dir_len = strlen(base_dir) + 1 + patch_len + 1;
 
 	{
-		VLA(char, local_dir, local_dir_len);
-		strcpy(local_dir, base_dir);
-		strcat(local_dir, patch_id);
-		strcat(local_dir, "/");
-		json_object_set_new(patch_info, "archive", json_string(local_dir));
-		VLA_FREE(local_dir);
+		json_t *local_dir = json_pack("s++", base_dir, patch_id, "/");
+		json_object_set_new(patch_info, "archive", local_dir);
 	}
 
 	if(patch_update(patch_info) == 1) {
@@ -98,12 +90,13 @@ json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remot
 		char *patch_js_buffer;
 		DWORD patch_js_size;
 		json_t *patch_js;
+		size_t patch_len = strlen(patch_id) + 1;
 
 		size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
 		VLA(char, remote_patch_fn, remote_patch_fn_len);
 		sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
 
-		patch_js_buffer = (char*)ServerDownloadFileA(remote_servers, remote_patch_fn, &patch_js_size, NULL);
+		patch_js_buffer = (char*)ServerDownloadFile(remote_servers, remote_patch_fn, &patch_js_size, NULL);
 		// TODO: Nice, friendly error
 
 		VLA_FREE(remote_patch_fn);
@@ -189,7 +182,7 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 			size_t link_args_len = 1 + run_cfg_fn_len + 2 + game_len + 1;
 			VLA(char, link_fn, link_fn_len);
 			VLA(char, link_args, link_args_len);
-			
+
 			log_printf(".");
 
 			sprintf(link_fn, "%s-%s", key, run_cfg_fn);
@@ -223,34 +216,21 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
-	char *base_dir = NULL;
 	json_t *games = NULL;
 
 	char *run_cfg_fn = NULL;
 
-	json_t *args = json_array();
+	json_t *args = json_array_from_wchar_array(argc, wargv);
 
 	log_init(1);
 
-	// We need to do this here to allow *any* input of localized characters
+	// Necessary to correctly process *any* input of non-ASCII characters
 	// in the console subsystem
 	w32u8_set_fallback_codepage(GetOEMCP());
 
 	GetCurrentDirectory(cur_dir_len, cur_dir);
 	PathAddBackslashA(cur_dir);
 	str_slash_normalize(cur_dir);
-
-	// Convert command-line arguments
-	{
-		int i;
-		for(i = 0; i < argc; i++) {
-			size_t arg_len = (wcslen(wargv[i]) * UTF8_MUL) + 1;
-			VLA(char, arg, arg_len);
-			StringToUTF8(arg, __wargv[i], arg_len);
-			json_array_append_new(args, json_string(arg));
-			VLA_FREE(arg);
-		}
-	}
 
 	{
 		// Maximize the height of the console window
@@ -269,7 +249,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	inet_init();
 
-	if(argc > 1) {
+	if(json_array_size(args) > 1) {
 		local_server_js_fn = json_array_get_string(args, 1);
 	} else {
 		local_server_js_fn = "server.js";
@@ -354,7 +334,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		DWORD remote_server_js_size;
 		void *remote_server_js_buffer;
 
-		remote_server_js_buffer = ServerDownloadFileA(local_servers, "server.js", &remote_server_js_size, NULL);
+		remote_server_js_buffer = ServerDownloadFile(local_servers, "server.js", &remote_server_js_size, NULL);
 		if(remote_server_js_buffer) {
 			FILE *local_server_js_file = NULL;
 
@@ -441,7 +421,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	log_printf("\n\nLa configuration suivante a ete ecrite dans %s:\n", run_cfg_fn);
 	json_dump_log(run_cfg, JSON_INDENT(2));
 	log_printf("\n\n");
-	
+
 	pause();
 
 	runconfig_set(run_cfg);
@@ -449,7 +429,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if(json_object_size(games) > 0) 	{
+	if(json_object_size(games) > 0) {
 		CreateShortcuts(run_cfg_fn, games);
 		log_printf(
 			"\n\nTermine. Vous pouvez maintenant lancer les differents jeux patches avec la configuration selectionnee\n"
@@ -467,7 +447,7 @@ end:
 	json_decref(args);
 
 	VLA_FREE(cur_dir);
-	
+
 	pause();
 	return 0;
 }

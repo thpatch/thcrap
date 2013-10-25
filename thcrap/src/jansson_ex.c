@@ -34,28 +34,11 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
-wchar_t* json_string_value_utf16(const json_t *str_object)
-{
-	size_t str_len;
-	const char *str_utf8;
-	wchar_t *str_utf16 = NULL;
-
-	if(!json_is_string(str_object)) {
-		return NULL;
-	}
-	str_utf8 = json_string_value(str_object);
-	str_len = strlen(str_utf8) + 1;
-	str_utf16 = (wchar_t*)malloc(str_len * sizeof(wchar_t));
-
-	StringToUTF16(str_utf16, str_utf8, str_len);
-	return str_utf16;
-}
-
 int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
 	if(ind >= arr_size) {
-		int ret;
+		int ret = 0;
 		size_t i;
 		for(i = arr_size; i <= ind; i++) {
 			ret = json_array_append(arr, value);
@@ -94,9 +77,24 @@ const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
 	return ret;
 }
 
-wchar_t* json_array_get_string_utf16(const json_t *arr, const size_t ind)
+json_t* json_array_from_wchar_array(int argc, const wchar_t *wargv[])
 {
-	return json_string_value_utf16(json_array_get(arr, ind));
+	json_t *ret = NULL;
+	int i;
+
+	if(!argc || !wargv) {
+		return ret;
+	}
+
+	ret = json_array();
+	for(i = 0; i < argc; i++) {
+		const wchar_t *arg = wargv[i];
+		UTF8_DEC(arg);
+		UTF8_CONV(arg);
+		json_array_append_new(ret, json_string(arg_utf8));
+		UTF8_FREE(arg);
+	}
+	return ret;
 }
 
 json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object)
@@ -155,19 +153,11 @@ const char* json_object_get_string(const json_t *object, const char *key)
 	return json_string_value(json_object_get(object, key));
 }
 
-wchar_t* json_object_get_string_utf16(const json_t *object, const char *key)
-{
-	if(!key) {
-		return NULL;
-	}
-	return json_string_value_utf16(json_object_get(object, key));
-}
-
 int json_object_merge(json_t *old_obj, json_t *new_obj)
 {
 	const char *key;
 	json_t *new_val;
-	
+
 	if(!old_obj || !new_obj) {
 		return -1;
 	}
@@ -185,7 +175,7 @@ int json_object_merge(json_t *old_obj, json_t *new_obj)
 
 static int __cdecl object_key_compare_keys(const void *key1, const void *key2)
 {
-    return strcmp(*(const char **)key1, *(const char **)key2);
+	return strcmp(*(const char **)key1, *(const char **)key2);
 }
 
 json_t* json_object_get_keys_sorted(const json_t *object)
@@ -251,7 +241,7 @@ json_t* json_load_file_report(const char *json_fn)
 	BYTE *json_p;
 	json_t *json = NULL;
 	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf};
-	
+
 	json_p = json_buffer = file_read(json_fn, &json_size);
 	if(!json_buffer || !json_size) {
 		return NULL;

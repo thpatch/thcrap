@@ -9,7 +9,7 @@
 
 #include <thcrap.h>
 #include "thcrap_tsa.h"
-  
+
 // Lookup cache
 static json_t *spells = NULL;
 static json_t *spellcomments = NULL;
@@ -115,13 +115,13 @@ int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, jso
 	return 0;
 }
 
-void spells_init()
+void spells_init(void)
 {
 	spells = stack_game_json_resolve("spells.js", NULL);
 	spellcomments = stack_game_json_resolve("spellcomments.js", NULL);
 }
 
-void spells_exit()
+void spells_exit(void)
 {
 	json_decref(spells);
 	json_decref(spellcomments);

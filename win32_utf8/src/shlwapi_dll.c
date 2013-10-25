@@ -17,8 +17,8 @@ BOOL STDAPICALLTYPE PathMatchSpecU(
 	BOOL ret;
 	WCHAR_T_DEC(pszFile);
 	WCHAR_T_DEC(pszSpec);
-	StringToUTF16(pszFile_w, pszFile, pszFile_len);
-	StringToUTF16(pszSpec_w, pszSpec, pszSpec_len);
+	WCHAR_T_CONV(pszFile);
+	WCHAR_T_CONV(pszSpec);
 	ret = PathMatchSpecW(pszFile_w, pszSpec_w);
 	VLA_FREE(pszFile_w);
 	VLA_FREE(pszSpec_w);
@@ -31,7 +31,7 @@ BOOL STDAPICALLTYPE PathFileExistsU(
 {
 	BOOL ret;
 	WCHAR_T_DEC(pszPath);
-	StringToUTF16(pszPath_w, pszPath, pszPath_len);
+	WCHAR_T_CONV(pszPath);
 	ret = PathFileExistsW(pszPath_w);
 	VLA_FREE(pszPath_w);
 	return ret;

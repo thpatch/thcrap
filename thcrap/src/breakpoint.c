@@ -33,7 +33,7 @@ static json_t *BP_Object = NULL;
 size_t* reg(x86_reg_t *regs, const char *regname)
 {
 	char cmp[4];
-	
+
 	if(!regname) {
 		return NULL;
 	}
@@ -92,7 +92,7 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 	}
 }
 
-__declspec(naked) void breakpoint_process()
+__declspec(naked) void breakpoint_process(void)
 {
 	json_t *bp;
 	const char *key;
@@ -104,7 +104,7 @@ __declspec(naked) void breakpoint_process()
 	BreakpointFunc_t bp_function;
 
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
-	// to be able to manipulate it. 
+	// to be able to manipulate it.
 	size_t esp_prev;
 
 	__asm {
@@ -165,7 +165,7 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 	if(cave[0] == 0xe8 || cave[0] == 0xe9)
 	{
 		size_t dist_old, dist_new;
-		
+
 		dist_old = *((size_t*)(cave + 1));
 		dist_new = (dist_old + (bp_addr + CALL_LEN)) - ((size_t)cave + CALL_LEN);
 
@@ -176,7 +176,7 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 	/// ------------------
 }
 
-int breakpoints_apply()
+int breakpoints_apply(void)
 {
 	json_t *breakpoints;
 	const char *key;
@@ -208,16 +208,13 @@ int breakpoints_apply()
 	log_printf("-------------------------\n");
 
 	json_object_foreach(breakpoints, key, bp) {
-		size_t addr = 0;
-		size_t cavesize = 0;
+		size_t addr = json_object_get_hex(bp, "addr");
+		size_t cavesize = json_object_get_hex(bp, "cavesize");
 		BYTE* cave = NULL;
 		size_t cave_dist;
 		size_t bp_dist;
 
 		i++;
-
-		addr = json_object_get_hex(bp, "addr");
-		cavesize = json_object_get_hex(bp, "cavesize");
 
 		if(!addr) {
 			breakpoint_count--;
@@ -265,7 +262,7 @@ int breakpoints_apply()
 	return 0;
 }
 
-int breakpoints_remove()
+int breakpoints_remove(void)
 {
 	json_t *breakpoints;
 	size_t breakpoint_count;

@@ -41,14 +41,14 @@ int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 }
 
 #define STRUCT_GET(type, val, src, spec_obj) \
-	struct_get(&(val), sizeof(type), anm_entry_out, json_object_get(spec_obj, #val))
+	struct_get(&(val), sizeof(type), src, json_object_get(spec_obj, #val))
 /// --------------------------------
 
 /// Formats
 /// -------
 unsigned int format_Bpp(WORD format)
 {
-    switch(format) {
+	switch(format) {
 		case FORMAT_BGRA8888:
 			return 4;
 		case FORMAT_ARGB4444:
@@ -64,7 +64,7 @@ unsigned int format_Bpp(WORD format)
 
 unsigned int format_png_equiv(WORD format)
 {
-    switch(format) {
+	switch(format) {
 		case FORMAT_BGRA8888:
 		case FORMAT_ARGB4444:
 		case FORMAT_RGB565:
@@ -187,9 +187,9 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 	// Some ANMs reference the same file name multiple times in a row
 	char *name_prev = NULL;
-	
-	png_image_ex png;
-	png_image_ex bounds;
+
+	png_image_ex png = {0};
+	png_image_ex bounds = {0};
 
 	BYTE *anm_entry_out = file_inout;
 	thtx_header_t *thtx = NULL;
@@ -200,9 +200,6 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	if(!format) {
 		return 1;
 	}
-
-	ZeroMemory(&png, sizeof(png));
-	ZeroMemory(&bounds, sizeof(bounds));
 
 	log_printf("---- ANM ----\n");
 

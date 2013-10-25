@@ -4,14 +4,14 @@
   *
   * ----
   *
-  * DLL injector.
-  * Adapted from http://www.codeproject.com/Articles/20084/completeinject
+  * DLL injection.
   */
 
 #include "thcrap.h"
 
 /**
   * A more complete DLL injection solution.
+  * Adapted from http://www.codeproject.com/Articles/20084/completeinject.
   *
   * Parameters
   * ----------
@@ -55,7 +55,7 @@
   *		__declspec(dllexport) void FunctionName(void*)
   *
   * The function that is called in the injected DLL -MUST- return, the loader
-  * waits for the thread to terminate before removing the allocated space and 
+  * waits for the thread to terminate before removing the allocated space and
   * returning control to the loader. This method of DLL injection also adds error
   * handling, so the end user knows if something went wrong.
   */
@@ -133,13 +133,13 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	LPBYTE error2Addr = 0;
 
 	// Where the codecave execution should begin at
-	void *codecaveExecAddr = 0;
+	LPTHREAD_START_ROUTINE codecaveExecAddr = 0;
 
 	// Handle to the thread we create in the process
 	HANDLE hThread = NULL;
 
 	// Old protection on page we are writing to in the process and the bytes written
-	DWORD oldProtect = 0;	
+	DWORD oldProtect = 0;
 	DWORD byte_ret = 0;
 
 	// Return code of injection function
@@ -149,13 +149,13 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 // Variable initialization.                 //
 //------------------------------------------//
 
-// This section will cause compiler warnings on VS8, 
+// This section will cause compiler warnings on VS8,
 // you can upgrade the functions or ignore them
 
 	// Build error messages
 	sprintf(injectError1, injectError1Format, dll_name);
 	sprintf(injectError2, injectError2Format, func_name);
-	
+
 	workspaceSize += (
 		strlen(dll_dir) + 1 + strlen(dll_name) + 1 + strlen(func_name) + 1 +
 		param_size + strlen(injectError1) + 1 + strlen(injectError2) + 1
@@ -231,7 +231,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	*p++ = 0xCC;
 
 	// Store where the codecave execution should begin
-	codecaveExecAddr = (p - workspace) + codecaveAddress;
+	codecaveExecAddr = (LPTHREAD_START_ROUTINE)((p - workspace) + codecaveAddress);
 
 // For debugging - infinite loop, attach onto process and step over
 	//*p++ = 0xEB;
@@ -364,7 +364,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 		*p++ = 0x83;
 		*p++ = 0xc1;
 		*p++ = 0x04;
-		
+
 		/// "Allocate" ecx bytes on stack and store buffer pointer to ebx
 
 		// sub esp, ecx
@@ -397,14 +397,14 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 		*p++ = 0xD6;
 	}
 
-	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibraryA
+	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibrary
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, dllNameAddr);
 
 	// MOV EAX, ADDRESS - Move the address of LoadLibrary into EAX
 	*p++ = 0xB8;
 	p = ptrcpy_advance_dst(p, loadlibrary);
-	
+
 	// CALL EAX - Call LoadLibrary
 	*p++ = 0xFF;
 	*p++ = 0xD0;
@@ -556,7 +556,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	// PUSH 0x000000 - Push the address of the function parameter
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, funcParamAddr);
-	
+
 	// CALL EAX - Call [func_name]
 	*p++ = 0xFF;
 	*p++ = 0xD0;
@@ -624,7 +624,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 
 	// Execute the thread now and wait for it to exit, note we execute where the code starts, and not the codecave start
 	// (since we wrote strings at the start of the codecave)
-	hThread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)(codecaveExecAddr), 0, 0, NULL);
+	hThread = CreateRemoteThread(hProcess, NULL, 0, codecaveExecAddr, 0, 0, NULL);
 	WaitForSingleObject(hThread, INFINITE);
 
 	GetExitCodeThread(hThread, &injRet);
@@ -638,40 +638,34 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	return injRet;
 }
 
-// Injects thcrap into the given [hProcess], and passes [setup_fn] as parameter.
-DWORD thcrap_inject(HANDLE hProcess, const char *setup_fn)
+int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 {
-#ifdef _DEBUG
-	const char *inj_dll = "thcrap_d.dll";
-#else
-	const char *inj_dll = "thcrap.dll";
-#endif
-	const char *inj_dir;
-	size_t prog_dir_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
-	VLA(char, cur_dir, cur_dir_len);
-	VLA(char, prog_dir, prog_dir_len);
+	int ret = -1;
+	HMODULE inj_mod = NULL;
 
-	GetModuleFileNameU(NULL, prog_dir, prog_dir_len);
-	GetCurrentDirectory(cur_dir_len, cur_dir);
+	if(GetModuleHandleEx(
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+		(LPTSTR)thcrap_inject,
+		&inj_mod
+	)) {
+		size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
+		size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
+		VLA(char, inj_dll, inj_dir_len);
+		VLA(char, inj_dir, inj_dir_len);
 
-	if(prog_dir) {
-		PathRemoveFileSpec(prog_dir);
-		PathAddBackslashA(prog_dir);
-		inj_dir = prog_dir;
-	} else {
-		inj_dir = cur_dir;
-	}
-	{
-		DWORD ret;
 		STRLEN_DEC(setup_fn);
 		size_t full_setup_fn_len = cur_dir_len + setup_fn_len;
 		VLA(char, abs_setup_fn, full_setup_fn_len);
 		const char *full_setup_fn;
 
+		GetModuleFileNameU(inj_mod, inj_dir, inj_dir_len);
+		strncpy(inj_dll, PathFindFileNameA(inj_dir), inj_dir_len);
+		PathRemoveFileSpec(inj_dir);
+		PathAddBackslashA(inj_dir);
+
 		// Account for relative directory names
 		if(PathIsRelativeA(setup_fn)) {
-			strncpy(abs_setup_fn, cur_dir, cur_dir_len);
+			GetCurrentDirectory(cur_dir_len, abs_setup_fn);
 			PathAppendA(abs_setup_fn, setup_fn);
 			full_setup_fn = abs_setup_fn;
 		} else {
@@ -679,8 +673,220 @@ DWORD thcrap_inject(HANDLE hProcess, const char *setup_fn)
 			full_setup_fn_len = setup_fn_len;
 		}
 		ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", full_setup_fn, full_setup_fn_len);
-		VLA_FREE(cur_dir);
 		VLA_FREE(abs_setup_fn);
-		return ret;
+		VLA_FREE(inj_dir);
+		VLA_FREE(inj_dll);
 	}
+	return ret;
+}
+
+/// Entry point determination
+/// -------------------------
+void* entry_from_context(HANDLE hThread)
+{
+	CONTEXT context = {0};
+	context.ContextFlags = CONTEXT_FULL;
+	if(GetThreadContext(hThread, &context)) {
+		return (void*)context.Eax;
+	}
+	return NULL;
+}
+/// -------------------------
+
+int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
+{
+	CONTEXT context = {0};
+	BYTE entry_asm_orig[2];
+	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
+	MEMORY_BASIC_INFORMATION mbi;
+	DWORD byte_ret;
+	DWORD old_prot;
+
+	if(!VirtualQueryEx(hProcess, addr, &mbi, sizeof(mbi))) {
+		return 1;
+	}
+	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, PAGE_EXECUTE_READWRITE, &old_prot);
+	ReadProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
+	WriteProcessMemory(hProcess, addr, entry_asm_delay, sizeof(entry_asm_delay), &byte_ret);
+	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_delay));
+	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, old_prot, &old_prot);
+
+	context.ContextFlags = CONTEXT_CONTROL;
+	while(context.Eip != (DWORD)addr) {
+		ResumeThread(hThread);
+		Sleep(10);
+		SuspendThread(hThread);
+		GetThreadContext(hThread, &context);
+	}
+
+	// Write back the original code
+	WriteProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
+	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_orig));
+	return 0;
+}
+
+int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
+{
+	// Try to get the entry point by various means, sorted by both efficiency
+	// and probability of them working.
+	void *entry_addr = NULL;
+
+	/**
+	  * Method 1: Initial value of EAX
+	  * After creating a process in suspended state, EAX is guaranteed to contain
+	  * the correct address of the entry point, even when the executable has the
+	  * DYNAMICBASE flag activated in its header.
+	  *
+	  * (Works on Windows, but not on Wine)
+	  */
+	if(!(entry_addr = entry_from_context(hThread))) {
+		HMODULE module_base;
+
+		/**
+		  * Method 2: EnumProcessModules, then parse the PE header.
+		  *
+		  * (Works on Wine, but not on Windows immediately after the target process
+		  * was created in suspended state.)
+		  */
+		if(!(module_base = GetRemoteModuleHandle(hProcess, module))) {
+			/**
+			  * Method 3: Guessing 0x400000
+			  * This is the default value in many compilers and should thus work for
+			  * most non-ASLR Windows applications.
+			  */
+			module_base = (HMODULE)0x400000;
+		}
+		entry_addr = GetRemoteModuleEntryPoint(hProcess, module_base);
+	}
+
+	if(entry_addr) {
+		return ThreadWaitUntil(hProcess, hThread, entry_addr);
+	} else {
+		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+			"Couldn't determine the entry point of %s!\n"
+			"\n"
+			"Seems as if %s won't work with this game on your system.\n",
+			PathFindFileNameA(module), PROJECT_NAME_SHORT()
+		);
+		return 1;
+	}
+}
+
+// Injection calls shared between the U and W versions
+static void inject_CreateProcess_helper(
+	__in LPPROCESS_INFORMATION lpPI,
+	__in_opt LPCSTR lpAppName,
+	__in DWORD dwCreationFlags
+)
+{
+	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
+		const char *run_cfg_fn = json_object_get_string(run_cfg, "run_cfg_fn");
+		thcrap_inject(lpPI->hProcess, run_cfg_fn);
+	}
+	if(~dwCreationFlags & CREATE_SUSPENDED) {
+		ResumeThread(lpPI->hThread);
+	}
+}
+
+BOOL WINAPI inject_CreateProcessU(
+	__in_opt LPCSTR lpAppName,
+	__inout_opt LPSTR lpCmdLine,
+	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in BOOL bInheritHandles,
+	__in DWORD dwCreationFlags,
+	__in_opt LPVOID lpEnvironment,
+	__in_opt LPCSTR lpCurrentDirectory,
+	__in LPSTARTUPINFOA lpSI,
+	__out LPPROCESS_INFORMATION lpPI
+)
+{
+	BOOL ret = CreateProcessU(
+		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
+		dwCreationFlags | CREATE_SUSPENDED,
+		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
+	);
+	if(ret) {
+		inject_CreateProcess_helper(lpPI, lpAppName, dwCreationFlags);
+	}
+	return ret;
+}
+
+BOOL WINAPI inject_CreateProcessW(
+	__in_opt LPCWSTR lpAppName,
+	__inout_opt LPWSTR lpCmdLine,
+	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in BOOL bInheritHandles,
+	__in DWORD dwCreationFlags,
+	__in_opt LPVOID lpEnvironment,
+	__in_opt LPCWSTR lpCurrentDirectory,
+	__in LPSTARTUPINFOW lpSI,
+	__out LPPROCESS_INFORMATION lpPI
+)
+{
+	BOOL ret = CreateProcessW(
+		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
+		dwCreationFlags | CREATE_SUSPENDED,
+		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
+	);
+	if(ret) {
+		UTF8_DEC(lpAppName);
+		UTF8_CONV(lpAppName);
+		inject_CreateProcess_helper(lpPI, lpAppName_utf8, dwCreationFlags);
+		UTF8_FREE(lpAppName);
+	}
+	return ret;
+}
+
+__out_opt HANDLE WINAPI inject_CreateRemoteThread(
+	__in HANDLE hProcess,
+	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	__in SIZE_T dwStackSize,
+	__in LPTHREAD_START_ROUTINE lpStartAddress,
+	__in_opt LPVOID lpParameter,
+	__in DWORD dwCreationFlags,
+	__out_opt LPDWORD lpThreadId
+)
+{
+#ifdef _DEBUG
+	const char *thcrap_dll = "thcrap_d.dll";
+#else
+	const char *thcrap_dll = "thcrap.dll";
+#endif
+	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
+	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
+
+	if((FARPROC)lpStartAddress == kernel32_LoadLibraryA) {
+		HMODULE hThcrap = GetRemoteModuleHandle(hProcess, thcrap_dll);
+		FARPROC new_func = GetRemoteProcAddress(hProcess, hThcrap, "inject_LoadLibraryU");
+		if(new_func) {
+			lpStartAddress = (LPTHREAD_START_ROUTINE)new_func;
+		}
+	}
+	return CreateRemoteThread(
+		hProcess, lpThreadAttributes, dwStackSize, lpStartAddress,
+		lpParameter, dwCreationFlags, lpThreadId
+	);
+}
+
+HMODULE WINAPI inject_LoadLibraryU(
+	__in LPCSTR lpLibFileName
+)
+{
+	HMODULE ret = LoadLibraryU(lpLibFileName);
+	if(ret) {
+		thcrap_detour(ret);
+	}
+	return ret;
+}
+
+int inject_detour(HMODULE hMod)
+{
+	return iat_detour_funcs_var(hMod, "kernel32.dll", 4,
+		"CreateProcessA", inject_CreateProcessU,
+		"CreateProcessW", inject_CreateProcessW,
+		"CreateRemoteThread", inject_CreateRemoteThread,
+		"LoadLibraryA", inject_LoadLibraryU
+	);
 }

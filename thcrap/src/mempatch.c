@@ -4,10 +4,24 @@
   *
   * ----
   *
-  * Direct memory and Import Address Table patching
+  * Direct memory and Import Address Table detouring
   */
 
 #include "thcrap.h"
+
+BOOL VirtualCheckRegion(const void *ptr, const size_t len)
+{
+	MEMORY_BASIC_INFORMATION mbi;
+	if(VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
+		return ((size_t)mbi.BaseAddress + mbi.RegionSize) >= ((size_t)ptr + len);
+	}
+	return FALSE;
+}
+
+BOOL VirtualCheckCode(const void *ptr)
+{
+	return VirtualCheckRegion(ptr, 1);
+}
 
 int PatchRegionNoCheck(void *ptr, void *New, size_t len)
 {
@@ -86,120 +100,12 @@ int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT Val)
 	return PatchRegionEx(hProcess, ptr, &Prev, &Val, sizeof(FLOAT));
 }
 
-/// PE structures
-/// -------------
-// Adapted from http://forum.sysinternals.com/createprocess-api-hook_topic13138.html
-PIMAGE_NT_HEADERS WINAPI GetNtHeader(HMODULE hMod)
-{
-	PIMAGE_DOS_HEADER pDosH;
-	PIMAGE_NT_HEADERS pNTH;
-
-	if(!hMod) {
-		return 0;
-	}
-	// Get DOS Header
-	pDosH = (PIMAGE_DOS_HEADER) hMod;
-
-	// Verify that the PE is valid by checking e_magic's value and DOS Header size
-	if(IsBadReadPtr(pDosH, sizeof(IMAGE_DOS_HEADER))) {
-		return 0;
-	}
-	if(pDosH->e_magic != IMAGE_DOS_SIGNATURE) {
-		return 0;
-	}
-	// Find the NT Header by using the offset of e_lfanew value from hMod
-	pNTH = (PIMAGE_NT_HEADERS)((DWORD)pDosH + (DWORD)pDosH->e_lfanew);
-
-	// Verify that the NT Header is correct
-	if(IsBadReadPtr(pNTH, sizeof(IMAGE_NT_HEADERS))) {
-		return 0;
-	}
-	if(pNTH->Signature != IMAGE_NT_SIGNATURE) {
-		return 0;
-	}
-	return pNTH;
-}
-
-PIMAGE_IMPORT_DESCRIPTOR WINAPI GetDllImportDesc(HMODULE hMod, const char *DLLName)
-{
-	PIMAGE_NT_HEADERS pNTH;
-	PIMAGE_IMPORT_DESCRIPTOR pImportDesc;
-
-	if(!hMod || !DLLName) {
-		return 0;
-	}
-	pNTH = GetNtHeader(hMod);
-	if(!pNTH) {
-		return NULL;
-	}
-	// iat patching
-	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)hMod + 
-		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress));
-
-	if(pImportDesc == (PIMAGE_IMPORT_DESCRIPTOR)pNTH) {
-		return NULL;
-	}
-	while(pImportDesc->Name) {
-		// pImportDesc->Name gives the name of the module
-		char *name = (char*)((DWORD)hMod + (DWORD)pImportDesc->Name);
-		// stricmp returns 0 if strings are equal, case insensitive
-		if(stricmp(name, DLLName) == 0) {
-			return pImportDesc;
-		}
-		++pImportDesc;
-	}
-	return NULL;
-}
-
-PIMAGE_EXPORT_DIRECTORY WINAPI GetDllExportDesc(HMODULE hMod)
-{
-	PIMAGE_NT_HEADERS pNTH;
-	if(!hMod) {
-		return NULL;
-	}
-	pNTH = GetNtHeader(hMod);
-	if(!pNTH) {
-		return NULL;
-	}
-	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)hMod + 
-		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress));
-}
-
-PIMAGE_SECTION_HEADER WINAPI GetSectionHeader(HMODULE hMod, const char *section_name)
-{
-	PIMAGE_NT_HEADERS pNTH;
-	PIMAGE_SECTION_HEADER pSH;
-	WORD c;
-
-	if(!hMod || !section_name) {
-		return 0;
-	}
-	pNTH = GetNtHeader(hMod);
-	if(!pNTH) {
-		return NULL;
-	}
-	// OptionalHeader position + SizeOfOptionalHeader = Section headers
-	pSH = (PIMAGE_SECTION_HEADER)((DWORD)(&pNTH->OptionalHeader) + (DWORD)pNTH->FileHeader.SizeOfOptionalHeader);
-
-	if(IsBadReadPtr(pSH, sizeof(IMAGE_SECTION_HEADER) * pNTH->FileHeader.NumberOfSections)) {
-		return 0;
-	}
-	// Search
-	for(c = 0; c < pNTH->FileHeader.NumberOfSections; c++) {
-		if(strncmp(pSH->Name, section_name, 8) == 0) {
-			return pSH;
-		}
-		++pSH;
-	}
-	return NULL;
-}
-
-/// Import Address Table patching
-/// =============================
+/// Import Address Table detouring
+/// ==============================
 
 /// Low-level
 /// ---------
-int func_patch(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
+int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
@@ -210,22 +116,21 @@ int func_patch(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 	return 1;
 }
 
-int func_patch_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr)
+int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr)
 {
 	PIMAGE_THUNK_DATA pOT, pIT;
 
-	// Verify that the newFunc is valid
-	if(!new_ptr || IsBadCodePtr((FARPROC)new_ptr)) {
+	if(!new_ptr || !VirtualCheckCode(new_ptr)) {
 		return 0;
 	}
 	for(pOT = pOrigFirstThunk, pIT = pImpFirstThunk; pOT->u1.Function; pOT++, pIT++) {
 		if((pOT->u1.Ordinal & IMAGE_ORDINAL_FLAG) != IMAGE_ORDINAL_FLAG) {
 			PIMAGE_IMPORT_BY_NAME pByName = (PIMAGE_IMPORT_BY_NAME)((DWORD)hMod+(DWORD)(pOT->u1.AddressOfData));
-            if(pByName->Name[0] == '\0') {
-                return 0;
-            }
-            if(!stricmp(old_func, (char*)pByName->Name)) {
-				return func_patch(pIT, new_ptr);
+			if(pByName->Name[0] == '\0') {
+				return 0;
+			}
+			if(!stricmp(old_func, (char*)pByName->Name)) {
+				return func_detour(pIT, new_ptr);
 			}
 		}
 	}
@@ -233,17 +138,15 @@ int func_patch_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_T
 	return 0;
 }
 
-int func_patch_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr)
+int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr)
 {
 	PIMAGE_THUNK_DATA Thunk;
-
-	// Verify that the new pointer is valid
-	if(!new_ptr || IsBadCodePtr((FARPROC)new_ptr)) {
+	if(!new_ptr || !VirtualCheckCode(new_ptr)) {
 		return 0;
 	}
 	for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {
 		if((DWORD*)Thunk->u1.Function == (DWORD*)old_ptr) {
-			return func_patch(Thunk, new_ptr);
+			return func_detour(Thunk, new_ptr);
 		}
 	}
 	// Function not found
@@ -253,19 +156,19 @@ int func_patch_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, con
 
 /// High-level
 /// ----------
-void iat_patch_set(iat_patch_t *patch, const char *old_func, const void *old_ptr, const void *new_ptr)
+void iat_detour_set(iat_detour_t *detour, const char *old_func, const void *old_ptr, const void *new_ptr)
 {
-	patch->old_func = old_func;
-	patch->old_ptr = old_ptr;
-	patch->new_ptr = new_ptr;
+	detour->old_func = old_func;
+	detour->old_ptr = old_ptr;
+	detour->new_ptr = new_ptr;
 }
 
-int iat_patch_funcs(HMODULE hMod, const char *dll_name, iat_patch_t *patch, const size_t patch_count)
+int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, const size_t detour_count)
 {
 	PIMAGE_IMPORT_DESCRIPTOR ImpDesc;
-	PIMAGE_THUNK_DATA	pOrigThunk;
-	PIMAGE_THUNK_DATA	pImpThunk;
-	int ret = patch_count;
+	PIMAGE_THUNK_DATA pOrigThunk;
+	PIMAGE_THUNK_DATA pImpThunk;
+	int ret = detour_count;
 	UINT c;
 
 	ImpDesc = GetDllImportDesc(hMod, dll_name);
@@ -275,28 +178,28 @@ int iat_patch_funcs(HMODULE hMod, const char *dll_name, iat_patch_t *patch, cons
 	pOrigThunk = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->OriginalFirstThunk);
 	pImpThunk  = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->FirstThunk);
 
-	log_printf("Patchage des exports DLL (%s) en cours...\n", dll_name);
+	log_printf("Detouring DLL functions (%s)...\n", dll_name);
 
-	// We _only_ patch by comparing exported names.
+	// We _only_ detour by comparing exported names.
 	// Has the advantages that we can override any existing patches,
 	// and that it works on Win9x too (as if that matters).
 
-	for(c = 0; c < patch_count; c++) {
-		DWORD local_ret = func_patch_by_name(hMod, pOrigThunk, pImpThunk, patch[c].old_func, patch[c].new_ptr);
+	for(c = 0; c < detour_count; c++) {
+		DWORD local_ret = func_detour_by_name(hMod, pOrigThunk, pImpThunk, detour[c].old_func, detour[c].new_ptr);
 		log_printf(
 			"(%2d/%2d) %s... %s\n",
-			c + 1, patch_count, patch[c].old_func, local_ret ? "OK" : "Non trouvé"
+			c + 1, detour_count, detour[c].old_func, local_ret ? "OK" : "Non trouvé"
 		);
 		ret -= local_ret;
 	}
 	return ret;
 }
 
-int iat_patch_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_count, ...)
+int iat_detour_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_count, ...)
 {
 	HMODULE hDll;
 	va_list va;
-	VLA(iat_patch_t, iat_patch, func_count);
+	VLA(iat_detour_t, iat_detour, func_count);
 	size_t i;
 	int ret;
 
@@ -309,13 +212,13 @@ int iat_patch_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_co
 	}
 	va_start(va, func_count);
 	for(i = 0; i < func_count; i++) {
-		iat_patch[i].old_func = va_arg(va, const char*);
-		iat_patch[i].new_ptr = va_arg(va, const void*);
-		iat_patch[i].old_ptr = GetProcAddress(hDll, iat_patch[i].old_func);
+		iat_detour[i].old_func = va_arg(va, const char*);
+		iat_detour[i].new_ptr = va_arg(va, const void*);
+		iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
 	}
 	va_end(va);
-	ret = iat_patch_funcs(hMod, dll_name, iat_patch, func_count);
-	VLA_FREE(iat_patch);
+	ret = iat_detour_funcs(hMod, dll_name, iat_detour, func_count);
+	VLA_FREE(iat_detour);
 	return ret;
 }
 /// ----------

@@ -34,4 +34,4 @@ size_t __stdcall GetTextExtent(const char *str);
 size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font);
 
 int layout_init(HMODULE hMod);
-void layout_exit();
+void layout_exit(void);

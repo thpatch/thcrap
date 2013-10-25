@@ -47,8 +47,8 @@ int file_rep_clear(file_rep_t *pf);
 
 /// Thread-local storage
 /// --------------------
-file_rep_t* fr_tls_get();
-void fr_tls_free();
+file_rep_t* fr_tls_get(void);
+void fr_tls_free(void);
 /// --------------------
 
 /**
@@ -166,5 +166,5 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
-int bp_file_init();
-int bp_file_exit();
+int bp_file_init(void);
+int bp_file_exit(void);
