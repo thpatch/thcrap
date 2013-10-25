@@ -38,7 +38,9 @@ void log_print(const char *str)
 
 void log_nprint(const char *str, size_t n)
 {
-	fwrite(str, n, 1, stdout);
+	if(console_open) {
+		fwrite(str, n, 1, stdout);
+	}
 	if(log_file) {
 		fwrite(str, n, 1, log_file);
 	}
