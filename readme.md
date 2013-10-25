@@ -11,11 +11,13 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * Easy **DLL injection** of the main engine and plug-ins into the target process.
 
+* **Full propagation to child processes**. This allows the usage of other third-party patches which also use DLL injection, together with thcrap. (Yes, this was developed mainly for vpatch.)
+
 * Uses **JSON for all patch configuration data**, making the patches themselves open-source by design. By recursively merging JSON objects, this gives us...
 
 * **Patch stacking** - apply any number of patches at the same time, sorted by a priority list. Supports wildcard-based blacklisting of files in certain patches through the run configuration.
 
-* Automatically adds **transparent Unicode filename support** via Win32 API wrappers to the target program's process, without the need for programs like [AppLocale] (http://en.wikipedia.org/wiki/AppLocale).
+* Automatically adds **transparent Unicode filename support** via Win32 API wrappers to target processes using the Win32 ANSI functions, without the need for programs like [AppLocale] (http://en.wikipedia.org/wiki/AppLocale).
 
 * Patches can support **multiple builds and versions** of a single program, identified by a combination of SHA-256 hashes and .EXE file sizes.
 
