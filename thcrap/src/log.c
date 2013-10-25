@@ -135,7 +135,7 @@ void log_init(int console)
 	}
 	if(log_file) {
 		size_t i;
-		size_t line_len = strlen(PROJECT_NAME()) + strlen(" logfile") + 1;
+		size_t line_len = strlen(PROJECT_NAME()) + strlen(" fichier log") + 1;
 		VLA(unsigned char, line, line_len * UTF8_MUL);
 
 		for(i = 0; i < line_len - 1; i++) {
