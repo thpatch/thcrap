@@ -52,4 +52,5 @@ EXPORTS
 	MessageBoxU
 	RegisterClassU
 	RegisterClassExU
+	SetDlgItemTextU
 	SetWindowTextU

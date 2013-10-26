@@ -37,7 +37,7 @@ void win32_detour(HMODULE hMod)
 		"PathFileExistsA", PathFileExistsU
 	);
 
-	iat_detour_funcs_var(hMod, "user32.dll", 14,
+	iat_detour_funcs_var(hMod, "user32.dll", 15,
 		"CharNextA", CharNextU,
 		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,
@@ -50,6 +50,7 @@ void win32_detour(HMODULE hMod)
 		"MessageBoxA", MessageBoxU,
 		"RegisterClassA", RegisterClassU,
 		"RegisterClassExA", RegisterClassExU,
+		"SetDlgItemTextA", SetDlgItemTextU,
 		"SetWindowLongA", SetWindowLongW,
 		"SetWindowLongPtrA", SetWindowLongPtrW,
 		"SetWindowTextA", SetWindowTextU

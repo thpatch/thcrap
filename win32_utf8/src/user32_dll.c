@@ -199,6 +199,20 @@ ATOM WINAPI RegisterClassExU(
 	return ret;
 }
 
+BOOL WINAPI SetDlgItemTextU(
+	__in HWND hDlg,
+	__in int nIDDlgItem,
+	__in LPCSTR lpString
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(lpString);
+	WCHAR_T_CONV_VLA(lpString);
+	ret = SetDlgItemTextW(hDlg, nIDDlgItem, lpString_w);
+	WCHAR_T_FREE(lpString);
+	return ret;
+}
+
 BOOL WINAPI SetWindowTextU(
 	__in HWND hWnd,
 	__in_opt LPCSTR lpString

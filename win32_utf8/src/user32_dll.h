@@ -94,6 +94,14 @@ ATOM WINAPI RegisterClassExU(
 #undef RegisterClassEx
 #define RegisterClassEx RegisterClassExU
 
+BOOL WINAPI SetDlgItemTextU(
+	__in HWND hDlg,
+	__in int nIDDlgItem,
+	__in LPCSTR lpString
+);
+#undef SetDlgItemText
+#define SetDlgItemText SetDlgItemTextU
+
 #undef SetWindowLong
 #undef SetWindowLongPtr
 #define SetWindowLong SetWindowLongW
