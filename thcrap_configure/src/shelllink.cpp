@@ -17,6 +17,13 @@ extern "C"
 
 	#include "configure.h"
 
+	#define LINK_MACRO_EXPAND(macro) \
+		macro(link_fn); \
+		macro(target_cmd); \
+		macro(target_args); \
+		macro(work_path); \
+		macro(icon_fn)
+
 	HRESULT CreateLink(
 			const char *link_fn, const char *target_cmd, const char *target_args,
 			const char *work_path, const char *icon_fn
@@ -31,17 +38,8 @@ extern "C"
 		if(SUCCEEDED(hres)) {
 			IPersistFile* ppf;
 
-			// Fun.
-			WCHAR_T_DEC(link_fn);
-			WCHAR_T_DEC(target_cmd);
-			WCHAR_T_DEC(target_args);
-			WCHAR_T_DEC(work_path);
-			WCHAR_T_DEC(icon_fn);
-			link_fn_w = StringToUTF16_VLA(link_fn_w, link_fn, link_fn_len);
-			target_cmd_w = StringToUTF16_VLA(target_cmd_w, target_cmd, target_cmd_len);
-			target_args_w = StringToUTF16_VLA(target_args_w, target_args, target_args_len);
-			work_path_w = StringToUTF16_VLA(work_path_w, work_path, work_path_len);
-			icon_fn_w = StringToUTF16_VLA(icon_fn_w, icon_fn, icon_fn_len);
+			LINK_MACRO_EXPAND(WCHAR_T_DEC);
+			LINK_MACRO_EXPAND(WCHAR_T_CONV_VLA);
 
 			// Set the path to the shortcut target and add the description.
 			psl->SetPath(target_cmd_w);
@@ -62,11 +60,7 @@ extern "C"
 				ppf->Release();
 			}
 			psl->Release();
-			VLA_FREE(link_fn_w);
-			VLA_FREE(target_cmd_w);
-			VLA_FREE(target_args_w);
-			VLA_FREE(work_path_w);
-			VLA_FREE(icon_fn_w);
+			LINK_MACRO_EXPAND(WCHAR_T_FREE);
 		}
 		return hres;
 	}

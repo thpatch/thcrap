@@ -83,9 +83,9 @@ BOOL WINAPI CreateProcessU(
 	WCHAR_T_DEC(lpCmdLine);
 	WCHAR_T_DEC(lpCurrentDirectory);
 
-	lpAppName_w = StringToUTF16_VLA(lpAppName_w, lpAppName, lpAppName_len);
-	lpCmdLine_w = StringToUTF16_VLA(lpCmdLine_w, lpCmdLine, lpCmdLine_len);
-	lpCurrentDirectory_w = StringToUTF16_VLA(lpCurrentDirectory_w, lpCurrentDirectory, lpCurrentDirectory_len);
+	WCHAR_T_CONV_VLA(lpAppName);
+	WCHAR_T_CONV_VLA(lpCmdLine);
+	WCHAR_T_CONV_VLA(lpCurrentDirectory);
 
 	if(lpSI) {
 		size_t si_lpDesktop_len = strlen(lpSI->lpDesktop) + 1;
