@@ -56,6 +56,8 @@ BOOL WINAPI InternetCombineUrlU(
 			ret = StringToUTF8(NULL, lpszBufferReal_w, 0);
 			VLA_FREE(lpszBufferReal_w);
 		}
+		WCHAR_T_FREE(lpszBaseUrl);
+		WCHAR_T_FREE(lpszRelativeUrl);
 		VLA_FREE(lpszBuffer_w);
 		SetLastError(last_error);
 	}
@@ -108,6 +110,8 @@ BOOL WINAPI InternetCrackUrlU(
 
 		last_error = GetLastError();
 		UC_MACRO_EXPAND(UC_CONVERT_AND_FREE);
+
+		WCHAR_T_FREE(lpszUrl);
 		SetLastError(last_error);
 	}
 	return ret;

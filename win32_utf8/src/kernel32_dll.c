@@ -226,7 +226,7 @@ DWORD WINAPI GetCurrentDirectoryU(
 	VLA(wchar_t, lpBuffer_w, nBufferLength);
 
 	if(!lpBuffer) {
-		lpBuffer_w = NULL;
+		VLA_FREE(lpBuffer_w);
 	}
 	ret = GetCurrentDirectoryW(nBufferLength, lpBuffer_w);
 	if(lpBuffer) {

@@ -195,6 +195,7 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 		}
 		VLA_FREE(self_path);
 	}
+	VLA_FREE(self_fn);
 	CoUninitialize();
 }
 
