@@ -304,6 +304,7 @@ int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *lo
 int patch_update(const json_t *patch_info)
 {
 	const char *main_fn = "patch.js";
+	const char *files_fn = "files.js";
 
 	json_t *local_patch_js = NULL;
 	json_t *servers = NULL;
@@ -335,12 +336,15 @@ int patch_update(const json_t *patch_info)
 		goto end_update;
 	}
 
-	local_files = json_object_get_create(local_patch_js, "files", json_object());
-
 	if(json_is_false(json_object_get(local_patch_js, "update"))) {
 		// Updating deactivated on this patch
 		ret = 2;
 		goto end_update;
+	}
+
+	local_files = patch_json_load(patch_info, files_fn, NULL);
+	if(!json_is_object(local_files)) {
+		local_files = json_object();
 	}
 	{
 		const char *patch_name = json_object_get_string(local_patch_js, "id");
@@ -421,7 +425,7 @@ int patch_update(const json_t *patch_info)
 			SAFE_FREE(file_buffer);
 
 			json_object_set(local_files, key, remote_val);
-			patch_json_store(patch_info, main_fn, local_patch_js);
+			patch_json_store(patch_info, files_fn, local_files);
 		}
 	}
 	if(i == file_count) {
@@ -436,6 +440,7 @@ end_update:
 	}
 	SAFE_FREE(remote_patch_js_buffer);
 	json_decref(remote_patch_js);
+	json_decref(local_files);
 	json_decref(local_patch_js);
 	return ret;
 }
