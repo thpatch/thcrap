@@ -306,14 +306,13 @@ int patch_update(const json_t *patch_info)
 	const char *main_fn = "patch.js";
 
 	json_t *local_patch_js = NULL;
-	json_t *local_servers = NULL;
+	json_t *servers = NULL;
 	json_t *local_files = NULL;
 
 	DWORD remote_patch_js_size;
 	BYTE *remote_patch_js_buffer = NULL;
 
 	json_t *remote_patch_js = NULL;
-	json_t *remote_servers = NULL;
 	json_t *remote_files;
 	json_t *remote_val;
 
@@ -350,10 +349,9 @@ int patch_update(const json_t *patch_info)
 		}
 	}
 
-	// Init local servers for bootstrapping
-	local_servers = ServerInit(local_patch_js);
+	servers = ServerInit(local_patch_js);
 
-	remote_patch_js_buffer = ServerDownloadFile(local_servers, main_fn, &remote_patch_js_size, NULL);
+	remote_patch_js_buffer = ServerDownloadFile(servers, main_fn, &remote_patch_js_size, NULL);
 	if(!remote_patch_js_buffer) {
 		// All servers offline...
 		ret = 3;
@@ -375,12 +373,6 @@ int patch_update(const json_t *patch_info)
 		// No "files" object in the remote patch_js
 		ret = 5;
 		goto end_update;
-	}
-
-	remote_servers = ServerInit(remote_patch_js);
-	if(json_object_size(remote_patch_js) == 0) {
-		// No remote servers...? OK, continue with the local ones
-		remote_servers = local_servers;
 	}
 
 	// Yay for doubled loops... just to get the correct number
@@ -405,7 +397,7 @@ int patch_update(const json_t *patch_info)
 		DWORD file_size;
 		json_t *local_val;
 
-		if(!ServerGetNumActive(remote_servers)) {
+		if(!ServerGetNumActive(servers)) {
 			ret = 3;
 			break;
 		}
@@ -420,9 +412,9 @@ int patch_update(const json_t *patch_info)
 
 		if(json_is_integer(remote_val)) {
 			DWORD remote_crc = json_integer_value(remote_val);
-			file_buffer = ServerDownloadFile(remote_servers, key, &file_size, &remote_crc);
+			file_buffer = ServerDownloadFile(servers, key, &file_size, &remote_crc);
 		} else {
-			file_buffer = ServerDownloadFile(remote_servers, key, &file_size, NULL);
+			file_buffer = ServerDownloadFile(servers, key, &file_size, NULL);
 		}
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
