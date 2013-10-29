@@ -310,11 +310,10 @@ int patch_update(const json_t *patch_info)
 	json_t *servers = NULL;
 	json_t *local_files = NULL;
 
-	DWORD remote_patch_js_size;
-	BYTE *remote_patch_js_buffer = NULL;
+	DWORD remote_files_js_size;
+	BYTE *remote_files_js_buffer = NULL;
 
-	json_t *remote_patch_js = NULL;
-	json_t *remote_files;
+	json_t *remote_files = NULL;
 	json_t *remote_val;
 
 	int ret = 0;
@@ -355,27 +354,17 @@ int patch_update(const json_t *patch_info)
 
 	servers = ServerInit(local_patch_js);
 
-	remote_patch_js_buffer = ServerDownloadFile(servers, main_fn, &remote_patch_js_size, NULL);
-	if(!remote_patch_js_buffer) {
+	remote_files_js_buffer = ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
+	if(!remote_files_js_buffer) {
 		// All servers offline...
 		ret = 3;
 		goto end_update;
 	}
 
-	remote_patch_js = json_loadb_report(remote_patch_js_buffer, remote_patch_js_size, 0, main_fn);
-	if(!remote_patch_js) {
-		// Remote patch_js is invalid!
-		ret = 4;
-		goto end_update;
-	}
-
-	// Buffer is written to a file at the end of the update - after all, the
-	// remote patch.js can include more changes than just new file stamps.
-
-	remote_files = json_object_get(remote_patch_js, "files");
+	remote_files = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
 	if(!json_is_object(remote_files)) {
-		// No "files" object in the remote patch_js
-		ret = 5;
+		// Remote files.js is invalid!
+		ret = 4;
 		goto end_update;
 	}
 
@@ -429,7 +418,6 @@ int patch_update(const json_t *patch_info)
 		}
 	}
 	if(i == file_count) {
-		patch_file_store(patch_info, main_fn, remote_patch_js_buffer, remote_patch_js_size);
 		log_printf("Update completed.\n");
 	}
 
@@ -438,8 +426,8 @@ end_update:
 	if(ret == 3) {
 		log_printf("Can't reach any valid server at the moment.\nCancelling update...\n");
 	}
-	SAFE_FREE(remote_patch_js_buffer);
-	json_decref(remote_patch_js);
+	SAFE_FREE(remote_files_js_buffer);
+	json_decref(remote_files);
 	json_decref(local_files);
 	json_decref(local_patch_js);
 	return ret;
