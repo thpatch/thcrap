@@ -415,9 +415,16 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	if(json_object_size(games) > 0) {
 		CreateShortcuts(run_cfg_fn, games);
 		log_printf(
-			"\n\nDone. You can now start the respective games with your selected configuration\n"
+			"\n"
+			"\n"
+			"Done.\n"
+			"\n"
+			"You can now start the respective games with your selected configuration\n"
 			"through the shortcuts created in the current directory\n"
-			"(%s).\n", cur_dir
+			"(%s).\n"
+			"\n"
+			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
+			"\n", cur_dir
 		);
 	}
 end:
