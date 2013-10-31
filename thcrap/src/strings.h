@@ -21,6 +21,10 @@ const char* strings_get(const char *id);
 // if not NULL.
 const char* strings_lookup(const char *in, size_t *out_len);
 
+// String lookup for variable argument lists. Parses [format] and calls
+// [strings_lookup] for every string parameter in [va].
+void strings_va_lookup(va_list va, const char *format);
+
 // Safe and persistent sprintf handler.
 // This function should be inserted via binary hacks everywhere a game
 // calls sprintf, as it guarantees a sufficiently large buffer for the result.
