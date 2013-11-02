@@ -25,6 +25,13 @@ const char* strings_lookup(const char *in, size_t *out_len);
 // [strings_lookup] for every string parameter in [va].
 void strings_va_lookup(va_list va, const char *format);
 
+/// Persistent storage
+/// ------------------
+// Returns a pointer to the string in the persistent storage slot [slot], or
+// NULL on allocation failure. The string's buffer is automatically resized
+// to contain at least [min_len] bytes.
+char* strings_storage_get(const size_t slot, size_t min_len);
+
 // Safe and persistent sprintf handler.
 // This function should be inserted via binary hacks everywhere a game
 // calls sprintf, as it guarantees a sufficiently large buffer for the result.
@@ -34,6 +41,7 @@ void strings_va_lookup(va_list va, const char *format);
 // Returns a pointer to the resulting string.
 const char* strings_vsprintf(const size_t addr, const char *format, va_list va);
 const char* strings_sprintf(const size_t addr, const char *format, ...);
+/// ------------------
 
 void strings_init(void);
 // Adds string lookup wrappers to functions that don't have them yet.

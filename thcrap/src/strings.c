@@ -11,7 +11,7 @@
 
 static json_t *stringdefs = NULL;
 static json_t *stringlocs = NULL;
-static json_t *sprintf_storage = NULL;
+static json_t *strings_storage = NULL;
 
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 
@@ -135,11 +135,30 @@ void strings_va_lookup(va_list va, const char *format)
 	}
 }
 
-const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
+char* strings_storage_get(const size_t slot, size_t min_len)
+{
+	char *ret = NULL;
+	char addr_key[addr_key_len];
+
+	itoa(slot, addr_key, 16);
+	ret = (char*)json_object_get_hex(strings_storage, addr_key);
+
+	// MSVCRT's realloc implementation moves the buffer every time, even if the
+	// new length is shorter...
+	if(!ret || (strlen(ret) + 1 < min_len)) {
+		ret = (char*)realloc(ret, min_len);
+		// Yes, this correctly handles a realloc failure.
+		if(ret) {
+			json_object_set_new(strings_storage, addr_key, json_integer((size_t)ret));
+		}
+	}
+	return ret;
+}
+
+const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
 {
 	char *ret = NULL;
 	size_t str_len;
-	char addr_key[addr_key_len];
 
 	format = strings_lookup(format, NULL);
 	strings_va_lookup(va, format);
@@ -149,23 +168,7 @@ const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
 	}
 	str_len = _vscprintf(format, va) + 1;
 
-	// We shouldn't use JSON strings here because Jansson forces them to be
-	// in UTF-8, and we'd like to sprintf regardless of encoding.
-	// Thus, we have to store char pointers as JSON integers and reallocate
-	// memory if necessary.
-
-	sprintf(addr_key, "0x%x", addr);
-	ret = (char*)json_object_get_hex(sprintf_storage, addr_key);
-
-	// MSVCRT's realloc implementation moves the buffer every time, even if the
-	// new length is shorter...
-	if(!ret || (strlen(ret) + 1 < str_len)) {
-		ret = (char*)realloc(ret, str_len);
-		// Yes, this correctly handles a realloc failure.
-		if(ret) {
-			json_object_set_new(sprintf_storage, addr_key, json_integer((size_t)ret));
-		}
-	}
+	ret = strings_storage_get(slot, str_len);
 	if(ret) {
 		vsprintf(ret, format, va);
 		return ret;
@@ -203,7 +206,7 @@ void strings_init(void)
 {
 	stringdefs = stack_json_resolve("stringdefs.js", NULL);
 	stringlocs = stack_game_json_resolve("stringlocs.js", NULL);
-	sprintf_storage = json_object();
+	strings_storage = json_object();
 }
 
 int strings_detour(HMODULE hMod)
@@ -220,8 +223,8 @@ void strings_exit(void)
 
 	json_decref(stringdefs);
 	json_decref(stringlocs);
-	json_object_foreach(sprintf_storage, key, val) {
+	json_object_foreach(strings_storage, key, val) {
 		free((void*)json_hex_value(val));
 	}
-	json_decref(sprintf_storage);
+	json_decref(strings_storage);
 }

@@ -148,6 +148,7 @@ EXPORTS
 	strings_get
 	strings_lookup
 	strings_va_lookup
+	strings_storage_get
 	strings_sprintf
 	strings_vsprintf
 
