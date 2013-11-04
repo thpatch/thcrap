@@ -9,6 +9,12 @@
 
 #include "thcrap.h"
 
+// Length-prefixed string object used for persistent storage
+typedef struct {
+	size_t len;
+	char str;
+} storage_string_t;
+
 static json_t *stringdefs = NULL;
 static json_t *stringlocs = NULL;
 static json_t *strings_storage = NULL;
@@ -137,22 +143,30 @@ void strings_va_lookup(va_list va, const char *format)
 
 char* strings_storage_get(const size_t slot, size_t min_len)
 {
-	char *ret = NULL;
+	storage_string_t *ret = NULL;
 	char addr_key[addr_key_len];
 
 	itoa(slot, addr_key, 16);
-	ret = (char*)json_object_get_hex(strings_storage, addr_key);
+	ret = (storage_string_t*)json_object_get_hex(strings_storage, addr_key);
 
 	// MSVCRT's realloc implementation moves the buffer every time, even if the
 	// new length is shorter...
-	if(!ret || (strlen(ret) + 1 < min_len)) {
-		ret = (char*)realloc(ret, min_len);
+	if(!ret || (min_len && ret->len < min_len)) {
+		storage_string_t *ret_new = realloc(ret, min_len + sizeof(storage_string_t));
 		// Yes, this correctly handles a realloc failure.
-		if(ret) {
-			json_object_set_new(strings_storage, addr_key, json_integer((size_t)ret));
+		if(ret_new) {
+			ret_new->len = min_len;
+			if(!ret) {
+				ret_new->str = 0;
+			}
+			json_object_set_new(strings_storage, addr_key, json_integer((size_t)ret_new));
+			ret = ret_new;
 		}
 	}
-	return ret;
+	if(ret) {
+		return &ret->str;
+	}
+	return NULL;
 }
 
 const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
