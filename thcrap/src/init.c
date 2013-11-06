@@ -151,9 +151,11 @@ json_t* identify(const char *exe_fn)
 		run_ver = stack_json_resolve(game, NULL);
 	}
 
+	// Ensure that we have a configuration with a "game" key
 	if(!run_ver) {
-		// Create a dummy configuration with at least a "game" key
 		run_ver = json_object();
+	}
+	if(!json_object_get_string(run_ver, "game")) {
 		json_object_set_new(run_ver, "game", json_string(game));
 	}
 
