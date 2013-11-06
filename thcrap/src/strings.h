@@ -44,6 +44,9 @@ const char* strings_sprintf(const size_t addr, const char *format, ...);
 
 // Clears the string in [slot].
 const char* strings_strclr(const size_t slot);
+
+// Concatenates [src] to the existing string in [slot].
+const char* strings_strcat(const size_t slot, const char *src);
 /// ------------------
 
 void strings_init(void);

@@ -210,6 +210,23 @@ const char* strings_strclr(const size_t slot)
 	return ret;
 }
 
+const char* strings_strcat(const size_t slot, const char *src)
+{
+	char *ret = strings_storage_get(slot, 0);
+	size_t ret_len = strlen(ret);
+	size_t src_len;
+
+	src = strings_lookup(src, &src_len);
+
+	ret = strings_storage_get(slot, ret_len + src_len);
+	if(ret) {
+		strncpy(ret + ret_len, src, src_len);
+		return ret;
+	}
+	// Try to save the situation at least somewhat...
+	return src;
+}
+
 /// String lookup hooks
 /// -------------------
 int WINAPI strings_MessageBoxA(
