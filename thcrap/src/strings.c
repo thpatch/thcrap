@@ -201,6 +201,15 @@ const char* strings_sprintf(const size_t addr, const char *format, ...)
 	return ret;
 }
 
+const char* strings_strclr(const size_t slot)
+{
+	char *ret = strings_storage_get(slot, 0);
+	if(ret) {
+		ret[0] = 0;
+	}
+	return ret;
+}
+
 /// String lookup hooks
 /// -------------------
 int WINAPI strings_MessageBoxA(

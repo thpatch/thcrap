@@ -41,6 +41,9 @@ char* strings_storage_get(const size_t slot, size_t min_len);
 // Returns a pointer to the resulting string.
 const char* strings_vsprintf(const size_t addr, const char *format, va_list va);
 const char* strings_sprintf(const size_t addr, const char *format, ...);
+
+// Clears the string in [slot].
+const char* strings_strclr(const size_t slot);
 /// ------------------
 
 void strings_init(void);

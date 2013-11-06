@@ -151,6 +151,7 @@ EXPORTS
 	strings_storage_get
 	strings_sprintf
 	strings_vsprintf
+	strings_strclr
 
 	strings_MessageBoxA
 
