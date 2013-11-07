@@ -34,11 +34,11 @@ int layout_match_set(json_t *arr, size_t ind, const char *str, size_t len)
 
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
 {
-	const char *end = NULL;
 	const char *p = NULL;
 	const char *s = NULL; // argument start
 	json_t *ret = NULL;
 	size_t i = 0;
+	int n = 0; // nesting level
 	size_t ind = 0;
 
 	if(!str || !len) {
@@ -48,24 +48,21 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 		return ret;
 	}
 
-	end = memchr(str, '>', len);
-	if(!end) {
-		return 0;
-	}
 	ret = json_array();
-	len = end - str;
 	s = str + 1;
-	for(i = 1, p = s; i < len; i++, p++) {
-		if(str[i] == '$') {
-			layout_match_set(ret, ind, s, p - s);
+	for(p = s; (i < len) && (n >= 0); i++, p++) {
+		n += (*p == '<');
+		n -= (*p == '>');
+		if(
+			(n == 0 && *p == '$')
+			|| (n == -1 && *p == '>')
+		) {
+			layout_match_set(ret, ind++, s, p - s);
 			s = p + 1;
-			ind++;
 		}
 	}
-	// Append final one
-	layout_match_set(ret, ind, s, p - s);
 	if(match_len) {
-		*match_len = len + 1;
+		*match_len = s - str;
 	}
 	return ret;
 }
