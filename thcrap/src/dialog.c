@@ -467,6 +467,8 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 	const char *dlg_format = NULL;
 	HRSRC hrsrc;
 	HGLOBAL hDlg;
+	HGLOBAL hDlg_rep = NULL;
+	size_t hDlg_len;
 
 	if(!lpTemplateName) {
 		return NULL;
@@ -475,6 +477,7 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 	// MAKEINTRESOURCEA(5) == RT_DIALOG, which we can't use because <UNICODE>
 	hrsrc = FindResourceA(hInstance, lpTemplateName, MAKEINTRESOURCEA(5));
 	hDlg = LoadResource(hInstance, hrsrc);
+	hDlg_len = SizeofResource(hInstance, hrsrc);
 
 	if(!hDlg) {
 		return NULL;
@@ -489,11 +492,23 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 	}
 	{
 		const char *dlg_prefix = "dialog_";
-		const char *dlg_suffix = ".js";
-		size_t fn_len = strlen(dlg_prefix) + dlg_name_len + strlen(dlg_suffix) + 1;
+		const char *dlg_suffix_bin = ".bin";
+		const char *dlg_suffix_js = ".js";
+		size_t fn_len = strlen(dlg_prefix) + dlg_name_len + strlen(dlg_suffix_bin) + 1;
 		VLA(char, fn, fn_len);
-		snprintf(fn, fn_len, dlg_format, dlg_prefix, lpTemplateName, dlg_suffix);
+		size_t hDlg_rep_len;
+
+		snprintf(fn, fn_len, dlg_format, dlg_prefix, lpTemplateName, dlg_suffix_bin);
+		hDlg_rep = stack_game_file_resolve(fn, &hDlg_rep_len);
+
+		if(hDlg_rep) {
+			hDlg = hDlg_rep;
+			hDlg_len = hDlg_rep_len;
+		}
+
+		PathRenameExtensionA(fn, dlg_suffix_js);
 		trans = stack_game_json_resolve(fn, NULL);
+		VLA_FREE(fn);
 	}
 	if(trans) {
 		const DLGTEMPLATEEX_START *dlg_in = (DLGTEMPLATEEX_START*)hDlg;
@@ -504,7 +519,7 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 			BYTE *dst;
 			dialog_adjust_t adj = {0};
 			size_t i;
-			size_t dlg_out_len = SizeofResource(hInstance, hrsrc);
+			size_t dlg_out_len = hDlg_len;
 
 			dlg_out_len += dialog_template_ex_size(trans);
 
@@ -528,6 +543,7 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 		}
 	}
 	json_decref(trans);
+	SAFE_FREE(hDlg_rep);
 	return dlg_out;
 }
 
