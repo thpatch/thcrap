@@ -294,6 +294,41 @@ int thcrap_init(const char *setup_fn)
 			json_t *archive_obj = json_object_get(patch_info, "archive");
 			const char *archive = json_string_value(archive_obj);
 			if(archive) {
+				// Turn relative directories into absolute ones, based on the directory
+				// of the run configuration.
+				// PathCombine() is the only function that reliably works with any kind of
+				// relative path (most importantly paths that start with a backslash
+				// and are thus relative to the drive root).
+				// However, it also considers file names as one implied directory level
+				// and is path of... that other half of shlwapi functions that don't work
+				// with forward slashes. Since this behavior goes all the way down to
+				// PathCanonicalize(), a  "proper" reimplementation is not exactly trivial.
+				// So we play along for now.
+				if(PathIsRelativeA(archive)) {
+					STRLEN_DEC(setup_fn);
+					STRLEN_DEC(archive);
+					size_t abs_archive_len = setup_fn_len + archive_len;
+					VLA(char, abs_archive, abs_archive_len);
+					VLA(char, setup_dir, setup_fn_len);
+					VLA(char, archive_win, archive_len);
+
+					strncpy(archive_win, archive, archive_len);
+					str_slash_normalize_win(archive_win);
+
+					strncpy(setup_dir, setup_fn, setup_fn_len);
+					PathRemoveFileSpec(setup_dir);
+
+					PathCombineA(abs_archive, setup_dir, archive_win);
+					json_object_set_new(patch_info, "archive", json_string(abs_archive));
+
+					// Pointers have changed
+					archive_obj = json_object_get(patch_info, "archive");
+					archive = json_string_value(archive_obj);
+
+					VLA_FREE(archive_win);
+					VLA_FREE(setup_dir);
+					VLA_FREE(abs_archive);
+				}
 				if(!PathFileExists(archive)) {
 					if(!rem_arcs) {
 						rem_arcs = json_array();
