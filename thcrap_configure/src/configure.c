@@ -69,19 +69,19 @@ void pause(void)
 	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
-json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remote_servers)
+json_t* BootstrapPatch(const char *patch_id, const char *server_id, json_t *remote_servers)
 {
 	const char *main_fn = "patch.js";
 
 	json_t *patch_info;
 
-	if(!patch_id || !base_dir) {
+	if(!patch_id || !server_id) {
 		return NULL;
 	}
 	patch_info = json_object();
 
 	{
-		json_t *local_dir = json_pack("s++", base_dir, patch_id, "/");
+		json_t *local_dir = json_pack("s+++", server_id, "/", patch_id, "/");
 		json_object_set_new(patch_info, "archive", local_dir);
 	}
 
@@ -358,23 +358,11 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		size_t i;
 		json_t *json_val;
 		json_t *run_cfg_patches;
-		const char *patch_dir;
 		const char *server_id = json_object_get_string(server_js, "id");
-		size_t base_dir_len = cur_dir_len + 1 + strlen(server_id) + 1;
-		VLA(char, base_dir, base_dir_len);
+		const char *patch_dir = server_id ? server_id : cur_dir;
 
 		if(!patch_stack || !json_array_size(patch_stack)) {
 			// Error...
-		}
-
-		// Construct directory from server ID
-		if(server_id) {
-			sprintf(base_dir, "%s%s/", cur_dir, server_id);
-			CreateDirectory(base_dir, NULL);
-			SetCurrentDirectory(base_dir);
-			patch_dir = base_dir;
-		} else {
-			patch_dir = cur_dir;
 		}
 
 		run_cfg = json_object();
@@ -386,7 +374,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 			json_t *patch_info = BootstrapPatch(patch_id, patch_dir, remote_servers);
 			json_array_append_new(run_cfg_patches, patch_info);
 		}
-		VLA_FREE(base_dir);
 	}
 
 	// That's all on-line stuff we have to do
