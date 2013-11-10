@@ -17,7 +17,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <IntDir>$(SolutionDir)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir>$(SolutionDir)\$(Configuration)\$(RootNamespace)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <TargetName>$(RootNamespace)_d</TargetName>
