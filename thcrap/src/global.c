@@ -39,6 +39,7 @@ json_t* runconfig_get(void)
 void runconfig_set(json_t *new_run_cfg)
 {
 	run_cfg = new_run_cfg;
+	json_incref(run_cfg);
 }
 
 void* runconfig_func_get(const char *name)
