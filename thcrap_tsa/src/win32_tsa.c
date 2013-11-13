@@ -89,6 +89,13 @@ HWND WINAPI tsa_CreateWindowExA(
 	__in_opt LPVOID lpParam
 )
 {
+	HWND ret;
+	const char *game_title = json_object_get_string(runconfig_get(), "title");
+	const char *game_build = json_object_get_string(runconfig_get(), "build");
+	size_t custom_title_len = strlen(game_title) + 1 + strlen(game_build) + 1;
+	VLA(char, custom_title, custom_title_len);
+	const char *window_title = NULL;
+
 	if(X != CW_USEDEFAULT) {
 		X = coord_clamp(
 			X, nWidth, GetSystemMetrics(SM_XVIRTUALSCREEN),
@@ -101,10 +108,17 @@ HWND WINAPI tsa_CreateWindowExA(
 			GetSystemMetrics(SM_CYVIRTUALSCREEN)
 		);
 	}
-	return CreateWindowExU(
-		dwExStyle, lpClassName, strings_lookup(lpWindowName, NULL), dwStyle, X, Y,
+	window_title = strings_lookup(lpWindowName, NULL);
+	if(window_title == lpWindowName && game_title) {
+		sprintf(custom_title, "%s %s", game_title, game_build ? game_build : "");
+		window_title = custom_title;
+	}
+	ret = CreateWindowExU(
+		dwExStyle, lpClassName, window_title, dwStyle, X, Y,
 		nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
 	);
+	VLA_FREE(custom_title);
+	return ret;
 }
 /// ---------------------
 
