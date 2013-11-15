@@ -33,6 +33,10 @@ EXPORTS
 	format_Bpp
 	format_png_equiv
 	format_from_bgra
+
+	sprite_patch_set
+	sprite_patch
+
 	png_load_for_thtx
 	patch_thtx
 

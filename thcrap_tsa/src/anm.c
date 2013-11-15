@@ -107,6 +107,67 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 }
 /// -------
 
+/// Sprite-level patching
+/// ---------------------
+int sprite_patch_set(
+	sprite_patch_t *sp,
+	const size_t thtx_x,
+	const size_t thtx_y,
+	thtx_header_t *thtx,
+	const sprite_t *sprite,
+	const png_image_exp image
+)
+{
+	if(!sp || !thtx || !sprite || !image || !image->buf) {
+		return -1;
+	}
+	ZeroMemory(sp, sizeof(*sp));
+
+	// Note that we don't use the PNG_IMAGE_* macros here - the actual bit depth
+	// after format_from_bgra() may no longer be equal to the one in the PNG header.
+	sp->format = thtx->format;
+	sp->bpp = format_Bpp(sp->format);
+
+	sp->dst_x = (png_uint_32)sprite->x;
+	sp->dst_y = (png_uint_32)sprite->y;
+
+	sp->rep_x = thtx_x + sp->dst_x;
+	sp->rep_y = thtx_y + sp->dst_y;
+
+	if(sp->rep_x >= image->img.width || sp->rep_y >= image->img.height) {
+		return 2;
+	}
+
+	sp->rep_stride = image->img.width * sp->bpp;
+	sp->dst_stride = thtx->w * sp->bpp;
+
+	sp->copy_w = min((png_uint_32)sprite->w, (image->img.width - sp->rep_x));
+	sp->copy_h = min((png_uint_32)sprite->h, (image->img.height - sp->rep_y));
+
+	sp->dst_buf = thtx->data + (sp->dst_y * sp->dst_stride) + (sp->dst_x * sp->bpp);
+	sp->rep_buf = image->buf + (sp->rep_y * sp->rep_stride) + (sp->rep_x * sp->bpp);
+	return 0;
+}
+
+int sprite_patch(const sprite_patch_t *sp)
+{
+	if(sp) {
+		png_uint_32 row;
+		png_bytep dst_buf = sp->dst_buf;
+		png_bytep rep_buf = sp->rep_buf;
+		size_t copy_stride = sp->copy_w * sp->bpp;
+		for(row = 0; row < sp->copy_h; row++) {
+			memcpy(dst_buf, rep_buf, copy_stride);
+
+			dst_buf += sp->dst_stride;
+			rep_buf += sp->rep_stride;
+		}
+		return 0;
+	}
+	return -1;
+}
+/// ---------------------
+
 int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 {
 	void *file_buffer = NULL;
@@ -152,29 +213,19 @@ int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 // [png] is assumed to have the same bit depth as [thtx].
 int patch_thtx(thtx_header_t *thtx, const size_t x, const size_t y, png_image_exp image)
 {
-	if(!thtx || !image || !image->buf || x >= image->img.width || y >= image->img.height) {
-		return -1;
-	}
-	{
-		int bpp = format_Bpp(thtx->format);
-		if(x == 0 && y == 0 && (thtx->w == image->img.width) && (thtx->h == image->img.height)) {
-			// Optimization for the most frequent case
-			memcpy(thtx->data, image->buf, thtx->size);
-		} else {
-			png_bytep in = image->buf + (y * image->img.width * bpp);
-			png_bytep out = thtx->data;
-			size_t png_stride = image->img.width * bpp;
-			size_t thtx_stride = thtx->w * bpp;
-			size_t row;
-			for(row = 0; row < min(thtx->h, (image->img.height - y)); row++) {
-				memcpy(out, in + (x * bpp), min(png_stride, thtx_stride));
+	if(thtx) {
+		sprite_t sprite = {0};
+		sprite_patch_t sp = {0};
 
-				in += png_stride;
-				out += thtx_stride;
-			}
+		// Construct a fake sprite covering the entire texture
+		sprite.w = thtx->w;
+		sprite.h = thtx->h;
+		if(!sprite_patch_set(&sp, x, y, thtx, &sprite, image)) {
+			return sprite_patch(&sp);
 		}
+		return 0;
 	}
-	return 0;
+	return -1;
 }
 
 int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)

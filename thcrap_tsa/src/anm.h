@@ -56,6 +56,30 @@ typedef struct {
 	png_image img;
 	png_bytep buf;
 } png_image_ex, *png_image_exp;
+
+// Coordinates for sprite-based patching
+typedef struct {
+	// General info
+	int bpp;
+	format_t format;
+
+	// Coordinates for the sprite inside the THTX
+	png_uint_32 dst_x;
+	png_uint_32 dst_y;
+	png_uint_32 dst_stride;
+	png_bytep dst_buf;
+
+	// Coordinates for the replacement inside the PNG
+	png_uint_32 rep_x;
+	png_uint_32 rep_y;
+	png_uint_32 rep_stride;
+	png_bytep rep_buf;
+
+	// Size of the rectangle to copy. Clamped to match the dimensions of the
+	// PNG replacement in case it's smaller than the sprite.
+	png_uint_32 copy_w;
+	png_uint_32 copy_h;
+} sprite_patch_t;
 /// --------------
 
 /// Formats
@@ -66,6 +90,22 @@ unsigned int format_png_equiv(format_t format);
 // Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
 /// -------
+
+/// Sprite-level patching
+/// ---------------------
+// Calculates the coordinates.
+int sprite_patch_set(
+	sprite_patch_t *sp,
+	const size_t thtx_x,
+	const size_t thtx_y,
+	thtx_header_t *thtx,
+	const sprite_t *sprite,
+	const png_image_exp image
+);
+
+// Performs sprite-level patching according to the settings in [sp].
+int sprite_patch(const sprite_patch_t *sp);
+/// ---------------------
 
 /// Sprite boundary dumping
 /// -----------------------
