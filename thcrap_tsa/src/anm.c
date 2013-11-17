@@ -75,6 +75,30 @@ unsigned int format_png_equiv(format_t format)
 	}
 }
 
+png_byte format_alpha_max(format_t format)
+{
+	switch(format) {
+		case FORMAT_BGRA8888:
+			return 0xff;
+		case FORMAT_ARGB4444:
+			return 0xf;
+		default:
+			return 0;
+	}
+}
+
+png_byte format_alpha_get(png_bytep data, format_t format)
+{
+	switch(format) {
+		case FORMAT_BGRA8888:
+			return data[3];
+		case FORMAT_ARGB4444:
+			return (data[1] & 0xf0) >> 4;
+		default:
+			return 0;
+	}
+}
+
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 {
 	unsigned int i;
@@ -149,7 +173,62 @@ int sprite_patch_set(
 	return 0;
 }
 
-int sprite_patch(const sprite_patch_t *sp)
+sprite_alpha_t sprite_alpha_analyze(
+	const png_bytep buf,
+	const format_t format,
+	const size_t stride,
+	const png_uint_32 w,
+	const png_uint_32 h
+)
+{
+	const png_byte alpha_max = format_alpha_max(format);
+	if(!buf) {
+		return SPRITE_ALPHA_EMPTY;
+	} else if(!alpha_max) {
+		return SPRITE_ALPHA_OPAQUE;
+	} else {
+		sprite_alpha_t ret = SPRITE_ALPHA_FULL;
+		int bpp = format_Bpp(format);
+		int x, y;
+		png_bytep p = buf;
+		for(y = 0; y < h; y++) {
+			png_bytep row_start = p;
+			for(x = 0; x < w; x++) {
+				png_byte alpha = format_alpha_get(p, format);
+				if(alpha == 0x00 && ret != SPRITE_ALPHA_OPAQUE) {
+					ret = SPRITE_ALPHA_EMPTY;
+				} else if(alpha == alpha_max && ret != SPRITE_ALPHA_EMPTY) {
+					ret = SPRITE_ALPHA_OPAQUE;
+				} else {
+					return SPRITE_ALPHA_FULL;
+				}
+				p += bpp;
+			}
+			p = row_start + stride;
+		}
+		return ret;
+	}
+}
+
+sprite_alpha_t sprite_alpha_analyze_rep(const sprite_patch_t *sp)
+{
+	if(sp) {
+		return sprite_alpha_analyze(sp->rep_buf, sp->format, sp->rep_stride, sp->copy_w, sp->copy_h);
+	} else {
+		return SPRITE_ALPHA_EMPTY;
+	}
+}
+
+sprite_alpha_t sprite_alpha_analyze_dst(const sprite_patch_t *sp)
+{
+	if(sp) {
+		return sprite_alpha_analyze(sp->dst_buf, sp->format, sp->dst_stride, sp->copy_w, sp->copy_h);
+	} else {
+		return SPRITE_ALPHA_EMPTY;
+	}
+}
+
+int sprite_replace(const sprite_patch_t *sp)
 {
 	if(sp) {
 		png_uint_32 row;
@@ -165,6 +244,15 @@ int sprite_patch(const sprite_patch_t *sp)
 		return 0;
 	}
 	return -1;
+}
+
+sprite_alpha_t sprite_patch(const sprite_patch_t *sp)
+{
+	sprite_alpha_t rep_alpha = sprite_alpha_analyze_rep(sp);
+	if(rep_alpha != SPRITE_ALPHA_EMPTY) {
+		sprite_replace(sp);
+	}
+	return rep_alpha;
 }
 /// ---------------------
 
@@ -277,7 +365,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			const char *name = (const char*)(anm_entry_out + nameoffset);
 			thtx_header_t *thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
 
-			// Load a new replacement image, if necessary...
+			// Load a new replacement image, if necessary.
 			if(!name_prev || strcmp(name, name_prev)) {
 				png_load_for_thtx(&png, name, thtx);
 
@@ -287,19 +375,24 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				}
 				name_prev = name;
 			}
-			// ... add texture boundaries...
 			bounds_resize(&bounds, x + thtx->w, y + thtx->h);
 
+			// Perform sprite-level ("advanced") patching if we have a header size
+			// and fall back to basic patching otherwise.
 			if(headersize) {
 				size_t i;
 				DWORD *sprite_ptr = (DWORD*)(anm_entry_out + headersize);
 				for(i = 0; i < sprites; i++, sprite_ptr++) {
+					sprite_patch_t sp;
 					sprite_t *sprite = (sprite_t*)(anm_entry_out + sprite_ptr[0]);
 					bounds_draw_rect(&bounds, x, y, sprite);
+					if(!sprite_patch_set(&sp, x, y, thtx, sprite, &png)) {
+						sprite_patch(&sp);
+					}
 				}
+			} else {
+				patch_thtx(thtx, x, y, &png);
 			}
-			// ... and patch it.
-			patch_thtx(thtx, x, y, &png);
 		}
 		if(!nextoffset) {
 			bounds_store(name_prev, &bounds);

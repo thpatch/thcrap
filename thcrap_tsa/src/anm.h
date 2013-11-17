@@ -57,6 +57,13 @@ typedef struct {
 	png_bytep buf;
 } png_image_ex, *png_image_exp;
 
+// Alpha analysis results
+typedef enum {
+	SPRITE_ALPHA_EMPTY,
+	SPRITE_ALPHA_OPAQUE,
+	SPRITE_ALPHA_FULL
+} sprite_alpha_t;
+
 // Coordinates for sprite-based patching
 typedef struct {
 	// General info
@@ -87,6 +94,11 @@ typedef struct {
 unsigned int format_Bpp(format_t format);
 unsigned int format_png_equiv(format_t format);
 
+// Returns the maximum alpha value (representing 100% opacity) for [format].
+png_byte format_alpha_max(format_t format);
+// Returns the alpha value of the pixel at [data].
+png_byte format_alpha_get(png_bytep data, format_t format);
+
 // Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
 /// -------
@@ -103,8 +115,24 @@ int sprite_patch_set(
 	const png_image_exp image
 );
 
-// Performs sprite-level patching according to the settings in [sp].
-int sprite_patch(const sprite_patch_t *sp);
+// Analyzes the alpha channel contents in a rectangle of size [w]*[h] in the
+// bitmap [buf]. [stride] is used to jump from line to line.
+sprite_alpha_t sprite_alpha_analyze(
+	const png_bytep buf,
+	const format_t format,
+	const size_t stride,
+	const png_uint_32 w,
+	const png_uint_32 h
+);
+// Convenience functions to analyze destination and replacement sprites
+sprite_alpha_t sprite_alpha_analyze_rep(const sprite_patch_t *sp);
+sprite_alpha_t sprite_alpha_analyze_dst(const sprite_patch_t *sp);
+
+// Simply overwrites the destination sprite with its replacement.
+int sprite_replace(const sprite_patch_t *sp);
+
+// Performs alpha analysis on [sp] and runs an appropriate patching function.
+sprite_alpha_t sprite_patch(const sprite_patch_t *sp);
 /// ---------------------
 
 /// Sprite boundary dumping

@@ -32,9 +32,16 @@ EXPORTS
 	struct_get
 	format_Bpp
 	format_png_equiv
+	format_alpha_max
+	format_alpha_get
 	format_from_bgra
 
+	sprite_alpha_analyze
+	sprite_alpha_analyze_rep
+	sprite_alpha_analyze_dst
+
 	sprite_patch_set
+	sprite_replace
 	sprite_patch
 
 	png_load_for_thtx
