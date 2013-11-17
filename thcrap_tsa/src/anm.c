@@ -422,6 +422,19 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			const char *name = (const char*)(anm_entry_out + nameoffset);
 			thtx_header_t *thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
 
+			// Prepare sprite pointers if we have a header size.
+			// Otherwise, we fall back to basic patching later.
+			VLA(sprite_t*, sprite_real, sprites);
+			if(headersize) {
+				size_t i;
+				DWORD *sprite_in = (DWORD*)(anm_entry_out + headersize);
+				for(i = 0; i < sprites; i++, sprite_in++) {
+					sprite_real[i] = (sprite_t*)(anm_entry_out + *sprite_in);
+				}
+			} else {
+				VLA_FREE(sprite_real);
+			}
+
 			// Load a new replacement image, if necessary.
 			if(!name_prev || strcmp(name, name_prev)) {
 				png_load_for_thtx(&png, name, thtx);
@@ -433,23 +446,20 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				name_prev = name;
 			}
 			bounds_resize(&bounds, x + thtx->w, y + thtx->h);
-
-			// Perform sprite-level ("advanced") patching if we have a header size
-			// and fall back to basic patching otherwise.
-			if(headersize) {
+			// Do the patching
+			if(sprite_real) {
 				size_t i;
-				DWORD *sprite_ptr = (DWORD*)(anm_entry_out + headersize);
-				for(i = 0; i < sprites; i++, sprite_ptr++) {
+				for(i = 0; i < sprites; i++) {
 					sprite_patch_t sp;
-					sprite_t *sprite = (sprite_t*)(anm_entry_out + sprite_ptr[0]);
-					bounds_draw_rect(&bounds, x, y, sprite);
-					if(!sprite_patch_set(&sp, x, y, thtx, sprite, &png)) {
+					bounds_draw_rect(&bounds, x, y, sprite_real[i]);
+					if(!sprite_patch_set(&sp, x, y, thtx, sprite_real[i], &png)) {
 						sprite_patch(&sp);
 					}
 				}
 			} else {
 				patch_thtx(thtx, x, y, &png);
 			}
+			VLA_FREE(sprite_real);
 		}
 		if(!nextoffset) {
 			bounds_store(name_prev, &bounds);
