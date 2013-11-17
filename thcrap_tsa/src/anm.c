@@ -133,6 +133,43 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 	}
 	// FORMAT_GRAY8 is fully handled by libpng
 }
+
+void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
+{
+	unsigned int i;
+	if(format == FORMAT_BGRA8888) {
+		for(i = 0; i < pixels; ++i, dst += 4, rep += 4) {
+			const int dst_alpha = 0xff - rep[3];
+
+			dst[0] = (dst[0] * dst_alpha + rep[0] * rep[3]) >> 8;
+			dst[1] = (dst[1] * dst_alpha + rep[1] * rep[3]) >> 8;
+			dst[2] = (dst[2] * dst_alpha + rep[2] * rep[3]) >> 8;
+			dst[3] = (dst[3] * dst_alpha + rep[3] * rep[3]) >> 8;
+		}
+	} else if(format == FORMAT_ARGB4444) {
+		for(i = 0; i < pixels; ++i, dst += 2, rep += 2) {
+			const unsigned char rep_a = (rep[1] & 0xf0) >> 4;
+			const unsigned char rep_r = (rep[1] & 0x0f) >> 0;
+			const unsigned char rep_g = (rep[0] & 0xf0) >> 4;
+			const unsigned char rep_b = (rep[0] & 0x0f) >> 0;
+			const unsigned char dst_a = (dst[1] & 0xf0) >> 4;
+			const unsigned char dst_r = (dst[1] & 0x0f) >> 0;
+			const unsigned char dst_g = (dst[0] & 0xf0) >> 4;
+			const unsigned char dst_b = (dst[0] & 0x0f) >> 0;
+			const int dst_alpha = 0xf - rep_a;
+
+			dst[1] =
+				(dst_a * dst_alpha + rep_a * rep_a & 0xf0) |
+				((dst_r * dst_alpha + rep_r * rep_a) >> 4);
+			dst[0] =
+				(dst_g * dst_alpha + rep_g * rep_a & 0xf0) |
+				((dst_b * dst_alpha + rep_b * rep_a) >> 4);
+		}
+	} else {
+		// Other formats have no alpha channel, so we can just do...
+		memcpy(dst, rep, pixels * format_Bpp(format));
+	}
+}
 /// -------
 
 /// Sprite-level patching
@@ -245,11 +282,32 @@ int sprite_replace(const sprite_patch_t *sp)
 	return -1;
 }
 
+int sprite_blend(const sprite_patch_t *sp)
+{
+	if(sp) {
+		png_uint_32 row;
+		png_bytep dst_p = sp->dst_buf;
+		png_bytep rep_p = sp->rep_buf;
+		for(row = 0; row < sp->copy_h; row++) {
+			format_blend(dst_p, rep_p, sp->copy_w, sp->format);
+			dst_p += sp->dst_stride;
+			rep_p += sp->rep_stride;
+		}
+		return 0;
+	}
+	return -1;
+}
+
 sprite_alpha_t sprite_patch(const sprite_patch_t *sp)
 {
 	sprite_alpha_t rep_alpha = sprite_alpha_analyze_rep(sp);
 	if(rep_alpha != SPRITE_ALPHA_EMPTY) {
-		sprite_replace(sp);
+		sprite_alpha_t dst_alpha = sprite_alpha_analyze_dst(sp);
+		if(dst_alpha == SPRITE_ALPHA_OPAQUE) {
+			sprite_blend(sp);
+		} else {
+			sprite_replace(sp);
+		}
 	}
 	return rep_alpha;
 }

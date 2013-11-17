@@ -35,6 +35,7 @@ EXPORTS
 	format_alpha_max
 	format_alpha_sum
 	format_from_bgra
+	format_blend
 
 	sprite_alpha_analyze
 	sprite_alpha_analyze_rep
@@ -42,6 +43,7 @@ EXPORTS
 
 	sprite_patch_set
 	sprite_replace
+	sprite_blend
 	sprite_patch
 
 	png_load_for_thtx
