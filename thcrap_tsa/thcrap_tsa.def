@@ -33,7 +33,7 @@ EXPORTS
 	format_Bpp
 	format_png_equiv
 	format_alpha_max
-	format_alpha_get
+	format_alpha_sum
 	format_from_bgra
 
 	sprite_alpha_analyze

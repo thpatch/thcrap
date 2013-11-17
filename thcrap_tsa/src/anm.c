@@ -87,16 +87,20 @@ png_byte format_alpha_max(format_t format)
 	}
 }
 
-png_byte format_alpha_get(png_bytep data, format_t format)
+size_t format_alpha_sum(png_bytep data, unsigned int pixels, format_t format)
 {
-	switch(format) {
-		case FORMAT_BGRA8888:
-			return data[3];
-		case FORMAT_ARGB4444:
-			return (data[1] & 0xf0) >> 4;
-		default:
-			return 0;
+	size_t ret = 0;
+	unsigned int i;
+	if(format == FORMAT_BGRA8888) {
+		for(i = 0; i < pixels; ++i, data += 4) {
+			ret += data[3];
+		}
+	} else if(format == FORMAT_ARGB4444) {
+		for(i = 0; i < pixels; ++i, data += 2) {
+			ret += (data[1] & 0xf0) >> 4;
+		}
 	}
+	return ret;
 }
 
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
@@ -181,30 +185,25 @@ sprite_alpha_t sprite_alpha_analyze(
 	const png_uint_32 h
 )
 {
-	const png_byte alpha_max = format_alpha_max(format);
+	const size_t opaque_sum = format_alpha_max(format) * w;
 	if(!buf) {
 		return SPRITE_ALPHA_EMPTY;
-	} else if(!alpha_max) {
+	} else if(!opaque_sum) {
 		return SPRITE_ALPHA_OPAQUE;
 	} else {
 		sprite_alpha_t ret = SPRITE_ALPHA_FULL;
-		int bpp = format_Bpp(format);
-		int x, y;
+		png_uint_32 row;
 		png_bytep p = buf;
-		for(y = 0; y < h; y++) {
-			png_bytep row_start = p;
-			for(x = 0; x < w; x++) {
-				png_byte alpha = format_alpha_get(p, format);
-				if(alpha == 0x00 && ret != SPRITE_ALPHA_OPAQUE) {
-					ret = SPRITE_ALPHA_EMPTY;
-				} else if(alpha == alpha_max && ret != SPRITE_ALPHA_EMPTY) {
-					ret = SPRITE_ALPHA_OPAQUE;
-				} else {
-					return SPRITE_ALPHA_FULL;
-				}
-				p += bpp;
+		for(row = 0; row < h; row++) {
+			size_t sum = format_alpha_sum(p, w, format);
+			if(sum == 0x00 && ret != SPRITE_ALPHA_OPAQUE) {
+				ret = SPRITE_ALPHA_EMPTY;
+			} else if(sum == opaque_sum && ret != SPRITE_ALPHA_EMPTY) {
+				ret = SPRITE_ALPHA_OPAQUE;
+			} else {
+				return SPRITE_ALPHA_FULL;
 			}
-			p = row_start + stride;
+			p += stride;
 		}
 		return ret;
 	}

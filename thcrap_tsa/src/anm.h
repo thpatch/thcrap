@@ -96,8 +96,8 @@ unsigned int format_png_equiv(format_t format);
 
 // Returns the maximum alpha value (representing 100% opacity) for [format].
 png_byte format_alpha_max(format_t format);
-// Returns the alpha value of the pixel at [data].
-png_byte format_alpha_get(png_bytep data, format_t format);
+// Returns the sum of the alpha values for a number of [pixels] starting at [data].
+size_t format_alpha_sum(png_bytep data, unsigned int pixels, format_t format);
 
 // Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
