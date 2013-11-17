@@ -493,12 +493,10 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "msg");
-	return patch_msg(file_inout, size_out, size_in, patch, format);
+	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("msg"));
 }
 
 int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "end");
-	return patch_msg(file_inout, size_out, size_in, patch, format);
+	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("end"));
 }

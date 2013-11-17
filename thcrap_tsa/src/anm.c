@@ -375,7 +375,7 @@ int patch_thtx(thtx_header_t *thtx, const size_t x, const size_t y, png_image_ex
 
 int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "anm");
+	json_t *format = runconfig_format_get("anm");
 	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
 	size_t headersize = json_object_get_hex(format, "headersize");
 
