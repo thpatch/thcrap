@@ -66,6 +66,9 @@ __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 HMODULE WINAPI inject_LoadLibraryU(
 	__in LPCSTR lpLibFileName
 );
+HMODULE WINAPI inject_LoadLibraryW(
+	__in LPCWSTR lpLibFileName
+);
 
 int inject_detour(HMODULE hMod);
 

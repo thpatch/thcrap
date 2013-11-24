@@ -881,12 +881,24 @@ HMODULE WINAPI inject_LoadLibraryU(
 	return ret;
 }
 
+HMODULE WINAPI inject_LoadLibraryW(
+	__in LPCWSTR lpLibFileName
+)
+{
+	HMODULE ret = LoadLibraryW(lpLibFileName);
+	if(ret) {
+		thcrap_detour(ret);
+	}
+	return ret;
+}
+
 int inject_detour(HMODULE hMod)
 {
-	return iat_detour_funcs_var(hMod, "kernel32.dll", 4,
+	return iat_detour_funcs_var(hMod, "kernel32.dll", 5,
 		"CreateProcessA", inject_CreateProcessU,
 		"CreateProcessW", inject_CreateProcessW,
 		"CreateRemoteThread", inject_CreateRemoteThread,
-		"LoadLibraryA", inject_LoadLibraryU
+		"LoadLibraryA", inject_LoadLibraryU,
+		"LoadLibraryW", inject_LoadLibraryW
 	);
 }

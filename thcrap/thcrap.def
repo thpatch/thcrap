@@ -105,6 +105,7 @@ EXPORTS
 	inject_CreateProcessU
 	inject_CreateProcessW
 	inject_LoadLibraryU
+	inject_LoadLibraryW
 	inject_detour
 
 	thcrap_detour
