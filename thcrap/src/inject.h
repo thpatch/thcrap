@@ -51,8 +51,8 @@ BOOL WINAPI inject_CreateProcessW(
 	__out LPPROCESS_INFORMATION lpPI
 );
 
-// Catch DLL injection (lpStartAddress == LoadLibraryA()) and redirect to
-// inject_LoadLibraryU().
+// Catch DLL injection (lpStartAddress == LoadLibraryA() or LoadLibraryW())
+// and redirect to our modified versions that detour all necessary functions.
 __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 	__in HANDLE hProcess,
 	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,

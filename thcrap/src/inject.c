@@ -839,11 +839,27 @@ BOOL WINAPI inject_CreateProcessW(
 	return ret;
 }
 
+LPTHREAD_START_ROUTINE inject_change_start_func(
+	__in HANDLE hProcess,
+	__in LPTHREAD_START_ROUTINE lpStartAddress,
+	__in FARPROC rep_func,
+	__in const char *new_dll,
+	__in const char *new_func
+)
+{
+	LPTHREAD_START_ROUTINE ret = NULL;
+	if((FARPROC)lpStartAddress == rep_func) {
+		HMODULE hMod = GetRemoteModuleHandle(hProcess, new_dll);
+		ret = (LPTHREAD_START_ROUTINE)GetRemoteProcAddress(hProcess, hMod, new_func);
+	}
+	return ret ? ret : lpStartAddress;
+}
+
 __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 	__in HANDLE hProcess,
 	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
 	__in SIZE_T dwStackSize,
-	__in LPTHREAD_START_ROUTINE lpStartAddress,
+	__in LPTHREAD_START_ROUTINE lpFunc,
 	__in_opt LPVOID lpParameter,
 	__in DWORD dwCreationFlags,
 	__out_opt LPDWORD lpThreadId
@@ -856,16 +872,17 @@ __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 #endif
 	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
 	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
+	FARPROC kernel32_LoadLibraryW = GetProcAddress(hKernel32, "LoadLibraryW");
 
-	if((FARPROC)lpStartAddress == kernel32_LoadLibraryA) {
-		HMODULE hThcrap = GetRemoteModuleHandle(hProcess, thcrap_dll);
-		FARPROC new_func = GetRemoteProcAddress(hProcess, hThcrap, "inject_LoadLibraryU");
-		if(new_func) {
-			lpStartAddress = (LPTHREAD_START_ROUTINE)new_func;
-		}
-	}
+	lpFunc = inject_change_start_func(
+		hProcess, lpFunc, kernel32_LoadLibraryA, thcrap_dll, "inject_LoadLibraryU"
+	);
+	lpFunc = inject_change_start_func(
+		hProcess, lpFunc, kernel32_LoadLibraryW, thcrap_dll, "inject_LoadLibraryW"
+	);
+
 	return CreateRemoteThread(
-		hProcess, lpThreadAttributes, dwStackSize, lpStartAddress,
+		hProcess, lpThreadAttributes, dwStackSize, lpFunc,
 		lpParameter, dwCreationFlags, lpThreadId
 	);
 }
