@@ -64,6 +64,25 @@ typedef enum {
 	SPRITE_ALPHA_FULL
 } sprite_alpha_t;
 
+// All ANM data we need
+typedef struct {
+	// X and Y offsets of the THTX inside the image
+	png_uint_32 x;
+	png_uint_32 y;
+
+	// Offset to the next entry in the ANM archive. 0 indicates the last one.
+	size_t nextoffset;
+
+	int hasbitmap;
+
+	// File name of the original PNG associated with the bitmap.
+	const char *name;
+
+	thtx_header_t *thtx;
+	sprite_t **sprites;
+	size_t sprite_num;
+} anm_entry_t;
+
 // Coordinates for sprite-based patching
 typedef struct {
 	// General info
@@ -106,14 +125,21 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
 void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format);
 /// -------
 
+/// ANM structure
+/// -------------
+// Fills [entry] with the data of an ANM entry starting at [in], using the
+// format specification from [format].
+int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format);
+
+void anm_entry_clear(anm_entry_t *entry);
+/// -------------
+
 /// Sprite-level patching
 /// ---------------------
 // Calculates the coordinates.
 int sprite_patch_set(
 	sprite_patch_t *sp,
-	const size_t thtx_x,
-	const size_t thtx_y,
-	thtx_header_t *thtx,
+	const anm_entry_t *entry,
 	const sprite_t *sprite,
 	const png_image_exp image
 );

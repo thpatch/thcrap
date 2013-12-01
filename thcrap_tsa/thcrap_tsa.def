@@ -37,6 +37,9 @@ EXPORTS
 	format_from_bgra
 	format_blend
 
+	anm_entry_init
+	anm_entry_clear
+
 	sprite_alpha_analyze
 	sprite_alpha_analyze_rep
 	sprite_alpha_analyze_dst
