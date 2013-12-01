@@ -75,6 +75,7 @@ EXPORTS
 
 	fn_for_game
 	fn_for_build
+	patch_print_fn
 
 	dir_create_for_fn
 

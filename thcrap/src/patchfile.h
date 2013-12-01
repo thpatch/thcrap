@@ -48,6 +48,9 @@ char* fn_for_build(const char *fn);
 // Returns the full patch-relative name of a game-relative file.
 // Return value has to be free()d by the caller!
 char* fn_for_game(const char *fn);
+
+// Prints the full path of a patch-relative file name to the log.
+void patch_print_fn(const json_t *patch_info, const char *fn);
 /// ----------
 
 /// -----------

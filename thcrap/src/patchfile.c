@@ -91,11 +91,19 @@ char* fn_for_game(const char *fn)
 	return full_fn;
 }
 
-void log_print_patch_fn(json_t *patch_info, const char *fn, int level)
+void patch_print_fn(const json_t *patch_info, const char *fn)
 {
+	const json_t *patches = json_object_get(runconfig_get(), "patches");
+	const json_t *obj;
 	const char *archive;
+	size_t level;
 	if(!patch_info || !fn) {
 		return;
+	}
+	json_array_foreach(patches, level, obj) {
+		if(patch_info == obj) {
+			break;
+		}
 	}
 	archive = json_object_get_string(patch_info, "archive");
 	log_printf("\n%*s+ %s%s", (level + 1), " ", archive, fn);
@@ -246,13 +254,13 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 }
 
 // Helper function for stack_json_resolve.
-size_t stack_json_load(json_t **json_inout, json_t *patch_info, const char *fn, size_t level)
+size_t stack_json_load(json_t **json_inout, json_t *patch_info, const char *fn)
 {
 	size_t file_size = 0;
 	if(fn && json_inout) {
 		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
 		if(json_new) {
-			log_print_patch_fn(patch_info, fn, level);
+			patch_print_fn(patch_info, fn);
 			if(!*json_inout) {
 				*json_inout = json_new;
 			} else {
@@ -280,8 +288,8 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	log_printf("(JSON) Resolving %s... ", fn);
 
 	json_array_foreach(patch_array, i, patch_obj) {
-		json_size += stack_json_load(&ret, patch_obj, fn, i);
-		json_size += stack_json_load(&ret, patch_obj, fn_build, i);
+		json_size += stack_json_load(&ret, patch_obj, fn);
+		json_size += stack_json_load(&ret, patch_obj, fn_build);
 	}
 	if(!ret) {
 		log_printf("not found\n");
@@ -327,7 +335,7 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 			log_fn = fn_common_ptr;
 		}
 		if(ret) {
-			log_print_patch_fn(patch_obj, log_fn, i);
+			patch_print_fn(patch_obj, log_fn);
 			break;
 		}
 	}
