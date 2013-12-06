@@ -38,8 +38,8 @@ int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 	return 0;
 }
 
-#define STRUCT_GET(type, val, src, spec_obj) \
-	struct_get(&(val), sizeof(type), src, json_object_get(spec_obj, #val))
+#define STRUCT_GET(val, src, spec_obj) \
+	struct_get(&(val), sizeof(val), src, json_object_get(spec_obj, #val))
 /// --------------------------------
 
 /// Formats
@@ -338,13 +338,13 @@ int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format)
 	headersize = json_object_get_hex(format, "headersize");
 
 	if(
-		STRUCT_GET(size_t, x, in, format) ||
-		STRUCT_GET(size_t, y, in, format) ||
-		STRUCT_GET(size_t, nameoffset, in, format) ||
-		STRUCT_GET(size_t, thtxoffset, in, format) ||
-		STRUCT_GET(size_t, hasdata, in, format) ||
-		STRUCT_GET(size_t, nextoffset, in, format) ||
-		STRUCT_GET(size_t, sprites, in, format)
+		STRUCT_GET(x, in, format) ||
+		STRUCT_GET(y, in, format) ||
+		STRUCT_GET(nameoffset, in, format) ||
+		STRUCT_GET(thtxoffset, in, format) ||
+		STRUCT_GET(hasdata, in, format) ||
+		STRUCT_GET(nextoffset, in, format) ||
+		STRUCT_GET(sprites, in, format)
 	) {
 		return 1;
 	}
