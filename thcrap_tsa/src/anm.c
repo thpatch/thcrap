@@ -136,15 +136,20 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 
 void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
 {
+	// Alpha values are added and clamped to the format's maximum. This avoids a
+	// flaw in the blending algorithm, which may decrease the alpha value even if
+	// both target and replacement pixels are fully opaque.
+	// (This also seems to be what the default composition mode in GIMP does.)
 	unsigned int i;
 	if(format == FORMAT_BGRA8888) {
 		for(i = 0; i < pixels; ++i, dst += 4, rep += 4) {
+			const int new_alpha = dst[3] + rep[3];
 			const int dst_alpha = 0xff - rep[3];
 
 			dst[0] = (dst[0] * dst_alpha + rep[0] * rep[3]) >> 8;
 			dst[1] = (dst[1] * dst_alpha + rep[1] * rep[3]) >> 8;
 			dst[2] = (dst[2] * dst_alpha + rep[2] * rep[3]) >> 8;
-			dst[3] = (dst[3] * dst_alpha + rep[3] * rep[3]) >> 8;
+			dst[3] = min(new_alpha, 0xff);
 		}
 	} else if(format == FORMAT_ARGB4444) {
 		for(i = 0; i < pixels; ++i, dst += 2, rep += 2) {
@@ -156,10 +161,11 @@ void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t fo
 			const unsigned char dst_r = (dst[1] & 0x0f) >> 0;
 			const unsigned char dst_g = (dst[0] & 0xf0) >> 4;
 			const unsigned char dst_b = (dst[0] & 0x0f) >> 0;
+			const int new_alpha = dst_a + rep_a;
 			const int dst_alpha = 0xf - rep_a;
 
 			dst[1] =
-				(dst_a * dst_alpha + rep_a * rep_a & 0xf0) |
+				min(new_alpha, 0xf) |
 				((dst_r * dst_alpha + rep_r * rep_a) >> 4);
 			dst[0] =
 				(dst_g * dst_alpha + rep_g * rep_a & 0xf0) |
