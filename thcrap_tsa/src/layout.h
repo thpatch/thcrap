@@ -23,7 +23,7 @@ json_t* layout_tokenize(const char *str, size_t len);
 /// ------------
 
 // Raw text width calculation, without taking layout markup into account.
-size_t __stdcall GetTextExtentBase(const char *str);
+size_t GetTextExtentBase(HDC hdc, const json_t *str_obj);
 
 // Calculates the rendered length of [str] on the current text DC
 // with the currently selected font, taking layout markup into account.
