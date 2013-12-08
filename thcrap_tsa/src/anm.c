@@ -134,6 +134,11 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 	// FORMAT_GRAY8 is fully handled by libpng
 }
 
+void format_copy(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
+{
+	memcpy(dst, rep, pixels * format_Bpp(format));
+}
+
 void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
 {
 	// Alpha values are added and clamped to the format's maximum. This avoids a
@@ -173,7 +178,7 @@ void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t fo
 		}
 	} else {
 		// Other formats have no alpha channel, so we can just do...
-		memcpy(dst, rep, pixels * format_Bpp(format));
+		format_copy(dst, rep, pixels, format);
 	}
 }
 /// -------
@@ -268,32 +273,14 @@ sprite_alpha_t sprite_alpha_analyze_dst(const sprite_patch_t *sp)
 	}
 }
 
-int sprite_replace(const sprite_patch_t *sp)
+int sprite_blit(const sprite_patch_t *sp, const BlitFunc_t func)
 {
-	if(sp) {
-		png_uint_32 row;
-		png_bytep dst_buf = sp->dst_buf;
-		png_bytep rep_buf = sp->rep_buf;
-		size_t copy_stride = sp->copy_w * sp->bpp;
-		for(row = 0; row < sp->copy_h; row++) {
-			memcpy(dst_buf, rep_buf, copy_stride);
-
-			dst_buf += sp->dst_stride;
-			rep_buf += sp->rep_stride;
-		}
-		return 0;
-	}
-	return -1;
-}
-
-int sprite_blend(const sprite_patch_t *sp)
-{
-	if(sp) {
+	if(sp && func) {
 		png_uint_32 row;
 		png_bytep dst_p = sp->dst_buf;
 		png_bytep rep_p = sp->rep_buf;
 		for(row = 0; row < sp->copy_h; row++) {
-			format_blend(dst_p, rep_p, sp->copy_w, sp->format);
+			func(dst_p, rep_p, sp->copy_w, sp->format);
 			dst_p += sp->dst_stride;
 			rep_p += sp->rep_stride;
 		}
@@ -306,12 +293,14 @@ sprite_alpha_t sprite_patch(const sprite_patch_t *sp)
 {
 	sprite_alpha_t rep_alpha = sprite_alpha_analyze_rep(sp);
 	if(rep_alpha != SPRITE_ALPHA_EMPTY) {
+		BlitFunc_t func = NULL;
 		sprite_alpha_t dst_alpha = sprite_alpha_analyze_dst(sp);
 		if(dst_alpha == SPRITE_ALPHA_OPAQUE) {
-			sprite_blend(sp);
+			func = format_blend;
 		} else {
-			sprite_replace(sp);
+			func = format_copy;
 		}
+		sprite_blit(sp, func);
 	}
 	return rep_alpha;
 }
