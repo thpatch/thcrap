@@ -90,9 +90,10 @@ HWND WINAPI tsa_CreateWindowExA(
 )
 {
 	HWND ret;
-	const char *game_title = json_object_get_string(runconfig_get(), "title");
-	const char *game_build = json_object_get_string(runconfig_get(), "build");
-	size_t custom_title_len = strlen(game_title) + 1 + strlen(game_build) + 1;
+	const json_t *game_title = json_object_get(runconfig_get(), "title");
+	const json_t *game_build = json_object_get(runconfig_get(), "build");
+	size_t custom_title_len =
+		json_string_length(game_title) + 1 + json_string_length(game_build) + 1;
 	VLA(char, custom_title, custom_title_len);
 	const char *window_title = NULL;
 
@@ -110,7 +111,9 @@ HWND WINAPI tsa_CreateWindowExA(
 	}
 	window_title = strings_lookup(lpWindowName, NULL);
 	if(window_title == lpWindowName && game_title) {
-		sprintf(custom_title, "%s %s", game_title, game_build ? game_build : "");
+		sprintf(custom_title, "%s %s",
+			json_string_value(game_title),
+			json_is_string(game_build) ? json_string_value(game_build) : "");
 		window_title = custom_title;
 	}
 	ret = CreateWindowExU(

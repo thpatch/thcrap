@@ -277,7 +277,8 @@ int thcrap_init(const char *run_cfg_fn)
 		DWORD min_build = 0;
 		char *url_engine = NULL;
 		json_t *rem_arcs = NULL;
-		size_t rem_arcs_str_len = 0;
+		// Don't forget the null terminator...
+		size_t rem_arcs_str_len = 1;
 
 		json_array_foreach(patches, i, patch_info) {
 			json_t *patch_js;
@@ -299,7 +300,7 @@ int thcrap_init(const char *run_cfg_fn)
 				// So we play along for now.
 				if(PathIsRelativeA(archive)) {
 					STRLEN_DEC(run_cfg_fn);
-					STRLEN_DEC(archive);
+					size_t archive_len = json_string_length(archive_obj) + 1;
 					size_t abs_archive_len = run_cfg_fn_len + archive_len;
 					VLA(char, abs_archive, abs_archive_len);
 					VLA(char, setup_dir, run_cfg_fn_len);
@@ -326,7 +327,7 @@ int thcrap_init(const char *run_cfg_fn)
 						rem_arcs = json_array();
 					}
 					json_array_append(rem_arcs, archive_obj);
-					rem_arcs_str_len += 1 + strlen(archive) + 1;
+					rem_arcs_str_len += 1 + json_string_length(archive_obj) + 1;
 				}
 			} else {
 				// No archive?!?

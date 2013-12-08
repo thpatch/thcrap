@@ -113,9 +113,7 @@ char* run_cfg_fn_build(const json_t *patch_stack)
 
 	// Here at Touhou Patch Center, we love double loops.
 	json_array_foreach(patch_stack, i, json_val) {
-		if(json_is_string(json_val)) {
-			run_cfg_fn_len += strlen(json_string_value(json_val)) + 1;
-		}
+		run_cfg_fn_len += json_string_length(json_val) + 1;
 	}
 
 	run_cfg_fn = (char*)malloc(run_cfg_fn_len);

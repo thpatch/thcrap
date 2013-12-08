@@ -46,7 +46,7 @@ void* file_read(const char *fn, size_t *file_size)
 
 char* fn_for_build(const char *fn)
 {
-	const char *build = json_object_get_string(run_cfg, "build");
+	const json_t *build = json_object_get(run_cfg, "build");
 	size_t name_len;
 	size_t ret_len;
 	const char *first_ext = fn;
@@ -55,7 +55,7 @@ char* fn_for_build(const char *fn)
 	if(!fn || !build) {
 		return NULL;
 	}
-	ret_len = strlen(fn) + 1 + strlen(build) + 1;
+	ret_len = strlen(fn) + 1 + json_string_length(build) + 1;
 	ret = (char*)malloc(ret_len);
 	if(!ret) {
 		return NULL;
@@ -68,23 +68,24 @@ char* fn_for_build(const char *fn)
 	}
 	name_len = (first_ext - fn);
 	strncpy(ret, fn, name_len);
-	sprintf(ret + name_len, ".%s%s", build, first_ext);
+	sprintf(ret + name_len, ".%s%s", json_string_value(build), first_ext);
 	return ret;
 }
 
 char* fn_for_game(const char *fn)
 {
-	const char *game_id = json_object_get_string(run_cfg, "game");
+	const json_t *game_id = json_object_get(run_cfg, "game");
+	size_t game_id_len = json_string_length(game_id) + 1;
 	char *full_fn;
 
 	if(!fn) {
 		return NULL;
 	}
-	full_fn = (char*)malloc(strlen(game_id) + 1 + strlen(fn) + 1);
+	full_fn = (char*)malloc(game_id_len + strlen(fn) + 1);
 
 	full_fn[0] = 0; // Because strcat
 	if(game_id) {
-		strcpy(full_fn, game_id);
+		strncpy(full_fn, json_string_value(game_id), game_id_len);
 		strcat(full_fn, "/");
 	}
 	strcat(full_fn, fn);
@@ -132,16 +133,14 @@ int dir_create_for_fn(const char *fn)
 
 char* fn_for_patch(const json_t *patch_info, const char *fn)
 {
-	size_t archive_len;
-	const char *archive = NULL;
+	const json_t *archive = json_object_get(patch_info, "archive");
+	size_t archive_len = json_string_length(archive) + 1;
 	size_t patch_fn_len;
 	char *patch_fn = NULL;
 
-	archive = json_object_get_string(patch_info, "archive");
 	if(!archive) {
 		return NULL;
 	}
-	archive_len = strlen(archive) + 1;
 	/*
 	if(archive[archive_len - 1] != '\\' && archive[archive_len - 1] != '/') {
 		// ZIP archives not yet supported
@@ -152,7 +151,7 @@ char* fn_for_patch(const json_t *patch_info, const char *fn)
 	patch_fn_len = archive_len + strlen(fn) + 1;
 	patch_fn = (char*)malloc(patch_fn_len * sizeof(char));
 
-	strcpy(patch_fn, archive);
+	strncpy(patch_fn, json_string_value(archive), archive_len);
 	strcat(patch_fn, fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;

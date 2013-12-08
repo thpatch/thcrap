@@ -191,8 +191,9 @@ void* ServerDownloadFile(
 
 		{
 			URL_COMPONENTSA uc = {0};
-			const char *server_url = json_object_get_string(server, "url");
-			STRLEN_DEC(server_url);
+			const json_t *server_url_obj = json_object_get(server, "url");
+			const char *server_url = json_string_value(server_url_obj);
+			size_t server_url_len = json_string_length(server_url_obj);
 			// * 3 because characters may be URL-encoded
 			DWORD url_len = server_url_len + 1 + (strlen(fn) * 3) + 1;
 			VLA(char, server_host, server_url_len);

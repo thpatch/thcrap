@@ -17,11 +17,11 @@ static size_t cache_track = 0;
 const char* music_title_get(size_t track)
 {
 	const char *ret = NULL;
-	const char *game = json_object_get_string(runconfig_get(), "game");
-	if(game) {
-		size_t key_len = strlen(game) + 1 + 2 + str_num_digits(track) + 1;
+	json_t *game = json_object_get(runconfig_get(), "game");
+	if(json_is_string(game)) {
+		size_t key_len = json_string_length(game) + 1 + 2 + str_num_digits(track) + 1;
 		VLA(char, key, key_len);
-		sprintf(key, "%s_%02u", game, track);
+		sprintf(key, "%s_%02u", json_string_value(game), track);
 		ret = json_object_get_string(themes, key);
 		VLA_FREE(key);
 	}

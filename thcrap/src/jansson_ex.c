@@ -13,11 +13,12 @@ size_t json_hex_value(json_t *val)
 {
 	const char *str = json_string_value(val);
 	if(str) {
+		size_t str_len = json_string_length(val);
 		int base = 10;
 		size_t offset = 0;
 		size_t ret = 0;
 
-		if(strlen(str) > 2) {
+		if(str_len > 2) {
 			// Module-relative hex values
 			if(!strnicmp(str, "Rx", 2)) {
 				ret += (size_t)GetModuleHandle(NULL);
