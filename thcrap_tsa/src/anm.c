@@ -416,15 +416,26 @@ int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 	if(image->buf) {
 		format_from_bgra(image->buf, image->img.width * image->img.height, thtx->format);
 	}
-	return 0;
+	return !image->buf;
 }
 
 // Patches an [image] prepared by <png_load_for_thtx> into [entry].
+// Patching will be performed on sprite level if the <sprites> and
+// <sprite_num> members of [entry] are valid.
 // [png] is assumed to have the same bit depth as the texture in [entry].
 int patch_thtx(anm_entry_t *entry, png_image_exp image)
 {
 	if(!entry || !entry->thtx || !image || !image->buf) {
 		return -1;
+	}
+	if(entry->sprites && entry->sprite_num > 1) {
+		size_t i;
+		for(i = 0; i < entry->sprite_num; i++) {
+			sprite_patch_t sp;
+			if(!sprite_patch_set(&sp, entry, entry->sprites[i], image)) {
+				sprite_patch(&sp);
+			}
+		}
 	} else {
 		// Construct a fake sprite covering the entire texture
 		sprite_t sprite = {0};
@@ -481,19 +492,14 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				name_prev = entry.name;
 			}
 			bounds_resize(&bounds, entry.x + entry.thtx->w, entry.y + entry.thtx->h);
-			// Do the patching
 			if(entry.sprites) {
 				size_t i;
 				for(i = 0; i < entry.sprite_num; i++) {
-					sprite_patch_t sp;
 					bounds_draw_rect(&bounds, entry.x, entry.y, entry.sprites[i]);
-					if(!sprite_patch_set(&sp, &entry, entry.sprites[i], &png)) {
-						sprite_patch(&sp);
-					}
 				}
-			} else {
-				patch_thtx(&entry, &png);
 			}
+			// Do the patching
+			patch_thtx(&entry, &png);
 		}
 		if(!entry.nextoffset) {
 			bounds_store(name_prev, &bounds);
