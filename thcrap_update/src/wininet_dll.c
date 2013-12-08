@@ -29,8 +29,8 @@ BOOL WINAPI InternetCombineUrlU(
 		if(!lpszBuffer) {
 			lpszBuffer_w = NULL;
 		}
-		WCHAR_T_CONV(lpszBaseUrl);
-		WCHAR_T_CONV(lpszRelativeUrl);
+		WCHAR_T_CONV_VLA(lpszBaseUrl);
+		WCHAR_T_CONV_VLA(lpszRelativeUrl);
 		ret = InternetCombineUrlW(
 			lpszBaseUrl_w, lpszRelativeUrl_w, lpszBuffer_w, lpdwBufferLength, dwFlags
 		);
@@ -105,7 +105,7 @@ BOOL WINAPI InternetCrackUrlU(
 		memcpy(&lpUC_w, lpUC, lpUC->dwStructSize);	
 		UC_MACRO_EXPAND(UC_SET_W);
 
-		WCHAR_T_CONV(lpszUrl);
+		WCHAR_T_CONV_VLA(lpszUrl);
 		ret = InternetCrackUrlW(lpszUrl_w, dwUrlLength, dwFlags, &lpUC_w);
 
 		last_error = GetLastError();
@@ -133,7 +133,7 @@ HINTERNET WINAPI InternetOpenUrlU(
 	if(lpszUrl) {
 		WCHAR_T_DEC(lpszUrl);
 		VLA(wchar_t, lpszHeaders_w, dwHeadersLength);
-		WCHAR_T_CONV(lpszUrl);
+		WCHAR_T_CONV_VLA(lpszUrl);
 		StringToUTF16(lpszHeaders_w, lpszHeaders, dwHeadersLength);
 		ret = InternetOpenUrlW(
 			hInternet, lpszUrl_w, lpszHeaders ? lpszHeaders_w : NULL, dwHeadersLength, dwFlags, dwContext

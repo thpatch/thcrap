@@ -29,8 +29,8 @@ BOOL STDAPICALLTYPE PathMatchSpecU(
 	BOOL ret;
 	WCHAR_T_DEC(pszFile);
 	WCHAR_T_DEC(pszSpec);
-	WCHAR_T_CONV(pszFile);
-	WCHAR_T_CONV(pszSpec);
+	WCHAR_T_CONV_VLA(pszFile);
+	WCHAR_T_CONV_VLA(pszSpec);
 	ret = PathMatchSpecW(pszFile_w, pszSpec_w);
 	VLA_FREE(pszFile_w);
 	VLA_FREE(pszSpec_w);

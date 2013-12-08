@@ -27,7 +27,7 @@ HFONT WINAPI CreateFontU(
 {
 	HFONT ret;
 	WCHAR_T_DEC(pszFaceName);
-	WCHAR_T_CONV(pszFaceName);
+	WCHAR_T_CONV_VLA(pszFaceName);
 	ret = CreateFontW(
 		cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic,
 		bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision,
