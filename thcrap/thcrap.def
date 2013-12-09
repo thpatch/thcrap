@@ -89,6 +89,8 @@ EXPORTS
 	stack_game_file_resolve
 	stack_game_json_resolve
 
+	patch_rel_to_abs
+
 	; Hooks
 	; -----
 	patchhook_register

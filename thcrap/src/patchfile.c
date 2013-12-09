@@ -356,6 +356,47 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 	return ret;
 }
 
+int patch_rel_to_abs(json_t *patch_info, const char *base_path)
+{
+	json_t *archive_obj = json_object_get(patch_info, "archive");
+	const char *archive = json_string_value(archive_obj);
+	if(!patch_info || !base_path) {
+		return -1;
+	}
+
+	// PathCombine() is the only function that reliably works with any kind of
+	// relative path (most importantly paths that start with a backslash
+	// and are thus relative to the drive root).
+	// However, it also considers file names as one implied directory level
+	// and is path of... that other half of shlwapi functions that don't work
+	// with forward slashes. Since this behavior goes all the way down to
+	// PathCanonicalize(), a "proper" reimplementation is not exactly trivial.
+	// So we play along for now.
+	if(PathIsRelativeA(archive)) {
+		STRLEN_DEC(base_path);
+		size_t archive_len = json_string_length(archive_obj) + 1;
+		size_t abs_archive_len = base_path_len + archive_len;
+		VLA(char, abs_archive, abs_archive_len);
+		VLA(char, base_dir, base_path_len);
+		VLA(char, archive_win, archive_len);
+
+		strncpy(archive_win, archive, archive_len);
+		str_slash_normalize_win(archive_win);
+
+		strncpy(base_dir, base_path, base_path_len);
+		PathRemoveFileSpec(base_dir);
+
+		PathCombineA(abs_archive, base_dir, archive_win);
+		json_string_set(archive_obj, abs_archive);
+
+		VLA_FREE(archive_win);
+		VLA_FREE(base_dir);
+		VLA_FREE(abs_archive);
+		return 0;
+	}
+	return 1;
+}
+
 int patchhook_register(const char *wildcard, func_patch_t patch_func)
 {
 	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());

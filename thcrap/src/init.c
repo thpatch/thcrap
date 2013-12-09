@@ -284,54 +284,18 @@ int thcrap_init(const char *run_cfg_fn)
 			json_t *patch_js;
 			DWORD cur_min_build;
 
+			// Why, hello there, C89.
+			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
+
 			// Check archive presence
 			json_t *archive_obj = json_object_get(patch_info, "archive");
 			const char *archive = json_string_value(archive_obj);
-			if(archive) {
-				// Turn relative directories into absolute ones, based on the directory
-				// of the run configuration.
-				// PathCombine() is the only function that reliably works with any kind of
-				// relative path (most importantly paths that start with a backslash
-				// and are thus relative to the drive root).
-				// However, it also considers file names as one implied directory level
-				// and is path of... that other half of shlwapi functions that don't work
-				// with forward slashes. Since this behavior goes all the way down to
-				// PathCanonicalize(), a "proper" reimplementation is not exactly trivial.
-				// So we play along for now.
-				if(PathIsRelativeA(archive)) {
-					STRLEN_DEC(run_cfg_fn);
-					size_t archive_len = json_string_length(archive_obj) + 1;
-					size_t abs_archive_len = run_cfg_fn_len + archive_len;
-					VLA(char, abs_archive, abs_archive_len);
-					VLA(char, setup_dir, run_cfg_fn_len);
-					VLA(char, archive_win, archive_len);
-
-					strncpy(archive_win, archive, archive_len);
-					str_slash_normalize_win(archive_win);
-
-					strncpy(setup_dir, run_cfg_fn, run_cfg_fn_len);
-					PathRemoveFileSpec(setup_dir);
-
-					PathCombineA(abs_archive, setup_dir, archive_win);
-					json_string_set(archive_obj, abs_archive);
-
-					// Pointers have changed
-					archive = json_string_value(archive_obj);
-
-					VLA_FREE(archive_win);
-					VLA_FREE(setup_dir);
-					VLA_FREE(abs_archive);
+			if(!PathFileExists(archive)) {
+				if(!rem_arcs) {
+					rem_arcs = json_array();
 				}
-				if(!PathFileExists(archive)) {
-					if(!rem_arcs) {
-						rem_arcs = json_array();
-					}
-					json_array_append(rem_arcs, archive_obj);
+				json_array_append(rem_arcs, archive_obj);
 					rem_arcs_str_len += 1 + json_string_length(archive_obj) + 1;
-				}
-			} else {
-				// No archive?!?
-				// Is this an error? I'm not sure
 			}
 
 			patch_js = patch_json_load(patch_info, "patch.js", NULL);

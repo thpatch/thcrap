@@ -97,6 +97,13 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size);
 json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 /// ----------------------
 
+/// Initialization
+/// --------------
+// Turns the possibly relative archive path of [patch_info] into an absolute
+// one, relative to [base_path].
+int patch_rel_to_abs(json_t *patch_info, const char *base_path);
+/// --------------
+
 /// -----
 /// Hooks
 /// -----
