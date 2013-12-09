@@ -354,19 +354,10 @@ int thcrap_init(const char *run_cfg_fn)
 		json_t *val = NULL;
 		json_t *run_funcs = json_object();
 
-		// Print this separately from the run configuration
-
-		log_printf("Functions available to binary hacks:\n");
-		log_printf("------------------------------------\n");
-
 		GetExportedFunctions(run_funcs, hThcrap);
 		json_object_foreach(json_object_get(run_cfg, "plugins"), key, val) {
-			log_printf("\n%s:\n\n", key);
 			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
 		}
-
-		log_printf("------------------------------------\n");
-		log_printf("\n");
 
 		binhacks_apply(json_object_get(run_cfg, "binhacks"), run_funcs);
 		breakpoints_apply();
