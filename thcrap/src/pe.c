@@ -148,7 +148,6 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 			itoa(i + ExportDesc->Base, auto_name, 10);
 			name = auto_name;
 		}
-		log_printf("0x%08x %s\n", dll_base + func_ptrs[i], name);
 		json_object_set_new(funcs, name, json_integer(dll_base + func_ptrs[i]));
 	}
 	return 0;
