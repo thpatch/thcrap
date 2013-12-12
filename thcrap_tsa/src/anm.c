@@ -77,7 +77,6 @@ unsigned int format_png_equiv(WORD format)
 	}
 }
 
-// Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
 void format_from_bgra(png_bytep data, unsigned int pixels, WORD format)
 {
 	unsigned int i;

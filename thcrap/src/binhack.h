@@ -21,7 +21,7 @@ size_t binhack_calc_size(const char *binhack_str);
 
 // Format of [inj_funcs]:
 // {
-//	"function name": <pointer as integer>
+//	"<function name>": <pointer as integer>
 // }
 int binhack_render(char *binhack_buf, size_t target_addr, const char *binhack_str, json_t *inj_funcs);
 

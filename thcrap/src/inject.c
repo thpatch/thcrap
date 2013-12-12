@@ -176,7 +176,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 // Data and string writing.                 //
 //------------------------------------------//
 
-	// Reserve space for the user32 dll address, the MessageBoxW address,
+	// Reserve space for the user32 dll address, the MessageBox address,
 	// and the address of the injected DLL's module.
 	user32Addr = (p - workspace) + codecaveAddress;
 	p += sizeof(LPBYTE);
@@ -191,7 +191,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	user32NameAddr = (p - workspace) + codecaveAddress;
 	p = StringToUTF16_advance_dst(p, user32Name);
 
-	// MessageBoxW name
+	// MessageBox name
 	msgboxNameAddr = (p - workspace) + codecaveAddress;
 	p = memcpy_advance_dst(p, msgboxName, strlen(msgboxName) + 1);
 
@@ -242,19 +242,19 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 //------------------------------------------//
 
 // User32 DLL Loading
-	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibraryA
+	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibrary
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, user32NameAddr);
 
-	// MOV EAX, ADDRESS - Move the address of LoadLibraryA into EAX
+	// MOV EAX, ADDRESS - Move the address of LoadLibrary into EAX
 	*p++ = 0xB8;
 	p = ptrcpy_advance_dst(p, loadlibrary);
 
-	// CALL EAX - Call LoadLibraryA
+	// CALL EAX - Call LoadLibrary
 	*p++ = 0xFF;
 	*p++ = 0xD0;
 
-// MessageBoxW Loading
+// MessageBox Loading
 	// PUSH 0x000000 - Push the address of the function name to load
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, msgboxNameAddr);
@@ -455,7 +455,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 		*p++ = 0x6A;
 		*p++ = 0x00;
 
-		// MOV EAX, [ADDRESS] - Move the address of MessageBoxW into EAX
+		// MOV EAX, [ADDRESS] - Move the address of MessageBox into EAX
 		*p++ = 0xA1;
 		p = ptrcpy_advance_dst(p, msgboxAddr);
 
@@ -528,7 +528,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 		*p++ = 0x6A;
 		*p++ = 0x00;
 
-		// MOV EAX, ADDRESS - Move the address of MessageBoxA into EAX
+		// MOV EAX, ADDRESS - Move the address of MessageBox into EAX
 		*p++ = 0xA1;
 		p = ptrcpy_advance_dst(p, msgboxAddr);
 
@@ -663,7 +663,7 @@ int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 		PathRemoveFileSpec(inj_dir);
 		PathAddBackslashA(inj_dir);
 
-		// Account for relative directory names
+		// Allow for relative directory names
 		if(PathIsRelativeA(setup_fn)) {
 			GetCurrentDirectory(cur_dir_len, abs_setup_fn);
 			PathAppendA(abs_setup_fn, setup_fn);

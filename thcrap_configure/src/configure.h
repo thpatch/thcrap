@@ -5,7 +5,9 @@
 
 #pragma once
 
+// Returns an array of selected patches
 json_t* SelectPatchStack(json_t *server_js, json_t *patch_stack);
+
 json_t* SearchForGames(const char *dir, json_t *games_in);
 
 int Ask(const char *question);

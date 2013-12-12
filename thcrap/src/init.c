@@ -302,7 +302,7 @@ int thcrap_init(const char *setup_fn)
 				// However, it also considers file names as one implied directory level
 				// and is path of... that other half of shlwapi functions that don't work
 				// with forward slashes. Since this behavior goes all the way down to
-				// PathCanonicalize(), a  "proper" reimplementation is not exactly trivial.
+				// PathCanonicalize(), a "proper" reimplementation is not exactly trivial.
 				// So we play along for now.
 				if(PathIsRelativeA(archive)) {
 					STRLEN_DEC(setup_fn);

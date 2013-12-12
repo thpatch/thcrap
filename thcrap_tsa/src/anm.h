@@ -9,16 +9,8 @@
 
 #pragma once
 
-// Why couldn't libpng just include the buffer pointer into the png_image
-// structure. Are different pointer sizes (thus, differing structure sizes)
-// really that bad?
-typedef struct {
-	png_image img;
-	png_bytep buf;
-} png_image_ex, *png_image_exp;
-
-/// Enums
-/// -----
+/// TSA types
+/// ---------
 // All of the 16-bit formats are little-endian.
 typedef enum {
 	FORMAT_BGRA8888 = 1,
@@ -26,10 +18,7 @@ typedef enum {
 	FORMAT_ARGB4444 = 5, // 0xGB 0xAR
 	FORMAT_GRAY8 = 7
 } format_t;
-/// -----
 
-/// Structures
-/// ----------
 typedef struct {
 #ifdef PACK_PRAGMA
 #pragma pack(push,1)
@@ -56,13 +45,26 @@ typedef struct {
 #pragma pack(pop)
 #endif
 } PACK_ATTRIBUTE sprite_t;
-/// ----------
+/// ---------
+
+/// Patching types
+/// --------------
+// Why couldn't libpng just include the buffer pointer into the png_image
+// structure. Are different pointer sizes (thus, differing structure sizes)
+// really that bad?
+typedef struct {
+	png_image img;
+	png_bytep buf;
+} png_image_ex, *png_image_exp;
+/// --------------
 
 /// Formats
 /// -------
 unsigned int format_Bpp(WORD format);
 unsigned int format_png_equiv(WORD format);
-void format_from_bgra(png_bytep data, unsigned int pixels, WORD format);
+
+// Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
+void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
 /// -------
 
 /// Sprite boundary dumping

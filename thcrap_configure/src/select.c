@@ -23,7 +23,6 @@ int PrintAvailPatch(const char *patch_id, json_t *selected)
 	return 1;
 }
 
-// Returns an array of selected patches
 json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 {
 	json_t *patches_sorted;

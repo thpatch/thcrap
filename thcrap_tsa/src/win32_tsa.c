@@ -60,8 +60,8 @@ BOOL WINAPI tsa_GetWindowRect(
   * is actually requested.
   */
 
-// Ensures the visibility of an imaginary, long line with length [w1] starting
-// at [p1] inside a larger line with length [w2] in [p2].
+// Ensures the visibility of an imaginary line with length [w1] starting
+// at [p1] inside a larger line with length [w2] starting at [p2].
 // ... oh well, it's just a helper for tsa_CreateWindowExA().
 int coord_clamp(int p1, int w1, int p2, int w2)
 {

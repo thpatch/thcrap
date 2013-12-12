@@ -1,6 +1,10 @@
 /**
   * Touhou Community Reliant Automatic Patcher
   * Cheap command-line patch stack configuration tool
+  *
+  * ----
+  *
+  * Game searching front-end code.
   */
 
 #include <thcrap.h>
