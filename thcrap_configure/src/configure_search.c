@@ -16,11 +16,9 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 {
 	size_t num_versions = json_object_size(locs);
 	if(num_versions == 1) {
-		const char *loc;
-		const char *variety;
+		const char *loc = json_object_iter_key(json_object_iter(locs));
+		const char *variety = json_object_get_string(locs, loc);
 
-		loc = json_object_iter_key(json_object_iter(locs));
-		variety = json_object_get_string(locs, loc);
 		log_printf("Found %s (%s) at %s\n", id, variety, loc);
 
 		return loc;

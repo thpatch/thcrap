@@ -23,13 +23,11 @@ int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 		return -1;
 	}
 	{
-		json_t *spec_offset = json_object_get(spec, "offset");
-		json_t *spec_size = json_object_get(spec, "size");
-		size_t offset = json_hex_value(spec_offset);
+		size_t offset = json_object_get_hex(spec, "offset");
+		size_t size = json_object_get_hex(spec, "size");
 		// Default to architecture word size
-		size_t size = sizeof(size_t);
-		if(spec_size) {
-			size = json_hex_value(spec_size);
+		if(!size) {
+			size = sizeof(size_t);
 		};
 		if(size > dest_size) {
 			return -2;
@@ -181,28 +179,24 @@ int patch_thtx(thtx_header_t *thtx, const size_t x, const size_t y, png_image_ex
 
 int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	json_t *format;
-	size_t headersize;
+	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "anm");
+	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
+	size_t headersize = json_object_get_hex(format, "headersize");
 
 	// Some ANMs reference the same file name multiple times in a row
-	char *name_prev = NULL;
+	const char *name_prev = NULL;
 
 	png_image_ex png = {0};
 	png_image_ex bounds = {0};
 
 	BYTE *anm_entry_out = file_inout;
-	thtx_header_t *thtx = NULL;
 
-	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
-
-	format = json_object_get(json_object_get(run_cfg, "formats"), "anm");
 	if(!format) {
 		return 1;
 	}
 
 	log_printf("---- ANM ----\n");
 
-	headersize = json_object_get_hex(format, "headersize");
 	if(!headersize) {
 		log_printf("(no ANM header size given, sprite-local patching disabled)\n");
 	}
@@ -230,7 +224,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 		}
 		if(hasdata && thtxoffset) {
 			char *name = (char*)(anm_entry_out + nameoffset);
-			thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
+			thtx_header_t *thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
 
 			// Load a new replacement image, if necessary...
 			if(!name_prev || strcmp(name, name_prev)) {

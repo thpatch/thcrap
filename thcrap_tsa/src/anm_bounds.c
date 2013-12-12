@@ -98,20 +98,16 @@ png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t ne
 
 char* fn_for_bounds(const char *fn)
 {
-	const char *dir;
+	const char *dir = json_object_get_string(runconfig_get(), "dat_dump");
 	const char *prefix = "bounds-";
 	size_t ret_len;
 	char *ret = NULL;
-	char *game_fn = NULL;
+	char *game_fn = fn_for_game(fn);
 	char *p;
 
 	if(!fn) {
 		return ret;
 	}
-
-	dir = json_object_get_string(runconfig_get(), "dat_dump");
-	game_fn = fn_for_game(fn);
-
 	if(!game_fn) {
 		return ret;
 	}

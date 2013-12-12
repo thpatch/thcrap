@@ -120,15 +120,12 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 {
 	const char *key;
 	json_t *hack;
-	size_t binhack_count;
+	size_t binhack_count = json_object_size(binhacks);
 	size_t c = 0;	// gets incremented at the beginning of the write loop
 
 	if(!binhacks || !funcs) {
 		return -1;
 	}
-
-	binhack_count = json_object_size(binhacks);
-
 	if(!binhack_count) {
 		log_printf("No binary hacks to apply.\n");
 		return 0;
@@ -139,24 +136,22 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 
 	json_object_foreach(binhacks, key, hack)
 	{
-		const char *code; // assembly code from JSON
+		const char *code = json_object_get_string(hack, "code");
+		// Addresses can be an array, too
+		json_t *json_addr = json_object_get(hack, "addr");
 		size_t i;
-		json_t *json_addr; // Addresses can be an array, too
-		size_t json_addr_count; // Number of addresses from JSON (at least 1)
 		DWORD addr;
-		size_t asm_size; // calculated byte size of the hack
 
-		code = json_object_get_string(hack, "code");
-		json_addr = json_object_get(hack, "addr");
-		asm_size = binhack_calc_size(code);
+		// Number of addresses from JSON (at least 1)
+		size_t json_addr_count = json_array_size(json_addr);
+
+		// calculated byte size of the hack
+		size_t asm_size = binhack_calc_size(code);
 
 		if(!code || !asm_size || !json_addr) {
 			binhack_count--;
 			continue;
 		}
-
-		// Determine addresses
-		json_addr_count = json_array_size(json_addr);
 
 		if(json_addr_count == 0) {
 			json_addr_count = 1;

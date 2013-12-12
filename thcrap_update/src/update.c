@@ -132,23 +132,20 @@ void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWOR
 	BYTE *file_buffer = NULL, *p;
 	size_t i;
 
-	int servers_left;
-	int servers_first;
+	int servers_first = ServerGetFirst(servers);
+	// gets decremented in the loop
+	int servers_left = json_array_size(servers);
 
 	if(!fn || !file_size) {
 		return NULL;
 	}
-	servers_first = ServerGetFirst(servers);
 	if(servers_first < 0) {
 		return NULL;
 	}
-	// gets decremented in the loop
-	servers_left = json_array_size(servers);
 	for(i = servers_first; servers_left; i++) {
 		DWORD time, time_start;
 		DWORD crc = 0;
 		json_t *server;
-		const char *server_url;
 		json_t *server_time;
 
 		// Loop back
@@ -162,14 +159,13 @@ void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWOR
 		if(json_is_false(server_time)) {
 			continue;
 		}
-
-		server_url = json_object_get_string(server, "url");
 		servers_left--;
 
 		InternetCloseHandle(hFile);
 
 		{
 			URL_COMPONENTSA uc = {0};
+			const char *server_url = json_object_get_string(server, "url");
 			STRLEN_DEC(server_url);
 			// * 3 because characters may be URL-encoded
 			DWORD url_len = server_url_len + 1 + (strlen(fn) * 3) + 1;

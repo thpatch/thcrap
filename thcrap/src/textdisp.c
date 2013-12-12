@@ -76,10 +76,8 @@ void patch_fonts_load(const json_t *patch_info, const json_t *patch_js)
 	const char *font_fn;
 	json_t *val;
 	json_object_foreach(fonts, font_fn, val) {
-		void *font_buffer = NULL;
 		size_t font_size;
-
-		font_buffer = patch_file_load(patch_info, font_fn, &font_size);
+		void *font_buffer = patch_file_load(patch_info, font_fn, &font_size);
 
 		if(font_buffer) {
 			DWORD ret;

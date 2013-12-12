@@ -14,16 +14,14 @@ static CRITICAL_SECTION cs_update;
 
 DWORD WINAPI UpdateThread(void *param)
 {
-	json_t *patch_array;
+	json_t *run_cfg = (json_t*)param;
+	json_t *patch_array = json_object_get(run_cfg, "patches");
 	size_t i;
 	json_t *patch_info;
-	json_t *run_cfg = (json_t*)param;
 
 	if(!TryEnterCriticalSection(&cs_update)) {
 		return 1;
 	}
-	patch_array = json_object_get(run_cfg, "patches");
-
 	json_array_foreach(patch_array, i, patch_info) {
 		patch_update(patch_info);
 	}

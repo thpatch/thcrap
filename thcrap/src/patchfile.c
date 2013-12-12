@@ -49,7 +49,7 @@ char* fn_for_build(const char *fn)
 	const char *build = json_object_get_string(run_cfg, "build");
 	size_t name_len;
 	size_t ret_len;
-	const char *first_ext;
+	const char *first_ext = fn;
 	char *ret;
 
 	if(!fn || !build) {
@@ -63,7 +63,6 @@ char* fn_for_build(const char *fn)
 
 	// We need to do this on our own here because the build ID should be placed
 	// *before* the first extension.
-	first_ext = fn;
 	while(*first_ext && *first_ext != '.') {
 		first_ext++;
 	}
@@ -75,13 +74,12 @@ char* fn_for_build(const char *fn)
 
 char* fn_for_game(const char *fn)
 {
-	const char *game_id;
+	const char *game_id = json_object_get_string(run_cfg, "game");
 	char *full_fn;
 
 	if(!fn) {
 		return NULL;
 	}
-	game_id = json_object_get_string(run_cfg, "game");
 	full_fn = (char*)malloc(strlen(game_id) + 1 + strlen(fn) + 1);
 
 	full_fn[0] = 0; // Because strcat
@@ -154,26 +152,23 @@ char* fn_for_patch(const json_t *patch_info, const char *fn)
 
 int patch_file_exists(const json_t *patch_info, const char *fn)
 {
-	char *patch_fn = NULL;
-	BOOL ret;
+	char *patch_fn = fn_for_patch(patch_info, fn);
+	BOOL ret = PathFileExists(patch_fn);
 	if(!patch_info || !fn) {
 		return 0;
 	}
-	patch_fn = fn_for_patch(patch_info, fn);
-	ret = PathFileExists(patch_fn);
 	SAFE_FREE(patch_fn);
 	return ret;
 }
 
 int patch_file_blacklisted(const json_t *patch_info, const char *fn)
 {
-	json_t *blacklist;
+	json_t *blacklist = json_object_get(patch_info, "ignore");
 	json_t *val;
 	size_t i;
 	if(!patch_info || !fn) {
 		return 0;
 	}
-	blacklist = json_object_get(patch_info, "ignore");
 	json_array_foreach(blacklist, i, val) {
 		const char *wildcard = json_string_value(val);
 		if(wildcard && PathMatchSpec(fn, wildcard)) {
@@ -185,14 +180,13 @@ int patch_file_blacklisted(const json_t *patch_info, const char *fn)
 
 void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_size)
 {
-	char *patch_fn = NULL;
+	char *patch_fn = fn_for_patch(patch_info, fn);
 	void *ret = NULL;
 
 	if(!patch_info || !fn || !file_size) {
 		return NULL;
 	}
 	*file_size = 0;
-	patch_fn = fn_for_patch(patch_info, fn);
 	if(!patch_fn) {
 		return NULL;
 	}
@@ -205,7 +199,7 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size)
 {
-	char *patch_fn = NULL;
+	char *patch_fn = fn_for_patch(patch_info, fn);
 	DWORD byte_ret;
 	int ret = 0;
 
@@ -213,7 +207,6 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 		return -1;
 	}
 
-	patch_fn = fn_for_patch(patch_info, fn);
 	if(!patch_fn) {
 		return -2;
 	}
@@ -240,17 +233,15 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size)
 {
 	size_t json_size;
-	void *file_buffer = NULL;
-	json_t *file_json;
+	void *file_buffer = patch_file_load(patch_info, fn, &json_size);
+	json_t *file_json = json_loadb_report(file_buffer, json_size, JSON_DISABLE_EOF_CHECK, fn);
 
-	file_buffer = patch_file_load(patch_info, fn, &json_size);
 	if(!file_buffer) {
 		return NULL;
 	}
 	if(file_size) {
 		*file_size = json_size;
 	}
-	file_json = json_loadb_report(file_buffer, json_size, JSON_DISABLE_EOF_CHECK, fn);
 	SAFE_FREE(file_buffer);
 	return file_json;
 }
@@ -292,7 +283,7 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
 	char *fn_build = NULL;
 	json_t *ret = NULL;
-	json_t *patch_array;
+	json_t *patch_array = json_object_get(run_cfg, "patches");
 	json_t *patch_obj;
 	size_t i;
 	size_t json_size = 0;
@@ -302,8 +293,6 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	}
 	fn_build = fn_for_build(fn);
 	log_printf("(JSON) Resolving %s... ", fn);
-
-	patch_array = json_object_get(run_cfg, "patches");
 
 	json_array_foreach(patch_array, i, patch_obj) {
 		json_size += stack_json_load(&ret, patch_obj, fn, i);
@@ -323,25 +312,18 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
-	char *fn_common;
-	char *fn_build;
-	const char *fn_common_ptr;
 	void *ret = NULL;
 	int i;
 	json_t *patch_array = json_object_get(run_cfg, "patches");
 
+	// Meh, const correctness.
+	char *fn_common = fn_for_game(fn);
+	const char *fn_common_ptr = fn_common ? fn_common : fn;
+	char *fn_build = fn_for_build(fn_common_ptr);
+
 	if(!fn) {
 		return NULL;
 	}
-
-	fn_common = fn_for_game(fn);
-
-	// Meh, const correctness.
-	fn_common_ptr = fn_common;
-	if(!fn_common_ptr) {
-		fn_common_ptr = fn;
-	}
-	fn_build = fn_for_build(fn_common_ptr);
 
 	log_printf("(Data) Resolving %s... ", fn_common_ptr);
 	// Patch stack has to be traversed backwards because later patches take
@@ -384,13 +366,11 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 
 int patchhook_register(const char *wildcard, func_patch_t patch_func)
 {
-	json_t *patch_hooks;
-	json_t *hook_array;
+	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());
+	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, json_array());
 	if(!run_cfg || !wildcard || !patch_func) {
 		return -1;
 	}
-	patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());
-	hook_array = json_object_get_create(patch_hooks, wildcard, json_array());
 	return json_array_append_new(hook_array, json_integer((size_t)patch_func));
 }
 

@@ -14,13 +14,10 @@ static const char PLUGINS[] = "plugins";
 
 int plugins_load(void)
 {
-	HANDLE hFind = NULL;
 	WIN32_FIND_DATAA w32fd;
-	json_t *plugins;
+	HANDLE hFind = FindFirstFile("*.dll", &w32fd);
+	json_t *plugins = json_object_get_create(run_cfg, PLUGINS, json_object());
 
-	plugins = json_object_get_create(run_cfg, PLUGINS, json_object());
-
-	hFind = FindFirstFile("*.dll", &w32fd);
 	while( (hFind != INVALID_HANDLE_VALUE) && (GetLastError() != ERROR_NO_MORE_FILES) ) {
 		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
 		if(plugin) {

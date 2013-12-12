@@ -34,13 +34,12 @@ static const char *mbox_copy_message =
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
-	unsigned char *file_buffer;
+	unsigned char *file_buffer = file_read(fn, file_size);
 	SHA256_CTX sha256_ctx;
 	BYTE hash[32];
 	char hash_str[65];
 	int i;
 
-	file_buffer = file_read(fn, file_size);
 	if(!file_buffer) {
 		return NULL;
 	}
@@ -62,20 +61,18 @@ json_t* identify_by_size(size_t file_size, json_t *versions)
 
 int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
 {
-	json_t *json_latest;
-	size_t json_latest_count;
+	json_t *json_latest = json_object_get(run_ver, "latest");
+	size_t json_latest_count = json_array_size(json_latest);
 	size_t i;
 
 	if(!build || !run_ver || !latest) {
 		return -1;
 	}
 
-	json_latest = json_object_get(run_ver, "latest");
 	if(!json_latest) {
 		return -1;
 	}
 
-	json_latest_count = json_array_size(json_latest);
 	if(json_latest_count == 0) {
 		*latest = json_string_value(json_latest);
 	}
@@ -95,7 +92,7 @@ json_t* identify(const char *exe_fn)
 {
 	size_t exe_size;
 	json_t *run_ver = NULL;
-	json_t *versions_js = NULL;
+	json_t *versions_js = stack_json_resolve("versions.js", NULL);
 	const char *game = NULL;
 	const char *build = NULL;
 	const char *variety = NULL;
@@ -104,7 +101,6 @@ json_t* identify(const char *exe_fn)
 	json_t *id_array = NULL;
 	int size_cmp = 0;
 
-	versions_js = stack_json_resolve("versions.js", NULL);
 	if(!versions_js) {
 		goto end;
 	}

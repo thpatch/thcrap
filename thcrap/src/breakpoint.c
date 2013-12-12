@@ -164,10 +164,8 @@ void cave_fix(BYTE *cave, BYTE *bp_addr)
 	// #1: Relative far call / jump at the very beginning
 	if(cave[0] == 0xe8 || cave[0] == 0xe9)
 	{
-		size_t dist_old, dist_new;
-
-		dist_old = *((size_t*)(cave + 1));
-		dist_new = (dist_old + (bp_addr + CALL_LEN)) - ((size_t)cave + CALL_LEN);
+		size_t dist_old = *((size_t*)(cave + 1));
+		size_t dist_new = dist_old + bp_addr - cave;
 
 		memcpy(cave + 1, &dist_new, sizeof(dist_new));
 
@@ -178,18 +176,15 @@ void cave_fix(BYTE *cave, BYTE *bp_addr)
 
 int breakpoints_apply(void)
 {
-	json_t *breakpoints;
+	json_t *breakpoints = json_object_get(run_cfg, BREAKPOINTS);
 	const char *key;
 	json_t *bp;
-	size_t breakpoint_count;
+	size_t breakpoint_count = json_object_size(breakpoints);
 	size_t i = 0;
 
-	breakpoints = json_object_get(run_cfg, BREAKPOINTS);
 	if(!breakpoints) {
 		return -1;
 	}
-	breakpoint_count = json_object_size(breakpoints);
-
 	if(!breakpoint_count) {
 		log_printf("No breakpoints to set up.\n");
 		return 0;
@@ -263,14 +258,12 @@ int breakpoints_apply(void)
 
 int breakpoints_remove(void)
 {
-	json_t *breakpoints;
-	size_t breakpoint_count;
+	json_t *breakpoints = json_object_get(run_cfg, BREAKPOINTS);
+	size_t breakpoint_count = json_object_size(breakpoints);
 
-	breakpoints = json_object_get(run_cfg, BREAKPOINTS);
 	if(!breakpoints) {
 		return -1;
 	}
-	breakpoint_count = json_object_size(breakpoints);
 	if(!breakpoint_count) {
 		log_printf("No breakpoints to remove.\n");
 		return 0;
