@@ -44,7 +44,7 @@ int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
 
 /// Formats
 /// -------
-unsigned int format_Bpp(WORD format)
+unsigned int format_Bpp(format_t format)
 {
 	switch(format) {
 		case FORMAT_BGRA8888:
@@ -60,7 +60,7 @@ unsigned int format_Bpp(WORD format)
 	}
 }
 
-unsigned int format_png_equiv(WORD format)
+unsigned int format_png_equiv(format_t format)
 {
 	switch(format) {
 		case FORMAT_BGRA8888:
@@ -75,7 +75,7 @@ unsigned int format_png_equiv(WORD format)
 	}
 }
 
-void format_from_bgra(png_bytep data, unsigned int pixels, WORD format)
+void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 {
 	unsigned int i;
 	png_bytep in = data;

@@ -60,8 +60,8 @@ typedef struct {
 
 /// Formats
 /// -------
-unsigned int format_Bpp(WORD format);
-unsigned int format_png_equiv(WORD format);
+unsigned int format_Bpp(format_t format);
+unsigned int format_png_equiv(format_t format);
 
 // Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
