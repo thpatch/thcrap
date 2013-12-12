@@ -39,8 +39,8 @@ char* strings_storage_get(const size_t slot, size_t min_len);
 // storage slot. This can be any value, but calling this function again with
 // the same [addr] deletes the result from the previous call.
 // Returns a pointer to the resulting string.
-const char* strings_vsprintf(const size_t addr, const char *format, va_list va);
-const char* strings_sprintf(const size_t addr, const char *format, ...);
+const char* strings_vsprintf(const size_t slot, const char *format, va_list va);
+const char* strings_sprintf(const size_t slot, const char *format, ...);
 
 // Clears the string in [slot].
 const char* strings_strclr(const size_t slot);

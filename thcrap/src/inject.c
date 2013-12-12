@@ -24,7 +24,7 @@
   *		switched to this directory. This may be necessary if the injected DLL
   *		depends on other DLLs stored in the same directory.
   *
-  *	const char *dll_name
+  *	const char *dll_fn
   *		File name of the DLL to inject into the process.
   *
   *	const char *func_name
@@ -78,7 +78,7 @@ unsigned char* StringToUTF16_advance_dst(unsigned char *dst, const char *src)
 	return dst + (conv_len * sizeof(wchar_t));
 }
 
-int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const char *func_name, const void *param, const size_t param_size)
+int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char *func_name, const void *param, const size_t param_size)
 {
 	// String constants
 	const char *injectError1Format = "Could not load the dll: %s";
@@ -109,7 +109,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	LPBYTE codecaveAddress = NULL;
 
 	// Strings we have to write into the process
-	size_t injectError1_len = _scprintf(injectError1Format, dll_name) + 1;
+	size_t injectError1_len = _scprintf(injectError1Format, dll_fn) + 1;
 	size_t injectError2_len = _scprintf(injectError2Format, func_name) + 1;
 
 	char *injectError0 = "Error";
@@ -153,11 +153,11 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 // you can upgrade the functions or ignore them
 
 	// Build error messages
-	sprintf(injectError1, injectError1Format, dll_name);
+	sprintf(injectError1, injectError1Format, dll_fn);
 	sprintf(injectError2, injectError2Format, func_name);
 
 	workspaceSize += (
-		strlen(dll_dir) + 1 + strlen(dll_name) + 1 + strlen(func_name) + 1 +
+		strlen(dll_dir) + 1 + strlen(dll_fn) + 1 + strlen(func_name) + 1 +
 		param_size + strlen(injectError1) + 1 + strlen(injectError2) + 1
 	) * sizeof(wchar_t);
 
@@ -203,7 +203,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 
 	// Dll Name
 	dllNameAddr = (p - workspace) + codecaveAddress;
-	p = StringToUTF16_advance_dst(p, dll_name);
+	p = StringToUTF16_advance_dst(p, dll_fn);
 
 	// Function Name
 	funcNameAddr = (p - workspace) + codecaveAddress;
@@ -291,7 +291,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	}
 
 	// Load the injected DLL into this process
-	HMODULE h = LoadLibrary(dll_name);
+	HMODULE h = LoadLibrary(dll_fn);
 	if(!h) {
 		MessageBox(0, "Could not load the dll: mydll.dll", "Error", MB_ICONERROR);
 		ExitThread(1);
@@ -638,7 +638,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_name, const cha
 	return injRet;
 }
 
-int thcrap_inject(HANDLE hProcess, const char *setup_fn)
+int thcrap_inject(HANDLE hProcess, const char *run_cfg_fn)
 {
 	int ret = -1;
 	HMODULE inj_mod = NULL;
@@ -653,10 +653,10 @@ int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 		VLA(char, inj_dll, inj_dir_len);
 		VLA(char, inj_dir, inj_dir_len);
 
-		STRLEN_DEC(setup_fn);
-		size_t full_setup_fn_len = cur_dir_len + setup_fn_len;
-		VLA(char, abs_setup_fn, full_setup_fn_len);
-		const char *full_setup_fn;
+		STRLEN_DEC(run_cfg_fn);
+		size_t param_len = cur_dir_len + run_cfg_fn_len;
+		VLA(char, abs_run_cfg_fn, param_len);
+		const char *param;
 
 		GetModuleFileNameU(inj_mod, inj_dir, inj_dir_len);
 		strncpy(inj_dll, PathFindFileNameA(inj_dir), inj_dir_len);
@@ -664,16 +664,16 @@ int thcrap_inject(HANDLE hProcess, const char *setup_fn)
 		PathAddBackslashA(inj_dir);
 
 		// Allow for relative directory names
-		if(PathIsRelativeA(setup_fn)) {
-			GetCurrentDirectory(cur_dir_len, abs_setup_fn);
-			PathAppendA(abs_setup_fn, setup_fn);
-			full_setup_fn = abs_setup_fn;
+		if(PathIsRelativeA(run_cfg_fn)) {
+			GetCurrentDirectory(cur_dir_len, abs_run_cfg_fn);
+			PathAppendA(abs_run_cfg_fn, run_cfg_fn);
+			param = abs_run_cfg_fn;
 		} else {
-			full_setup_fn = setup_fn;
-			full_setup_fn_len = setup_fn_len;
+			param = run_cfg_fn;
+			param_len = run_cfg_fn_len;
 		}
-		ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", full_setup_fn, full_setup_fn_len);
-		VLA_FREE(abs_setup_fn);
+		ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", param, param_len);
+		VLA_FREE(abs_run_cfg_fn);
 		VLA_FREE(inj_dir);
 		VLA_FREE(inj_dll);
 	}

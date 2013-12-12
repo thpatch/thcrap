@@ -192,12 +192,12 @@ const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
 	}
 }
 
-const char* strings_sprintf(const size_t addr, const char *format, ...)
+const char* strings_sprintf(const size_t slot, const char *format, ...)
 {
 	va_list va;
 	const char *ret;
 	va_start(va, format);
-	ret = strings_vsprintf(addr, format, va);
+	ret = strings_vsprintf(slot, format, va);
 	return ret;
 }
 

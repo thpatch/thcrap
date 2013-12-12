@@ -9,8 +9,8 @@
 
 #pragma once
 
-int inet_init();
-void inet_exit();
+int inet_init(void);
+void inet_exit(void);
 
 // Initializes the <servers> object in [patch_js].
 json_t* ServerInit(json_t *patch_js);

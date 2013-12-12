@@ -93,13 +93,13 @@ char* fn_for_game(const char *fn)
 	return full_fn;
 }
 
-void log_print_patch_fn(json_t *patch_obj, const char *fn, int level)
+void log_print_patch_fn(json_t *patch_info, const char *fn, int level)
 {
 	const char *archive;
-	if(!patch_obj || !fn) {
+	if(!patch_info || !fn) {
 		return;
 	}
-	archive = json_object_get_string(patch_obj, "archive");
+	archive = json_object_get_string(patch_info, "archive");
 	log_printf("\n%*s+ %s%s", (level + 1), " ", archive, fn);
 }
 
@@ -270,13 +270,13 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 }
 
 // Helper function for stack_json_resolve.
-size_t stack_json_load(json_t **json_inout, json_t *patch_obj, const char *fn, size_t level)
+size_t stack_json_load(json_t **json_inout, json_t *patch_info, const char *fn, size_t level)
 {
 	size_t file_size = 0;
 	if(fn && json_inout) {
-		json_t *json_new = patch_json_load(patch_obj, fn, &file_size);
+		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
 		if(json_new) {
-			log_print_patch_fn(patch_obj, fn, level);
+			log_print_patch_fn(patch_info, fn, level);
 			if(!*json_inout) {
 				*json_inout = json_new;
 			} else {

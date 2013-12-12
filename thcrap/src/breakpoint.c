@@ -156,7 +156,7 @@ __declspec(naked) void breakpoint_process(void)
 	}
 }
 
-void cave_fix(BYTE *cave, size_t bp_addr)
+void cave_fix(BYTE *cave, BYTE *bp_addr)
 {
 	/// Fix relative stuff
 	/// ------------------
@@ -236,7 +236,7 @@ int breakpoints_apply(void)
 
 		// Copy old code to cave
 		memcpy(cave, UlongToPtr(addr), cavesize);
-		cave_fix(cave, addr);
+		cave_fix(cave, UlongToPtr(addr));
 
 		// JMP addr
 		cave[cavesize] = 0xe9;

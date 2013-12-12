@@ -223,7 +223,7 @@ void thcrap_detour(HMODULE hProc)
 	inject_detour(hProc);
 }
 
-int thcrap_init(const char *setup_fn)
+int thcrap_init(const char *run_cfg_fn)
 {
 	json_t *run_ver = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
@@ -237,15 +237,15 @@ int thcrap_init(const char *setup_fn)
 
 	SetCurrentDirectory(dll_dir);
 
-	run_cfg = json_load_file_report(setup_fn);
+	run_cfg = json_load_file_report(run_cfg_fn);
 
 	{
 		json_t *console_val = json_object_get(run_cfg, "console");
 		log_init(json_is_true(console_val));
 	}
 
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(setup_fn));
-	log_printf("Run configuration file: %s\n\n", setup_fn);
+	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
+	log_printf("Run configuration file: %s\n\n", run_cfg_fn);
 
 	thcrap_detour(hProc);
 
@@ -305,17 +305,17 @@ int thcrap_init(const char *setup_fn)
 				// PathCanonicalize(), a "proper" reimplementation is not exactly trivial.
 				// So we play along for now.
 				if(PathIsRelativeA(archive)) {
-					STRLEN_DEC(setup_fn);
+					STRLEN_DEC(run_cfg_fn);
 					STRLEN_DEC(archive);
-					size_t abs_archive_len = setup_fn_len + archive_len;
+					size_t abs_archive_len = run_cfg_fn_len + archive_len;
 					VLA(char, abs_archive, abs_archive_len);
-					VLA(char, setup_dir, setup_fn_len);
+					VLA(char, setup_dir, run_cfg_fn_len);
 					VLA(char, archive_win, archive_len);
 
 					strncpy(archive_win, archive, archive_len);
 					str_slash_normalize_win(archive_win);
 
-					strncpy(setup_dir, setup_fn, setup_fn_len);
+					strncpy(setup_dir, run_cfg_fn, run_cfg_fn_len);
 					PathRemoveFileSpec(setup_dir);
 
 					PathCombineA(abs_archive, setup_dir, archive_win);
@@ -392,7 +392,7 @@ int thcrap_init(const char *setup_fn)
 				"\n"
 				"Please reconfigure your patch stack - either by running the configuration tool, "
 				"or by simply editing your run configuration file (%s).",
-				rem_arcs_str, setup_fn
+				rem_arcs_str, run_cfg_fn
 			);
 			json_decref(rem_arcs);
 			VLA_FREE(rem_arcs_str);

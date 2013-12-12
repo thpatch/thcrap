@@ -69,5 +69,5 @@ HMODULE WINAPI inject_LoadLibraryU(
 
 int inject_detour(HMODULE hMod);
 
-// Injects thcrap into the given [hProcess], and passes [setup_fn].
-int thcrap_inject(HANDLE hProcess, const char *setup_fn);
+// Injects thcrap into the given [hProcess], and passes [run_cfg_fn].
+int thcrap_inject(HANDLE hProcess, const char *run_cfg_fn);

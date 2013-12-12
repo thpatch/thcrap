@@ -50,7 +50,7 @@ size_t binhack_calc_size(const char *binhack_str)
 	return size;
 }
 
-int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str, json_t *inj_funcs)
+int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str, json_t *funcs)
 {
 	const char *c = binhack_str;
 	const char *fs = NULL; // function start
@@ -59,7 +59,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	char conv[3];
 	int ret = 0;
 
-	// We don't check [inj_funcs] here, we want to give the precise error later
+	// We don't check [funcs] here, we want to give the precise error later
 	if(!binhack_buf || !binhack_str) {
 		return 1;
 	}
@@ -89,7 +89,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			strncpy(function, fs, c - fs);
 			function[c - fs] = 0;
 
-			fp = json_object_get_hex(inj_funcs, function);
+			fp = json_object_get_hex(funcs, function);
 			if(fp) {
 				if(func_rel) {
 					fp -= target_addr + written + sizeof(void*);

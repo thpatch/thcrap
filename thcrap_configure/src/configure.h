@@ -12,7 +12,7 @@ json_t* SearchForGames(const char *dir, json_t *games_in);
 
 int Ask(const char *question);
 void cls(SHORT y);
-void pause();
+void pause(void);
 
 HRESULT CreateLink(
 	const char *link_fn, const char *target_cmd, const char *target_args,

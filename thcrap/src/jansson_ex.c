@@ -153,7 +153,7 @@ const char* json_object_get_string(const json_t *object, const char *key)
 	return json_string_value(json_object_get(object, key));
 }
 
-int json_object_merge(json_t *old_obj, json_t *new_obj)
+int json_object_merge(json_t *old_obj, const json_t *new_obj)
 {
 	const char *key;
 	json_t *new_val;
@@ -161,7 +161,7 @@ int json_object_merge(json_t *old_obj, json_t *new_obj)
 	if(!old_obj || !new_obj) {
 		return -1;
 	}
-	json_object_foreach(new_obj, key, new_val) {
+	json_object_foreach((json_t*)new_obj, key, new_val) {
 		json_t *old_val = json_object_get(old_obj, key);
 		if(json_is_object(old_val)) {
 			// Recursion!
