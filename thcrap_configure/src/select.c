@@ -32,7 +32,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 	json_t *patches = json_object_get(server_js, "patches");
 	json_t *patches_sorted = json_object_get_keys_sorted(patches);
 
-	if(!patches || !json_object_size(patches)) {
+	if(!json_object_size(patches)) {
 		log_printf("\nNo patches available -.-\n");
 		return 0;
 	}

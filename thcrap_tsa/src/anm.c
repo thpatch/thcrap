@@ -112,7 +112,7 @@ int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 	void *file_buffer = NULL;
 	size_t file_size;
 
-	if(!image || !fn || !thtx) {
+	if(!image || !thtx) {
 		return -1;
 	}
 
@@ -247,16 +247,13 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				}
 			}
 			// ... and patch it.
-			if(png.buf) {
-				patch_thtx(thtx, x, y, &png);
-			}
+			patch_thtx(thtx, x, y, &png);
 		}
 		if(!nextoffset) {
 			bounds_store(name_prev, &bounds);
 			break;
-		} else {
-			anm_entry_out += nextoffset;
 		}
+		anm_entry_out += nextoffset;
 	}
 	SAFE_FREE(bounds.buf);
 	SAFE_FREE(png.buf);

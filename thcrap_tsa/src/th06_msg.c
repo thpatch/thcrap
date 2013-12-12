@@ -363,15 +363,11 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 	patch_msg_state_t state;
 
-	if(!msg_out || !patch || !format) {
+	if(!msg_out || !patch || !format || !entry_offset_mul) {
 		return 1;
 	}
 
 	// Read format info
-	if(!entry_offset_mul) {
-		return 1;
-	}
-
 	if(patch_msg_state_init(&state, format)) {
 		return 1;
 	}

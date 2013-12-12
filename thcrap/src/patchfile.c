@@ -154,9 +154,6 @@ int patch_file_exists(const json_t *patch_info, const char *fn)
 {
 	char *patch_fn = fn_for_patch(patch_info, fn);
 	BOOL ret = PathFileExists(patch_fn);
-	if(!patch_info || !fn) {
-		return 0;
-	}
 	SAFE_FREE(patch_fn);
 	return ret;
 }
@@ -166,12 +163,9 @@ int patch_file_blacklisted(const json_t *patch_info, const char *fn)
 	json_t *blacklist = json_object_get(patch_info, "ignore");
 	json_t *val;
 	size_t i;
-	if(!patch_info || !fn) {
-		return 0;
-	}
 	json_array_foreach(blacklist, i, val) {
 		const char *wildcard = json_string_value(val);
-		if(wildcard && PathMatchSpec(fn, wildcard)) {
+		if(PathMatchSpec(fn, wildcard)) {
 			return 1;
 		}
 	}
@@ -183,13 +177,10 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 	char *patch_fn = fn_for_patch(patch_info, fn);
 	void *ret = NULL;
 
-	if(!patch_info || !fn || !file_size) {
+	if(!file_size) {
 		return NULL;
 	}
 	*file_size = 0;
-	if(!patch_fn) {
-		return NULL;
-	}
 	if(!patch_file_blacklisted(patch_info, fn)) {
 		ret = file_read(patch_fn, file_size);
 	}
@@ -203,13 +194,10 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 	DWORD byte_ret;
 	int ret = 0;
 
-	if(!patch_info || !fn || !file_buffer || !file_size) {
+	if(!patch_fn || !file_buffer || !file_size) {
 		return -1;
 	}
 
-	if(!patch_fn) {
-		return -2;
-	}
 	dir_create_for_fn(patch_fn);
 
 	EnterCriticalSection(&cs_file_access);
@@ -236,9 +224,6 @@ json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_s
 	void *file_buffer = patch_file_load(patch_info, fn, &json_size);
 	json_t *file_json = json_loadb_report(file_buffer, json_size, JSON_DISABLE_EOF_CHECK, fn);
 
-	if(!file_buffer) {
-		return NULL;
-	}
 	if(file_size) {
 		*file_size = json_size;
 	}
@@ -368,7 +353,7 @@ int patchhook_register(const char *wildcard, func_patch_t patch_func)
 {
 	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());
 	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, json_array());
-	if(!run_cfg || !wildcard || !patch_func) {
+	if(!patch_func) {
 		return -1;
 	}
 	return json_array_append_new(hook_array, json_integer((size_t)patch_func));
@@ -400,7 +385,7 @@ int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, 
 
 	// We don't check [patch] here - hooks should be run even if there is no
 	// dedicated patch file.
-	if(!hook_array || !file_inout || !run_cfg) {
+	if(!file_inout) {
 		return -1;
 	}
 	json_array_foreach(hook_array, i, val) {

@@ -186,10 +186,9 @@ const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
 	if(ret) {
 		vsprintf(ret, format, va);
 		return ret;
-	} else {
-		// Try to save the situation at least somewhat...
-		return format;
 	}
+	// Try to save the situation at least somewhat...
+	return format;
 }
 
 const char* strings_sprintf(const size_t slot, const char *format, ...)

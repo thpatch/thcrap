@@ -56,16 +56,7 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
 {
-	const char *regname = NULL;
-
-	if(!regs) {
-		return NULL;
-	}
-	regname = json_object_get_string(object, key);
-	if(!regname) {
-		return NULL;
-	}
-	return reg(regs, regname);
+	return reg(regs, json_object_get_string(object, key));
 }
 
 BreakpointFunc_t breakpoint_func_get(const char *key)

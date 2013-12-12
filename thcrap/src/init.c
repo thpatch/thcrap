@@ -65,11 +65,7 @@ int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
 	size_t json_latest_count = json_array_size(json_latest);
 	size_t i;
 
-	if(!build || !run_ver || !latest) {
-		return -1;
-	}
-
-	if(!json_latest) {
+	if(!build || !latest || !json_latest) {
 		return -1;
 	}
 
@@ -119,11 +115,9 @@ json_t* identify(const char *exe_fn)
 		}
 	}
 
-	if(json_array_size(id_array) >= 3) {
-		game = json_array_get_string(id_array, 0);
-		build = json_array_get_string(id_array, 1);
-		variety = json_array_get_string(id_array, 2);
-	}
+	game = json_array_get_string(id_array, 0);
+	build = json_array_get_string(id_array, 1);
+	variety = json_array_get_string(id_array, 2);
 
 	if(!game || !build) {
 		log_printf("Invalid version format!");
@@ -262,12 +256,8 @@ int thcrap_init(const char *run_cfg_fn)
 			json_t *format_link;
 			const char *key;
 			json_object_foreach(game_formats, key, format_link) {
-				if(json_is_string(format_link)) {
-					json_t *format = json_object_get(formats_js, json_string_value(format_link));
-					if(format) {
-						json_object_set_nocheck(game_formats, key, format);
-					}
-				}
+				json_t *format = json_object_get(formats_js, json_string_value(format_link));
+				json_object_set_nocheck(game_formats, key, format);
 			}
 			json_decref(formats_js);
 		}

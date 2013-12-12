@@ -105,9 +105,6 @@ char* fn_for_bounds(const char *fn)
 	char *game_fn = fn_for_game(fn);
 	char *p;
 
-	if(!fn) {
-		return ret;
-	}
 	if(!game_fn) {
 		return ret;
 	}

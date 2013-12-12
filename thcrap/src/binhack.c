@@ -123,9 +123,6 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 	size_t binhack_count = json_object_size(binhacks);
 	size_t c = 0;	// gets incremented at the beginning of the write loop
 
-	if(!binhacks || !funcs) {
-		return -1;
-	}
 	if(!binhack_count) {
 		log_printf("No binary hacks to apply.\n");
 		return 0;

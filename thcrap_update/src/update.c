@@ -136,10 +136,7 @@ void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWOR
 	// gets decremented in the loop
 	int servers_left = json_array_size(servers);
 
-	if(!fn || !file_size) {
-		return NULL;
-	}
-	if(servers_first < 0) {
+	if(!fn || !file_size || servers_first < 0) {
 		return NULL;
 	}
 	for(i = servers_first; servers_left; i++) {

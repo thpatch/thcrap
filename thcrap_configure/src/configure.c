@@ -361,7 +361,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		const char *server_id = json_object_get_string(server_js, "id");
 		const char *patch_dir = server_id ? server_id : cur_dir;
 
-		if(!patch_stack || !json_array_size(patch_stack)) {
+		if(!json_array_size(patch_stack)) {
 			// Error...
 		}
 
