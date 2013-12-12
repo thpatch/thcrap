@@ -33,7 +33,7 @@ HFONT WINAPI CreateFontU(
 		bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision,
 		iQuality, iPitchAndFamily, pszFaceName_w
 	);
-	VLA_FREE(pszFaceName_w);
+	WCHAR_T_FREE(pszFaceName);
 	return ret;
 }
 
@@ -47,7 +47,7 @@ BOOL APIENTRY GetTextExtentPoint32U(
 	BOOL ret;
 	FixedLengthStringConvert(lpString, c);
 	ret = GetTextExtentPoint32W(hdc, lpString_w, wcslen(lpString_w), psizl);
-	VLA_FREE(lpString_w);
+	WCHAR_T_FREE(lpString);
 	return ret;
 }
 
@@ -62,6 +62,6 @@ BOOL WINAPI TextOutU(
 	BOOL ret;
 	FixedLengthStringConvert(lpString, c);
 	ret = TextOutW(hdc, x, y, lpString_w, wcslen(lpString_w));
-	VLA_FREE(lpString_w);
+	WCHAR_T_FREE(lpString);
 	return ret;
 }

@@ -138,8 +138,8 @@ HINTERNET WINAPI InternetOpenUrlU(
 		ret = InternetOpenUrlW(
 			hInternet, lpszUrl_w, lpszHeaders ? lpszHeaders_w : NULL, dwHeadersLength, dwFlags, dwContext
 		);
-		VLA_FREE(lpszHeaders_w);
-		VLA_FREE(lpszUrl_w);
+		WCHAR_T_FREE(lpszHeaders);
+		WCHAR_T_FREE(lpszUrl);
 		return ret;
 	}
 }

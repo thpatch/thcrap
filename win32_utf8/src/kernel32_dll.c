@@ -39,7 +39,7 @@ BOOL WINAPI CreateDirectoryU(
 	}
 	// Final directory
 	ret = CreateDirectoryW(lpPathName_w, NULL);
-	VLA_FREE(lpPathName_w);
+	WCHAR_T_FREE(lpPathName);
 	return ret;
 }
 
@@ -60,7 +60,7 @@ HANDLE WINAPI CreateFileU(
 		lpFileName_w, dwDesiredAccess, dwShareMode | FILE_SHARE_READ, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
 	);
-	VLA_FREE(lpFileName_w);
+	WCHAR_T_FREE(lpFileName);
 	return ret;
 }
 
@@ -120,9 +120,9 @@ BOOL WINAPI CreateProcessU(
 	);
 	VLA_FREE(lpSI_w.lpDesktop);
 	VLA_FREE(lpSI_w.lpTitle);
-	VLA_FREE(lpAppName_w);
-	VLA_FREE(lpCmdLine_w);
-	VLA_FREE(lpCurrentDirectory_w);
+	WCHAR_T_FREE(lpAppName);
+	WCHAR_T_FREE(lpCmdLine);
+	WCHAR_T_FREE(lpCurrentDirectory);
 	return ret;
 }
 
@@ -163,7 +163,7 @@ HANDLE WINAPI FindFirstFileU(
 	last_error = GetLastError();
 	CopyFindDataWToA(lpFindFileData, &lpFindFileDataW);
 	SetLastError(last_error);
-	VLA_FREE(lpFileName_w);
+	WCHAR_T_FREE(lpFileName);
 	return ret;
 }
 
