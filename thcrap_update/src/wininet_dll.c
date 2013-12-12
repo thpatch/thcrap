@@ -126,11 +126,11 @@ HINTERNET WINAPI InternetOpenUrlU(
 	__in_opt DWORD_PTR dwContext
 )
 {
+	HINTERNET ret = NULL;
 	if(dwHeadersLength == -1) {
 		dwHeadersLength = strlen(lpszHeaders) + 1;
 	}
-	{
-		HINTERNET ret;
+	if(lpszUrl) {
 		WCHAR_T_DEC(lpszUrl);
 		VLA(wchar_t, lpszHeaders_w, dwHeadersLength);
 		WCHAR_T_CONV(lpszUrl);
@@ -140,6 +140,6 @@ HINTERNET WINAPI InternetOpenUrlU(
 		);
 		WCHAR_T_FREE(lpszHeaders);
 		WCHAR_T_FREE(lpszUrl);
-		return ret;
 	}
+	return ret;
 }

@@ -16,16 +16,15 @@ static size_t cache_track = 0;
 
 const char* music_title_get(size_t track)
 {
+	const char *ret = NULL;
 	const char *game = json_object_get_string(runconfig_get(), "game");
-	if(!game || !json_is_object(themes)) {
-		return NULL;
-	}
-	{
+	if(game) {
 		size_t key_len = strlen(game) + 1 + 2 + str_num_digits(track) + 1;
 		VLA(char, key, key_len);
 		sprintf(key, "%s_%02u", game, track);
-		return json_object_get_string(themes, key);
+		ret = json_object_get_string(themes, key);
 	}
+	return ret;
 }
 
 void music_title_print(const char **str, const char *format_id, size_t track)

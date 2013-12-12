@@ -353,17 +353,12 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		}
 		patch_stack = SelectPatchStack(server_js, patch_stack);
 	}
-
-	{
+	if(json_array_size(patch_stack)) {
 		size_t i;
 		json_t *json_val;
 		json_t *run_cfg_patches;
 		const char *server_id = json_object_get_string(server_js, "id");
 		const char *patch_dir = server_id ? server_id : cur_dir;
-
-		if(!json_array_size(patch_stack)) {
-			// Error...
-		}
 
 		run_cfg = json_object();
 		run_cfg_patches = json_object_get_create(run_cfg, "patches", json_array());

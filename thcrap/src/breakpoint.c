@@ -61,11 +61,8 @@ size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *ke
 
 BreakpointFunc_t breakpoint_func_get(const char *key)
 {
-	if(!key) {
-		return NULL;
-	}
-	{
-		BreakpointFunc_t ret = NULL;
+	BreakpointFunc_t ret = NULL;
+	if(key) {
 		STRLEN_DEC(key);
 		VLA(char, bp_key, key_len + strlen("BP_") + 1);
 
@@ -79,8 +76,8 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 		strncat(bp_key, key, key_len);
 		ret = (BreakpointFunc_t)runconfig_func_get(bp_key);
 		VLA_FREE(bp_key);
-		return ret;
 	}
+	return ret;
 }
 
 __declspec(naked) void breakpoint_process(void)

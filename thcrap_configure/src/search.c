@@ -23,10 +23,9 @@ static search_state_t state;
 
 int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 {
+	int ret = 0;
 	json_t *ver = identify_by_size(w32fd->nFileSizeLow, state.versions);
-	if(!ver) {
-		return 0;
-	} else {
+	if(ver) {
 		STRLEN_DEC(local_dir);
 		size_t exe_fn_len = local_dir_len + strlen(w32fd->cFileName) + 2;
 		VLA(char, exe_fn, exe_fn_len);
@@ -40,14 +39,14 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 
 		ver = identify_by_hash(exe_fn, &w32fd->nFileSizeLow, state.versions);
 		if(!ver) {
-			return 0;
+			return ret;
 		}
 
 		key = json_array_get_string(ver, 0);
 
 		// Check if user already selected a version of this game in a previous search
 		if(json_object_get(state.result, key)) {
-			return 0;
+			return ret;
 		}
 
 		// Alright, found a game!
@@ -69,8 +68,9 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 		}
 		LeaveCriticalSection(&state.cs_result);
 		VLA_FREE(exe_fn);
+		ret = 1;
 	}
-	return 1;
+	return ret;
 }
 
 

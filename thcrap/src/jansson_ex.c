@@ -180,11 +180,8 @@ static int __cdecl object_key_compare_keys(const void *key1, const void *key2)
 
 json_t* json_object_get_keys_sorted(const json_t *object)
 {
-	if(!object) {
-		return NULL;
-	}
-	{
-		json_t *ret;
+	json_t *ret = NULL;
+	if(object) {
 		size_t size = json_object_size(object);
 		VLA(const char*, keys, size);
 		size_t i;
@@ -208,8 +205,8 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 			json_array_append_new(ret, json_string(keys[i]));
 		}
 		VLA_FREE(keys);
-		return ret;
 	}
+	return ret;
 }
 
 json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const char *source)
