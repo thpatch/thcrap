@@ -5,13 +5,13 @@ EXPORTS
 	inet_init
 	inet_exit
 
+	ServerInit
+
 	ServerGetFirst
 	ServerGetNumActive
 	ServerDisable
 
 	ServerDownloadFile
-
-	ServerInit
 
 	patch_update
 

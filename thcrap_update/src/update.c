@@ -56,6 +56,39 @@ void inet_exit(void)
 	}
 }
 
+json_t* ServerInit(json_t *patch_js)
+{
+	json_t *servers = json_object_get(patch_js, "servers");
+	json_t *val;
+	size_t i;
+
+	if(json_is_object(servers)) {
+		// This is only to support old, unfinished downloads where the local patch.js
+		// still has <servers> as an object. Thus, we convert it back to an array
+		json_t *arr = json_array();
+		const char *url;
+		json_object_foreach(servers, url, val) {
+			json_t *server = json_object();
+			json_object_set_new(server, "url", json_string(url));
+			json_object_set(server, "time", val);
+		}
+		servers = arr;
+		json_object_set_new(patch_js, "servers", arr);
+	}
+
+	json_array_foreach(servers, i, val) {
+		json_t *obj = val;
+		if(json_is_string(val)) {
+			// Convert to object
+			obj = json_object();
+			json_object_set(obj, "url", val);
+			json_array_set_new(servers, i, obj);
+		}
+		json_object_set(obj, "time", json_true());
+	}
+	return servers;
+}
+
 void ServerNewSession(json_t *servers)
 {
 	size_t i;
@@ -64,26 +97,6 @@ void ServerNewSession(json_t *servers)
 	json_array_foreach(servers, i, server) {
 		json_object_set_nocheck(server, "time", json_true());
 	}
-}
-
-size_t ServerGetNumActive(const json_t *servers)
-{
-	size_t i;
-	json_t *server;
-	int ret = json_array_size(servers);
-
-	json_array_foreach(servers, i, server) {
-		if(json_is_false(json_object_get(server, "time"))) {
-			ret--;
-		}
-	}
-	return ret;
-}
-
-int ServerDisable(json_t *server)
-{
-	json_object_set(server, "time", json_false());
-	return 0;
 }
 
 const int ServerGetFirst(const json_t *servers)
@@ -120,6 +133,26 @@ const int ServerGetFirst(const json_t *servers)
 		// Everything down...
 		return -1;
 	}
+}
+
+size_t ServerGetNumActive(const json_t *servers)
+{
+	size_t i;
+	json_t *server;
+	int ret = json_array_size(servers);
+
+	json_array_foreach(servers, i, server) {
+		if(json_is_false(json_object_get(server, "time"))) {
+			ret--;
+		}
+	}
+	return ret;
+}
+
+int ServerDisable(json_t *server)
+{
+	json_object_set(server, "time", json_false());
+	return 0;
 }
 
 void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWORD *exp_crc)
@@ -246,39 +279,6 @@ void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWOR
 		}
 	}
 	return NULL;
-}
-
-json_t* ServerInit(json_t *patch_js)
-{
-	json_t *servers = json_object_get(patch_js, "servers");
-	json_t *val;
-	size_t i;
-
-	if(json_is_object(servers)) {
-		// This is only to support old, unfinished downloads where the local patch.js
-		// still has <servers> as an object. Thus, we convert it back to an array
-		json_t *arr = json_array();
-		const char *url;
-		json_object_foreach(servers, url, val) {
-			json_t *server = json_object();
-			json_object_set_new(server, "url", json_string(url));
-			json_object_set(server, "time", val);
-		}
-		servers = arr;
-		json_object_set_new(patch_js, "servers", arr);
-	}
-
-	json_array_foreach(servers, i, val) {
-		json_t *obj = val;
-		if(json_is_string(val)) {
-			// Convert to object
-			obj = json_object();
-			json_object_set(obj, "url", val);
-			json_array_set_new(servers, i, obj);
-		}
-		json_object_set(obj, "time", json_true());
-	}
-	return servers;
 }
 
 int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)

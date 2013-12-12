@@ -9,6 +9,18 @@
 #include <Shlwapi.h>
 #include "win32_utf8.h"
 
+BOOL STDAPICALLTYPE PathFileExistsU(
+	__in LPCSTR pszPath
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(pszPath);
+	WCHAR_T_CONV_VLA(pszPath);
+	ret = PathFileExistsW(pszPath_w);
+	VLA_FREE(pszPath_w);
+	return ret;
+}
+
 BOOL STDAPICALLTYPE PathMatchSpecU(
 	__in LPCSTR pszFile,
 	__in LPCSTR pszSpec
@@ -22,18 +34,6 @@ BOOL STDAPICALLTYPE PathMatchSpecU(
 	ret = PathMatchSpecW(pszFile_w, pszSpec_w);
 	VLA_FREE(pszFile_w);
 	VLA_FREE(pszSpec_w);
-	return ret;
-}
-
-BOOL STDAPICALLTYPE PathFileExistsU(
-	__in LPCSTR pszPath
-)
-{
-	BOOL ret;
-	WCHAR_T_DEC(pszPath);
-	WCHAR_T_CONV(pszPath);
-	ret = PathFileExistsW(pszPath_w);
-	VLA_FREE(pszPath_w);
 	return ret;
 }
 
