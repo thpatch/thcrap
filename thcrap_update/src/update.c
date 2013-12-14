@@ -56,6 +56,14 @@ void inet_exit(void)
 	}
 }
 
+json_t* ServerBuild(const char *start_url)
+{
+	return json_pack("[{sssb}]",
+		"url", start_url,
+		"time", 1
+	);
+}
+
 json_t* ServerInit(json_t *patch_js)
 {
 	json_t *servers = json_object_get(patch_js, "servers");

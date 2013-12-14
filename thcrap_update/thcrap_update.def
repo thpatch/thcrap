@@ -5,6 +5,7 @@ EXPORTS
 	inet_init
 	inet_exit
 
+	ServerBuild
 	ServerInit
 
 	ServerNewSession

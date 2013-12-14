@@ -12,6 +12,9 @@
 int inet_init(void);
 void inet_exit(void);
 
+// Builds a server object from [start_url].
+json_t* ServerBuild(const char *start_url);
+
 // Initializes the <servers> object in [patch_js].
 json_t* ServerInit(json_t *patch_js);
 
