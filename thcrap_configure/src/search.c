@@ -13,9 +13,8 @@ typedef struct {
 	json_t *found;
 	json_t *result;
 	DWORD max_threads;
-	DWORD cur_threads;
+	volatile DWORD cur_threads;
 	CRITICAL_SECTION cs_result;
-	CRITICAL_SECTION cs_count;
 } search_state_t;
 
 static search_state_t state;
@@ -88,9 +87,7 @@ DWORD WINAPI SearchThread(void *param)
 	strcpy(local_dir, param_dir);
 	strcat(local_dir, "*");
 
-	EnterCriticalSection(&state.cs_count);
-	state.cur_threads++;
-	LeaveCriticalSection(&state.cs_count);
+	InterlockedIncrement(&state.cur_threads);
 
 	SAFE_FREE(param_dir);
 	hFind = FindFirstFile(local_dir, &w32fd);
@@ -129,9 +126,7 @@ DWORD WINAPI SearchThread(void *param)
 		ret = FindNextFile(hFind, &w32fd);
 	}
 	FindClose(hFind);
-	EnterCriticalSection(&state.cs_count);
-	state.cur_threads--;
-	LeaveCriticalSection(&state.cs_count);
+	InterlockedDecrement(&state.cur_threads);
 	VLA_FREE(local_dir);
 	return 0;
 }
@@ -174,7 +169,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	state.found = json_object();
 	state.result = games_in ? games_in : json_object();
 	InitializeCriticalSection(&state.cs_result);
-	InitializeCriticalSection(&state.cs_count);
 
 	// Get file size limits
 	json_object_foreach(sizes, key, val) {
@@ -208,7 +202,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	}
 
 	DeleteCriticalSection(&state.cs_result);
-	DeleteCriticalSection(&state.cs_count);
 	json_decref(state.versions);
 	return state.found;
 }
