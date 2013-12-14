@@ -38,6 +38,9 @@ typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, j
 // Return value has to be free()d by the caller!
 void* file_read(const char *fn, size_t *file_size);
 
+// Writes [file_buffer] to a file named [fn]. The file is always overwritten!
+int file_write(const char *fn, const void *file_buffer, const size_t file_size);
+
 /// ----------
 /// File names
 /// ----------

@@ -72,6 +72,7 @@ EXPORTS
 	; Patch files
 	; -----------
 	file_read
+	file_write
 
 	fn_for_game
 	fn_for_build

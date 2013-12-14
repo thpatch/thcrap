@@ -44,6 +44,30 @@ void* file_read(const char *fn, size_t *file_size)
 	return ret;
 }
 
+int file_write(const char *fn, const void *file_buffer, const size_t file_size)
+{
+	int ret = -1;
+	if(fn && file_buffer && file_size) {
+		HANDLE handle;
+		DWORD byte_ret;
+
+		dir_create_for_fn(fn);
+
+		EnterCriticalSection(&cs_file_access);
+		handle = CreateFile(
+			fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
+		);
+		ret = (handle == INVALID_HANDLE_VALUE);
+		if(!ret) {
+			WriteFile(handle, file_buffer, file_size, &byte_ret, NULL);
+			CloseHandle(handle);
+		}
+		LeaveCriticalSection(&cs_file_access);
+	}
+	return ret;
+}
+
 char* fn_for_build(const char *fn)
 {
 	const json_t *build = json_object_get(run_cfg, "build");
@@ -198,30 +222,8 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size)
 {
 	char *patch_fn = fn_for_patch(patch_info, fn);
-	DWORD byte_ret;
-	int ret = 0;
-
-	if(!patch_fn || !file_buffer || !file_size) {
-		return -1;
-	}
-
-	dir_create_for_fn(patch_fn);
-
-	EnterCriticalSection(&cs_file_access);
-	{
-		HANDLE hFile = CreateFile(patch_fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-		SAFE_FREE(patch_fn);
-
-		if(hFile != INVALID_HANDLE_VALUE) {
-			WriteFile(hFile, file_buffer, file_size, &byte_ret, NULL);
-			CloseHandle(hFile);
-			ret = 0;
-		} else {
-			ret = 1;
-		}
-	}
-	LeaveCriticalSection(&cs_file_access);
-
+	int ret = file_write(patch_fn, file_buffer, file_size);
+	SAFE_FREE(patch_fn);
 	return ret;
 }
 
