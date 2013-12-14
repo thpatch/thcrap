@@ -62,20 +62,6 @@ json_t* ServerInit(json_t *patch_js)
 	json_t *val;
 	size_t i;
 
-	if(json_is_object(servers)) {
-		// This is only to support old, unfinished downloads where the local patch.js
-		// still has <servers> as an object. Thus, we convert it back to an array
-		json_t *arr = json_array();
-		const char *url;
-		json_object_foreach(servers, url, val) {
-			json_t *server = json_object();
-			json_object_set_new(server, "url", json_string(url));
-			json_object_set(server, "time", val);
-		}
-		servers = arr;
-		json_object_set_new(patch_js, "servers", arr);
-	}
-
 	json_array_foreach(servers, i, val) {
 		json_t *obj = val;
 		if(json_is_string(val)) {
