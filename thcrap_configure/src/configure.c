@@ -187,12 +187,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 {
 	int ret = 0;
 
-	const char *local_server_js_fn;
-	json_t *local_server_js;
 	json_t *server_js;
-
-	json_t *local_servers;
 	json_t *remote_servers;
+
+	const char *start_server = "http://srv.thpatch.net";
 
 	// JSON array containing ID strings of the selected patches
 	json_t *patch_stack = json_array();
@@ -235,21 +233,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	inet_init();
 
 	if(json_array_size(args) > 1) {
-		local_server_js_fn = json_array_get_string(args, 1);
-	} else {
-		local_server_js_fn = "server.js";
-	}
-
-	local_server_js = json_load_file_report(local_server_js_fn);
-	if(!local_server_js) {
-		log_mboxf(NULL, MB_ICONSTOP | MB_OK,
-			"No %s file found in the current directory (%s).\n"
-			"You can download one from\n"
-			"\n"
-			"\t\thttp://srv.thpatch.net/server.js\n", local_server_js_fn, cur_dir
-		);
-		ret = -1;
-		goto end;
+		start_server = json_array_get_string(args, 1);
 	}
 
 	log_printf(
@@ -273,57 +257,36 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"\n"
 		"\n"
 		"\n"
+		"We're going to pull patches from\n"
+		"\n"
+		"\t%s\n"
+		"\n"
+		"You can specify a different server URL as a command-line parameter.\n"
+		"\n"
+		"\n",
+		start_server
 	);
-
-	local_servers = ServerInit(local_server_js);
-	if(local_servers) {
-		// Display first server
-		const json_t *server_first = json_array_get(local_servers, 0);
-		if(json_is_object(server_first)) {
-			const char *server_first_url = json_object_get_string(server_first, "url");
-			if(server_first_url) {
-				log_printf(
-					"Using the definitions in [%s], we're going to pull patches from\n"
-					"\n"
-					"\t%s\n"
-					"\n"
-					"You can specify a different server definition file as a command-line parameter.\n"
-					"\n"
-					"\n",
-					local_server_js_fn, server_first_url
-				);
-			}
-		}
-	}
 	pause();
 
 	{
+		json_t *local_servers = ServerBuild(start_server);
 		DWORD remote_server_js_size;
 		void *remote_server_js_buffer;
 
 		remote_server_js_buffer = ServerDownloadFile(local_servers, "server.js", &remote_server_js_size, NULL);
 		if(remote_server_js_buffer) {
-			FILE *local_server_js_file = NULL;
-
 			server_js = json_loadb_report(remote_server_js_buffer, remote_server_js_size, 0, "server.js");
-
-			local_server_js_file = fopen(local_server_js_fn, "w");
-			fwrite(remote_server_js_buffer, remote_server_js_size, 1, local_server_js_file);
-			fclose(local_server_js_file);
-
 			SAFE_FREE(remote_server_js_buffer);
-			json_decref(local_server_js);
+			remote_servers = ServerInit(server_js);
+			// TODO: Nice, friendly error
 		} else {
 			log_printf(
 				"Download of server.js failed.\n"
-				"Using local server definitions...\n"
+				"The patch server is down at the moment. Please try again later.\n"
 			);
-			server_js = local_server_js;
-			pause();
+			goto end;
 		}
-
-		remote_servers = ServerInit(server_js);
-		// TODO: Nice, friendly error
+		json_decref(local_servers);
 	}
 
 	{
