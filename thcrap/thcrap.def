@@ -196,6 +196,8 @@ EXPORTS
 	; ------------
 	textdisp_CreateFontA
 	patch_fonts_load
+
+	textdisp_init
 	textdisp_detour
 
 	; Win32 dialogs

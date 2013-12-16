@@ -99,3 +99,13 @@ int textdisp_detour(HMODULE hMod)
 		"CreateFontA", textdisp_CreateFontA
 	);
 }
+
+void textdisp_init()
+{
+	json_t *patches = json_object_get(runconfig_get(), "patches");
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		patch_fonts_load(patch_info);
+	}
+}

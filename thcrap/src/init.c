@@ -282,7 +282,6 @@ int thcrap_init(const char *run_cfg_fn)
 				min_build = cur_min_build;
 				url_engine = json_object_get_string(patch_info, "url_engine");
 			}
-			patch_fonts_load(patch_info);
 		}
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
@@ -327,6 +326,9 @@ int thcrap_init(const char *run_cfg_fn)
 #endif
 #ifdef HAVE_STRINGS
 	strings_init();
+#endif
+#ifdef HAVE_TEXTDISP
+	textdisp_init();
 #endif
 	plugins_load();
 
