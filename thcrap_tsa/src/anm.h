@@ -170,6 +170,11 @@ int sprite_blit(const sprite_patch_t *sp, const BlitFunc_t func);
 
 // Performs alpha analysis on [sp] and runs an appropriate blitting function.
 sprite_alpha_t sprite_patch(const sprite_patch_t *sp);
+
+// Walks through the patch stack and patches every game-local PNG file called
+// [entry->name] onto the THTX texture [entry->thtx] on sprite level, using
+// the coordinates in [entry->sprites].
+int stack_game_png_apply(anm_entry_t *entry);
 /// ---------------------
 
 /// Sprite boundary dumping

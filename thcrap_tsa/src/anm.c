@@ -367,7 +367,7 @@ void anm_entry_clear(anm_entry_t *entry)
 }
 /// -------------
 
-int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
+int patch_png_load_for_thtx(png_image_exp image, const json_t *patch_info, const char *fn, thtx_header_t *thtx)
 {
 	void *file_buffer = NULL;
 	size_t file_size;
@@ -385,7 +385,7 @@ int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 		return 1;
 	}
 
-	file_buffer = stack_game_file_resolve(fn, &file_size);
+	file_buffer = patch_file_load(patch_info, fn, &file_size);
 	if(!file_buffer) {
 		return 2;
 	}
@@ -439,6 +439,55 @@ int patch_thtx(anm_entry_t *entry, png_image_exp image)
 	return 0;
 }
 
+// Helper function for stack_game_png_apply.
+int patch_png_apply(anm_entry_t *entry, const json_t *patch_info, const char *fn)
+{
+	int ret = -1;
+	if(entry && patch_info && fn) {
+		png_image_ex png = {0};
+		ret = patch_png_load_for_thtx(&png, patch_info, fn, entry->thtx);
+		if(!ret) {
+			patch_thtx(entry, &png);
+			patch_print_fn(patch_info, fn);
+		}
+		SAFE_FREE(png.buf);
+	}
+	return ret;
+}
+
+int stack_game_png_apply(anm_entry_t *entry)
+{
+	int ret = -1;
+	if(entry && entry->hasbitmap && entry->thtx && entry->name) {
+		char *fn_common = fn_for_game(entry->name);
+		const char *fn_common_ptr = fn_common ? fn_common : entry->name;
+		char *fn_build = fn_for_build(fn_common_ptr);
+
+		json_t *patch_array = json_object_get(runconfig_get(), "patches");
+		size_t i;
+		json_t *patch_info;
+		ret = 0;
+
+		log_printf("(PNG) Resolving %s... ", fn_common_ptr);
+		json_array_foreach(patch_array, i, patch_info) {
+			if(!patch_png_apply(entry, patch_info, fn_common_ptr)) {
+				ret = 1;
+			}
+			if(!patch_png_apply(entry, patch_info, fn_build)) {
+				ret = 1;
+			}
+		}
+		if(!ret) {
+			log_printf("not found\n");
+		} else {
+			log_printf("\n");
+		}
+		SAFE_FREE(fn_common);
+		SAFE_FREE(fn_build);
+	}
+	return ret;
+}
+
 int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
 	json_t *format = runconfig_format_get("anm");
@@ -470,10 +519,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			break;
 		}
 		if(entry.hasbitmap && entry.thtx) {
-			// Load a new replacement image, if necessary.
 			if(!name_prev || strcmp(entry.name, name_prev)) {
-				png_load_for_thtx(&png, entry.name, entry.thtx);
-
 				if(!json_is_false(dat_dump)) {
 					bounds_store(name_prev, &bounds);
 					bounds_init(&bounds, entry.thtx, entry.name);
@@ -488,7 +534,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				}
 			}
 			// Do the patching
-			patch_thtx(&entry, &png);
+			stack_game_png_apply(&entry);
 		}
 		if(!entry.nextoffset) {
 			bounds_store(name_prev, &bounds);
