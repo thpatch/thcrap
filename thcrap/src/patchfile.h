@@ -85,6 +85,10 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 
 /// Initialization
 /// --------------
+// Loads the patch.js file of [patch_info], merges it onto this file,
+// and returns the resulting JSON object.
+json_t* patch_init(const json_t *patch_info);
+
 // Turns the possibly relative archive path of [patch_info] into an absolute
 // one, relative to [base_path].
 int patch_rel_to_abs(json_t *patch_info, const char *base_path);

@@ -285,12 +285,10 @@ int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *lo
 	return 0;
 }
 
-int patch_update(const json_t *patch_info)
+int patch_update(json_t *patch_info)
 {
-	const char *main_fn = "patch.js";
 	const char *files_fn = "files.js";
 
-	json_t *local_patch_js = NULL;
 	json_t *servers = NULL;
 	json_t *local_files = NULL;
 
@@ -311,15 +309,7 @@ int patch_update(const json_t *patch_info)
 		return -1;
 	}
 
-	// Load local patch.js
-	local_patch_js = patch_json_load(patch_info, main_fn, NULL);
-	if(!local_patch_js) {
-		// No patch.js, no update
-		ret = 1;
-		goto end_update;
-	}
-
-	if(json_is_false(json_object_get(local_patch_js, "update"))) {
+	if(json_is_false(json_object_get(patch_info, "update"))) {
 		// Updating deactivated on this patch
 		ret = 2;
 		goto end_update;
@@ -330,13 +320,13 @@ int patch_update(const json_t *patch_info)
 		local_files = json_object();
 	}
 	{
-		const char *patch_name = json_object_get_string(local_patch_js, "id");
+		const char *patch_name = json_object_get_string(patch_info, "id");
 		if(patch_name) {
 			log_printf("Checking for updates of %s...\n", patch_name);
 		}
 	}
 
-	servers = ServerInit(local_patch_js);
+	servers = ServerInit(patch_info);
 
 	remote_files_js_buffer = ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
 	if(!remote_files_js_buffer) {
@@ -413,6 +403,5 @@ end_update:
 	SAFE_FREE(remote_files_js_buffer);
 	json_decref(remote_files);
 	json_decref(local_files);
-	json_decref(local_patch_js);
 	return ret;
 }

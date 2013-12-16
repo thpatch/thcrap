@@ -77,25 +77,28 @@ json_t* BootstrapPatch(const char *patch_id, const char *repo_id, json_t *repo_s
 	json_t *patch_info = json_pack("{ss+++}",
 		"archive", repo_id, "/", patch_id, "/"
 	);
+	// Temporary, initialized patch object used for updating
+	json_t *patch_full;
 
-	if(patch_update(patch_info) == 1) {
-		// Bootstrap the new patch by downloading patch.js
-		char *patch_js_buffer;
-		DWORD patch_js_size;
-		size_t patch_len = strlen(patch_id) + 1;
+	// Bootstrap the new patch by downloading the latest patch.js
+	char *patch_js_buffer;
+	DWORD patch_js_size;
+	size_t patch_len = strlen(patch_id) + 1;
 
-		size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
-		VLA(char, remote_patch_fn, remote_patch_fn_len);
-		sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
+	size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
+	VLA(char, remote_patch_fn, remote_patch_fn_len);
+	sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
 
-		patch_js_buffer = (char*)ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
-		patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
-		// TODO: Nice, friendly error
+	patch_js_buffer = (char*)ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
+	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
+	// TODO: Nice, friendly error
 
-		VLA_FREE(remote_patch_fn);
-		SAFE_FREE(patch_js_buffer);
-		patch_update(patch_info);
-	}
+	VLA_FREE(remote_patch_fn);
+	SAFE_FREE(patch_js_buffer);
+
+	patch_full = patch_init(patch_info);
+	patch_update(patch_full);
+	json_decref(patch_full);
 	return patch_info;
 }
 
