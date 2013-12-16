@@ -9,6 +9,9 @@
 
 #pragma once
 
+#define HAVE_TEXTDISP 1
+
 void patch_fonts_load(const json_t *patch_info);
 
+void textdisp_init(void);
 int textdisp_detour(HMODULE hMod);
