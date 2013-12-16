@@ -261,14 +261,17 @@ int thcrap_init(const char *run_cfg_fn)
 		size_t i;
 		json_t *patch_info;
 		DWORD min_build = 0;
-		char *url_engine = NULL;
+		const char *url_engine = NULL;
 
 		json_array_foreach(patches, i, patch_info) {
+			DWORD cur_min_build;
+
 			// Why, hello there, C89.
 			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
 
-			json_t *patch_js = patch_json_load(patch_info, "patch.js", NULL);
-			DWORD cur_min_build = json_object_get_hex(patch_js, "min_build");
+			json_array_set_new(patches, i, patch_init(patch_info));
+
+			cur_min_build = json_object_get_hex(patch_info, "min_build");
 			if(cur_min_build > min_build) {
 				// ... OK, there *could* be the case where people stack patches from
 				// different repositories which all require their own fork of the
@@ -277,11 +280,9 @@ int thcrap_init(const char *run_cfg_fn)
 				// need for running a certain patch configuration in the first place...
 				// Let's just hope that it will never get that complicated.
 				min_build = cur_min_build;
-				SAFE_FREE(url_engine);
-				url_engine = strdup(json_object_get_string(patch_js, "url_engine"));
+				url_engine = json_object_get_string(patch_info, "url_engine");
 			}
-			patch_fonts_load(patch_info, patch_js);
-			json_decref(patch_js);
+			patch_fonts_load(patch_info);
 		}
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
@@ -297,7 +298,6 @@ int thcrap_init(const char *run_cfg_fn)
 				url_engine ? url_engine : "",
 				url_engine ? mbox_copy_message : ""
 			);
-			SAFE_FREE(url_engine);
 		}
 	}
 	stack_show_missing();

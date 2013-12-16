@@ -254,6 +254,12 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 	return ret;
 }
 
+json_t* patch_init(const json_t *patch_info)
+{
+	json_t *patch_js = patch_json_load(patch_info, "patch.js", NULL);
+	return json_object_merge(patch_js, patch_info);
+}
+
 int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 {
 	json_t *archive_obj = json_object_get(patch_info, "archive");

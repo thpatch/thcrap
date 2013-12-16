@@ -70,9 +70,9 @@ HFONT WINAPI textdisp_CreateFontA(
 	);
 }
 
-void patch_fonts_load(const json_t *patch_info, const json_t *patch_js)
+void patch_fonts_load(const json_t *patch_info)
 {
-	json_t *fonts = json_object_get(patch_js, "fonts");
+	json_t *fonts = json_object_get(patch_info, "fonts");
 	const char *font_fn;
 	json_t *val;
 	json_object_foreach(fonts, font_fn, val) {

@@ -41,4 +41,4 @@ void* ServerDownloadFile(
 );
 
 // Updates the patch in [patch_info].
-int patch_update(const json_t *patch_info);
+int patch_update(json_t *patch_info);

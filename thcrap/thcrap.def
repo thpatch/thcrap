@@ -87,6 +87,7 @@ EXPORTS
 	patch_file_store
 	patch_json_store
 
+	patch_init
 	patch_rel_to_abs
 
 	; Stack

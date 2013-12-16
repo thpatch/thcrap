@@ -9,6 +9,6 @@
 
 #pragma once
 
-void patch_fonts_load(const json_t *patch_info, const json_t *patch_js);
+void patch_fonts_load(const json_t *patch_info);
 
 int textdisp_detour(HMODULE hMod);
