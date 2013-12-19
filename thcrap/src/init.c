@@ -289,7 +289,7 @@ int thcrap_init(const char *run_cfg_fn)
 			cur_min_build = json_object_get_hex(patch_js, "min_build");
 			if(cur_min_build > min_build) {
 				// ... OK, there *could* be the case where people stack patches from
-				// different originating servers which all have their own fork of the
+				// different repositories which all require their own fork of the
 				// patcher, and then one side updates their fork, causing this prompt,
 				// and the users overwrite the modifications of another fork which they
 				// need for running a certain patch configuration in the first place...

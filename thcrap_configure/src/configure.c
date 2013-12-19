@@ -69,12 +69,12 @@ void pause(void)
 	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
-json_t* BootstrapPatch(const char *patch_id, const char *server_id, json_t *remote_servers)
+json_t* BootstrapPatch(const char *patch_id, const char *repo_id, json_t *repo_servers)
 {
 	const char *main_fn = "patch.js";
 
 	json_t *patch_info = json_pack("{ss+++}",
-		"archive", server_id, "/", patch_id, "/"
+		"archive", repo_id, "/", patch_id, "/"
 	);
 
 	if(patch_update(patch_info) == 1) {
@@ -87,7 +87,7 @@ json_t* BootstrapPatch(const char *patch_id, const char *server_id, json_t *remo
 		VLA(char, remote_patch_fn, remote_patch_fn_len);
 		sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
 
-		patch_js_buffer = (char*)ServerDownloadFile(remote_servers, remote_patch_fn, &patch_js_size, NULL);
+		patch_js_buffer = (char*)ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
 		patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
 		// TODO: Nice, friendly error
 
@@ -187,10 +187,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 {
 	int ret = 0;
 
-	json_t *server_js;
+	json_t *repo_js;
 	json_t *remote_servers;
 
-	const char *start_server = "http://srv.thpatch.net";
+	const char *start_repo = "http://srv.thpatch.net";
 
 	// JSON array containing ID strings of the selected patches
 	json_t *patch_stack = json_array();
@@ -233,7 +233,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	inet_init();
 
 	if(json_array_size(args) > 1) {
-		start_server = json_array_get_string(args, 1);
+		start_repo = json_array_get_string(args, 1);
 	}
 
 	log_printf(
@@ -261,28 +261,28 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"\n"
 		"\t%s\n"
 		"\n"
-		"You can specify a different server URL as a command-line parameter.\n"
+		"You can specify a different repository URL as a command-line parameter.\n"
 		"\n"
 		"\n",
-		start_server
+		start_repo
 	);
 	pause();
 
 	{
-		json_t *local_servers = ServerBuild(start_server);
-		DWORD remote_server_js_size;
-		void *remote_server_js_buffer;
+		json_t *local_servers = ServerBuild(start_repo);
+		DWORD remote_repo_js_size;
+		void *remote_repo_js_buffer;
 
-		remote_server_js_buffer = ServerDownloadFile(local_servers, "server.js", &remote_server_js_size, NULL);
-		if(remote_server_js_buffer) {
-			server_js = json_loadb_report(remote_server_js_buffer, remote_server_js_size, 0, "server.js");
-			SAFE_FREE(remote_server_js_buffer);
-			remote_servers = ServerInit(server_js);
+		remote_repo_js_buffer = ServerDownloadFile(local_servers, "repo.js", &remote_repo_js_size, NULL);
+		if(remote_repo_js_buffer) {
+			repo_js = json_loadb_report(remote_repo_js_buffer, remote_repo_js_size, 0, "repo.js");
+			SAFE_FREE(remote_repo_js_buffer);
+			remote_servers = ServerInit(repo_js);
 			// TODO: Nice, friendly error
 		} else {
 			log_printf(
-				"Download of server.js failed.\n"
-				"The patch server is down at the moment. Please try again later.\n"
+				"Download of repo.js failed.\n"
+				"The patch repository is down at the moment. Please try again later.\n"
 			);
 			goto end;
 		}
@@ -292,7 +292,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	{
 		json_t *json_val;
 		const char *key;
-		json_t *patches = json_object_get(server_js, "patches");
+		json_t *patches = json_object_get(repo_js, "patches");
 
 		// Push base_tsa into the list of selected patches, so that we can lock it later.
 		// Really, we _don't_ want people to remove it accidentally
@@ -301,14 +301,14 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 				json_array_append_new(patch_stack, json_string(key));
 			}
 		}
-		patch_stack = SelectPatchStack(server_js, patch_stack);
+		patch_stack = SelectPatchStack(repo_js, patch_stack);
 	}
 	if(json_array_size(patch_stack)) {
 		size_t i;
 		json_t *json_val;
 		json_t *run_cfg_patches;
-		const char *server_id = json_object_get_string(server_js, "id");
-		const char *patch_dir = server_id ? server_id : cur_dir;
+		const char *repo_id = json_object_get_string(repo_js, "id");
+		const char *patch_dir = repo_id ? repo_id : cur_dir;
 
 		run_cfg = json_object();
 		run_cfg_patches = json_object_get_create(run_cfg, "patches", json_array());
@@ -322,7 +322,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	}
 
 	// That's all on-line stuff we have to do
-	json_decref(server_js);
+	json_decref(repo_js);
 
 	// Other default run_cfg settings
 	json_object_set_new(run_cfg, "console", json_false());

@@ -24,13 +24,13 @@ int PatchIsSelected(json_t *selected, json_t *patch_id)
 	return 0;
 }
 
-json_t* SelectPatchStack(json_t *server_js, json_t *selected)
+json_t* SelectPatchStack(json_t *repo_js, json_t *selected)
 {
 	json_t *list_order = json_array();
 	// Screen clearing offset line
 	SHORT y;
 
-	json_t *patches = json_object_get(server_js, "patches");
+	json_t *patches = json_object_get(repo_js, "patches");
 	json_t *patches_sorted = json_object_get_keys_sorted(patches);
 
 	if(!json_object_size(patches)) {
@@ -54,7 +54,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 		CONSOLE_SCREEN_BUFFER_INFO csbi;
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 
-		const char *url_desc = json_object_get_string(server_js, "url_desc");
+		const char *url_desc = json_object_get_string(repo_js, "url_desc");
 		if(url_desc) {
 			log_printf(
 				"For more information on these patches, visit\n"
