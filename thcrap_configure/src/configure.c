@@ -6,6 +6,7 @@
 #include <thcrap.h>
 #include <thcrap_update/src/update.h>
 #include "configure.h"
+#include "repo.h"
 
 int Ask(const char *question)
 {
@@ -257,17 +258,18 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"\n"
 		"\n"
 		"\n"
-		"We're going to pull patches from\n"
+		"Patch repository discovery will start at\n"
 		"\n"
 		"\t%s\n"
 		"\n"
-		"You can specify a different repository URL as a command-line parameter.\n"
+		"You can specify a different URL as a command-line parameter.\n"
 		"\n"
 		"\n",
 		start_repo
 	);
 	pause();
 
+	RepoDiscover(start_repo, NULL, NULL);
 	{
 		json_t *local_servers = ServerBuild(start_repo);
 		DWORD remote_repo_js_size;
