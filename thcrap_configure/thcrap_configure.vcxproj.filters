@@ -26,9 +26,15 @@
     <ClCompile Include="src\shelllink.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\repo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\configure.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\repo.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
