@@ -86,11 +86,14 @@ EXPORTS
 	patch_json_load
 	patch_file_store
 	patch_json_store
+
+	patch_rel_to_abs
+
+	; Stack
+	; -----
 	stack_json_resolve
 	stack_game_file_resolve
 	stack_game_json_resolve
-
-	patch_rel_to_abs
 
 	; Hooks
 	; -----
