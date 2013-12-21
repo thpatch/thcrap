@@ -78,10 +78,9 @@ json_t* BootstrapPatch(const char *patch_id, const char *server_id, json_t *remo
 	);
 
 	if(patch_update(patch_info) == 1) {
-		// Bootstrap the new patch by downloading patch.js and deleting its 'files' object
+		// Bootstrap the new patch by downloading patch.js
 		char *patch_js_buffer;
 		DWORD patch_js_size;
-		json_t *patch_js;
 		size_t patch_len = strlen(patch_id) + 1;
 
 		size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
@@ -89,16 +88,11 @@ json_t* BootstrapPatch(const char *patch_id, const char *server_id, json_t *remo
 		sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
 
 		patch_js_buffer = (char*)ServerDownloadFile(remote_servers, remote_patch_fn, &patch_js_size, NULL);
+		patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
 		// TODO: Nice, friendly error
 
 		VLA_FREE(remote_patch_fn);
-
-		patch_js = json_loadb_report(patch_js_buffer, patch_js_size, 0, main_fn);
 		SAFE_FREE(patch_js_buffer);
-
-		json_object_del(patch_js, "files");
-		patch_json_store(patch_info, main_fn, patch_js);
-		json_decref(patch_js);
 		patch_update(patch_info);
 	}
 	return patch_info;
