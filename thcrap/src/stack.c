@@ -112,3 +112,46 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 	SAFE_FREE(full_fn);
 	return ret;
 }
+
+void stack_show_missing(void)
+{
+	json_t *patches = json_object_get(run_cfg, "patches");
+	size_t i;
+	json_t *patch_info;
+	json_t *rem_arcs = json_array();
+	// Don't forget the null terminator...
+	size_t rem_arcs_str_len = 1;
+
+	json_array_foreach(patches, i, patch_info) {
+		json_t *archive_obj = json_object_get(patch_info, "archive");
+		const char *archive = json_string_value(archive_obj);
+		if(!PathFileExists(archive)) {
+			json_array_append(rem_arcs, archive_obj);
+			rem_arcs_str_len += 1 + json_string_length(archive_obj) + 1;
+		}
+	}
+
+	if(json_array_size(rem_arcs) > 0) {
+		VLA(char, rem_arcs_str, rem_arcs_str_len);
+		size_t i;
+		json_t *archive_obj;
+
+		rem_arcs_str[0] = 0;
+		json_array_foreach(rem_arcs, i, archive_obj) {
+			strcat(rem_arcs_str, "\t");
+			strcat(rem_arcs_str, json_string_value(archive_obj));
+			strcat(rem_arcs_str, "\n");
+		}
+		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+			"Some patches in your configuration could not be found:\n"
+			"\n"
+			"%s"
+			"\n"
+			"Please reconfigure your patch stack - either by running the configuration tool, "
+			"or by simply editing your run configuration file (%s).",
+			rem_arcs_str, json_object_get_string(runconfig_get(), "run_cfg_fn")
+		);
+		VLA_FREE(rem_arcs_str);
+	}
+	json_decref(rem_arcs);
+}

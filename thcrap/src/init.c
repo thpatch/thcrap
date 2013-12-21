@@ -262,31 +262,13 @@ int thcrap_init(const char *run_cfg_fn)
 		json_t *patch_info;
 		DWORD min_build = 0;
 		char *url_engine = NULL;
-		json_t *rem_arcs = NULL;
-		// Don't forget the null terminator...
-		size_t rem_arcs_str_len = 1;
 
 		json_array_foreach(patches, i, patch_info) {
-			json_t *patch_js;
-			DWORD cur_min_build;
-
 			// Why, hello there, C89.
 			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
 
-			// Check archive presence
-			json_t *archive_obj = json_object_get(patch_info, "archive");
-			const char *archive = json_string_value(archive_obj);
-			if(!PathFileExists(archive)) {
-				if(!rem_arcs) {
-					rem_arcs = json_array();
-				}
-				json_array_append(rem_arcs, archive_obj);
-					rem_arcs_str_len += 1 + json_string_length(archive_obj) + 1;
-			}
-
-			patch_js = patch_json_load(patch_info, "patch.js", NULL);
-
-			cur_min_build = json_object_get_hex(patch_js, "min_build");
+			json_t *patch_js = patch_json_load(patch_info, "patch.js", NULL);
+			DWORD cur_min_build = json_object_get_hex(patch_js, "min_build");
 			if(cur_min_build > min_build) {
 				// ... OK, there *could* be the case where people stack patches from
 				// different repositories which all require their own fork of the
@@ -317,30 +299,8 @@ int thcrap_init(const char *run_cfg_fn)
 			);
 			SAFE_FREE(url_engine);
 		}
-		if(json_array_size(rem_arcs) > 0) {
-			VLA(char, rem_arcs_str, rem_arcs_str_len);
-			size_t i;
-			json_t *archive_obj;
-
-			rem_arcs_str[0] = 0;
-			json_array_foreach(rem_arcs, i, archive_obj) {
-				strcat(rem_arcs_str, "\t");
-				strcat(rem_arcs_str, json_string_value(archive_obj));
-				strcat(rem_arcs_str, "\n");
-			}
-			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"Some patches in your configuration could not be found:\n"
-				"\n"
-				"%s"
-				"\n"
-				"Please reconfigure your patch stack - either by running the configuration tool, "
-				"or by simply editing your run configuration file (%s).",
-				rem_arcs_str, run_cfg_fn
-			);
-			json_decref(rem_arcs);
-			VLA_FREE(rem_arcs_str);
-		}
 	}
+	stack_show_missing();
 
 	log_printf("Game directory: %s\n", game_dir);
 	log_printf("Plug-in directory: %s\n", dll_dir);
