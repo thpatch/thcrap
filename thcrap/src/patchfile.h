@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Read and write access to the files of a patch.
+  * Read and write access to the files of a single patch.
   */
 
 #pragma once
@@ -82,23 +82,6 @@ json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_s
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size);
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json);
 /// ------------------------
-
-/// ----------------------
-/// Patch stack evaluators
-/// ----------------------
-// Walks through the patch stack configured in <run_cfg>,
-// merging every file with the filename [fn] into a single JSON object.
-// Returns the merged JSON object or NULL if there is no matching file in the patch stack.
-// If given, [file_size] receives a _rough estimate_ of the JSON file size.
-json_t* stack_json_resolve(const char *fn, size_t *file_size);
-
-// Search the patch stack configured in <run_cfg> for a replacement for the game data file [fn].
-// Returns the loaded patch file or NULL if the file is not to be patched.
-void* stack_game_file_resolve(const char *fn, size_t *file_size);
-
-// Resolves a game-local JSON file.
-json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
-/// ----------------------
 
 /// Initialization
 /// --------------
