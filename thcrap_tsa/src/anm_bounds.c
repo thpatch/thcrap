@@ -179,8 +179,7 @@ int bounds_draw_rect(png_image_exp image, const size_t thtx_x, const size_t thtx
 {
 	if(!spr) {
 		return -1;
-	}
-	{
+	} else {
 		// MSVC doesn't optimize this and would reconvert these values to integers
 		// every time they are used below.
 		size_t spr_x = (size_t)spr->x;

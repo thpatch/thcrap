@@ -49,7 +49,6 @@ EXPORTS
 
 	; Layout
 	; ------
-	layout_match_set
 	layout_match
 	layout_tokenize
 

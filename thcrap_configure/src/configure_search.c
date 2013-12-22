@@ -61,6 +61,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
 	json_t *found;
+	char search_path[MAX_PATH * 2] = {0};
 
 	cls(0);
 
@@ -115,56 +116,51 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		);
 	}
 
-	{
-		char search_path[MAX_PATH * 2] = {0};
-		while(1)
-		{
-			size_t search_path_len;
-			log_printf(
-				"Root path for search\n"
-				" (keep empty to search entire system): "
-			);
-			fgets(search_path, sizeof(search_path), stdin);
-			log_printf("\n");
+	while(1) {
+		size_t search_path_len;
+		log_printf(
+			"Root path for search\n"
+			" (keep empty to search entire system): "
+		);
+		fgets(search_path, sizeof(search_path), stdin);
+		log_printf("\n");
 
-			// Remove that damn \n
-			search_path_len = strlen(search_path) + 1 + 1;
-			search_path[search_path_len - 3] = 0;
+		// Remove that damn \n
+		search_path_len = strlen(search_path) + 1 + 1;
+		search_path[search_path_len - 3] = 0;
 
-			if(search_path[0] == '\0') {
-				break;
-			}
-			{
-				// Ensure UTF-8
-				VLA(wchar_t, search_path_w, search_path_len);
-				WCHAR_T_CONV(search_path);
-				StringToUTF8(search_path, search_path_w, sizeof(search_path));
-			}
-
-			str_slash_normalize_win(search_path);
-			PathAddBackslashA(search_path);
-
-			if(!PathFileExists(search_path)) {
-				log_printf("Hmm, that path (%s) does not exist.\n", search_path);
-			} else {
-				break;
-			}
+		if(search_path[0] == '\0') {
+			break;
 		}
-		log_printf("Searching... this may take a while...\n\n");
-		found = SearchForGames(search_path, games);
+		{
+			// Ensure UTF-8
+			VLA(wchar_t, search_path_w, search_path_len);
+			WCHAR_T_CONV(search_path);
+			StringToUTF8(search_path, search_path_w, sizeof(search_path));
+		}
+
+		str_slash_normalize_win(search_path);
+		PathAddBackslashA(search_path);
+
+		if(!PathFileExists(search_path)) {
+			log_printf("Hmm, that path (%s) does not exist.\n", search_path);
+		} else {
+			break;
+		}
 	}
-	{
+	log_printf("Searching... this may take a while...\n\n");
+	found = SearchForGames(search_path, games);
+	if(json_object_size(found)) {
+		char *games_js_str = NULL;
+		FILE* games_js_file;
 		const char *id;
 		json_t *locs;
+
 		json_object_foreach(found, id, locs) {
 			const char *loc = ChooseLocation(id, locs);
 			json_object_set_new(games, id, json_string(loc));
 			printf("\n");
 		}
-	}
-	if(json_object_size(found)) {
-		char *games_js_str = NULL;
-		FILE* games_js_file;
 
 		SetCurrentDirectory(games_js_path);
 

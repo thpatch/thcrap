@@ -89,6 +89,9 @@ json_t* identify(const char *exe_fn)
 	size_t exe_size;
 	json_t *run_ver = NULL;
 	json_t *versions_js = stack_json_resolve("versions.js", NULL);
+	json_t *game_obj = NULL;
+	json_t *build_obj = NULL;
+	json_t *variety_obj = NULL;
 	const char *game = NULL;
 	const char *build = NULL;
 	const char *variety = NULL;
@@ -115,9 +118,12 @@ json_t* identify(const char *exe_fn)
 		}
 	}
 
-	game = json_array_get_string(id_array, 0);
-	build = json_array_get_string(id_array, 1);
-	variety = json_array_get_string(id_array, 2);
+	game_obj = json_array_get(id_array, 0);
+	build_obj = json_array_get(id_array, 1);
+	variety_obj = json_array_get(id_array, 2);
+	game = json_string_value(game_obj);
+	build = json_string_value(build_obj);
+	variety = json_string_value(variety_obj);
 
 	if(!game || !build) {
 		log_printf("Invalid version format!");
@@ -127,7 +133,7 @@ json_t* identify(const char *exe_fn)
 	// Store build in the runconfig to be recalled later for
 	// version-dependent patch file resolving. Needs be directly written to
 	// run_cfg because we already require it down below to resolve ver_fn.
-	json_object_set(run_cfg, "build", json_array_get(id_array, 1));
+	json_object_set(run_cfg, "build", build_obj);
 
 	log_printf("→ %s %s %s\n", game, build, variety);
 
@@ -146,7 +152,7 @@ json_t* identify(const char *exe_fn)
 		run_ver = json_object();
 	}
 	if(!json_object_get_string(run_ver, "game")) {
-		json_object_set_new(run_ver, "game", json_string(game));
+		json_object_set(run_ver, "game", game_obj);
 	}
 
 	// Pretty game title
@@ -222,6 +228,7 @@ int thcrap_init(const char *run_cfg_fn)
 	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
+
 	GetModuleFileNameU(NULL, exe_fn, exe_fn_len);
 	GetCurrentDirectory(game_dir_len, game_dir);
 
@@ -305,10 +312,9 @@ int thcrap_init(const char *run_cfg_fn)
 					PathRemoveFileSpec(setup_dir);
 
 					PathCombineA(abs_archive, setup_dir, archive_win);
-					json_object_set_new(patch_info, "archive", json_string(abs_archive));
+					json_string_set(archive_obj, abs_archive);
 
 					// Pointers have changed
-					archive_obj = json_object_get(patch_info, "archive");
 					archive = json_string_value(archive_obj);
 
 					VLA_FREE(archive_win);
@@ -444,10 +450,10 @@ int thcrap_init(const char *run_cfg_fn)
 		log_printf("---------------------------\n");
 		json_dump_log(run_cfg, JSON_INDENT(2));
 		log_printf("---------------------------\n");
-		SetCurrentDirectory(game_dir);
 
 		json_object_set_new(run_ver, "funcs", run_funcs);
 	}
+	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	return 0;
 }

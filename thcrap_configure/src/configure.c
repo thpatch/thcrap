@@ -73,17 +73,9 @@ json_t* BootstrapPatch(const char *patch_id, const char *server_id, json_t *remo
 {
 	const char *main_fn = "patch.js";
 
-	json_t *patch_info;
-
-	if(!patch_id || !server_id) {
-		return NULL;
-	}
-	patch_info = json_object();
-
-	{
-		json_t *local_dir = json_pack("s+++", server_id, "/", patch_id, "/");
-		json_object_set_new(patch_info, "archive", local_dir);
-	}
+	json_t *patch_info = json_pack("{ss+++}",
+		"archive", server_id, "/", patch_id, "/"
+	);
 
 	if(patch_update(patch_info) == 1) {
 		// Bootstrap the new patch by downloading patch.js and deleting its 'files' object
@@ -155,6 +147,7 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 #else
 	const char *loader_exe = "thcrap_loader.exe";
 #endif
+	STRLEN_DEC(run_cfg_fn);
 	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
 
@@ -175,8 +168,7 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 		log_printf("Creating shortcuts");
 
 		json_object_foreach(games, key, cur_game) {
-			const char *game_fn = json_object_get_string(games, key);
-			STRLEN_DEC(run_cfg_fn);
+			const char *game_fn = json_string_value(cur_game);
 			size_t game_len = strlen(key) + 1;
 			size_t link_fn_len = game_len + 1 + run_cfg_fn_len + strlen(".lnk") + 1;
 			size_t link_args_len = 1 + run_cfg_fn_len + 2 + game_len + 1;
@@ -330,7 +322,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 			SAFE_FREE(remote_server_js_buffer);
 			json_decref(local_server_js);
 		} else {
-			printf("Download of server.js failed.\nUsing local server definitions...\n");
+			log_printf(
+				"Download of server.js failed.\n"
+				"Using local server definitions...\n"
+			);
 			server_js = local_server_js;
 			pause();
 		}
@@ -373,8 +368,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	// That's all on-line stuff we have to do
 	json_decref(server_js);
-
-	SetCurrentDirectory(cur_dir);
 
 	// Other default run_cfg settings
 	json_object_set_new(run_cfg, "console", json_false());

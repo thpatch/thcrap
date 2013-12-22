@@ -127,7 +127,7 @@ int png_load_for_thtx(png_image_exp image, const char *fn, thtx_header_t *thtx)
 
 	file_buffer = stack_game_file_resolve(fn, &file_size);
 	if(!file_buffer) {
-		return 0;
+		return 2;
 	}
 
 	if(png_image_begin_read_from_memory(&image->img, file_buffer, file_size)) {
@@ -223,7 +223,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			break;
 		}
 		if(hasdata && thtxoffset) {
-			char *name = (char*)(anm_entry_out + nameoffset);
+			const char *name = (const char*)(anm_entry_out + nameoffset);
 			thtx_header_t *thtx = (thtx_header_t*)(anm_entry_out + thtxoffset);
 
 			// Load a new replacement image, if necessary...
@@ -237,13 +237,14 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				name_prev = name;
 			}
 			// ... add texture boundaries...
+			bounds_resize(&bounds, x + thtx->w, y + thtx->h);
+
 			if(headersize) {
 				size_t i;
 				DWORD *sprite_ptr = (DWORD*)(anm_entry_out + headersize);
-				bounds_resize(&bounds, x + thtx->w, y + thtx->h);
-				for(i = 0; i < sprites; i++) {
-					bounds_draw_rect(&bounds, x, y, (sprite_t*)(anm_entry_out + sprite_ptr[0]));
-					sprite_ptr++;
+				for(i = 0; i < sprites; i++, sprite_ptr++) {
+					sprite_t *sprite = (sprite_t*)(anm_entry_out + sprite_ptr[0]);
+					bounds_draw_rect(&bounds, x, y, sprite);
 				}
 			}
 			// ... and patch it.

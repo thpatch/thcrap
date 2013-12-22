@@ -155,7 +155,9 @@ int ServerDisable(json_t *server)
 	return 0;
 }
 
-void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWORD *exp_crc)
+void* ServerDownloadFile(
+	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
+)
 {
 	HINTERNET hFile = NULL;
 	DWORD http_stat;
@@ -163,28 +165,22 @@ void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWOR
 	DWORD read_size = 0;
 	BOOL ret;
 	BYTE *file_buffer = NULL, *p;
-	size_t i;
+	int i;
 
 	int servers_first = ServerGetFirst(servers);
+	int servers_total = json_array_size(servers);
 	// gets decremented in the loop
-	int servers_left = json_array_size(servers);
+	int servers_left = servers_total;
 
 	if(!fn || !file_size || servers_first < 0) {
 		return NULL;
 	}
-	for(i = servers_first; servers_left; i++) {
+	*file_size = 0;
+	for(i = servers_first; servers_left; i = (i + 1) % servers_total) {
 		DWORD time, time_start;
 		DWORD crc = 0;
-		json_t *server;
-		json_t *server_time;
-
-		// Loop back
-		if(i >= json_array_size(servers)) {
-			i = 0;
-		}
-
-		server = json_array_get(servers, i);
-		server_time = json_object_get(server, "time");
+		json_t *server = json_array_get(servers, i);
+		json_t *server_time = json_object_get(server, "time");
 
 		if(json_is_false(server_time)) {
 			continue;

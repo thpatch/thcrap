@@ -14,7 +14,6 @@ typedef struct {
 	json_t *result;
 	DWORD max_threads;
 	DWORD cur_threads;
-	DWORD prompt_countdown;
 	CRITICAL_SECTION cs_result;
 	CRITICAL_SECTION cs_count;
 } search_state_t;
@@ -93,9 +92,6 @@ DWORD WINAPI SearchThread(void *param)
 	state.cur_threads++;
 	LeaveCriticalSection(&state.cs_count);
 
-	// if(!--state.prompt_countdown) {
-		// state.prompt_countdown = 100;
-	// }
 	SAFE_FREE(param_dir);
 	hFind = FindFirstFile(local_dir, &w32fd);
 	while( (hFind != INVALID_HANDLE_VALUE) && ret ) {
@@ -159,10 +155,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	const char *key;
 	json_t *val;
 
-	/*wchar_t *cur_dir = (wchar_t*)malloc(MAX_PATH);
-	wcscpy(cur_dir, dir);
-	str_slash_normalize(cur_dir);*/
-
 	state.versions = stack_json_resolve(versions_js_fn, NULL);
 	if(!state.versions) {
 		log_printf(
@@ -179,7 +171,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	state.size_max = 0;
 	state.cur_threads = 0;
 	state.max_threads = 0;
-	state.prompt_countdown = 1;
 	state.found = json_object();
 	state.result = games_in ? games_in : json_object();
 	InitializeCriticalSection(&state.cs_result);

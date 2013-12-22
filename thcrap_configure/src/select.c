@@ -10,17 +10,18 @@
 
 #define PATCH_ID_LEN 16
 
-int PrintAvailPatch(const char *patch_id, json_t *selected)
+// Returns 1 if [patch_id] is [selected].
+int PatchIsSelected(json_t *selected, json_t *patch_id)
 {
 	json_t *sel_val;
 	size_t i;
 
 	json_array_foreach(selected, i, sel_val) {
-		if(!strcmp(patch_id, json_string_value(sel_val))) {
-			return 0;
+		if(json_equal(patch_id, sel_val)) {
+			return 1;
 		}
 	}
-	return 1;
+	return 0;
 }
 
 json_t* SelectPatchStack(json_t *server_js, json_t *selected)
@@ -71,9 +72,9 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 	}
 
 	while(1) {
-		size_t patch_count = 0;
+		size_t list_count = 0;
 		char buf[16];
-		size_t patch_id;
+		size_t list_pick;
 		json_t *patch;
 
 		json_array_clear(list_order);
@@ -90,7 +91,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 				const char *patch_id = json_string_value(json_val);
 				const char *patch_title = json_object_get_string(patches, patch_id);
 
-				printf("  %2d. %-16s%s\n", ++patch_count, patch_id, patch_title);
+				printf("  %2d. %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id, patch_title);
 
 				json_array_append(list_order, json_val);
 			}
@@ -106,8 +107,8 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 				const char *patch_id = json_string_value(json_val);
 				const char *patch_title = json_object_get_string(patches, patch_id);
 
-				if(PrintAvailPatch(patch_id, selected)) {
-					printf(" [%2d] %-16s%s\n", ++patch_count, patch_id, patch_title);
+				if(!PatchIsSelected(selected, json_val)) {
+					printf(" [%2d] %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id, patch_title);
 
 					json_array_append(list_order, json_val);
 				}
@@ -118,17 +119,17 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 		printf(
 			"Select a patch to add to the stack"
 			"\n (1 - %u, select a number again to remove, anything else to cancel): ",
-		patch_count);
+		list_count);
 
 		fgets(buf, sizeof(buf), stdin);
 
 		if(
-			(sscanf(buf, "%u", &patch_id) != 1) ||
-			(patch_id > patch_count)
+			(sscanf(buf, "%u", &list_pick) != 1) ||
+			(list_pick > list_count)
 		) {
 			break;
 		}
-		patch = json_array_get(list_order, patch_id - 1);
+		patch = json_array_get(list_order, list_pick - 1);
 
 		if(!strcmp(json_string_value(patch), "base_tsa")) {
 			printf(
@@ -137,10 +138,10 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 				"If you remove it, none of those will work.\n\n");
 			pause();
 		} else {
-			if(patch_id > json_array_size(selected)) {
+			if(list_pick > json_array_size(selected)) {
 				json_array_append(selected, patch);
 			} else {
-				json_array_remove(selected, patch_id - 1);
+				json_array_remove(selected, list_pick - 1);
 			}
 		}
 	}

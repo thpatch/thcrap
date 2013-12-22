@@ -33,7 +33,9 @@ int ServerDisable(json_t *server);
 // [exp_crc] can be optionally given to enforce the downloaded file to have a
 // certain checksum. If it doesn't match for one server, another one is tried,
 // until none are left. To disable this check, simply pass NULL.
-void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWORD *exp_crc);
+void* ServerDownloadFile(
+	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
+);
 
 // Updates the patch in [patch_info].
 int patch_update(const json_t *patch_info);

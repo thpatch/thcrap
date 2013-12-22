@@ -20,16 +20,6 @@ static HDC text_dc = NULL;
 
 /// Tokenization
 /// ------------
-int layout_match_set(json_t *arr, size_t ind, const char *str, size_t len)
-{
-	// We explicitly _don't_ check for len == 0 here!
-	if(json_is_array(arr) && str) {
-		json_t *json_str = json_pack("s#", str, len);
-		return json_array_set_expand(arr, ind, json_str);
-	}
-	return -1;
-}
-
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
 {
 	const char *p = NULL;
@@ -55,7 +45,7 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 			(n == 0 && *p == '$')
 			|| (n == -1 && *p == '>')
 		) {
-			layout_match_set(ret, ind++, s, p - s);
+			json_array_append(ret, json_pack("s#", s, p - s));
 			s = p + 1;
 		}
 	}
@@ -292,7 +282,7 @@ BOOL WINAPI layout_TextOutU(
 							// The width of the first parameter is already in cur_w, so...
 							size_t j = 2;
 							const char *str = NULL;
-							for(; j < json_array_size(token) && (str = json_array_get_string(token, j)); j++) {
+							while(str = json_array_get_string(token, j++)) {
 								GetTextExtentPoint32(hdc, str, strlen(str), &str_size);
 								cur_w = max(str_size.cx, cur_w);
 							}

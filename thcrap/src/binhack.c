@@ -61,7 +61,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 
 	// We don't check [funcs] here, we want to give the precise error later
 	if(!binhack_buf || !binhack_str) {
-		return 1;
+		return -1;
 	}
 
 	conv[2] = 0;
@@ -133,11 +133,11 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 
 	json_object_foreach(binhacks, key, hack)
 	{
+		const char *title = json_object_get_string(hack, "title");
 		const char *code = json_object_get_string(hack, "code");
 		// Addresses can be an array, too
 		json_t *json_addr = json_object_get(hack, "addr");
 		size_t i;
-		DWORD addr;
 
 		// Number of addresses from JSON (at least 1)
 		size_t json_addr_count = json_array_size(json_addr);
@@ -157,7 +157,7 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 		}
 
 		for(i = 0; i < json_addr_count; i++) {
-			const char *title = json_object_get_string(hack, "title");
+			DWORD addr;
 			// buffer for the rendered assembly code
 			VLA(BYTE, asm_buf, asm_size);
 

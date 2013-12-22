@@ -34,7 +34,7 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 {
 	char cmp[4];
 
-	if(!regname) {
+	if(!regs || !regname) {
 		return NULL;
 	}
 	memcpy(cmp, regname, 3);
