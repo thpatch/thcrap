@@ -45,7 +45,7 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 			(n == 0 && *p == '$')
 			|| (n == -1 && *p == '>')
 		) {
-			json_array_append(ret, json_pack("s#", s, p - s));
+			json_array_append_new(ret, json_pack("s#", s, p - s));
 			s = p + 1;
 		}
 	}
@@ -72,7 +72,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 		// Requiring at least 2 parameters for a layout command still lets people
 		// write "<text>" without that being swallowed by the layout parser.
 		if(json_array_size(match) > 1) {
-			json_array_append_new(ret, match);
+			json_array_append(ret, match);
 		} else {
 			char *cmd_start = (char*)memchr(cur_str + 1, '<', cur_len - 1);
 			if(cmd_start) {
@@ -84,6 +84,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 				SAFE_FREE(cur_str_token);
 			}
 		}
+		json_decref(match);
 		i += cur_len;
 	}
 	return ret;
@@ -273,7 +274,7 @@ BOOL WINAPI layout_TextOutU(
 							}
 						}
 						tab_end = cur_x + cur_w;
-						json_array_set_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
+						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
 						break;
 					case 'c':
 						// Center alignment
