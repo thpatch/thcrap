@@ -111,6 +111,9 @@ char* run_cfg_fn_build(const json_t *patch_stack)
 
 	json_array_foreach(patch_stack, i, json_val) {
 		const char *patch_id = json_string_value(json_val);
+		if(!patch_id) {
+			continue;
+		}
 
 		if(run_cfg_fn[0]) {
 			strcat(run_cfg_fn, "-");

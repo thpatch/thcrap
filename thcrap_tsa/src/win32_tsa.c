@@ -110,7 +110,7 @@ HWND WINAPI tsa_CreateWindowExA(
 		);
 	}
 	window_title = strings_lookup(lpWindowName, NULL);
-	if(window_title == lpWindowName && game_title) {
+	if(window_title == lpWindowName && json_is_string(game_title)) {
 		sprintf(custom_title, "%s %s",
 			json_string_value(game_title),
 			json_is_string(game_build) ? json_string_value(game_build) : "");

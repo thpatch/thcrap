@@ -78,7 +78,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 			if(cmd_start) {
 				cur_len = cmd_start - cur_str;
 			}
-			{
+			if(cur_str[0]) {
 				char *cur_str_token = EnsureUTF8(cur_str, cur_len);
 				json_array_append_new(ret, json_string(cur_str_token));
 				SAFE_FREE(cur_str_token);
