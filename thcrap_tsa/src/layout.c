@@ -45,7 +45,7 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 			(n == 0 && *p == '$')
 			|| (n == -1 && *p == '>')
 		) {
-			json_array_append_new(ret, json_pack("s#", s, p - s));
+			json_array_append_new(ret, json_stringn_nocheck(s, p - s));
 			s = p + 1;
 		}
 	}
@@ -79,9 +79,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 				cur_len = cmd_start - cur_str;
 			}
 			if(cur_str[0]) {
-				char *cur_str_token = EnsureUTF8(cur_str, cur_len);
-				json_array_append_new(ret, json_string(cur_str_token));
-				SAFE_FREE(cur_str_token);
+				json_array_append_new(ret, json_stringn_nocheck(cur_str, cur_len));
 			}
 		}
 		json_decref(match);
