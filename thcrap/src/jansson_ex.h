@@ -66,7 +66,8 @@ const char* json_object_get_string(const json_t *object, const char *key);
 // Merge [new_obj] recursively into [old_obj].
 // [new_obj] has priority; any element of [old_obj] that is present
 // in [new_obj] and is *not* an object itself is overwritten.
-int json_object_merge(json_t *old_obj, const json_t *new_obj);
+// Returns [old_obj].
+json_t* json_object_merge(json_t *old_obj, const json_t *new_obj);
 
 // Return an alphabetically sorted JSON array of the keys in [object].
 json_t* json_object_get_keys_sorted(const json_t *object);
