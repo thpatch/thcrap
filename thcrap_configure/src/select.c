@@ -35,7 +35,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 
 	if(!json_object_size(patches)) {
 		log_printf("\nNo patches available -.-\n");
-		return 0;
+		goto end;
 	}
 	if(!json_is_array(selected)) {
 		selected = json_array();
@@ -145,6 +145,7 @@ json_t* SelectPatchStack(json_t *server_js, json_t *selected)
 			}
 		}
 	}
+end:
 	json_decref(list_order);
 	json_decref(patches_sorted);
 	return selected;

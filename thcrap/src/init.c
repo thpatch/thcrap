@@ -455,6 +455,7 @@ int thcrap_init(const char *run_cfg_fn)
 	}
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
+	VLA_FREE(exe_fn);
 	return 0;
 }
 

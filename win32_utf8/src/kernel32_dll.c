@@ -257,6 +257,7 @@ DWORD WINAPI GetEnvironmentVariableU(
 	// Return the converted size (!)
 	ret = StringToUTF8(lpBuffer, lpBuffer_w, nSize);
 	VLA_FREE(lpBuffer_w);
+	WCHAR_T_FREE(lpName);
 	return ret;
 }
 

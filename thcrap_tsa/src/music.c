@@ -23,6 +23,7 @@ const char* music_title_get(size_t track)
 		VLA(char, key, key_len);
 		sprintf(key, "%s_%02u", game, track);
 		ret = json_object_get_string(themes, key);
+		VLA_FREE(key);
 	}
 	return ret;
 }
