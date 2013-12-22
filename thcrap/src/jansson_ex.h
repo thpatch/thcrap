@@ -24,8 +24,9 @@ size_t json_hex_value(json_t *val);
 
 /// Arrays
 /// ------
-// Like json_array_set, but expands the array if necessary.
+// Like json_array_set(_new), but expands the array if necessary.
 int json_array_set_expand(json_t *arr, size_t ind, json_t *value);
+int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value);
 
 // Get the integer value of [ind] in [array],
 // automatically converting the JSON value to an integer if necessary.

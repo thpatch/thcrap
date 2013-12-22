@@ -35,19 +35,23 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
-int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
+int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
 	if(ind >= arr_size) {
 		int ret = 0;
 		size_t i;
 		for(i = arr_size; i <= ind; i++) {
-			ret = json_array_append(arr, value);
+			ret = json_array_append_new(arr, value);
 		}
 		return ret;
 	} else {
-		return json_array_set(arr, ind, value);
+		return json_array_set_new(arr, ind, value);
 	}
+}
+int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
+{
+	return json_array_set_new_expand(arr, ind, json_incref(value));
 }
 
 size_t json_array_get_hex(json_t *arr, const size_t ind)
