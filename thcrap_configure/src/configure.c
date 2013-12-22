@@ -70,17 +70,13 @@ void pause(void)
 	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
-json_t* BootstrapPatch(const char *patch_id, const char *repo_id, json_t *repo_servers)
+json_t* BootstrapPatch(const char *repo_id, const char *patch_id, json_t *repo_servers)
 {
 	const char *main_fn = "patch.js";
 
 	json_t *patch_info = json_pack("{ss+++}",
 		"archive", repo_id, "/", patch_id, "/"
 	);
-	// Temporary, initialized patch object used for updating
-	json_t *patch_full;
-
-	// Bootstrap the new patch by downloading the latest patch.js
 	char *patch_js_buffer;
 	DWORD patch_js_size;
 	size_t patch_len = strlen(patch_id) + 1;
@@ -95,10 +91,6 @@ json_t* BootstrapPatch(const char *patch_id, const char *repo_id, json_t *repo_s
 
 	VLA_FREE(remote_patch_fn);
 	SAFE_FREE(patch_js_buffer);
-
-	patch_full = patch_init(patch_info);
-	patch_update(patch_full);
-	json_decref(patch_full);
 	return patch_info;
 }
 
@@ -321,7 +313,13 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		log_printf("Bootstrapping selected patches...\n");
 		json_array_foreach(patch_stack, i, json_val) {
 			const char *patch_id = json_string_value(json_val);
-			json_t *patch_info = BootstrapPatch(patch_id, patch_dir, remote_servers);
+			json_t *patch_info = BootstrapPatch(patch_dir, patch_id, remote_servers);
+
+			// Temporary, initialized patch object used for updating
+			json_t *patch_full = patch_init(patch_info);
+			patch_update(patch_full);
+			json_decref(patch_full);
+
 			json_array_append_new(run_cfg_patches, patch_info);
 		}
 	}
