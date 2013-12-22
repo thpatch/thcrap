@@ -123,11 +123,10 @@ void stack_show_missing(void)
 	size_t rem_arcs_str_len = 1;
 
 	json_array_foreach(patches, i, patch_info) {
-		json_t *archive_obj = json_object_get(patch_info, "archive");
-		const char *archive = json_string_value(archive_obj);
-		if(!PathFileExists(archive)) {
-			json_array_append(rem_arcs, archive_obj);
-			rem_arcs_str_len += 1 + json_string_length(archive_obj) + 1;
+		json_t *archive = json_object_get(patch_info, "archive");
+		if(json_is_string(archive) && !PathFileExists(json_string_value(archive))) {
+			json_array_append(rem_arcs, archive);
+			rem_arcs_str_len += 1 + json_string_length(archive) + 1;
 		}
 	}
 

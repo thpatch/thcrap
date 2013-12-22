@@ -93,7 +93,7 @@ BOOL WINAPI InternetCrackUrlU(
 )
 {
 	BOOL ret = FALSE;
-	if(lpUC) {
+	if(lpUC && lpszUrl) {
 		DWORD last_error;
 		URL_COMPONENTSW lpUC_w;
 		WCHAR_T_DEC(lpszUrl);
