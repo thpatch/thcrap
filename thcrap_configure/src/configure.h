@@ -5,6 +5,10 @@
 
 #pragma once
 
+// Bootstraps the patch [patch_id] from [repo_id] by building a patch object
+// with an archive directory and storing patch.js from [repo_servers] in it.
+json_t* BootstrapPatch(const char *repo_id, const char *patch_id, json_t *repo_servers);
+
 // Returns an array of selected patches
 json_t* SelectPatchStack(json_t *repo_js, json_t *patch_stack);
 
