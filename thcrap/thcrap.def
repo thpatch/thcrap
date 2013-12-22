@@ -48,6 +48,7 @@ EXPORTS
 	; ---------------
 	json_hex_value
 	json_array_set_expand
+	json_array_set_new_expand
 	json_array_get_hex
 	json_array_get_string
 	json_array_get_string_safe
