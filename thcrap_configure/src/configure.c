@@ -189,8 +189,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 {
 	int ret = 0;
 
-	json_t *repo_js;
-	json_t *remote_servers;
+	json_t *repo_list = NULL;
 
 	const char *start_repo = "http://srv.thpatch.net";
 
@@ -262,6 +261,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"\t%s\n"
 		"\n"
 		"You can specify a different URL as a command-line parameter.\n"
+		"Additionally, all patches from previously discovered repositories, stored in\n"
+		"subdirectories of the current directory, will be available for selection.\n"
 		"\n"
 		"\n",
 		start_repo
@@ -269,27 +270,14 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	pause();
 
 	RepoDiscover(start_repo, NULL, NULL);
-	{
-		json_t *local_servers = ServerBuild(start_repo);
-		DWORD remote_repo_js_size;
-		void *remote_repo_js_buffer;
-
-		remote_repo_js_buffer = ServerDownloadFile(local_servers, "repo.js", &remote_repo_js_size, NULL);
-		if(remote_repo_js_buffer) {
-			repo_js = json_loadb_report(remote_repo_js_buffer, remote_repo_js_size, 0, "repo.js");
-			SAFE_FREE(remote_repo_js_buffer);
-			remote_servers = ServerInit(repo_js);
-			// TODO: Nice, friendly error
-		} else {
-			log_printf(
-				"Download of repo.js failed.\n"
-				"The patch repository is down at the moment. Please try again later.\n"
-			);
-			goto end;
-		}
-		json_decref(local_servers);
+	repo_list = RepoLoadLocal();
+	if(!json_object_size(repo_list)) {
+		log_printf("No patch repositories available...\n");
+		goto end;
 	}
-	sel_stack = SelectPatchStack(repo_js);
+	sel_stack = SelectPatchStack(
+		json_object_get(repo_list, json_object_iter_key(json_object_iter(repo_list)))
+	);
 	if(json_array_size(sel_stack)) {
 		size_t i;
 		json_t *sel;
@@ -300,7 +288,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 		log_printf("Bootstrapping selected patches...\n");
 		json_array_foreach(sel_stack, i, sel) {
-			json_t *patch_info = BootstrapPatch(sel, remote_servers);
+			const char *repo_id = json_array_get_string(sel, 0);
+			json_t *repo = json_object_get(repo_list, repo_id);
+			json_t *servers = json_object_get(repo, "servers");
+			json_t *patch_info = BootstrapPatch(sel, servers);
 
 			// Temporary, initialized patch object used for updating
 			json_t *patch_full = patch_init(patch_info);
@@ -311,8 +302,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		}
 	}
 
-	// That's all on-line stuff we have to do
-	json_decref(repo_js);
 
 	// Other default run_cfg settings
 	json_object_set_new(run_cfg, "console", json_false());
@@ -357,6 +346,7 @@ end:
 	json_decref(args);
 
 	VLA_FREE(cur_dir);
+	json_decref(repo_list);
 
 	pause();
 	return 0;

@@ -18,3 +18,13 @@ json_t* RepoGetLocalFN(const char *id);
 // duplicate URLs and repos. Just set them to NULL when calling the function
 // from outside.
 int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache);
+
+// Loads repository files from all subdirectories of the current directory.
+// Returns a JSON object in the following format:
+// {
+//	"<repository ID>": {
+//		<contents of repo.js>
+//	},
+//	...
+// }
+json_t* RepoLoadLocal(void);
