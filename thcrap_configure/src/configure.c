@@ -289,25 +289,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		}
 		json_decref(local_servers);
 	}
-
-	{
-		json_t *json_val;
-		const char *key;
-		const char *repo_id = json_object_get_string(repo_js, "id");
-		json_t *patches = json_object_get(repo_js, "patches");
-
-		// Push base_tsa into the list of selected patches, so that we can lock it later.
-		// Really, we _don't_ want people to remove it accidentally
-		sel_stack = json_array();
-		json_object_foreach(patches, key, json_val) {
-			if(!stricmp(key, "base_tsa")) {
-				json_t *sel = json_pack("[ss]", repo_id, "base_tsa");
-				json_array_append_new(sel_stack, sel);
-				break;
-			}
-		}
-		sel_stack = SelectPatchStack(repo_js, sel_stack);
-	}
+	sel_stack = SelectPatchStack(repo_js);
 	if(json_array_size(sel_stack)) {
 		size_t i;
 		json_t *sel;

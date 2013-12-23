@@ -30,10 +30,11 @@ int IsSelected(json_t *sel_stack, json_t *repo_id, json_t *patch_id)
 	return 0;
 }
 
-json_t* SelectPatchStack(json_t *repo_js, json_t *sel_stack)
+json_t* SelectPatchStack(json_t *repo_js)
 {
 	json_t *repo_id = json_object_get(repo_js, "id");
 	json_t *list_order = json_array();
+	json_t *sel_stack = json_array();
 	// Screen clearing offset line
 	SHORT y;
 
@@ -43,9 +44,6 @@ json_t* SelectPatchStack(json_t *repo_js, json_t *sel_stack)
 	if(!json_object_size(patches)) {
 		log_printf("\nNo patches available -.-\n");
 		goto end;
-	}
-	if(!json_is_array(sel_stack)) {
-		sel_stack = json_array();
 	}
 
 	cls(0);
@@ -82,8 +80,6 @@ json_t* SelectPatchStack(json_t *repo_js, json_t *sel_stack)
 		size_t list_count = 0;
 		char buf[16];
 		size_t list_pick;
-		json_t *sel;
-		const char *sel_patch;
 
 		json_array_clear(list_order);
 
@@ -138,21 +134,12 @@ json_t* SelectPatchStack(json_t *repo_js, json_t *sel_stack)
 		) {
 			break;
 		}
-		sel = json_array_get(list_order, list_pick - 1);
-		sel_patch = json_array_get_string(sel, 1);
 
-		if(sel_patch && !strcmp(sel_patch, "base_tsa")) {
-			printf(
-				"\nUm... you _really_ do not want to mess with base_tsa.\n"
-				"This patch supplies the foundation for every other patch offered here.\n"
-				"If you remove it, none of those will work.\n\n");
-			pause();
+		if(list_pick > json_array_size(sel_stack)) {
+			json_t *sel = json_array_get(list_order, list_pick - 1);
+			json_array_append(sel_stack, sel);
 		} else {
-			if(list_pick > json_array_size(sel_stack)) {
-				json_array_append(sel_stack, sel);
-			} else {
-				json_array_remove(sel_stack, list_pick - 1);
-			}
+			json_array_remove(sel_stack, list_pick - 1);
 		}
 	}
 end:
