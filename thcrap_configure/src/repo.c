@@ -74,3 +74,34 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 	json_decref(id_cache);
 	return 0;
 }
+
+json_t* RepoLoadLocal(void)
+{
+	BOOL find_ret = 1;
+	json_t *repo_list;
+	WIN32_FIND_DATAA w32fd;
+	// Too bad we can't do "*/repo.js" or something similar.
+	HANDLE hFind = FindFirstFile("*", &w32fd);
+
+	if(hFind == INVALID_HANDLE_VALUE) {
+		return NULL;
+	}
+	repo_list = json_object();
+	while( (GetLastError() != ERROR_NO_MORE_FILES) && (find_ret) ) {
+		if(
+			(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			&& strcmp(w32fd.cFileName, ".")
+			&& strcmp(w32fd.cFileName, "..")
+		) {
+			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
+			json_t *repo_js = json_load_file_report(json_string_value(repo_local_fn));
+			const char *id = json_object_get_string(repo_js, "id");
+			ServerInit(repo_js);
+			json_object_set_new(repo_list, id, repo_js);
+			json_decref(repo_local_fn);
+		}
+		find_ret = FindNextFile(hFind, &w32fd);
+	}
+	FindClose(hFind);
+	return repo_list;
+}
