@@ -5,12 +5,14 @@
 
 #pragma once
 
-// Bootstraps the patch [patch_id] from [repo_id] by building a patch object
-// with an archive directory and storing patch.js from [repo_servers] in it.
-json_t* BootstrapPatch(const char *repo_id, const char *patch_id, json_t *repo_servers);
+/// Patch selection format: ["repo_id", "patch_id"]
 
-// Returns an array of selected patches
-json_t* SelectPatchStack(json_t *repo_js, json_t *patch_stack);
+// Bootstraps the patch selection [sel] by building a patch object
+// with an archive directory and storing patch.js from [repo_servers] in it.
+json_t* BootstrapPatch(const json_t *sel, json_t *repo_servers);
+
+// Returns an array of patch selections.
+json_t* SelectPatchStack(json_t *repo_js, json_t *sel_stack);
 
 json_t* SearchForGames(const char *dir, json_t *games_in);
 

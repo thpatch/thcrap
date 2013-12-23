@@ -70,9 +70,11 @@ void pause(void)
 	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
-json_t* BootstrapPatch(const char *repo_id, const char *patch_id, json_t *repo_servers)
+json_t* BootstrapPatch(const json_t *sel, json_t *repo_servers)
 {
 	const char *main_fn = "patch.js";
+	const char *repo_id = json_array_get_string(sel, 0);
+	const char *patch_id = json_array_get_string(sel, 1);
 
 	json_t *patch_info = json_pack("{ss+++}",
 		"archive", repo_id, "/", patch_id, "/"
@@ -94,23 +96,24 @@ json_t* BootstrapPatch(const char *repo_id, const char *patch_id, json_t *repo_s
 	return patch_info;
 }
 
-char* run_cfg_fn_build(const json_t *patch_stack)
+char* run_cfg_fn_build(const json_t *sel_stack)
 {
 	size_t i;
-	json_t *json_val;
+	json_t *sel;
 	size_t run_cfg_fn_len = strlen(".js") + 1;
 	char *run_cfg_fn = NULL;
 
 	// Here at Touhou Patch Center, we love double loops.
-	json_array_foreach(patch_stack, i, json_val) {
-		run_cfg_fn_len += json_string_length(json_val) + 1;
+	json_array_foreach(sel_stack, i, sel) {
+		const json_t *patch_id = json_array_get(sel, 1);
+		run_cfg_fn_len += json_string_length(patch_id) + 1;
 	}
 
 	run_cfg_fn = (char*)malloc(run_cfg_fn_len);
 	run_cfg_fn[0] = 0;
 
-	json_array_foreach(patch_stack, i, json_val) {
-		const char *patch_id = json_string_value(json_val);
+	json_array_foreach(sel_stack, i, sel) {
+		const char *patch_id = json_array_get_string(sel, 1);
 		if(!patch_id) {
 			continue;
 		}
@@ -119,7 +122,7 @@ char* run_cfg_fn_build(const json_t *patch_stack)
 			strcat(run_cfg_fn, "-");
 		}
 
-		if(!stricmp(patch_id, "base_tsa") && json_array_size(patch_stack) > 1) {
+		if(!stricmp(patch_id, "base_tsa") && json_array_size(sel_stack) > 1) {
 			continue;
 		}
 		if(!strnicmp(patch_id, "lang_", 5)) {
@@ -191,9 +194,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	const char *start_repo = "http://srv.thpatch.net";
 
-	// JSON array containing ID strings of the selected patches
-	json_t *patch_stack = json_array();
-
+	json_t *sel_stack = NULL;
 	json_t *run_cfg = NULL;
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
@@ -292,31 +293,32 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	{
 		json_t *json_val;
 		const char *key;
+		const char *repo_id = json_object_get_string(repo_js, "id");
 		json_t *patches = json_object_get(repo_js, "patches");
 
 		// Push base_tsa into the list of selected patches, so that we can lock it later.
 		// Really, we _don't_ want people to remove it accidentally
+		sel_stack = json_array();
 		json_object_foreach(patches, key, json_val) {
 			if(!stricmp(key, "base_tsa")) {
-				json_array_append_new(patch_stack, json_string(key));
+				json_t *sel = json_pack("[ss]", repo_id, "base_tsa");
+				json_array_append_new(sel_stack, sel);
+				break;
 			}
 		}
-		patch_stack = SelectPatchStack(repo_js, patch_stack);
+		sel_stack = SelectPatchStack(repo_js, sel_stack);
 	}
-	if(json_array_size(patch_stack)) {
+	if(json_array_size(sel_stack)) {
 		size_t i;
-		json_t *json_val;
+		json_t *sel;
 		json_t *run_cfg_patches;
-		const char *repo_id = json_object_get_string(repo_js, "id");
-		const char *patch_dir = repo_id ? repo_id : cur_dir;
 
 		run_cfg = json_object();
 		run_cfg_patches = json_object_get_create(run_cfg, "patches", json_array());
 
 		log_printf("Bootstrapping selected patches...\n");
-		json_array_foreach(patch_stack, i, json_val) {
-			const char *patch_id = json_string_value(json_val);
-			json_t *patch_info = BootstrapPatch(patch_dir, patch_id, remote_servers);
+		json_array_foreach(sel_stack, i, sel) {
+			json_t *patch_info = BootstrapPatch(sel, remote_servers);
 
 			// Temporary, initialized patch object used for updating
 			json_t *patch_full = patch_init(patch_info);
@@ -334,7 +336,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	json_object_set_new(run_cfg, "console", json_false());
 	json_object_set_new(run_cfg, "dat_dump", json_false());
 
-	run_cfg_fn = run_cfg_fn_build(patch_stack);
+	run_cfg_fn = run_cfg_fn_build(sel_stack);
 
 	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2));
 	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn);
@@ -367,7 +369,7 @@ end:
 	SAFE_FREE(run_cfg_fn);
 
 	json_decref(run_cfg);
-	json_decref(patch_stack);
+	json_decref(sel_stack);
 	json_decref(games);
 
 	json_decref(args);
