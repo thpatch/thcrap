@@ -12,7 +12,7 @@
 json_t* BootstrapPatch(const json_t *sel, json_t *repo_servers);
 
 // Returns an array of patch selections.
-json_t* SelectPatchStack(json_t *repo_js);
+json_t* SelectPatchStack(json_t *repo_list);
 
 json_t* SearchForGames(const char *dir, json_t *games_in);
 
