@@ -405,3 +405,13 @@ end_update:
 	json_decref(local_files);
 	return ret;
 }
+
+void stack_update(void)
+{
+	json_t *patch_array = json_object_get(runconfig_get(), "patches");
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patch_array, i, patch_info) {
+		patch_update(patch_info);
+	}
+}
