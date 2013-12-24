@@ -16,6 +16,7 @@ EXPORTS
 	ServerDownloadFile
 
 	patch_update
+	stack_update
 
 	UpdateThread
 	BP_update_poll
