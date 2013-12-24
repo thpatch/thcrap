@@ -66,18 +66,28 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 	return list_count;
 }
 
-json_t* SelectPatchStack(json_t *repo_js)
+json_t* SelectPatchStack(json_t *repo_list)
 {
 	json_t *list_order = json_array();
 	json_t *sel_stack = json_array();
+	const char *key;
+	json_t *json_val;
 	// Screen clearing offset line
 	SHORT y;
+	size_t list_count = 0;
 
-	json_t *patches = json_object_get(repo_js, "patches");
-	json_t *patches_sorted = json_object_get_keys_sorted(patches);
-	json_object_set(repo_js, "patches_sorted", patches_sorted);
-
-	if(!json_object_size(patches)) {
+	if(!json_object_size(repo_list)) {
+		log_printf("\nNo repositories available -.-\n");
+		goto end;
+	}
+	// Sort patches
+	json_object_foreach(repo_list, key, json_val) {
+		json_t *patches = json_object_get(json_val, "patches");
+		json_t *patches_sorted = json_object_get_keys_sorted(patches);
+		json_object_set_new(json_val, "patches_sorted", patches_sorted);
+		list_count += json_array_size(patches_sorted);
+	}
+	if(!list_count) {
 		log_printf("\nNo patches available -.-\n");
 		goto end;
 	}
@@ -99,10 +109,10 @@ json_t* SelectPatchStack(json_t *repo_js)
 	}
 
 	while(1) {
-		size_t list_count = 0;
 		char buf[16];
 		size_t list_pick;
 
+		list_count = 0;
 		json_array_clear(list_order);
 
 		cls(y);
@@ -114,7 +124,10 @@ json_t* SelectPatchStack(json_t *repo_js)
 			printf("Selected patches (in ascending order of priority):\n\n");
 
 			json_array_foreach(sel_stack, i, sel) {
+				const char *repo_id = json_array_get_string(sel, 0);
 				const char *patch_id = json_array_get_string(sel, 1);
+				const json_t *repo = json_object_get(repo_list, repo_id);
+				const json_t *patches = json_object_get(repo, "patches");
 				const char *patch_title = json_object_get_string(patches, patch_id);
 
 				printf("  %2d. %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id, patch_title);
@@ -124,7 +137,9 @@ json_t* SelectPatchStack(json_t *repo_js)
 			printf("\n\n");
 		}
 
-		list_count = RepoPrintPatches(list_order, repo_js, sel_stack);
+		json_object_foreach(repo_list, key, json_val) {
+			list_count = RepoPrintPatches(list_order, json_val, sel_stack);
+		}
 		printf("\n");
 
 		printf(

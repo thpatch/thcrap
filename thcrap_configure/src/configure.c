@@ -275,9 +275,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		log_printf("No patch repositories available...\n");
 		goto end;
 	}
-	sel_stack = SelectPatchStack(
-		json_object_get(repo_list, json_object_iter_key(json_object_iter(repo_list)))
-	);
+	sel_stack = SelectPatchStack(repo_list);
 	if(json_array_size(sel_stack)) {
 		size_t i;
 		json_t *sel;
