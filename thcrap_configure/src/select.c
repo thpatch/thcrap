@@ -30,9 +30,44 @@ int IsSelected(json_t *sel_stack, json_t *repo_id, json_t *patch_id)
 	return 0;
 }
 
+// Prints all patches of [repo_js] that are not part of the [sel_stack],
+// filling [list_order] with the order they appear in.
+// Returns the final array size of [list_order].
+int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
+{
+	json_t *patch_id;
+	size_t i;
+	json_t *patches = json_object_get(repo_js, "patches");
+	json_t *patches_sorted = json_object_get(repo_js, "patches_sorted");
+	json_t *repo_id = json_object_get(repo_js, "id");
+	const char *repo_id_str = json_string_value(repo_id);
+	const char *repo_title = json_object_get_string(repo_js, "title");
+	size_t list_count = json_array_size(list_order);
+	int print_header = 1;
+
+	json_array_foreach(patches_sorted, i, patch_id) {
+		const char *patch_id_str = json_string_value(patch_id);
+		const char *patch_title = json_object_get_string(patches, patch_id_str);
+
+		if(!IsSelected(sel_stack, repo_id, patch_id)) {
+			json_t *sel = json_pack("[ss]", repo_id_str, patch_id_str);
+			json_array_append_new(list_order, sel);
+
+			if(print_header) {
+				printf("Patches from [%s] (%s):\n\n", repo_title, repo_id_str);
+				print_header = 0;
+			}
+			printf(" [%2d] %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id_str, patch_title);
+		}
+	}
+	if(!print_header) {
+		printf("\n");
+	}
+	return list_count;
+}
+
 json_t* SelectPatchStack(json_t *repo_js)
 {
-	json_t *repo_id = json_object_get(repo_js, "id");
 	json_t *list_order = json_array();
 	json_t *sel_stack = json_array();
 	// Screen clearing offset line
@@ -40,6 +75,7 @@ json_t* SelectPatchStack(json_t *repo_js)
 
 	json_t *patches = json_object_get(repo_js, "patches");
 	json_t *patches_sorted = json_object_get_keys_sorted(patches);
+	json_object_set(repo_js, "patches_sorted", patches_sorted);
 
 	if(!json_object_size(patches)) {
 		log_printf("\nNo patches available -.-\n");
@@ -58,20 +94,6 @@ json_t* SelectPatchStack(json_t *repo_js)
 	{
 		CONSOLE_SCREEN_BUFFER_INFO csbi;
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-		const char *url_desc = json_object_get_string(repo_js, "url_desc");
-		if(url_desc) {
-			log_printf(
-				"For more information on these patches, visit\n"
-				"\n"
-				"\t%s"
-				"\n"
-				"\n"
-				"\n",
-				url_desc
-			);
-		}
-
 		GetConsoleScreenBufferInfo(hConsole, &csbi);
 		y = csbi.dwCursorPosition.Y;
 	}
@@ -102,24 +124,8 @@ json_t* SelectPatchStack(json_t *repo_js)
 			printf("\n\n");
 		}
 
-		if(json_array_size(sel_stack) < json_object_size(patches)) {
-			json_t *json_val;
-			size_t i;
-			printf("Available patches:\n\n");
-
-			json_array_foreach(patches_sorted, i, json_val) {
-				const char *patch_id = json_string_value(json_val);
-				const char *patch_title = json_object_get_string(patches, patch_id);
-
-				if(!IsSelected(sel_stack, repo_id, json_val)) {
-					json_t *sel = json_pack("[ss]", json_string_value(repo_id), patch_id);
-					printf(" [%2d] %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id, patch_title);
-
-					json_array_append_new(list_order, sel);
-				}
-			}
-			printf("\n\n");
-		}
+		list_count = RepoPrintPatches(list_order, repo_js, sel_stack);
+		printf("\n");
 
 		printf(
 			"Select a patch to add to the stack"
@@ -144,6 +150,5 @@ json_t* SelectPatchStack(json_t *repo_js)
 	}
 end:
 	json_decref(list_order);
-	json_decref(patches_sorted);
 	return sel_stack;
 }
