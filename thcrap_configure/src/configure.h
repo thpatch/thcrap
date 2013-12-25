@@ -7,9 +7,12 @@
 
 /// Patch selection format: ["repo_id", "patch_id"]
 
-// Bootstraps the patch selection [sel] by building a patch object
-// with an archive directory and storing patch.js from [repo_servers] in it.
-json_t* BootstrapPatch(const json_t *sel, json_t *repo_servers);
+// Builds a new patch object with an archive directory from a patch selection.
+json_t* patch_build(const json_t *sel);
+
+// Bootstraps the patch selection [sel] by building a patch object, downloading
+// patch.js from [repo_servers], and storing it inside the returned object.
+json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers);
 
 // Returns an array of patch selections.
 json_t* SelectPatchStack(json_t *repo_list);
