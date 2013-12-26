@@ -195,11 +195,13 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 		const json_t *repo = json_object_get(repo_list, repo_id);
 		const json_t *patches = json_object_get(repo, "patches");
 		const char *patch_title = json_object_get_string(patches, patch_id);
+		json_t *full_id = json_pack("s++", repo_id, "/", patch_id);
 
 		printf("  %2d. ", ++list_count);
-		PrettyPrintPatch(patch_id, patch_title);
+		PrettyPrintPatch(json_string_value(full_id), patch_title);
 
 		json_array_append(list_order, sel);
+		json_decref(full_id);
 	}
 	printf("\n\n");
 	return list_count;
