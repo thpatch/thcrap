@@ -30,27 +30,92 @@ int IsSelected(json_t *sel_stack, json_t *repo_id, json_t *patch_id)
 	return 0;
 }
 
+// Locates a repository for [patch_id] in [repo_list], starting from [orig_repo_id].
+const char* SearchPatch(json_t *repo_list, const char *orig_repo_id, const char *patch_id)
+{
+	const json_t *orig_repo = json_object_get(repo_list, orig_repo_id);
+	const json_t *patches = json_object_get(orig_repo, "patches");
+	const json_t *remote_repo;
+	const char *key;
+
+	if(json_object_get(patches, patch_id)) {
+		return orig_repo_id;
+	}
+
+	json_object_foreach(repo_list, key, remote_repo) {
+		patches = json_object_get(remote_repo, "patches");
+		if(json_object_get(patches, patch_id)) {
+			return key;
+		}
+	}
+	// Not found...
+	return NULL;
+}
+
+// Adds a patch and, recursively, all of its required dependencies. These are
+// resolved first on the repository the patch originated, then globally.
+// Returns the number of missing dependencies.
 int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 {
+	int ret = 0;
 	json_t *patches = json_object_get(runconfig_get(), "patches");
 	const char *repo_id = json_array_get_string(sel, 0);
+	const char *patch_id = json_array_get_string(sel, 1);
 	const json_t *repo = json_object_get(repo_list, repo_id);
 	json_t *repo_servers = json_object_get(repo, "servers");
 	json_t *patch_info = patch_bootstrap(sel, repo_servers);
 	json_t *patch_full = patch_init(patch_info);
+	json_t *dependencies = json_object_get(patch_full, "dependencies");
+	size_t i;
+	json_t *dep;
 
+	json_array_foreach(dependencies, i, dep) {
+		const char *dep_str = json_string_value(dep);
+		if(!IsSelected(sel_stack, NULL, dep)) {
+			const char *dep_repo = SearchPatch(repo_list, repo_id, dep_str);
+			if(!dep_repo) {
+				log_printf("ERROR: Dependency '%s' of patch '%s' not met!\n", dep_str, patch_id);
+				ret++;
+			} else {
+				json_t *dep_sel = json_pack("[ss]", dep_repo, dep_str);
+				ret += AddPatch(sel_stack, repo_list, dep_sel);
+				json_decref(dep_sel);
+			}
+		}
+	}
 	json_array_append(patches, patch_full);
 	json_array_append(sel_stack, sel);
 	json_decref(patch_full);
 	json_decref(patch_info);
-	return 0;
+	return ret;
 }
 
+// Returns the number of patches removed.
 int RemovePatch(json_t *sel_stack, size_t id)
 {
+	int ret = 0;
 	json_t *patches = json_object_get(runconfig_get(), "patches");
+	json_t *sel = json_array_get(sel_stack, id);
+	json_t *patch_id = json_array_get(sel, 1);
+	size_t i;
+	json_t *patch_info;
+
 	json_array_remove(patches, id);
 	json_array_remove(sel_stack, id);
+
+	json_array_foreach(patches, i, patch_info) {
+		json_t *dependencies = json_object_get(patch_info, "dependencies");
+		size_t j;
+		json_t *dep;
+
+		json_array_foreach(dependencies, j, dep) {
+			if(json_equal(patch_id, dep)) {
+				ret += RemovePatch(sel_stack, id);
+				i--;
+				break;
+			}
+		}
+	}
 	return 1;
 }
 
@@ -184,8 +249,20 @@ json_t* SelectPatchStack(json_t *repo_list)
 		}
 
 		if(list_pick > json_array_size(sel_stack)) {
+			int ret;
 			json_t *sel = json_array_get(list_order, list_pick - 1);
-			AddPatch(sel_stack, repo_list, sel);
+			const char *repo_id = json_array_get_string(sel, 0);
+			const char *patch_id = json_array_get_string(sel, 1);
+			log_printf("Resolving dependencies for %s/%s...\n", repo_id, patch_id);
+			ret = AddPatch(sel_stack, repo_list, sel);
+			if(ret) {
+				log_printf(
+					"\n"
+					"%d unmet dependencies. This configuration will most likely not work correctly!\n",
+					ret
+				);
+				pause();
+			}
 		} else {
 			RemovePatch(sel_stack, list_pick - 1);
 		}
