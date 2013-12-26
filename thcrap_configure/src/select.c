@@ -8,7 +8,6 @@
 #include "configure.h"
 #include "search.h"
 
-#define PATCH_ID_LEN 16
 
 // Returns 1 if the patch [patch_id] from [repo_id] is in [sel_stack].
 // [repo_id] can be NULL to ignore the repository.
@@ -119,6 +118,29 @@ int RemovePatch(json_t *sel_stack, size_t id)
 	return 1;
 }
 
+int PrettyPrintPatch(const char *patch, const char *title)
+{
+#define LEFT_LEN 20
+
+	char left[LEFT_LEN + 1];
+	size_t patch_len = strlen(patch);
+
+	if(!patch || !title) {
+		return -1;
+	}
+	memset(left, ' ', LEFT_LEN);
+	if(patch_len < LEFT_LEN) {
+		memcpy(left, patch, patch_len);
+	} else {
+		memcpy(left, patch, LEFT_LEN);
+		strcpy(left + LEFT_LEN - strlen("... "), "... ");
+	}
+	left[LEFT_LEN] = 0;
+
+	printf("%s%s\n", left, title);
+	return 0;
+}
+
 // Prints all patches of [repo_js] that are not part of the [sel_stack],
 // filling [list_order] with the order they appear in.
 // Returns the final array size of [list_order].
@@ -146,7 +168,8 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 				printf("Patches from [%s] (%s):\n\n", repo_title, repo_id_str);
 				print_header = 0;
 			}
-			printf(" [%2d] %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id_str, patch_title);
+			printf(" [%2d] ", ++list_count);
+			PrettyPrintPatch(patch_id_str, patch_title);
 		}
 	}
 	if(!print_header) {
@@ -173,7 +196,8 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 		const json_t *patches = json_object_get(repo, "patches");
 		const char *patch_title = json_object_get_string(patches, patch_id);
 
-		printf("  %2d. %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id, patch_title);
+		printf("  %2d. ", ++list_count);
+		PrettyPrintPatch(patch_id, patch_title);
 
 		json_array_append(list_order, sel);
 	}
