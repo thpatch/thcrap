@@ -8,6 +8,13 @@
 #include "configure.h"
 #include "repo.h"
 
+typedef enum {
+	LINK_FN,
+	LINK_ARGS,
+	RUN_CFG_FN,
+	RUN_CFG_FN_JS
+} configure_slot_t;
+
 int Ask(const char *question)
 {
 	int ret = 0;
@@ -101,21 +108,13 @@ json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 	return patch_info;
 }
 
-char* run_cfg_fn_build(const json_t *sel_stack)
+const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 {
+	const char *ret = NULL;
 	size_t i;
 	json_t *sel;
-	size_t run_cfg_fn_len = strlen(".js") + 1;
-	char *run_cfg_fn = NULL;
 
-	// Here at Touhou Patch Center, we love double loops.
-	json_array_foreach(sel_stack, i, sel) {
-		const json_t *patch_id = json_array_get(sel, 1);
-		run_cfg_fn_len += json_string_length(patch_id) + 1;
-	}
-
-	run_cfg_fn = (char*)malloc(run_cfg_fn_len);
-	run_cfg_fn[0] = 0;
+	ret = strings_strclr(slot);
 
 	json_array_foreach(sel_stack, i, sel) {
 		const char *patch_id = json_array_get_string(sel, 1);
@@ -123,8 +122,8 @@ char* run_cfg_fn_build(const json_t *sel_stack)
 			continue;
 		}
 
-		if(run_cfg_fn[0]) {
-			strcat(run_cfg_fn, "-");
+		if(ret && ret[0]) {
+			ret = strings_strcat(slot, "-");
 		}
 
 		if(!stricmp(patch_id, "base_tsa") && json_array_size(sel_stack) > 1) {
@@ -133,10 +132,9 @@ char* run_cfg_fn_build(const json_t *sel_stack)
 		if(!strnicmp(patch_id, "lang_", 5)) {
 			patch_id += 5;
 		}
-		strcat(run_cfg_fn, patch_id);
+		ret = strings_strcat(slot, patch_id);
 	}
-	strcat(run_cfg_fn, ".js");
-	return run_cfg_fn;
+	return ret;
 }
 
 void CreateShortcuts(const char *run_cfg_fn, json_t *games)
@@ -146,7 +144,6 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 #else
 	const char *loader_exe = "thcrap_loader.exe";
 #endif
-	STRLEN_DEC(run_cfg_fn);
 	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
 
@@ -168,21 +165,12 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 
 		json_object_foreach(games, key, cur_game) {
 			const char *game_fn = json_string_value(cur_game);
-			size_t game_len = strlen(key) + 1;
-			size_t link_fn_len = game_len + 1 + run_cfg_fn_len + strlen(".lnk") + 1;
-			size_t link_args_len = 1 + run_cfg_fn_len + 2 + game_len + 1;
-			VLA(char, link_fn, link_fn_len);
-			VLA(char, link_args, link_args_len);
+			const char *link_fn = strings_sprintf(LINK_FN, "%s-%s.lnk", key, run_cfg_fn);
+			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
 
 			log_printf(".");
 
-			sprintf(link_fn, "%s-%s", key, run_cfg_fn);
-			PathRenameExtensionA(link_fn, ".lnk");
-
-			sprintf(link_args, "\"%s\" %s", run_cfg_fn, key);
 			CreateLink(link_fn, self_fn, link_args, self_path, game_fn);
-			VLA_FREE(link_fn);
-			VLA_FREE(link_args);
 		}
 		VLA_FREE(self_path);
 	}
@@ -205,10 +193,12 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	VLA(char, cur_dir, cur_dir_len);
 	json_t *games = NULL;
 
-	char *run_cfg_fn = NULL;
+	const char *run_cfg_fn = NULL;
+	const char *run_cfg_fn_js = NULL;
 
 	json_t *args = json_array_from_wchar_array(argc, wargv);
 
+	strings_init();
 	log_init(1);
 
 	// Necessary to correctly process *any* input of non-ASCII characters
@@ -299,10 +289,11 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	json_object_set_new(new_cfg, "console", json_false());
 	json_object_set_new(new_cfg, "dat_dump", json_false());
 
-	run_cfg_fn = run_cfg_fn_build(sel_stack);
+	run_cfg_fn = run_cfg_fn_build(RUN_CFG_FN, sel_stack);
+	run_cfg_fn_js = strings_sprintf(RUN_CFG_FN_JS, "%s.js", run_cfg_fn);
 
-	json_dump_file(new_cfg, run_cfg_fn, JSON_INDENT(2));
-	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn);
+	json_dump_file(new_cfg, run_cfg_fn_js, JSON_INDENT(2));
+	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
 	json_dump_log(new_cfg, JSON_INDENT(2));
 	log_printf("\n\n");
 
@@ -327,8 +318,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		);
 	}
 end:
-	SAFE_FREE(run_cfg_fn);
-
 	json_decref(new_cfg);
 	json_decref(sel_stack);
 	json_decref(games);
