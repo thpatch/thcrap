@@ -155,6 +155,32 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 	return list_count;
 }
 
+int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
+{
+	size_t list_count = json_array_size(list_order);
+	size_t i;
+	json_t *sel;
+
+	if(!json_array_size(sel_stack)) {
+		return list_count;
+	}
+	printf("Selected patches (in ascending order of priority):\n\n");
+
+	json_array_foreach(sel_stack, i, sel) {
+		const char *repo_id = json_array_get_string(sel, 0);
+		const char *patch_id = json_array_get_string(sel, 1);
+		const json_t *repo = json_object_get(repo_list, repo_id);
+		const json_t *patches = json_object_get(repo, "patches");
+		const char *patch_title = json_object_get_string(patches, patch_id);
+
+		printf("  %2d. %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id, patch_title);
+
+		json_array_append(list_order, sel);
+	}
+	printf("\n\n");
+	return list_count;
+}
+
 json_t* SelectPatchStack(json_t *repo_list)
 {
 	json_t *list_order = json_array();
@@ -209,26 +235,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 
 		cls(y);
 
-		if(json_array_size(sel_stack)) {
-			size_t i;
-			json_t *sel;
-
-			printf("Selected patches (in ascending order of priority):\n\n");
-
-			json_array_foreach(sel_stack, i, sel) {
-				const char *repo_id = json_array_get_string(sel, 0);
-				const char *patch_id = json_array_get_string(sel, 1);
-				const json_t *repo = json_object_get(repo_list, repo_id);
-				const json_t *patches = json_object_get(repo, "patches");
-				const char *patch_title = json_object_get_string(patches, patch_id);
-
-				printf("  %2d. %-*s%s\n", ++list_count, PATCH_ID_LEN, patch_id, patch_title);
-
-				json_array_append(list_order, sel);
-			}
-			printf("\n\n");
-		}
-
+		list_count = PrintSelStack(list_order, repo_list, sel_stack);
 		json_object_foreach(repo_list, key, json_val) {
 			list_count = RepoPrintPatches(list_order, json_val, sel_stack);
 		}
