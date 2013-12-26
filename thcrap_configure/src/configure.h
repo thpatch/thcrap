@@ -14,7 +14,8 @@ json_t* patch_build(const json_t *sel);
 // patch.js from [repo_servers], and storing it inside the returned object.
 json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers);
 
-// Returns an array of patch selections.
+// Returns an array of patch selections. The engine's run configuration will
+// contain all selected patches in a fully initialized state.
 json_t* SelectPatchStack(json_t *repo_list);
 
 json_t* SearchForGames(const char *dir, json_t *games_in);
