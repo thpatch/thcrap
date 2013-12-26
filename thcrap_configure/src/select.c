@@ -30,6 +30,30 @@ int IsSelected(json_t *sel_stack, json_t *repo_id, json_t *patch_id)
 	return 0;
 }
 
+int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
+{
+	json_t *patches = json_object_get(runconfig_get(), "patches");
+	const char *repo_id = json_array_get_string(sel, 0);
+	const json_t *repo = json_object_get(repo_list, repo_id);
+	json_t *repo_servers = json_object_get(repo, "servers");
+	json_t *patch_info = patch_bootstrap(sel, repo_servers);
+	json_t *patch_full = patch_init(patch_info);
+
+	json_array_append(patches, patch_full);
+	json_array_append(sel_stack, sel);
+	json_decref(patch_full);
+	json_decref(patch_info);
+	return 0;
+}
+
+int RemovePatch(json_t *sel_stack, size_t id)
+{
+	json_t *patches = json_object_get(runconfig_get(), "patches");
+	json_array_remove(patches, id);
+	json_array_remove(sel_stack, id);
+	return 1;
+}
+
 // Prints all patches of [repo_js] that are not part of the [sel_stack],
 // filling [list_order] with the order they appear in.
 // Returns the final array size of [list_order].
@@ -69,6 +93,7 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 json_t* SelectPatchStack(json_t *repo_list)
 {
 	json_t *list_order = json_array();
+	json_t *internal_cfg = json_pack("{s[]}", "patches");
 	json_t *sel_stack = json_array();
 	const char *key;
 	json_t *json_val;
@@ -91,6 +116,8 @@ json_t* SelectPatchStack(json_t *repo_list)
 		log_printf("\nNo patches available -.-\n");
 		goto end;
 	}
+
+	runconfig_set(internal_cfg);
 
 	cls(0);
 
@@ -158,12 +185,13 @@ json_t* SelectPatchStack(json_t *repo_list)
 
 		if(list_pick > json_array_size(sel_stack)) {
 			json_t *sel = json_array_get(list_order, list_pick - 1);
-			json_array_append(sel_stack, sel);
+			AddPatch(sel_stack, repo_list, sel);
 		} else {
-			json_array_remove(sel_stack, list_pick - 1);
+			RemovePatch(sel_stack, list_pick - 1);
 		}
 	}
 end:
 	json_decref(list_order);
+	json_decref(internal_cfg);
 	return sel_stack;
 }

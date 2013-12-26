@@ -199,7 +199,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	const char *start_repo = "http://srv.thpatch.net";
 
 	json_t *sel_stack = NULL;
-	json_t *run_cfg = NULL;
+	json_t *new_cfg = json_pack("{s[]}", "patches");
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
@@ -282,44 +282,31 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	}
 	sel_stack = SelectPatchStack(repo_list);
 	if(json_array_size(sel_stack)) {
+		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
 		size_t i;
 		json_t *sel;
-		json_t *run_cfg_patches;
-
-		run_cfg = json_object();
-		run_cfg_patches = json_object_get_create(run_cfg, "patches", json_array());
 
 		log_printf("Bootstrapping selected patches...\n");
+		stack_update();
+
+		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {
-			const char *repo_id = json_array_get_string(sel, 0);
-			json_t *repo = json_object_get(repo_list, repo_id);
-			json_t *servers = json_object_get(repo, "servers");
-			json_t *patch_info = patch_bootstrap(sel, servers);
-
-			// Temporary, initialized patch object used for updating
-			json_t *patch_full = patch_init(patch_info);
-			patch_update(patch_full);
-			json_decref(patch_full);
-
-			json_array_append_new(run_cfg_patches, patch_info);
+			json_array_append_new(new_cfg_patches, patch_build(sel));
 		}
 	}
 
-
-	// Other default run_cfg settings
-	json_object_set_new(run_cfg, "console", json_false());
-	json_object_set_new(run_cfg, "dat_dump", json_false());
+	// Other default settings
+	json_object_set_new(new_cfg, "console", json_false());
+	json_object_set_new(new_cfg, "dat_dump", json_false());
 
 	run_cfg_fn = run_cfg_fn_build(sel_stack);
 
-	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2));
+	json_dump_file(new_cfg, run_cfg_fn, JSON_INDENT(2));
 	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn);
-	json_dump_log(run_cfg, JSON_INDENT(2));
+	json_dump_log(new_cfg, JSON_INDENT(2));
 	log_printf("\n\n");
 
 	pause();
-
-	runconfig_set(run_cfg);
 
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
@@ -342,7 +329,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 end:
 	SAFE_FREE(run_cfg_fn);
 
-	json_decref(run_cfg);
+	json_decref(new_cfg);
 	json_decref(sel_stack);
 	json_decref(games);
 
