@@ -229,16 +229,17 @@ json_t* SelectPatchStack(json_t *repo_list)
 	while(1) {
 		char buf[16];
 		size_t list_pick;
+		size_t stack_offset;
 
 		list_count = 0;
 		json_array_clear(list_order);
 
 		cls(y);
 
-		list_count = PrintSelStack(list_order, repo_list, sel_stack);
 		json_object_foreach(repo_list, key, json_val) {
 			list_count = RepoPrintPatches(list_order, json_val, sel_stack);
 		}
+		list_count = PrintSelStack(list_order, repo_list, sel_stack);
 		printf("\n");
 
 		printf(
@@ -254,10 +255,11 @@ json_t* SelectPatchStack(json_t *repo_list)
 		) {
 			break;
 		}
-
-		if(list_pick > json_array_size(sel_stack)) {
+		list_pick--;
+		stack_offset = json_array_size(list_order) - json_array_size(sel_stack);
+		if(list_pick < stack_offset) {
 			int ret;
-			json_t *sel = json_array_get(list_order, list_pick - 1);
+			json_t *sel = json_array_get(list_order, list_pick);
 			const char *repo_id = json_array_get_string(sel, 0);
 			const char *patch_id = json_array_get_string(sel, 1);
 			log_printf("Resolving dependencies for %s/%s...\n", repo_id, patch_id);
@@ -271,7 +273,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 				pause();
 			}
 		} else {
-			RemovePatch(sel_stack, list_pick - 1);
+			RemovePatch(sel_stack, list_pick - stack_offset);
 		}
 	}
 end:
