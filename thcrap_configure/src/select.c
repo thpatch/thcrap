@@ -8,6 +8,18 @@
 #include "configure.h"
 #include "search.h"
 
+json_t *dep_to_sel(const char *dep_str)
+{
+	if(dep_str) {
+		const char *slash = strrchr(dep_str, '/');
+		if(slash) {
+			return json_pack("[s#s]", dep_str, slash - dep_str, slash + 1);
+		} else {
+			return json_pack("[ns]", dep_str);
+		}
+	}
+	return NULL;
+}
 
 // Returns 1 if the patch [patch_id] from [repo_id] is in [sel_stack].
 // [repo_id] can be NULL to ignore the repository.
@@ -29,14 +41,25 @@ int IsSelected(json_t *sel_stack, json_t *repo_id, json_t *patch_id)
 	return 0;
 }
 
-// Locates a repository for [patch_id] in [repo_list], starting from [orig_repo_id].
-const char* SearchPatch(json_t *repo_list, const char *orig_repo_id, const char *patch_id)
+// Locates a repository for [sel] in [repo_list], starting from [orig_repo_id].
+const char* SearchPatch(json_t *repo_list, const char *orig_repo_id, const json_t *sel)
 {
+	const char *repo_id = json_array_get_string(sel, 0);
+	const char *patch_id = json_array_get_string(sel, 1);
 	const json_t *orig_repo = json_object_get(repo_list, orig_repo_id);
 	const json_t *patches = json_object_get(orig_repo, "patches");
 	const json_t *remote_repo;
 	const char *key;
 
+	// Absolute dependency
+	// (in fact, just a check to see wheter the patch is actually available)
+	if(repo_id) {
+		remote_repo = json_object_get(repo_list, repo_id);
+		patches = json_object_get(remote_repo, "patches");
+		return json_object_get(patches, patch_id) ? repo_id : NULL;
+	}
+
+	// Relative dependency
 	if(json_object_get(patches, patch_id)) {
 		return orig_repo_id;
 	}
@@ -70,17 +93,21 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 
 	json_array_foreach(dependencies, i, dep) {
 		const char *dep_str = json_string_value(dep);
-		if(!IsSelected(sel_stack, NULL, dep)) {
-			const char *dep_repo = SearchPatch(repo_list, repo_id, dep_str);
-			if(!dep_repo) {
+		json_t *dep_sel = dep_to_sel(dep_str);
+		json_t *dep_repo = json_array_get(dep_sel, 0);
+		json_t *dep_patch = json_array_get(dep_sel, 1);
+
+		if(!IsSelected(sel_stack, dep_repo, dep_patch)) {
+			const char *target_repo = SearchPatch(repo_list, repo_id, dep_sel);
+			if(!target_repo) {
 				log_printf("ERROR: Dependency '%s' of patch '%s' not met!\n", dep_str, patch_id);
 				ret++;
 			} else {
-				json_t *dep_sel = json_pack("[ss]", dep_repo, dep_str);
+				json_array_set_new(dep_sel, 0, json_string(target_repo));
 				ret += AddPatch(sel_stack, repo_list, dep_sel);
-				json_decref(dep_sel);
 			}
 		}
+		json_decref(dep_sel);
 	}
 	json_array_append(patches, patch_full);
 	json_array_append(sel_stack, sel);
