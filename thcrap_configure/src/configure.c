@@ -208,21 +208,30 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 	CoUninitialize();
 }
 
-const char* EnterRunCfgFN(configure_slot_t slot_fn)
+const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 {
 	int ret = 0;
 	const char* run_cfg_fn = strings_storage_get(slot_fn, 0);
 	char run_cfg_fn_new[MAX_PATH];
-
-	log_printf(
-		"\n"
-		"Enter a custom name for this configuration, or leave blank to use the default\n"
-		" (%s): ", run_cfg_fn
-	);
-	console_read(run_cfg_fn_new, sizeof(run_cfg_fn_new));
-	if(run_cfg_fn_new[0]) {
-		run_cfg_fn = strings_sprintf(slot_fn, "%s", run_cfg_fn_new);
-	}
+	const char *run_cfg_fn_js;
+	do {
+		log_printf(
+			"\n"
+			"Enter a custom name for this configuration, or leave blank to use the default\n"
+			" (%s): ", run_cfg_fn
+		);
+		console_read(run_cfg_fn_new, sizeof(run_cfg_fn_new));
+		if(run_cfg_fn_new[0]) {
+			run_cfg_fn = strings_sprintf(slot_fn, "%s", run_cfg_fn_new);
+		}
+		run_cfg_fn_js = strings_sprintf(slot_js, "%s.js", run_cfg_fn);
+		if(PathFileExists(run_cfg_fn_js)) {
+			log_printf("\"%s\" already exists. ", run_cfg_fn_js);
+			ret = !Ask("Overwrite?");
+		} else {
+			ret = 0;
+		}
+	} while(ret);
 	return run_cfg_fn;
 }
 
@@ -338,8 +347,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	json_object_set_new(new_cfg, "dat_dump", json_false());
 
 	run_cfg_fn = run_cfg_fn_build(RUN_CFG_FN, sel_stack);
-	run_cfg_fn = EnterRunCfgFN(RUN_CFG_FN);
-	run_cfg_fn_js = strings_sprintf(RUN_CFG_FN_JS, "%s.js", run_cfg_fn);
+	run_cfg_fn = EnterRunCfgFN(RUN_CFG_FN, RUN_CFG_FN_JS);
+	run_cfg_fn_js = strings_storage_get(RUN_CFG_FN_JS, 0);
 
 	json_dump_file(new_cfg, run_cfg_fn_js, JSON_INDENT(2));
 	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
