@@ -133,8 +133,18 @@ const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 	const char *ret = NULL;
 	size_t i;
 	json_t *sel;
+	int skip = 0;
 
 	ret = strings_strclr(slot);
+
+	// If we have any translation patch, skip everything below that
+	json_array_foreach(sel_stack, i, sel) {
+		const char *patch_id = json_array_get_string(sel, 1);
+		if(!strnicmp(patch_id, "lang_", 5)) {
+			skip = 1;
+			break;
+		}
+	}
 
 	json_array_foreach(sel_stack, i, sel) {
 		const char *patch_id = json_array_get_string(sel, 1);
@@ -146,13 +156,13 @@ const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 			ret = strings_strcat(slot, "-");
 		}
 
-		if(!stricmp(patch_id, "base_tsa") && json_array_size(sel_stack) > 1) {
-			continue;
-		}
 		if(!strnicmp(patch_id, "lang_", 5)) {
 			patch_id += 5;
+			skip = 0;
 		}
-		ret = strings_strcat(slot, patch_id);
+		if(!skip) {
+			ret = strings_strcat(slot, patch_id);
+		}
 	}
 	return ret;
 }
@@ -185,7 +195,7 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 
 		json_object_foreach(games, key, cur_game) {
 			const char *game_fn = json_string_value(cur_game);
-			const char *link_fn = strings_sprintf(LINK_FN, "%s-%s.lnk", key, run_cfg_fn);
+			const char *link_fn = strings_sprintf(LINK_FN, "%s (%s).lnk", key, run_cfg_fn);
 			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
 
 			log_printf(".");
