@@ -117,26 +117,15 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	}
 
 	while(1) {
-		size_t search_path_len;
 		log_printf(
 			"Root path for search\n"
 			" (keep empty to search entire system): "
 		);
-		fgets(search_path, sizeof(search_path), stdin);
+		console_read(search_path, sizeof(search_path));
 		log_printf("\n");
-
-		// Remove that damn \n
-		search_path_len = strlen(search_path) + 1 + 1;
-		search_path[search_path_len - 3] = 0;
 
 		if(search_path[0] == '\0') {
 			break;
-		}
-		{
-			// Ensure UTF-8
-			VLA(wchar_t, search_path_w, search_path_len);
-			WCHAR_T_CONV(search_path);
-			StringToUTF8(search_path, search_path_w, sizeof(search_path));
 		}
 
 		str_slash_normalize_win(search_path);

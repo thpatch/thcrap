@@ -25,13 +25,33 @@ int Ask(const char *question)
 		}
 		log_printf(" (y/n) ");
 
-		fgets(buf, sizeof(buf), stdin);
-		// Flush stdin (because fflush(stdin) is "undefined behavior")
-		while((ret = getchar()) != '\n' && ret != EOF);
-
+		console_read(buf, sizeof(buf));
 		ret = tolower(buf[0]);
 	}
 	return ret == 'y';
+}
+
+char* console_read(char *str, int n)
+{
+	int ret;
+	int i;
+	fgets(str, n, stdin);
+	{
+		// Ensure UTF-8
+		VLA(wchar_t, str_w, n);
+		StringToUTF16(str_w, str, n);
+		StringToUTF8(str, str_w, n);
+		VLA_FREE(str_w);
+	}
+	// Get rid of the \n
+	for(i = 0; i < n; i++) {
+		if(str[i] == '\n') {
+			str[i] = 0;
+			return str;
+		}
+	}
+	while((ret = getchar()) != '\n' && ret != EOF);
+	return str;
 }
 
 // http://support.microsoft.com/kb/99261

@@ -300,7 +300,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 			"\n (1 - %u, select a number again to remove, anything else to cancel): ",
 		list_count);
 
-		fgets(buf, sizeof(buf), stdin);
+		console_read(buf, sizeof(buf));
 
 		if(
 			(sscanf(buf, "%u", &list_pick) != 1) ||
