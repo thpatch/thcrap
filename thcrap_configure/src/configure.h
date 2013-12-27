@@ -21,6 +21,7 @@ json_t* SelectPatchStack(json_t *repo_list);
 json_t* SearchForGames(const char *dir, json_t *games_in);
 
 int Ask(const char *question);
+char* console_read(char *str, int n);
 void cls(SHORT y);
 void pause(void);
 
