@@ -239,6 +239,9 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 {
 	int ret = 0;
 
+	// Global URL cache to not download anything twice
+	json_t *url_cache = json_object();
+
 	json_t *repo_list = NULL;
 
 	const char *start_repo = "http://srv.thpatch.net";
@@ -321,8 +324,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	);
 	pause();
 
-	RepoDiscover(start_repo, NULL, NULL);
-	repo_list = RepoLoadLocal();
+	RepoDiscover(start_repo, NULL, url_cache);
+	repo_list = RepoLoadLocal(url_cache);
 	if(!json_object_size(repo_list)) {
 		log_printf("No patch repositories available...\n");
 		goto end;
@@ -384,6 +387,7 @@ end:
 
 	VLA_FREE(cur_dir);
 	json_decref(repo_list);
+	json_decref(url_cache);
 
 	pause();
 	return 0;

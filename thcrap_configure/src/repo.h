@@ -18,7 +18,8 @@ json_t* RepoGetLocalFN(const char *id);
 // These can be NULL if the caller doesn't intend to keep these caches.
 int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache);
 
-// Loads repository files from all subdirectories of the current directory.
+// Loads repository files from all subdirectories of the current directory,
+// then calls RepoDiscover() with [url_cache] on their server URLs.
 // Returns a JSON object in the following format:
 // {
 //	"<repository ID>": {
@@ -26,4 +27,4 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache);
 //	},
 //	...
 // }
-json_t* RepoLoadLocal(void);
+json_t* RepoLoadLocal(json_t *url_cache);

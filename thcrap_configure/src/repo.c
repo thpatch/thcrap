@@ -73,7 +73,7 @@ end:
 	return 0;
 }
 
-json_t* RepoLoadLocal(void)
+json_t* RepoLoadLocal(json_t *url_cache)
 {
 	BOOL find_ret = 1;
 	json_t *repo_list;
@@ -94,7 +94,12 @@ json_t* RepoLoadLocal(void)
 			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
 			json_t *repo_js = json_load_file_report(json_string_value(repo_local_fn));
 			const char *id = json_object_get_string(repo_js, "id");
-			ServerInit(repo_js);
+
+			json_t *servers = ServerInit(repo_js);
+			const json_t *first = json_array_get(servers, 0);
+			const char *first_url = json_object_get_string(first, "url");
+			RepoDiscover(first_url, NULL, url_cache);
+
 			json_object_set_new(repo_list, id, repo_js);
 			json_decref(repo_local_fn);
 		}
