@@ -149,7 +149,7 @@ int dir_create_for_fn(const char *fn)
 			ret = CreateDirectory(fn_copy, NULL);
 			VLA_FREE(fn_copy);
 		} else {
-			ret = CreateDirectory(fn, NULL);
+			ret = 0;
 		}
 	}
 	return ret;
