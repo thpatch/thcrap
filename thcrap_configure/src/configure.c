@@ -255,6 +255,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	const char *run_cfg_fn = NULL;
 	const char *run_cfg_fn_js = NULL;
+	char *run_cfg_str = NULL;
 
 	json_t *args = json_array_from_wchar_array(argc, wargv);
 
@@ -353,9 +354,11 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	run_cfg_fn = EnterRunCfgFN(RUN_CFG_FN, RUN_CFG_FN_JS);
 	run_cfg_fn_js = strings_storage_get(RUN_CFG_FN_JS, 0);
 
-	json_dump_file(new_cfg, run_cfg_fn_js, JSON_INDENT(2));
+	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
+	file_write(run_cfg_fn_js, run_cfg_str, strlen(run_cfg_str));
+
 	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
-	json_dump_log(new_cfg, JSON_INDENT(2));
+	log_printf(run_cfg_str);
 	log_printf("\n\n");
 
 	pause();
@@ -379,6 +382,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		);
 	}
 end:
+	SAFE_FREE(run_cfg_str);
 	json_decref(new_cfg);
 	json_decref(sel_stack);
 	json_decref(games);
