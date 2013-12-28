@@ -16,10 +16,8 @@ int file_rep_clear(file_rep_t *fr)
 		return -1;
 	}
 	SAFE_FREE(fr->rep_buffer);
-	json_decref(fr->patch);
-	fr->patch = NULL;
-	json_decref(fr->hooks);
-	fr->hooks = NULL;
+	fr->patch = json_decref_safe(fr->patch);
+	fr->hooks = json_decref_safe(fr->hooks);
 	fr->rep_size = 0;
 	fr->game_size = 0;
 	fr->object = NULL;

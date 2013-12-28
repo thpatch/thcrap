@@ -9,6 +9,9 @@
 
 #pragma once
 
+// Returns [json] if the object is still alive, and NULL if it was deleted.
+json_t* json_decref_safe(json_t *json);
+
 /**
   * Unfortunately, JSON doesn't support native hexadecimal values.
   * This function works with both string and integer values and returns the
