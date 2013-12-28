@@ -141,7 +141,6 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	found = SearchForGames(search_path, games);
 	if(json_object_size(found)) {
 		char *games_js_str = NULL;
-		FILE* games_js_file;
 		const char *id;
 		json_t *locs;
 
@@ -154,10 +153,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		SetCurrentDirectory(games_js_path);
 
 		games_js_str = json_dumps(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-
-		games_js_file = fopen(games_js_fn, "w");
-		fputs(games_js_str, games_js_file);
-		fclose(games_js_file);
+		file_write(games_js_fn, games_js_str, strlen(games_js_str));
 
 		log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
 		log_printf(games_js_str);
