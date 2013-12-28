@@ -390,7 +390,7 @@ int layout_init(HMODULE hMod)
 
 void layout_exit(void)
 {
-	json_decref(Layout_Tabs);
+	Layout_Tabs = json_decref_safe(Layout_Tabs);
 	if(text_dc) {
 		DeleteDC(text_dc);
 	}

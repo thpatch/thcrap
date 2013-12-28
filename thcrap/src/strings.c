@@ -260,10 +260,11 @@ void strings_exit(void)
 	const char *key;
 	json_t *val;
 
-	json_decref(stringdefs);
-	json_decref(stringlocs);
+	stringdefs = json_decref_safe(stringdefs);
+	stringlocs = json_decref_safe(stringlocs);
 	json_object_foreach(strings_storage, key, val) {
-		free((void*)json_hex_value(val));
+		storage_string_t *p = (storage_string_t*)json_hex_value(val);
+		SAFE_FREE(p);
 	}
-	json_decref(strings_storage);
+	strings_storage = json_decref_safe(strings_storage);
 }

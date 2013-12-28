@@ -98,6 +98,6 @@ void music_init(void)
 
 void music_exit(void)
 {
-	json_decref(themes);
-	json_decref(musiccmt);
+	themes = json_decref_safe(themes);
+	musiccmt = json_decref_safe(musiccmt);
 }

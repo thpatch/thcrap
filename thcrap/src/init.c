@@ -183,8 +183,7 @@ json_t* identify(const char *exe_fn)
 			PROJECT_NAME_SHORT(), game, build, variety, exe_fn
 		);
 		if(ret == IDNO) {
-			json_decref(run_ver);
-			run_ver = NULL;
+			run_ver = json_decref_safe(run_ver);
 		}
 	} else {
 		// Old version nagbox
@@ -425,7 +424,7 @@ void ExitDll(HMODULE hDll)
 	// Free our global variables
 	breakpoints_remove();
 
-	json_decref(run_cfg);
+	run_cfg = json_decref_safe(run_cfg);
 
 	DeleteCriticalSection(&cs_file_access);
 

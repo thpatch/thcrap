@@ -9,6 +9,15 @@
 
 #include "thcrap.h"
 
+json_t* json_decref_safe(json_t *json)
+{
+	if(json && json->refcount != (size_t)-1 && --json->refcount == 0) {
+        json_delete(json);
+		return NULL;
+	}
+	return json;
+}
+
 size_t json_hex_value(json_t *val)
 {
 	const char *str = json_string_value(val);

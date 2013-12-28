@@ -46,6 +46,7 @@ EXPORTS
 
 	; JSON extensions
 	; ---------------
+	json_decref_safe
 	json_hex_value
 	json_array_set_expand
 	json_array_set_new_expand

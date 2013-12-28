@@ -123,6 +123,6 @@ void spells_init(void)
 
 void spells_exit(void)
 {
-	json_decref(spells);
-	json_decref(spellcomments);
+	spells = json_decref_safe(spells);
+	spellcomments = json_decref_safe(spellcomments);
 }
