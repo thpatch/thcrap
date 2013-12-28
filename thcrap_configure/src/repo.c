@@ -22,21 +22,21 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 	const char *repo_fn = "repo.js";
 	json_t *in_mirrors = ServerBuild(start_url);
 	DWORD repo_size;
-	void *repo_buffer;
+	void *repo_buffer = NULL;
 	json_t *repo_js = NULL;
 	const char *id = NULL;
 	json_t *neighbors = NULL;
 	size_t i;
 	json_t *neighbor;
 
-	if(!json_is_object(url_cache)) {
-		url_cache = json_object();
-	}
-	if(!json_is_object(id_cache)) {
-		id_cache = json_object();
-	}
+	url_cache = json_is_object(url_cache) ? json_incref(url_cache) : json_object();
+	id_cache = json_is_object(id_cache) ? json_incref(id_cache) : json_object();
 
-	json_object_set(url_cache, start_url, json_true());
+	if(!start_url || json_object_get(url_cache, start_url)) {
+		goto end;
+	} else {
+		json_object_set(url_cache, start_url, json_true());
+	}
 	repo_buffer = ServerDownloadFile(in_mirrors, repo_fn, &repo_size, NULL);
 	if(repo_buffer) {
 		repo_js = json_loadb_report(repo_buffer, repo_size, 0, repo_fn);
@@ -61,12 +61,10 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 	neighbors = json_object_get(repo_js, "neighbors");
 	json_array_foreach(neighbors, i, neighbor) {
 		const char *neighbor_str = json_string_value(neighbor);
-		// Check for looping constructs
-		if(!json_object_get(url_cache, neighbor_str)) {
-			// Recursion!
-			RepoDiscover(neighbor_str, json_incref(id_cache), json_incref(url_cache));
-		}
+		// Recursion!
+		RepoDiscover(neighbor_str, id_cache, url_cache);
 	}
+end:
 	SAFE_FREE(repo_buffer);
 	json_decref(repo_js);
 	json_decref(in_mirrors);
