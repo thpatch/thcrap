@@ -306,6 +306,11 @@ json_t* SelectPatchStack(json_t *repo_list)
 			(sscanf(buf, "%u", &list_pick) != 1) ||
 			(list_pick > list_count)
 		) {
+			if(!json_array_size(sel_stack)) {
+				printf("\nPlease select at least one patch before continuing.\n");
+				pause();
+				continue;
+			}
 			break;
 		}
 		list_pick--;
