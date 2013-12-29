@@ -15,6 +15,23 @@ typedef enum {
 	RUN_CFG_FN_JS
 } configure_slot_t;
 
+int file_write_error(const char *fn)
+{
+	static int error_nag = 0;
+	log_printf(
+		"\n"
+		"Error writing to %s!\n"
+		"You probably do not have the permission to write to the current directory,\n"
+		"or the file itself is write-protected.\n",
+		fn
+	);
+	if(!error_nag) {
+		log_printf("Writing is likely to fail for all further files as well.\n");
+		error_nag = 1;
+	}
+	return Ask("Continue configuration anyway?");
+}
+
 int Ask(const char *question)
 {
 	int ret = 0;
@@ -167,13 +184,14 @@ const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 	return ret;
 }
 
-void CreateShortcuts(const char *run_cfg_fn, json_t *games)
+int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 {
 #ifdef _DEBUG
 	const char *loader_exe = "thcrap_loader_d.exe";
 #else
 	const char *loader_exe = "thcrap_loader.exe";
 #endif
+	int ret = 0;
 	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
 
@@ -200,12 +218,19 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 
 			log_printf(".");
 
-			CreateLink(link_fn, self_fn, link_args, self_path, game_fn);
+			if(
+				CreateLink(link_fn, self_fn, link_args, self_path, game_fn)
+				&& !file_write_error(link_fn)
+			) {
+				ret = 1;
+				break;
+			}
 		}
 		VLA_FREE(self_path);
 	}
 	VLA_FREE(self_fn);
 	CoUninitialize();
+	return ret;
 }
 
 const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
@@ -325,10 +350,13 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	);
 	pause();
 
-	RepoDiscover(start_repo, NULL, url_cache);
+	if(RepoDiscover(start_repo, NULL, url_cache)) {
+		goto end;
+	}
 	repo_list = RepoLoadLocal(url_cache);
 	if(!json_object_size(repo_list)) {
 		log_printf("No patch repositories available...\n");
+		pause();
 		goto end;
 	}
 	sel_stack = SelectPatchStack(repo_list);
@@ -355,19 +383,19 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	run_cfg_fn_js = strings_storage_get(RUN_CFG_FN_JS, 0);
 
 	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
-	file_write(run_cfg_fn_js, run_cfg_str, strlen(run_cfg_str));
-
-	log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
-	log_printf(run_cfg_str);
-	log_printf("\n\n");
-
-	pause();
+	if(!file_write(run_cfg_fn_js, run_cfg_str, strlen(run_cfg_str))) {
+		log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
+		log_printf(run_cfg_str);
+		log_printf("\n\n");
+		pause();
+	} else if(!file_write_error(run_cfg_fn_js)) {
+		goto end;
+	}
 
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if(json_object_size(games) > 0) {
-		CreateShortcuts(run_cfg_fn, games);
+	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
 		log_printf(
 			"\n"
 			"\n"
@@ -380,6 +408,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
 			"\n", cur_dir
 		);
+		pause();
 	}
 end:
 	SAFE_FREE(run_cfg_str);
@@ -392,7 +421,5 @@ end:
 	VLA_FREE(cur_dir);
 	json_decref(repo_list);
 	json_decref(url_cache);
-
-	pause();
 	return 0;
 }

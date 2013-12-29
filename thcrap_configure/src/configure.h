@@ -20,6 +20,9 @@ json_t* SelectPatchStack(json_t *repo_list);
 
 json_t* SearchForGames(const char *dir, json_t *games_in);
 
+// Shows a file write error and asks the user if they want to continue
+int file_write_error(const char *fn);
+
 int Ask(const char *question);
 char* console_read(char *str, int n);
 void cls(SHORT y);

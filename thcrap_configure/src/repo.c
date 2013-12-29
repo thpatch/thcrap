@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include "configure.h"
 #include <thcrap_update/src/update.h>
 #include "repo.h"
 
@@ -19,6 +20,7 @@ json_t* RepoGetLocalFN(const char *id)
 
 int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 {
+	int ret = 0;
 	const char *repo_fn = "repo.js";
 	json_t *in_mirrors = ServerBuild(start_url);
 	DWORD repo_size;
@@ -28,6 +30,8 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 	json_t *neighbors = NULL;
 	size_t i;
 	json_t *neighbor;
+	json_t *repo_fn_local = NULL;
+	const char *repo_fn_local_str;
 
 	url_cache = json_is_object(url_cache) ? json_incref(url_cache) : json_object();
 	id_cache = json_is_object(id_cache) ? json_incref(id_cache) : json_object();
@@ -47,10 +51,13 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 	if(id) {
 		const json_t *old_server = json_object_get(id_cache, id);
 		if(!old_server) {
-			json_t *repo_fn_local = RepoGetLocalFN(id);
-			file_write(json_string_value(repo_fn_local), repo_buffer, repo_size);
+			repo_fn_local = RepoGetLocalFN(id);
+			repo_fn_local_str = json_string_value(repo_fn_local);
+			ret = file_write(repo_fn_local_str, repo_buffer, repo_size);
 			json_object_set(id_cache, id, json_true());
-			json_decref(repo_fn_local);
+			if(ret && !file_write_error(repo_fn_local_str)) {
+				goto end;
+			}
 		} else {
 			log_printf("Already got a repository named '%s', ignoring...\n", id);
 		}
@@ -62,15 +69,19 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 	json_array_foreach(neighbors, i, neighbor) {
 		const char *neighbor_str = json_string_value(neighbor);
 		// Recursion!
-		RepoDiscover(neighbor_str, id_cache, url_cache);
+		ret = RepoDiscover(neighbor_str, id_cache, url_cache);
+		if(ret) {
+			break;
+		}
 	}
 end:
+	json_decref(repo_fn_local);
 	SAFE_FREE(repo_buffer);
 	json_decref(repo_js);
 	json_decref(in_mirrors);
 	json_decref(url_cache);
 	json_decref(id_cache);
-	return 0;
+	return ret;
 }
 
 json_t* RepoLoadLocal(json_t *url_cache)

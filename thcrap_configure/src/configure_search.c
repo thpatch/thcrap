@@ -153,11 +153,13 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		SetCurrentDirectory(games_js_path);
 
 		games_js_str = json_dumps(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-		file_write(games_js_fn, games_js_str, strlen(games_js_str));
-
-		log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
-		log_printf(games_js_str);
-		log_printf("\n");
+		if(!file_write(games_js_fn, games_js_str, strlen(games_js_str))) {
+			log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
+			log_printf(games_js_str);
+			log_printf("\n");
+		} else if(!file_write_error(games_js_fn)) {
+			games = json_decref_safe(games);
+		}
 		SAFE_FREE(games_js_str);
 	} else {
 		log_printf("No new game locations found.\n");
