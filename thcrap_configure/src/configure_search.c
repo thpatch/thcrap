@@ -65,9 +65,9 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 
 	cls(0);
 
-	log_printf("--------------\n");
+	log_printf("---------------------\n");
 	log_printf("Localisation des jeux\n");
-	log_printf("--------------\n");
+	log_printf("---------------------\n");
 	log_printf(
 		"\n"
 		"\n"

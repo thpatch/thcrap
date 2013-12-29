@@ -59,10 +59,10 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 				goto end;
 			}
 		} else {
-			log_printf("Already got a server named '%s', ignoring...\n", id);
+			log_printf("Already got a repository named '%s', ignoring...\n", id);
 		}
 	} else if(json_is_object(repo_js)) {
-		log_printf("Server file does not specify an ID!\n");
+		log_printf("Repository file does not specify an ID!\n");
 	}
 
 	neighbors = json_object_get(repo_js, "neighbors");

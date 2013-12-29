@@ -117,7 +117,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	size_t injectError1_len = _scprintf(injectError1Format, dll_fn) + 1;
 	size_t injectError2_len = _scprintf(injectError2Format, func_name) + 1;
 
-	char *injectError0 = "Error";
+	char *injectError0 = "Erreur";
 	VLA(char, injectError1, injectError1_len);
 	VLA(char, injectError2, injectError2_len);
 	char *user32Name = "user32.dll";

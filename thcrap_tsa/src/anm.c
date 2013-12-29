@@ -468,7 +468,7 @@ int stack_game_png_apply(anm_entry_t *entry)
 		json_t *patch_info;
 		ret = 0;
 
-		log_printf("(PNG) Resolving %s... ", fn_common_ptr);
+		log_printf("(PNG) Recherche de %s... ", fn_common_ptr);
 		json_array_foreach(patch_array, i, patch_info) {
 			if(!patch_png_apply(entry, patch_info, fn_common_ptr)) {
 				ret = 1;
@@ -478,7 +478,7 @@ int stack_game_png_apply(anm_entry_t *entry)
 			}
 		}
 		if(!ret) {
-			log_printf("not found\n");
+			log_printf("introuvable\n");
 		} else {
 			log_printf("\n");
 		}
