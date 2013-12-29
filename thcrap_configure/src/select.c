@@ -282,6 +282,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 	while(1) {
 		char buf[16];
 		size_t list_pick;
+		size_t stack_size = json_array_size(sel_stack);
 		size_t stack_offset;
 
 		list_count = 0;
@@ -295,18 +296,22 @@ json_t* SelectPatchStack(json_t *repo_list)
 		list_count = PrintSelStack(list_order, repo_list, sel_stack);
 		printf("\n");
 
-		printf(
-			"Select a patch to add to the stack"
-			"\n (1 - %u, select a number again to remove, anything else to cancel): ",
-		list_count);
+		stack_offset = json_array_size(list_order) - stack_size;
 
+		if(stack_size) {
+			printf(
+				"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm): ",
+			stack_offset, stack_offset + 1, list_count);
+		} else {
+			printf("Pick a patch (1 - %u): ", list_count);
+		}
 		console_read(buf, sizeof(buf));
 
 		if(
 			(sscanf(buf, "%u", &list_pick) != 1) ||
 			(list_pick > list_count)
 		) {
-			if(!json_array_size(sel_stack)) {
+			if(!stack_size) {
 				printf("\nPlease select at least one patch before continuing.\n");
 				pause();
 				continue;
@@ -314,7 +319,6 @@ json_t* SelectPatchStack(json_t *repo_list)
 			break;
 		}
 		list_pick--;
-		stack_offset = json_array_size(list_order) - json_array_size(sel_stack);
 		if(list_pick < stack_offset) {
 			int ret;
 			json_t *sel = json_array_get(list_order, list_pick);
