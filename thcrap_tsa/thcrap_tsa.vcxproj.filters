@@ -51,5 +51,8 @@
     <ClInclude Include="src\layout.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\anm.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

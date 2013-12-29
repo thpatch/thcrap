@@ -6,6 +6,31 @@
 #include <thcrap.h>
 #include <thcrap_update/src/update.h>
 #include "configure.h"
+#include "repo.h"
+
+typedef enum {
+	LINK_FN,
+	LINK_ARGS,
+	RUN_CFG_FN,
+	RUN_CFG_FN_JS
+} configure_slot_t;
+
+int file_write_error(const char *fn)
+{
+	static int error_nag = 0;
+	log_printf(
+		"\n"
+		"Error writing to %s!\n"
+		"You probably do not have the permission to write to the current directory,\n"
+		"or the file itself is write-protected.\n",
+		fn
+	);
+	if(!error_nag) {
+		log_printf("Writing is likely to fail for all further files as well.\n");
+		error_nag = 1;
+	}
+	return Ask("Continue configuration anyway?");
+}
 
 int Ask(const char *question)
 {
@@ -17,13 +42,33 @@ int Ask(const char *question)
 		}
 		log_printf(" oui(y)/non(n) ");
 
-		fgets(buf, sizeof(buf), stdin);
-		// Flush stdin (because fflush(stdin) is "undefined behavior")
-		while((ret = getchar()) != '\n' && ret != EOF);
-
+		console_read(buf, sizeof(buf));
 		ret = tolower(buf[0]);
 	}
 	return ret == 'y';
+}
+
+char* console_read(char *str, int n)
+{
+	int ret;
+	int i;
+	fgets(str, n, stdin);
+	{
+		// Ensure UTF-8
+		VLA(wchar_t, str_w, n);
+		StringToUTF16(str_w, str, n);
+		StringToUTF8(str, str_w, n);
+		VLA_FREE(str_w);
+	}
+	// Get rid of the \n
+	for(i = 0; i < n; i++) {
+		if(str[i] == '\n') {
+			str[i] = 0;
+			return str;
+		}
+	}
+	while((ret = getchar()) != '\n' && ret != EOF);
+	return str;
 }
 
 // http://support.microsoft.com/kb/99261
@@ -69,92 +114,84 @@ void pause(void)
 	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
-json_t* BootstrapPatch(const char *patch_id, const char *base_dir, json_t *remote_servers)
+json_t* patch_build(const json_t *sel)
+{
+	const char *repo_id = json_array_get_string(sel, 0);
+	const char *patch_id = json_array_get_string(sel, 1);
+	return json_pack("{ss+++}",
+		"archive", repo_id, "/", patch_id, "/"
+	);
+}
+
+json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 {
 	const char *main_fn = "patch.js";
+	char *patch_js_buffer;
+	DWORD patch_js_size;
+	json_t *patch_info = patch_build(sel);
+	const json_t *patch_id = json_array_get(sel, 1);
+	size_t patch_len = json_string_length(patch_id) + 1;
 
-	json_t *patch_info;
+	size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
+	VLA(char, remote_patch_fn, remote_patch_fn_len);
+	sprintf(remote_patch_fn, "%s/%s", json_string_value(patch_id), main_fn);
 
-	if(!patch_id || !base_dir) {
-		return NULL;
-	}
-	patch_info = json_object();
+	patch_js_buffer = (char*)ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
+	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
+	// TODO: Nice, friendly error
 
-	{
-		json_t *local_dir = json_pack("s++", base_dir, patch_id, "/");
-		json_object_set_new(patch_info, "archive", local_dir);
-	}
-
-	if(patch_update(patch_info) == 1) {
-		// Bootstrap the new patch by downloading patch.js and deleting its 'files' object
-		char *patch_js_buffer;
-		DWORD patch_js_size;
-		json_t *patch_js;
-		size_t patch_len = strlen(patch_id) + 1;
-
-		size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
-		VLA(char, remote_patch_fn, remote_patch_fn_len);
-		sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
-
-		patch_js_buffer = (char*)ServerDownloadFile(remote_servers, remote_patch_fn, &patch_js_size, NULL);
-		// TODO: Nice, friendly error
-
-		VLA_FREE(remote_patch_fn);
-
-		patch_js = json_loadb_report(patch_js_buffer, patch_js_size, 0, main_fn);
-		SAFE_FREE(patch_js_buffer);
-
-		json_object_del(patch_js, "files");
-		patch_json_store(patch_info, main_fn, patch_js);
-		json_decref(patch_js);
-		patch_update(patch_info);
-	}
+	VLA_FREE(remote_patch_fn);
+	SAFE_FREE(patch_js_buffer);
 	return patch_info;
 }
 
-char* run_cfg_fn_build(const json_t *patch_stack)
+const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 {
+	const char *ret = NULL;
 	size_t i;
-	json_t *json_val;
-	size_t run_cfg_fn_len = strlen(".js") + 1;
-	char *run_cfg_fn = NULL;
+	json_t *sel;
+	int skip = 0;
 
-	// Here at Touhou Patch Center, we love double loops.
-	json_array_foreach(patch_stack, i, json_val) {
-		if(json_is_string(json_val)) {
-			run_cfg_fn_len += strlen(json_string_value(json_val)) + 1;
+	ret = strings_strclr(slot);
+
+	// If we have any translation patch, skip everything below that
+	json_array_foreach(sel_stack, i, sel) {
+		const char *patch_id = json_array_get_string(sel, 1);
+		if(!strnicmp(patch_id, "lang_", 5)) {
+			skip = 1;
+			break;
 		}
 	}
 
-	run_cfg_fn = (char*)malloc(run_cfg_fn_len);
-	run_cfg_fn[0] = 0;
-
-	json_array_foreach(patch_stack, i, json_val) {
-		const char *patch_id = json_string_value(json_val);
-
-		if(run_cfg_fn[0]) {
-			strcat(run_cfg_fn, "-");
-		}
-
-		if(!stricmp(patch_id, "base_tsa") && json_array_size(patch_stack) > 1) {
+	json_array_foreach(sel_stack, i, sel) {
+		const char *patch_id = json_array_get_string(sel, 1);
+		if(!patch_id) {
 			continue;
 		}
+
+		if(ret && ret[0]) {
+			ret = strings_strcat(slot, "-");
+		}
+
 		if(!strnicmp(patch_id, "lang_", 5)) {
 			patch_id += 5;
+			skip = 0;
 		}
-		strcat(run_cfg_fn, patch_id);
+		if(!skip) {
+			ret = strings_strcat(slot, patch_id);
+		}
 	}
-	strcat(run_cfg_fn, ".js");
-	return run_cfg_fn;
+	return ret;
 }
 
-void CreateShortcuts(const char *run_cfg_fn, json_t *games)
+int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 {
 #ifdef _DEBUG
 	const char *loader_exe = "thcrap_loader_d.exe";
 #else
 	const char *loader_exe = "thcrap_loader.exe";
 #endif
+	int ret = 0;
 	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
 
@@ -175,53 +212,79 @@ void CreateShortcuts(const char *run_cfg_fn, json_t *games)
 		log_printf("Creation des raccourcis");
 
 		json_object_foreach(games, key, cur_game) {
-			const char *game_fn = json_object_get_string(games, key);
-			STRLEN_DEC(run_cfg_fn);
-			size_t game_len = strlen(key) + 1;
-			size_t link_fn_len = game_len + 1 + run_cfg_fn_len + strlen(".lnk") + 1;
-			size_t link_args_len = 1 + run_cfg_fn_len + 2 + game_len + 1;
-			VLA(char, link_fn, link_fn_len);
-			VLA(char, link_args, link_args_len);
+			const char *game_fn = json_string_value(cur_game);
+			const char *link_fn = strings_sprintf(LINK_FN, "%s (%s).lnk", key, run_cfg_fn);
+			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
 
 			log_printf(".");
 
-			sprintf(link_fn, "%s-%s", key, run_cfg_fn);
-			PathRenameExtensionA(link_fn, ".lnk");
-
-			sprintf(link_args, "\"%s\" %s", run_cfg_fn, key);
-			CreateLink(link_fn, self_fn, link_args, self_path, game_fn);
-			VLA_FREE(link_fn);
-			VLA_FREE(link_args);
+			if(
+				CreateLink(link_fn, self_fn, link_args, self_path, game_fn)
+				&& !file_write_error(link_fn)
+			) {
+				ret = 1;
+				break;
+			}
 		}
 		VLA_FREE(self_path);
 	}
+	VLA_FREE(self_fn);
 	CoUninitialize();
+	return ret;
+}
+
+const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
+{
+	int ret = 0;
+	const char* run_cfg_fn = strings_storage_get(slot_fn, 0);
+	char run_cfg_fn_new[MAX_PATH];
+	const char *run_cfg_fn_js;
+	do {
+		log_printf(
+			"\n"
+			"Enter a custom name for this configuration, or leave blank to use the default\n"
+			" (%s): ", run_cfg_fn
+		);
+		console_read(run_cfg_fn_new, sizeof(run_cfg_fn_new));
+		if(run_cfg_fn_new[0]) {
+			run_cfg_fn = strings_sprintf(slot_fn, "%s", run_cfg_fn_new);
+		}
+		run_cfg_fn_js = strings_sprintf(slot_js, "%s.js", run_cfg_fn);
+		if(PathFileExists(run_cfg_fn_js)) {
+			log_printf("\"%s\" already exists. ", run_cfg_fn_js);
+			ret = !Ask("Overwrite?");
+		} else {
+			ret = 0;
+		}
+	} while(ret);
+	return run_cfg_fn;
 }
 
 int __cdecl wmain(int argc, wchar_t *wargv[])
 {
 	int ret = 0;
 
-	const char *local_server_js_fn;
-	json_t *local_server_js;
-	json_t *server_js;
+	// Global URL cache to not download anything twice
+	json_t *url_cache = json_object();
 
-	json_t *local_servers;
-	json_t *remote_servers;
+	json_t *repo_list = NULL;
 
-	// JSON array containing ID strings of the selected patches
-	json_t *patch_stack = json_array();
+	const char *start_repo = "http://srv.thpatch.net";
 
-	json_t *run_cfg = NULL;
+	json_t *sel_stack = NULL;
+	json_t *new_cfg = json_pack("{s[]}", "patches");
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
 	json_t *games = NULL;
 
-	char *run_cfg_fn = NULL;
+	const char *run_cfg_fn = NULL;
+	const char *run_cfg_fn_js = NULL;
+	char *run_cfg_str = NULL;
 
 	json_t *args = json_array_from_wchar_array(argc, wargv);
 
+	strings_init();
 	log_init(1);
 
 	// Necessary to correctly process *any* input of non-ASCII characters
@@ -250,21 +313,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	inet_init();
 
 	if(json_array_size(args) > 1) {
-		local_server_js_fn = json_array_get_string(args, 1);
-	} else {
-		local_server_js_fn = "server.js";
-	}
-
-	local_server_js = json_load_file_report(local_server_js_fn);
-	if(!local_server_js) {
-		log_mboxf(NULL, MB_ICONSTOP | MB_OK,
-			"Le fichier %s n'a pas ete trouve dans le dossier (%s).\n"
-			"vous pouvez le telecharger sur\n"
-			"\n"
-			"\t\thttp://srv.thpatch.net/server.js\n", local_server_js_fn, cur_dir
-		);
-		ret = -1;
-		goto end;
+		start_repo = json_array_get_string(args, 1);
 	}
 
 	log_printf(
@@ -306,148 +355,89 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"\n"
 		"\n"
 		"\n"
+		"Patch repository discovery will start at\n"
+		"\n"
+		"\t%s\n"
+		"\n"
+		"You can specify a different URL as a command-line parameter.\n"
+		"Additionally, all patches from previously discovered repositories, stored in\n"
+		"subdirectories of the current directory, will be available for selection.\n"
+		"\n"
+		"\n",
+		start_repo
 	);
-
-	local_servers = ServerInit(local_server_js);
-	if(local_servers) {
-		// Display first server
-		const json_t *server_first = json_array_get(local_servers, 0);
-		if(json_is_object(server_first)) {
-			const char *server_first_url = json_object_get_string(server_first, "url");
-			if(server_first_url) {
-				log_printf(
-					"En utilisant les definitions contenues dans [%s], nous allons extraire les patchs depuis\n"
-					"\n"
-					"\t%s\n"
-					"\n"
-					"Vous pouvez specifier un autre fichier d'informations serveur en argument de ligne de commande.\n"
-					"\n"
-					"\n",
-					local_server_js_fn, server_first_url
-				);
-			}
-		}
-	}
 	pause();
 
-	{
-		DWORD remote_server_js_size;
-		void *remote_server_js_buffer;
-
-		remote_server_js_buffer = ServerDownloadFile(local_servers, "server.js", &remote_server_js_size, NULL);
-		if(remote_server_js_buffer) {
-			FILE *local_server_js_file = NULL;
-
-			server_js = json_loadb_report(remote_server_js_buffer, remote_server_js_size, 0, "server.js");
-
-			local_server_js_file = fopen(local_server_js_fn, "w");
-			fwrite(remote_server_js_buffer, remote_server_js_size, 1, local_server_js_file);
-			fclose(local_server_js_file);
-
-			SAFE_FREE(remote_server_js_buffer);
-			json_decref(local_server_js);
-		} else {
-			printf("Echec du telechargement de server.js\nUtilisation des definitions du serveur local...\n");
-			server_js = local_server_js;
-			pause();
-		}
-
-		remote_servers = ServerInit(server_js);
-		// TODO: Nice, friendly error
+	if(RepoDiscover(start_repo, NULL, url_cache)) {
+		goto end;
 	}
-
-	{
-		json_t *json_val;
-		const char *key;
-		json_t *patches = json_object_get(server_js, "patches");
-
-		// Push base_tsa into the list of selected patches, so that we can lock it later.
-		// Really, we _don't_ want people to remove it accidentally
-		json_object_foreach(patches, key, json_val) {
-			if(!stricmp(key, "base_tsa")) {
-				json_array_append_new(patch_stack, json_string(key));
-			}
-		}
-		patch_stack = SelectPatchStack(server_js, patch_stack);
+	repo_list = RepoLoadLocal(url_cache);
+	if(!json_object_size(repo_list)) {
+		log_printf("No patch repositories available...\n");
+		pause();
+		goto end;
 	}
-
-	{
+	sel_stack = SelectPatchStack(repo_list);
+	if(json_array_size(sel_stack)) {
+		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
 		size_t i;
-		json_t *json_val;
-		json_t *run_cfg_patches;
-		const char *patch_dir;
-		const char *server_id = json_object_get_string(server_js, "id");
-		size_t base_dir_len = cur_dir_len + 1 + strlen(server_id) + 1;
-		VLA(char, base_dir, base_dir_len);
+		json_t *sel;
 
-		if(!patch_stack || !json_array_size(patch_stack)) {
-			// Error...
+		log_printf("Bootstrapping selected patches...\n");
+		stack_update();
+
+		/// Build the new run configuration
+		json_array_foreach(sel_stack, i, sel) {
+			json_array_append_new(new_cfg_patches, patch_build(sel));
 		}
-
-		// Construct directory from server ID
-		if(server_id) {
-			sprintf(base_dir, "%s%s/", cur_dir, server_id);
-			CreateDirectory(base_dir, NULL);
-			SetCurrentDirectory(base_dir);
-			patch_dir = base_dir;
-		} else {
-			patch_dir = cur_dir;
-		}
-
-		run_cfg = json_object();
-		run_cfg_patches = json_object_get_create(run_cfg, "patches", json_array());
-
-		log_printf("Bootstrapping des patchs selectionnes...\n");
-		json_array_foreach(patch_stack, i, json_val) {
-			const char *patch_id = json_string_value(json_val);
-			json_t *patch_info = BootstrapPatch(patch_id, patch_dir, remote_servers);
-			json_array_append_new(run_cfg_patches, patch_info);
-		}
-		VLA_FREE(base_dir);
 	}
 
-	// That's all on-line stuff we have to do
-	json_decref(server_js);
+	// Other default settings
+	json_object_set_new(new_cfg, "console", json_false());
+	json_object_set_new(new_cfg, "dat_dump", json_false());
 
-	SetCurrentDirectory(cur_dir);
+	run_cfg_fn = run_cfg_fn_build(RUN_CFG_FN, sel_stack);
+	run_cfg_fn = EnterRunCfgFN(RUN_CFG_FN, RUN_CFG_FN_JS);
+	run_cfg_fn_js = strings_storage_get(RUN_CFG_FN_JS, 0);
 
-	// Other default run_cfg settings
-	json_object_set_new(run_cfg, "console", json_false());
-	json_object_set_new(run_cfg, "dat_dump", json_false());
-
-	run_cfg_fn = run_cfg_fn_build(patch_stack);
-
-	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2));
+	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
+	if(!file_write(run_cfg_fn_js, run_cfg_str, strlen(run_cfg_str))) {
 	log_printf("\n\nLa configuration suivante a ete ecrite dans %s:\n", run_cfg_fn);
-	json_dump_log(run_cfg, JSON_INDENT(2));
-	log_printf("\n\n");
-
-	pause();
-
-	runconfig_set(run_cfg);
+		log_printf(run_cfg_str);
+		log_printf("\n\n");
+		pause();
+	} else if(!file_write_error(run_cfg_fn_js)) {
+		goto end;
+	}
 
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if(json_object_size(games) > 0) {
-		CreateShortcuts(run_cfg_fn, games);
+	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
 		log_printf(
-			"\n\nTermine. Vous pouvez maintenant lancer les differents jeux patches avec la configuration selectionnee\n"
-			"en double-cliquant sur les raccourcis crees dans le dossier actuel\n"
-			"(%s).\n", cur_dir
+			"\n"
+			"\n"
+			"Termine.\n"
+			"\n"
+			"\n\nVous pouvez maintenant lancer les differents jeux patches avec la configuration\n"
+			"selectionnee en double-cliquant sur les raccourcis crees dans le dossier actuel\n"
+			"(%s).\n"
+			"\n"
+			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
+			"\n", cur_dir
 		);
+		pause();
 	}
 end:
-	SAFE_FREE(run_cfg_fn);
-
-	json_decref(run_cfg);
-	json_decref(patch_stack);
+	SAFE_FREE(run_cfg_str);
+	json_decref(new_cfg);
+	json_decref(sel_stack);
 	json_decref(games);
 
 	json_decref(args);
 
 	VLA_FREE(cur_dir);
-
-	pause();
+	json_decref(repo_list);
+	json_decref(url_cache);
 	return 0;
 }

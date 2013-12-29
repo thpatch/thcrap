@@ -20,25 +20,13 @@ static HDC text_dc = NULL;
 
 /// Tokenization
 /// ------------
-int layout_match_set(json_t *arr, size_t ind, const char *str, size_t len)
-{
-	// We explicitly _don't_ check for len == 0 here!
-	if(!json_is_array(arr) || !str) {
-		return -1;
-	}
-	{
-		json_t *json_str = json_pack("s#", str, len);
-		return json_array_set_expand(arr, ind, json_str);
-	}
-}
-
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
 {
-	const char *end = NULL;
 	const char *p = NULL;
 	const char *s = NULL; // argument start
 	json_t *ret = NULL;
 	size_t i = 0;
+	int n = 0; // nesting level
 	size_t ind = 0;
 
 	if(!str || !len) {
@@ -48,24 +36,21 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 		return ret;
 	}
 
-	end = memchr(str, '>', len);
-	if(!end) {
-		return 0;
-	}
 	ret = json_array();
-	len = end - str;
 	s = str + 1;
-	for(i = 1, p = s; i < len; i++, p++) {
-		if(str[i] == '$') {
-			layout_match_set(ret, ind, s, p - s);
+	for(p = s; (i < len) && (n >= 0); i++, p++) {
+		n += (*p == '<');
+		n -= (*p == '>');
+		if(
+			(n == 0 && *p == '$')
+			|| (n == -1 && *p == '>')
+		) {
+			json_array_append_new(ret, json_stringn_nocheck(s, p - s));
 			s = p + 1;
-			ind++;
 		}
 	}
-	// Append final one
-	layout_match_set(ret, ind, s, p - s);
 	if(match_len) {
-		*match_len = len + 1;
+		*match_len = s - str;
 	}
 	return ret;
 }
@@ -87,18 +72,17 @@ json_t* layout_tokenize(const char *str, size_t len)
 		// Requiring at least 2 parameters for a layout command still lets people
 		// write "<text>" without that being swallowed by the layout parser.
 		if(json_array_size(match) > 1) {
-			json_array_append_new(ret, match);
+			json_array_append(ret, match);
 		} else {
 			char *cmd_start = (char*)memchr(cur_str + 1, '<', cur_len - 1);
 			if(cmd_start) {
 				cur_len = cmd_start - cur_str;
 			}
-			{
-				char *cur_str_token = EnsureUTF8(cur_str, cur_len);
-				json_array_append_new(ret, json_string(cur_str_token));
-				SAFE_FREE(cur_str_token);
+			if(cur_str[0]) {
+				json_array_append_new(ret, json_stringn_nocheck(cur_str, cur_len));
 			}
 		}
+		json_decref(match);
 		i += cur_len;
 	}
 	return ret;
@@ -110,39 +94,25 @@ json_t* layout_tokenize(const char *str, size_t len)
 BOOL layout_textout_ruby(
 	__in HDC hdc,
 	__in int bottom_x,
-	__in_ecount(c) LPCSTR bottom_str,
+	__in const json_t *bottom_str,
 	__in int top_y,
-	__in_ecount(c) LPCSTR top_str,
+	__in const json_t *top_str,
 	__in HFONT hFontRuby
 ) {
-	if(!bottom_str || !top_str) {
-		return 0;
-	}
-	{
-		HGDIOBJ hFontOrig;
-		SIZE str_size;
-		size_t bottom_w;
-		size_t top_w;
-		int top_x;
-		size_t bottom_len = strlen(bottom_str) + 1;
-		size_t top_len = strlen(top_str) + 1;
-		BOOL ret;
+	BOOL ret = 0;
+	if(json_is_string(bottom_str) && json_is_string(top_str)) {
+		size_t bottom_w = GetTextExtentBase(hdc, bottom_str);
+		HGDIOBJ hFontOrig = SelectObject(hdc, hFontRuby);
+		size_t top_w = GetTextExtentBase(hdc, top_str);
+		int top_x = (bottom_w / 2) - (top_w / 2) + bottom_x;
 
-		GetTextExtentPoint32(hdc, bottom_str, bottom_len, &str_size);
-		bottom_w = str_size.cx;
-
-		hFontOrig = SelectObject(hdc, hFontRuby);
-
-		GetTextExtentPoint32(hdc, top_str, top_len, &str_size);
-		top_w = str_size.cx;
-
-		top_x = (bottom_w / 2) - (top_w / 2) + bottom_x;
-
-		ret = TextOutU(hdc, top_x, top_y, top_str, top_len);
+		ret = TextOutU(
+			hdc, top_x, top_y, json_string_value(top_str), json_string_length(top_str)
+		);
 
 		SelectObject(hdc, hFontOrig);
-		return ret;
 	}
+	return ret;
 }
 
 /// Hooked functions
@@ -246,38 +216,34 @@ BOOL WINAPI layout_TextOutU(
 
 	// Layout!
 	json_array_foreach(tokens, i, token) {
-		const char *draw_str = NULL;
+		const json_t *draw_str = NULL;
 		HFONT hFontNew = NULL;
 		size_t cur_w = 0;
-		SIZE str_size;
 
 		if(json_is_array(token)) {
 			const char *cmd = json_array_get_string(token, 0);
-			const char *p1 = json_array_get_string(token, 1);
-			const char *p2 = json_array_get_string(token, 2);
+			const json_t *p1 = json_array_get(token, 1);
+			const json_t *p2 = json_array_get(token, 2);
 			const char *p = cmd;
 			// Absolute x-end position of the current tab
 			size_t tab_end;
-			// We're guaranteed to have at least p1 if we come here
-			STRLEN_DEC(p1);
 
 			LOGFONT font_new;
 			int font_recreate = 0;
 
 			memcpy(&font_new, &font_orig, sizeof(LOGFONT));
 
-			GetTextExtentPoint32(hdc, p1, p1_len, &str_size);
-			cur_w = str_size.cx;
+			cur_w = GetTextExtentBase(hdc, p1);
 			draw_str = p1;
 
 			if(p2) {
+				const char *p2_str = json_string_value(p2);
 				// Use full bitmap with empty second parameter
-				if(!p2[0]) {
+				if(p2_str && !p2_str[0]) {
 					tab_end = bitmap_width;
 					cur_x = orig_x;
 				} else {
-					GetTextExtentPoint32(hdc, p2, strlen(p2), &str_size);
-					tab_end = cur_x + str_size.cx;
+					tab_end = cur_x + GetTextExtentBase(hdc, p2);
 				}
 			} else if(cur_tab < json_array_size(Layout_Tabs)) {
 				tab_end = json_array_get_hex(Layout_Tabs, cur_tab) + orig_x;
@@ -299,14 +265,14 @@ BOOL WINAPI layout_TextOutU(
 						{
 							// The width of the first parameter is already in cur_w, so...
 							size_t j = 2;
-							const char *str = NULL;
-							for(; j < json_array_size(token) && (str = json_array_get_string(token, j)); j++) {
-								GetTextExtentPoint32(hdc, str, strlen(str), &str_size);
-								cur_w = max(str_size.cx, cur_w);
+							const json_t *str_obj = NULL;
+							while(str_obj = json_array_get(token, j++)) {
+								size_t new_w = GetTextExtentBase(hdc, str_obj);
+								cur_w = max(new_w, cur_w);
 							}
 						}
 						tab_end = cur_x + cur_w;
-						json_array_set_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
+						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
 						break;
 					case 'c':
 						// Center alignment
@@ -337,20 +303,20 @@ BOOL WINAPI layout_TextOutU(
 			if(font_recreate) {
 				hFontNew = CreateFontIndirect(&font_new);
 				SelectObject(hdc, hFontNew);
-				GetTextExtentPoint32(hdc, p1, p1_len, &str_size);
-				tab_end = cur_x + str_size.cx;
+				tab_end = cur_x + GetTextExtentBase(hdc, draw_str);
 			}
 			if(tab_end) {
 				cur_tab++;
 				cur_w = tab_end - cur_x;
 			}
 		} else if(json_is_string(token)) {
-			draw_str = json_string_value(token);
-			GetTextExtentPoint32(hdc, draw_str, strlen(draw_str), &str_size);
-			cur_w = str_size.cx;
+			draw_str = token;
+			cur_w = GetTextExtentBase(hdc, token);
 		}
 		if(draw_str) {
-			ret = TextOutU(hdc, cur_x, orig_y, draw_str, strlen(draw_str));
+			const char *draw_str_val = json_string_value(draw_str);
+			const size_t draw_str_len = json_string_length(draw_str);
+			ret = TextOutU(hdc, cur_x, orig_y, draw_str_val, draw_str_len);
 		}
 		if(hFontNew) {
 			SelectObject(hdc, hFontOrig);
@@ -367,15 +333,13 @@ BOOL WINAPI layout_TextOutU(
 }
 /// ----------------
 
-size_t __stdcall GetTextExtentBase(const char *str)
+size_t GetTextExtentBase(HDC hdc, const json_t *str_obj)
 {
-	SIZE size;
-	if(!str) {
-		return 0;
-	}
-	GetTextExtentPoint32(text_dc, str, strlen(str), &size);
-	log_printf("GetTextExtent('%s') = %d -> %d\n", str, size.cx, size.cx / 2);
-	return (size.cx / 2);
+	SIZE size = {0};
+	const char *str = json_string_value(str_obj);
+	const size_t str_len = json_string_length(str_obj);
+	GetTextExtentPoint32(hdc, str, str_len, &size);
+	return size.cx;
 }
 
 size_t __stdcall GetTextExtent(const char *str)
@@ -389,14 +353,17 @@ size_t __stdcall GetTextExtent(const char *str)
 	str = strings_lookup(str, &str_len);
 	tokens = layout_tokenize(str, str_len);
 	json_array_foreach(tokens, i, token) {
+		size_t w = 0;
 		if(json_is_array(token)) {
 			// p1 is the one that's going to be printed.
 			// TODO: full layout width calculations all over again?
-			ret += GetTextExtentBase(json_array_get_string(token, 1));
+			w = GetTextExtentBase(text_dc, json_array_get(token, 1));
 		} else if(json_is_string(token)) {
-			ret += GetTextExtentBase(json_string_value(token));
+			w = GetTextExtentBase(text_dc, token);
 		}
+		ret += w / 2;
 	}
+	log_printf("GetTextExtent('%s') = %d\n", str, ret);
 	json_decref(tokens);
 	return ret;
 }
@@ -423,7 +390,7 @@ int layout_init(HMODULE hMod)
 
 void layout_exit(void)
 {
-	json_decref(Layout_Tabs);
+	Layout_Tabs = json_decref_safe(Layout_Tabs);
 	if(text_dc) {
 		DeleteDC(text_dc);
 	}

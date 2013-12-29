@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Read and write access to the files of a patch.
+  * Read and write access to the files of a single patch.
   */
 
 #pragma once
@@ -38,6 +38,9 @@ typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, j
 // Return value has to be free()d by the caller!
 void* file_read(const char *fn, size_t *file_size);
 
+// Writes [file_buffer] to a file named [fn]. The file is always overwritten!
+int file_write(const char *fn, const void *file_buffer, const size_t file_size);
+
 /// ----------
 /// File names
 /// ----------
@@ -48,6 +51,9 @@ char* fn_for_build(const char *fn);
 // Returns the full patch-relative name of a game-relative file.
 // Return value has to be free()d by the caller!
 char* fn_for_game(const char *fn);
+
+// Prints the full path of a patch-relative file name to the log.
+void patch_print_fn(const json_t *patch_info, const char *fn);
 /// ----------
 
 /// -----------
@@ -77,22 +83,16 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json);
 /// ------------------------
 
-/// ----------------------
-/// Patch stack evaluators
-/// ----------------------
-// Walks through the patch stack configured in <run_cfg>,
-// merging every file with the filename [fn] into a single JSON object.
-// Returns the merged JSON object or NULL if there is no matching file in the patch stack.
-// If given, [file_size] receives a _rough estimate_ of the JSON file size.
-json_t* stack_json_resolve(const char *fn, size_t *file_size);
+/// Initialization
+/// --------------
+// Loads the patch.js file of [patch_info], merges it onto this file,
+// and returns the resulting JSON object.
+json_t* patch_init(const json_t *patch_info);
 
-// Search the patch stack configured in <run_cfg> for a replacement for the game data file [fn].
-// Returns the loaded patch file or NULL if the file is not to be patched.
-void* stack_game_file_resolve(const char *fn, size_t *file_size);
-
-// Resolves a game-local JSON file.
-json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
-/// ----------------------
+// Turns the possibly relative archive path of [patch_info] into an absolute
+// one, relative to [base_path].
+int patch_rel_to_abs(json_t *patch_info, const char *base_path);
+/// --------------
 
 /// -----
 /// Hooks

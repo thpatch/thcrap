@@ -17,7 +17,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <IntDir>$(SolutionDir)\$(Configuration)\$(ProjectName)\</IntDir>
+    <IntDir>$(SolutionDir)\$(Configuration)\$(RootNamespace)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <TargetName>$(RootNamespace)_d</TargetName>
@@ -63,6 +63,7 @@
     <None Include="thcrap_tsa.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\anm.h" />
     <ClInclude Include="src\layout.h" />
     <ClInclude Include="src\thcrap_tsa.h" />
   </ItemGroup>

@@ -16,22 +16,22 @@ static size_t cache_track = 0;
 
 const char* music_title_get(size_t track)
 {
-	const char *game = json_object_get_string(runconfig_get(), "game");
-	if(!game || !json_is_object(themes)) {
-		return NULL;
-	}
-	{
-		size_t key_len = strlen(game) + 1 + 2 + str_num_digits(track) + 1;
+	const char *ret = NULL;
+	json_t *game = json_object_get(runconfig_get(), "game");
+	if(json_is_string(game)) {
+		size_t key_len = json_string_length(game) + 1 + 2 + str_num_digits(track) + 1;
 		VLA(char, key, key_len);
-		sprintf(key, "%s_%02u", game, track);
-		return json_object_get_string(themes, key);
+		sprintf(key, "%s_%02u", json_string_value(game), track);
+		ret = json_object_get_string(themes, key);
+		VLA_FREE(key);
 	}
+	return ret;
 }
 
 void music_title_print(const char **str, const char *format_id, size_t track)
 {
 	if(str) {
-		const char *format = strings_get(format_id);
+		const char *format = strings_get_value(format_id);
 		const char *title = music_title_get(track);
 		if(title) {
 			if(format) {
@@ -98,6 +98,6 @@ void music_init(void)
 
 void music_exit(void)
 {
-	json_decref(themes);
-	json_decref(musiccmt);
+	themes = json_decref_safe(themes);
+	musiccmt = json_decref_safe(musiccmt);
 }

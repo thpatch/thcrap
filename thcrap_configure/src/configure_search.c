@@ -1,6 +1,10 @@
 /**
   * Touhou Community Reliant Automatic Patcher
   * Cheap command-line patch stack configuration tool
+  *
+  * ----
+  *
+  * Game searching front-end code.
   */
 
 #include <thcrap.h>
@@ -12,11 +16,9 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 {
 	size_t num_versions = json_object_size(locs);
 	if(num_versions == 1) {
-		const char *loc;
-		const char *variety;
+		const char *loc = json_object_iter_key(json_object_iter(locs));
+		const char *variety = json_object_get_string(locs, loc);
 
-		loc = json_object_iter_key(json_object_iter(locs));
-		variety = json_object_get_string(locs, loc);
 		log_printf("%s trouve (%s) a %s\n", id, variety, loc);
 
 		return loc;
@@ -59,6 +61,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
 	json_t *found;
+	char search_path[MAX_PATH * 2] = {0};
 
 	cls(0);
 
@@ -114,68 +117,50 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		);
 	}
 
-	{
-		char search_path[MAX_PATH * 2] = {0};
-		while(1)
-		{
-			size_t search_path_len;
-			log_printf(
-				"Dossier racine pour la recherche\n"
-				"( laisser vide pour un scan complet du systeme )"
-			);
-			fgets(search_path, sizeof(search_path), stdin);
-			log_printf("\n");
+	while(1) {
+		log_printf(
+			"Dossier racine pour la recherche\n"
+			"( laisser vide pour un scan complet du systeme )"
+		);
+		console_read(search_path, sizeof(search_path));
+		log_printf("\n");
 
-			// Remove that damn \n
-			search_path_len = strlen(search_path) + 1 + 1;
-			search_path[search_path_len - 3] = 0;
-
-			if(search_path[0] == '\0') {
-				break;
-			}
-			{
-				// Ensure UTF-8
-				VLA(wchar_t, search_path_w, search_path_len);
-				WCHAR_T_CONV(search_path);
-				StringToUTF8(search_path, search_path_w, sizeof(search_path));
-			}
-
-			str_slash_normalize_win(search_path);
-			PathAddBackslashA(search_path);
-
-			if(!PathFileExists(search_path)) {
-				log_printf("Ahem... L'emplacement indique (%s) n'existe pas\n", search_path);
-			} else {
-				break;
-			}
+		if(search_path[0] == '\0') {
+			break;
 		}
-		log_printf("Recherche en cours... cela peut prendre un moment\n\n");
-		found = SearchForGames(search_path, games);
+
+		str_slash_normalize_win(search_path);
+		PathAddBackslashA(search_path);
+
+		if(!PathFileExists(search_path)) {
+			log_printf("Ahem... L'emplacement indique (%s) n'existe pas\n", search_path);
+		} else {
+			break;
+		}
 	}
-	{
+	log_printf("Recherche en cours... cela peut prendre un moment\n\n");
+	found = SearchForGames(search_path, games);
+	if(json_object_size(found)) {
+		char *games_js_str = NULL;
 		const char *id;
 		json_t *locs;
+
 		json_object_foreach(found, id, locs) {
 			const char *loc = ChooseLocation(id, locs);
 			json_object_set_new(games, id, json_string(loc));
 			printf("\n");
 		}
-	}
-	if(json_object_size(found)) {
-		char *games_js_str = NULL;
-		FILE* games_js_file;
 
 		SetCurrentDirectory(games_js_path);
 
 		games_js_str = json_dumps(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-
-		games_js_file = fopen(games_js_fn, "w");
-		fputs(games_js_str, games_js_file);
-		fclose(games_js_file);
-
-		log_printf("Les emplacements des jeux suivants ont ete identifies et ajoutes a %s:\n", games_js_fn);
-		log_printf(games_js_str);
-		log_printf("\n");
+		if(!file_write(games_js_fn, games_js_str, strlen(games_js_str))) {
+			log_printf("Les emplacements des jeux suivants ont ete identifies et ajoutes a %s:\n", games_js_fn);
+			log_printf(games_js_str);
+			log_printf("\n");
+		} else if(!file_write_error(games_js_fn)) {
+			games = json_decref_safe(games);
+		}
 		SAFE_FREE(games_js_str);
 	} else {
 		log_printf("Aucun nouvel emplacement de jeux trouve\n");

@@ -46,7 +46,7 @@ LPSTR WINAPI CharNextU(
 	LPWSTR lptn_w = NULL; \
 	if(HIWORD(lpTemplateName) != 0) { \
 		WCHAR_T_DEC(lpTemplateName); \
-		lptn_w = StringToUTF16_VLA(lpTemplateName_w, lpTemplateName, lpTemplateName_len); \
+		WCHAR_T_CONV_VLA(lpTemplateName); \
 	} else { \
 		lptn_w = (LPWSTR)lpTemplateName; \
 	}
@@ -89,8 +89,8 @@ HWND WINAPI CreateWindowExU(
 	HWND ret;
 	WCHAR_T_DEC(lpClassName);
 	WCHAR_T_DEC(lpWindowName);
-	lpClassName_w = StringToUTF16_VLA(lpClassName_w, lpClassName, lpClassName_len);
-	lpWindowName_w = StringToUTF16_VLA(lpWindowName_w, lpWindowName, lpWindowName_len);
+	WCHAR_T_CONV_VLA(lpClassName);
+	WCHAR_T_CONV_VLA(lpWindowName);
 
 	ret = CreateWindowExW(
 		dwExStyle, lpClassName_w, lpWindowName_w, dwStyle, X, Y, nWidth, nHeight, hWndParent, hMenu,
@@ -141,8 +141,8 @@ int WINAPI MessageBoxU(
 	int ret;
 	WCHAR_T_DEC(lpText);
 	WCHAR_T_DEC(lpCaption);
-	lpText_w = StringToUTF16_VLA(lpText_w, lpText, lpText_len);
-	lpCaption_w = StringToUTF16_VLA(lpCaption_w, lpCaption, lpCaption_len);
+	WCHAR_T_CONV_VLA(lpText);
+	WCHAR_T_CONV_VLA(lpCaption);
 	ret = MessageBoxW(hWnd, lpText_w, lpCaption_w, uType);
 	VLA_FREE(lpText_w);
 	VLA_FREE(lpCaption_w);
@@ -199,6 +199,20 @@ ATOM WINAPI RegisterClassExU(
 	return ret;
 }
 
+BOOL WINAPI SetDlgItemTextU(
+	__in HWND hDlg,
+	__in int nIDDlgItem,
+	__in LPCSTR lpString
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(lpString);
+	WCHAR_T_CONV_VLA(lpString);
+	ret = SetDlgItemTextW(hDlg, nIDDlgItem, lpString_w);
+	WCHAR_T_FREE(lpString);
+	return ret;
+}
+
 BOOL WINAPI SetWindowTextU(
 	__in HWND hWnd,
 	__in_opt LPCSTR lpString
@@ -206,7 +220,7 @@ BOOL WINAPI SetWindowTextU(
 {
 	BOOL ret;
 	WCHAR_T_DEC(lpString);
-	lpString_w = StringToUTF16_VLA(lpString_w, lpString, lpString_len);
+	WCHAR_T_CONV_VLA(lpString);
 	ret = SetWindowTextW(hWnd, lpString_w);
 	VLA_FREE(lpString_w);
 	return ret;

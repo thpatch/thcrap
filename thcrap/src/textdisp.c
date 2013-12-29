@@ -70,16 +70,14 @@ HFONT WINAPI textdisp_CreateFontA(
 	);
 }
 
-void patch_fonts_load(const json_t *patch_info, const json_t *patch_js)
+void patch_fonts_load(const json_t *patch_info)
 {
-	json_t *fonts = json_object_get(patch_js, "fonts");
+	json_t *fonts = json_object_get(patch_info, "fonts");
 	const char *font_fn;
 	json_t *val;
 	json_object_foreach(fonts, font_fn, val) {
-		void *font_buffer = NULL;
 		size_t font_size;
-
-		font_buffer = patch_file_load(patch_info, font_fn, &font_size);
+		void *font_buffer = patch_file_load(patch_info, font_fn, &font_size);
 
 		if(font_buffer) {
 			DWORD ret;
@@ -100,4 +98,14 @@ int textdisp_detour(HMODULE hMod)
 	return iat_detour_funcs_var(hMod, "gdi32.dll", 1,
 		"CreateFontA", textdisp_CreateFontA
 	);
+}
+
+void textdisp_init()
+{
+	json_t *patches = json_object_get(runconfig_get(), "patches");
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		patch_fonts_load(patch_info);
+	}
 }

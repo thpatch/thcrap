@@ -9,15 +9,25 @@
 
 #include "thcrap.h"
 
+json_t* json_decref_safe(json_t *json)
+{
+	if(json && json->refcount != (size_t)-1 && --json->refcount == 0) {
+        json_delete(json);
+		return NULL;
+	}
+	return json;
+}
+
 size_t json_hex_value(json_t *val)
 {
 	const char *str = json_string_value(val);
 	if(str) {
+		size_t str_len = json_string_length(val);
 		int base = 10;
 		size_t offset = 0;
 		size_t ret = 0;
 
-		if(strlen(str) > 2) {
+		if(str_len > 2) {
 			// Module-relative hex values
 			if(!strnicmp(str, "Rx", 2)) {
 				ret += (size_t)GetModuleHandle(NULL);
@@ -34,19 +44,23 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
-int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
+int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
 	if(ind >= arr_size) {
 		int ret = 0;
 		size_t i;
 		for(i = arr_size; i <= ind; i++) {
-			ret = json_array_append(arr, value);
+			ret = json_array_append_new(arr, value);
 		}
 		return ret;
 	} else {
-		return json_array_set(arr, ind, value);
+		return json_array_set_new(arr, ind, value);
 	}
+}
+int json_array_set_expand(json_t *arr, size_t ind, json_t *value)
+{
+	return json_array_set_new_expand(arr, ind, json_incref(value));
 }
 
 size_t json_array_get_hex(json_t *arr, const size_t ind)
@@ -153,15 +167,15 @@ const char* json_object_get_string(const json_t *object, const char *key)
 	return json_string_value(json_object_get(object, key));
 }
 
-int json_object_merge(json_t *old_obj, json_t *new_obj)
+json_t* json_object_merge(json_t *old_obj, const json_t *new_obj)
 {
 	const char *key;
 	json_t *new_val;
 
 	if(!old_obj || !new_obj) {
-		return -1;
+		return old_obj;
 	}
-	json_object_foreach(new_obj, key, new_val) {
+	json_object_foreach((json_t*)new_obj, key, new_val) {
 		json_t *old_val = json_object_get(old_obj, key);
 		if(json_is_object(old_val)) {
 			// Recursion!
@@ -170,7 +184,7 @@ int json_object_merge(json_t *old_obj, json_t *new_obj)
 			json_object_set_nocheck(old_obj, key, new_val);
 		}
 	}
-	return 0;
+	return old_obj;
 }
 
 static int __cdecl object_key_compare_keys(const void *key1, const void *key2)
@@ -180,11 +194,8 @@ static int __cdecl object_key_compare_keys(const void *key1, const void *key2)
 
 json_t* json_object_get_keys_sorted(const json_t *object)
 {
-	if(!object) {
-		return NULL;
-	}
-	{
-		json_t *ret;
+	json_t *ret = NULL;
+	if(object) {
 		size_t size = json_object_size(object);
 		VLA(const char*, keys, size);
 		size_t i;
@@ -208,8 +219,8 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 			json_array_append_new(ret, json_string(keys[i]));
 		}
 		VLA_FREE(keys);
-		return ret;
 	}
+	return ret;
 }
 
 json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const char *source)

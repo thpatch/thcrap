@@ -51,19 +51,17 @@ int StringToUTF8(char *str_utf8, const wchar_t *str_w, int str_utf8_len)
 
 char* EnsureUTF8(const char *str, int str_len)
 {
-	if(!str) {
-		return NULL;
-	}
-	{
+	char *str_utf8 = NULL;
+	if(str) {
 		size_t str_w_len = str_len + 1;
 		size_t str_utf8_len = str_w_len * UTF8_MUL;
 		VLA(wchar_t, str_w, str_w_len);
-		char *str_utf8 = (char*)malloc(str_utf8_len);
+		str_utf8 = (char*)malloc(str_utf8_len);
 		ZeroMemory(str_w, str_w_len * sizeof(wchar_t));
 		ZeroMemory(str_utf8, str_utf8_len * sizeof(char));
 		WCHAR_T_CONV(str);
 		StringToUTF8(str_utf8, str_w, str_utf8_len);
 		VLA_FREE(str_w);
-		return str_utf8;
 	}
+	return str_utf8;
 }

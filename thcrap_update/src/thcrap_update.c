@@ -14,19 +14,10 @@ static CRITICAL_SECTION cs_update;
 
 DWORD WINAPI UpdateThread(void *param)
 {
-	json_t *patch_array;
-	size_t i;
-	json_t *patch_info;
-	json_t *run_cfg = (json_t*)param;
-
 	if(!TryEnterCriticalSection(&cs_update)) {
 		return 1;
 	}
-	patch_array = json_object_get(run_cfg, "patches");
-
-	json_array_foreach(patch_array, i, patch_info) {
-		patch_update(patch_info);
-	}
+	stack_update();
 	LeaveCriticalSection(&cs_update);
 	return 0;
 }
@@ -34,7 +25,7 @@ DWORD WINAPI UpdateThread(void *param)
 int BP_update_poll(x86_reg_t *regs, json_t *bp_info)
 {
 	DWORD thread_id;
-	CreateThread(NULL, 0, UpdateThread, runconfig_get(), 0, &thread_id);
+	CreateThread(NULL, 0, UpdateThread, NULL, 0, &thread_id);
 	return 1;
 }
 

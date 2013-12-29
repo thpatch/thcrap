@@ -135,13 +135,12 @@ op_cmd_t op_str_to_cmd(const char *str)
 
 int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 {
-	json_t *encryption = NULL;
-	json_t *opcodes = NULL;
+	json_t *encryption = json_object_get(format, "encryption");
+	json_t *opcodes = json_object_get(format, "opcodes");
 	json_t *op_obj;
 	const char *op_str;
 	int i = 0;
 
-	opcodes = json_object_get(format, "opcodes");
 	if(!json_is_object(opcodes)) {
 		// Nothing to do with no definitions...
 		return -1;
@@ -163,18 +162,14 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 	}
 
 	// Prepare encryption vars
-	encryption = json_object_get(format, "encryption");
 	if(json_is_object(encryption)) {
-		const char *encryption_func;
-		json_t *encryption_vars;
+		const char *encryption_func = json_object_get_string(encryption, "func");
+		json_t *encryption_vars = json_object_get(encryption, "vars");
 
 		// Resolve function
-		encryption_func = json_object_get_string(encryption, "func");
 		if(encryption_func) {
 			state->enc_func = (EncryptionFunc_t)runconfig_func_get(encryption_func);
 		}
-
-		encryption_vars = json_object_get(encryption, "vars");
 		if(json_is_array(encryption_vars)) {
 			size_t i;
 
@@ -361,23 +356,18 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	int entry_new = 1;
 
 	// Header data
-	DWORD entry_offset_mul;
+	DWORD entry_offset_mul = json_object_get_hex(format, "entry_offset_mul");
 	size_t entry_count;
 	DWORD *entry_offsets_out;
 	DWORD *entry_offsets_in;
 
 	patch_msg_state_t state;
 
-	if(!msg_out || !patch || !format) {
+	if(!msg_out || !patch || !format || !entry_offset_mul) {
 		return 1;
 	}
 
 	// Read format info
-	entry_offset_mul = json_object_get_hex(format, "entry_offset_mul");
-	if(!entry_offset_mul) {
-		return 1;
-	}
-
 	if(patch_msg_state_init(&state, format)) {
 		return 1;
 	}
@@ -503,12 +493,10 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "msg");
-	return patch_msg(file_inout, size_out, size_in, patch, format);
+	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("msg"));
 }
 
 int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	json_t *format = json_object_get(json_object_get(run_cfg, "formats"), "end");
-	return patch_msg(file_inout, size_out, size_in, patch, format);
+	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("end"));
 }

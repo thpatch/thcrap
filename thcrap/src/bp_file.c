@@ -16,10 +16,8 @@ int file_rep_clear(file_rep_t *fr)
 		return -1;
 	}
 	SAFE_FREE(fr->rep_buffer);
-	json_decref(fr->patch);
-	fr->patch = NULL;
-	json_decref(fr->hooks);
-	fr->hooks = NULL;
+	fr->patch = json_decref_safe(fr->patch);
+	fr->hooks = json_decref_safe(fr->hooks);
 	fr->rep_size = 0;
 	fr->game_size = 0;
 	fr->object = NULL;
@@ -207,22 +205,13 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 		dir = "dat";
 	}
 	{
-		HANDLE hFile;
-
 		size_t fn_len = strlen(dir) + 1 + strlen(fr->name) + 1;
 		VLA(char, fn, fn_len);
 
 		sprintf(fn, "%s/%s", dir, fr->name);
-		dir_create_for_fn(fn);
 
-		hFile = CreateFile(
-			fn, GENERIC_WRITE, 0, NULL, CREATE_NEW,
-			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
-		);
-		if(hFile != INVALID_HANDLE_VALUE) {
-			DWORD byte_ret;
-			WriteFile(hFile, fr->game_buffer, fr->game_size, &byte_ret, NULL);
-			CloseHandle(hFile);
+		if(!PathFileExists(fn)) {
+			file_write(fn, fr->game_buffer, fr->game_size);
 		}
 		VLA_FREE(fn);
 	}

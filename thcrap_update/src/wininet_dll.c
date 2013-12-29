@@ -29,8 +29,8 @@ BOOL WINAPI InternetCombineUrlU(
 		if(!lpszBuffer) {
 			lpszBuffer_w = NULL;
 		}
-		WCHAR_T_CONV(lpszBaseUrl);
-		WCHAR_T_CONV(lpszRelativeUrl);
+		WCHAR_T_CONV_VLA(lpszBaseUrl);
+		WCHAR_T_CONV_VLA(lpszRelativeUrl);
 		ret = InternetCombineUrlW(
 			lpszBaseUrl_w, lpszRelativeUrl_w, lpszBuffer_w, lpdwBufferLength, dwFlags
 		);
@@ -56,6 +56,8 @@ BOOL WINAPI InternetCombineUrlU(
 			ret = StringToUTF8(NULL, lpszBufferReal_w, 0);
 			VLA_FREE(lpszBufferReal_w);
 		}
+		WCHAR_T_FREE(lpszBaseUrl);
+		WCHAR_T_FREE(lpszRelativeUrl);
 		VLA_FREE(lpszBuffer_w);
 		SetLastError(last_error);
 	}
@@ -91,7 +93,7 @@ BOOL WINAPI InternetCrackUrlU(
 )
 {
 	BOOL ret = FALSE;
-	if(lpUC) {
+	if(lpUC && lpszUrl) {
 		DWORD last_error;
 		URL_COMPONENTSW lpUC_w;
 		WCHAR_T_DEC(lpszUrl);
@@ -103,11 +105,13 @@ BOOL WINAPI InternetCrackUrlU(
 		memcpy(&lpUC_w, lpUC, lpUC->dwStructSize);	
 		UC_MACRO_EXPAND(UC_SET_W);
 
-		WCHAR_T_CONV(lpszUrl);
+		WCHAR_T_CONV_VLA(lpszUrl);
 		ret = InternetCrackUrlW(lpszUrl_w, dwUrlLength, dwFlags, &lpUC_w);
 
 		last_error = GetLastError();
 		UC_MACRO_EXPAND(UC_CONVERT_AND_FREE);
+
+		WCHAR_T_FREE(lpszUrl);
 		SetLastError(last_error);
 	}
 	return ret;
@@ -122,20 +126,20 @@ HINTERNET WINAPI InternetOpenUrlU(
 	__in_opt DWORD_PTR dwContext
 )
 {
+	HINTERNET ret = NULL;
 	if(dwHeadersLength == -1) {
 		dwHeadersLength = strlen(lpszHeaders) + 1;
 	}
-	{
-		HINTERNET ret;
+	if(lpszUrl) {
 		WCHAR_T_DEC(lpszUrl);
 		VLA(wchar_t, lpszHeaders_w, dwHeadersLength);
-		WCHAR_T_CONV(lpszUrl);
+		WCHAR_T_CONV_VLA(lpszUrl);
 		StringToUTF16(lpszHeaders_w, lpszHeaders, dwHeadersLength);
 		ret = InternetOpenUrlW(
 			hInternet, lpszUrl_w, lpszHeaders ? lpszHeaders_w : NULL, dwHeadersLength, dwFlags, dwContext
 		);
-		VLA_FREE(lpszHeaders_w);
-		VLA_FREE(lpszUrl_w);
-		return ret;
+		WCHAR_T_FREE(lpszHeaders);
+		WCHAR_T_FREE(lpszUrl);
 	}
+	return ret;
 }

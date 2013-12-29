@@ -60,8 +60,8 @@ BOOL WINAPI tsa_GetWindowRect(
   * is actually requested.
   */
 
-// Ensures the visibility of an imaginary, long line with length [w1] starting
-// at [p1] inside a larger line with length [w2] in [p2].
+// Ensures the visibility of an imaginary line with length [w1] starting
+// at [p1] inside a larger line with length [w2] starting at [p2].
 // ... oh well, it's just a helper for tsa_CreateWindowExA().
 int coord_clamp(int p1, int w1, int p2, int w2)
 {
@@ -89,6 +89,19 @@ HWND WINAPI tsa_CreateWindowExA(
 	__in_opt LPVOID lpParam
 )
 {
+	HWND ret;
+	const json_t *run_cfg = runconfig_get();
+	const char *game_id = json_object_get_string(run_cfg, "game");
+	const json_t *game_trans = strings_get(game_id);
+	const json_t *game_title =
+		game_trans ? game_trans : json_object_get(run_cfg, "title");
+	const json_t *game_build = json_object_get(run_cfg, "build");
+
+	size_t custom_title_len =
+		json_string_length(game_title) + 1 + json_string_length(game_build) + 1;
+	VLA(char, custom_title, custom_title_len);
+	const char *window_title = NULL;
+
 	if(X != CW_USEDEFAULT) {
 		X = coord_clamp(
 			X, nWidth, GetSystemMetrics(SM_XVIRTUALSCREEN),
@@ -101,10 +114,19 @@ HWND WINAPI tsa_CreateWindowExA(
 			GetSystemMetrics(SM_CYVIRTUALSCREEN)
 		);
 	}
-	return CreateWindowExU(
-		dwExStyle, lpClassName, strings_lookup(lpWindowName, NULL), dwStyle, X, Y,
+	window_title = strings_lookup(lpWindowName, NULL);
+	if(window_title == lpWindowName && json_is_string(game_title)) {
+		sprintf(custom_title, "%s %s",
+			json_string_value(game_title),
+			json_is_string(game_build) ? json_string_value(game_build) : "");
+		window_title = custom_title;
+	}
+	ret = CreateWindowExU(
+		dwExStyle, lpClassName, window_title, dwStyle, X, Y,
 		nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
 	);
+	VLA_FREE(custom_title);
+	return ret;
 }
 /// ---------------------
 

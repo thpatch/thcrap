@@ -14,18 +14,19 @@ static const char PLUGINS[] = "plugins";
 
 int plugins_load(void)
 {
-	HANDLE hFind = NULL;
+	BOOL ret = 1;
 	WIN32_FIND_DATAA w32fd;
-	json_t *plugins;
+	HANDLE hFind = FindFirstFile("*.dll", &w32fd);
+	json_t *plugins = json_object_get_create(run_cfg, PLUGINS, json_object());
 
-	plugins = json_object_get_create(run_cfg, PLUGINS, json_object());
-
-	hFind = FindFirstFile("*.dll", &w32fd);
-	while( (hFind != INVALID_HANDLE_VALUE) && (GetLastError() != ERROR_NO_MORE_FILES) ) {
+	if(hFind == INVALID_HANDLE_VALUE) {
+		return 1;
+	}
+	while( (GetLastError() != ERROR_NO_MORE_FILES) && (ret) ) {
 		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
 		if(plugin) {
 			thcrap_init_plugin_type func;
-			func = (thcrap_init_plugin_type)GetProcAddress(plugin, "thcrap_init_plugin");
+			func = GetProcAddress(plugin, "thcrap_init_plugin");
 			if(func && !func(run_cfg)) {
 				log_printf("\t%s\n", w32fd.cFileName);
 				json_object_set_new(plugins, w32fd.cFileName, json_integer((size_t)plugin));
@@ -33,7 +34,7 @@ int plugins_load(void)
 				FreeLibrary(plugin);
 			}
 		}
-		FindNextFile(hFind, &w32fd);
+		ret = FindNextFile(hFind, &w32fd);
 	}
 	FindClose(hFind);
 	return 0;

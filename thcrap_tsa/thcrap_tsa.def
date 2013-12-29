@@ -32,9 +32,25 @@ EXPORTS
 	struct_get
 	format_Bpp
 	format_png_equiv
+	format_alpha_max
+	format_alpha_sum
 	format_from_bgra
-	png_load_for_thtx
+	format_blend
+
+	anm_entry_init
+	anm_entry_clear
+
+	sprite_alpha_analyze
+	sprite_alpha_analyze_rep
+	sprite_alpha_analyze_dst
+
+	sprite_patch_set
+	sprite_blit
+	sprite_patch
+
+	patch_png_load_for_thtx
 	patch_thtx
+	stack_game_png_apply
 
 	; Music
 	; -----
@@ -49,7 +65,6 @@ EXPORTS
 
 	; Layout
 	; ------
-	layout_match_set
 	layout_match
 	layout_tokenize
 

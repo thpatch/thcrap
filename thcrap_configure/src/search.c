@@ -13,20 +13,17 @@ typedef struct {
 	json_t *found;
 	json_t *result;
 	DWORD max_threads;
-	DWORD cur_threads;
-	DWORD prompt_countdown;
+	volatile DWORD cur_threads;
 	CRITICAL_SECTION cs_result;
-	CRITICAL_SECTION cs_count;
 } search_state_t;
 
 static search_state_t state;
 
 int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 {
+	int ret = 0;
 	json_t *ver = identify_by_size(w32fd->nFileSizeLow, state.versions);
-	if(!ver) {
-		return 0;
-	} else {
+	if(ver) {
 		STRLEN_DEC(local_dir);
 		size_t exe_fn_len = local_dir_len + strlen(w32fd->cFileName) + 2;
 		VLA(char, exe_fn, exe_fn_len);
@@ -40,14 +37,14 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 
 		ver = identify_by_hash(exe_fn, &w32fd->nFileSizeLow, state.versions);
 		if(!ver) {
-			return 0;
+			return ret;
 		}
 
 		key = json_array_get_string(ver, 0);
 
 		// Check if user already selected a version of this game in a previous search
 		if(json_object_get(state.result, key)) {
-			return 0;
+			return ret;
 		}
 
 		// Alright, found a game!
@@ -69,8 +66,9 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 		}
 		LeaveCriticalSection(&state.cs_result);
 		VLA_FREE(exe_fn);
+		ret = 1;
 	}
-	return 1;
+	return ret;
 }
 
 
@@ -89,13 +87,8 @@ DWORD WINAPI SearchThread(void *param)
 	strcpy(local_dir, param_dir);
 	strcat(local_dir, "*");
 
-	EnterCriticalSection(&state.cs_count);
-	state.cur_threads++;
-	LeaveCriticalSection(&state.cs_count);
+	InterlockedIncrement(&state.cur_threads);
 
-	// if(!--state.prompt_countdown) {
-		// state.prompt_countdown = 100;
-	// }
 	SAFE_FREE(param_dir);
 	hFind = FindFirstFile(local_dir, &w32fd);
 	while( (hFind != INVALID_HANDLE_VALUE) && ret ) {
@@ -133,9 +126,7 @@ DWORD WINAPI SearchThread(void *param)
 		ret = FindNextFile(hFind, &w32fd);
 	}
 	FindClose(hFind);
-	EnterCriticalSection(&state.cs_count);
-	state.cur_threads--;
-	LeaveCriticalSection(&state.cs_count);
+	InterlockedDecrement(&state.cur_threads);
 	VLA_FREE(local_dir);
 	return 0;
 }
@@ -159,10 +150,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	const char *key;
 	json_t *val;
 
-	/*wchar_t *cur_dir = (wchar_t*)malloc(MAX_PATH);
-	wcscpy(cur_dir, dir);
-	str_slash_normalize(cur_dir);*/
-
 	state.versions = stack_json_resolve(versions_js_fn, NULL);
 	if(!state.versions) {
 		log_printf(
@@ -179,11 +166,9 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	state.size_max = 0;
 	state.cur_threads = 0;
 	state.max_threads = 0;
-	state.prompt_countdown = 1;
 	state.found = json_object();
 	state.result = games_in ? games_in : json_object();
 	InitializeCriticalSection(&state.cs_result);
-	InitializeCriticalSection(&state.cs_count);
 
 	// Get file size limits
 	json_object_foreach(sizes, key, val) {
@@ -217,7 +202,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	}
 
 	DeleteCriticalSection(&state.cs_result);
-	DeleteCriticalSection(&state.cs_count);
 	json_decref(state.versions);
 	return state.found;
 }

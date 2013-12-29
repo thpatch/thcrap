@@ -9,6 +9,7 @@ EXPORTS
 	runconfig_set
 	runconfig_get
 	runconfig_func_get
+	runconfig_format_get
 
 	; SHA-256
 	; -------
@@ -45,8 +46,10 @@ EXPORTS
 
 	; JSON extensions
 	; ---------------
+	json_decref_safe
 	json_hex_value
 	json_array_set_expand
+	json_array_set_new_expand
 	json_array_get_hex
 	json_array_get_string
 	json_array_get_string_safe
@@ -71,9 +74,11 @@ EXPORTS
 	; Patch files
 	; -----------
 	file_read
+	file_write
 
 	fn_for_game
 	fn_for_build
+	patch_print_fn
 
 	dir_create_for_fn
 
@@ -83,9 +88,17 @@ EXPORTS
 	patch_json_load
 	patch_file_store
 	patch_json_store
+
+	patch_init
+	patch_rel_to_abs
+
+	; Stack
+	; -----
 	stack_json_resolve
 	stack_game_file_resolve
 	stack_game_json_resolve
+
+	stack_show_missing
 
 	; Hooks
 	; -----
@@ -104,6 +117,7 @@ EXPORTS
 	inject_CreateProcessU
 	inject_CreateProcessW
 	inject_LoadLibraryU
+	inject_LoadLibraryW
 	inject_detour
 
 	thcrap_detour
@@ -146,9 +160,14 @@ EXPORTS
 	; Hardcoded string translation
 	; ----------------------------
 	strings_get
+	strings_get_value
 	strings_lookup
+	strings_va_lookup
+	strings_storage_get
 	strings_sprintf
 	strings_vsprintf
+	strings_strclr
+	strings_strcat
 
 	strings_MessageBoxA
 
@@ -180,6 +199,8 @@ EXPORTS
 	; ------------
 	textdisp_CreateFontA
 	patch_fonts_load
+
+	textdisp_init
 	textdisp_detour
 
 	; Win32 dialogs

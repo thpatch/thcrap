@@ -5,15 +5,18 @@ EXPORTS
 	inet_init
 	inet_exit
 
+	ServerBuild
+	ServerInit
+
+	ServerNewSession
 	ServerGetFirst
 	ServerGetNumActive
 	ServerDisable
 
 	ServerDownloadFile
 
-	ServerInit
-
 	patch_update
+	stack_update
 
 	UpdateThread
 	BP_update_poll

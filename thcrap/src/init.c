@@ -34,13 +34,12 @@ static const char *mbox_copy_message =
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
-	unsigned char *file_buffer;
+	unsigned char *file_buffer = file_read(fn, file_size);
 	SHA256_CTX sha256_ctx;
 	BYTE hash[32];
 	char hash_str[65];
 	int i;
 
-	file_buffer = file_read(fn, file_size);
 	if(!file_buffer) {
 		return NULL;
 	}
@@ -62,20 +61,14 @@ json_t* identify_by_size(size_t file_size, json_t *versions)
 
 int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
 {
-	json_t *json_latest;
-	size_t json_latest_count;
+	json_t *json_latest = json_object_get(run_ver, "latest");
+	size_t json_latest_count = json_array_size(json_latest);
 	size_t i;
 
-	if(!build || !run_ver || !latest) {
+	if(!build || !latest || !json_latest) {
 		return -1;
 	}
 
-	json_latest = json_object_get(run_ver, "latest");
-	if(!json_latest) {
-		return -1;
-	}
-
-	json_latest_count = json_array_size(json_latest);
 	if(json_latest_count == 0) {
 		*latest = json_string_value(json_latest);
 	}
@@ -95,7 +88,10 @@ json_t* identify(const char *exe_fn)
 {
 	size_t exe_size;
 	json_t *run_ver = NULL;
-	json_t *versions_js = NULL;
+	json_t *versions_js = stack_json_resolve("versions.js", NULL);
+	json_t *game_obj = NULL;
+	json_t *build_obj = NULL;
+	json_t *variety_obj = NULL;
 	const char *game = NULL;
 	const char *build = NULL;
 	const char *variety = NULL;
@@ -104,7 +100,6 @@ json_t* identify(const char *exe_fn)
 	json_t *id_array = NULL;
 	int size_cmp = 0;
 
-	versions_js = stack_json_resolve("versions.js", NULL);
 	if(!versions_js) {
 		goto end;
 	}
@@ -123,11 +118,12 @@ json_t* identify(const char *exe_fn)
 		}
 	}
 
-	if(json_array_size(id_array) >= 3) {
-		game = json_array_get_string(id_array, 0);
-		build = json_array_get_string(id_array, 1);
-		variety = json_array_get_string(id_array, 2);
-	}
+	game_obj = json_array_get(id_array, 0);
+	build_obj = json_array_get(id_array, 1);
+	variety_obj = json_array_get(id_array, 2);
+	game = json_string_value(game_obj);
+	build = json_string_value(build_obj);
+	variety = json_string_value(variety_obj);
 
 	if(!game || !build) {
 		log_printf("Format de version Invalide!");
@@ -137,7 +133,7 @@ json_t* identify(const char *exe_fn)
 	// Store build in the runconfig to be recalled later for
 	// version-dependent patch file resolving. Needs be directly written to
 	// run_cfg because we already require it down below to resolve ver_fn.
-	json_object_set(run_cfg, "build", json_array_get(id_array, 1));
+	json_object_set(run_cfg, "build", build_obj);
 
 	log_printf("→ %s %s %s\n", game, build, variety);
 
@@ -151,10 +147,12 @@ json_t* identify(const char *exe_fn)
 		run_ver = stack_json_resolve(game, NULL);
 	}
 
+	// Ensure that we have a configuration with a "game" key
 	if(!run_ver) {
-		// Create a dummy configuration with at least a "game" key
 		run_ver = json_object();
-		json_object_set_new(run_ver, "game", json_string(game));
+	}
+	if(!json_object_get_string(run_ver, "game")) {
+		json_object_set(run_ver, "game", game_obj);
 	}
 
 	// Pretty game title
@@ -185,8 +183,7 @@ json_t* identify(const char *exe_fn)
 			PROJECT_NAME_SHORT(), game, build, variety, exe_fn
 		);
 		if(ret == IDNO) {
-			json_decref(run_ver);
-			run_ver = NULL;
+			run_ver = json_decref_safe(run_ver);
 		}
 	} else {
 		// Old version nagbox
@@ -221,7 +218,7 @@ void thcrap_detour(HMODULE hProc)
 	inject_detour(hProc);
 }
 
-int thcrap_init(const char *setup_fn)
+int thcrap_init(const char *run_cfg_fn)
 {
 	json_t *run_ver = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
@@ -230,19 +227,20 @@ int thcrap_init(const char *setup_fn)
 	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
+
 	GetModuleFileNameU(NULL, exe_fn, exe_fn_len);
 	GetCurrentDirectory(game_dir_len, game_dir);
 
 	SetCurrentDirectory(dll_dir);
 
-	run_cfg = json_load_file_report(setup_fn);
+	run_cfg = json_load_file_report(run_cfg_fn);
 
 	{
 		json_t *console_val = json_object_get(run_cfg, "console");
 		log_init(json_is_true(console_val));
 	}
 
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(setup_fn));
+	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
 	log_printf("Fichier de configuration: %s\n\n", setup_fn);
 
 	thcrap_detour(hProc);
@@ -256,70 +254,33 @@ int thcrap_init(const char *setup_fn)
 		json_decref(run_cfg);
 		run_cfg = run_ver;
 	}
-	{
-		// Copy format links from formats.js
-		json_t *game_formats = json_object_get(run_cfg, "formats");
-		if(game_formats) {
-			json_t *formats_js = stack_json_resolve("formats.js", NULL);
-			json_t *format_link;
-			const char *key;
-			json_object_foreach(game_formats, key, format_link) {
-				if(json_is_string(format_link)) {
-					json_t *format = json_object_get(formats_js, json_string_value(format_link));
-					if(format) {
-						json_object_set_nocheck(game_formats, key, format);
-					}
-				}
-			}
-			json_decref(formats_js);
-		}
-	}
 	log_printf("Initialisation des patchs...\n");
 	{
 		json_t *patches = json_object_get(run_cfg, "patches");
 		size_t i;
 		json_t *patch_info;
 		DWORD min_build = 0;
-		char *url_engine = NULL;
-		json_t *rem_arcs = NULL;
-		size_t rem_arcs_str_len = 0;
+		const char *url_engine = NULL;
 
 		json_array_foreach(patches, i, patch_info) {
-			json_t *patch_js;
 			DWORD cur_min_build;
 
-			// Check archive presence
-			json_t *archive_obj = json_object_get(patch_info, "archive");
-			const char *archive = json_string_value(archive_obj);
-			if(archive) {
-				if(!PathFileExists(archive)) {
-					if(!rem_arcs) {
-						rem_arcs = json_array();
-					}
-					json_array_append(rem_arcs, archive_obj);
-					rem_arcs_str_len += 1 + strlen(archive) + 1;
-				}
-			} else {
-				// No archive?!?
-				// Is this an error? I'm not sure
-			}
+			// Why, hello there, C89.
+			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
 
-			patch_js = patch_json_load(patch_info, "patch.js", NULL);
+			json_array_set_new(patches, i, patch_init(patch_info));
 
-			cur_min_build = json_object_get_hex(patch_js, "min_build");
+			cur_min_build = json_object_get_hex(patch_info, "min_build");
 			if(cur_min_build > min_build) {
 				// ... OK, there *could* be the case where people stack patches from
-				// different originating servers which all have their own fork of the
+				// different repositories which all require their own fork of the
 				// patcher, and then one side updates their fork, causing this prompt,
 				// and the users overwrite the modifications of another fork which they
 				// need for running a certain patch configuration in the first place...
 				// Let's just hope that it will never get that complicated.
 				min_build = cur_min_build;
-				SAFE_FREE(url_engine);
-				url_engine = strdup(json_object_get_string(patch_js, "url_engine"));
+				url_engine = json_object_get_string(patch_info, "url_engine");
 			}
-			patch_fonts_load(patch_info, patch_js);
-			json_decref(patch_js);
 		}
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
@@ -335,43 +296,39 @@ int thcrap_init(const char *setup_fn)
 				url_engine ? url_engine : "",
 				url_engine ? mbox_copy_message : ""
 			);
-			SAFE_FREE(url_engine);
-		}
-		if(json_array_size(rem_arcs) > 0) {
-			VLA(char, rem_arcs_str, rem_arcs_str_len);
-			size_t i;
-			json_t *archive_obj;
-
-			rem_arcs_str[0] = 0;
-			json_array_foreach(rem_arcs, i, archive_obj) {
-				strcat(rem_arcs_str, "\t");
-				strcat(rem_arcs_str, json_string_value(archive_obj));
-				strcat(rem_arcs_str, "\n");
-			}
-			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"Certains patchs n'ont pas été trouvés dans votre configuration:\n"
-				"\n"
-				"%s"
-				"\n"
-				"Veuillez reconfigurer votre sélection de patchs - soit en executant l'outil de configuration,"
-				"soit en éditant votre fichier de configuration à la main (%s).",
-				rem_arcs_str, setup_fn
-			);
-			json_decref(rem_arcs);
-			VLA_FREE(rem_arcs_str);
 		}
 	}
+
+	stack_show_missing();
 
 	log_printf("Dossier du jeu: %s\n", game_dir);
 	log_printf("Dossier du Plug-in: %s\n", dll_dir);
 
 	log_printf("\nInitialisation des plug-ins\n");
 
+	{
+		// Copy format links from formats.js
+		json_t *game_formats = json_object_get(run_cfg, "formats");
+		if(game_formats) {
+			json_t *formats_js = stack_json_resolve("formats.js", NULL);
+			json_t *format_link;
+			const char *key;
+			json_object_foreach(game_formats, key, format_link) {
+				json_t *format = json_object_get(formats_js, json_string_value(format_link));
+				json_object_set_nocheck(game_formats, key, format);
+			}
+			json_decref(formats_js);
+		}
+	}
+
 #ifdef HAVE_BP_FILE
 	bp_file_init();
 #endif
 #ifdef HAVE_STRINGS
 	strings_init();
+#endif
+#ifdef HAVE_TEXTDISP
+	textdisp_init();
 #endif
 	plugins_load();
 
@@ -398,19 +355,10 @@ int thcrap_init(const char *setup_fn)
 		json_t *val = NULL;
 		json_t *run_funcs = json_object();
 
-		// Print this separately from the run configuration
-
-		log_printf("Fonctions disponibles pour le hack binaire:\n");
-		log_printf("-------------------------------------------\n");
-
 		GetExportedFunctions(run_funcs, hThcrap);
 		json_object_foreach(json_object_get(run_cfg, "plugins"), key, val) {
-			log_printf("\n%s:\n\n", key);
 			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
 		}
-
-		log_printf("-------------------------------------------\n");
-		log_printf("\n");
 
 		binhacks_apply(json_object_get(run_cfg, "binhacks"), run_funcs);
 		breakpoints_apply();
@@ -421,11 +369,12 @@ int thcrap_init(const char *setup_fn)
 		log_printf("--------------------------------------\n");
 		json_dump_log(run_cfg, JSON_INDENT(2));
 		log_printf("--------------------------------------\n");
-		SetCurrentDirectory(game_dir);
 
 		json_object_set_new(run_ver, "funcs", run_funcs);
 	}
+	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
+	VLA_FREE(exe_fn);
 	return 0;
 }
 
@@ -467,7 +416,7 @@ void ExitDll(HMODULE hDll)
 	// Free our global variables
 	breakpoints_remove();
 
-	json_decref(run_cfg);
+	run_cfg = json_decref_safe(run_cfg);
 
 	DeleteCriticalSection(&cs_file_access);
 
@@ -480,6 +429,8 @@ void ExitDll(HMODULE hDll)
 	SAFE_FREE(dll_dir);
 #ifdef _WIN32
 #ifdef _DEBUG
+	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
+	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
 	_CrtDumpMemoryLeaks();
 #endif
 #endif

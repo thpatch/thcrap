@@ -34,7 +34,7 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 {
 	char cmp[4];
 
-	if(!regname) {
+	if(!regs || !regname) {
 		return NULL;
 	}
 	memcpy(cmp, regname, 3);
@@ -56,25 +56,13 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
 {
-	const char *regname = NULL;
-
-	if(!regs) {
-		return NULL;
-	}
-	regname = json_object_get_string(object, key);
-	if(!regname) {
-		return NULL;
-	}
-	return reg(regs, regname);
+	return reg(regs, json_object_get_string(object, key));
 }
 
 BreakpointFunc_t breakpoint_func_get(const char *key)
 {
-	if(!key) {
-		return NULL;
-	}
-	{
-		BreakpointFunc_t ret = NULL;
+	BreakpointFunc_t ret = NULL;
+	if(key) {
 		STRLEN_DEC(key);
 		VLA(char, bp_key, key_len + strlen("BP_") + 1);
 
@@ -88,8 +76,8 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 		strncat(bp_key, key, key_len);
 		ret = (BreakpointFunc_t)runconfig_func_get(bp_key);
 		VLA_FREE(bp_key);
-		return ret;
 	}
+	return ret;
 }
 
 __declspec(naked) void breakpoint_process(void)
@@ -156,7 +144,7 @@ __declspec(naked) void breakpoint_process(void)
 	}
 }
 
-void cave_fix(BYTE *cave, size_t bp_addr)
+void cave_fix(BYTE *cave, BYTE *bp_addr)
 {
 	/// Fix relative stuff
 	/// ------------------
@@ -164,10 +152,8 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 	// #1: Relative far call / jump at the very beginning
 	if(cave[0] == 0xe8 || cave[0] == 0xe9)
 	{
-		size_t dist_old, dist_new;
-
-		dist_old = *((size_t*)(cave + 1));
-		dist_new = (dist_old + (bp_addr + CALL_LEN)) - ((size_t)cave + CALL_LEN);
+		size_t dist_old = *((size_t*)(cave + 1));
+		size_t dist_new = dist_old + bp_addr - cave;
 
 		memcpy(cave + 1, &dist_new, sizeof(dist_new));
 
@@ -178,18 +164,15 @@ void cave_fix(BYTE *cave, size_t bp_addr)
 
 int breakpoints_apply(void)
 {
-	json_t *breakpoints;
+	json_t *breakpoints = json_object_get(run_cfg, BREAKPOINTS);
 	const char *key;
 	json_t *bp;
-	size_t breakpoint_count;
+	size_t breakpoint_count = json_object_size(breakpoints);
 	size_t i = 0;
 
-	breakpoints = json_object_get(run_cfg, BREAKPOINTS);
 	if(!breakpoints) {
 		return -1;
 	}
-	breakpoint_count = json_object_size(breakpoints);
-
 	if(!breakpoint_count) {
 		log_printf("Aucun point d'arrêt à définir.\n");
 		return 0;
@@ -237,7 +220,7 @@ int breakpoints_apply(void)
 
 		// Copy old code to cave
 		memcpy(cave, UlongToPtr(addr), cavesize);
-		cave_fix(cave, addr);
+		cave_fix(cave, UlongToPtr(addr));
 
 		// JMP addr
 		cave[cavesize] = 0xe9;
@@ -264,14 +247,12 @@ int breakpoints_apply(void)
 
 int breakpoints_remove(void)
 {
-	json_t *breakpoints;
-	size_t breakpoint_count;
+	json_t *breakpoints = json_object_get(run_cfg, BREAKPOINTS);
+	size_t breakpoint_count = json_object_size(breakpoints);
 
-	breakpoints = json_object_get(run_cfg, BREAKPOINTS);
 	if(!breakpoints) {
 		return -1;
 	}
-	breakpoint_count = json_object_size(breakpoints);
 	if(!breakpoint_count) {
 		log_printf("Aucun point d'arrêt à supprimer\n");
 		return 0;

@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{6ba6299a-eac2-4bf2-be24-08da9090f2c0}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Resource Files">
       <UniqueIdentifier>{a992f86c-02d8-49aa-963a-03c7b8607198}</UniqueIdentifier>
     </Filter>
@@ -28,10 +25,10 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\update.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\wininet_dll.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\update.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

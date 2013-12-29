@@ -9,6 +9,9 @@
 
 #pragma once
 
+// Returns [json] if the object is still alive, and NULL if it was deleted.
+json_t* json_decref_safe(json_t *json);
+
 /**
   * Unfortunately, JSON doesn't support native hexadecimal values.
   * This function works with both string and integer values and returns the
@@ -24,8 +27,9 @@ size_t json_hex_value(json_t *val);
 
 /// Arrays
 /// ------
-// Like json_array_set, but expands the array if necessary.
+// Like json_array_set(_new), but expands the array if necessary.
 int json_array_set_expand(json_t *arr, size_t ind, json_t *value);
+int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value);
 
 // Get the integer value of [ind] in [array],
 // automatically converting the JSON value to an integer if necessary.
@@ -64,9 +68,10 @@ size_t json_object_get_hex(json_t *object, const char *key);
 const char* json_object_get_string(const json_t *object, const char *key);
 
 // Merge [new_obj] recursively into [old_obj].
-// [new_obj] has priority; any element of [new_obj] that is already present
-// in [old_obj] and is *not* an object itself is overwritten.
-int json_object_merge(json_t *old_obj, json_t *new_obj);
+// [new_obj] has priority; any element of [old_obj] that is present
+// in [new_obj] and is *not* an object itself is overwritten.
+// Returns [old_obj].
+json_t* json_object_merge(json_t *old_obj, const json_t *new_obj);
 
 // Return an alphabetically sorted JSON array of the keys in [object].
 json_t* json_object_get_keys_sorted(const json_t *object);

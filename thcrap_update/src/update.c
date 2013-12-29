@@ -56,6 +56,33 @@ void inet_exit(void)
 	}
 }
 
+json_t* ServerBuild(const char *start_url)
+{
+	return json_pack("[{sssb}]",
+		"url", start_url,
+		"time", 1
+	);
+}
+
+json_t* ServerInit(json_t *patch_js)
+{
+	json_t *servers = json_object_get(patch_js, "servers");
+	json_t *val;
+	size_t i;
+
+	json_array_foreach(servers, i, val) {
+		json_t *obj = val;
+		if(json_is_string(val)) {
+			// Convert to object
+			obj = json_object();
+			json_object_set(obj, "url", val);
+			json_array_set_new(servers, i, obj);
+		}
+		json_object_set(obj, "time", json_true());
+	}
+	return servers;
+}
+
 void ServerNewSession(json_t *servers)
 {
 	size_t i;
@@ -64,26 +91,6 @@ void ServerNewSession(json_t *servers)
 	json_array_foreach(servers, i, server) {
 		json_object_set_nocheck(server, "time", json_true());
 	}
-}
-
-size_t ServerGetNumActive(const json_t *servers)
-{
-	size_t i;
-	json_t *server;
-	int ret = json_array_size(servers);
-
-	json_array_foreach(servers, i, server) {
-		if(json_is_false(json_object_get(server, "time"))) {
-			ret--;
-		}
-	}
-	return ret;
-}
-
-int ServerDisable(json_t *server)
-{
-	json_object_set(server, "time", json_false());
-	return 0;
 }
 
 const int ServerGetFirst(const json_t *servers)
@@ -122,7 +129,29 @@ const int ServerGetFirst(const json_t *servers)
 	}
 }
 
-void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWORD *exp_crc)
+size_t ServerGetNumActive(const json_t *servers)
+{
+	size_t i;
+	json_t *server;
+	int ret = json_array_size(servers);
+
+	json_array_foreach(servers, i, server) {
+		if(json_is_false(json_object_get(server, "time"))) {
+			ret--;
+		}
+	}
+	return ret;
+}
+
+int ServerDisable(json_t *server)
+{
+	json_object_set(server, "time", json_false());
+	return 0;
+}
+
+void* ServerDownloadFile(
+	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
+)
 {
 	HINTERNET hFile = NULL;
 	DWORD http_stat;
@@ -130,47 +159,35 @@ void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWOR
 	DWORD read_size = 0;
 	BOOL ret;
 	BYTE *file_buffer = NULL, *p;
-	size_t i;
+	int i;
 
-	int servers_left;
-	int servers_first;
-
-	if(!fn || !file_size) {
-		return NULL;
-	}
-	servers_first = ServerGetFirst(servers);
-	if(servers_first < 0) {
-		return NULL;
-	}
+	int servers_first = ServerGetFirst(servers);
+	int servers_total = json_array_size(servers);
 	// gets decremented in the loop
-	servers_left = json_array_size(servers);
-	for(i = servers_first; servers_left; i++) {
+	int servers_left = servers_total;
+
+	if(!fn || !file_size || servers_first < 0) {
+		return NULL;
+	}
+	*file_size = 0;
+	for(i = servers_first; servers_left; i = (i + 1) % servers_total) {
 		DWORD time, time_start;
 		DWORD crc = 0;
-		json_t *server;
-		const char *server_url;
-		json_t *server_time;
-
-		// Loop back
-		if(i >= json_array_size(servers)) {
-			i = 0;
-		}
-
-		server = json_array_get(servers, i);
-		server_time = json_object_get(server, "time");
+		json_t *server = json_array_get(servers, i);
+		json_t *server_time = json_object_get(server, "time");
 
 		if(json_is_false(server_time)) {
 			continue;
 		}
-
-		server_url = json_object_get_string(server, "url");
 		servers_left--;
 
 		InternetCloseHandle(hFile);
 
 		{
 			URL_COMPONENTSA uc = {0};
-			STRLEN_DEC(server_url);
+			const json_t *server_url_obj = json_object_get(server, "url");
+			const char *server_url = json_string_value(server_url_obj);
+			size_t server_url_len = json_string_length(server_url_obj);
 			// * 3 because characters may be URL-encoded
 			DWORD url_len = server_url_len + 1 + (strlen(fn) * 3) + 1;
 			VLA(char, server_host, server_url_len);
@@ -255,39 +272,6 @@ void* ServerDownloadFile(json_t *servers, const char *fn, DWORD *file_size, DWOR
 	return NULL;
 }
 
-json_t* ServerInit(json_t *patch_js)
-{
-	json_t *servers = json_object_get(patch_js, "servers");
-	json_t *val;
-	size_t i;
-
-	if(json_is_object(servers)) {
-		// This is only to support old, unfinished downloads where the local patch.js
-		// still has <servers> as an object. Thus, we convert it back to an array
-		json_t *arr = json_array();
-		const char *url;
-		json_object_foreach(servers, url, val) {
-			json_t *server = json_object();
-			json_object_set_new(server, "url", json_string(url));
-			json_object_set(server, "time", val);
-		}
-		servers = arr;
-		json_object_set_new(patch_js, "servers", arr);
-	}
-
-	json_array_foreach(servers, i, val) {
-		json_t *obj = val;
-		if(json_is_string(val)) {
-			// Convert to object
-			obj = json_object();
-			json_object_set(obj, "url", val);
-			json_array_set_new(servers, i, obj);
-		}
-		json_object_set(obj, "time", json_true());
-	}
-	return servers;
-}
-
 int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)
 {
 	// Update if remote and local JSON values don't match
@@ -301,20 +285,17 @@ int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *lo
 	return 0;
 }
 
-int patch_update(const json_t *patch_info)
+int patch_update(json_t *patch_info)
 {
-	const char *main_fn = "patch.js";
+	const char *files_fn = "files.js";
 
-	json_t *local_patch_js = NULL;
-	json_t *local_servers = NULL;
+	json_t *servers = NULL;
 	json_t *local_files = NULL;
 
-	DWORD remote_patch_js_size;
-	BYTE *remote_patch_js_buffer = NULL;
+	DWORD remote_files_js_size;
+	BYTE *remote_files_js_buffer = NULL;
 
-	json_t *remote_patch_js = NULL;
-	json_t *remote_servers = NULL;
-	json_t *remote_files;
+	json_t *remote_files = NULL;
 	json_t *remote_val;
 
 	int ret = 0;
@@ -328,59 +309,37 @@ int patch_update(const json_t *patch_info)
 		return -1;
 	}
 
-	// Load local patch.js
-	local_patch_js = patch_json_load(patch_info, main_fn, NULL);
-	if(!local_patch_js) {
-		// No patch.js, no update
-		ret = 1;
-		goto end_update;
-	}
-
-	local_files = json_object_get_create(local_patch_js, "files", json_object());
-
-	if(json_is_false(json_object_get(local_patch_js, "update"))) {
+	if(json_is_false(json_object_get(patch_info, "update"))) {
 		// Updating deactivated on this patch
 		ret = 2;
 		goto end_update;
 	}
+
+	local_files = patch_json_load(patch_info, files_fn, NULL);
+	if(!json_is_object(local_files)) {
+		local_files = json_object();
+	}
 	{
-		const char *patch_name = json_object_get_string(local_patch_js, "id");
+		const char *patch_name = json_object_get_string(patch_info, "id");
 		if(patch_name) {
 			log_printf("Recherche de mises à jour pour %s...\n", patch_name);
 		}
 	}
 
-	// Init local servers for bootstrapping
-	local_servers = ServerInit(local_patch_js);
+	servers = ServerInit(patch_info);
 
-	remote_patch_js_buffer = ServerDownloadFile(local_servers, main_fn, &remote_patch_js_size, NULL);
-	if(!remote_patch_js_buffer) {
+	remote_files_js_buffer = ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
+	if(!remote_files_js_buffer) {
 		// All servers offline...
 		ret = 3;
 		goto end_update;
 	}
 
-	remote_patch_js = json_loadb_report(remote_patch_js_buffer, remote_patch_js_size, 0, main_fn);
-	if(!remote_patch_js) {
-		// Remote patch_js is invalid!
+	remote_files = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
+	if(!json_is_object(remote_files)) {
+		// Remote files.js is invalid!
 		ret = 4;
 		goto end_update;
-	}
-
-	// Buffer is written to a file at the end of the update - after all, the
-	// remote patch.js can include more changes than just new file stamps.
-
-	remote_files = json_object_get(remote_patch_js, "files");
-	if(!json_is_object(remote_files)) {
-		// No "files" object in the remote patch_js
-		ret = 5;
-		goto end_update;
-	}
-
-	remote_servers = ServerInit(remote_patch_js);
-	if(json_object_size(remote_patch_js) == 0) {
-		// No remote servers...? OK, continue with the local ones
-		remote_servers = local_servers;
 	}
 
 	// Yay for doubled loops... just to get the correct number
@@ -405,7 +364,7 @@ int patch_update(const json_t *patch_info)
 		DWORD file_size;
 		json_t *local_val;
 		
-		if(!ServerGetNumActive(remote_servers)) {
+		if(!ServerGetNumActive(servers)) {
 			ret = 3;
 			break;
 		}
@@ -420,20 +379,19 @@ int patch_update(const json_t *patch_info)
 
 		if(json_is_integer(remote_val)) {
 			DWORD remote_crc = json_integer_value(remote_val);
-			file_buffer = ServerDownloadFile(remote_servers, key, &file_size, &remote_crc);
+			file_buffer = ServerDownloadFile(servers, key, &file_size, &remote_crc);
 		} else {
-			file_buffer = ServerDownloadFile(remote_servers, key, &file_size, NULL);
+			file_buffer = ServerDownloadFile(servers, key, &file_size, NULL);
 		}
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
 			SAFE_FREE(file_buffer);
 
 			json_object_set(local_files, key, remote_val);
-			patch_json_store(patch_info, main_fn, local_patch_js);
+			patch_json_store(patch_info, files_fn, local_files);
 		}
 	}
 	if(i == file_count) {
-		patch_file_store(patch_info, main_fn, remote_patch_js_buffer, remote_patch_js_size);
 		log_printf("Mise à jour terminée\n");
 	}
 
@@ -442,8 +400,18 @@ end_update:
 	if(ret == 3) {
 		log_printf("Aucun serveur trouvé pour le moment.\nAnnulation de la mise à jour\n");
 	}
-	SAFE_FREE(remote_patch_js_buffer);
-	json_decref(remote_patch_js);
-	json_decref(local_patch_js);
+	SAFE_FREE(remote_files_js_buffer);
+	json_decref(remote_files);
+	json_decref(local_files);
 	return ret;
+}
+
+void stack_update(void)
+{
+	json_t *patch_array = json_object_get(runconfig_get(), "patches");
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patch_array, i, patch_info) {
+		patch_update(patch_info);
+	}
 }

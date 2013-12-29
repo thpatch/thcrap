@@ -9,13 +9,24 @@
 
 #include "thcrap.h"
 
+// Length-prefixed string object used for persistent storage
+typedef struct {
+	size_t len;
+	char str;
+} storage_string_t;
+
 static json_t *stringdefs = NULL;
 static json_t *stringlocs = NULL;
-static json_t *sprintf_storage = NULL;
+static json_t *strings_storage = NULL;
 
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 
-const char* strings_get(const char *id)
+const json_t* strings_get(const char *id)
+{
+	return json_object_get(stringdefs, id);
+}
+
+const char* strings_get_value(const char *id)
 {
 	return json_object_get_string(stringdefs, id);
 }
@@ -31,7 +42,7 @@ const char* strings_lookup(const char *in, size_t *out_len)
 
 	id_key = json_string_value(json_object_hexkey_get(stringlocs, (size_t)in));
 	if(id_key) {
-		const char *new_str = strings_get(id_key);
+		const char *new_str = strings_get_value(id_key);
 		if(new_str && new_str[0]) {
 			ret = new_str;
 		}
@@ -42,52 +53,182 @@ const char* strings_lookup(const char *in, size_t *out_len)
 	return ret;
 }
 
-const char* strings_vsprintf(const size_t addr, const char *format, va_list va)
+va_list printf_parse_num(va_list va, const char **p)
+{
+	if(**p == '*') {
+		// width specified in next variable argument
+		(*p)++;
+		va_arg(va, int);
+	} else while(isdigit(**p)) {
+		(*p)++;
+	}
+	return va;
+}
+
+// The printf format parsing below is based on Wine's implementation for
+// msvcrt.dll (dlls/msvcrt/printf.h).
+void strings_va_lookup(va_list va, const char *format)
+{
+	const char *p = format;
+	while(*p) {
+		char fmt;
+		int flag_double = 0;
+
+		// Skip characters before '%'
+		for(; *p && *p != '%'; p++);
+		if(!*p) {
+			break;
+		}
+
+		// *p == '%' here
+		p++;
+
+		// output a single '%' character
+		if(*p == '%') {
+			p++;
+			continue;
+		}
+
+		// Skip flags. From left to right:
+		// prefix sign, prefix space, left-align, zero padding, alternate
+		while(strchr("+ -0#", *p) != NULL) {
+			p++;
+		}
+
+		// Width
+		va = printf_parse_num(va, &p);
+
+		// Precision
+		if(*p == '.') {
+			p++;
+			va = printf_parse_num(va, &p);
+		}
+
+		// Argument size modifier
+		while(*p) {
+			if(*p=='l' && *(p+1)=='l') {
+				flag_double = 1;
+				p += 2;
+			} else if(*p=='h' || *p=='l' || *p=='L') {
+				p++;
+			} else if(*p == 'I') {
+				if(*(p+1)=='6' && *(p+2)=='4') {
+					flag_double = 1;
+					p += 3;
+				} else if(*(p+1)=='3' && *(p+2)=='2') {
+					p += 3;
+				} else if(isdigit(*(p+1)) || !*(p+1)) {
+					break;
+				} else {
+					p++;
+				}
+			} else if(*p == 'w' || *p == 'F') {
+				p++;
+			} else {
+				break;
+			}
+		}
+		fmt = *p;
+		if(fmt == 's' || fmt == 'S') {
+			*(const char**)va = strings_lookup(*(const char**)va, NULL);
+		}
+		// Advance [va] if the format is among the valid ones
+		if(strchr("aeEfgG", fmt)) {
+			va_arg(va, double);
+		}
+		if(strchr("sScCpndiouxX", fmt)) {
+			va_arg(va, int);
+			if(flag_double) {
+				va_arg(va, int);
+			}
+		}
+		p++;
+	}
+}
+
+char* strings_storage_get(const size_t slot, size_t min_len)
+{
+	storage_string_t *ret = NULL;
+	char addr_key[addr_key_len];
+
+	itoa(slot, addr_key, 16);
+	ret = (storage_string_t*)json_object_get_hex(strings_storage, addr_key);
+
+	// MSVCRT's realloc implementation moves the buffer every time, even if the
+	// new length is shorter...
+	if(!ret || (min_len && ret->len < min_len)) {
+		storage_string_t *ret_new = realloc(ret, min_len + sizeof(storage_string_t));
+		// Yes, this correctly handles a realloc failure.
+		if(ret_new) {
+			ret_new->len = min_len;
+			if(!ret) {
+				ret_new->str = 0;
+			}
+			json_object_set_new(strings_storage, addr_key, json_integer((size_t)ret_new));
+			ret = ret_new;
+		}
+	}
+	if(ret) {
+		return &ret->str;
+	}
+	return NULL;
+}
+
+const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
 {
 	char *ret = NULL;
 	size_t str_len;
-	char addr_key[addr_key_len];
 
 	format = strings_lookup(format, NULL);
+	strings_va_lookup(va, format);
 
 	if(!format) {
 		return NULL;
 	}
 	str_len = _vscprintf(format, va) + 1;
 
-	// We shouldn't use JSON strings here because Jansson forces them to be
-	// in UTF-8, and we'd like to sprintf regardless of encoding.
-	// Thus, we have to store char pointers as JSON integers and reallocate
-	// memory if necessary.
-
-	sprintf(addr_key, "0x%x", addr);
-	ret = (char*)json_object_get_hex(sprintf_storage, addr_key);
-
-	// MSVCRT's realloc implementation moves the buffer every time, even if the
-	// new length is shorter...
-	if(!ret || (strlen(ret) + 1 < str_len)) {
-		ret = (char*)realloc(ret, str_len);
-		// Yes, this correctly handles a realloc failure.
-		if(ret) {
-			json_object_set_new(sprintf_storage, addr_key, json_integer((size_t)ret));
-		}
-	}
+	ret = strings_storage_get(slot, str_len);
 	if(ret) {
 		vsprintf(ret, format, va);
 		return ret;
-	} else {
-		// Try to save the situation at least somewhat...
-		return format;
 	}
+	// Try to save the situation at least somewhat...
+	return format;
 }
 
-const char* strings_sprintf(const size_t addr, const char *format, ...)
+const char* strings_sprintf(const size_t slot, const char *format, ...)
 {
 	va_list va;
 	const char *ret;
 	va_start(va, format);
-	ret = strings_vsprintf(addr, format, va);
+	ret = strings_vsprintf(slot, format, va);
 	return ret;
+}
+
+const char* strings_strclr(const size_t slot)
+{
+	char *ret = strings_storage_get(slot, 0);
+	if(ret) {
+		ret[0] = 0;
+	}
+	return ret;
+}
+
+const char* strings_strcat(const size_t slot, const char *src)
+{
+	char *ret = strings_storage_get(slot, 0);
+	size_t ret_len = strlen(ret);
+	size_t src_len;
+
+	src = strings_lookup(src, &src_len);
+
+	ret = strings_storage_get(slot, ret_len + src_len);
+	if(ret) {
+		strncpy(ret + ret_len, src, src_len);
+		return ret;
+	}
+	// Try to save the situation at least somewhat...
+	return src;
 }
 
 /// String lookup hooks
@@ -109,7 +250,7 @@ void strings_init(void)
 {
 	stringdefs = stack_json_resolve("stringdefs.js", NULL);
 	stringlocs = stack_game_json_resolve("stringlocs.js", NULL);
-	sprintf_storage = json_object();
+	strings_storage = json_object();
 }
 
 int strings_detour(HMODULE hMod)
@@ -124,10 +265,11 @@ void strings_exit(void)
 	const char *key;
 	json_t *val;
 
-	json_decref(stringdefs);
-	json_decref(stringlocs);
-	json_object_foreach(sprintf_storage, key, val) {
-		free((void*)json_hex_value(val));
+	stringdefs = json_decref_safe(stringdefs);
+	stringlocs = json_decref_safe(stringlocs);
+	json_object_foreach(strings_storage, key, val) {
+		storage_string_t *p = (storage_string_t*)json_hex_value(val);
+		SAFE_FREE(p);
 	}
-	json_decref(sprintf_storage);
+	strings_storage = json_decref_safe(strings_storage);
 }

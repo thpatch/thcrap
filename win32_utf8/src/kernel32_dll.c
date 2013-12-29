@@ -24,7 +24,7 @@ BOOL WINAPI CreateDirectoryU(
 	size_t i;
 	size_t lpPathName_w_len;
 	WCHAR_T_DEC(lpPathName);
-	WCHAR_T_CONV(lpPathName);
+	WCHAR_T_CONV_VLA(lpPathName);
 
 	// no, this isn't optimized away
 	lpPathName_w_len = wcslen(lpPathName_w);
@@ -39,7 +39,7 @@ BOOL WINAPI CreateDirectoryU(
 	}
 	// Final directory
 	ret = CreateDirectoryW(lpPathName_w, NULL);
-	VLA_FREE(lpPathName_w);
+	WCHAR_T_FREE(lpPathName);
 	return ret;
 }
 
@@ -55,12 +55,12 @@ HANDLE WINAPI CreateFileU(
 {
 	HANDLE ret;
 	WCHAR_T_DEC(lpFileName);
-	WCHAR_T_CONV(lpFileName);
+	WCHAR_T_CONV_VLA(lpFileName);
 	ret = CreateFileW(
 		lpFileName_w, dwDesiredAccess, dwShareMode | FILE_SHARE_READ, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
 	);
-	VLA_FREE(lpFileName_w);
+	WCHAR_T_FREE(lpFileName);
 	return ret;
 }
 
@@ -83,9 +83,9 @@ BOOL WINAPI CreateProcessU(
 	WCHAR_T_DEC(lpCmdLine);
 	WCHAR_T_DEC(lpCurrentDirectory);
 
-	lpAppName_w = StringToUTF16_VLA(lpAppName_w, lpAppName, lpAppName_len);
-	lpCmdLine_w = StringToUTF16_VLA(lpCmdLine_w, lpCmdLine, lpCmdLine_len);
-	lpCurrentDirectory_w = StringToUTF16_VLA(lpCurrentDirectory_w, lpCurrentDirectory, lpCurrentDirectory_len);
+	WCHAR_T_CONV_VLA(lpAppName);
+	WCHAR_T_CONV_VLA(lpCmdLine);
+	WCHAR_T_CONV_VLA(lpCurrentDirectory);
 
 	if(lpSI) {
 		size_t si_lpDesktop_len = strlen(lpSI->lpDesktop) + 1;
@@ -120,9 +120,9 @@ BOOL WINAPI CreateProcessU(
 	);
 	VLA_FREE(lpSI_w.lpDesktop);
 	VLA_FREE(lpSI_w.lpTitle);
-	VLA_FREE(lpAppName_w);
-	VLA_FREE(lpCmdLine_w);
-	VLA_FREE(lpCurrentDirectory_w);
+	WCHAR_T_FREE(lpAppName);
+	WCHAR_T_FREE(lpCmdLine);
+	WCHAR_T_FREE(lpCurrentDirectory);
 	return ret;
 }
 
@@ -158,12 +158,12 @@ HANDLE WINAPI FindFirstFileU(
 	WIN32_FIND_DATAW lpFindFileDataW;
 
 	WCHAR_T_DEC(lpFileName);
-	WCHAR_T_CONV(lpFileName);
+	WCHAR_T_CONV_VLA(lpFileName);
 	ret = FindFirstFileW(lpFileName_w, &lpFindFileDataW);
 	last_error = GetLastError();
 	CopyFindDataWToA(lpFindFileData, &lpFindFileDataW);
 	SetLastError(last_error);
-	VLA_FREE(lpFileName_w);
+	WCHAR_T_FREE(lpFileName);
 	return ret;
 }
 
@@ -226,7 +226,7 @@ DWORD WINAPI GetCurrentDirectoryU(
 	VLA(wchar_t, lpBuffer_w, nBufferLength);
 
 	if(!lpBuffer) {
-		lpBuffer_w = NULL;
+		VLA_FREE(lpBuffer_w);
 	}
 	ret = GetCurrentDirectoryW(nBufferLength, lpBuffer_w);
 	if(lpBuffer) {
@@ -251,12 +251,13 @@ DWORD WINAPI GetEnvironmentVariableU(
 	DWORD ret;
 	WCHAR_T_DEC(lpName);
 	VLA(wchar_t, lpBuffer_w, nSize);
-	WCHAR_T_CONV(lpName);
+	WCHAR_T_CONV_VLA(lpName);
 
 	GetEnvironmentVariableW(lpName_w, lpBuffer_w, nSize);
 	// Return the converted size (!)
 	ret = StringToUTF8(lpBuffer, lpBuffer_w, nSize);
 	VLA_FREE(lpBuffer_w);
+	WCHAR_T_FREE(lpName);
 	return ret;
 }
 
@@ -356,7 +357,7 @@ HMODULE WINAPI LoadLibraryU(
 {
 	HMODULE ret;
 	WCHAR_T_DEC(lpLibFileName);
-	WCHAR_T_CONV(lpLibFileName);
+	WCHAR_T_CONV_VLA(lpLibFileName);
 	ret = LoadLibraryW(lpLibFileName_w);
 	VLA_FREE(lpLibFileName_w);
 	return ret;
@@ -368,7 +369,7 @@ BOOL WINAPI SetCurrentDirectoryU(
 {
 	BOOL ret;
 	WCHAR_T_DEC(lpPathName);
-	WCHAR_T_CONV(lpPathName);
+	WCHAR_T_CONV_VLA(lpPathName);
 	ret = SetCurrentDirectoryW(lpPathName_w);
 	VLA_FREE(lpPathName_w);
 	return ret;
