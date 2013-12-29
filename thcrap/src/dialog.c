@@ -326,7 +326,7 @@ void dialog_adjust_clear(dialog_adjust_t *adj)
 
 /// sz_or_Ord
 /// ---------
-size_t sz_or_ord_size(const BYTE **src, const char *rep)
+size_t sz_or_ord_size(const BYTE **src)
 {
 	if(src) {
 		const sz_Or_Ord *src_sz = (sz_Or_Ord*)*src;
@@ -339,9 +339,6 @@ size_t sz_or_ord_size(const BYTE **src, const char *rep)
 			ret = (wcslen(&src_sz->sz) + 1) * sizeof(wchar_t);
 		}
 		*src += ret;
-		if(rep) {
-			ret = StringToUTF16(NULL, rep, -1) * sizeof(wchar_t);
-		}
 		return ret;
 	} else {
 		return 0;
@@ -352,10 +349,10 @@ size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const char *rep)
 {
 	if(dst && src) {
 		const sz_Or_Ord *src_sz = (sz_Or_Ord*)*src;
-		size_t dst_len = sz_or_ord_size(src, rep);
+		size_t dst_len = sz_or_ord_size(src);
 
 		if(rep) {
-			StringToUTF16((wchar_t*)dst, rep, strlen(rep) + 1);
+			dst_len = StringToUTF16((wchar_t*)dst, rep, strlen(rep) + 1) * sizeof(wchar_t);
 		} else if(src_sz->ord_flag == 0 || src_sz->ord_flag == 0xffff) {
 			memcpy(dst, src_sz, dst_len);
 		} else {
