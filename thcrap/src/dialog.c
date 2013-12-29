@@ -275,18 +275,21 @@ void dialog_adjust_init(
 void dialog_adjust(
 	dialog_adjust_t *adj,
 	DLGITEMTEMPLATEEX_START *item,
-	const char *str_new
+	const json_t *rep
 )
 {
 	RECT rect = {0};
 	UINT draw_flags;
 	BYTE button_style;
-	if(!adj || !adj->hDC || !item || !str_new) {
+	const char *rep_str = json_string_value(rep);
+	const size_t rep_len = json_string_length(rep);
+
+	if(!adj || !adj->hDC || !item || !rep_str) {
 		return;
 	}
 	rect.right = item->cx;
-	draw_flags = DT_CALCRECT | (strchr(str_new, '\n') ? DT_WORDBREAK : 0);
-	DrawText(adj->hDC, str_new, -1, &rect, draw_flags);
+	draw_flags = DT_CALCRECT | (strchr(rep_str, '\n') ? DT_WORDBREAK : 0);
+	DrawText(adj->hDC, rep_str, rep_len, &rect, draw_flags);
 
 	// Convert pixels back to dialog units
 	// (see http://msdn.microsoft.com/library/windows/desktop/ms645475%28v=vs.85%29.aspx)
@@ -345,14 +348,16 @@ size_t sz_or_ord_size(const BYTE **src)
 	}
 }
 
-size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const char *rep)
+size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const json_t *rep)
 {
 	if(dst && src) {
 		const sz_Or_Ord *src_sz = (sz_Or_Ord*)*src;
 		size_t dst_len = sz_or_ord_size(src);
+		const char *rep_str = json_string_value(rep);
+		size_t rep_len = json_string_length(rep) + 1;
 
-		if(rep) {
-			dst_len = StringToUTF16((wchar_t*)dst, rep, strlen(rep) + 1) * sizeof(wchar_t);
+		if(rep_str) {
+			dst_len = StringToUTF16((wchar_t*)dst, rep_str, rep_len) * sizeof(wchar_t);
 		} else if(src_sz->ord_flag == 0 || src_sz->ord_flag == 0xffff) {
 			memcpy(dst, src_sz, dst_len);
 		} else {
@@ -372,11 +377,11 @@ size_t dialog_template_ex_size(json_t *trans)
 	// Yup, everything error-checked already.
 	size_t ret = 0;
 
-	const char *trans_title = strings_get(json_object_get_string(trans, "title"));
-	const char *trans_font = strings_get(json_object_get_string(trans, "font"));
+	const json_t *trans_title = strings_get(json_object_get_string(trans, "title"));
+	const json_t *trans_font = strings_get(json_object_get_string(trans, "font"));
 
-	ret += strlen(trans_title) + 1;
-	ret += strlen(trans_font) + 1;
+	ret += json_string_length(trans_title) + 1;
+	ret += json_string_length(trans_font) + 1;
 
 	ret *= sizeof(wchar_t);
 	return dword_align(ret);
@@ -387,8 +392,8 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 	if(dst && src && *src) {
 		BYTE *dst_start = dst;
 		DLGTEMPLATEEX_START *dst_header = (DLGTEMPLATEEX_START*)dst_start;
-		const char *trans_title = strings_get(json_object_get_string(trans, "title"));
-		const char *trans_font = strings_get(json_object_get_string(trans, "font"));
+		const json_t *trans_title = strings_get(json_object_get_string(trans, "title"));
+		const json_t *trans_font = strings_get(json_object_get_string(trans, "font"));
 		WORD trans_font_size = json_object_get_hex(trans, "font_size");
 
 		dst += memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_START));
@@ -424,9 +429,9 @@ size_t dialog_item_template_ex_size(json_t *trans)
 	// Yup, everything error-checked already.
 	size_t ret = 0;
 
-	const char *trans_title = strings_get(json_string_value(trans));
+	const json_t *trans_title = strings_get(json_string_value(trans));
 
-	ret += strlen(trans_title) + 1;
+	ret += json_string_length(trans_title) + 1;
 
 	ret *= sizeof(wchar_t);
 	return dword_align(ret);
@@ -437,7 +442,7 @@ size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_
 	if(dst && src && *src) {
 		BYTE *dst_start = dst;
 		WORD extraCount;
-		const char *trans_title = strings_get(json_string_value(trans));
+		const json_t *trans_title = strings_get(json_string_value(trans));
 
 		dst += memcpy_advance_src(dst, src, sizeof(DLGITEMTEMPLATEEX_START));
 		dst += sz_or_ord_build(dst, src, NULL); // windowClass
