@@ -91,10 +91,15 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	// Main DLL we will need to load
 	HMODULE kernel32 = GetModuleHandleA("kernel32.dll");
 
-	// Main functions we will need to import
+	// Main functions we will need to import.
+	// If [dll_fn] is absolute, LoadLibraryEx() with the LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
+	// flag is used to guarantee that the injected DLL and its dependencies really
+	// are only loaded from the given directory. Otherwise, LoadLibrary() may load
+	// a possible other DLL with the same name from the directory of [hProcess].
 	FARPROC getcurrentdirectory = GetProcAddress(kernel32, "GetCurrentDirectoryW");
 	FARPROC setcurrentdirectory = GetProcAddress(kernel32, "SetCurrentDirectoryW");
 	FARPROC loadlibrary = GetProcAddress(kernel32, "LoadLibraryW");
+	FARPROC loadlibraryex = GetProcAddress(kernel32, "LoadLibraryExW");
 	FARPROC getprocaddress = GetProcAddress(kernel32, "GetProcAddress");
 	FARPROC exitthread = GetProcAddress(kernel32, "ExitThread");
 	FARPROC freelibraryandexitthread = GetProcAddress(kernel32, "FreeLibraryAndExitThread");
@@ -291,7 +296,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	}
 
 	// Load the injected DLL into this process
-	HMODULE h = LoadLibrary(dll_fn);
+	HMODULE h = LoadLibraryEx(dll_fn, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
 	if(!h) {
 		MessageBox(0, "Could not load the dll: mydll.dll", "Error", MB_ICONERROR);
 		ExitThread(1);
@@ -397,15 +402,32 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0xD6;
 	}
 
-	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibrary
+	if(PathIsRelativeA(dll_fn)) {
+		// PUSH 0x00 (dwFlags = 0)
+		*p++ = 0x6a;
+		*p++ = 0x00;
+	} else {
+		// PUSH 0x00000100 (dwFlags = LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
+		*p++ = 0x68;
+		*p++ = 0x00;
+		*p++ = 0x01;
+		*p++ = 0x00;
+		*p++ = 0x00;
+	}
+
+	// PUSH 0x00 (hFile = NULL)
+	*p++ = 0x6a;
+	*p++ = 0x00;
+
+	// PUSH 0x00000000 - Push the address of the DLL name to use in LoadLibraryEx
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, dllNameAddr);
 
-	// MOV EAX, ADDRESS - Move the address of LoadLibrary into EAX
+	// MOV EAX, ADDRESS - Move the address of LoadLibraryEx into EAX
 	*p++ = 0xB8;
-	p = ptrcpy_advance_dst(p, loadlibrary);
+	p = ptrcpy_advance_dst(p, loadlibraryex);
 
-	// CALL EAX - Call LoadLibrary
+	// CALL EAX - Call LoadLibraryEx
 	*p++ = 0xFF;
 	*p++ = 0xD0;
 
@@ -659,7 +681,7 @@ int thcrap_inject(HANDLE hProcess, const char *run_cfg_fn)
 		const char *param;
 
 		GetModuleFileNameU(inj_mod, inj_dir, inj_dir_len);
-		strncpy(inj_dll, PathFindFileNameA(inj_dir), inj_dir_len);
+		strncpy(inj_dll, inj_dir, inj_dir_len);
 		PathRemoveFileSpec(inj_dir);
 		PathAddBackslashA(inj_dir);
 
