@@ -90,8 +90,13 @@ HWND WINAPI tsa_CreateWindowExA(
 )
 {
 	HWND ret;
-	const json_t *game_title = json_object_get(runconfig_get(), "title");
-	const json_t *game_build = json_object_get(runconfig_get(), "build");
+	const json_t *run_cfg = runconfig_get();
+	const char *game_id = json_object_get_string(run_cfg, "game");
+	const json_t *game_trans = strings_get(game_id);
+	const json_t *game_title =
+		game_trans ? game_trans : json_object_get(run_cfg, "title");
+	const json_t *game_build = json_object_get(run_cfg, "build");
+
 	size_t custom_title_len =
 		json_string_length(game_title) + 1 + json_string_length(game_build) + 1;
 	VLA(char, custom_title, custom_title_len);
