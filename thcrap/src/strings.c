@@ -21,7 +21,12 @@ static json_t *strings_storage = NULL;
 
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 
-const char* strings_get(const char *id)
+const json_t* strings_get(const char *id)
+{
+	return json_object_get(stringdefs, id);
+}
+
+const char* strings_get_value(const char *id)
 {
 	return json_object_get_string(stringdefs, id);
 }
@@ -37,7 +42,7 @@ const char* strings_lookup(const char *in, size_t *out_len)
 
 	id_key = json_string_value(json_object_hexkey_get(stringlocs, (size_t)in));
 	if(id_key) {
-		const char *new_str = strings_get(id_key);
+		const char *new_str = strings_get_value(id_key);
 		if(new_str && new_str[0]) {
 			ret = new_str;
 		}
