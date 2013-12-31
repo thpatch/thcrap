@@ -5,6 +5,9 @@
 
 #pragma once
 
+// Yes, I know this is the wrong way, but wineconsole...
+extern int wine_flag;
+
 /// Patch selection format: ["repo_id", "patch_id"]
 
 // Builds a new patch object with an archive directory from a patch selection.

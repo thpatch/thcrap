@@ -15,6 +15,8 @@ typedef enum {
 	RUN_CFG_FN_JS
 } configure_slot_t;
 
+int wine_flag = 0;
+
 int file_write_error(const char *fn)
 {
 	static int error_nag = 0;
@@ -284,6 +286,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	json_t *args = json_array_from_wchar_array(argc, wargv);
 
+	wine_flag = GetProcAddress(
+		GetModuleHandleA("kernel32.dll"), "wine_get_unix_file_name"
+	) != 0;
+
 	strings_init();
 	log_init(1);
 
@@ -295,8 +301,9 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	PathAddBackslashA(cur_dir);
 	str_slash_normalize(cur_dir);
 
-	{
-		// Maximize the height of the console window
+	// Maximize the height of the console window... unless we're running under
+	// Wine, where this 1) doesn't work and 2) messes up the console buffer
+	if(!wine_flag) {
 		CONSOLE_SCREEN_BUFFER_INFO sbi = {0};
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		COORD largest = GetLargestConsoleWindowSize(console);
