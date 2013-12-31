@@ -241,8 +241,6 @@ json_t* SelectPatchStack(json_t *repo_list)
 	json_t *sel_stack = json_array();
 	const char *key;
 	json_t *json_val;
-	// Screen clearing offset line
-	SHORT y;
 	size_t list_count = 0;
 
 	if(!json_object_size(repo_list)) {
@@ -262,23 +260,6 @@ json_t* SelectPatchStack(json_t *repo_list)
 	}
 
 	runconfig_set(internal_cfg);
-
-	cls(0);
-
-	log_printf("-----------------\n");
-	log_printf("Selecting patches\n");
-	log_printf("-----------------\n");
-	log_printf(
-		"\n"
-		"\n"
-	);
-	{
-		CONSOLE_SCREEN_BUFFER_INFO csbi;
-		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		GetConsoleScreenBufferInfo(hConsole, &csbi);
-		y = csbi.dwCursorPosition.Y;
-	}
-
 	while(1) {
 		char buf[16];
 		size_t list_pick;
@@ -288,7 +269,15 @@ json_t* SelectPatchStack(json_t *repo_list)
 		list_count = 0;
 		json_array_clear(list_order);
 
-		cls(y);
+		cls(0);
+
+		log_printf("-----------------\n");
+		log_printf("Selecting patches\n");
+		log_printf("-----------------\n");
+		log_printf(
+			"\n"
+			"\n"
+		);
 
 		json_object_foreach(repo_list, key, json_val) {
 			list_count = RepoPrintPatches(list_order, json_val, sel_stack);
