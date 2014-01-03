@@ -100,7 +100,7 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 		if(!IsSelected(sel_stack, dep_repo, dep_patch)) {
 			const char *target_repo = SearchPatch(repo_list, repo_id, dep_sel);
 			if(!target_repo) {
-				log_printf("ERROR: Dependency '%s' of patch '%s' not met!\n", dep_str, patch_id);
+				log_printf("ERREUR : Dependance '%s' du patch '%s' introuvable !\n", dep_str, patch_id);
 				ret++;
 			} else {
 				json_array_set_new(dep_sel, 0, json_string(target_repo));
@@ -192,7 +192,7 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 			json_array_append_new(list_order, sel);
 
 			if(print_header) {
-				printf("Patches from [%s] (%s):\n\n", repo_title, repo_id_str);
+				printf("Patchs depuis [%s] (%s) :\n\n", repo_title, repo_id_str);
 				print_header = 0;
 			}
 			printf(" [%2d] ", ++list_count);
@@ -246,7 +246,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 	size_t list_count = 0;
 
 	if(!json_object_size(repo_list)) {
-		log_printf("\nNo repositories available -.-\n");
+		log_printf("\nAucun depot disponible ! -.-\n");
 		goto end;
 	}
 	// Sort patches
@@ -297,10 +297,10 @@ json_t* SelectPatchStack(json_t *repo_list)
 
 		if(stack_size) {
 			printf(
-				"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm): ",
+				"(1 - %u pour ajouter, %u - %u pour retirer de la liste, Entree pour confirmer) :",
 			stack_offset, stack_offset + 1, list_count);
 		} else {
-			printf("Pick a patch (1 - %u): ", list_count);
+			printf("Choisissez un patch (1 - %u) : ", list_count);
 		}
 		console_read(buf, sizeof(buf));
 
@@ -309,7 +309,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 			(list_pick > list_count)
 		) {
 			if(!stack_size) {
-				printf("\nPlease select at least one patch before continuing.\n");
+				printf("\nVeuillez selectionner au moins un patch avant de continuer.\n");
 				pause();
 				continue;
 			}
@@ -321,12 +321,13 @@ json_t* SelectPatchStack(json_t *repo_list)
 			json_t *sel = json_array_get(list_order, list_pick);
 			const char *repo_id = json_array_get_string(sel, 0);
 			const char *patch_id = json_array_get_string(sel, 1);
-			log_printf("Resolving dependencies for %s/%s...\n", repo_id, patch_id);
+			log_printf("Résolution des dependances pour %s/%s...\n", repo_id, patch_id);
 			ret = AddPatch(sel_stack, repo_list, sel);
 			if(ret) {
 				log_printf(
 					"\n"
-					"%d unmet dependencies. This configuration will most likely not work correctly!\n",
+					"%d dependances introuvables.\n"
+					"Cette configuration ne marchera probablement pas correctement !\n",
 					ret
 				);
 				pause();

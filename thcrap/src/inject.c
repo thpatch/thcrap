@@ -785,9 +785,9 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 		return ThreadWaitUntil(hProcess, hThread, entry_addr);
 	} else {
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"Couldn't determine the entry point of %s!\n"
+			"Point d'entrée de %s introuvable !\n"
 			"\n"
-			"Seems as if %s won't work with this game on your system.\n",
+			"Il semble que %s ne fonctionnera pas avec ce jeu sur votre système.\n",
 			PathFindFileNameA(module), PROJECT_NAME_SHORT()
 		);
 		return 1;

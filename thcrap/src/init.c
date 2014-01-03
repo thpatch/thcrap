@@ -241,7 +241,7 @@ int thcrap_init(const char *run_cfg_fn)
 	}
 
 	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
-	log_printf("Fichier de configuration: %s\n\n", setup_fn);
+	log_printf("Fichier de configuration: %s\n\n", run_cfg_fn);
 
 	thcrap_detour(hProc);
 

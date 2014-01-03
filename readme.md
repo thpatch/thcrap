@@ -11,7 +11,7 @@ Ce framework est développé pour faciliter l'auto mise à jour, la traduction e
 
 * **Injections DLL** facile du moteur principal et des plug-ins dans le processus cible.
 
-* **Full propagation to child processes**. This allows the usage of other third-party patches which also use DLL injection, together with thcrap. (Yes, this was developed mainly for vpatch.)
+* **Propagation complète vers les processus fils**. Cela permet l'utilisation d'autres patchs externes qui utilisent aussi des injections de DLL, avec thcrap. (Oui, ça a essentiellement été développé pour vpatch.)
 
 * Utilise **JSON pour toute les données de configuration de patch**, rendant les patchs open-source. En fusionnant les objets JSON de façon récursive, cela nous donne...
 

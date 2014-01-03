@@ -229,7 +229,7 @@ void* ServerDownloadFile(
 
 		HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
 		if(*file_size == 0) {
-			log_printf(" 0-byte file! %s\n", servers_left ? "Trying next server..." : "");
+			log_printf(" Fichier vide ! %s\n", servers_left ? "Passage au serveur suivant..." : "");
 			ServerDisable(server);
 			continue;
 		}
@@ -264,7 +264,7 @@ void* ServerDownloadFile(
 
 		if(exp_crc && *exp_crc != crc) {
 			ServerDisable(server);
-			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
+			log_printf("Échec de contrôle d'erreur CRC32 ! %s\n", servers_left ? "Passage au serveur suivant..." : "");
 		} else {
 			return file_buffer;
 		}

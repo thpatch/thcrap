@@ -178,7 +178,7 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	pOrigThunk = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->OriginalFirstThunk);
 	pImpThunk  = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->FirstThunk);
 
-	log_printf("Detouring DLL functions (%s)...\n", dll_name);
+	log_printf("Détournement des fonctions des DLL (%s)...\n", dll_name);
 
 	// We _only_ detour by comparing exported names.
 	// Has the advantages that we can override any existing patches,

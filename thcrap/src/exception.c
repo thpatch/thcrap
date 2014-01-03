@@ -17,7 +17,7 @@ void log_context_dump(PCONTEXT ctx)
 		return;
 	}
 	log_printf(
-		"Registers:\n"
+		"Registres :\n"
 		"EAX: 0x%08x ECX: 0x%08x EDX: 0x%08x EBX: 0x%08x\n"
 		"ESP: 0x%08x EBP: 0x%08x ESI: 0x%08x EDI: 0x%08x\n",
 		ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx,
@@ -33,7 +33,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 	log_printf(
 		"\n"
 		"===\n"
-		"Exception %x at 0x%08x",
+		"Exception %x à l'adresse 0x%08x",
 		lpER->ExceptionCode, lpER->ExceptionAddress
 	);
 	if(GetModuleHandleEx(

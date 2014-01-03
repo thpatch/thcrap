@@ -22,16 +22,16 @@ int file_write_error(const char *fn)
 	static int error_nag = 0;
 	log_printf(
 		"\n"
-		"Error writing to %s!\n"
-		"You probably do not have the permission to write to the current directory,\n"
-		"or the file itself is write-protected.\n",
+		"Erreur d'ecriture dans %s !\n"
+		"Vous n'avez probablement pas le droit d'ecriture dans le dossier courant,\n"
+		"ou le fichier est protege en ecriture.\n",
 		fn
 	);
 	if(!error_nag) {
-		log_printf("Writing is likely to fail for all further files as well.\n");
+		log_printf("L'ecriture risque egalement d'echouer pour tous les fichiers restants.\n");
 		error_nag = 1;
 	}
-	return Ask("Continue configuration anyway?");
+	return Ask("Continuer quand meme la configuration ?");
 }
 
 int Ask(const char *question)
@@ -244,8 +244,8 @@ const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 	do {
 		log_printf(
 			"\n"
-			"Enter a custom name for this configuration, or leave blank to use the default\n"
-			" (%s): ", run_cfg_fn
+			"Entrez un nom pour cette configuration, ou appuyez sur Entree pour utiliser le\n"
+			"nom par defaut (%s): ", run_cfg_fn
 		);
 		console_read(run_cfg_fn_new, sizeof(run_cfg_fn_new));
 		if(run_cfg_fn_new[0]) {
@@ -253,8 +253,8 @@ const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 		}
 		run_cfg_fn_js = strings_sprintf(slot_js, "%s.js", run_cfg_fn);
 		if(PathFileExists(run_cfg_fn_js)) {
-			log_printf("\"%s\" already exists. ", run_cfg_fn_js);
-			ret = !Ask("Overwrite?");
+			log_printf("\"%s\" existe deja. ", run_cfg_fn_js);
+			ret = !Ask("Ecraser ?");
 		} else {
 			ret = 0;
 		}
@@ -362,13 +362,13 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"\n"
 		"\n"
 		"\n"
-		"Patch repository discovery will start at\n"
+		"La recherche dans le depot des patchs commencera a\n"
 		"\n"
 		"\t%s\n"
 		"\n"
-		"You can specify a different URL as a command-line parameter.\n"
-		"Additionally, all patches from previously discovered repositories, stored in\n"
-		"subdirectories of the current directory, will be available for selection.\n"
+		"Vous pouvez specifier une URL differente en l'ajoutant en parametre de ligne de commande.\n"
+		"De plus, tous les patchs provenant de depots precedemment trouves et\n"
+		"stockes dans des sous-dossiers du dossier courant pourront etre selectionnes.\n"
 		"\n"
 		"\n",
 		start_repo
@@ -380,7 +380,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	}
 	repo_list = RepoLoadLocal(url_cache);
 	if(!json_object_size(repo_list)) {
-		log_printf("No patch repositories available...\n");
+		log_printf("Aucun depot de patchs disponible...\n");
 		pause();
 		goto end;
 	}
@@ -390,7 +390,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		size_t i;
 		json_t *sel;
 
-		log_printf("Bootstrapping selected patches...\n");
+		log_printf("Amorcage des patchs selectionnes...\n");
 		stack_update();
 
 		/// Build the new run configuration
@@ -430,7 +430,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 			"selectionnee en double-cliquant sur les raccourcis crees dans le dossier actuel\n"
 			"(%s).\n"
 			"\n"
-			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
+			"Ces raccourcis fonctionnent partout. Vous pouvez donc les deplacer a votre gre.\n"
 			"\n", cur_dir
 		);
 		pause();
