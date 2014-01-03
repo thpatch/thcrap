@@ -64,7 +64,7 @@ png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t ne
 	prev_w = image->img.width;
 	prev_h = image->img.height;
 
-	if(prev_w <= new_w && prev_h <= new_h) {
+	if(prev_w >= new_w && prev_h >= new_h) {
 		return image->buf;
 	}
 
