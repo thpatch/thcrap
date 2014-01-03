@@ -230,7 +230,7 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 		json_array_append(list_order, sel);
 		json_decref(full_id);
 	}
-	printf("\n\n");
+	printf("\n");
 	return list_count;
 }
 
@@ -241,8 +241,8 @@ json_t* SelectPatchStack(json_t *repo_list)
 	json_t *sel_stack = json_array();
 	const char *key;
 	json_t *json_val;
-	// Screen clearing offset line
-	SHORT y;
+	// Total number of required lines in the console buffer
+	SHORT buffer_lines = 0;
 	size_t list_count = 0;
 
 	if(!json_object_size(repo_list)) {
@@ -254,31 +254,20 @@ json_t* SelectPatchStack(json_t *repo_list)
 		json_t *patches = json_object_get(json_val, "patches");
 		json_t *patches_sorted = json_object_get_keys_sorted(patches);
 		json_object_set_new(json_val, "patches_sorted", patches_sorted);
-		list_count += json_array_size(patches_sorted);
+		buffer_lines += json_array_size(patches_sorted) + 3;
 	}
-	if(!list_count) {
+	if(!buffer_lines) {
 		log_printf("\nAucun patch disponible -.-\n");
 		goto end;
 	}
 
 	runconfig_set(internal_cfg);
-
-	cls(0);
-
-	log_printf("--------------------\n");
-	log_printf("Selection des patchs\n");
-	log_printf("--------------------\n");
-	log_printf(
-		"\n"
-		"\n"
-	);
-	{
-		CONSOLE_SCREEN_BUFFER_INFO csbi;
+	if(wine_flag) {
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		GetConsoleScreenBufferInfo(hConsole, &csbi);
-		y = csbi.dwCursorPosition.Y;
+		// Header (5) + sel_stack (3) + prompt (2)
+		COORD buffer = {80, buffer_lines + 5 + 3 + 2};
+		SetConsoleScreenBufferSize(hConsole, buffer);
 	}
-
 	while(1) {
 		char buf[16];
 		size_t list_pick;
@@ -288,7 +277,16 @@ json_t* SelectPatchStack(json_t *repo_list)
 		list_count = 0;
 		json_array_clear(list_order);
 
-		cls(y);
+		cls(0);
+
+		log_printf("--------------------\n");
+		log_printf("Selection des patchs\n");
+		log_printf("--------------------\n");
+		log_printf(
+			"\n"
+			"\n"
+		);
+
 		json_object_foreach(repo_list, key, json_val) {
 			list_count = RepoPrintPatches(list_order, json_val, sel_stack);
 		}

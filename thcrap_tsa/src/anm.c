@@ -308,6 +308,78 @@ sprite_alpha_t sprite_patch(const sprite_patch_t *sp)
 
 /// ANM structure
 /// -------------
+sprite_t *sprite_split_new(anm_entry_t *entry)
+{
+	sprite_t *wrap_new = (sprite_t*)realloc(
+		entry->sprites_wrap, (entry->sprite_wrap_num + 1) * sizeof(sprite_t)
+	);
+	if(!wrap_new) {
+		return NULL;
+	}
+	entry->sprites_wrap = wrap_new;
+	return &wrap_new[entry->sprite_wrap_num++];
+}
+
+int sprite_split_append(anm_entry_t *entry)
+{
+	if(entry && entry->sprite_wrap_num) {
+		sprite_t **sprites_new = (sprite_t**)realloc(entry->sprites,
+			sizeof(sprite_t*) * (entry->sprite_num + entry->sprite_wrap_num)
+		);
+		size_t i;
+		if(!sprites_new) {
+			return 1;
+		}
+		for(i = 0; i < entry->sprite_wrap_num; i++) {
+			sprites_new[i + entry->sprite_num] = &entry->sprites_wrap[i];
+		}
+		entry->sprite_num += entry->sprite_wrap_num;
+		entry->sprites = sprites_new;
+		return 0;
+	}
+	return -1;
+}
+
+int sprite_split_x(anm_entry_t *entry, sprite_t *sprite)
+{
+	if(entry && entry->thtx && entry->thtx->w && sprite) {
+		float split_w = sprite->x + sprite->w;
+		if(split_w > entry->thtx->w) {
+			sprite_t *sprite_new = sprite_split_new(entry);
+			if(!sprite_new) {
+				return 1;
+			}
+			sprite_new->x = 0;
+			sprite_new->y = sprite->y;
+			sprite_new->w = min(split_w - entry->thtx->w, sprite->x);
+			sprite_new->h = sprite->h;
+			return sprite_split_y(entry, sprite_new);
+		}
+		return 0;
+	}
+	return -1;
+}
+
+int sprite_split_y(anm_entry_t *entry, sprite_t *sprite)
+{
+	if(entry && entry->thtx && entry->thtx->h && sprite) {
+		float split_h = sprite->y + sprite->h;
+		if(split_h > entry->thtx->h) {
+			sprite_t *sprite_new = sprite_split_new(entry);
+			if(!sprite_new) {
+				return 1;
+			}
+			sprite_new->x = sprite->x;
+			sprite_new->y = 0;
+			sprite_new->w = sprite->w;
+			sprite_new->h = min(split_h - entry->thtx->h, sprite->h);
+			return sprite_split_x(entry, sprite_new);
+		}
+		return 0;
+	}
+	return -1;
+}
+
 int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format)
 {
 	size_t x;
@@ -352,8 +424,13 @@ int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format)
 		DWORD *sprite_in = (DWORD*)(in + headersize);
 		entry->sprites = malloc(sizeof(sprite_t*) * entry->sprite_num);
 		for(i = 0; i < entry->sprite_num; i++, sprite_in++) {
-			entry->sprites[i] = (sprite_t*)(in + *sprite_in);
+			sprite_t *sprite = (sprite_t*)(in + *sprite_in);
+			entry->sprites[i] = sprite;
+
+			sprite_split_x(entry, sprite);
+			sprite_split_y(entry, sprite);
 		}
+		sprite_split_append(entry);
 	}
 	return 0;
 }
@@ -362,6 +439,7 @@ void anm_entry_clear(anm_entry_t *entry)
 {
 	if(entry) {
 		SAFE_FREE(entry->sprites);
+		SAFE_FREE(entry->sprites_wrap);
 		ZeroMemory(entry, sizeof(*entry));
 	}
 }
