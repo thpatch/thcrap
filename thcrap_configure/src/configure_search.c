@@ -88,10 +88,9 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		log_printf(
 			"Vous n'avez pas encore le %s\n"
 			"\n"
-			"Nous avons donc besoin de rechercher tout les jeux Touhou installes sur votre ordinateur.\n"
-			"Cela n'a besoin d'etre fait qu'une seule fois - a moins que vous ne changiez vos jeux de\n"
-			"dossier plus tard\n"
-
+			"Nous avons donc besoin de rechercher tout les jeux Touhou installes sur votre\n"
+			"ordinateur. Cela n'a besoin d'etre fait qu'une seule fois - a moins que vous ne\n"
+			"changiez vos jeux de dossier plus tard\n"
 			"\n"
 			"Cela peut prendre un moment selon le nombre de disque dur present\n"
 			"et la structure de vos dossiers. Vous pouvez accelerer le processus en\n"
@@ -109,8 +108,8 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			"\n"
 				"\tC:\\Games\\Touhou\\\n"
 			"\n"
-			"... a moins que vos jeux Touhou ne soient eparpilles partout sur vos disques durs -\n"
-			"auquel cas, vous n'aurez pas d'autre choix que de faire un scan complet.\n"
+			"... a moins que vos jeux Touhou ne soient eparpilles partout sur vos disques\n"
+			"durs - auquel cas, vous n'aurez pas d'autre choix que de faire un scan complet.\n"
 			"\n"
 			"\n",
 			games_js_fn
