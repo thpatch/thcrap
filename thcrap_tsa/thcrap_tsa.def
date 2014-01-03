@@ -44,6 +44,11 @@ EXPORTS
 	sprite_alpha_analyze_rep
 	sprite_alpha_analyze_dst
 
+	sprite_split_new
+	sprite_split_append
+	sprite_split_x
+	sprite_split_y
+
 	sprite_patch_set
 	sprite_blit
 	sprite_patch
