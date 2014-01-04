@@ -89,6 +89,11 @@ json_t* layout_tokenize(const char *str, size_t len)
 }
 /// ------------
 
+BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
+{
+	return TextOutU(hdc, x, y, json_string_value(str), json_string_length(str));
+}
+
 // Outputs the ruby annotation [top_str], relative to [bottom_str] starting at
 // [bottom_x], at [top_y] with [hFontRuby] on [hdc]. :)
 BOOL layout_textout_ruby(
@@ -106,9 +111,7 @@ BOOL layout_textout_ruby(
 		size_t top_w = GetTextExtentBase(hdc, top_str);
 		int top_x = (bottom_w / 2) - (top_w / 2) + bottom_x;
 
-		ret = TextOutU(
-			hdc, top_x, top_y, json_string_value(top_str), json_string_length(top_str)
-		);
+		ret = layout_textout_raw(hdc, top_x, top_y, top_str);
 
 		SelectObject(hdc, hFontOrig);
 	}
@@ -314,9 +317,7 @@ BOOL WINAPI layout_TextOutU(
 			cur_w = GetTextExtentBase(hdc, token);
 		}
 		if(draw_str) {
-			const char *draw_str_val = json_string_value(draw_str);
-			const size_t draw_str_len = json_string_length(draw_str);
-			ret = TextOutU(hdc, cur_x, orig_y, draw_str_val, draw_str_len);
+			ret = layout_textout_raw(hdc, cur_x, orig_y, draw_str);
 		}
 		if(hFontNew) {
 			SelectObject(hdc, hFontOrig);
