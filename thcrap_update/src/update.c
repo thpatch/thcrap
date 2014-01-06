@@ -14,9 +14,9 @@
 #include "wininet_dll.h"
 #include "update.h"
 
-HINTERNET hINet = NULL;
+HINTERNET hHTTP = NULL;
 
-int inet_init(void)
+int http_init(void)
 {
 	DWORD ignore = 1;
 
@@ -28,31 +28,31 @@ int inet_init(void)
 		agent, "%s (%s)", project_name, PROJECT_VERSION_STRING()
 	);
 
-	hINet = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	if(!hINet) {
+	hHTTP = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	if(!hHTTP) {
 		// No internet access...?
 		return 1;
 	}
 	/*
-	InternetSetOption(hINet, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hINet, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hINet, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
 	*/
 
 	// This is necessary when Internet Explorer is set to "work offline"... which
 	// will essentially block all wininet HTTP accesses on handles that do not
 	// explicitly ignore this setting.
-	InternetSetOption(hINet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
 
 	VLA_FREE(agent);
 	return 0;
 }
 
-void inet_exit(void)
+void http_exit(void)
 {
-	if(hINet) {
-		InternetCloseHandle(hINet);
-		hINet = NULL;
+	if(hHTTP) {
+		InternetCloseHandle(hHTTP);
+		hHTTP = NULL;
 	}
 }
 
@@ -206,7 +206,7 @@ void* ServerDownloadFile(
 
 			time_start = timeGetTime();
 
-			hFile = InternetOpenUrl(hINet, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+			hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
 			VLA_FREE(url);
 			VLA_FREE(server_host);
 		}

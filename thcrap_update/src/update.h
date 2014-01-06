@@ -9,8 +9,8 @@
 
 #pragma once
 
-int inet_init(void);
-void inet_exit(void);
+int http_init(void);
+void http_exit(void);
 
 // Builds a server object from [start_url].
 json_t* ServerBuild(const char *start_url);
