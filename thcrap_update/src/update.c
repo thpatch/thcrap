@@ -310,6 +310,13 @@ int patch_update(json_t *patch_info)
 
 	if(json_is_false(json_object_get(patch_info, "update"))) {
 		// Updating deactivated on this patch
+		ret = 1;
+		goto end_update;
+	}
+
+	servers = ServerInit(patch_info);
+	if(!json_is_array(servers)) {
+		// No servers for this patch
 		ret = 2;
 		goto end_update;
 	}
@@ -324,8 +331,6 @@ int patch_update(json_t *patch_info)
 			log_printf("Checking for updates of %s...\n", patch_name);
 		}
 	}
-
-	servers = ServerInit(patch_info);
 
 	remote_files_js_buffer = ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
 	if(!remote_files_js_buffer) {
