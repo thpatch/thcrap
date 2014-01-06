@@ -298,7 +298,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	// Load the injected DLL into this process
 	HMODULE h = LoadLibraryEx(dll_fn, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
 	if(!h) {
-		MessageBox(0, "Could not load the dll: mydll.dll", "Error", MB_ICONERROR);
+		MessageBox(0, injectError1, "Error", MB_ICONERROR);
 		ExitThread(1);
 	}
 
@@ -309,7 +309,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	// Get the address of the export function
 	FARPROC p = GetProcAddress(h, func_name);
 	if(!p) {
-		MessageBox(0, "Could not load the function: func_name", "Error", MB_ICONERROR);
+		MessageBox(0, injectError2, "Error", MB_ICONERROR);
 		FreeLibraryAndExitThread(h, 2);
 	}
 

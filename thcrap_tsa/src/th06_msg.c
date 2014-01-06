@@ -64,9 +64,9 @@ typedef struct {
 	EncryptionFunc_t enc_func;
 
 	// JSON objects in the diff file
-	json_t *diff_entry;
-	json_t *diff_code;
-	json_t *diff_lines;
+	const json_t *diff_entry;
+	const json_t *diff_code;
+	const json_t *diff_lines;
 
 	// Current input / output
 	th06_msg_t* cmd_in;
@@ -74,8 +74,8 @@ typedef struct {
 	int entry, time, ind;
 
 	// Last state
-	th06_msg_t *last_line_cmd;
-	op_info_t *last_line_op;
+	const th06_msg_t *last_line_cmd;
+	const op_info_t *last_line_op;
 
 	// Indices
 	size_t cur_line;
@@ -92,14 +92,14 @@ typedef struct {
   *	patch_msg_state_t *state
   *		Patch state object
   *
-  *  const char *new_line
+  *  const char *rep
   *		Replacement string
   *
   * Returns nothing.
   */
 typedef void (*ReplaceFunc_t)(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *new_line);
 
-op_info_t* get_op_info(patch_msg_state_t* state, BYTE op)
+const op_info_t* get_op_info(patch_msg_state_t* state, BYTE op)
 {
 	if(state && state->op_info && state->op_info_num) {
 		size_t i;
@@ -138,7 +138,7 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 	json_t *encryption = json_object_get(format, "encryption");
 	json_t *opcodes = json_object_get(format, "opcodes");
 	json_t *op_obj;
-	const char *op_str;
+	const char *key;
 	int i = 0;
 
 	if(!json_is_object(opcodes)) {
@@ -151,9 +151,9 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 	// Prepare opcode info
 	state->op_info_num = json_object_size(opcodes);
 	state->op_info = (op_info_t*)malloc(sizeof(op_info_t) * state->op_info_num);
-	json_object_foreach(opcodes, op_str, op_obj) {
+	json_object_foreach(opcodes, key, op_obj) {
 		const char *cmd_str;
-		state->op_info[i].op = atoi(op_str);
+		state->op_info[i].op = atoi(key);
 		state->op_info[i].type = json_object_get_string(op_obj, "type");
 
 		cmd_str = json_object_get_string(op_obj, "cmd");
@@ -191,7 +191,7 @@ void patch_msg_state_clear(patch_msg_state_t* state)
 	ZeroMemory(state, sizeof(patch_msg_state_t));
 }
 
-size_t th06_msg_full_len(th06_msg_t* msg)
+size_t th06_msg_full_len(const th06_msg_t* msg)
 {
 	if(!msg) {
 		return 0;
@@ -199,28 +199,28 @@ size_t th06_msg_full_len(th06_msg_t* msg)
 	return (sizeof(th06_msg_t) + msg->length);
 }
 
-void replace_line(BYTE *dst, const char *src, const size_t len, patch_msg_state_t *state)
+void replace_line(BYTE *dst, const char *rep, const size_t len, patch_msg_state_t *state)
 {
-	memcpy(dst, src, len);
+	memcpy(dst, rep, len);
 	if(state->enc_func) {
 		state->enc_func(dst, len, state->enc_vars, state->enc_var_count);
 	}
 	state->cur_line++;
 }
 
-void replace_auto_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *new_line)
+void replace_auto_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *rep)
 {
-	cmd_out->length = strlen(new_line) + 1;
-	replace_line(cmd_out->data, new_line, cmd_out->length, state);
+	cmd_out->length = strlen(rep) + 1;
+	replace_line(cmd_out->data, rep, cmd_out->length, state);
 }
 
-void replace_hard_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *new_line)
+void replace_hard_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *rep)
 {
 	hard_line_data_t* line = (hard_line_data_t*)cmd_out->data;
 
 	line->linenum = state->cur_line;
-	cmd_out->length = strlen(new_line) + 4 + 1;
-	replace_line(line->str, new_line, cmd_out->length - 4, state);
+	cmd_out->length = strlen(rep) + 4 + 1;
+	replace_line(line->str, rep, cmd_out->length - 4, state);
 }
 
 void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind)
@@ -235,10 +235,10 @@ void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind
 // Returns 1 if the output buffer should advance, 0 if it shouldn't.
 int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t rep_func)
 {
-	op_info_t* cur_op = get_op_info(state, cmd_out->type);
+	const op_info_t* cur_op = get_op_info(state, cmd_out->type);
 
 	// If we don't have a diff_code pointer, this is the first line of a new box.
-	if(cur_op && !json_is_object(state->diff_code) ) {
+	if(cur_op && !json_is_object(state->diff_code)) {
 		char key_str[32];
 
 		state->ind++;
@@ -291,7 +291,7 @@ void box_end(patch_msg_state_t *state)
 			);
 			memcpy(new_line_cmd, state->last_line_cmd, line_offset);
 			process_line(new_line_cmd, state, hard_line ? replace_hard_line : replace_auto_line);
-			state->cmd_out = (th06_msg_t*)((BYTE*)state->cmd_out + th06_msg_full_len(new_line_cmd));
+			state->cmd_out += th06_msg_full_len(new_line_cmd);
 		}
 	}
 	state->diff_code = NULL;
@@ -300,7 +300,7 @@ void box_end(patch_msg_state_t *state)
 }
 
 // Returns whether to advance the output buffer (1) or not (0)
-int process_op(op_info_t *cur_op, patch_msg_state_t* state)
+int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 {
 	hard_line_data_t* line;
 	WORD linenum;
@@ -360,6 +360,7 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	size_t entry_count;
 	DWORD *entry_offsets_out;
 	DWORD *entry_offsets_in;
+	DWORD entry_offset_size;
 
 	patch_msg_state_t state;
 
@@ -393,31 +394,27 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	}
 #endif
 
-	{
-		DWORD entry_offset_size;
+	// Read .msg header
+	entry_count = *msg_in;
+	entry_offsets_in = msg_in + 1;
 
-		// Read .msg header
-		entry_count = *msg_in;
-		entry_offsets_in = msg_in + 1;
+	entry_offset_size = entry_count * entry_offset_mul;
 
-		entry_offset_size = entry_count * entry_offset_mul;
+	state.cmd_in = (th06_msg_t*)(msg_in + 1 + entry_offset_size);
 
-		state.cmd_in = (th06_msg_t*)(msg_in + 1 + entry_offset_size);
+	*msg_out = entry_count;
+	entry_offsets_out = msg_out + 1;
 
-		*msg_out = entry_count;
-		entry_offsets_out = msg_out + 1;
+	// Include whatever junk there might be in the header
+	memcpy(entry_offsets_out, entry_offsets_in, entry_offset_size);
 
-		// Include whatever junk there might be in the header
-		memcpy(entry_offsets_out, entry_offsets_in, entry_offset_size);
-
-		state.cmd_out = (th06_msg_t*)(msg_out + 1 + entry_offset_size);
-	}
+	state.cmd_out = (th06_msg_t*)(msg_out + 1 + entry_offset_size);
 
 	for(;;) {
 		const ptrdiff_t offset_in  = (BYTE*)state.cmd_in - (BYTE*)msg_in;
 		const ptrdiff_t offset_out = (BYTE*)state.cmd_out - (BYTE*)msg_out;
 		int advance_out = 1;
-		op_info_t* cur_op;
+		const op_info_t* cur_op;
 
 		if((DWORD)offset_in >= size_in
 			/*|| (entry_new && state.entry == entry_count - 1)*/
@@ -433,7 +430,8 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			// Close any open text boxes.
 			// Very important - if the last box of an entry should receive a new line,
 			// it would otherwise be created in the context of the next entry,
-			// messing up the entry offsets in the process. (see bug #3)
+			// messing up the entry offsets in the process.
+			// Fixes bug #3 (https://bitbucket.org/nmlgc/thpatch-bugs/issue/3)
 			box_end(&state);
 		}
 
@@ -443,7 +441,7 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			// and assign the correct offset to the output buffer.
 			size_t i;
 			for(i = 0; i < entry_count; ++i) {
-				if (offset_in == entry_offsets_in[i * entry_offset_mul]) {
+				if(offset_in == entry_offsets_in[i * entry_offset_mul]) {
 					state.entry = i;
 					state.diff_entry = json_object_numkey_get(patch, state.entry);
 					entry_offsets_out[i * entry_offset_mul] = offset_out;

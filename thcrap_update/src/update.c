@@ -154,7 +154,7 @@ void* ServerDownloadFile(
 )
 {
 	HINTERNET hFile = NULL;
-	DWORD http_stat;
+	DWORD http_stat = 0;
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD read_size = 0;
 	BOOL ret;
@@ -171,7 +171,8 @@ void* ServerDownloadFile(
 	}
 	*file_size = 0;
 	for(i = servers_first; servers_left; i = (i + 1) % servers_total) {
-		DWORD time, time_start;
+		DWORD time_start;
+		DWORD time;
 		DWORD crc = 0;
 		json_t *server = json_array_get(servers, i);
 		json_t *server_time = json_object_get(server, "time");
@@ -256,15 +257,13 @@ void* ServerDownloadFile(
 			}
 		}
 		time = timeGetTime() - time_start;
-
 		log_printf(" (%d b, %d ms)\n", *file_size, time);
-
 		json_object_set_new(server, "time", json_integer(time));
 		InternetCloseHandle(hFile);
 
 		if(exp_crc && *exp_crc != crc) {
-			ServerDisable(server);
 			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
+			ServerDisable(server);
 		} else {
 			return file_buffer;
 		}

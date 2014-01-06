@@ -27,7 +27,6 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 	json_t *ret = NULL;
 	size_t i = 0;
 	int n = 0; // nesting level
-	size_t ind = 0;
 
 	if(!str || !len) {
 		return ret;
