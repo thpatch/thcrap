@@ -205,7 +205,6 @@ void replace_line(BYTE *dst, const char *rep, const size_t len, patch_msg_state_
 	if(state->enc_func) {
 		state->enc_func(dst, len, state->enc_vars, state->enc_var_count);
 	}
-	state->cur_line++;
 }
 
 void replace_auto_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *rep)
@@ -249,7 +248,7 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 	}
 
 	if(json_is_array(state->diff_lines)) {
-		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line);
+		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line++);
 		if(json_line) {
 			rep_func(cmd_out, state, json_line);
 			state->last_line_cmd = cmd_out;
@@ -293,6 +292,8 @@ void box_end(patch_msg_state_t *state)
 			memcpy(new_line_cmd, state->last_line_cmd, line_offset);
 			process_line(new_line_cmd, state, hard_line ? replace_hard_line : replace_auto_line);
 			state->cmd_out += th06_msg_full_len(new_line_cmd);
+		} else {
+			state->cur_line++;
 		}
 	}
 	state->diff_code = NULL;
