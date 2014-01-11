@@ -284,6 +284,7 @@ void* ServerDownloadFile(
 		if(exp_crc && *exp_crc != crc) {
 			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
 			ServerDisable(server);
+			SAFE_FREE(file_buffer);
 		} else {
 			return file_buffer;
 		}
