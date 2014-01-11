@@ -48,6 +48,61 @@ int http_init(void)
 	return 0;
 }
 
+get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
+{
+	get_result_t get_ret = GET_INVALID_PARAMETER;
+	DWORD byte_ret = sizeof(DWORD);
+	DWORD http_stat = 0;
+	DWORD file_size_local = 0;
+	HINTERNET hFile = NULL;
+
+	if(!file_buffer || !file_size || !url) {
+		return GET_INVALID_PARAMETER;
+	}
+
+	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+	if(!hFile) {
+		DWORD inet_ret = GetLastError();
+		log_printf("WinInet error %d\n", inet_ret);
+		get_ret = GET_SERVER_ERROR;
+		goto end;
+	}
+
+	HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &http_stat, &byte_ret, 0);
+	log_printf("%d", http_stat);
+	if(http_stat != 200) {
+		// If the file is missing on one server, it's probably missing on all of them.
+		// No reason to disable any server.
+		get_ret = GET_NOT_FOUND;
+		goto end;
+	}
+
+	HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
+	*file_buffer = (BYTE*)malloc(*file_size);
+	if(*file_buffer) {
+		BYTE *p = *file_buffer;
+		DWORD read_size = *file_size;
+		while(read_size) {
+			BOOL ret = InternetReadFile(hFile, p, *file_size, &byte_ret);
+			if(ret) {
+				read_size -= byte_ret;
+				p += byte_ret;
+			} else {
+				SAFE_FREE(*file_buffer);
+				log_printf("\nReading error #%d!", GetLastError());
+				get_ret = GET_SERVER_ERROR;
+				goto end;
+			}
+		}
+		get_ret = GET_OK;
+	} else {
+		get_ret = GET_OUT_OF_MEMORY;
+	}
+end:
+	InternetCloseHandle(hFile);
+	return get_ret;
+}
+
 void http_exit(void)
 {
 	if(hHTTP) {
@@ -153,12 +208,7 @@ void* ServerDownloadFile(
 	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
 )
 {
-	HINTERNET hFile = NULL;
-	DWORD http_stat = 0;
-	DWORD byte_ret = sizeof(DWORD);
-	DWORD read_size = 0;
-	BOOL ret;
-	BYTE *file_buffer = NULL, *p;
+	BYTE *file_buffer = NULL;
 	int i;
 
 	int servers_first = ServerGetFirst(servers);
@@ -174,6 +224,7 @@ void* ServerDownloadFile(
 		DWORD time_start;
 		DWORD time;
 		DWORD crc = 0;
+		get_result_t get_ret;
 		json_t *server = json_array_get(servers, i);
 		json_t *server_time = json_object_get(server, "time");
 
@@ -181,8 +232,6 @@ void* ServerDownloadFile(
 			continue;
 		}
 		servers_left--;
-
-		InternetCloseHandle(hFile);
 
 		{
 			URL_COMPONENTSA uc = {0};
@@ -206,61 +255,32 @@ void* ServerDownloadFile(
 
 			time_start = timeGetTime();
 
-			hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+			get_ret = http_get(&file_buffer, file_size, url);
+
 			VLA_FREE(url);
 			VLA_FREE(server_host);
 		}
-		if(!hFile) {
-			DWORD inet_ret = GetLastError();
-			log_printf("WinInet error %d\n", inet_ret);
-			ServerDisable(server);
-			continue;
+
+		switch(get_ret) {
+			case GET_OUT_OF_MEMORY:
+			case GET_INVALID_PARAMETER:
+				goto abort;
+
+			case GET_SERVER_ERROR:
+				ServerDisable(server);
+				continue;
 		}
-
-		HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &http_stat, &byte_ret, 0);
-
-		log_printf("%d", http_stat);
-
-		if(http_stat != 200) {
-			// If the file is missing on one server, it's probably missing on all of them.
-			// No reason to disable any server.
-			log_printf("\n");
-			continue;
-		}
-
-		HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
 		if(*file_size == 0) {
 			log_printf(" 0-byte file! %s\n", servers_left ? "Trying next server..." : "");
 			ServerDisable(server);
 			continue;
 		}
 
-		file_buffer = (BYTE*)malloc(*file_size);
-		if(!file_buffer) {
-			break;
-		}
-		p = file_buffer;
-
-		read_size = *file_size;
-		while(read_size) {
-			ret = InternetReadFile(hFile, p, *file_size, &byte_ret);
-			if(ret) {
-				crc = crc32(crc, p, byte_ret);
-				read_size -= byte_ret;
-				p += byte_ret;
-			} else {
-				SAFE_FREE(file_buffer);
-				log_printf("\nReading error #%d!", GetLastError());
-				ServerDisable(server);
-				read_size = 0;
-				return NULL;
-			}
-		}
 		time = timeGetTime() - time_start;
 		log_printf(" (%d b, %d ms)\n", *file_size, time);
 		json_object_set_new(server, "time", json_integer(time));
-		InternetCloseHandle(hFile);
 
+		crc = crc32(crc, file_buffer, *file_size);
 		if(exp_crc && *exp_crc != crc) {
 			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
 			ServerDisable(server);
@@ -268,6 +288,8 @@ void* ServerDownloadFile(
 			return file_buffer;
 		}
 	}
+abort:
+	SAFE_FREE(file_buffer);
 	return NULL;
 }
 
