@@ -239,12 +239,13 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 
 	// If we don't have a diff_code pointer, this is the first line of a new box.
 	if(cur_op && !json_is_object(state->diff_code)) {
-		char key_str[32];
-
+		size_t key_str_len = strlen(cur_op->type) + 32;
+		VLA(char, key_str, key_str_len);
 		state->ind++;
 		format_slot_key(key_str, state->time, cur_op->type, state->ind);
 		state->diff_code = json_object_get(state->diff_entry, key_str);
 		state->diff_lines = json_object_get(state->diff_code, "lines");
+		VLA_FREE(key_str);
 	}
 
 	if(json_is_array(state->diff_lines)) {
