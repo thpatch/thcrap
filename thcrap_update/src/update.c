@@ -15,6 +15,7 @@
 #include "update.h"
 
 HINTERNET hHTTP = NULL;
+CRITICAL_SECTION cs_http;
 
 int http_init(void)
 {
@@ -27,6 +28,8 @@ int http_init(void)
 	sprintf(
 		agent, "%s (%s)", project_name, PROJECT_VERSION_STRING()
 	);
+
+	InitializeCriticalSection(&cs_http);
 
 	hHTTP = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	if(!hHTTP) {
@@ -56,7 +59,10 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 	DWORD file_size_local = 0;
 	HINTERNET hFile = NULL;
 
-	if(!file_buffer || !file_size || !url) {
+	if(
+		!hHTTP || !file_buffer || !file_size || !url
+		|| !TryEnterCriticalSection(&cs_http)
+	) {
 		return GET_INVALID_PARAMETER;
 	}
 
@@ -100,14 +106,18 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 	}
 end:
 	InternetCloseHandle(hFile);
+	LeaveCriticalSection(&cs_http);
 	return get_ret;
 }
 
 void http_exit(void)
 {
 	if(hHTTP) {
+		EnterCriticalSection(&cs_http);
 		InternetCloseHandle(hHTTP);
 		hHTTP = NULL;
+		LeaveCriticalSection(&cs_http);
+		DeleteCriticalSection(&cs_http);
 	}
 }
 
