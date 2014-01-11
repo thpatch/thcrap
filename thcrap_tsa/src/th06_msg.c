@@ -231,6 +231,22 @@ void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind
 	}
 }
 
+int validate_line(const char *line)
+{
+	if(!line) {
+		return 0;
+	}
+	// Validate that the string is valid TSA ruby syntax.
+	// Important because the games themselves (surprise, suprise) don't verify
+	// the return value of the strchr() call used to get the parameters.
+	// Thus, they would simply crash if a | is not followed by two commas.
+	if(line[0] == '|') {
+		const char *p2 = strchr(line + 1, ',');
+		return p2 ? strchr(p2 + 1, ',') != 0 : 0;
+	}
+	return 1;
+}
+
 // Returns 1 if the output buffer should advance, 0 if it shouldn't.
 int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t rep_func)
 {
@@ -249,7 +265,7 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 
 	if(json_is_array(state->diff_lines)) {
 		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line++);
-		if(json_line) {
+		if(validate_line(json_line)) {
 			rep_func(cmd_out, state, json_line);
 			state->last_line_cmd = cmd_out;
 			state->last_line_op = cur_op;
@@ -271,7 +287,7 @@ void box_end(patch_msg_state_t *state)
 	// Do we have any extra lines in the patch file?
 	while(state->cur_line < json_array_size(state->diff_lines)) {
 		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line);
-		if(json_line) {
+		if(validate_line(json_line)) {
 			th06_msg_t *new_line_cmd;
 			ptrdiff_t move_len;
 			int hard_line;
