@@ -65,7 +65,6 @@ typedef struct {
 
 	// JSON objects in the diff file
 	const json_t *diff_entry;
-	const json_t *diff_code;
 	const json_t *diff_lines;
 
 	// Current input / output
@@ -252,14 +251,16 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 {
 	const op_info_t* cur_op = get_op_info(state, cmd_out->type);
 
-	// If we don't have a diff_code pointer, this is the first line of a new box.
-	if(cur_op && !json_is_object(state->diff_code)) {
+	// If we don't have a diff_lines pointer, this is the first line of a new box.
+	if(cur_op && !json_is_array(state->diff_lines)) {
 		size_t key_str_len = strlen(cur_op->type) + 32;
 		VLA(char, key_str, key_str_len);
 		state->ind++;
 		format_slot_key(key_str, state->time, cur_op->type, state->ind);
-		state->diff_code = json_object_get(state->diff_entry, key_str);
-		state->diff_lines = json_object_get(state->diff_code, "lines");
+		state->diff_lines = json_object_get(state->diff_entry, key_str);
+		if(json_is_object(state->diff_lines)) {
+			state->diff_lines = json_object_get(state->diff_lines, "lines");
+		}
 		VLA_FREE(key_str);
 	}
 
@@ -312,7 +313,6 @@ void box_end(patch_msg_state_t *state)
 			state->cur_line++;
 		}
 	}
-	state->diff_code = NULL;
 	state->cur_line = 0;
 	state->diff_lines = NULL;
 }
