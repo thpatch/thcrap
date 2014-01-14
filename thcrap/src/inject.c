@@ -81,7 +81,12 @@ unsigned char* StringToUTF16_advance_dst(unsigned char *dst, const char *src)
 int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char *func_name, const void *param, const size_t param_size)
 {
 	// String constants
-	const char *injectError1Format = "Could not load the dll: %s";
+	const char *injectError1Format =
+		"Could not inject %s.\n"
+		"\n"
+		"If you're running Windows Vista or 7, make sure that you have installed the KB2533623 update:\n"
+		"\n"
+		"\thttp://support.microsoft.com/kb/2533623/";
 	const char *injectError2Format = "Could not load the function: %s";
 
 //------------------------------------------//
