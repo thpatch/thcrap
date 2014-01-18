@@ -126,6 +126,10 @@ EXPORTS
 	thcrap_inject
 	thcrap_init
 
+	; Hackpoints
+	; ----------
+	hackpoints_count
+
 	; Binary hacks
 	; ------------
 	is_valid_hex

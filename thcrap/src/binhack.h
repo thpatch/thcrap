@@ -25,6 +25,10 @@ size_t binhack_calc_size(const char *binhack_str);
 // }
 int binhack_render(char *binhack_buf, size_t target_addr, const char *binhack_str, json_t *funcs);
 
+// Returns the number of all individual instances of binary hacks or
+// breakpoints in [hackpoints].
+size_t hackpoints_count(json_t *hackpoints);
+
 // Applies every binary hack in [binhacks] irreversibly on the current process.
 // Function names are resolved using the pointers in [funcs].
 int binhacks_apply(json_t *binhacks, json_t *funcs);

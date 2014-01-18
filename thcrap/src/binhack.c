@@ -116,11 +116,23 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	return ret;
 }
 
+size_t hackpoints_count(json_t *hackpoints)
+{
+	int ret = 0;
+	const char *key;
+	json_t *obj;
+	json_object_foreach(hackpoints, key, obj) {
+		json_t *addr = json_object_get(obj, "addr");
+		ret += json_flex_array_size(addr);
+	}
+	return ret;
+}
+
 int binhacks_apply(json_t *binhacks, json_t *funcs)
 {
 	const char *key;
 	json_t *hack;
-	size_t binhack_count = json_object_size(binhacks);
+	size_t binhack_count = hackpoints_count(binhacks);
 	size_t c = 0;	// gets incremented at the beginning of the write loop
 
 	if(!binhack_count) {
@@ -138,18 +150,12 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 		// Addresses can be an array, too
 		json_t *json_addr = json_object_get(hack, "addr");
 		size_t i;
-
-		// Number of addresses from JSON (at least 1)
-		size_t json_addr_count = json_flex_array_size(json_addr);
 		json_t *addr_val;
 
 		// calculated byte size of the hack
 		size_t asm_size = binhack_calc_size(code);
 
-		binhack_count += json_addr_count ? json_addr_count - 1 : 0;
-
 		if(!code || !asm_size || !json_addr) {
-			binhack_count -= json_addr_count;
 			continue;
 		}
 		json_flex_array_foreach(json_addr, i, addr_val) {
