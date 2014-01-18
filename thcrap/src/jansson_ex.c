@@ -111,6 +111,16 @@ json_t* json_array_from_wchar_array(int argc, const wchar_t *wargv[])
 	return ret;
 }
 
+size_t json_flex_array_size(const json_t *json)
+{
+	return json ? (json_is_array(json) ? json_array_size(json) : 1) : 0;
+}
+
+json_t *json_flex_array_get(json_t *flarr, size_t ind)
+{
+	return json_is_array(flarr) ? json_array_get(flarr, ind) : flarr;
+}
+
 json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object)
 {
 	json_t *ret = json_object_get(object, key);

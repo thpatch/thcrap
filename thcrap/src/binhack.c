@@ -140,31 +140,22 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 		size_t i;
 
 		// Number of addresses from JSON (at least 1)
-		size_t json_addr_count = json_array_size(json_addr);
+		size_t json_addr_count = json_flex_array_size(json_addr);
+		json_t *addr_val;
 
 		// calculated byte size of the hack
 		size_t asm_size = binhack_calc_size(code);
 
-		if(json_addr_count == 0) {
-			json_addr_count = 1;
-		} else {
-			binhack_count += json_addr_count - 1;
-		}
+		binhack_count += json_addr_count ? json_addr_count - 1 : 0;
 
 		if(!code || !asm_size || !json_addr) {
 			binhack_count -= json_addr_count;
 			continue;
 		}
-
-		for(i = 0; i < json_addr_count; i++) {
-			DWORD addr;
+		json_flex_array_foreach(json_addr, i, addr_val) {
+			DWORD addr = json_hex_value(addr_val);
 			// buffer for the rendered assembly code
 			VLA(BYTE, asm_buf, asm_size);
-			if(json_is_array(json_addr)) {
-				addr = json_array_get_hex(json_addr, i);
-			} else {
-				addr = json_hex_value(json_addr);
-			}
 			if(!addr) {
 				continue;
 			}

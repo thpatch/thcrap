@@ -59,25 +59,15 @@ json_t* identify_by_size(size_t file_size, json_t *versions)
 	return json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
 }
 
-int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
+int IsLatestBuild(json_t *build_obj, json_t **latest, json_t *run_ver)
 {
 	json_t *json_latest = json_object_get(run_ver, "latest");
-	size_t json_latest_count = json_array_size(json_latest);
 	size_t i;
-
-	if(!build || !latest || !json_latest) {
+	if(!json_is_string(build_obj) || !latest || !json_latest) {
 		return -1;
 	}
-
-	if(json_latest_count == 0) {
-		*latest = json_string_value(json_latest);
-	}
-
-	for(i = 0; i < json_latest_count; i++) {
-		if(json_is_array(json_latest)) {
-			*latest = json_array_get_string(json_latest, i);
-		}
-		if(*latest && !strcmp(*latest, build)) {
+	json_flex_array_foreach(json_latest, i, *latest) {
+		if(json_equal(build_obj, *latest)) {
 			return 1;
 		}
 	}
@@ -187,15 +177,15 @@ json_t* identify(const char *exe_fn)
 		}
 	} else {
 		// Old version nagbox
-		const char *latest = NULL;
-		if(IsLatestBuild(build, &latest, run_ver) == 0) {
+		json_t *latest = NULL;
+		if(IsLatestBuild(build_obj, &latest, run_ver) == 0 && json_is_string(latest)) {
 			const char *url_update = json_object_get_string(run_ver, "url_update");
 			log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION,
 				"You are running an old version of %s (%s).\n"
 				"\n"
 				"While %s is confirmed to work with this version, we recommend updating "
 				"your game to the latest official version (%s).%s%s%s%s",
-				game, build, PROJECT_NAME_SHORT(), latest,
+				game, build, PROJECT_NAME_SHORT(), json_string_value(latest),
 				url_update ? "\n\n": "",
 				url_update ? update_url_message : "",
 				url_update ? url_update : "",
