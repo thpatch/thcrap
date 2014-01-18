@@ -312,7 +312,8 @@ void box_end(patch_msg_state_t *state)
 			);
 			memcpy(new_line_cmd, state->last_line_cmd, line_offset);
 			process_line(new_line_cmd, state, hard_line ? replace_hard_line : replace_auto_line);
-			state->cmd_out += th06_msg_full_len(new_line_cmd);
+			// Meh, pointer arithmetic.
+			state->cmd_out = (th06_msg_t*)((BYTE*)state->cmd_out + th06_msg_full_len(new_line_cmd));
 		} else {
 			state->cur_line++;
 		}
