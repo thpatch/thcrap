@@ -203,6 +203,35 @@ int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, const c
 	return 0;
 }
 
+int breakpoint_apply(breakpoint_local_t *bp)
+{
+	if(bp) {
+		size_t cave_dist = bp->addr - (bp->cave + CALL_LEN);
+		size_t bp_dist = (BYTE*)breakpoint_process - (bp->addr + CALL_LEN);
+		BYTE bp_asm[BP_Offset];
+
+		/// Cave assembly
+		// Copy old code to cave
+		memcpy(bp->cave, UlongToPtr(bp->addr), bp->cavesize);
+		cave_fix(bp->cave, bp->addr);
+
+		// JMP addr
+		bp->cave[bp->cavesize] = 0xe9;
+		memcpy(bp->cave + bp->cavesize + 1, &cave_dist, sizeof(cave_dist));
+
+		/// Breakpoint assembly
+		memset(bp_asm, 0x90, bp->cavesize);
+		// CALL breakpoint_process
+		bp_asm[0] = 0xe8;
+		memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
+
+		PatchRegionNoCheck(bp->addr, bp_asm, bp->cavesize);
+		log_printf("OK\n");
+		return 0;
+	}
+	return -1;
+}
+
 int breakpoints_apply(void)
 {
 	json_t *breakpoints = json_object_get(run_cfg, BREAKPOINTS);
@@ -233,33 +262,9 @@ int breakpoints_apply(void)
 
 	json_object_foreach(breakpoints, key, json_bp) {
 		breakpoint_local_t *bp = &BP_Local[++i];
-		size_t cave_dist;
-
-		if(breakpoint_local_init(bp, json_bp, key, i)) {
-			continue;
+		if(!breakpoint_local_init(bp, json_bp, key, i)) {
+			breakpoint_apply(bp);
 		}
-		cave_dist = bp->addr - (bp->cave + CALL_LEN);
-
-		// Copy old code to cave
-		memcpy(bp->cave, UlongToPtr(bp->addr), bp->cavesize);
-		cave_fix(bp->cave, bp->addr);
-
-		// JMP addr
-		bp->cave[bp->cavesize] = 0xe9;
-		memcpy(bp->cave + bp->cavesize + 1, &cave_dist, sizeof(cave_dist));
-
-		// Build breakpoint asm
-		{
-			BYTE bp_asm[BP_Offset];
-			size_t bp_dist = (BYTE*)breakpoint_process - (bp->addr + CALL_LEN);
-			memset(bp_asm, 0x90, bp->cavesize);
-
-			// CALL breakpoint_process
-			bp_asm[0] = 0xe8;
-			memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
-			PatchRegionNoCheck(bp->addr, bp_asm, bp->cavesize);
-		}
-		log_printf("OK\n");
 	}
 	log_printf("-------------------------\n");
 	return 0;
