@@ -79,11 +79,12 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
 	if(str && *str) {
 		json_t *cmt = json_object_numkey_get(musiccmt, cache_track);
 		if(json_is_array(cmt)) {
-			*str = json_array_get_string_safe(cmt, cache_cmt_line);
-
+			const char* str_rep = json_array_get_string_safe(cmt, cache_cmt_line);
 			// Resolve "@" to a music title format string
-			if(!strcmp(*str, "@")) {
+			if(!strcmp(str_rep, "@")) {
 				music_title_print(str, format_id, cache_track);
+			} else {
+				*str = str_rep;
 			}
 		}
 	}
