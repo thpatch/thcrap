@@ -65,7 +65,7 @@ int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT val);
 // Replaces the function pointer of [pThunk] with [new_ptr]
 int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr);
 
-// Searches for [old_func] starting from [pOrigFirstThunk]
+// Searches for [old_func] starting from [pOrigFirstThunk],
 // then patches the function with [new_ptr].
 int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr);
 

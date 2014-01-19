@@ -359,7 +359,7 @@ int thcrap_init(const char *run_cfg_fn)
 		json_dump_log(run_cfg, JSON_INDENT(2));
 		log_printf("---------------------------\n");
 
-		json_object_set_new(run_ver, "funcs", run_funcs);
+		json_object_set_new(run_cfg, "funcs", run_funcs);
 	}
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
@@ -401,12 +401,8 @@ int InitDll(HMODULE hDll)
 void ExitDll(HMODULE hDll)
 {
 	plugins_close();
-
-	// Free our global variables
 	breakpoints_remove();
-
 	run_cfg = json_decref_safe(run_cfg);
-
 	DeleteCriticalSection(&cs_file_access);
 
 #ifdef HAVE_BP_FILE

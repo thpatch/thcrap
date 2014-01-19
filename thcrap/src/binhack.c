@@ -143,8 +143,7 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 	log_printf("Applying binary hacks...\n");
 	log_printf("------------------------\n");
 
-	json_object_foreach(binhacks, key, hack)
-	{
+	json_object_foreach(binhacks, key, hack) {
 		const char *title = json_object_get_string(hack, "title");
 		const char *code = json_object_get_string(hack, "code");
 		// Addresses can be an array, too

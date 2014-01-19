@@ -52,7 +52,7 @@ const char* SearchPatch(json_t *repo_list, const char *orig_repo_id, const json_
 	const char *key;
 
 	// Absolute dependency
-	// (in fact, just a check to see wheter the patch is actually available)
+	// In fact, just a check to see whether [sel] is available.
 	if(repo_id) {
 		remote_repo = json_object_get(repo_list, repo_id);
 		patches = json_object_get(remote_repo, "patches");

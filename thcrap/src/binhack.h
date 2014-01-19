@@ -23,7 +23,7 @@ size_t binhack_calc_size(const char *binhack_str);
 // {
 //	"<function name>": <pointer as integer>
 // }
-int binhack_render(char *binhack_buf, size_t target_addr, const char *binhack_str, json_t *funcs);
+int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str, json_t *funcs);
 
 // Returns the number of all individual instances of binary hacks or
 // breakpoints in [hackpoints].

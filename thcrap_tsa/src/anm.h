@@ -189,7 +189,7 @@ int stack_game_png_apply(anm_entry_t *entry);
 
 /// Sprite boundary dumping
 /// -----------------------
-png_bytep bounds_init(png_image_exp bounds, thtx_header_t *thtx, const char *fn);
+png_bytep bounds_init(png_image_exp bounds, const thtx_header_t *thtx, const char *fn);
 png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t new_h);
 
 char* fn_for_bounds(const char *fn);
@@ -205,7 +205,9 @@ int bounds_draw_hline(
 int bounds_draw_vline(
 	png_image_exp image, const size_t x, const size_t y, const size_t len, png_byte val
 );
-int bounds_draw_rect(png_image_exp image, const size_t thtx_x, const size_t thtx_y, sprite_t *spr);
+int bounds_draw_rect(
+	png_image_exp image, const size_t thtx_x, const size_t thtx_y, const sprite_t *spr
+);
 
 int bounds_store(const char *fn, png_image_exp image);
 /// -----------------------

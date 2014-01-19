@@ -118,19 +118,19 @@ int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 
 int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr)
 {
-	PIMAGE_THUNK_DATA pOT, pIT;
-
-	if(!new_ptr || !VirtualCheckCode(new_ptr)) {
-		return 0;
-	}
-	for(pOT = pOrigFirstThunk, pIT = pImpFirstThunk; pOT->u1.Function; pOT++, pIT++) {
-		if(!(pOT->u1.Ordinal & IMAGE_ORDINAL_FLAG)) {
-			PIMAGE_IMPORT_BY_NAME pByName = (PIMAGE_IMPORT_BY_NAME)((DWORD)hMod + pOT->u1.AddressOfData);
-			if(pByName->Name[0] == '\0') {
-				return 0;
-			}
-			if(!stricmp(old_func, (char*)pByName->Name)) {
-				return func_detour(pIT, new_ptr);
+	if(new_ptr && VirtualCheckCode(new_ptr)) {
+		PIMAGE_THUNK_DATA pOT = pOrigFirstThunk;
+		PIMAGE_THUNK_DATA pIT = pImpFirstThunk;
+		for(; pOT->u1.Function; pOT++, pIT++) {
+			PIMAGE_IMPORT_BY_NAME pByName;
+			if(!(pOT->u1.Ordinal & IMAGE_ORDINAL_FLAG)) {
+				pByName = (PIMAGE_IMPORT_BY_NAME)((DWORD)hMod + pOT->u1.AddressOfData);
+				if(pByName->Name[0] == '\0') {
+					return 0;
+				}
+				if(!stricmp(old_func, (char*)pByName->Name)) {
+					return func_detour(pIT, new_ptr);
+				}
 			}
 		}
 	}
@@ -140,13 +140,12 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 
 int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr)
 {
-	PIMAGE_THUNK_DATA Thunk;
-	if(!new_ptr || !VirtualCheckCode(new_ptr)) {
-		return 0;
-	}
-	for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {
-		if((DWORD*)Thunk->u1.Function == (DWORD*)old_ptr) {
-			return func_detour(Thunk, new_ptr);
+	if(new_ptr && VirtualCheckCode(new_ptr)) {
+		PIMAGE_THUNK_DATA Thunk;
+		for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {
+			if((DWORD*)Thunk->u1.Function == (DWORD*)old_ptr) {
+				return func_detour(Thunk, new_ptr);
+			}
 		}
 	}
 	// Function not found
@@ -165,18 +164,18 @@ void iat_detour_set(iat_detour_t *detour, const char *old_func, const void *old_
 
 int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, const size_t detour_count)
 {
-	PIMAGE_IMPORT_DESCRIPTOR ImpDesc;
+	PIMAGE_IMPORT_DESCRIPTOR pImpDesc;
 	PIMAGE_THUNK_DATA pOrigThunk;
 	PIMAGE_THUNK_DATA pImpThunk;
 	int ret = detour_count;
 	UINT c;
 
-	ImpDesc = GetDllImportDesc(hMod, dll_name);
-	if(!ImpDesc) {
+	pImpDesc = GetDllImportDesc(hMod, dll_name);
+	if(!pImpDesc) {
 		return -1;
 	}
-	pOrigThunk = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->OriginalFirstThunk);
-	pImpThunk  = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)ImpDesc->FirstThunk);
+	pOrigThunk = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)pImpDesc->OriginalFirstThunk);
+	pImpThunk  = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)pImpDesc->FirstThunk);
 
 	log_printf("Detouring DLL functions (%s)...\n", dll_name);
 
@@ -185,7 +184,7 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	// and that it works on Win9x too (as if that matters).
 
 	for(c = 0; c < detour_count; c++) {
-		DWORD local_ret = func_detour_by_name(hMod, pOrigThunk, pImpThunk, detour[c].old_func, detour[c].new_ptr);
+		int local_ret = func_detour_by_name(hMod, pOrigThunk, pImpThunk, detour[c].old_func, detour[c].new_ptr);
 		log_printf(
 			"(%2d/%2d) %s... %s\n",
 			c + 1, detour_count, detour[c].old_func, local_ret ? "OK" : "not found"
