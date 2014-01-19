@@ -21,6 +21,7 @@
 #include "log.h"
 #include "patchfile.h"
 #include "stack.h"
+#include "binhack.h"
 #include "breakpoint.h"
 #include "strutil.h"
 #include "mempatch.h"

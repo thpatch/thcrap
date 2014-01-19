@@ -169,20 +169,15 @@ void cave_fix(BYTE *cave, BYTE *bp_addr)
 	/// ------------------
 }
 
-int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, const char *key, size_t index)
+int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, size_t addr, const char *key, size_t index)
 {
-	size_t addr = json_object_get_hex(bp_json, "addr");
 	size_t cavesize = json_object_get_hex(bp_json, "cavesize");
 
-	if(!bp_local || !bp_json) {
+	if(!bp_local || !bp_json || !addr) {
 		return -1;
 	}
 	ZeroMemory(bp_local, sizeof(*bp_local));
 
-	if(!addr) {
-		return 1;
-	}
-	log_printf("(%2d/%2d) 0x%08x %s... ", index + 1, BP_Count, addr, key);
 	if(!cavesize) {
 		log_printf("ERROR: no cavesize specified!\n");
 		return 2;
@@ -234,7 +229,7 @@ int breakpoints_apply(json_t *breakpoints)
 {
 	const char *key;
 	json_t *json_bp;
-	size_t breakpoint_count = json_object_size(breakpoints);
+	size_t breakpoint_count = hackpoints_count(breakpoints);
 	int i = -1;
 
 	if(!breakpoints) {
@@ -258,9 +253,17 @@ int breakpoints_apply(json_t *breakpoints)
 	log_printf("-------------------------\n");
 
 	json_object_foreach(breakpoints, key, json_bp) {
-		breakpoint_local_t *bp = &BP_Local[++i];
-		if(!breakpoint_local_init(bp, json_bp, key, i)) {
-			breakpoint_apply(bp);
+		size_t j;
+		json_t *addr_val;
+		json_flex_array_foreach(json_object_get(json_bp, "addr"), j, addr_val) {
+			size_t addr = json_hex_value(addr_val);
+			if(addr) {
+				breakpoint_local_t *bp = &BP_Local[++i];
+				log_printf("(%2d/%2d) 0x%08x %s... ", i + 1, BP_Count, addr, key);
+				if(!breakpoint_local_init(bp, json_bp, addr, key, i)) {
+					breakpoint_apply(bp);
+				}
+			}
 		}
 	}
 	log_printf("-------------------------\n");
