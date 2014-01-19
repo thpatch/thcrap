@@ -339,6 +339,11 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 	*/
+	log_printf("---------------------------\n");
+	log_printf("Complete run configuration:\n");
+	log_printf("---------------------------\n");
+	json_dump_log(run_cfg, JSON_INDENT(2));
+	log_printf("---------------------------\n");
 	{
 		const char *key;
 		json_t *val = NULL;
@@ -349,17 +354,9 @@ int thcrap_init(const char *run_cfg_fn)
 			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
 		}
 
-		binhacks_apply(json_object_get(run_cfg, "binhacks"), run_funcs);
-		breakpoints_apply();
-
-		// -----------------
-		log_printf("---------------------------\n");
-		log_printf("Complete run configuration:\n");
-		log_printf("---------------------------\n");
-		json_dump_log(run_cfg, JSON_INDENT(2));
-		log_printf("---------------------------\n");
-
 		json_object_set_new(run_cfg, "funcs", run_funcs);
+		binhacks_apply(json_object_get(run_cfg, "binhacks"));
+		breakpoints_apply();
 	}
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);

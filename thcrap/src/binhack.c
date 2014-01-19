@@ -50,7 +50,7 @@ size_t binhack_calc_size(const char *binhack_str)
 	return size;
 }
 
-int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str, json_t *funcs)
+int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str)
 {
 	const char *c = binhack_str;
 	const char *fs = NULL; // function start
@@ -59,7 +59,6 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	char conv[3];
 	int ret = 0;
 
-	// We don't check [funcs] here, we want to give the precise error later
 	if(!binhack_buf || !binhack_str) {
 		return -1;
 	}
@@ -89,7 +88,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			strncpy(function, fs, c - fs);
 			function[c - fs] = 0;
 
-			fp = json_object_get_hex(funcs, function);
+			fp = (size_t)runconfig_func_get(function);
 			if(fp) {
 				if(func_rel) {
 					fp -= target_addr + written + sizeof(void*);
@@ -128,7 +127,7 @@ size_t hackpoints_count(json_t *hackpoints)
 	return ret;
 }
 
-int binhacks_apply(json_t *binhacks, json_t *funcs)
+int binhacks_apply(json_t *binhacks)
 {
 	const char *key;
 	json_t *hack;
@@ -172,7 +171,7 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 				log_printf("%s...", key);
 			}
 
-			if(binhack_render(asm_buf, addr, code, funcs)) {
+			if(binhack_render(asm_buf, addr, code)) {
 				continue;
 			}
 			PatchRegionNoCheck((void*)addr, asm_buf, asm_size);
