@@ -356,7 +356,7 @@ int thcrap_init(const char *run_cfg_fn)
 
 		json_object_set_new(run_cfg, "funcs", run_funcs);
 		binhacks_apply(json_object_get(run_cfg, "binhacks"));
-		breakpoints_apply();
+		breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
 	}
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);

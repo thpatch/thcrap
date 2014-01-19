@@ -9,8 +9,6 @@
 
 #include "thcrap.h"
 
-static const char BREAKPOINTS[] = "breakpoints";
-
 typedef struct {
 	// Address where the breakpoint is written
 	BYTE *addr;
@@ -232,9 +230,8 @@ int breakpoint_apply(breakpoint_local_t *bp)
 	return -1;
 }
 
-int breakpoints_apply(void)
+int breakpoints_apply(json_t *breakpoints)
 {
-	json_t *breakpoints = json_object_get(run_cfg, BREAKPOINTS);
 	const char *key;
 	json_t *json_bp;
 	size_t breakpoint_count = json_object_size(breakpoints);
