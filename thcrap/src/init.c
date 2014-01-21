@@ -240,9 +240,17 @@ int thcrap_init(const char *run_cfg_fn)
 	log_printf("EXE file name: %s\n", exe_fn);
 
 	game_cfg = identify(exe_fn);
+	// Merge run configurations in their correct order
+	// (global.js ← <game>.js ← <build>.js ← user.js)
 	if(game_cfg) {
-		json_object_merge(game_cfg, user_cfg);
-		runconfig_set(game_cfg);
+		json_t *full_cfg = stack_json_resolve("global.js", NULL);
+		if(!full_cfg) {
+			full_cfg = json_object();
+		}
+		json_object_merge(full_cfg, game_cfg);
+		json_object_merge(full_cfg, user_cfg);
+		runconfig_set(full_cfg);
+		json_decref(full_cfg);
 	}
 	log_printf("Initializing patches...\n");
 	{
