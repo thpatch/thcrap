@@ -210,7 +210,8 @@ void thcrap_detour(HMODULE hProc)
 
 int thcrap_init(const char *run_cfg_fn)
 {
-	json_t *run_ver = NULL;
+	json_t *game_cfg = NULL;
+	json_t *user_cfg = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
 
 	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
@@ -223,7 +224,8 @@ int thcrap_init(const char *run_cfg_fn)
 
 	SetCurrentDirectory(dll_dir);
 
-	run_cfg = json_load_file_report(run_cfg_fn);
+	user_cfg = json_load_file_report(run_cfg_fn);
+	runconfig_set(user_cfg);
 
 	{
 		json_t *console_val = json_object_get(run_cfg, "console");
@@ -237,12 +239,10 @@ int thcrap_init(const char *run_cfg_fn)
 
 	log_printf("EXE file name: %s\n", exe_fn);
 
-	run_ver = identify(exe_fn);
-	// Alright, smash our run configuration on top
-	if(run_ver) {
-		json_object_merge(run_ver, run_cfg);
-		json_decref(run_cfg);
-		run_cfg = run_ver;
+	game_cfg = identify(exe_fn);
+	if(game_cfg) {
+		json_object_merge(game_cfg, user_cfg);
+		runconfig_set(game_cfg);
 	}
 	log_printf("Initializing patches...\n");
 	{
@@ -361,6 +361,8 @@ int thcrap_init(const char *run_cfg_fn)
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
+	json_decref(user_cfg);
+	json_decref(game_cfg);
 	return 0;
 }
 
