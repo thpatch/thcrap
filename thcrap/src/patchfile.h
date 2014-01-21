@@ -27,12 +27,9 @@
   *	json_t *patch
   *		Patch data to be applied.
   *
-  *	json_t *run_cfg
-  *		The current run configuration.
-  *
   * Returns nothing.
   */
-typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch);
 
 // Reads the file [fn] into a newly created buffer and returns its file size in [file_size].
 // Return value has to be free()d by the caller!
@@ -111,5 +108,5 @@ int patchhook_register(const char *ext, func_patch_t patch_func);
 json_t* patchhooks_build(const char *fn);
 
 // Runs all hook functions in [hook_array] on the given data.
-int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch);
 /// -----

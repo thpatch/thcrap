@@ -184,9 +184,9 @@ void music_mod_exit(void);
 /// Format patchers
 /// ---------------
 int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
-int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
 /// ---------------
 
 /// Win32 wrappers

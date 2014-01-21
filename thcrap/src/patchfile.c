@@ -356,7 +356,7 @@ json_t* patchhooks_build(const char *fn)
 	return ret;
 }
 
-int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	json_t *val;
 	size_t i;
@@ -369,7 +369,7 @@ int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, 
 	json_array_foreach(hook_array, i, val) {
 		func_patch_t func = (func_patch_t)json_integer_value(val);
 		if(func) {
-			func(file_inout, size_out, size_in, patch, run_cfg);
+			func(file_inout, size_out, size_in, patch);
 		}
 	}
 	return 0;

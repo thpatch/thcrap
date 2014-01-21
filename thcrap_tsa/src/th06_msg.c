@@ -512,12 +512,12 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	return 0;
 }
 
-int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	return patch_msg(file_inout, size_out, size_in, patch, specs_get("msg"));
 }
 
-int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	return patch_msg(file_inout, size_out, size_in, patch, specs_get("end"));
 }
