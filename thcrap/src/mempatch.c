@@ -116,9 +116,12 @@ int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 	return 1;
 }
 
-int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr)
+int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
 {
-	if(new_ptr && VirtualCheckCode(new_ptr)) {
+	if(
+		detour && detour->old_func && detour->new_ptr
+		&& VirtualCheckCode(detour->new_ptr)
+	) {
 		PIMAGE_THUNK_DATA pOT = pOrigFirstThunk;
 		PIMAGE_THUNK_DATA pIT = pImpFirstThunk;
 		for(; pOT->u1.Function; pOT++, pIT++) {
@@ -128,8 +131,8 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 				if(pByName->Name[0] == '\0') {
 					return 0;
 				}
-				if(!stricmp(old_func, (char*)pByName->Name)) {
-					return func_detour(pIT, new_ptr);
+				if(!stricmp(detour->old_func, (char*)pByName->Name)) {
+					return func_detour(pIT, detour->new_ptr);
 				}
 			}
 		}
@@ -138,13 +141,13 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 	return 0;
 }
 
-int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr)
+int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
 {
-	if(new_ptr && VirtualCheckCode(new_ptr)) {
+	if(detour && detour->new_ptr && VirtualCheckCode(detour->new_ptr)) {
 		PIMAGE_THUNK_DATA Thunk;
 		for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {
-			if((DWORD*)Thunk->u1.Function == (DWORD*)old_ptr) {
-				return func_detour(Thunk, new_ptr);
+			if((DWORD*)Thunk->u1.Function == (DWORD*)detour->old_ptr) {
+				return func_detour(Thunk, detour->new_ptr);
 			}
 		}
 	}
@@ -184,7 +187,7 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	// and that it works on Win9x too (as if that matters).
 
 	for(c = 0; c < detour_count; c++) {
-		int local_ret = func_detour_by_name(hMod, pOrigThunk, pImpThunk, detour[c].old_func, detour[c].new_ptr);
+		int local_ret = func_detour_by_name(hMod, pOrigThunk, pImpThunk, &detour[c]);
 		log_printf(
 			"(%2d/%2d) %s... %s\n",
 			c + 1, detour_count, detour[c].old_func, local_ret ? "OK" : "not found"
