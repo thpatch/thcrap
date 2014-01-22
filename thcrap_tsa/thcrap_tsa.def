@@ -70,6 +70,8 @@ EXPORTS
 
 	; Layout
 	; ------
+	BP_ruby_offset
+
 	layout_match
 	layout_tokenize
 

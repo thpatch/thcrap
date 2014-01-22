@@ -18,6 +18,60 @@ json_t *Layout_Tabs = NULL;
 static HDC text_dc = NULL;
 /// -----------------------
 
+/// Ruby
+/// ----
+/**
+  * Calculates the X [offset] of a Ruby annotation centered over a section of
+  * text, when [font_dialog] is the font used for regular dialog text, and
+  * [font_ruby] is the font used for the annotation itself.
+  * The th06 MSG patcher already guarantees that we got valid TSA ruby syntax
+  * in [str] when we get here. Leveraging the original system, this breakpoint
+  * then expects the following syntax in [str]:
+  *
+  *		|\tBase text, \t,\tsection to annotate.\t,Annotation text
+  *
+  * The additional \t is used to have a better delimiter for the parameters.
+  * At the beginning, it makes sure that the game's own atoi() call returns 0,
+  * even if a parameter starts with an ASCII digit, while its use at the end
+  * allows ASCII commas inside the parameters.
+  */
+int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	char *str = *(char**)json_object_get_register(bp_info, regs, "str");
+	size_t *offset = json_object_get_register(bp_info, regs, "offset");
+	HFONT font_dialog = *(HFONT*)json_object_get_hex(bp_info, "font_dialog");
+	HFONT font_ruby = *(HFONT*)json_object_get_hex(bp_info, "font_ruby");
+	// ----------
+	if(str && str[0] == '\t' && offset && font_dialog && font_ruby) {
+		char *str_offset = str + 1;
+		char *str_offset_end = strchr(str_offset, '\t');
+		char *str_base = str_offset_end + 3;
+		char *str_base_end = NULL;
+		char *str_ruby = NULL;
+
+		if(!str_offset_end || !str_offset_end[1] == ',' || str_base[-1] != '\t') {
+			return 1;
+		}
+		str_base_end = strchr(str_base, '\t');
+		str_ruby = str_base_end + 2;
+		if(!str_base_end || str_base_end[1] != ',') {
+			return 1;
+		}
+		*str_offset_end = '\0';
+		*str_base_end = '\0';
+		*offset =
+			GetTextExtentForFont(str_offset, font_dialog)
+			+ (GetTextExtentForFont(str_base, font_dialog) / 2)
+			- (GetTextExtentForFont(str_ruby, font_ruby) / 2);
+		*str_offset_end = '\t';
+		*str_base_end = '\t';
+	}
+	return 1;
+}
+/// ----
+
 /// Tokenization
 /// ------------
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
