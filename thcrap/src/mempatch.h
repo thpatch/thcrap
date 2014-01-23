@@ -83,6 +83,9 @@ int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *det
 // Convenience function to set a single iat_detour_t entry
 void iat_detour_set(iat_detour_t* detour, const char *old_func, const void *old_ptr, const void *new_ptr);
 
+// Sets up [detour] using the most appropriate low-level detouring function.
+int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour);
+
 // Detours [detour_count] functions in the [iat_detour] array
 int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detour, const size_t detour_count);
 

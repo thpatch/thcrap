@@ -165,29 +165,43 @@ void iat_detour_set(iat_detour_t *detour, const char *old_func, const void *old_
 	detour->new_ptr = new_ptr;
 }
 
+int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour)
+{
+	PIMAGE_THUNK_DATA pOT = NULL;
+	PIMAGE_THUNK_DATA pIT = NULL;
+	if(hMod && pImpDesc && detour) {
+		pIT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->FirstThunk);
+
+		// We generally detour by comparing exported names. This has the
+		// advantage that we can override any existing patches, and that
+		// it works on Win9x too (as if that matters). However, in case we lack
+		// a pointer to the OriginalFirstThunk, this is not possible, so we have
+		// to detour by comparing pointers then.
+
+		if(pImpDesc->OriginalFirstThunk) {
+			pOT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->OriginalFirstThunk);
+			return func_detour_by_name(hMod, pOT, pIT, detour);
+		} else {
+			return func_detour_by_ptr(pIT, detour);
+		}
+	}
+	return -1;
+}
+
 int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, const size_t detour_count)
 {
-	PIMAGE_IMPORT_DESCRIPTOR pImpDesc;
-	PIMAGE_THUNK_DATA pOrigThunk;
-	PIMAGE_THUNK_DATA pImpThunk;
+	PIMAGE_IMPORT_DESCRIPTOR pImpDesc = GetDllImportDesc(hMod, dll_name);
 	int ret = detour_count;
 	UINT c;
 
-	pImpDesc = GetDllImportDesc(hMod, dll_name);
 	if(!pImpDesc) {
 		return -1;
 	}
-	pOrigThunk = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)pImpDesc->OriginalFirstThunk);
-	pImpThunk  = (PIMAGE_THUNK_DATA)((DWORD)hMod + (DWORD)pImpDesc->FirstThunk);
 
 	log_printf("Detouring DLL functions (%s)...\n", dll_name);
 
-	// We _only_ detour by comparing exported names.
-	// Has the advantages that we can override any existing patches,
-	// and that it works on Win9x too (as if that matters).
-
 	for(c = 0; c < detour_count; c++) {
-		int local_ret = func_detour_by_name(hMod, pOrigThunk, pImpThunk, &detour[c]);
+		int local_ret = iat_detour_func(hMod, pImpDesc, &detour[c]);
 		log_printf(
 			"(%2d/%2d) %s... %s\n",
 			c + 1, detour_count, detour[c].old_func, local_ret ? "OK" : "not found"
