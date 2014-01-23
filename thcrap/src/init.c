@@ -200,12 +200,19 @@ end:
 
 void thcrap_detour(HMODULE hProc)
 {
+	size_t mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
+	VLA(char, mod_name, mod_name_len);
+	GetModuleFileNameU(hProc, mod_name, mod_name_len);
+	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
+
 	win32_detour(hProc);
 	exception_detour(hProc);
 	textdisp_detour(hProc);
 	dialog_detour(hProc);
 	strings_detour(hProc);
 	inject_detour(hProc);
+
+	VLA_FREE(mod_name);
 }
 
 int thcrap_init(const char *run_cfg_fn)
