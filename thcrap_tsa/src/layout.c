@@ -20,6 +20,12 @@ static HDC text_dc = NULL;
 
 /// Ruby
 /// ----
+
+char *strchr_backwards(char *str, char c)
+{
+	while(*(--str) != c);
+	return str;
+}
 /**
   * Calculates the X [offset] of a Ruby annotation centered over a section of
   * text, when [font_dialog] is the font used for regular dialog text, and
@@ -39,10 +45,11 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	char *str = *(char**)json_object_get_register(bp_info, regs, "str");
+	char **str_reg = (char**)json_object_get_register(bp_info, regs, "str");
 	size_t *offset = json_object_get_register(bp_info, regs, "offset");
 	HFONT font_dialog = *(HFONT*)json_object_get_hex(bp_info, "font_dialog");
 	HFONT font_ruby = *(HFONT*)json_object_get_hex(bp_info, "font_ruby");
+	char *str = *str_reg;
 	// ----------
 	if(str && str[0] == '\t' && offset && font_dialog && font_ruby) {
 		char *str_offset = str + 1;
@@ -67,6 +74,11 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 			- (GetTextExtentForFont(str_ruby, font_ruby) / 2);
 		*str_offset_end = '\t';
 		*str_base_end = '\t';
+
+		// In case any of our parameters included a comma, adjust the original string
+		// pointer to point to the second comma before the annotation, so that the
+		// stupid game actually gets the right text after its two strchr() calls.
+		*str_reg = strchr_backwards(str_base_end, ',');
 	}
 	return 1;
 }
