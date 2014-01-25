@@ -52,6 +52,8 @@ As of now, all subprojects only include a Visual C++ 2010 project file for build
 
 * [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
+* The scripts in the `scripts` directory are written in [Python 3] (http://python.org/).
+
 ### License ###
 
 The Touhou Community Reliant Patcher and all accompanying modules are licensed under the Do What The Fuck You Want To Public License ([WTFPL] (http://www.wtfpl.net/)), unless stated otherwise. This should eliminate any confusion about licensing terms, as well as any possible inquiries on that matter.
