@@ -106,6 +106,14 @@ VOID WINAPI GetStartupInfoU(
 #undef GetStartupInfo
 #define GetStartupInfo GetStartupInfoU
 
+// Only implemented using the fallback codepage, since UTF-8 has
+// no way to differentiate between continuation bytes and end bytes.
+BOOL WINAPI IsDBCSLeadByteFB(
+	__in BYTE TestChar
+);
+#undef IsDBCSLeadByte
+#define IsDBCSLeadByte IsDBCSLeadByteFB
+
 HMODULE WINAPI LoadLibraryU(
 	__in LPCSTR lpLibFileName
 );

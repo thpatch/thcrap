@@ -50,7 +50,7 @@ size_t binhack_calc_size(const char *binhack_str)
 	return size;
 }
 
-int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str, json_t *funcs)
+int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str)
 {
 	const char *c = binhack_str;
 	const char *fs = NULL; // function start
@@ -59,7 +59,6 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	char conv[3];
 	int ret = 0;
 
-	// We don't check [funcs] here, we want to give the precise error later
 	if(!binhack_buf || !binhack_str) {
 		return -1;
 	}
@@ -89,7 +88,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			strncpy(function, fs, c - fs);
 			function[c - fs] = 0;
 
-			fp = json_object_get_hex(funcs, function);
+			fp = (size_t)runconfig_func_get(function);
 			if(fp) {
 				if(func_rel) {
 					fp -= target_addr + written + sizeof(void*);
@@ -116,11 +115,23 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	return ret;
 }
 
-int binhacks_apply(json_t *binhacks, json_t *funcs)
+size_t hackpoints_count(json_t *hackpoints)
+{
+	int ret = 0;
+	const char *key;
+	json_t *obj;
+	json_object_foreach(hackpoints, key, obj) {
+		json_t *addr = json_object_get(obj, "addr");
+		ret += json_flex_array_size(addr);
+	}
+	return ret;
+}
+
+int binhacks_apply(json_t *binhacks)
 {
 	const char *key;
 	json_t *hack;
-	size_t binhack_count = json_object_size(binhacks);
+	size_t binhack_count = hackpoints_count(binhacks);
 	size_t c = 0;	// gets incremented at the beginning of the write loop
 
 	if(!binhack_count) {
@@ -131,55 +142,36 @@ int binhacks_apply(json_t *binhacks, json_t *funcs)
 	log_printf("Appliquation des hacks binaires...\n");
 	log_printf("------------------------\n");
 
-	json_object_foreach(binhacks, key, hack)
-	{
+	json_object_foreach(binhacks, key, hack) {
 		const char *title = json_object_get_string(hack, "title");
 		const char *code = json_object_get_string(hack, "code");
 		// Addresses can be an array, too
 		json_t *json_addr = json_object_get(hack, "addr");
 		size_t i;
-
-		// Number of addresses from JSON (at least 1)
-		size_t json_addr_count = json_array_size(json_addr);
+		json_t *addr_val;
 
 		// calculated byte size of the hack
 		size_t asm_size = binhack_calc_size(code);
 
 		if(!code || !asm_size || !json_addr) {
-			binhack_count--;
 			continue;
 		}
-
-		if(json_addr_count == 0) {
-			json_addr_count = 1;
-		} else {
-			binhack_count += json_addr_count - 1;
-		}
-
-		for(i = 0; i < json_addr_count; i++) {
-			DWORD addr;
+		json_flex_array_foreach(json_addr, i, addr_val) {
+			DWORD addr = json_hex_value(addr_val);
 			// buffer for the rendered assembly code
 			VLA(BYTE, asm_buf, asm_size);
-
-			c++;
-
-			if(json_is_array(json_addr)) {
-				addr = json_array_get_hex(json_addr, i);
-			} else {
-				addr = json_hex_value(json_addr);
-			}
 			if(!addr) {
 				continue;
 			}
 
-			log_printf("(%2d/%2d) 0x%08x ", c, binhack_count, addr);
+			log_printf("(%2d/%2d) 0x%08x ", ++c, binhack_count, addr);
 			if(title) {
 				log_printf("%s (%s)... ", title, key);
 			} else {
 				log_printf("%s...", key);
 			}
 
-			if(binhack_render(asm_buf, addr, code, funcs)) {
+			if(binhack_render(asm_buf, addr, code)) {
 				continue;
 			}
 			PatchRegionNoCheck((void*)addr, asm_buf, asm_size);

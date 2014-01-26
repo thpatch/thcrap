@@ -2,8 +2,8 @@ LIBRARY
 EXPORTS
 	thcrap_init_plugin	@1
 
-	inet_init
-	inet_exit
+	http_init
+	http_exit
 
 	ServerBuild
 	ServerInit

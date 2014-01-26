@@ -12,7 +12,7 @@
 #include "thcrap_tsa.h"
 #include "anm.h"
 
-png_bytep bounds_init(png_image_exp image, thtx_header_t *thtx, const char *fn)
+png_bytep bounds_init(png_image_exp image, const thtx_header_t *thtx, const char *fn)
 {
 	size_t bounds_size;
 
@@ -175,7 +175,9 @@ int bounds_draw_vline(
 	return bounds_draw_line(image, x, y, image->img.width, len, val);
 }
 
-int bounds_draw_rect(png_image_exp image, const size_t thtx_x, const size_t thtx_y, sprite_t *spr)
+int bounds_draw_rect(
+	png_image_exp image, const size_t thtx_x, const size_t thtx_y, const sprite_t *spr
+)
 {
 	if(!spr) {
 		return -1;

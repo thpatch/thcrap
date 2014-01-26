@@ -14,9 +14,10 @@
 #include "wininet_dll.h"
 #include "update.h"
 
-HINTERNET hINet = NULL;
+HINTERNET hHTTP = NULL;
+CRITICAL_SECTION cs_http;
 
-int inet_init(void)
+int http_init(void)
 {
 	DWORD ignore = 1;
 
@@ -28,31 +29,95 @@ int inet_init(void)
 		agent, "%s (%s)", project_name, PROJECT_VERSION_STRING()
 	);
 
-	hINet = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	if(!hINet) {
+	InitializeCriticalSection(&cs_http);
+
+	hHTTP = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	if(!hHTTP) {
 		// No internet access...?
 		return 1;
 	}
 	/*
-	InternetSetOption(hINet, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hINet, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hINet, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
 	*/
 
 	// This is necessary when Internet Explorer is set to "work offline"... which
 	// will essentially block all wininet HTTP accesses on handles that do not
 	// explicitly ignore this setting.
-	InternetSetOption(hINet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
+	InternetSetOption(hHTTP, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
 
 	VLA_FREE(agent);
 	return 0;
 }
 
-void inet_exit(void)
+get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 {
-	if(hINet) {
-		InternetCloseHandle(hINet);
-		hINet = NULL;
+	get_result_t get_ret = GET_INVALID_PARAMETER;
+	DWORD byte_ret = sizeof(DWORD);
+	DWORD http_stat = 0;
+	DWORD file_size_local = 0;
+	HINTERNET hFile = NULL;
+
+	if(
+		!hHTTP || !file_buffer || !file_size || !url
+		|| !TryEnterCriticalSection(&cs_http)
+	) {
+		return GET_INVALID_PARAMETER;
+	}
+
+	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+	if(!hFile) {
+		DWORD inet_ret = GetLastError();
+		log_printf("Erreur WinInet %d\n", inet_ret);
+		get_ret = GET_SERVER_ERROR;
+		goto end;
+	}
+
+	HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &http_stat, &byte_ret, 0);
+	log_printf("%d", http_stat);
+	if(http_stat != 200) {
+		// If the file is missing on one server, it's probably missing on all of them.
+		// No reason to disable any server.
+		get_ret = GET_NOT_FOUND;
+		goto end;
+	}
+
+	HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
+	*file_buffer = (BYTE*)malloc(*file_size);
+	if(*file_buffer) {
+		BYTE *p = *file_buffer;
+		DWORD read_size = *file_size;
+		while(read_size) {
+			BOOL ret = InternetReadFile(hFile, p, *file_size, &byte_ret);
+			if(ret) {
+				read_size -= byte_ret;
+				p += byte_ret;
+			} else {
+				SAFE_FREE(*file_buffer);
+				log_printf("\nLecture des erreurs #%d!", GetLastError());
+				get_ret = GET_SERVER_ERROR;
+				goto end;
+			}
+		}
+		get_ret = GET_OK;
+	} else {
+		get_ret = GET_OUT_OF_MEMORY;
+	}
+end:
+	InternetCloseHandle(hFile);
+	LeaveCriticalSection(&cs_http);
+	return get_ret;
+}
+
+void http_exit(void)
+{
+	if(hHTTP) {
+		EnterCriticalSection(&cs_http);
+		InternetCloseHandle(hHTTP);
+		hHTTP = NULL;
+		LeaveCriticalSection(&cs_http);
+		DeleteCriticalSection(&cs_http);
 	}
 }
 
@@ -153,12 +218,7 @@ void* ServerDownloadFile(
 	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
 )
 {
-	HINTERNET hFile = NULL;
-	DWORD http_stat;
-	DWORD byte_ret = sizeof(DWORD);
-	DWORD read_size = 0;
-	BOOL ret;
-	BYTE *file_buffer = NULL, *p;
+	BYTE *file_buffer = NULL;
 	int i;
 
 	int servers_first = ServerGetFirst(servers);
@@ -171,8 +231,10 @@ void* ServerDownloadFile(
 	}
 	*file_size = 0;
 	for(i = servers_first; servers_left; i = (i + 1) % servers_total) {
-		DWORD time, time_start;
+		DWORD time_start;
+		DWORD time;
 		DWORD crc = 0;
+		get_result_t get_ret;
 		json_t *server = json_array_get(servers, i);
 		json_t *server_time = json_object_get(server, "time");
 
@@ -180,8 +242,6 @@ void* ServerDownloadFile(
 			continue;
 		}
 		servers_left--;
-
-		InternetCloseHandle(hFile);
 
 		{
 			URL_COMPONENTSA uc = {0};
@@ -205,70 +265,42 @@ void* ServerDownloadFile(
 
 			time_start = timeGetTime();
 
-			hFile = InternetOpenUrl(hINet, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+			get_ret = http_get(&file_buffer, file_size, url);
+
 			VLA_FREE(url);
 			VLA_FREE(server_host);
 		}
-		if(!hFile) {
-			DWORD inet_ret = GetLastError();
-			log_printf("Erreur WinInet %d\n", inet_ret);
-			ServerDisable(server);
-			continue;
+
+		switch(get_ret) {
+			case GET_OUT_OF_MEMORY:
+			case GET_INVALID_PARAMETER:
+				goto abort;
+
+			case GET_SERVER_ERROR:
+				ServerDisable(server);
+				continue;
 		}
-
-		HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &http_stat, &byte_ret, 0);
-
-		log_printf("%d", http_stat);
-
-		if(http_stat != 200) {
-			// If the file is missing on one server, it's probably missing on all of them.
-			// No reason to disable any server.
-			log_printf("\n");
-			continue;
-		}
-
-		HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
 		if(*file_size == 0) {
 			log_printf(" Fichier vide ! %s\n", servers_left ? "Passage au serveur suivant..." : "");
 			ServerDisable(server);
 			continue;
 		}
 
-		file_buffer = (BYTE*)malloc(*file_size);
-		if(!file_buffer) {
-			break;
-		}
-		p = file_buffer;
-
-		read_size = *file_size;
-		while(read_size) {
-			ret = InternetReadFile(hFile, p, *file_size, &byte_ret);
-			if(ret) {
-				crc = crc32(crc, p, byte_ret);
-				read_size -= byte_ret;
-				p += byte_ret;
-			} else {
-				SAFE_FREE(file_buffer);
-				log_printf("\nLecture des erreurs #%d!", GetLastError());
-				ServerDisable(server);
-				read_size = 0;
-				return NULL;
-			}
-		}
 		time = timeGetTime() - time_start;
-
 		log_printf(" (%d b, %d ms)\n", *file_size, time);
-
 		json_object_set_new(server, "time", json_integer(time));
-		InternetCloseHandle(hFile);
 
+		crc = crc32(crc, file_buffer, *file_size);
 		if(exp_crc && *exp_crc != crc) {
-			ServerDisable(server);
 			log_printf("Échec de contrôle d'erreur CRC32 ! %s\n", servers_left ? "Passage au serveur suivant..." : "");
+			ServerDisable(server);
+			SAFE_FREE(file_buffer);
 		} else {
 			return file_buffer;
 		}
 	}
+abort:
+	SAFE_FREE(file_buffer);
 	return NULL;
 }
 
@@ -311,6 +343,13 @@ int patch_update(json_t *patch_info)
 
 	if(json_is_false(json_object_get(patch_info, "update"))) {
 		// Updating deactivated on this patch
+		ret = 1;
+		goto end_update;
+	}
+
+	servers = ServerInit(patch_info);
+	if(!json_is_array(servers)) {
+		// No servers for this patch
 		ret = 2;
 		goto end_update;
 	}
@@ -325,8 +364,6 @@ int patch_update(json_t *patch_info)
 			log_printf("Recherche de mises à jour pour %s...\n", patch_name);
 		}
 	}
-
-	servers = ServerInit(patch_info);
 
 	remote_files_js_buffer = ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
 	if(!remote_files_js_buffer) {

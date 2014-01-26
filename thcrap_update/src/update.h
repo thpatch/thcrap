@@ -9,8 +9,16 @@
 
 #pragma once
 
-int inet_init(void);
-void inet_exit(void);
+typedef enum {
+	GET_OUT_OF_MEMORY = -2,
+	GET_INVALID_PARAMETER = -1,
+	GET_OK = 0,
+	GET_SERVER_ERROR,
+	GET_NOT_FOUND,
+} get_result_t;
+
+int http_init(void);
+void http_exit(void);
 
 // Builds a server object from [start_url].
 json_t* ServerBuild(const char *start_url);

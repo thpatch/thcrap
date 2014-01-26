@@ -22,7 +22,7 @@ const char* PROJECT_NAME_SHORT(void)
 }
 const DWORD PROJECT_VERSION(void)
 {
-	return 0x20140103;
+	return 0x20140127;
 }
 const char* PROJECT_VERSION_STRING(void)
 {
@@ -38,8 +38,8 @@ json_t* runconfig_get(void)
 }
 void runconfig_set(json_t *new_run_cfg)
 {
-	run_cfg = new_run_cfg;
-	json_incref(run_cfg);
+	json_decref(run_cfg);
+	run_cfg = json_incref(new_run_cfg);
 }
 
 void* runconfig_func_get(const char *name)

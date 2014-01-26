@@ -31,7 +31,7 @@ int BP_update_poll(x86_reg_t *regs, json_t *bp_info)
 
 int __stdcall thcrap_init_plugin(json_t *run_cfg)
 {
-	inet_init();
+	http_init();
 
 	BP_update_poll(NULL, NULL);
 	return 0;
@@ -46,7 +46,7 @@ int InitDll(HMODULE hDll)
 void ExitDll(HMODULE hDll)
 {
 	DeleteCriticalSection(&cs_update);
-	inet_exit();
+	http_exit();
 }
 
 // Yes, this _has_ to be included in every project.

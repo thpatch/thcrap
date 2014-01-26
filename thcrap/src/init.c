@@ -59,25 +59,15 @@ json_t* identify_by_size(size_t file_size, json_t *versions)
 	return json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
 }
 
-int IsLatestBuild(const char *build, const char **latest, json_t *run_ver)
+int IsLatestBuild(json_t *build_obj, json_t **latest, json_t *run_ver)
 {
 	json_t *json_latest = json_object_get(run_ver, "latest");
-	size_t json_latest_count = json_array_size(json_latest);
 	size_t i;
-
-	if(!build || !latest || !json_latest) {
+	if(!json_is_string(build_obj) || !latest || !json_latest) {
 		return -1;
 	}
-
-	if(json_latest_count == 0) {
-		*latest = json_string_value(json_latest);
-	}
-
-	for(i = 0; i < json_latest_count; i++) {
-		if(json_is_array(json_latest)) {
-			*latest = json_array_get_string(json_latest, i);
-		}
-		if(*latest && !strcmp(*latest, build)) {
+	json_flex_array_foreach(json_latest, i, *latest) {
+		if(json_equal(build_obj, *latest)) {
 			return 1;
 		}
 	}
@@ -187,15 +177,15 @@ json_t* identify(const char *exe_fn)
 		}
 	} else {
 		// Old version nagbox
-		const char *latest = NULL;
-		if(IsLatestBuild(build, &latest, run_ver) == 0) {
+		json_t *latest = NULL;
+		if(IsLatestBuild(build_obj, &latest, run_ver) == 0 && json_is_string(latest)) {
 			const char *url_update = json_object_get_string(run_ver, "url_update");
 			log_mboxf("Version obsolète détectée", MB_OK | MB_ICONINFORMATION,
 				"Vous utilisez une version obsolète de %s (%s).\n"
 				"\n"
 				"Bien qu'il soit confirmé que %s fonctionne sous cette version, nous vous recommandons de mettre à jour"
 				"votre jeu vers la version officielle la plus récente (%s).%s%s%s%s",
-				game, build, PROJECT_NAME_SHORT(), latest,
+				game, build, PROJECT_NAME_SHORT(), json_string_value(latest),
 				url_update ? "\n\n": "",
 				url_update ? update_url_message : "",
 				url_update ? url_update : "",
@@ -210,17 +200,25 @@ end:
 
 void thcrap_detour(HMODULE hProc)
 {
+	size_t mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
+	VLA(char, mod_name, mod_name_len);
+	GetModuleFileNameU(hProc, mod_name, mod_name_len);
+	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
+
 	win32_detour(hProc);
 	exception_detour(hProc);
 	textdisp_detour(hProc);
 	dialog_detour(hProc);
 	strings_detour(hProc);
 	inject_detour(hProc);
+
+	VLA_FREE(mod_name);
 }
 
 int thcrap_init(const char *run_cfg_fn)
 {
-	json_t *run_ver = NULL;
+	json_t *game_cfg = NULL;
+	json_t *user_cfg = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
 
 	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
@@ -233,7 +231,8 @@ int thcrap_init(const char *run_cfg_fn)
 
 	SetCurrentDirectory(dll_dir);
 
-	run_cfg = json_load_file_report(run_cfg_fn);
+	user_cfg = json_load_file_report(run_cfg_fn);
+	runconfig_set(user_cfg);
 
 	{
 		json_t *console_val = json_object_get(run_cfg, "console");
@@ -247,12 +246,18 @@ int thcrap_init(const char *run_cfg_fn)
 
 	log_printf("Nom du fichier EXE: %s\n", exe_fn);
 
-	run_ver = identify(exe_fn);
-	// Alright, smash our run configuration on top
-	if(run_ver) {
-		json_object_merge(run_ver, run_cfg);
-		json_decref(run_cfg);
-		run_cfg = run_ver;
+	game_cfg = identify(exe_fn);
+	// Merge run configurations in their correct order
+	// (global.js ← <game>.js ← <build>.js ← user.js)
+	if(game_cfg) {
+		json_t *full_cfg = stack_json_resolve("global.js", NULL);
+		if(!full_cfg) {
+			full_cfg = json_object();
+		}
+		json_object_merge(full_cfg, game_cfg);
+		json_object_merge(full_cfg, user_cfg);
+		runconfig_set(full_cfg);
+		json_decref(full_cfg);
 	}
 	log_printf("Initialisation des patchs...\n");
 	{
@@ -268,7 +273,8 @@ int thcrap_init(const char *run_cfg_fn)
 			// Why, hello there, C89.
 			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
 
-			json_array_set_new(patches, i, patch_init(patch_info));
+			patch_info = patch_init(patch_info);
+			json_array_set(patches, i, patch_info);
 
 			cur_min_build = json_object_get_hex(patch_info, "min_build");
 			if(cur_min_build > min_build) {
@@ -281,6 +287,7 @@ int thcrap_init(const char *run_cfg_fn)
 				min_build = cur_min_build;
 				url_engine = json_object_get_string(patch_info, "url_engine");
 			}
+			json_decref(patch_info);
 		}
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
@@ -350,6 +357,11 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 	*/
+	log_printf("--------------------------------------\n");
+	log_printf("Configuration de l'exécution complête:\n");
+	log_printf("--------------------------------------\n");
+	json_dump_log(run_cfg, JSON_INDENT(2));
+	log_printf("--------------------------------------\n");
 	{
 		const char *key;
 		json_t *val = NULL;
@@ -360,21 +372,15 @@ int thcrap_init(const char *run_cfg_fn)
 			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
 		}
 
-		binhacks_apply(json_object_get(run_cfg, "binhacks"), run_funcs);
-		breakpoints_apply();
-
-		// -----------------
-		log_printf("--------------------------------------\n");
-		log_printf("Configuration de l'exécution complête:\n");
-		log_printf("--------------------------------------\n");
-		json_dump_log(run_cfg, JSON_INDENT(2));
-		log_printf("--------------------------------------\n");
-
-		json_object_set_new(run_ver, "funcs", run_funcs);
+		json_object_set_new(run_cfg, "funcs", run_funcs);
+		binhacks_apply(json_object_get(run_cfg, "binhacks"));
+		breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
 	}
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
+	json_decref(user_cfg);
+	json_decref(game_cfg);
 	return 0;
 }
 
@@ -412,12 +418,8 @@ int InitDll(HMODULE hDll)
 void ExitDll(HMODULE hDll)
 {
 	plugins_close();
-
-	// Free our global variables
 	breakpoints_remove();
-
 	run_cfg = json_decref_safe(run_cfg);
-
 	DeleteCriticalSection(&cs_file_access);
 
 #ifdef HAVE_BP_FILE

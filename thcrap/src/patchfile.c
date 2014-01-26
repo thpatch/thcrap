@@ -162,7 +162,7 @@ char* fn_for_patch(const json_t *patch_info, const char *fn)
 	size_t patch_fn_len;
 	char *patch_fn = NULL;
 
-	if(!archive) {
+	if(!json_is_string(archive)) {
 		return NULL;
 	}
 	/*
@@ -264,7 +264,7 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 {
 	json_t *archive_obj = json_object_get(patch_info, "archive");
 	const char *archive = json_string_value(archive_obj);
-	if(!patch_info || !base_path) {
+	if(!patch_info || !base_path || !archive) {
 		return -1;
 	}
 

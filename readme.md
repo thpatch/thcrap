@@ -52,6 +52,8 @@ Jusqu'à maintenant, tout les sous-projets ne sont constitués que d'un fichier 
 
 * [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
+* The scripts in the `scripts` directory are written in [Python 3] (http://python.org/).
+
 ### Licence ###
 
 Le patcheur automatique de la communaute Touhou francophone et traduit par Touhou-Online, et tous les modules l'accompagnant sont la propriété de Touhou-Online ([TO] (http://www.touhou-online.net)), sauf mention contraire. Cela devrait éliminer toute confusion possible à propos des termes de licence, ainsi que toute question.

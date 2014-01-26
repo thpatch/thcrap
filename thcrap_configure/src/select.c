@@ -52,7 +52,7 @@ const char* SearchPatch(json_t *repo_list, const char *orig_repo_id, const json_
 	const char *key;
 
 	// Absolute dependency
-	// (in fact, just a check to see wheter the patch is actually available)
+	// In fact, just a check to see whether [sel] is available.
 	if(repo_id) {
 		remote_repo = json_object_get(repo_list, repo_id);
 		patches = json_object_get(remote_repo, "patches");
@@ -192,7 +192,12 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 			json_array_append_new(list_order, sel);
 
 			if(print_header) {
-				printf("Patchs depuis [%s] (%s) :\n\n", repo_title, repo_id_str);
+				const char *contact = json_object_get_string(repo_js, "contact");
+				printf(
+					"Patchs depuis [%s] (%s) :\n"
+					"\t(Contact: %s)\n"
+					"\n", repo_title, repo_id_str, contact
+				);
 				print_header = 0;
 			}
 			printf(" [%2d] ", ++list_count);
@@ -254,7 +259,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 		json_t *patches = json_object_get(json_val, "patches");
 		json_t *patches_sorted = json_object_get_keys_sorted(patches);
 		json_object_set_new(json_val, "patches_sorted", patches_sorted);
-		buffer_lines += json_array_size(patches_sorted) + 3;
+		buffer_lines += json_array_size(patches_sorted) + 4;
 	}
 	if(!buffer_lines) {
 		log_printf("\nAucun patch disponible -.-\n");

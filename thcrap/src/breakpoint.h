@@ -62,7 +62,7 @@ BreakpointFunc_t breakpoint_func_get(const char *key);
 void breakpoint_process(void);
 
 // Sets up all breakpoints in [breakpoints].
-int breakpoints_apply(void);
+int breakpoints_apply(json_t *breakpoints);
 
 // Removes all breakpoints
 int breakpoints_remove(void);

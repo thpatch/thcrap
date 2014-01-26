@@ -18,6 +18,72 @@ json_t *Layout_Tabs = NULL;
 static HDC text_dc = NULL;
 /// -----------------------
 
+/// Ruby
+/// ----
+
+char *strchr_backwards(char *str, char c)
+{
+	while(*(--str) != c);
+	return str;
+}
+/**
+  * Calculates the X [offset] of a Ruby annotation centered over a section of
+  * text, when [font_dialog] is the font used for regular dialog text, and
+  * [font_ruby] is the font used for the annotation itself.
+  * The th06 MSG patcher already guarantees that we got valid TSA ruby syntax
+  * in [str] when we get here. Leveraging the original system, this breakpoint
+  * then expects the following syntax in [str]:
+  *
+  *		|\tBase text, \t,\tsection to annotate.\t,Annotation text
+  *
+  * The additional \t is used to have a better delimiter for the parameters.
+  * At the beginning, it makes sure that the game's own atoi() call returns 0,
+  * even if a parameter starts with an ASCII digit, while its use at the end
+  * allows ASCII commas inside the parameters.
+  */
+int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	char **str_reg = (char**)json_object_get_register(bp_info, regs, "str");
+	size_t *offset = json_object_get_register(bp_info, regs, "offset");
+	HFONT font_dialog = *(HFONT*)json_object_get_hex(bp_info, "font_dialog");
+	HFONT font_ruby = *(HFONT*)json_object_get_hex(bp_info, "font_ruby");
+	char *str = *str_reg;
+	// ----------
+	if(str && str[0] == '\t' && offset && font_dialog && font_ruby) {
+		char *str_offset = str + 1;
+		char *str_offset_end = strchr(str_offset, '\t');
+		char *str_base = str_offset_end + 3;
+		char *str_base_end = NULL;
+		char *str_ruby = NULL;
+
+		if(!str_offset_end || !str_offset_end[1] == ',' || str_base[-1] != '\t') {
+			return 1;
+		}
+		str_base_end = strchr(str_base, '\t');
+		str_ruby = str_base_end + 2;
+		if(!str_base_end || str_base_end[1] != ',') {
+			return 1;
+		}
+		*str_offset_end = '\0';
+		*str_base_end = '\0';
+		*offset =
+			GetTextExtentForFont(str_offset, font_dialog)
+			+ (GetTextExtentForFont(str_base, font_dialog) / 2)
+			- (GetTextExtentForFont(str_ruby, font_ruby) / 2);
+		*str_offset_end = '\t';
+		*str_base_end = '\t';
+
+		// In case any of our parameters included a comma, adjust the original string
+		// pointer to point to the second comma before the annotation, so that the
+		// stupid game actually gets the right text after its two strchr() calls.
+		*str_reg = strchr_backwards(str_base_end, ',');
+	}
+	return 1;
+}
+/// ----
+
 /// Tokenization
 /// ------------
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
@@ -27,7 +93,6 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 	json_t *ret = NULL;
 	size_t i = 0;
 	int n = 0; // nesting level
-	size_t ind = 0;
 
 	if(!str || !len) {
 		return ret;
@@ -89,6 +154,11 @@ json_t* layout_tokenize(const char *str, size_t len)
 }
 /// ------------
 
+BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
+{
+	return TextOutU(hdc, x, y, json_string_value(str), json_string_length(str));
+}
+
 // Outputs the ruby annotation [top_str], relative to [bottom_str] starting at
 // [bottom_x], at [top_y] with [hFontRuby] on [hdc]. :)
 BOOL layout_textout_ruby(
@@ -106,9 +176,7 @@ BOOL layout_textout_ruby(
 		size_t top_w = GetTextExtentBase(hdc, top_str);
 		int top_x = (bottom_w / 2) - (top_w / 2) + bottom_x;
 
-		ret = TextOutU(
-			hdc, top_x, top_y, json_string_value(top_str), json_string_length(top_str)
-		);
+		ret = layout_textout_raw(hdc, top_x, top_y, top_str);
 
 		SelectObject(hdc, hFontOrig);
 	}
@@ -314,9 +382,7 @@ BOOL WINAPI layout_TextOutU(
 			cur_w = GetTextExtentBase(hdc, token);
 		}
 		if(draw_str) {
-			const char *draw_str_val = json_string_value(draw_str);
-			const size_t draw_str_len = json_string_length(draw_str);
-			ret = TextOutU(hdc, cur_x, orig_y, draw_str_val, draw_str_len);
+			ret = layout_textout_raw(hdc, cur_x, orig_y, draw_str);
 		}
 		if(hFontNew) {
 			SelectObject(hdc, hFontOrig);

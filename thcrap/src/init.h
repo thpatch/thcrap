@@ -9,7 +9,7 @@
 
 #pragma once
 
-int IsLatestBuild(const char *build, const char **latest, json_t *run_ver);
+int IsLatestBuild(json_t *build_obj, json_t **latest, json_t *run_ver);
 
 json_t* identify_by_hash(const char *fn, size_t *exe_size, json_t *versions);
 json_t* identify_by_size(size_t exe_size, json_t *versions);

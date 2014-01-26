@@ -60,22 +60,6 @@ int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT val);
 /// Import Address Table patching
 /// =============================
 
-/// Low-level
-/// ---------
-// Replaces the function pointer of [pThunk] with [new_ptr]
-int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr);
-
-// Searches for [old_func] starting from [pOrigFirstThunk]
-// then patches the function with [new_ptr].
-int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const char *old_func, const void *new_ptr);
-
-// Searches for [old_ptr] starting from [pImpFirstThunk],
-// then patches the function with [new_ptr].
-int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const void *old_ptr, const void *new_ptr);
-/// ---------
-
-/// High-level
-/// ----------
 // Information about a single function to detour
 typedef struct {
 	const char *old_func;
@@ -83,8 +67,24 @@ typedef struct {
 	const void *new_ptr;
 } iat_detour_t;
 
+/// Low-level
+/// ---------
+// Replaces the function pointer of [pThunk] with [new_ptr]
+int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr);
+
+// Sets up [detour] by name or pointer.
+// Returns 1 if the function was found and detoured, 0 if it wasn't.
+int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour);
+int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour);
+/// ---------
+
+/// High-level
+/// ----------
 // Convenience function to set a single iat_detour_t entry
 void iat_detour_set(iat_detour_t* detour, const char *old_func, const void *old_ptr, const void *new_ptr);
+
+// Sets up [detour] using the most appropriate low-level detouring function.
+int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour);
 
 // Detours [detour_count] functions in the [iat_detour] array
 int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detour, const size_t detour_count);

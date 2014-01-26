@@ -81,7 +81,12 @@ unsigned char* StringToUTF16_advance_dst(unsigned char *dst, const char *src)
 int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char *func_name, const void *param, const size_t param_size)
 {
 	// String constants
-	const char *injectError1Format = "Impossible de charger le DLL: %s";
+	const char *injectError1Format =
+		"Could not inject %s.\n"
+		"\n"
+		"If you're running Windows Vista or 7, make sure that you have installed the KB2533623 update:\n"
+		"\n"
+		"\thttp://support.microsoft.com/kb/2533623/";
 	const char *injectError2Format = "Impossible de charger la fonction: %s";
 
 //------------------------------------------//
@@ -103,6 +108,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	FARPROC getprocaddress = GetProcAddress(kernel32, "GetProcAddress");
 	FARPROC exitthread = GetProcAddress(kernel32, "ExitThread");
 	FARPROC freelibraryandexitthread = GetProcAddress(kernel32, "FreeLibraryAndExitThread");
+	int have_kb2269637 = GetProcAddress(kernel32, "SetDefaultDllDirectories") != 0;
 
 	// The workspace we will build the codecave on locally.
 	// workspaceSize gets incremented with the final length of the error strings.
@@ -298,7 +304,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	// Load the injected DLL into this process
 	HMODULE h = LoadLibraryEx(dll_fn, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR);
 	if(!h) {
-		MessageBox(0, "Could not load the dll: mydll.dll", "Error", MB_ICONERROR);
+		MessageBox(0, injectError1, "Error", MB_ICONERROR);
 		ExitThread(1);
 	}
 
@@ -309,7 +315,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	// Get the address of the export function
 	FARPROC p = GetProcAddress(h, func_name);
 	if(!p) {
-		MessageBox(0, "Could not load the function: func_name", "Error", MB_ICONERROR);
+		MessageBox(0, injectError2, "Error", MB_ICONERROR);
 		FreeLibraryAndExitThread(h, 2);
 	}
 
@@ -402,7 +408,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0xD6;
 	}
 
-	if(PathIsRelativeA(dll_fn)) {
+	if(PathIsRelativeA(dll_fn) || !have_kb2269637) {
 		// PUSH 0x00 (dwFlags = 0)
 		*p++ = 0x6a;
 		*p++ = 0x00;

@@ -351,6 +351,14 @@ VOID WINAPI GetStartupInfoU(
 	lpSI->lpTitle = startupinfo_title;
 }
 
+BOOL WINAPI IsDBCSLeadByteFB(
+	__in BYTE TestChar
+)
+{
+	extern UINT fallback_codepage;
+	return IsDBCSLeadByteEx(fallback_codepage, TestChar);
+}
+
 HMODULE WINAPI LoadLibraryU(
 	__in LPCSTR lpLibFileName
 )
