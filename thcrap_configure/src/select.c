@@ -192,7 +192,12 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 			json_array_append_new(list_order, sel);
 
 			if(print_header) {
-				printf("Patches from [%s] (%s):\n\n", repo_title, repo_id_str);
+				const char *contact = json_object_get_string(repo_js, "contact");
+				printf(
+					"Patches from [%s] (%s):\n"
+					"\t(Contact: %s)\n"
+					"\n", repo_title, repo_id_str, contact
+				);
 				print_header = 0;
 			}
 			printf(" [%2d] ", ++list_count);
@@ -254,7 +259,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 		json_t *patches = json_object_get(json_val, "patches");
 		json_t *patches_sorted = json_object_get_keys_sorted(patches);
 		json_object_set_new(json_val, "patches_sorted", patches_sorted);
-		buffer_lines += json_array_size(patches_sorted) + 3;
+		buffer_lines += json_array_size(patches_sorted) + 4;
 	}
 	if(!buffer_lines) {
 		log_printf("\nNo patches available -.-\n");
