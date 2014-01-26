@@ -273,7 +273,8 @@ int thcrap_init(const char *run_cfg_fn)
 			// Why, hello there, C89.
 			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
 
-			json_array_set_new(patches, i, patch_init(patch_info));
+			patch_info = patch_init(patch_info);
+			json_array_set(patches, i, patch_info);
 
 			cur_min_build = json_object_get_hex(patch_info, "min_build");
 			if(cur_min_build > min_build) {
@@ -286,6 +287,7 @@ int thcrap_init(const char *run_cfg_fn)
 				min_build = cur_min_build;
 				url_engine = json_object_get_string(patch_info, "url_engine");
 			}
+			json_decref(patch_info);
 		}
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
