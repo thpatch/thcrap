@@ -203,7 +203,10 @@ void thcrap_detour(HMODULE hProc)
 	size_t mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
 	VLA(char, mod_name, mod_name_len);
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
-	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
+	log_printf(
+		"Application %s des détournements %s en cours...\n",
+		PROJECT_NAME_SHORT(), mod_name
+	);
 
 	win32_detour(hProc);
 	exception_detour(hProc);

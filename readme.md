@@ -52,7 +52,7 @@ Jusqu'à maintenant, tout les sous-projets ne sont constitués que d'un fichier 
 
 * [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
-* The scripts in the `scripts` directory are written in [Python 3] (http://python.org/).
+* Les scripts du dossier `scripts` sont écrits en [Python 3] (http://python.org/).
 
 ### Licence ###
 

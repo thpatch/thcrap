@@ -82,9 +82,9 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 {
 	// String constants
 	const char *injectError1Format =
-		"Could not inject %s.\n"
+		"N'a pas pu faire l'injection %s.\n"
 		"\n"
-		"If you're running Windows Vista or 7, make sure that you have installed the KB2533623 update:\n"
+		"Si vous êtes sous Windows Vista ou 7, soyez certain d'avoir installé la mise à jour KB2533623 :\n"
 		"\n"
 		"\thttp://support.microsoft.com/kb/2533623/";
 	const char *injectError2Format = "Impossible de charger la fonction: %s";

@@ -6,7 +6,7 @@
 # ----
 #
 
-"""Builds and updates a patch repository for the
+"""Construit et met à jour le dépôt des patchs pour le
 Touhou Community Reliant Automatic Patcher."""
 
 import shutil
@@ -20,9 +20,10 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     '-f', '--from',
-    metavar='path',
-    help='Repository source path. Also receives copies of the files.js, '
-         'patch.js and repo.js files modified by this script.',
+    metavar="chemin",
+    help="Chemin d'accès racine du dépôt. Reçoit aussi les copies du fichier "
+         "files.js, les fichiers patch.js et repo.js ont été modifiés par ce "
+         "script.",
     default='.',
     type=str,
     dest='f'
@@ -30,9 +31,9 @@ parser.add_argument(
 
 parser.add_argument(
     '-t', '--to',
-    help='Destination directory. If different from the source directory, '
-         'all files of all patches are copied there.',
-    metavar='path',
+    help="Dossier cible. S'il diffère du dossier source, "
+         "tous les fichiers de tous les patchs sont copiés là.",
+    metavar="chemin",
     default='.',
     type=str,
     dest='t'
@@ -69,11 +70,11 @@ def enter_missing(obj, key, prompt):
 
 
 def sizeof_fmt(num):
-    for x in ['bytes', 'KB', 'MB', 'GB']:
+    for x in ['octet', 'Kio', 'Mio', 'Gio']:
         if num < 1024.0:
             return "%3.1f %s" % (num, x)
         num /= 1024.0
-    return "%3.1f %s" % (num, 'TB')
+    return "%3.1f %s" % (num, 'Tio')
 
 
 def patch_build(patch_id, servers, f, t):
@@ -91,7 +92,8 @@ def patch_build(patch_id, servers, f, t):
     patch_js = json.load(open(f_patch_fn, 'r'))
 
     enter_missing(
-        patch_js, 'title', 'Enter a nice title for "{}": '.format(patch_id)
+        patch_js, 'title',
+        'Saisissez un joli titre pour "{}": '.format(patch_id)
     )
     patch_js['id'] = patch_id
     patch_js['servers'] = []
@@ -140,20 +142,22 @@ def repo_build(f, t):
         repo_js = json.load(open(f_repo_fn, 'r'))
     except FileNotFoundError:
         print(
-            'No repo.js found in the source directory. '
-            'Creating a new repository.'
+            "Aucun fichier repo.js trouvé dans le dossier source. "
+            "Création d'un nouveau dépôt."
         )
         repo_js = {}
 
-    enter_missing(repo_js, 'id', 'Enter a repository ID: ')
-    enter_missing(repo_js, 'title', 'Enter a nice repository title: ')
-    enter_missing(repo_js, 'contact', 'Enter a contact e-mail address: ')
+    enter_missing(repo_js, 'id', "Saisissez l'identifiant d'un dépôt : ")
+    enter_missing(repo_js, 'title', "Saisissez un joli titre de dépôt : ")
+    enter_missing(
+        repo_js, 'contact', "Saisissez une adresse courriel de contact : "
+    )
     json_store('repo.js', repo_js, dirs=[f, t])
 
     while not 'servers' in repo_js or not repo_js['servers'][0].strip():
         repo_js['servers'] = [input(
-            'Enter the public URL of your repository '
-            '(the path that contains repo.js): '
+            "Saisissez l'URL publique de votre dépôt "
+            "(le chemin d'accès qui contient le fichier repo.js) : "
         )]
     repo_js['patches'] = {}
     for root, dirs, files in os.walk(f):
@@ -163,7 +167,7 @@ def repo_build(f, t):
             repo_js['patches'][patch_id] = patch_build(
                 patch_id, repo_js['servers'], f, t
             )
-    print('Done.')
+    print('Terminé.')
     json_store('repo.js', repo_js, dirs=[f, t])
 
 
