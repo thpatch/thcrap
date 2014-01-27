@@ -240,6 +240,24 @@ json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_s
 	return file_json;
 }
 
+size_t patch_json_merge(json_t **json_inout, const json_t *patch_info, const char *fn)
+{
+	size_t file_size = 0;
+	if(fn && json_inout) {
+		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
+		if(json_new) {
+			patch_print_fn(patch_info, fn);
+			if(!*json_inout) {
+				*json_inout = json_new;
+			} else {
+				json_object_merge(*json_inout, json_new);
+				json_decref(json_new);
+			}
+		}
+	}
+	return file_size;
+}
+
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json)
 {
 	char *file_buffer = NULL;

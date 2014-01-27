@@ -9,25 +9,6 @@
 
 #include "thcrap.h"
 
-// Helper function for stack_json_resolve.
-size_t stack_json_load(json_t **json_inout, json_t *patch_info, const char *fn)
-{
-	size_t file_size = 0;
-	if(fn && json_inout) {
-		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
-		if(json_new) {
-			patch_print_fn(patch_info, fn);
-			if(!*json_inout) {
-				*json_inout = json_new;
-			} else {
-				json_object_merge(*json_inout, json_new);
-				json_decref(json_new);
-			}
-		}
-	}
-	return file_size;
-}
-
 json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
 	char *fn_build = NULL;
@@ -44,8 +25,8 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	log_printf("(JSON) Resolving %s... ", fn);
 
 	json_array_foreach(patch_array, i, patch_obj) {
-		json_size += stack_json_load(&ret, patch_obj, fn);
-		json_size += stack_json_load(&ret, patch_obj, fn_build);
+		json_size += patch_json_merge(&ret, patch_obj, fn);
+		json_size += patch_json_merge(&ret, patch_obj, fn_build);
 	}
 	if(!ret) {
 		log_printf("not found\n");

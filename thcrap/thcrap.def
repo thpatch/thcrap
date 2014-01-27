@@ -88,6 +88,7 @@ EXPORTS
 	patch_file_blacklisted
 	patch_file_load
 	patch_json_load
+	patch_json_merge
 	patch_file_store
 	patch_json_store
 

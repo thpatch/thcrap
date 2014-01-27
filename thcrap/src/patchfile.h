@@ -79,6 +79,10 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 // If given, [file_size] receives the size of the input file.
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size);
 
+// Loads [fn] from the patch [patch_info] and merges it into [json_inout].
+// Returns the file size of [fn].
+size_t patch_json_merge(json_t **json_inout, const json_t *patch_info, const char *fn);
+
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size);
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json);
 /// ------------------------
