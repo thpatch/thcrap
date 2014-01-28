@@ -75,8 +75,6 @@ EXPORTS
 	layout_match
 	layout_tokenize
 
-	layout_textout_ruby
-
 	layout_SelectObject
 	layout_CreateCompatibleDC
 	layout_DeleteDC

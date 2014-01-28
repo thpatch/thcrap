@@ -159,30 +159,6 @@ BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 	return TextOutU(hdc, x, y, json_string_value(str), json_string_length(str));
 }
 
-// Outputs the ruby annotation [top_str], relative to [bottom_str] starting at
-// [bottom_x], at [top_y] with [hFontRuby] on [hdc]. :)
-BOOL layout_textout_ruby(
-	__in HDC hdc,
-	__in int bottom_x,
-	__in const json_t *bottom_str,
-	__in int top_y,
-	__in const json_t *top_str,
-	__in HFONT hFontRuby
-) {
-	BOOL ret = 0;
-	if(json_is_string(bottom_str) && json_is_string(top_str)) {
-		size_t bottom_w = GetTextExtentBase(hdc, bottom_str);
-		HGDIOBJ hFontOrig = SelectObject(hdc, hFontRuby);
-		size_t top_w = GetTextExtentBase(hdc, top_str);
-		int top_x = (bottom_w / 2) - (top_w / 2) + bottom_x;
-
-		ret = layout_textout_raw(hdc, top_x, top_y, top_str);
-
-		SelectObject(hdc, hFontOrig);
-	}
-	return ret;
-}
-
 /// Hooked functions
 /// ----------------
 // Games prior to MoF call this every time a text is rendered.
@@ -225,7 +201,6 @@ BOOL WINAPI layout_TextOutU(
 ) {
 	HBITMAP hBitmap = (HBITMAP)GetCurrentObject(hdc, OBJ_BITMAP);
 	HFONT hFontOrig = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
-	HFONT hFontRuby = NULL;
 
 	LOGFONT font_orig;
 
@@ -236,7 +211,6 @@ BOOL WINAPI layout_TextOutU(
 
 	size_t i = 0;
 	int cur_x = orig_x;
-	int ruby_y = 0;
 	size_t cur_tab = 0;
 
 	if(!lpString || !c) {
@@ -261,26 +235,6 @@ BOOL WINAPI layout_TextOutU(
 	}
 
 	tokens = layout_tokenize(lpString, c);
-
-	// Preprocessing
-	json_array_foreach(tokens, i, token) {
-		if(json_is_array(token)) {
-			const char *cmd = json_array_get_string(token, 0);
-			// If we have ruby, derive a smaller font from the current one
-			// and shift down orig_y
-			if(!hFontRuby && strchr(cmd, 'f')) {
-				LOGFONT font_ruby;
-				memcpy(&font_ruby, &font_orig, sizeof(LOGFONT));
-				font_ruby.lfHeight /= 2.25;
-				font_ruby.lfWidth /= 2.25;
-				font_ruby.lfWeight = 0;
-				font_ruby.lfQuality = NONANTIALIASED_QUALITY;
-				hFontRuby = CreateFontIndirect(&font_ruby);
-				ruby_y = orig_y;
-				orig_y += font_ruby.lfHeight / 2.5;
-			}
-		}
-	}
 
 	// Layout!
 	json_array_foreach(tokens, i, token) {
@@ -358,11 +312,6 @@ BOOL WINAPI layout_TextOutU(
 						font_new.lfItalic = TRUE;
 						font_recreate = 1;
 						break;
-					case 'f':
-						// Ruby
-						layout_textout_ruby(hdc, cur_x, p1, ruby_y, p2, hFontRuby);
-						tab_end = 0;
-						break;
 				}
 				p++;
 			}
@@ -388,9 +337,6 @@ BOOL WINAPI layout_TextOutU(
 			hFontNew = NULL;
 		}
 		cur_x += cur_w;
-	}
-	if(hFontRuby) {
-		DeleteObject(hFontRuby);
 	}
 	json_decref(tokens);
 	return ret;
