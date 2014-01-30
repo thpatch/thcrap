@@ -270,15 +270,15 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 	}
 
 	if(json_is_array(state->diff_lines)) {
-		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line++);
-		if(validate_line(json_line)) {
+		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line);
+		int ret = validate_line(json_line);
+		if(ret) {
 			rep_func(cmd_out, state, json_line);
 			state->last_line_cmd = cmd_out;
 			state->last_line_op = cur_op;
-			return 1;
 		}
-		// Line not present in the patch file, remove it
-		return 0;
+		state->cur_line++;
+		return ret;
 	}
 	// If this dialog box contains no lines to patch, take original line
 	return 1;
