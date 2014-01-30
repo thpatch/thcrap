@@ -91,7 +91,7 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 	size_t i;
 	json_t *dep;
 
-	json_array_foreach(dependencies, i, dep) {
+	json_flex_array_foreach(dependencies, i, dep) {
 		const char *dep_str = json_string_value(dep);
 		json_t *dep_sel = dep_to_sel(dep_str);
 		json_t *dep_repo = json_array_get(dep_sel, 0);
@@ -134,7 +134,7 @@ int RemovePatch(json_t *sel_stack, size_t id)
 		size_t j;
 		json_t *dep;
 
-		json_array_foreach(dependencies, j, dep) {
+		json_flex_array_foreach(dependencies, j, dep) {
 			if(json_equal(patch_id, dep)) {
 				ret += RemovePatch(sel_stack, id);
 				i--;
