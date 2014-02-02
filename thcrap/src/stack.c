@@ -19,6 +19,15 @@ json_t* resolve_chain(const char *fn)
 	return ret;
 }
 
+json_t* resolve_chain_game(const char *fn)
+{
+	char *fn_common = fn_for_game(fn);
+	const char *fn_common_ptr = fn_common ? fn_common : fn;
+	json_t *ret = resolve_chain(fn_common_ptr);
+	SAFE_FREE(fn_common);
+	return ret;
+}
+
 json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size)
 {
 	json_t *ret = NULL;
@@ -52,7 +61,7 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	return ret;
 }
 
-void* stack_game_file_resolve_chain(const json_t *chain, size_t *file_size)
+void* stack_file_resolve_chain(const json_t *chain, size_t *file_size)
 {
 	void *ret = NULL;
 	int i;
@@ -82,14 +91,11 @@ void* stack_game_file_resolve_chain(const json_t *chain, size_t *file_size)
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
 	void *ret = NULL;
-	char *fn_common = fn_for_game(fn);
-	const char *fn_common_ptr = fn_common ? fn_common : fn;
-	json_t *chain = resolve_chain(fn_common_ptr);
+	json_t *chain = resolve_chain_game(fn);
 	if(json_array_size(chain)) {
-		log_printf("(Data) Resolving %s... ", fn_common_ptr);
-		ret = stack_game_file_resolve_chain(chain, file_size);
+		log_printf("(Data) Resolving %s... ", json_array_get_string(chain, 0));
+		ret = stack_file_resolve_chain(chain, file_size);
 	}
-	SAFE_FREE(fn_common);
 	json_decref(chain);
 	return ret;
 }

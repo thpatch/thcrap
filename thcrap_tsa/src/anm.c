@@ -537,27 +537,25 @@ int stack_game_png_apply(anm_entry_t *entry)
 {
 	int ret = -1;
 	if(entry && entry->hasbitmap && entry->thtx && entry->name) {
-		char *fn_common = fn_for_game(entry->name);
-		const char *fn_common_ptr = fn_common ? fn_common : entry->name;
-
 		json_t *patch_array = json_object_get(runconfig_get(), "patches");
-		json_t *chain = resolve_chain(fn_common_ptr);
+		json_t *chain = resolve_chain_game(entry->name);
 		size_t i;
 		json_t *patch_info;
 		ret = 0;
-
-		log_printf("(PNG) Resolving %s... ", fn_common_ptr);
-		json_array_foreach(patch_array, i, patch_info) {
-			size_t j;
-			json_t *fn_obj;
-			json_array_foreach(chain, j, fn_obj) {
-				if(!patch_png_apply(entry, patch_info, json_string_value(fn_obj))) {
-					ret = 1;
+		if(json_array_size(chain)) {
+			log_printf("(PNG) Resolving %s... ", json_array_get_string(chain, 0));
+			json_array_foreach(patch_array, i, patch_info) {
+				size_t j;
+				json_t *fn_obj;
+				json_array_foreach(chain, j, fn_obj) {
+					const char *fn = json_string_value(fn_obj);
+					if(!patch_png_apply(entry, patch_info, fn)) {
+						ret = 1;
+					}
 				}
 			}
+			log_printf(ret ? "\n" : "not found\n");
 		}
-		log_printf(ret ? "\n" : "not found\n");
-		SAFE_FREE(fn_common);
 		json_decref(chain);
 	}
 	return ret;

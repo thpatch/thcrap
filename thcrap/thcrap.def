@@ -98,10 +98,11 @@ EXPORTS
 	; Stack
 	; -----
 	resolve_chain
+	resolve_chain_game
 
 	stack_json_resolve_chain
 	stack_json_resolve
-	stack_game_file_resolve_chain
+	stack_file_resolve_chain
 	stack_game_file_resolve
 	stack_game_json_resolve
 
