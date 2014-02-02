@@ -391,18 +391,6 @@ int InitDll(HMODULE hDll)
 	InitializeCriticalSection(&cs_file_access);
 	exception_init();
 
-#ifdef _WIN32
-#ifdef _DEBUG
-	// Activate memory leak debugging
-	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
-	_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDOUT);
-	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
-#endif
-#endif
-
 	hThcrap = hDll;
 
 	// Store the DLL's own directory to load plug-ins later
