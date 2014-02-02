@@ -74,6 +74,19 @@ int IsLatestBuild(json_t *build_obj, json_t **latest, json_t *run_ver)
 	return 0;
 }
 
+json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
+{
+	json_t *ret = NULL;
+	json_t *chain = resolve_chain(fn);
+	if(json_array_size(chain)) {
+		json_array_insert_new(chain, 0, json_string("global.js"));
+		log_printf("(JSON) Resolving configuration for %s... ", fn);
+		ret = stack_json_resolve_chain(chain, file_size);
+	}
+	json_decref(chain);
+	return ret;
+}
+
 json_t* identify(const char *exe_fn)
 {
 	size_t exe_size;
@@ -131,10 +144,10 @@ json_t* identify(const char *exe_fn)
 		size_t ver_fn_len = json_string_length(game_obj) + 1 + strlen(".js") + 1;
 		VLA(char, ver_fn, ver_fn_len);
 		sprintf(ver_fn, "%s.js", game);
-		run_ver = stack_json_resolve(ver_fn, NULL);
+		run_ver = stack_cfg_resolve(ver_fn, NULL);
 		VLA_FREE(ver_fn);
 	} else {
-		run_ver = stack_json_resolve(game, NULL);
+		run_ver = stack_cfg_resolve(game, NULL);
 	}
 
 	// Ensure that we have a configuration with a "game" key
@@ -217,7 +230,6 @@ void thcrap_detour(HMODULE hProc)
 
 int thcrap_init(const char *run_cfg_fn)
 {
-	json_t *game_cfg = NULL;
 	json_t *user_cfg = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
 
@@ -245,19 +257,13 @@ int thcrap_init(const char *run_cfg_fn)
 	thcrap_detour(hProc);
 
 	log_printf("EXE file name: %s\n", exe_fn);
-
-	game_cfg = identify(exe_fn);
-	// Merge run configurations in their correct order
-	// (global.js ← <game>.js ← <build>.js ← user.js)
-	if(game_cfg) {
-		json_t *full_cfg = stack_json_resolve("global.js", NULL);
-		if(!full_cfg) {
-			full_cfg = json_object();
+	{
+		json_t *full_cfg = identify(exe_fn);
+		if(full_cfg) {
+			json_object_merge(full_cfg, user_cfg);
+			runconfig_set(full_cfg);
+			json_decref(full_cfg);
 		}
-		json_object_merge(full_cfg, game_cfg);
-		json_object_merge(full_cfg, user_cfg);
-		runconfig_set(full_cfg);
-		json_decref(full_cfg);
 	}
 	log_printf("Initializing patches...\n");
 	{
@@ -379,7 +385,6 @@ int thcrap_init(const char *run_cfg_fn)
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	json_decref(user_cfg);
-	json_decref(game_cfg);
 	return 0;
 }
 
