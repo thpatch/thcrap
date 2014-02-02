@@ -9,69 +9,88 @@
 
 #include "thcrap.h"
 
-json_t* stack_json_resolve(const char *fn, size_t *file_size)
+json_t* resolve_chain(const char *fn)
 {
+	json_t *ret = fn ? json_array() : NULL;
 	char *fn_build = fn_for_build(fn);
+	json_array_append_new(ret, json_string(fn));
+	json_array_append_new(ret, json_string(fn_build));
+	SAFE_FREE(fn_build);
+	return ret;
+}
+
+json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size)
+{
 	json_t *ret = NULL;
 	json_t *patch_array = json_object_get(run_cfg, "patches");
 	json_t *patch_info;
 	size_t i;
 	size_t json_size = 0;
-
-	if(!fn) {
-		return NULL;
-	}
-	log_printf("(JSON) Resolving %s... ", fn);
-
 	json_array_foreach(patch_array, i, patch_info) {
-		json_size += patch_json_merge(&ret, patch_info, fn);
-		json_size += patch_json_merge(&ret, patch_info, fn_build);
+		json_t *fn_obj;
+		size_t j;
+		json_array_foreach(chain, j, fn_obj) {
+			json_size += patch_json_merge(&ret, patch_info, json_string_value(fn_obj));
+		}
 	}
 	log_printf(ret ? "\n" : "not found\n");
 	if(file_size) {
 		*file_size = json_size;
 	}
-	SAFE_FREE(fn_build);
+	return ret;
+}
+
+json_t* stack_json_resolve(const char *fn, size_t *file_size)
+{
+	json_t *ret = NULL;
+	json_t *chain = resolve_chain(fn);
+	if(json_array_size(chain)) {
+		log_printf("(JSON) Resolving %s... ", fn);
+		ret = stack_json_resolve_chain(chain, file_size);
+	}
+	json_decref(chain);
+	return ret;
+}
+
+void* stack_game_file_resolve_chain(const json_t *chain, size_t *file_size)
+{
+	void *ret = NULL;
+	int i;
+	json_t *patch_array = json_object_get(run_cfg, "patches");
+	size_t patch_array_len = json_array_size(patch_array);
+	size_t chain_len = json_array_size(chain);
+
+	// Both the patch stack and the chain have to be traversed backwards: Later
+	// patches take priority over earlier ones, and build-specific files are
+	// preferred over generic ones.
+	for(i = patch_array_len - 1; i > -1 && !ret; i--) {
+		json_t *patch_info = json_array_get(patch_array, i);
+		const char *cur_fn = NULL;
+		int j;
+		for(j = chain_len - 1; j > -1 && !ret; j--) {
+			cur_fn = json_array_get_string(chain, j);
+			ret = patch_file_load(patch_info, cur_fn, file_size);
+		}
+		if(ret) {
+			patch_print_fn(patch_info, cur_fn);
+		}
+	}
+	log_printf(ret ? "\n" : "not found\n");
 	return ret;
 }
 
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
 	void *ret = NULL;
-	int i;
-	json_t *patch_array = json_object_get(run_cfg, "patches");
-
-	// Meh, const correctness.
 	char *fn_common = fn_for_game(fn);
 	const char *fn_common_ptr = fn_common ? fn_common : fn;
-	char *fn_build = fn_for_build(fn_common_ptr);
-
-	if(!fn) {
-		return NULL;
-	}
-
-	log_printf("(Data) Resolving %s... ", fn_common_ptr);
-	// Patch stack has to be traversed backwards because later patches take
-	// priority over earlier ones, and build-specific files are preferred.
-	for(i = json_array_size(patch_array) - 1; i > -1 && !ret; i--) {
-		json_t *patch_info = json_array_get(patch_array, i);
-		const char *log_fn = NULL;
-
-		if(fn_build) {
-			ret = patch_file_load(patch_info, fn_build, file_size);
-			log_fn = fn_build;
-		}
-		if(!ret) {
-			ret = patch_file_load(patch_info, fn_common_ptr, file_size);
-			log_fn = fn_common_ptr;
-		}
-		if(ret) {
-			patch_print_fn(patch_info, log_fn);
-		}
+	json_t *chain = resolve_chain(fn_common_ptr);
+	if(json_array_size(chain)) {
+		log_printf("(Data) Resolving %s... ", fn_common_ptr);
+		ret = stack_game_file_resolve_chain(chain, file_size);
 	}
 	SAFE_FREE(fn_common);
-	SAFE_FREE(fn_build);
-	log_printf(ret ? "\n" : "not found\n");
+	json_decref(chain);
 	return ret;
 }
 

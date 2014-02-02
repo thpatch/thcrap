@@ -539,25 +539,26 @@ int stack_game_png_apply(anm_entry_t *entry)
 	if(entry && entry->hasbitmap && entry->thtx && entry->name) {
 		char *fn_common = fn_for_game(entry->name);
 		const char *fn_common_ptr = fn_common ? fn_common : entry->name;
-		char *fn_build = fn_for_build(fn_common_ptr);
 
 		json_t *patch_array = json_object_get(runconfig_get(), "patches");
+		json_t *chain = resolve_chain(fn_common_ptr);
 		size_t i;
 		json_t *patch_info;
 		ret = 0;
 
 		log_printf("(PNG) Resolving %s... ", fn_common_ptr);
 		json_array_foreach(patch_array, i, patch_info) {
-			if(!patch_png_apply(entry, patch_info, fn_common_ptr)) {
-				ret = 1;
-			}
-			if(!patch_png_apply(entry, patch_info, fn_build)) {
-				ret = 1;
+			size_t j;
+			json_t *fn_obj;
+			json_array_foreach(chain, j, fn_obj) {
+				if(!patch_png_apply(entry, patch_info, json_string_value(fn_obj))) {
+					ret = 1;
+				}
 			}
 		}
 		log_printf(ret ? "\n" : "not found\n");
 		SAFE_FREE(fn_common);
-		SAFE_FREE(fn_build);
+		json_decref(chain);
 	}
 	return ret;
 }
