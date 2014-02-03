@@ -99,6 +99,7 @@ EXPORTS
 	; -----
 	resolve_chain
 	resolve_chain_game
+	stack_chain_iterate
 
 	stack_json_resolve_chain
 	stack_json_resolve

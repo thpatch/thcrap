@@ -9,6 +9,21 @@
 
 #pragma once
 
+// Iteration direction
+typedef enum {
+	SCI_BACKWARDS = -1,
+	SCI_FORWARDS = 1
+} sci_dir_t;
+
+// Iteration state. [patch_info] and [fn] hold the current patch and chain
+// file name after each call to stack_chain_iterate().
+typedef struct {
+	const json_t *patches;
+	int step;
+	json_t *patch_info;
+	const char *fn;
+} stack_chain_iterate_t;
+
 /// File resolution
 /// ---------------
 // Creates a JSON array containing the the default resolving chain for [fn].
@@ -20,6 +35,10 @@ json_t* resolve_chain(const char *fn);
 
 // Builds a chain for a game-local file name.
 json_t* resolve_chain_game(const char *fn);
+
+// Repeatedly iterate through the stack using the given resolving [chain].
+// [sci] keeps the iteration state.
+int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction);
 
 // Walks through the patch stack configured in <run_cfg>,
 // merging every file with the filename [fn] into a single JSON object.

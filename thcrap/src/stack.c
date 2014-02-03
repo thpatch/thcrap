@@ -28,19 +28,38 @@ json_t* resolve_chain_game(const char *fn)
 	return ret;
 }
 
+int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction)
+{
+	int ret = 0;
+	size_t chain_size = json_array_size(chain);
+	if(sci && direction && chain_size) {
+		int chain_idx;
+		// Setup
+		if(!sci->patches) {
+			sci->patches = json_object_get(run_cfg, "patches");
+			sci->step =
+				(direction < 0) ? (json_array_size(sci->patches) * chain_size) - 1 : 0
+			;
+		} else {
+			sci->step += direction;
+		}
+		chain_idx = sci->step % chain_size;
+		sci->fn = json_array_get_string(chain, chain_idx);
+		if(chain_idx == (direction < 0) * (chain_size - 1)) {
+			sci->patch_info = json_array_get(sci->patches, sci->step / chain_size);
+		}
+		ret = sci->patch_info != NULL;
+	}
+	return ret;
+}
+
 json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size)
 {
 	json_t *ret = NULL;
-	json_t *patch_array = json_object_get(run_cfg, "patches");
-	json_t *patch_info;
-	size_t i;
+	stack_chain_iterate_t sci = {0};
 	size_t json_size = 0;
-	json_array_foreach(patch_array, i, patch_info) {
-		json_t *fn_obj;
-		size_t j;
-		json_array_foreach(chain, j, fn_obj) {
-			json_size += patch_json_merge(&ret, patch_info, json_string_value(fn_obj));
-		}
+	while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
+		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
 	}
 	log_printf(ret ? "\n" : "not found\n");
 	if(file_size) {
@@ -64,24 +83,15 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 void* stack_file_resolve_chain(const json_t *chain, size_t *file_size)
 {
 	void *ret = NULL;
-	int i;
-	json_t *patch_array = json_object_get(run_cfg, "patches");
-	size_t patch_array_len = json_array_size(patch_array);
-	size_t chain_len = json_array_size(chain);
+	stack_chain_iterate_t sci = {0};
 
 	// Both the patch stack and the chain have to be traversed backwards: Later
 	// patches take priority over earlier ones, and build-specific files are
 	// preferred over generic ones.
-	for(i = patch_array_len - 1; i > -1 && !ret; i--) {
-		json_t *patch_info = json_array_get(patch_array, i);
-		const char *cur_fn = NULL;
-		int j;
-		for(j = chain_len - 1; j > -1 && !ret; j--) {
-			cur_fn = json_array_get_string(chain, j);
-			ret = patch_file_load(patch_info, cur_fn, file_size);
-		}
+	while(stack_chain_iterate(&sci, chain, SCI_BACKWARDS) && !ret) {
+		ret = patch_file_load(sci.patch_info, sci.fn, file_size);
 		if(ret) {
-			patch_print_fn(patch_info, cur_fn);
+			patch_print_fn(sci.patch_info, sci.fn);
 		}
 	}
 	log_printf(ret ? "\n" : "not found\n");
