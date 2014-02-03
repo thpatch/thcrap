@@ -267,36 +267,19 @@ int thcrap_init(const char *run_cfg_fn)
 	}
 	log_printf("Initializing patches...\n");
 	{
+		DWORD min_build = json_object_get_hex(run_cfg, "thcrap_version_min");
 		json_t *patches = json_object_get(run_cfg, "patches");
 		size_t i;
 		json_t *patch_info;
-		DWORD min_build = 0;
-		const char *url_engine = NULL;
-
 		json_array_foreach(patches, i, patch_info) {
-			DWORD cur_min_build;
-
-			// Why, hello there, C89.
-			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
-
+			patch_rel_to_abs(patch_info, run_cfg_fn);
 			patch_info = patch_init(patch_info);
 			json_array_set(patches, i, patch_info);
-
-			cur_min_build = json_object_get_hex(patch_info, "min_build");
-			if(cur_min_build > min_build) {
-				// ... OK, there *could* be the case where people stack patches from
-				// different repositories which all require their own fork of the
-				// patcher, and then one side updates their fork, causing this prompt,
-				// and the users overwrite the modifications of another fork which they
-				// need for running a certain patch configuration in the first place...
-				// Let's just hope that it will never get that complicated.
-				min_build = cur_min_build;
-				url_engine = json_object_get_string(patch_info, "url_engine");
-			}
 			json_decref(patch_info);
 		}
 		if(min_build > PROJECT_VERSION()) {
 			char format[11];
+			const char *url_engine = json_object_get_string(patch_info, "thcrap_url");
 			str_hexdate_format(format, min_build);
 			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 				"A new version (%s) of the %s is available.\n"
