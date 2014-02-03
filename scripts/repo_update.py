@@ -58,8 +58,10 @@ def json_store(fn, obj, dirs=['']):
         os.makedirs(os.path.dirname(full_fn), exist_ok=True)
         with open(full_fn, 'w') as file:
             json.dump(
-                obj, file, ensure_ascii=False, sort_keys=True, indent='\t'
+                obj, file, ensure_ascii=False, sort_keys=True, indent='\t',
+                separators=(',', ': ')
             )
+            file.write('\n')
 
 
 def enter_missing(obj, key, prompt):
