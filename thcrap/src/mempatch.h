@@ -15,18 +15,11 @@
 BOOL VirtualCheckRegion(const void *ptr, const size_t len);
 BOOL VirtualCheckCode(const void *ptr);
 
-// Writes [val] to [ptr] in the address space of the current
-// (or another, in case of the *Ex functions) process),
-// if the current value in [ptr] equals [prev].
+// Writes [len] bytes from [new] to [ptr] in the address space of the current
+// or another process if the current value in [ptr] equals [prev].
 int PatchRegionNoCheck(void *ptr, const void *New, size_t len);
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
 int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
-int PatchBYTE(void *ptr, BYTE Prev, BYTE val);
-int PatchDWORD(void *ptr, DWORD Prev, DWORD val);
-int PatchFLOAT(void *ptr, FLOAT Prev, FLOAT val);
-int PatchBYTEEx(HANDLE hProcess, void *ptr, BYTE Prev, BYTE val);
-int PatchDWORDEx(HANDLE hProcess, void *ptr, DWORD Prev, DWORD val);
-int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT val);
 
 /// DLL function macros
 /// -------------------

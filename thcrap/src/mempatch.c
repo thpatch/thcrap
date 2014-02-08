@@ -70,36 +70,6 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 	return byte_ret != len;
 }
 
-int PatchBYTE(void *ptr, BYTE Prev, BYTE Val)
-{
-	return PatchRegion(ptr, (void*)Prev, (void*)Val, sizeof(BYTE));
-}
-
-int PatchDWORD(void *ptr, DWORD Prev, DWORD Val)
-{
-	return PatchRegion(ptr, (void*)Prev, (void*)Val, sizeof(DWORD));
-}
-
-int PatchFLOAT(void *ptr, FLOAT Prev, FLOAT Val)
-{
-	return PatchRegion(ptr, &Prev, &Val, sizeof(FLOAT));
-}
-
-int PatchBYTEEx(HANDLE hProcess, void *ptr, BYTE Prev, BYTE Val)
-{
-	return PatchRegionEx(hProcess, ptr, (void*)Prev, (void*)Val, sizeof(BYTE));
-}
-
-int PatchDWORDEx(HANDLE hProcess, void *ptr, DWORD Prev, DWORD Val)
-{
-	return PatchRegionEx(hProcess, ptr, (void*)Prev, (void*)Val, sizeof(DWORD));
-}
-
-int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT Val)
-{
-	return PatchRegionEx(hProcess, ptr, &Prev, &Val, sizeof(FLOAT));
-}
-
 /// Import Address Table detouring
 /// ==============================
 
