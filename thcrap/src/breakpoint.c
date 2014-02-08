@@ -218,7 +218,7 @@ int breakpoint_apply(breakpoint_local_t *bp)
 		bp_asm[0] = 0xe8;
 		memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
 
-		PatchRegionNoCheck(bp->addr, bp_asm, bp->cavesize);
+		PatchRegion(bp->addr, NULL, bp_asm, bp->cavesize);
 		log_printf("OK\n");
 		return 0;
 	}

@@ -23,19 +23,6 @@ BOOL VirtualCheckCode(const void *ptr)
 	return VirtualCheckRegion(ptr, 1);
 }
 
-int PatchRegionNoCheck(void *ptr, const void *New, size_t len)
-{
-	MEMORY_BASIC_INFORMATION mbi;
-	DWORD oldProt;
-	int ret = 0;
-
-	VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
-	memcpy(ptr, New, len);
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);
-	return ret;
-}
-
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
@@ -44,7 +31,7 @@ int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len)
 
 	VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
 	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
-	if(!memcmp(ptr, Prev, len)) {
+	if(Prev ? !memcmp(ptr, Prev, len) : 1) {
 		memcpy(ptr, New, len);
 		ret = 1;
 	}
@@ -62,7 +49,7 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 	VirtualQueryEx(hProcess, ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
 	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
 	ReadProcessMemory(hProcess, ptr, old_val, len, &byte_ret);
-	if(!memcmp(old_val, Prev, len)) {
+	if(Prev ? !memcmp(old_val, Prev, len) : 1) {
 		WriteProcessMemory(hProcess, ptr, New, len, &byte_ret);
 	}
 	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);

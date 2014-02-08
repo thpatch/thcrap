@@ -174,7 +174,7 @@ int binhacks_apply(json_t *binhacks)
 			if(binhack_render(asm_buf, addr, code)) {
 				continue;
 			}
-			PatchRegionNoCheck((void*)addr, asm_buf, asm_size);
+			PatchRegion((void*)addr, NULL, asm_buf, asm_size);
 			VLA_FREE(asm_buf);
 			log_printf("OK\n");
 		}
