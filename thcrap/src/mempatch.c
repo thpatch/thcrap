@@ -64,13 +64,7 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 /// ---------
 int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 {
-	MEMORY_BASIC_INFORMATION mbi;
-	DWORD oldProt;
-	VirtualQuery(&pThunk->u1.Function, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
-	pThunk->u1.Function = (DWORD)new_ptr;
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);
-	return 1;
+	return PatchRegion(&pThunk->u1.Function, NULL, &new_ptr, sizeof(new_ptr));
 }
 
 int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
