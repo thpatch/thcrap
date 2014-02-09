@@ -50,7 +50,7 @@ def patch_files_filter(files):
 
 
 def json_load(fn):
-    with open(fn, 'r') as file:
+    with open(fn, 'r', encoding='utf-8') as file:
         return json.load(file)
 
 
@@ -61,7 +61,7 @@ def json_store(fn, obj, dirs=['']):
     for i in dirs:
         full_fn = os.path.join(i, fn)
         os.makedirs(os.path.dirname(full_fn), exist_ok=True)
-        with open(full_fn, 'w') as file:
+        with open(full_fn, 'w', encoding='utf-8') as file:
             json.dump(
                 obj, file, ensure_ascii=False, sort_keys=True, indent='\t',
                 separators=(',', ': ')
