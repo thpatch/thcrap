@@ -49,6 +49,11 @@ def patch_files_filter(files):
             yield i
 
 
+def json_load(fn):
+    with open(fn, 'r') as file:
+        return json.load(file)
+
+
 def json_store(fn, obj, dirs=['']):
     """Saves the JSON object [obj] to [fn], creating all necessary
     directories in the process. If [dirs] is given, the function is
@@ -89,7 +94,7 @@ def patch_build(patch_id, servers, f, t):
 
     # Prepare patch.js.
     f_patch_fn = os.path.join(f_path, 'patch.js')
-    patch_js = json.load(open(f_patch_fn, 'r'))
+    patch_js = json_load(f_patch_fn)
 
     enter_missing(
         patch_js, 'title', 'Enter a nice title for "{}": '.format(patch_id)
@@ -138,7 +143,7 @@ def patch_build(patch_id, servers, f, t):
 def repo_build(f, t):
     try:
         f_repo_fn = os.path.join(f, 'repo.js')
-        repo_js = json.load(open(f_repo_fn, 'r'))
+        repo_js = json_load(f_repo_fn)
     except FileNotFoundError:
         print(
             'No repo.js found in the source directory. '
