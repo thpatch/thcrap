@@ -371,6 +371,46 @@ HMODULE WINAPI LoadLibraryU(
 	return ret;
 }
 
+BOOL WINAPI MoveFileU(
+	__in LPCSTR lpExistingFileName,
+	__in LPCSTR lpNewFileName
+)
+{
+	return MoveFileEx(lpExistingFileName, lpNewFileName, MOVEFILE_COPY_ALLOWED);
+}
+
+BOOL WINAPI MoveFileExU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in DWORD dwFlags
+)
+{
+	return MoveFileWithProgress(
+		lpExistingFileName, lpNewFileName, NULL, NULL, dwFlags
+	);
+}
+
+BOOL WINAPI MoveFileWithProgressU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in_opt LPPROGRESS_ROUTINE lpProgressRoutine,
+	__in_opt LPVOID lpData,
+	__in DWORD dwFlags
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(lpExistingFileName);
+	WCHAR_T_DEC(lpNewFileName);
+	WCHAR_T_CONV_VLA(lpExistingFileName);
+	WCHAR_T_CONV_VLA(lpNewFileName);
+	ret = MoveFileWithProgressW(
+		lpExistingFileName_w, lpNewFileName_w, lpProgressRoutine, lpData, dwFlags
+	);
+	WCHAR_T_FREE(lpExistingFileName);
+	WCHAR_T_FREE(lpNewFileName);
+	return ret;
+}
+
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 )

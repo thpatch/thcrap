@@ -30,6 +30,9 @@ EXPORTS
 	GetStartupInfoU
 	IsDBCSLeadByteFB
 	LoadLibraryU
+	MoveFileU
+	MoveFileExU
+	MoveFileWithProgressU
 	SetCurrentDirectoryU
 
 	; psapi.dll

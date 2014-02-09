@@ -120,6 +120,31 @@ HMODULE WINAPI LoadLibraryU(
 #undef LoadLibrary
 #define LoadLibrary LoadLibraryU
 
+BOOL WINAPI MoveFileU(
+	__in LPCSTR lpExistingFileName,
+	__in LPCSTR lpNewFileName
+);
+#undef MoveFile
+#define MoveFile MoveFileU
+
+BOOL WINAPI MoveFileExU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in DWORD dwFlags
+);
+#undef MoveFileEx
+#define MoveFileEx MoveFileExU
+
+BOOL WINAPI MoveFileWithProgressU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in_opt LPPROGRESS_ROUTINE lpProgressRoutine,
+	__in_opt LPVOID lpData,
+	__in DWORD dwFlags
+);
+#undef MoveFileWithProgress
+#define MoveFileWithProgress MoveFileWithProgressU
+
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 );
