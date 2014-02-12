@@ -198,7 +198,7 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 // Cool function name.
 int DumpDatFile(const char *dir, const file_rep_t *fr)
 {
-	if(!fr || !fr->game_buffer) {
+	if(!fr || !fr->game_buffer || !fr->name) {
 		return -1;
 	}
 	if(!dir) {
