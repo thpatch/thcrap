@@ -11,8 +11,8 @@ Touhou Community Reliant Automatic Patcher."""
 import shutil
 import os
 import argparse
-import json
 import zlib
+import utils
 
 parser = argparse.ArgumentParser(
     description=__doc__
@@ -49,26 +49,6 @@ def patch_files_filter(files):
             yield i
 
 
-def json_load(fn):
-    with open(fn, 'r', encoding='utf-8') as file:
-        return json.load(file)
-
-
-def json_store(fn, obj, dirs=['']):
-    """Saves the JSON object [obj] to [fn], creating all necessary
-    directories in the process. If [dirs] is given, the function is
-    executed for every root directory in the array."""
-    for i in dirs:
-        full_fn = os.path.join(i, fn)
-        os.makedirs(os.path.dirname(full_fn), exist_ok=True)
-        with open(full_fn, 'w', encoding='utf-8') as file:
-            json.dump(
-                obj, file, ensure_ascii=False, sort_keys=True, indent='\t',
-                separators=(',', ': ')
-            )
-            file.write('\n')
-
-
 def enter_missing(obj, key, prompt):
     while not key in obj or not obj[key].strip():
         obj[key] = input(prompt)
@@ -94,7 +74,7 @@ def patch_build(patch_id, servers, f, t):
 
     # Prepare patch.js.
     f_patch_fn = os.path.join(f_path, 'patch.js')
-    patch_js = json_load(f_patch_fn)
+    patch_js = utils.json_load(f_patch_fn)
 
     enter_missing(
         patch_js, 'title', 'Enter a nice title for "{}": '.format(patch_id)
@@ -108,7 +88,7 @@ def patch_build(patch_id, servers, f, t):
     for i in servers:
         url = os.path.join(i, patch_id) + '/'
         patch_js['servers'].append(str_slash_normalize(url))
-    json_store(f_patch_fn, patch_js)
+    utils.json_store(f_patch_fn, patch_js)
 
     files_js = {}
     patch_size = 0
@@ -131,7 +111,7 @@ def patch_build(patch_id, servers, f, t):
             if f != t:
                 shutil.copy2(f_fn, t_fn)
 
-    json_store('files.js', files_js, dirs=[f_path, t_path])
+    utils.json_store('files.js', files_js, dirs=[f_path, t_path])
     print(
         '{num} files, {size}'.format(
             num=len(files_js), size=sizeof_fmt(patch_size)
@@ -143,7 +123,7 @@ def patch_build(patch_id, servers, f, t):
 def repo_build(f, t):
     try:
         f_repo_fn = os.path.join(f, 'repo.js')
-        repo_js = json_load(f_repo_fn)
+        repo_js = utils.json_load(f_repo_fn)
     except FileNotFoundError:
         print(
             'No repo.js found in the source directory. '
@@ -154,7 +134,7 @@ def repo_build(f, t):
     enter_missing(repo_js, 'id', 'Enter a repository ID: ')
     enter_missing(repo_js, 'title', 'Enter a nice repository title: ')
     enter_missing(repo_js, 'contact', 'Enter a contact e-mail address: ')
-    json_store('repo.js', repo_js, dirs=[f, t])
+    utils.json_store('repo.js', repo_js, dirs=[f, t])
 
     while not 'servers' in repo_js or not repo_js['servers'][0].strip():
         repo_js['servers'] = [input(
@@ -170,7 +150,7 @@ def repo_build(f, t):
                 patch_id, repo_js['servers'], f, t
             )
     print('Done.')
-    json_store('repo.js', repo_js, dirs=[f, t])
+    utils.json_store('repo.js', repo_js, dirs=[f, t])
 
 
 if __name__ == '__main__':
