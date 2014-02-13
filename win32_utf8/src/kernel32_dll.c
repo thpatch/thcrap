@@ -7,6 +7,7 @@
   */
 
 #include "win32_utf8.h"
+#include "wrappers.h"
 
 // GetStartupInfo
 // --------------
@@ -363,12 +364,7 @@ HMODULE WINAPI LoadLibraryU(
 	__in LPCSTR lpLibFileName
 )
 {
-	HMODULE ret;
-	WCHAR_T_DEC(lpLibFileName);
-	WCHAR_T_CONV_VLA(lpLibFileName);
-	ret = LoadLibraryW(lpLibFileName_w);
-	VLA_FREE(lpLibFileName_w);
-	return ret;
+	return (HMODULE)Wrap1P((Wrap1PFunc_t)LoadLibraryW, lpLibFileName);
 }
 
 BOOL WINAPI MoveFileU(
@@ -415,12 +411,7 @@ BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 )
 {
-	BOOL ret;
-	WCHAR_T_DEC(lpPathName);
-	WCHAR_T_CONV_VLA(lpPathName);
-	ret = SetCurrentDirectoryW(lpPathName_w);
-	VLA_FREE(lpPathName_w);
-	return ret;
+	return Wrap1P((Wrap1PFunc_t)SetCurrentDirectoryW, lpPathName);
 }
 
 // Patcher functions
