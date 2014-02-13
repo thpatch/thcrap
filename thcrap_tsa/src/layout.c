@@ -51,7 +51,7 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 	HFONT font_ruby = *(HFONT*)json_object_get_hex(bp_info, "font_ruby");
 	char *str = *str_reg;
 	// ----------
-	if(str && str[0] == '\t' && offset && font_dialog && font_ruby) {
+	if(str && str[0] == '\t' && offset) {
 		char *str_offset = str + 1;
 		char *str_offset_end = strchr(str_offset, '\t');
 		char *str_base = str_offset_end + 3;
