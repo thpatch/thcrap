@@ -7,8 +7,13 @@
 #
 """Utility functions shared among all the scripts."""
 
+from collections import OrderedDict
 import json
 import os
+
+json_load_params = {
+    'object_pairs_hook': OrderedDict
+}
 
 json_dump_params = {
     'ensure_ascii': False,
@@ -20,7 +25,7 @@ json_dump_params = {
 # Default parameters for JSON input and output
 def json_load(fn):
     with open(fn, 'r', encoding='utf-8') as file:
-        return json.load(file)
+        return json.load(file, **json_load_params)
 
 
 def json_store(fn, obj, dirs=['']):
