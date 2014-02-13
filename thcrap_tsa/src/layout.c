@@ -47,10 +47,16 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	char **str_reg = (char**)json_object_get_register(bp_info, regs, "str");
 	size_t *offset = json_object_get_register(bp_info, regs, "offset");
-	HFONT font_dialog = *(HFONT*)json_object_get_hex(bp_info, "font_dialog");
-	HFONT font_ruby = *(HFONT*)json_object_get_hex(bp_info, "font_ruby");
+	HFONT* font_dialog = (HFONT*)json_object_get_hex(bp_info, "font_dialog");
+	HFONT* font_ruby = (HFONT*)json_object_get_hex(bp_info, "font_ruby");
 	char *str = *str_reg;
 	// ----------
+	if(!font_dialog || !font_ruby) {
+		log_printf(__FUNCTION__
+			"(): Missing \"font_dialog\" or \"font_ruby\" parameter, skipping..."
+		);
+		return 1;
+	}
 	if(str && str[0] == '\t' && offset) {
 		char *str_offset = str + 1;
 		char *str_offset_end = strchr(str_offset, '\t');
@@ -69,9 +75,9 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 		*str_offset_end = '\0';
 		*str_base_end = '\0';
 		*offset =
-			GetTextExtentForFont(str_offset, font_dialog)
-			+ (GetTextExtentForFont(str_base, font_dialog) / 2)
-			- (GetTextExtentForFont(str_ruby, font_ruby) / 2);
+			GetTextExtentForFont(str_offset, *font_dialog)
+			+ (GetTextExtentForFont(str_base, *font_dialog) / 2)
+			- (GetTextExtentForFont(str_ruby, *font_ruby) / 2);
 		*str_offset_end = '\t';
 		*str_base_end = '\t';
 
