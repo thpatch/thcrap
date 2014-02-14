@@ -287,7 +287,7 @@ BOOL WINAPI layout_TextOutU(
 				switch(p[0]) {
 					case 's':
 						// Don't actually print anything
-						tab_end = cur_w = 0;
+						tab_end = cur_x;
 						draw_str = NULL;
 						break;
 					case 't':
@@ -327,10 +327,8 @@ BOOL WINAPI layout_TextOutU(
 				SelectObject(hdc, hFontNew);
 				tab_end = cur_x + GetTextExtentBase(hdc, draw_str);
 			}
-			if(tab_end) {
-				cur_tab++;
-				cur_w = tab_end - cur_x;
-			}
+			cur_tab++;
+			cur_w = tab_end - cur_x;
 		} else if(json_is_string(token)) {
 			draw_str = token;
 			cur_w = GetTextExtentBase(hdc, token);
