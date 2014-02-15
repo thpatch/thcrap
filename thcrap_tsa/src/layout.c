@@ -198,6 +198,28 @@ HGDIOBJ WINAPI layout_SelectObject(
 	}
 }
 
+// Modifies [lf] according to the font-related commands in [cmd].
+// Returns 1 if anything in [lf] was changed.
+int layout_parse_font(LOGFONT *lf, const char *cmd)
+{
+	int ret = 0;
+	if(lf && cmd) {
+		while(*cmd) {
+			if(*cmd == 'b') {
+				// Bold font
+				lf->lfWeight *= 2;
+				ret = 1;
+			} else if(*cmd == 'i') {
+				// Italic font
+				lf->lfItalic = TRUE;
+				ret = 1;
+			}
+			cmd++;
+		}
+	}
+	return ret;
+}
+
 BOOL WINAPI layout_TextOutU(
 	__in HDC hdc,
 	__in int orig_x,
@@ -256,10 +278,14 @@ BOOL WINAPI layout_TextOutU(
 			// Absolute x-end position of the current tab
 			size_t tab_end;
 
-			LOGFONT font_new;
-			int font_recreate = 0;
-
-			memcpy(&font_new, &font_orig, sizeof(LOGFONT));
+			// If requested, derive a bold/italic font from the current one.
+			// This is done before anything else to guarantee that any calls to
+			// GetTextExtent() return the correct widths.
+			LOGFONT font_new = font_orig;
+			if(layout_parse_font(&font_new, cmd)) {
+				hFontNew = CreateFontIndirect(&font_new);
+				SelectObject(hdc, hFontNew);
+			}
 
 			cur_w = GetTextExtentBase(hdc, p1);
 			draw_str = p1;
@@ -281,6 +307,7 @@ BOOL WINAPI layout_TextOutU(
 				tab_end = cur_x + cur_w;
 			}
 
+			p = cmd;
 			while(*p) {
 				size_t j = 2;
 				const json_t *str_obj = NULL;
@@ -309,23 +336,8 @@ BOOL WINAPI layout_TextOutU(
 						// Right alignment
 						cur_x = (tab_end - cur_w);
 						break;
-					case 'b':
-						// Bold font
-						font_new.lfWeight *= 2;
-						font_recreate = 1;
-						break;
-					case 'i':
-						// Italic font
-						font_new.lfItalic = TRUE;
-						font_recreate = 1;
-						break;
 				}
 				p++;
-			}
-			if(font_recreate) {
-				hFontNew = CreateFontIndirect(&font_new);
-				SelectObject(hdc, hFontNew);
-				tab_end = cur_x + GetTextExtentBase(hdc, draw_str);
 			}
 			cur_tab++;
 			cur_w = tab_end - cur_x;
