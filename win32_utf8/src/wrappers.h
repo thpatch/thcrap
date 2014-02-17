@@ -16,3 +16,15 @@ DWORD WINAPI Wrap1P(
 	__in Wrap1PFunc_t func,
 	__in LPCSTR lpsz
 );
+
+// Wrapper for functions that write a string into a buffer, and return its
+// necessary size when passing 0 for [nBufferLength].
+typedef DWORD (WINAPI *WrapGetStringFunc_t)(
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPWSTR lpBuffer
+);
+DWORD WINAPI WrapGetString(
+	__in WrapGetStringFunc_t func,
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
+);
