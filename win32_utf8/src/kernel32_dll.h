@@ -106,6 +106,13 @@ VOID WINAPI GetStartupInfoU(
 #undef GetStartupInfo
 #define GetStartupInfo GetStartupInfoU
 
+DWORD WINAPI GetTempPathU(
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
+);
+#undef GetTempPath
+#define GetTempPath GetTempPathU
+
 // Only implemented using the fallback codepage, since UTF-8 has
 // no way to differentiate between continuation bytes and end bytes.
 BOOL WINAPI IsDBCSLeadByteFB(

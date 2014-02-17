@@ -28,6 +28,7 @@ EXPORTS
 	GetModuleFileNameU
 	GetPrivateProfileIntU
 	GetStartupInfoU
+	GetTempPathU
 	IsDBCSLeadByteFB
 	LoadLibraryU
 	MoveFileU

@@ -335,6 +335,14 @@ VOID WINAPI GetStartupInfoU(
 	lpSI->lpTitle = startupinfo_title;
 }
 
+DWORD WINAPI GetTempPathU(
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
+)
+{
+	return WrapGetString(GetTempPathW, nBufferLength, lpBuffer);
+}
+
 BOOL WINAPI IsDBCSLeadByteFB(
 	__in BYTE TestChar
 )
