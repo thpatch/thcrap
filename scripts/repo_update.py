@@ -42,13 +42,6 @@ def str_slash_normalize(string):
 	return string.replace('\\', '/')
 
 
-def patch_files_filter(files):
-    """Filters all file names that can not be among the content of a patch."""
-    for i in files:
-        if i != 'files.js':
-            yield i
-
-
 def enter_missing(obj, key, prompt):
     while not key in obj or not obj[key].strip():
         obj[key] = input(prompt)
@@ -94,7 +87,7 @@ def patch_build(patch_id, servers, f, t):
     patch_size = 0
     print(patch_id, end='')
     for root, dirs, files in os.walk(f_path):
-        for fn in patch_files_filter(files):
+        for fn in utils.patch_files_filter(files):
             print('.', end='')
             f_fn = os.path.join(root, fn)
             patch_fn = f_fn[len(f_path) + 1:]

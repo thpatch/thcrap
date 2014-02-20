@@ -15,6 +15,13 @@ json_load_params = {
     'object_pairs_hook': OrderedDict
 }
 
+def patch_files_filter(files):
+    """Filters all file names that can not be among the content of a patch."""
+    for i in files:
+        if i != 'files.js':
+            yield i
+
+
 json_dump_params = {
     'ensure_ascii': False,
     'indent': '\t',
