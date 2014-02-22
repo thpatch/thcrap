@@ -152,32 +152,29 @@ int binhacks_apply(json_t *binhacks)
 
 		// calculated byte size of the hack
 		size_t asm_size = binhack_calc_size(code);
+		VLA(BYTE, asm_buf, asm_size);
 
-		if(!code || !asm_size || !json_addr) {
+		if(!asm_size) {
 			continue;
 		}
 		json_flex_array_foreach(json_addr, i, addr_val) {
 			DWORD addr = json_hex_value(addr_val);
-			// buffer for the rendered assembly code
-			VLA(BYTE, asm_buf, asm_size);
 			if(!addr) {
 				continue;
 			}
-
 			log_printf("(%2d/%2d) 0x%08x ", ++c, binhack_count, addr);
 			if(title) {
 				log_printf("%s (%s)... ", title, key);
 			} else {
 				log_printf("%s...", key);
 			}
-
 			if(binhack_render(asm_buf, addr, code)) {
 				continue;
 			}
 			PatchRegion((void*)addr, NULL, asm_buf, asm_size);
-			VLA_FREE(asm_buf);
 			log_printf("OK\n");
 		}
+		VLA_FREE(asm_buf);
 	}
 	log_printf("------------------------\n");
 	return 0;
