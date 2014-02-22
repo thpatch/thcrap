@@ -43,4 +43,5 @@ size_t __stdcall GetTextExtent(const char *str);
 size_t __stdcall GetTextExtentForFont(const char *str, HFONT font);
 
 int layout_mod_init(HMODULE hMod);
+void layout_mod_detour(void);
 void layout_mod_exit(void);

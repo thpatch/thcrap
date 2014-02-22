@@ -130,7 +130,7 @@ EXPORTS
 	inject_CreateProcessW
 	inject_LoadLibraryU
 	inject_LoadLibraryW
-	inject_detour
+	inject_mod_detour
 
 	thcrap_detour
 	thcrap_inject
@@ -188,7 +188,7 @@ EXPORTS
 	strings_MessageBoxA
 
 	strings_mod_init
-	strings_detour
+	strings_mod_detour
 	strings_mod_exit
 
 	; Logging
@@ -217,7 +217,7 @@ EXPORTS
 	patch_fonts_load
 
 	textdisp_mod_init
-	textdisp_detour
+	textdisp_mod_detour
 
 	; Win32 dialogs
 	; -------------
@@ -238,7 +238,7 @@ EXPORTS
 
 	dialog_CreateDialogParamA
 	dialog_DialogBoxParamA
-	dialog_detour
+	dialog_mod_detour
 
 	; Plugins
 	; -------
@@ -250,4 +250,5 @@ EXPORTS
 	exception_init
 	exception_filter
 	exception_SetUnhandledExceptionFilter
+	exception_mod_detour
 	exception_exit

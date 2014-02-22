@@ -201,5 +201,5 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 /// Win32 wrappers
 /// --------------
-int tsa_detour(HMODULE hMod);
+void tsa_mod_detour(void);
 /// --------------

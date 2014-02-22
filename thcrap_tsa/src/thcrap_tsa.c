@@ -32,8 +32,6 @@ int InitDll(HMODULE hDll)
 		sizeof(icce), ICC_STANDARD_CLASSES
 	};
 	InitCommonControlsEx(&icce);
-
-	tsa_detour(GetModuleHandle(NULL));
 	return 0;
 }
 

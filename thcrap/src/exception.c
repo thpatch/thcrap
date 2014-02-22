@@ -80,7 +80,7 @@ void exception_init(void)
 	SetUnhandledExceptionFilter(exception_filter);
 }
 
-void exception_detour(HMODULE hMod)
+void exception_mod_detour(void)
 {
 	detour_cache_add("kernel32.dll", 1,
 		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter

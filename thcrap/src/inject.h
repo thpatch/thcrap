@@ -70,7 +70,7 @@ HMODULE WINAPI inject_LoadLibraryW(
 	__in LPCWSTR lpLibFileName
 );
 
-int inject_detour(HMODULE hMod);
+void inject_mod_detour(void);
 
 // Injects thcrap into the given [hProcess], and passes [run_cfg_fn].
 int thcrap_inject(HANDLE hProcess, const char *run_cfg_fn);

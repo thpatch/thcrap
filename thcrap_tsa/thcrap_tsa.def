@@ -85,6 +85,7 @@ EXPORTS
 	GetTextExtentForFont
 
 	layout_mod_init
+	layout_mod_detour
 	layout_mod_exit
 
 	; Format patchers
@@ -95,3 +96,7 @@ EXPORTS
 
 	patch_std
 	patch_anm
+
+	; TSA-specific detours
+	; --------------------
+	tsa_mod_detour

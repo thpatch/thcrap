@@ -9,8 +9,6 @@
 
 #pragma once
 
-#define HAVE_STRINGS 1
-
 // Returns [id] from the string definition table,
 // or NULL if no string for [id] available.
 const json_t* strings_get(const char *id);
@@ -52,5 +50,5 @@ const char* strings_strcat(const size_t slot, const char *src);
 
 void strings_mod_init(void);
 // Adds string lookup wrappers to functions that don't have them yet.
-int strings_detour(HMODULE hMod);
+void strings_mod_detour(void);
 void strings_mod_exit(void);

@@ -253,9 +253,9 @@ void strings_mod_init(void)
 	strings_storage = json_object();
 }
 
-int strings_detour(HMODULE hMod)
+void strings_mod_detour(void)
 {
-	return detour_cache_add("user32.dll", 1,
+	detour_cache_add("user32.dll", 1,
 		"MessageBoxA", strings_MessageBoxA
 	);
 }

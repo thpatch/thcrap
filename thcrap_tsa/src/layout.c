@@ -406,8 +406,12 @@ size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 int layout_mod_init(HMODULE hMod)
 {
 	Layout_Tabs = json_array();
+	return 0;
+}
 
-	return detour_cache_add("gdi32.dll", 4,
+void layout_mod_detour(void)
+{
+	detour_cache_add("gdi32.dll", 4,
 		"CreateCompatibleDC", layout_CreateCompatibleDC,
 		"DeleteDC", layout_DeleteDC,
 		"SelectObject", layout_SelectObject,

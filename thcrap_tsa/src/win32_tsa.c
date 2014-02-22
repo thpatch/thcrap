@@ -130,9 +130,9 @@ HWND WINAPI tsa_CreateWindowExA(
 }
 /// ---------------------
 
-int tsa_detour(HMODULE hMod)
+void tsa_mod_detour(void)
 {
-	return detour_cache_add("user32.dll", 2,
+	detour_cache_add("user32.dll", 2,
 		"CreateWindowExA", tsa_CreateWindowExA,
 		"GetWindowRect", tsa_GetWindowRect
 	);

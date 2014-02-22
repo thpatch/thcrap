@@ -39,6 +39,11 @@ typedef int (__stdcall *thcrap_plugin_init_type)(json_t *run_config);
   * • "init" (NULL)
   *   Called after every DLL has been loaded.
   *
+  * • "detour" (NULL)
+  *   Called when building the detour cache. If a module needs to add any
+  *   new detours, it should implement this hook, using one or more calls to
+  *   detour_cache_add().
+  *
   * • "exit" (NULL)
   *   Called when shutting down the process.
   */

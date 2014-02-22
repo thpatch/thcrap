@@ -10,10 +10,7 @@
 #include "thcrap.h"
 #include "plugin.h"
 #include "binhack.h"
-#include "exception.h"
 #include "sha256.h"
-#include "dialog.h"
-#include "textdisp.h"
 #include "win32_detour.h"
 
 /// Static global variables
@@ -223,12 +220,7 @@ void thcrap_detour(HMODULE hProc)
 	detour_cache_add("kernel32.dll", 1,
 		"ExitProcess", thcrap_ExitProcess
 	);
-
-	exception_detour(hProc);
-	textdisp_detour(hProc);
-	dialog_detour(hProc);
-	strings_detour(hProc);
-	inject_detour(hProc);
+	mod_func_run("detour", NULL);
 
 	iat_detour_apply(hProc);
 	VLA_FREE(mod_name);
