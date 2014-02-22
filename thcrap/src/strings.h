@@ -50,7 +50,7 @@ const char* strings_strclr(const size_t slot);
 const char* strings_strcat(const size_t slot, const char *src);
 /// ------------------
 
-void strings_init(void);
+void strings_mod_init(void);
 // Adds string lookup wrappers to functions that don't have them yet.
 int strings_detour(HMODULE hMod);
-void strings_exit(void);
+void strings_mod_exit(void);

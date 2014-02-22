@@ -12,7 +12,6 @@
 #include "binhack.h"
 #include "exception.h"
 #include "sha256.h"
-#include "bp_file.h"
 #include "dialog.h"
 #include "textdisp.h"
 #include "win32_detour.h"
@@ -320,15 +319,6 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 
-#ifdef HAVE_BP_FILE
-	bp_file_init();
-#endif
-#ifdef HAVE_STRINGS
-	strings_init();
-#endif
-#ifdef HAVE_TEXTDISP
-	textdisp_init();
-#endif
 	plugins_load();
 
 	/**
@@ -368,6 +358,7 @@ int thcrap_init(const char *run_cfg_fn)
 		binhacks_apply(json_object_get(run_cfg, "binhacks"));
 		breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
 	}
+	mod_func_run("init", NULL);
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
@@ -396,17 +387,12 @@ int InitDll(HMODULE hDll)
 
 void ExitDll(HMODULE hDll)
 {
+	mod_func_run("exit", NULL);
 	plugins_close();
 	breakpoints_remove();
 	run_cfg = json_decref_safe(run_cfg);
 	DeleteCriticalSection(&cs_file_access);
 
-#ifdef HAVE_BP_FILE
-	bp_file_exit();
-#endif
-#ifdef HAVE_STRINGS
-	strings_exit();
-#endif
 	SAFE_FREE(dll_dir);
 #ifdef _WIN32
 #ifdef _DEBUG

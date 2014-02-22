@@ -403,7 +403,7 @@ size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 	return ret;
 }
 
-int layout_init(HMODULE hMod)
+int layout_mod_init(HMODULE hMod)
 {
 	Layout_Tabs = json_array();
 
@@ -415,7 +415,7 @@ int layout_init(HMODULE hMod)
 	);
 }
 
-void layout_exit(void)
+void layout_mod_exit(void)
 {
 	Layout_Tabs = json_decref_safe(Layout_Tabs);
 	if(text_dc) {

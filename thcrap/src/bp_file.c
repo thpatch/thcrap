@@ -242,13 +242,13 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int bp_file_init(void)
+int bp_file_mod_init(void)
 {
 	fr_tls = TlsAlloc();
 	return 0;
 }
 
-int bp_file_exit(void)
+int bp_file_mod_exit(void)
 {
 	return TlsFree(fr_tls);
 }

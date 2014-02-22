@@ -91,13 +91,13 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-void music_init(void)
+void music_mod_init(void)
 {
 	themes = stack_json_resolve("themes.js", NULL);
 	musiccmt = stack_game_json_resolve("musiccmt.js", NULL);
 }
 
-void music_exit(void)
+void music_mod_exit(void)
 {
 	themes = json_decref_safe(themes);
 	musiccmt = json_decref_safe(musiccmt);

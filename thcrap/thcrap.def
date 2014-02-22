@@ -167,8 +167,8 @@ EXPORTS
 	BP_file_load
 	BP_file_loaded
 
-	bp_file_init
-	bp_file_exit
+	bp_file_mod_init
+	bp_file_mod_exit
 
 	; Hardcoded string translation
 	; ----------------------------
@@ -184,9 +184,9 @@ EXPORTS
 
 	strings_MessageBoxA
 
-	strings_init
+	strings_mod_init
 	strings_detour
-	strings_exit
+	strings_mod_exit
 
 	; Logging
 	; -------
@@ -213,7 +213,7 @@ EXPORTS
 	textdisp_CreateFontA
 	patch_fonts_load
 
-	textdisp_init
+	textdisp_mod_init
 	textdisp_detour
 
 	; Win32 dialogs

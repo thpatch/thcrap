@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Plug-in handling.
+  * Plug-in and module handling.
   */
 
 #pragma once
@@ -28,7 +28,29 @@
   */
 typedef int (__stdcall *thcrap_plugin_init_type)(json_t *run_config);
 
+/// Module functions
+/// ================
+/**
+  * If the name of a function exported by any thcrap DLL matches the pattern
+  * "*_mod_[suffix]", it is automatically executed when calling
+  * mod_func_run() with [suffix]. The module hooks currently supported by
+  * the thcrap core, with their parameter, include:
+  *
+  * • "init" (NULL)
+  *   Called after every DLL has been loaded.
+  *
+  * • "exit" (NULL)
+  *   Called when shutting down the process.
+  */
+
+// Module function type.
+typedef void (*mod_call_type)(void *param);
+
+// Runs every exported function ending in "*_mod_[suffix]" across all
+// thcrap DLLs. The order of execution is undefined.
+void mod_func_run(const char *suffix, void *param);
+/// ===================
+
 // Loads all thcrap plugins from the current directory.
 int plugins_load(void);
-
 int plugins_close(void);

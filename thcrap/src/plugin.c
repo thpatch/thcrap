@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Plug-in handling
+  * Plug-in and module handling
   */
 
 #include "thcrap.h"
@@ -56,4 +56,31 @@ int plugins_close(void)
 		}
 	}
 	return 0;
+}
+
+void mod_func_run(const char *pattern, void *param)
+{
+	if(pattern) {
+		STRLEN_DEC(pattern);
+		size_t suffix_len = strlen("_mod_%s") + pattern_len;
+		VLA(char, suffix, suffix_len);
+		const char *key;
+		json_t *val;
+		json_t *funcs = json_object_get(run_cfg, "funcs");
+		suffix_len = snprintf(suffix, suffix_len, "_mod_%s", pattern);
+		json_object_foreach(funcs, key, val) {
+			size_t key_len = strlen(key);
+			const char *key_suffix = key + (key_len - suffix_len);
+			if(
+				key_len > suffix_len
+				&& !memcmp(key_suffix, suffix, suffix_len)
+			) {
+				mod_call_type func = (mod_call_type)json_integer_value(val);
+				if(func) {
+					func(param);
+				}
+			}
+		}
+		VLA_FREE(suffix);
+	}
 }

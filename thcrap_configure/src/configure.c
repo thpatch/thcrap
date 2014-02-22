@@ -290,7 +290,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		GetModuleHandleA("kernel32.dll"), "wine_get_unix_file_name"
 	) != 0;
 
-	strings_init();
+	strings_mod_init();
 	log_init(1);
 
 	// Necessary to correctly process *any* input of non-ASCII characters

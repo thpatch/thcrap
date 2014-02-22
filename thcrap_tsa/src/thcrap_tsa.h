@@ -122,8 +122,8 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
   */
 int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
 
-void spells_init(void);
-void spells_exit(void);
+void spells_mod_init(void);
+void spells_mod_exit(void);
 /// ------
 
 /// Music Room
@@ -187,8 +187,8 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
 
-void music_init(void);
-void music_exit(void);
+void music_mod_init(void);
+void music_mod_exit(void);
 /// ----------
 
 /// Format patchers

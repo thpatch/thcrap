@@ -12,8 +12,8 @@ EXPORTS
 	BP_spell_id
 	BP_spell_name
 	BP_spell_comment_line
-	spells_init
-	spells_exit
+	spells_mod_init
+	spells_mod_exit
 
 	; Bounds
 	; ------
@@ -65,8 +65,8 @@ EXPORTS
 	BP_music_title
 	BP_music_cmt
 
-	music_init
-	music_exit
+	music_mod_init
+	music_mod_exit
 
 	; Layout
 	; ------
@@ -84,8 +84,8 @@ EXPORTS
 	GetTextExtent
 	GetTextExtentForFont
 
-	layout_init
-	layout_exit
+	layout_mod_init
+	layout_mod_exit
 
 	; Format patchers
 	; ---------------

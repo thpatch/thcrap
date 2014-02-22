@@ -110,18 +110,18 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *format)
 {
 	// TODO: This could be much nicer once issue #5 has been dealt with.
-	spells_exit();
-	spells_init();
+	spells_mod_exit();
+	spells_mod_init();
 	return 0;
 }
 
-void spells_init(void)
+void spells_mod_init(void)
 {
 	spells = stack_game_json_resolve("spells.js", NULL);
 	spellcomments = stack_game_json_resolve("spellcomments.js", NULL);
 }
 
-void spells_exit(void)
+void spells_mod_exit(void)
 {
 	spells = json_decref_safe(spells);
 	spellcomments = json_decref_safe(spellcomments);

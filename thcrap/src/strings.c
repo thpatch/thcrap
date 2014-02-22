@@ -246,7 +246,7 @@ int WINAPI strings_MessageBoxA(
 }
 /// -------------------
 
-void strings_init(void)
+void strings_mod_init(void)
 {
 	stringdefs = stack_json_resolve("stringdefs.js", NULL);
 	stringlocs = stack_game_json_resolve("stringlocs.js", NULL);
@@ -260,7 +260,7 @@ int strings_detour(HMODULE hMod)
 	);
 }
 
-void strings_exit(void)
+void strings_mod_exit(void)
 {
 	const char *key;
 	json_t *val;

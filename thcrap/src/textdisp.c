@@ -100,7 +100,7 @@ int textdisp_detour(HMODULE hMod)
 	);
 }
 
-void textdisp_init(void)
+void textdisp_mod_init(void)
 {
 	json_t *patches = json_object_get(runconfig_get(), "patches");
 	size_t i;

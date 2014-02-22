@@ -42,5 +42,5 @@ size_t __stdcall GetTextExtent(const char *str);
 // [font] is temporarily selected into the DC for the length calcuation.
 size_t __stdcall GetTextExtentForFont(const char *str, HFONT font);
 
-int layout_init(HMODULE hMod);
-void layout_exit(void);
+int layout_mod_init(HMODULE hMod);
+void layout_mod_exit(void);

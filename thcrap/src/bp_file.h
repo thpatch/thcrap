@@ -15,8 +15,6 @@
 
 #pragma once
 
-#define HAVE_BP_FILE 1
-
 // File replacement state
 typedef struct {
 	// Combined JSON patch that will be applied to the file

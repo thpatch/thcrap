@@ -22,10 +22,6 @@ int __stdcall thcrap_plugin_init(json_t *run_cfg)
 
 	patchhook_register("*.std", patch_std);
 	patchhook_register("*.anm", patch_anm);
-
-	// All component initialization functions that require runconfig values
-	spells_init();
-	music_init();
 	return 0;
 }
 
@@ -37,16 +33,8 @@ int InitDll(HMODULE hDll)
 	};
 	InitCommonControlsEx(&icce);
 
-	layout_init(hDll);
 	tsa_detour(GetModuleHandle(NULL));
 	return 0;
-}
-
-void ExitDll(HMODULE hDll)
-{
-	music_exit();
-	spells_exit();
-	layout_exit();
 }
 
 // Yes, this _has_ to be included in every project.
@@ -57,9 +45,6 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 	switch(ulReasonForCall) {
 		case DLL_PROCESS_ATTACH:
 			InitDll(hDll);
-			break;
-		case DLL_PROCESS_DETACH:
-			ExitDll(hDll);
 			break;
 	}
 	return TRUE;
