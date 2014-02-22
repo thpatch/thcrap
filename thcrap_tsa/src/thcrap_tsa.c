@@ -12,7 +12,7 @@
 #include "thcrap_tsa.h"
 #include "layout.h"
 
-int __stdcall thcrap_init_plugin(json_t *run_cfg)
+int __stdcall thcrap_plugin_init(json_t *run_cfg)
 {
 	// th06_msg
 	patchhook_register("msg*.dat", patch_msg_dlg); // th06-08

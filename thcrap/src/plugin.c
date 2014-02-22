@@ -25,8 +25,8 @@ int plugins_load(void)
 	while( (GetLastError() != ERROR_NO_MORE_FILES) && (ret) ) {
 		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
 		if(plugin) {
-			thcrap_init_plugin_type func =
-				(thcrap_init_plugin_type)GetProcAddress(plugin, "thcrap_init_plugin")
+			thcrap_plugin_init_type func =
+				(thcrap_plugin_init_type)GetProcAddress(plugin, "thcrap_plugin_init")
 			;
 			if(func && !func(run_cfg)) {
 				log_printf("\t%s\n", w32fd.cFileName);
