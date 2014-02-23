@@ -25,6 +25,8 @@ EXPORTS
 	FormatMessageU
 	GetCurrentDirectoryU
 	GetEnvironmentVariableU
+	GetFileAttributesU
+	GetFileAttributesExU
 	GetModuleFileNameU
 	GetPrivateProfileIntU
 	GetStartupInfoU

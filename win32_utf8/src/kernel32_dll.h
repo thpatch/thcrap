@@ -83,6 +83,20 @@ DWORD WINAPI GetEnvironmentVariableU(
 #undef GetEnvironmentVariable
 #define GetEnvironmentVariable GetEnvironmentVariableU
 
+DWORD WINAPI GetFileAttributesU(
+	__in LPCSTR lpFileName
+);
+#undef GetFileAttributes
+#define GetFileAttributes GetFileAttributesU
+
+BOOL WINAPI GetFileAttributesExU(
+	__in LPCSTR lpFileName,
+	__in GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	__out LPVOID lpFileInformation
+);
+#undef GetFileAttributesEx
+#define GetFileAttributesEx GetFileAttributesExU
+
 DWORD WINAPI GetModuleFileNameU(
 	__in_opt HMODULE hModule,
 	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,

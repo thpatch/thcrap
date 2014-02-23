@@ -245,6 +245,27 @@ DWORD WINAPI GetEnvironmentVariableU(
 	return ret;
 }
 
+DWORD WINAPI GetFileAttributesU(
+	__in LPCSTR lpFileName
+)
+{
+	return Wrap1P(GetFileAttributesW, lpFileName);
+}
+
+BOOL WINAPI GetFileAttributesExU(
+	__in LPCSTR lpFileName,
+	__in GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	__out LPVOID lpFileInformation
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(lpFileName);
+	WCHAR_T_CONV_VLA(lpFileName);
+	ret = GetFileAttributesExW(lpFileName_w, fInfoLevelId, lpFileInformation);
+	WCHAR_T_FREE(lpFileName);
+	return ret;
+}
+
 DWORD WINAPI GetModuleFileNameU(
 	__in_opt HMODULE hModule,
 	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,

@@ -11,7 +11,7 @@
 
 void win32_detour(HMODULE hMod)
 {
-	iat_detour_funcs_var(hMod, "kernel32.dll", 16,
+	iat_detour_funcs_var(hMod, "kernel32.dll", 18,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
 		"FindFirstFileA", FindFirstFileU,
@@ -19,6 +19,8 @@ void win32_detour(HMODULE hMod)
 		"FormatMessageA", FormatMessageU,
 		"GetCurrentDirectoryA", GetCurrentDirectoryU,
 		"GetEnvironmentVariableA", GetEnvironmentVariableU,
+		"GetFileAttributesA", GetFileAttributesU,
+		"GetFileAttributesExA", GetFileAttributesExU,
 		"GetModuleFileNameA", GetModuleFileNameU,
 		"GetPrivateProfileIntA", GetPrivateProfileIntU,
 		"GetStartupInfoA", GetStartupInfoU,
