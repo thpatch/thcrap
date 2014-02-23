@@ -28,7 +28,7 @@ void* file_read(const char *fn, size_t *file_size)
 		DWORD byte_ret;
 
 		handle = CreateFile(
-			fn, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+			fn, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 		);
 		if(handle != INVALID_HANDLE_VALUE) {
