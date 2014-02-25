@@ -30,12 +30,12 @@ json_dump_params = {
 }
 
 # Default parameters for JSON input and output
-def json_load(fn):
+def json_load(fn, json_kwargs=json_load_params):
     with open(fn, 'r', encoding='utf-8') as file:
-        return json.load(file, **json_load_params)
+        return json.load(file, **json_kwargs)
 
 
-def json_store(fn, obj, dirs=['']):
+def json_store(fn, obj, dirs=[''], json_kwargs=json_dump_params):
     """Saves the JSON object [obj] to [fn], creating all necessary
     directories in the process. If [dirs] is given, the function is
     executed for every root directory in the array."""
@@ -43,5 +43,5 @@ def json_store(fn, obj, dirs=['']):
         full_fn = os.path.join(i, fn)
         os.makedirs(os.path.dirname(full_fn), exist_ok=True)
         with open(full_fn, 'w', encoding='utf-8') as file:
-            json.dump(obj, file, **json_dump_params)
+            json.dump(obj, file, **json_kwargs)
             file.write('\n')
