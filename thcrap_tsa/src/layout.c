@@ -420,5 +420,6 @@ void layout_exit(void)
 	Layout_Tabs = json_decref_safe(Layout_Tabs);
 	if(text_dc) {
 		DeleteDC(text_dc);
+		text_dc = NULL;
 	}
 }
