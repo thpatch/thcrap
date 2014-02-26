@@ -26,3 +26,12 @@ void thcrap_detour(HMODULE hProc);
 
 // Sets up the engine with the given configuration for the current process.
 int thcrap_init(const char *setup_fn);
+
+// If the target process terminates using ExitProcess(), any active threads
+// will have most likely already been terminated before DLL_PROCESS_DETACH is
+// sent to DllMain().
+// ("Most likely" because yes, the implementation is subject to change, see
+// http://blogs.msdn.com/b/oldnewthing/archive/2007/05/03/2383346.aspx.)
+// As a result, we have to detour this function to properly shut down any
+// threads created by thcrap plugins or modules before calling ExitProcess().
+DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode);

@@ -218,6 +218,10 @@ void thcrap_detour(HMODULE hProc)
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
 	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
 
+	iat_detour_funcs_var(hProc, "kernel32.dll", 1,
+		"ExitProcess", thcrap_ExitProcess
+	);
+
 	win32_detour(hProc);
 	exception_detour(hProc);
 	textdisp_detour(hProc);
@@ -412,6 +416,12 @@ void ExitDll(HMODULE hDll)
 #endif
 #endif
 	log_exit();
+}
+
+DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode)
+{
+	ExitDll(NULL);
+	ExitProcess(uExitCode);
 }
 
 // Yes, this _has_ to be included in every project.
