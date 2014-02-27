@@ -42,7 +42,10 @@ EXPORTS
 	func_detour_by_ptr
 
 	iat_detour_funcs
-	iat_detour_funcs_var
+	detour_cache_add
+	iat_detour_apply
+
+	detour_mod_exit
 
 	; JSON extensions
 	; ---------------

@@ -217,17 +217,20 @@ void thcrap_detour(HMODULE hProc)
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
 	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
 
-	iat_detour_funcs_var(hProc, "kernel32.dll", 1,
+	// Needs to be at the lowest level
+	win32_detour();
+
+	detour_cache_add("kernel32.dll", 1,
 		"ExitProcess", thcrap_ExitProcess
 	);
 
-	win32_detour(hProc);
 	exception_detour(hProc);
 	textdisp_detour(hProc);
 	dialog_detour(hProc);
 	strings_detour(hProc);
 	inject_detour(hProc);
 
+	iat_detour_apply(hProc);
 	VLA_FREE(mod_name);
 }
 
@@ -256,8 +259,6 @@ int thcrap_init(const char *run_cfg_fn)
 
 	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
 	log_printf("Run configuration file: %s\n\n", run_cfg_fn);
-
-	thcrap_detour(hProc);
 
 	log_printf("EXE file name: %s\n", exe_fn);
 	{
@@ -359,6 +360,7 @@ int thcrap_init(const char *run_cfg_fn)
 		breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
 	}
 	mod_func_run("init", NULL);
+	thcrap_detour(hProc);
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);

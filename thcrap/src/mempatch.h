@@ -82,16 +82,17 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detour, const size_t detour_count);
 
 /**
-  * Variadic wrapper around iat_detour_funcs().
-  * Detours a number of functions imported from [dll_name] in the module based at [hMod].
-  *
+  * Adds one new detour hook for a number of functions in [dll_name].
   * Expects [detour_count] * 2 additional parameters of the form
   *
   *	"exported name", new_func_ptr,
   *	"exported name", new_func_ptr,
   * ...
   */
-int iat_detour_funcs_var(HMODULE hMod, const char *dll_name, const size_t detour_count, ...);
+int detour_cache_add(const char *dll_name, const size_t detour_count, ...);
+
+// Applies the cached detours to [hMod].
+int iat_detour_apply(HMODULE hMod);
 /// ----------
 
 /// =============================

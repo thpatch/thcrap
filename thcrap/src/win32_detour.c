@@ -9,9 +9,9 @@
 
 #include "thcrap.h"
 
-void win32_detour(HMODULE hMod)
+void win32_detour(void)
 {
-	iat_detour_funcs_var(hMod, "kernel32.dll", 20,
+	detour_cache_add("kernel32.dll", 20,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
 		"CreateProcessA", CreateProcessU,
@@ -34,19 +34,19 @@ void win32_detour(HMODULE hMod)
 		"SetCurrentDirectoryA", SetCurrentDirectoryU
 	);
 
-	iat_detour_funcs_var(hMod, "gdi32.dll", 3,
+	detour_cache_add("gdi32.dll", 3,
 		"CreateFontA", CreateFontU,
 		"GetTextExtentPoint32A", GetTextExtentPoint32U,
 		"TextOutA", TextOutU
 	);
 
-	iat_detour_funcs_var(hMod, "shlwapi.dll", 3,
+	detour_cache_add("shlwapi.dll", 3,
 		"PathMatchSpecA", PathMatchSpecU,
 		"PathRemoveFileSpecA", PathRemoveFileSpecU,
 		"PathFileExistsA", PathFileExistsU
 	);
 
-	iat_detour_funcs_var(hMod, "user32.dll", 15,
+	detour_cache_add("user32.dll", 15,
 		"CharNextA", CharNextU,
 		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,

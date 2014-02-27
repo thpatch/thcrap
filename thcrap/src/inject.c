@@ -939,7 +939,7 @@ HMODULE WINAPI inject_LoadLibraryW(
 
 int inject_detour(HMODULE hMod)
 {
-	return iat_detour_funcs_var(hMod, "kernel32.dll", 5,
+	return detour_cache_add("kernel32.dll", 5,
 		"CreateProcessA", inject_CreateProcessU,
 		"CreateProcessW", inject_CreateProcessW,
 		"CreateRemoteThread", inject_CreateRemoteThread,

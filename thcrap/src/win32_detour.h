@@ -9,4 +9,4 @@
 
 #pragma once
 
-void win32_detour(HMODULE hMod);
+void win32_detour(void);

@@ -255,7 +255,7 @@ void strings_mod_init(void)
 
 int strings_detour(HMODULE hMod)
 {
-	return iat_detour_funcs_var(hMod, "user32.dll", 1,
+	return detour_cache_add("user32.dll", 1,
 		"MessageBoxA", strings_MessageBoxA
 	);
 }

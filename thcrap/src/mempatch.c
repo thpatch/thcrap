@@ -9,6 +9,8 @@
 
 #include "thcrap.h"
 
+static json_t *detours = NULL;
+
 BOOL VirtualCheckRegion(const void *ptr, const size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
@@ -162,31 +164,64 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	return ret;
 }
 
-int iat_detour_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_count, ...)
+int detour_cache_add(const char *dll_name, const size_t func_count, ...)
 {
-	HMODULE hDll;
+	int ret = 0;
+	json_t *dll = NULL;
 	va_list va;
-	VLA(iat_detour_t, iat_detour, func_count);
 	size_t i;
-	int ret;
 
-	if(!dll_name || !hMod) {
+	if(!dll_name) {
 		return -1;
 	}
-	hDll = GetModuleHandleA(dll_name);
-	if(!hDll) {
-		return -2;
+	if(!detours) {
+		detours = json_object();
 	}
+	dll = json_object_get_create(detours, dll_name, json_object());
 	va_start(va, func_count);
 	for(i = 0; i < func_count; i++) {
-		iat_detour[i].old_func = va_arg(va, const char*);
-		iat_detour[i].new_ptr = va_arg(va, const void*);
-		iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
+		const char *func_name = va_arg(va, const char*);
+		const void *func_ptr = va_arg(va, const void*);
+		json_t *func = json_object_get_create(dll, func_name, json_array());
+		ret += json_array_insert_new(func, 0, json_integer((size_t)func_ptr)) == 0;
 	}
 	va_end(va);
-	ret = iat_detour_funcs(hMod, dll_name, iat_detour, func_count);
-	VLA_FREE(iat_detour);
 	return ret;
+}
+
+int iat_detour_apply(HMODULE hMod)
+{
+	const char *dll_name;
+	json_t *funcs;
+	int ret = 0;
+
+	if(!hMod) {
+		return -1;
+	}
+	json_object_foreach(detours, dll_name, funcs) {
+		HMODULE hDll = GetModuleHandleA(dll_name);
+		size_t func_count = json_object_size(funcs);
+		if(hDll && func_count) {
+			const char *func_name;
+			json_t *ptrs;
+			VLA(iat_detour_t, iat_detour, func_count);
+			size_t i = 0;
+			json_object_foreach(funcs, func_name, ptrs) {
+				iat_detour[i].old_func = func_name;
+				iat_detour[i].new_ptr = (const void*)json_array_get_hex(ptrs, 0);
+				iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
+				i++;
+			}
+			ret += iat_detour_funcs(hMod, dll_name, iat_detour, func_count);
+			VLA_FREE(iat_detour);
+		}
+	}
+	return ret;
+}
+
+void detour_mod_exit()
+{
+	detours = json_decref_safe(detours);
 }
 /// ----------
 
