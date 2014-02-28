@@ -121,14 +121,22 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind)
 	return json_is_array(flarr) ? json_array_get(flarr, ind) : flarr;
 }
 
-json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object)
+json_t* json_object_get_create(json_t *object, const char *key, json_type type)
 {
 	json_t *ret = json_object_get(object, key);
 	if(!ret) {
-		json_object_set_new(object, key, new_object);
-		return new_object;
-	} else {
-		json_decref(new_object);
+		// This actually results in nicer assembly than using the ternary operator!
+		json_t *new_obj = NULL;
+		switch(type) {
+			case JSON_OBJECT:
+				new_obj = json_object();
+				break;
+			case JSON_ARRAY:
+				new_obj = json_array();
+				break;
+		}
+		json_object_set_new(object, key, new_obj);
+		return new_obj;
 	}
 	return ret;
 }

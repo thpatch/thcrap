@@ -185,12 +185,12 @@ int detour_cache_add(const char *dll_name, const size_t func_count, ...)
 	if(!detours) {
 		detours = json_object();
 	}
-	dll = json_object_get_create(detours, dll_name, json_object());
+	dll = json_object_get_create(detours, dll_name, JSON_OBJECT);
 	va_start(va, func_count);
 	for(i = 0; i < func_count; i++) {
 		const char *func_name = va_arg(va, const char*);
 		const void *func_ptr = va_arg(va, const void*);
-		json_t *func = json_object_get_create(dll, func_name, json_array());
+		json_t *func = json_object_get_create(dll, func_name, JSON_ARRAY);
 		ret += json_array_insert_new(func, 0, json_integer((size_t)func_ptr)) == 0;
 	}
 	va_end(va);

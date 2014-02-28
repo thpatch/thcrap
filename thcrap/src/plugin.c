@@ -17,7 +17,7 @@ int plugins_load(void)
 	BOOL ret = 1;
 	WIN32_FIND_DATAA w32fd;
 	HANDLE hFind = FindFirstFile("*.dll", &w32fd);
-	json_t *plugins = json_object_get_create(run_cfg, PLUGINS, json_object());
+	json_t *plugins = json_object_get_create(run_cfg, PLUGINS, JSON_OBJECT);
 
 	if(hFind == INVALID_HANDLE_VALUE) {
 		return 1;

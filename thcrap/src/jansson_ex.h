@@ -64,8 +64,9 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind);
 
 /// Objects
 /// -------
-// Same as json_object_get, but creates a [new_object] if the [key] doesn't exist
-json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object);
+// Same as json_object_get, but creates a new JSON value of type [type]
+// if the [key] doesn't exist.
+json_t* json_object_get_create(json_t *object, const char *key, json_type type);
 
 // json_object_get for numeric keys
 json_t* json_object_numkey_get(const json_t *object, const json_int_t key);

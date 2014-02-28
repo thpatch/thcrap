@@ -321,8 +321,8 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 
 int patchhook_register(const char *wildcard, func_patch_t patch_func)
 {
-	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());
-	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, json_array());
+	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, JSON_OBJECT);
+	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, JSON_ARRAY);
 	if(!patch_func) {
 		return -1;
 	}
