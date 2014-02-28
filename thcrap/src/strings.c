@@ -242,7 +242,10 @@ int WINAPI strings_MessageBoxA(
 {
 	lpText = strings_lookup(lpText, NULL);
 	lpCaption = strings_lookup(lpCaption, NULL);
-	return MessageBoxU(hWnd, lpText, lpCaption, uType);
+	return detour_next(
+		"user32.dll", "MessageBoxA", strings_MessageBoxA, 4,
+		hWnd, lpText, lpCaption, uType
+	);
 }
 /// -------------------
 

@@ -162,7 +162,10 @@ json_t* layout_tokenize(const char *str, size_t len)
 
 BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 {
-	return TextOutU(hdc, x, y, json_string_value(str), json_string_length(str));
+	return detour_next(
+		"gdi32.dll", "TextOutA", layout_TextOutU, 5,
+		hdc, x, y, json_string_value(str), json_string_length(str)
+	);
 }
 
 /// Hooked functions
@@ -173,7 +176,10 @@ BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
 {
 	if(!text_dc) {
-		HDC ret = CreateCompatibleDC(hdc);
+		HDC ret = (HDC)detour_next(
+			"gdi32.dll", "CreateCompatibleDC", layout_CreateCompatibleDC, 1,
+			hdc
+		);
 		text_dc = ret;
 		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
 	}
@@ -194,7 +200,10 @@ HGDIOBJ WINAPI layout_SelectObject(
 	if(h == GetStockObject(SYSTEM_FONT)) {
 		return GetCurrentObject(hdc, OBJ_FONT);
 	} else {
-		return SelectObject(hdc, h);
+		return (HGDIOBJ)detour_next(
+			"gdi32.dll", "SelectObject", layout_SelectObject, 2,
+			hdc, h
+		);
 	}
 }
 

@@ -63,7 +63,8 @@ HFONT WINAPI textdisp_CreateFontA(
 		"CreateFontA: %s%s %d (Weight %d, PitchAndFamily 0x%0x)\n",
 		pszFaceName, replaced ? " (repl.)" : "", cHeight, cWeight, iPitchAndFamily
 	);
-	return CreateFont(
+	return (HFONT)detour_next(
+		"gdi32.dll", "CreateFontA", textdisp_CreateFontA, 14,
 		cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic,
 		bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision,
 		iQuality, iPitchAndFamily, pszFaceName

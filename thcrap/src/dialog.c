@@ -565,7 +565,8 @@ HWND WINAPI dialog_CreateDialogParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = CreateDialogParamU(
+		ret = (HWND)detour_next(
+			"user32.dll", "CreateDialogParamA", dialog_CreateDialogParamA, 5,
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
@@ -588,7 +589,8 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = DialogBoxParamU(
+		ret = detour_next(
+			"user32.dll", "DialogBoxParamA", dialog_DialogBoxParamA, 5,
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}

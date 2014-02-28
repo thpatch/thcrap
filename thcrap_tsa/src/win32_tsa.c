@@ -121,7 +121,8 @@ HWND WINAPI tsa_CreateWindowExA(
 			json_is_string(game_build) ? json_string_value(game_build) : "");
 		window_title = custom_title;
 	}
-	ret = CreateWindowExU(
+	ret = (HWND)detour_next(
+		"user32.dll", "CreateWindowExA", tsa_CreateWindowExA, 12,
 		dwExStyle, lpClassName, window_title, dwStyle, X, Y,
 		nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
 	);

@@ -401,7 +401,10 @@ void ExitDll(HMODULE hDll)
 DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode)
 {
 	ExitDll(NULL);
-	ExitProcess(uExitCode);
+	detour_next(
+		"kernel32.dll", "ExitProcess", thcrap_ExitProcess, 1,
+		uExitCode
+	);
 }
 
 // Yes, this _has_ to be included in every project.
