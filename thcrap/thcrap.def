@@ -44,6 +44,7 @@ EXPORTS
 	iat_detour_funcs
 	detour_cache_add
 	iat_detour_apply
+	detour_next
 
 	detour_mod_exit
 

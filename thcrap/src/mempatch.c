@@ -9,6 +9,14 @@
 
 #include "thcrap.h"
 
+// Reverse variable argument list macros for detour_next()
+#define va_rev_start(ap,v,num) (\
+	ap = (va_list)_ADDRESSOF(v) + _INTSIZEOF(v) + (num + 1) * sizeof(int) \
+)
+#define va_rev_arg(ap,t) ( \
+	*(t *)((ap -= _INTSIZEOF(t)) - _INTSIZEOF(t)) \
+)
+
 static json_t *detours = NULL;
 
 BOOL VirtualCheckRegion(const void *ptr, const size_t len)
@@ -217,6 +225,41 @@ int iat_detour_apply(HMODULE hMod)
 		}
 	}
 	return ret;
+}
+
+size_t detour_next(const char *dll_name, const char *func_name, void *caller, size_t arg_count, ...)
+{
+	json_t *funcs = json_object_get(detours, dll_name);
+	json_t *ptrs = json_object_get(funcs, func_name);
+	json_t *ptr = NULL;
+	FARPROC next = NULL;
+	size_t i;
+	va_list va;
+
+	// Get the next function after [caller]
+	json_array_foreach(ptrs, i, ptr) {
+		if((void*)json_integer_value(ptr) == caller) {
+			next = (FARPROC)json_array_get_hex(ptrs, i + 1);
+			break;
+		}
+	}
+	if(!next) {
+		HMODULE hDll = GetModuleHandleA(dll_name);
+		next = GetProcAddress(hDll, func_name);
+	}
+	// This might seem pointless, and we indeed could just set ESP to [va],
+	// but Debug mode doesn't like that.
+	va_rev_start(va, arg_count, arg_count);
+	for(i = 0; i < arg_count; i++) {
+		DWORD param = va_rev_arg(va, DWORD);
+		__asm {
+			push param
+		}
+	}
+	// Same here.
+	__asm {
+		call next
+	}
 }
 
 void detour_mod_exit()
