@@ -11,9 +11,10 @@
 
 void win32_detour(HMODULE hMod)
 {
-	iat_detour_funcs_var(hMod, "kernel32.dll", 18,
+	iat_detour_funcs_var(hMod, "kernel32.dll", 20,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
+		"CreateProcessA", CreateProcessU,
 		"FindFirstFileA", FindFirstFileU,
 		"FindNextFileA", FindNextFileU,
 		"FormatMessageA", FormatMessageU,
@@ -26,6 +27,7 @@ void win32_detour(HMODULE hMod)
 		"GetStartupInfoA", GetStartupInfoU,
 		"GetTempPathA", GetTempPathU,
 		"IsDBCSLeadByte", IsDBCSLeadByteFB,
+		"LoadLibraryA", LoadLibraryU,
 		"MoveFileA", MoveFileU,
 		"MoveFileExA", MoveFileExU,
 		"MoveFileWithProgressA", MoveFileWithProgressU,
