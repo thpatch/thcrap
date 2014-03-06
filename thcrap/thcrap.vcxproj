@@ -64,7 +64,7 @@
     <ClCompile Include="src\inject.c" />
     <ClCompile Include="src\stack.c" />
     <ClCompile Include="src\strings.c" />
-    <ClCompile Include="src\strutil.c" />
+    <ClCompile Include="src\util.c" />
     <ClCompile Include="src\textdisp.c" />
     <ClCompile Include="src\win32_detour.c" />
   </ItemGroup>
@@ -87,7 +87,7 @@
     <ClInclude Include="src\inject.h" />
     <ClInclude Include="src\stack.h" />
     <ClInclude Include="src\strings.h" />
-    <ClInclude Include="src\strutil.h" />
+    <ClInclude Include="src\util.h" />
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
     <ClInclude Include="src\win32_detour.h" />

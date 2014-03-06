@@ -4,11 +4,23 @@
   *
   * ----
   *
-  * String utility functions.
+  * Random utility functions.
   */
 
 #pragma once
 
+/// Pointers
+/// --------
+size_t dword_align(const size_t val);
+BYTE* ptr_dword_align(const BYTE *in);
+// Advances [src] by [num] and returns [num].
+size_t ptr_advance(const unsigned char **src, size_t num);
+// Copies [num] bytes from [src] to [dst] and advances [src].
+size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num);
+/// --------
+
+/// Strings
+/// -------
 // Replaces every occurence of the ASCII character [from] in [str] with [to].
 void str_ascii_replace(char *str, const char from, const char to);
 
@@ -38,3 +50,4 @@ int str_num_base(const char *str);
 
 // Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [format]
 void str_hexdate_format(char format[11], DWORD date);
+/// -------

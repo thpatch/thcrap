@@ -162,31 +162,6 @@ typedef struct {
 } dialog_adjust_t;
 /// ----------
 
-/// Helper functions
-/// ----------------
-size_t dword_align(const size_t val)
-{
-	return (val + 3) & ~3;
-}
-
-BYTE* ptr_dword_align(const BYTE *in)
-{
-	return (BYTE*)dword_align((UINT_PTR)in);
-}
-
-size_t ptr_advance(const unsigned char **src, size_t num)
-{
-	*src += num;
-	return num;
-}
-
-size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num)
-{
-	memcpy(dst, *src, num);
-	return ptr_advance(src, num);
-}
-/// ----------------
-
 /// dialog_adjust_t
 /// ---------------
 

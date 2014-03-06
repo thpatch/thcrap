@@ -23,7 +23,7 @@
 #include "stack.h"
 #include "binhack.h"
 #include "breakpoint.h"
-#include "strutil.h"
+#include "util.h"
 #include "mempatch.h"
 #include "pe.h"
 #include "strings.h"

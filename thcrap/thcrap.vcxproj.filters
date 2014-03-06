@@ -47,9 +47,6 @@
     <ClCompile Include="src\textdisp.c">
       <Filter>Source files</Filter>
     </ClCompile>
-    <ClCompile Include="src\strutil.c">
-      <Filter>Source files</Filter>
-    </ClCompile>
     <ClCompile Include="src\mempatch.c">
       <Filter>Source files</Filter>
     </ClCompile>
@@ -69,6 +66,9 @@
       <Filter>Source files</Filter>
     </ClCompile>
     <ClCompile Include="src\stack.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\util.c">
       <Filter>Source files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -115,9 +115,6 @@
     <ClInclude Include="config.h">
       <Filter>Source files</Filter>
     </ClInclude>
-    <ClInclude Include="src\strutil.h">
-      <Filter>Source files</Filter>
-    </ClInclude>
     <ClInclude Include="src\mempatch.h">
       <Filter>Source files</Filter>
     </ClInclude>
@@ -137,6 +134,9 @@
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\stack.h">
+      <Filter>Source files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\util.h">
       <Filter>Source files</Filter>
     </ClInclude>
   </ItemGroup>
