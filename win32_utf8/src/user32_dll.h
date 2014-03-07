@@ -73,6 +73,15 @@ int WINAPI DrawTextU(
 #define GetWindowLong GetWindowLongW
 #define GetWindowLongPtr GetWindowLongPtrW
 
+int WINAPI LoadStringU(
+	__in_opt HINSTANCE hInstance,
+	__in UINT uID,
+	__out_ecount_part(cchBufferMax, return + 1) LPSTR lpBuffer,
+	__in int cchBufferMax
+);
+#undef LoadString
+#define LoadString LoadStringU
+
 int WINAPI MessageBoxU(
 	__in_opt HWND hWnd,
 	__in_opt LPCSTR lpText,
