@@ -172,6 +172,17 @@ BOOL WINAPI SetCurrentDirectoryU(
 #undef SetCurrentDirectory
 #define SetCurrentDirectory SetCurrentDirectoryU
 
+int WINAPI WideCharToMultiByteU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_ecount(cchWideChar) LPCWSTR lpWideCharStr,
+	__in int cchWideChar,
+	__out_bcount_opt(cbMultiByte) __transfer(lpWideCharStr) LPSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__in_opt LPCSTR lpDefaultChar,
+	__out_opt LPBOOL lpUsedDefaultChar
+);
+
 // Patchers
 int kernel32_init(HMODULE hMod);
 void kernel32_exit(void);

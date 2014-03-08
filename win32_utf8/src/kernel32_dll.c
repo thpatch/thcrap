@@ -426,6 +426,23 @@ BOOL WINAPI SetCurrentDirectoryU(
 	return Wrap1P((Wrap1PFunc_t)SetCurrentDirectoryW, lpPathName);
 }
 
+int WINAPI WideCharToMultiByteU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_ecount(cchWideChar) LPCWSTR lpWideCharStr,
+	__in int cchWideChar,
+	__out_bcount_opt(cbMultiByte) __transfer(lpWideCharStr) LPSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__in_opt LPCSTR lpDefaultChar,
+	__out_opt LPBOOL lpUsedDefaultChar
+)
+{
+	return WideCharToMultiByte(
+		CP_UTF8, 0, lpWideCharStr, cchWideChar,
+		lpMultiByteStr, cbMultiByte, NULL, NULL
+	);
+}
+
 // Patcher functions
 // -----------------
 int kernel32_init(HMODULE hMod)
