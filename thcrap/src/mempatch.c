@@ -236,6 +236,15 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 	size_t i;
 	va_list va;
 
+	// If anything is wrong with a detour_next() call, we're pretty much screwed,
+	// as we can't know what to return to gracefully continue program execution.
+	// So, just crashing outright with nice errors is the best thing we can do.
+	if(!json_array_size(ptrs)) {
+		log_printf(
+			"["__FUNCTION__"]: No detours for %s:%s; typo?\n",
+			dll_name, func_name
+		);
+	}
 	// Get the next function after [caller]
 	json_array_foreach(ptrs, i, ptr) {
 		if((void*)json_integer_value(ptr) == caller) {
@@ -246,6 +255,13 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 	if(!next) {
 		HMODULE hDll = GetModuleHandleA(dll_name);
 		next = GetProcAddress(hDll, func_name);
+	}
+	if(!next) {
+		log_printf(
+			"["__FUNCTION__"]: Couldn't get original function pointer for %s:%s! "
+			"Time to crash...\n",
+			dll_name, func_name
+		);
 	}
 	// This might seem pointless, and we indeed could just set ESP to [va],
 	// but Debug mode doesn't like that.
