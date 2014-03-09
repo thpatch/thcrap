@@ -419,6 +419,33 @@ BOOL WINAPI MoveFileWithProgressU(
 	return ret;
 }
 
+int WINAPI MultiByteToWideCharU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_bcount(cbMultiByte) LPCSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__out_ecount_opt(cchWideChar) __transfer(lpMultiByteStr) LPWSTR lpWideCharStr,
+	__in int cchWideChar
+)
+{
+	int ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar
+	);
+	if(!ret) {
+		extern UINT fallback_codepage;
+		if(lpMultiByteStr[cbMultiByte - 1] != 0) {
+			// The previous conversion attempt still lingers in [lpMultiByteStr].
+			// If we don't clear it, garbage may show up at the end of the
+			// converted string if the original string wasn't null-terminated...
+			ZeroMemory(lpWideCharStr, cchWideChar * sizeof(wchar_t));
+		}
+		ret = MultiByteToWideChar(fallback_codepage, MB_PRECOMPOSED,
+			lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar
+		);
+	}
+	return ret;
+}
+
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 )

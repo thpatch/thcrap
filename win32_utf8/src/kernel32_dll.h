@@ -166,6 +166,15 @@ BOOL WINAPI MoveFileWithProgressU(
 #undef MoveFileWithProgress
 #define MoveFileWithProgress MoveFileWithProgressU
 
+int WINAPI MultiByteToWideCharU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_bcount(cbMultiByte) LPCSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__out_ecount_opt(cchWideChar) __transfer(lpMultiByteStr) LPWSTR lpWideCharStr,
+	__in int cchWideChar
+);
+
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 );

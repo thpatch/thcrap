@@ -10,10 +10,7 @@
 
 int StringToUTF16(wchar_t *str_w, const char *str_mb, int str_len)
 {
-	extern UINT fallback_codepage;
-	int ret;
 	int str_len_w;
-
 	if(!str_mb || !str_len) {
 		return 0;
 	}
@@ -21,17 +18,7 @@ int StringToUTF16(wchar_t *str_w, const char *str_mb, int str_len)
 		str_len = strlen(str_mb) + 1;
 	}
 	str_len_w = str_w ? str_len : 0;
-	ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, str_mb, str_len, str_w, str_len_w);
-	if(!ret) {
-		if(str_mb[str_len - 1] != 0) {
-			// The previous conversion attempt still lingers in [str_w].
-			// If we don't clear it, garbage may show up at the end of the
-			// converted string if the original string wasn't null-terminated...
-			ZeroMemory(str_w, str_len * sizeof(wchar_t));
-		}
-		ret = MultiByteToWideChar(fallback_codepage, MB_PRECOMPOSED, str_mb, str_len, str_w, str_len_w);
-	}
-	return ret;
+	return MultiByteToWideCharU(0, 0, str_mb, str_len, str_w, str_len_w);
 }
 
 wchar_t* StringToUTF16_VLA(wchar_t *str_w, const char *str_mb, int str_len)

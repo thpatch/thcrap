@@ -11,7 +11,7 @@
 
 void win32_detour(void)
 {
-	detour_cache_add("kernel32.dll", 21,
+	detour_cache_add("kernel32.dll", 22,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
 		"CreateProcessA", CreateProcessU,
@@ -31,6 +31,7 @@ void win32_detour(void)
 		"MoveFileA", MoveFileU,
 		"MoveFileExA", MoveFileExU,
 		"MoveFileWithProgressA", MoveFileWithProgressU,
+		"MultiByteToWideChar", MultiByteToWideCharU,
 		"SetCurrentDirectoryA", SetCurrentDirectoryU,
 		"WideCharToMultiByte", WideCharToMultiByteU
 	);
