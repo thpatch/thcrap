@@ -30,8 +30,6 @@ HFONT WINAPI textdisp_CreateFontA(
 	int replaced = 0;
 	const char *string_font;
 
-	iCharSet = DEFAULT_CHARSET;
-
 	// Check hardcoded strings and the run configuration for a replacement font.
 	// Hardcoded strings take priority here.
 	string_font = strings_lookup(pszFaceName, NULL);
@@ -45,7 +43,25 @@ HFONT WINAPI textdisp_CreateFontA(
 			replaced = 1;
 		}
 	}
-
+	/**
+	  * CreateFont() prioritizes [iCharSet] and ensures that the final font
+	  * can display the given charset. If the font given in [pszFaceName]
+	  * doesn't claim to cover the range of codepoints used in [iCharSet],
+	  * Windows will just ignore [pszFaceName], select a different font
+	  * that does, and return that instead.
+	  * To ensure that we actually get the named font, we instead specify
+	  * DEFAULT_CHARSET, which refers to the charset of the current system
+	  * locale. Yes, there's unfortunately no DONTCARE_CHARSET, but this
+	  * should be fine for most use cases.
+	  *
+	  * However, we only do this if we *have* a face name, either from the
+	  * original code or the run configuration. If [pszFaceName] is NULL or
+	  * empty, CreateFont() should simply use the default system font for
+	  * [iCharSet], and DEFAULT_CHARSET might result in a different font.
+	  */
+	if(pszFaceName && pszFaceName[0]) {
+		iCharSet = DEFAULT_CHARSET;
+	}
 	/**
 	  * As long as we convert "ＭＳ ゴシック" to UTF-16, it will work on Western
 	  * systems, too, provided that Japanese support is installed in the first place.
@@ -60,8 +76,9 @@ HFONT WINAPI textdisp_CreateFontA(
 	}
 	*/
 	log_printf(
-		"CreateFontA: %s%s %d (Weight %d, PitchAndFamily 0x%0x)\n",
-		pszFaceName, replaced ? " (repl.)" : "", cHeight, cWeight, iPitchAndFamily
+		"CreateFontA: %s%s %d (Weight %d, CharSet %d, PitchAndFamily 0x%0x)\n",
+		pszFaceName, replaced ? " (repl.)" : "",
+		cHeight, cWeight, iCharSet, iPitchAndFamily
 	);
 	return (HFONT)detour_next(
 		"gdi32.dll", "CreateFontA", textdisp_CreateFontA, 14,
