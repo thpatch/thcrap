@@ -65,6 +65,15 @@ int WINAPI DrawTextU(
 #undef DrawText
 #define DrawText DrawTextU
 
+BOOL WINAPI InsertMenuItemU(
+	__in HMENU hmenu,
+	__in UINT item,
+	__in BOOL fByPosition,
+	__in LPCMENUITEMINFOA lpmi
+);
+#undef InsertMenuItem
+#define InsertMenuItem InsertMenuItemU
+
 // These (and SetWindowLong(Ptr) below) are necessary because Windows otherwise
 //  silently converts certain text parameters for window procedures to ANSI.
 // (see http://blogs.msdn.com/b/oldnewthing/archive/2003/12/01/55900.aspx)

@@ -57,6 +57,7 @@ EXPORTS
 	CreateWindowExU
 	DialogBoxParamU
 	DrawTextU
+	InsertMenuItemU
 	LoadStringU
 	MessageBoxU
 	RegisterClassU

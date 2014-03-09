@@ -48,7 +48,7 @@ void win32_detour(void)
 		"PathFileExistsA", PathFileExistsU
 	);
 
-	detour_cache_add("user32.dll", 16,
+	detour_cache_add("user32.dll", 17,
 		"CharNextA", CharNextU,
 		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,
@@ -58,6 +58,7 @@ void win32_detour(void)
 		"DrawTextA", DrawTextU,
 		"GetWindowLongA", GetWindowLongW,
 		"GetWindowLongPtrA", GetWindowLongPtrW,
+		"InsertMenuItemA", InsertMenuItemU,
 		"LoadStringA", LoadStringU,
 		"MessageBoxA", MessageBoxU,
 		"RegisterClassA", RegisterClassU,

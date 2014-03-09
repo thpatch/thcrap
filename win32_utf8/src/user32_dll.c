@@ -131,6 +131,33 @@ int WINAPI DrawTextU(
 	return ret;
 }
 
+BOOL WINAPI InsertMenuItemU(
+	__in HMENU hmenu,
+	__in UINT item,
+	__in BOOL fByPosition,
+	__in LPCMENUITEMINFOA lpmi
+)
+{
+	BOOL ret;
+	MENUITEMINFOW lpmi_w;
+	wchar_t *str_w = NULL;
+	if(lpmi) {
+		memcpy(&lpmi_w, lpmi, sizeof(MENUITEMINFOW));
+		if(lpmi->fMask & MIIM_TYPE || lpmi->fMask & MIIM_STRING) {
+			// yes, [cch] is ignored
+			const char *str_local = lpmi->dwTypeData;
+			WCHAR_T_DEC(str_local);
+			WCHAR_T_CONV(str_local);
+			str_w = lpmi_w.dwTypeData = str_local_w;
+		}
+	} else {
+		ZeroMemory(&lpmi_w, sizeof(MENUITEMINFOW));
+	}
+	ret = InsertMenuItemW(hmenu, item, fByPosition, &lpmi_w);
+	VLA_FREE(str_w);
+	return ret;
+}
+
 int WINAPI LoadStringU(
 	__in_opt HINSTANCE hInstance,
 	__in UINT uID,
