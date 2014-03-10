@@ -172,6 +172,18 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	return ret;
 }
 
+static int detour_cache_func_contains(const json_t *func, const void *new_ptr)
+{
+	size_t i;
+	json_t *ptr;
+	json_array_foreach(func, i, ptr) {
+		if((void*)json_integer_value(ptr) == new_ptr) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int detour_cache_add(const char *dll_name, const size_t func_count, ...)
 {
 	int ret = 0;
@@ -191,7 +203,9 @@ int detour_cache_add(const char *dll_name, const size_t func_count, ...)
 		const char *func_name = va_arg(va, const char*);
 		const void *func_ptr = va_arg(va, const void*);
 		json_t *func = json_object_get_create(dll, func_name, JSON_ARRAY);
-		ret += json_array_insert_new(func, 0, json_integer((size_t)func_ptr)) == 0;
+		if(!detour_cache_func_contains(func, func_ptr)) {
+			ret += json_array_insert_new(func, 0, json_integer((size_t)func_ptr)) == 0;
+		}
 	}
 	va_end(va);
 	return ret;
