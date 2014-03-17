@@ -12,12 +12,14 @@
 
 #include <Windows.h>
 #include <psapi.h>
+#include <stdio.h>
 
 #include "macros.h"
 #include "utf.h"
 
 #include "gdi32_dll.h"
 #include "kernel32_dll.h"
+#include "msvcrt_dll.h"
 #include "psapi_dll.h"
 #include "shlwapi_dll.h"
 #include "user32_dll.h"

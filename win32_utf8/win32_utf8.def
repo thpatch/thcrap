@@ -40,6 +40,10 @@ EXPORTS
 	SetCurrentDirectoryU
 	WideCharToMultiByteU
 
+	; msvcrt.dll
+	; ----------
+	fopen_u
+
 	; psapi.dll
 	; ---------
 	GetModuleFileNameExU

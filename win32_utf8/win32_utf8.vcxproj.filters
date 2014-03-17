@@ -40,6 +40,9 @@
     <ClInclude Include="src\wrappers.h">
       <Filter>General</Filter>
     </ClInclude>
+    <ClInclude Include="src\msvcrt_dll.h">
+      <Filter>Wrappers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\utf.c">
@@ -65,6 +68,9 @@
     </ClCompile>
     <ClCompile Include="src\wrappers.c">
       <Filter>General</Filter>
+    </ClCompile>
+    <ClCompile Include="src\msvcrt_dll.c">
+      <Filter>Wrappers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

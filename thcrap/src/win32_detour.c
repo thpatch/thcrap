@@ -36,6 +36,10 @@ void win32_detour(void)
 		"WideCharToMultiByte", WideCharToMultiByteU
 	);
 
+	detour_cache_add("msvcrt.dll", 1,
+		"fopen", fopen_u
+	);
+
 	detour_cache_add("gdi32.dll", 3,
 		"CreateFontA", CreateFontU,
 		"GetTextExtentPoint32A", GetTextExtentPoint32U,
