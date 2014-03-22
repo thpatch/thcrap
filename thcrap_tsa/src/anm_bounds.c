@@ -9,43 +9,21 @@
 
 #include <thcrap.h>
 #include <png.h>
+#include "png_ex.h"
 #include "thcrap_tsa.h"
 #include "anm.h"
 
-png_bytep bounds_init(png_image_exp image, const thtx_header_t *thtx, const char *fn)
+void bounds_init(png_image_exp image, const thtx_header_t *thtx, const char *fn)
 {
-	size_t bounds_size;
-
-	if(!image || !thtx) {
-		return NULL;
-	}
-
-	SAFE_FREE(image->buf);
-	png_image_free(&image->img);
-	ZeroMemory(&image->img, sizeof(png_image));
-
-	// Still needing this one?
-	{
+	if(thtx && fn) {
+		// Still needing this one?
 		char *bounds_fn = fn_for_bounds(fn);
 		int ret = PathFileExists(bounds_fn);
 		SAFE_FREE(bounds_fn);
-		if(ret) {
-			return NULL;
+		if(!ret) {
+			png_image_new(image, thtx->w, thtx->h, PNG_FORMAT_RGBA);
 		}
 	}
-
-	image->img.version = PNG_IMAGE_VERSION;
-	image->img.width = thtx->w;
-	image->img.height = thtx->h;
-	image->img.format = PNG_FORMAT_RGBA;
-
-	bounds_size = PNG_IMAGE_SIZE(image->img);
-
-	image->buf = malloc(bounds_size);
-	if(image->buf) {
-		ZeroMemory(image->buf, bounds_size);
-	}
-	return image->buf;
 }
 
 png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t new_h)

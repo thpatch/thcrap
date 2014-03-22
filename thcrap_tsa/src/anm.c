@@ -12,6 +12,7 @@
 
 #include <thcrap.h>
 #include <png.h>
+#include "png_ex.h"
 #include "thcrap_tsa.h"
 #include "anm.h"
 

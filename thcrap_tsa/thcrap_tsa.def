@@ -15,6 +15,10 @@ EXPORTS
 	spells_mod_init
 	spells_mod_exit
 
+	; PNG extensions
+	; --------------
+	png_image_new
+
 	; Bounds
 	; ------
 	fn_for_bounds

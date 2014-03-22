@@ -54,6 +54,7 @@
     <ClCompile Include="src\encraption.c" />
     <ClCompile Include="src\layout.c" />
     <ClCompile Include="src\music.c" />
+    <ClCompile Include="src\png_ex.c" />
     <ClCompile Include="src\spells.c" />
     <ClCompile Include="src\th06_msg.c" />
     <ClCompile Include="src\thcrap_tsa.c" />
@@ -65,6 +66,7 @@
   <ItemGroup>
     <ClInclude Include="src\anm.h" />
     <ClInclude Include="src\layout.h" />
+    <ClInclude Include="src\png_ex.h" />
     <ClInclude Include="src\thcrap_tsa.h" />
   </ItemGroup>
 </Project>

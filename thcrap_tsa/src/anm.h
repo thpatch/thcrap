@@ -49,14 +49,6 @@ typedef struct {
 
 /// Patching types
 /// --------------
-// Why couldn't libpng just include the buffer pointer into the png_image
-// structure. Are different pointer sizes (thus, differing structure sizes)
-// really that bad?
-typedef struct {
-	png_image img;
-	png_bytep buf;
-} png_image_ex, *png_image_exp;
-
 // Alpha analysis results
 typedef enum {
 	SPRITE_ALPHA_EMPTY,
@@ -189,7 +181,7 @@ int stack_game_png_apply(anm_entry_t *entry);
 
 /// Sprite boundary dumping
 /// -----------------------
-png_bytep bounds_init(png_image_exp bounds, const thtx_header_t *thtx, const char *fn);
+void bounds_init(png_image_exp bounds, const thtx_header_t *thtx, const char *fn);
 png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t new_h);
 
 char* fn_for_bounds(const char *fn);
