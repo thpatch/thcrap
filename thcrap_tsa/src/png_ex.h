@@ -25,3 +25,11 @@ int png_image_new(
 	const png_uint_32 h,
 	const png_uint_32 format
 );
+
+// Resizes [image] to the given new dimensions.
+// Returns 0 on success, 1 on allocation failure.
+int png_image_resize(
+	png_image_exp image,
+	const size_t new_w,
+	const size_t new_h
+);

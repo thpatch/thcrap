@@ -593,7 +593,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				}
 				name_prev = entry.name;
 			}
-			bounds_resize(&bounds, entry.x + entry.thtx->w, entry.y + entry.thtx->h);
+			png_image_resize(&bounds, entry.x + entry.thtx->w, entry.y + entry.thtx->h);
 			if(entry.sprites) {
 				size_t i;
 				for(i = 0; i < entry.sprite_num; i++) {
