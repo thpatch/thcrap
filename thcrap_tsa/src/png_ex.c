@@ -53,6 +53,7 @@ int png_image_resize(
 	size_t prev_size;
 	size_t new_size;
 	size_t new_stride;
+	png_bytep new_buf;
 
 	if(!image || !image->buf) {
 		return -1;
@@ -73,8 +74,9 @@ int png_image_resize(
 	new_stride = PNG_IMAGE_ROW_STRIDE(image->img);
 	new_size = PNG_IMAGE_SIZE(image->img);
 
-	image->buf = realloc(image->buf, new_size);
-	if(image->buf) {
+	new_buf = realloc(image->buf, new_size);
+	if(new_buf) {
+		image->buf = new_buf;
 		ZeroMemory(image->buf + prev_size, new_size - prev_size);
 
 		// If the width has changed, we need to move all rows
