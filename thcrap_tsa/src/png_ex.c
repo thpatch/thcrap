@@ -96,3 +96,31 @@ int png_image_resize(
 	// Memory allocation failure
 	return 1;
 }
+
+int png_image_store(const char *fn, png_image_exp image)
+{
+	int ret = -1;
+	if(image && image->img.version == PNG_IMAGE_VERSION && fn) {
+		FILE *fp = fopen_u(fn, "wb");
+		if(fp != NULL) {
+			ret = !png_image_write_to_stdio(
+				&image->img, fp, 0, image->buf, 0, image->palette
+			);
+			if(ret) {
+				log_printf(
+					"["__FUNCTION__"]: Error writing %s (%s).",
+					fn, image->img.message
+				);
+			}
+			fflush(fp);
+			fclose(fp);
+		} else {
+			log_printf(
+				"["__FUNCTION__"]: Couldn't open %s for writing (%s)\n",
+				fn, strerror(errno)
+			);
+			ret = 2;
+		}
+	}
+	return ret;
+}

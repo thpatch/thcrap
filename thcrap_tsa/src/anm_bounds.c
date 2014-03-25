@@ -141,7 +141,7 @@ int bounds_store(const char *fn, png_image_exp image)
 	if(!bounds_fn) {
 		return 1;
 	}
-	png_image_write_to_file(&image->img, bounds_fn, 0, image->buf, 0, NULL);
+	png_image_store(bounds_fn, image);
 	SAFE_FREE(bounds_fn);
 	return 0;
 }

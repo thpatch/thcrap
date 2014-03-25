@@ -19,6 +19,7 @@ EXPORTS
 	; --------------
 	png_image_new
 	png_image_resize
+	png_image_store
 
 	; Bounds
 	; ------

@@ -9,12 +9,13 @@
 
 #pragma once
 
-// Why couldn't libpng just include the buffer pointer into the png_image
+// Why couldn't libpng just include the buffer pointers into the png_image
 // structure. Are different pointer sizes (thus, differing structure sizes)
 // really that bad?
 typedef struct {
 	png_image img;
 	png_bytep buf;
+	png_bytep palette;
 } png_image_ex, *png_image_exp;
 
 // Creates a new, empty PNG image with the given [format] and dimensions.
@@ -33,3 +34,6 @@ int png_image_resize(
 	const size_t new_w,
 	const size_t new_h
 );
+
+// Essentially a Unicode wrapper around png_image_write_to_file().
+int png_image_store(const char *fn, png_image_exp image);
