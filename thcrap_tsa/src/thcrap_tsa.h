@@ -112,16 +112,6 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
 
-/**
-  * For now, this is merely a dummy hook to make sure that the spell files are
-  * reloaded at the beginning of a stage.
-  * We don't want to hook ECL files because newer games use more than one per
-  * stage, and their file names are not really predictable anymore.
-  * We also don't just do this once on plug-in initialization because the files
-  * may be changed by an automatic update at any time.
-  */
-int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-
 void spells_mod_init(void);
 void spells_mod_exit(void);
 /// ------

@@ -20,7 +20,6 @@ int __stdcall thcrap_plugin_init(json_t *run_cfg)
 	patchhook_register("s*.msg", patch_msg_dlg); // lowest common denominator for th10+
 	patchhook_register("e*.msg", patch_msg_end); // th10+ endings
 
-	patchhook_register("*.std", patch_std);
 	patchhook_register("*.anm", patch_anm);
 	return 0;
 }

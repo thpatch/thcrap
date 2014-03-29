@@ -13,7 +13,6 @@ EXPORTS
 	BP_spell_name
 	BP_spell_comment_line
 	spells_mod_init
-	spells_mod_exit
 
 	; PNG extensions
 	; --------------
@@ -71,7 +70,6 @@ EXPORTS
 	BP_music_cmt
 
 	music_mod_init
-	music_mod_exit
 
 	; Layout
 	; ------
@@ -99,7 +97,6 @@ EXPORTS
 	patch_msg_dlg
 	patch_msg_end
 
-	patch_std
 	patch_anm
 
 	; TSA-specific detours

@@ -29,3 +29,4 @@
 #include "strings.h"
 #include "inject.h"
 #include "init.h"
+#include "jsondata.h"

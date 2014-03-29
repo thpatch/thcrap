@@ -15,19 +15,18 @@ typedef struct {
 	char str;
 } storage_string_t;
 
-static json_t *stringdefs = NULL;
-static json_t *stringlocs = NULL;
 static json_t *strings_storage = NULL;
 
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 
 const json_t* strings_get(const char *id)
 {
-	return json_object_get(stringdefs, id);
+	return json_object_get(jsondata_get("stringdefs.js"), id);
 }
 
 const char* strings_lookup(const char *in, size_t *out_len)
 {
+	const json_t *stringlocs = NULL;
 	const char *id_key = NULL;
 	const char *ret = in;
 
@@ -35,7 +34,9 @@ const char* strings_lookup(const char *in, size_t *out_len)
 		return in;
 	}
 
+	stringlocs = jsondata_game_get("stringlocs.js");
 	id_key = json_string_value(json_object_hexkey_get(stringlocs, (size_t)in));
+
 	if(id_key) {
 		const char *new_str = json_string_value(strings_get(id_key));
 		if(new_str && new_str[0]) {
@@ -246,8 +247,8 @@ int WINAPI strings_MessageBoxA(
 
 void strings_mod_init(void)
 {
-	stringdefs = stack_json_resolve("stringdefs.js", NULL);
-	stringlocs = stack_game_json_resolve("stringlocs.js", NULL);
+	jsondata_add("stringdefs.js");
+	jsondata_game_add("stringlocs.js");
 	strings_storage = json_object();
 }
 
@@ -263,8 +264,6 @@ void strings_mod_exit(void)
 	const char *key;
 	json_t *val;
 
-	stringdefs = json_decref_safe(stringdefs);
-	stringlocs = json_decref_safe(stringlocs);
 	json_object_foreach(strings_storage, key, val) {
 		storage_string_t *p = (storage_string_t*)json_hex_value(val);
 		SAFE_FREE(p);

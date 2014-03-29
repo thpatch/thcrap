@@ -245,6 +245,14 @@ EXPORTS
 	plugins_load
 	plugins_close
 
+	; JSON data storage
+	; -----------------
+	jsondata_add
+	jsondata_game_add
+	jsondata_get
+	jsondata_game_get
+	jsondata_mod_exit
+
 	; Exception handler
 	; -----------------
 	exception_init

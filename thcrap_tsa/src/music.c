@@ -10,8 +10,6 @@
 #include <thcrap.h>
 #include "thcrap_tsa.h"
 
-static json_t *themes = NULL;
-static json_t *musiccmt = NULL;
 static size_t cache_track = 0;
 
 const char* music_title_get(size_t track)
@@ -19,6 +17,7 @@ const char* music_title_get(size_t track)
 	const char *ret = NULL;
 	json_t *game = json_object_get(runconfig_get(), "game");
 	if(json_is_string(game)) {
+		json_t *themes = jsondata_get("themes.js");
 		size_t key_len = json_string_length(game) + 1 + 2 + str_num_digits(track) + 1;
 		VLA(char, key, key_len);
 		sprintf(key, "%s_%02u", json_string_value(game), track);
@@ -77,6 +76,7 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
 		cache_cmt_line = *line_num;
 	}
 	if(str && *str) {
+		json_t *musiccmt = jsondata_game_get("musiccmt.js");
 		json_t *cmt = json_object_numkey_get(musiccmt, cache_track);
 		if(json_is_array(cmt)) {
 			const char* str_rep = json_array_get_string_safe(cmt, cache_cmt_line);
@@ -93,12 +93,6 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
 
 void music_mod_init(void)
 {
-	themes = stack_json_resolve("themes.js", NULL);
-	musiccmt = stack_game_json_resolve("musiccmt.js", NULL);
-}
-
-void music_mod_exit(void)
-{
-	themes = json_decref_safe(themes);
-	musiccmt = json_decref_safe(musiccmt);
+	jsondata_add("themes.js");
+	jsondata_game_add("musiccmt.js");
 }
