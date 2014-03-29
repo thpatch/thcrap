@@ -9,7 +9,27 @@
   */
 
 #include <string.h>
+#if defined _MSC_VER
+#include <intrin.h>
+#endif
 #include "sha256.h"
+
+#if defined(__INTRIN_H_)
+# define bswap_32 _byteswap_ulong
+#else
+uint bswap_32(uint x);
+# if defined(__WATCOMC__)
+#  pragma aux bswap_32 = " bswap eax " parm [ax] modify [ax];
+# else
+uint bswap_32(uint x)
+{
+	return
+		((x & 0xff000000) >> 24) | ((x & 0x00ff0000) >> 8) |
+		((x & 0x0000ff00) << 8) | ((x & 0x000000ff) << 24)
+	;
+}
+# endif
+#endif
 
 // DBL_INT_ADD treats two unsigned ints a and b as one 64-bit integer and adds c to it
 #define DBL_INT_ADD(a,b,c) if (a > 0xffffffff - (c)) ++b; a += c;
@@ -34,13 +54,13 @@ uint k[64] = {
 	0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
 
-
 void sha256_transform(SHA256_CTX *ctx, uchar data[])
 {
-	uint a,b,c,d,e,f,g,h,i,j,t1,t2,m[64];
+	uint a,b,c,d,e,f,g,h,i,t1,t2,m[64];
+	uint *data_uint = (uint*)data;
 
-	for(i = 0, j = 0; i < 16; ++i, j += 4) {
-		m[i] = (data[j] << 24) | (data[j+1] << 16) | (data[j+2] << 8) | (data[j+3]);
+	for(i = 0; i < 16; ++i) {
+		m[i] = bswap_32(data_uint[i]);
 	}
 	for(; i < 64; ++i) {
 		m[i] = SIG1(m[i-2]) + m[i-7] + SIG0(m[i-15]) + m[i-16];
@@ -110,6 +130,8 @@ void sha256_update(SHA256_CTX *ctx, uchar data[], uint len)
 void sha256_final(SHA256_CTX *ctx, uchar hash[])
 {
 	uint i = ctx->datalen;
+	uint *data_uint = (uint*)ctx->data;
+	uint *hash_uint = (uint*)hash;
 
 	// Pad whatever data is left in the buffer.
 	if(ctx->datalen < 56) {
@@ -128,26 +150,13 @@ void sha256_final(SHA256_CTX *ctx, uchar hash[])
 
 	// Append to the padding the total message's length in bits and transform.
 	DBL_INT_ADD(ctx->bitlen[0], ctx->bitlen[1], ctx->datalen * 8);
-	ctx->data[63] = ctx->bitlen[0];
-	ctx->data[62] = ctx->bitlen[0] >> 8;
-	ctx->data[61] = ctx->bitlen[0] >> 16;
-	ctx->data[60] = ctx->bitlen[0] >> 24;
-	ctx->data[59] = ctx->bitlen[1];
-	ctx->data[58] = ctx->bitlen[1] >> 8;
-	ctx->data[57] = ctx->bitlen[1] >> 16;
-	ctx->data[56] = ctx->bitlen[1] >> 24;
+	data_uint[15] = bswap_32(ctx->bitlen[0]);
+	data_uint[14] = bswap_32(ctx->bitlen[1]);
 	sha256_transform(ctx, ctx->data);
 
 	// Since this implementation uses little endian byte ordering and SHA uses big endian,
 	// reverse all the bytes when copying the final state to the output hash.
-	for(i = 0; i < 4; ++i) {
-		hash[i]    = (ctx->state[0] >> (24-i*8)) & 0x000000ff;
-		hash[i+4]  = (ctx->state[1] >> (24-i*8)) & 0x000000ff;
-		hash[i+8]  = (ctx->state[2] >> (24-i*8)) & 0x000000ff;
-		hash[i+12] = (ctx->state[3] >> (24-i*8)) & 0x000000ff;
-		hash[i+16] = (ctx->state[4] >> (24-i*8)) & 0x000000ff;
-		hash[i+20] = (ctx->state[5] >> (24-i*8)) & 0x000000ff;
-		hash[i+24] = (ctx->state[6] >> (24-i*8)) & 0x000000ff;
-		hash[i+28] = (ctx->state[7] >> (24-i*8)) & 0x000000ff;
+	for(i = 0; i < 8; ++i) {
+		hash_uint[i] = bswap_32(ctx->state[i]);
 	}
 }
