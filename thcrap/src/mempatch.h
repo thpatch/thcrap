@@ -145,6 +145,7 @@ int iat_detour_apply(HMODULE hMod);
 // previously added using detour_add(), so be careful if you're using helper
 // functions. If [caller] happens to be the last detour for the given
 // function, the original function is called.
+// [caller] can also be NULL to run the entire chain from the beginning.
 size_t detour_next(const char *dll_name, const char *func_name, void *caller, size_t arg_count, ...);
 /// ---------------
 

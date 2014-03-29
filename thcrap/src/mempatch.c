@@ -245,7 +245,6 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 {
 	json_t *funcs = json_object_get_create(detours, dll_name, JSON_OBJECT);
 	json_t *ptrs = json_object_get_create(funcs, func_name, JSON_ARRAY);
-	json_t *ptr = NULL;
 	FARPROC next = NULL;
 	size_t i;
 	va_list va;
@@ -260,10 +259,15 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 		);
 	}
 	// Get the next function after [caller]
-	json_array_foreach(ptrs, i, ptr) {
-		if((void*)json_integer_value(ptr) == caller) {
-			next = (FARPROC)json_array_get_hex(ptrs, i + 1);
-			break;
+	if(!caller) {
+		next = (FARPROC)json_array_get_hex(ptrs, 0);
+	} else {
+		json_t *ptr = NULL;
+		json_array_foreach(ptrs, i, ptr) {
+			if((void*)json_integer_value(ptr) == caller) {
+				next = (FARPROC)json_array_get_hex(ptrs, i + 1);
+				break;
+			}
 		}
 	}
 	if(!next) {
