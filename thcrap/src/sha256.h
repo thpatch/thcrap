@@ -10,7 +10,7 @@
 
 #pragma once
 
-// Signed variables are for wimps 
+// Signed variables are for wimps
 #define uchar unsigned char // 8-bit byte
 #define uint unsigned long // 32-bit word
 
