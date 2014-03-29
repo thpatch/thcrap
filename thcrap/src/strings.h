@@ -12,7 +12,6 @@
 // Returns [id] from the string definition table,
 // or NULL if no string for [id] available.
 const json_t* strings_get(const char *id);
-const char* strings_get_value(const char *id);
 
 // Returns the translated string for [in] from the string definition table,
 // or [in] itself if no translation is available.

@@ -31,7 +31,7 @@ const char* music_title_get(size_t track)
 void music_title_print(const char **str, const char *format_id, size_t track)
 {
 	if(str) {
-		const char *format = strings_get_value(format_id);
+		const char *format = json_string_value(strings_get(format_id));
 		const char *title = music_title_get(track);
 		if(title) {
 			if(format) {
