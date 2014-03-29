@@ -252,15 +252,6 @@ int thcrap_init(const char *run_cfg_fn)
 	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
 	log_printf("Run configuration file: %s\n\n", run_cfg_fn);
 
-	log_printf("EXE file name: %s\n", exe_fn);
-	{
-		json_t *full_cfg = identify(exe_fn);
-		if(full_cfg) {
-			json_object_merge(full_cfg, user_cfg);
-			runconfig_set(full_cfg);
-			json_decref(full_cfg);
-		}
-	}
 	log_printf("Initializing patches...\n");
 	{
 		DWORD min_build = json_object_get_hex(run_cfg, "thcrap_version_min");
@@ -291,6 +282,16 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 	stack_show_missing();
+
+	log_printf("EXE file name: %s\n", exe_fn);
+	{
+		json_t *full_cfg = identify(exe_fn);
+		if(full_cfg) {
+			json_object_merge(full_cfg, user_cfg);
+			runconfig_set(full_cfg);
+			json_decref(full_cfg);
+		}
+	}
 
 	log_printf("Game directory: %s\n", game_dir);
 	log_printf("Plug-in directory: %s\n", dll_dir);
