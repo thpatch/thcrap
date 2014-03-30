@@ -11,28 +11,23 @@
 
 json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
-	char *fn_build = NULL;
+	char *fn_build = fn_for_build(fn);
 	json_t *ret = NULL;
 	json_t *patch_array = json_object_get(run_cfg, "patches");
-	json_t *patch_obj;
+	json_t *patch_info;
 	size_t i;
 	size_t json_size = 0;
 
 	if(!fn) {
 		return NULL;
 	}
-	fn_build = fn_for_build(fn);
 	log_printf("(JSON) Resolving %s... ", fn);
 
-	json_array_foreach(patch_array, i, patch_obj) {
-		json_size += patch_json_merge(&ret, patch_obj, fn);
-		json_size += patch_json_merge(&ret, patch_obj, fn_build);
+	json_array_foreach(patch_array, i, patch_info) {
+		json_size += patch_json_merge(&ret, patch_info, fn);
+		json_size += patch_json_merge(&ret, patch_info, fn_build);
 	}
-	if(!ret) {
-		log_printf("not found\n");
-	} else {
-		log_printf("\n");
-	}
+	log_printf(ret ? "\n" : "not found\n");
 	if(file_size) {
 		*file_size = json_size;
 	}
@@ -58,31 +53,25 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size)
 	log_printf("(Data) Resolving %s... ", fn_common_ptr);
 	// Patch stack has to be traversed backwards because later patches take
 	// priority over earlier ones, and build-specific files are preferred.
-	for(i = json_array_size(patch_array) - 1; i > -1; i--) {
-		json_t *patch_obj = json_array_get(patch_array, i);
+	for(i = json_array_size(patch_array) - 1; i > -1 && !ret; i--) {
+		json_t *patch_info = json_array_get(patch_array, i);
 		const char *log_fn = NULL;
-		ret = NULL;
 
 		if(fn_build) {
-			ret = patch_file_load(patch_obj, fn_build, file_size);
+			ret = patch_file_load(patch_info, fn_build, file_size);
 			log_fn = fn_build;
 		}
 		if(!ret) {
-			ret = patch_file_load(patch_obj, fn_common_ptr, file_size);
+			ret = patch_file_load(patch_info, fn_common_ptr, file_size);
 			log_fn = fn_common_ptr;
 		}
 		if(ret) {
-			patch_print_fn(patch_obj, log_fn);
-			break;
+			patch_print_fn(patch_info, log_fn);
 		}
 	}
 	SAFE_FREE(fn_common);
 	SAFE_FREE(fn_build);
-	if(!ret) {
-		log_printf("not found\n");
-	} else {
-		log_printf("\n");
-	}
+	log_printf(ret ? "\n" : "not found\n");
 	return ret;
 }
 
@@ -115,12 +104,12 @@ void stack_show_missing(void)
 		VLA(char, rem_arcs_str, rem_arcs_str_len);
 		size_t i;
 		json_t *archive_obj;
+		char *p = rem_arcs_str;
 
-		rem_arcs_str[0] = 0;
 		json_array_foreach(rem_arcs, i, archive_obj) {
-			strcat(rem_arcs_str, "\t");
-			strcat(rem_arcs_str, json_string_value(archive_obj));
-			strcat(rem_arcs_str, "\n");
+			if(json_is_string(archive_obj)) {
+				p += sprintf(p, "\t%s\n", json_string_value(archive_obj));
+			}
 		}
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 			"Some patches in your configuration could not be found:\n"

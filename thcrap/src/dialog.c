@@ -311,8 +311,8 @@ void dialog_adjust(
 	} else if(button_style == BS_PUSHBUTTON || button_style == BS_DEFPUSHBUTTON) {
 		rect.right += 3;
 	}
-	item->cx = max(rect.right, item->cx);
-	item->cy = max(rect.bottom, item->cy);
+	item->cx = (short)max(rect.right, item->cx);
+	item->cy = (short)max(rect.bottom, item->cy);
 	adj->dst_header->cx = max(item->x + item->cx, adj->dst_header->cx);
 	adj->dst_header->cy = max(item->y + item->cy, adj->dst_header->cy);
 }

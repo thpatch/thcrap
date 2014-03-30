@@ -22,6 +22,15 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len);
 json_t* layout_tokenize(const char *str, size_t len);
 /// ------------
 
+// Text layout wrapper
+BOOL WINAPI layout_TextOutU(
+	__in HDC hdc,
+	__in int orig_x,
+	__in int orig_y,
+	__in_ecount(c) LPCSTR lpString,
+	__in int c
+);
+
 // Raw text width calculation, without taking layout markup into account.
 size_t GetTextExtentBase(HDC hdc, const json_t *str_obj);
 
@@ -31,7 +40,7 @@ size_t __stdcall GetTextExtent(const char *str);
 
 // GetTextExtent with an additional font parameter.
 // [font] is temporarily selected into the DC for the length calcuation.
-size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font);
+size_t __stdcall GetTextExtentForFont(const char *str, HFONT font);
 
 int layout_init(HMODULE hMod);
 void layout_exit(void);

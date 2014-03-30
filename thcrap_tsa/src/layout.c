@@ -240,7 +240,7 @@ BOOL WINAPI layout_TextOutU(
 	size_t cur_tab = 0;
 
 	if(!lpString || !c) {
-		return 0;
+		return ret;
 	}
 
 	if(c >= strlen(lpString)) {
@@ -322,6 +322,8 @@ BOOL WINAPI layout_TextOutU(
 			}
 
 			while(*p) {
+				size_t j = 2;
+				const json_t *str_obj = NULL;
 				switch(p[0]) {
 					case 's':
 						// Don't actually print anything
@@ -330,14 +332,10 @@ BOOL WINAPI layout_TextOutU(
 						break;
 					case 't':
 						// Tabstop definition
-						{
-							// The width of the first parameter is already in cur_w, so...
-							size_t j = 2;
-							const json_t *str_obj = NULL;
-							while(str_obj = json_array_get(token, j++)) {
-								size_t new_w = GetTextExtentBase(hdc, str_obj);
-								cur_w = max(new_w, cur_w);
-							}
+						// The width of the first parameter is already in cur_w, so...
+						while(str_obj = json_array_get(token, j++)) {
+							size_t new_w = GetTextExtentBase(hdc, str_obj);
+							cur_w = max(new_w, cur_w);
 						}
 						tab_end = cur_x + cur_w;
 						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
@@ -434,7 +432,7 @@ size_t __stdcall GetTextExtent(const char *str)
 	return ret;
 }
 
-size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font)
+size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 {
 	HGDIOBJ prev_font = layout_SelectObject(text_dc, font);
 	size_t ret = GetTextExtent(str);

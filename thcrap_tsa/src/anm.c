@@ -555,11 +555,7 @@ int stack_game_png_apply(anm_entry_t *entry)
 				ret = 1;
 			}
 		}
-		if(!ret) {
-			log_printf("not found\n");
-		} else {
-			log_printf("\n");
-		}
+		log_printf(ret ? "\n" : "not found\n");
 		SAFE_FREE(fn_common);
 		SAFE_FREE(fn_build);
 	}

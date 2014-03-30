@@ -128,7 +128,7 @@ json_t* identify(const char *exe_fn)
 	log_printf("→ %s %s %s\n", game, build, variety);
 
 	if(stricmp(PathFindExtensionA(game), ".js")) {
-		size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
+		size_t ver_fn_len = json_string_length(game_obj) + 1 + strlen(".js") + 1;
 		VLA(char, ver_fn, ver_fn_len);
 		sprintf(ver_fn, "%s.js", game);
 		run_ver = stack_json_resolve(ver_fn, NULL);
