@@ -5,7 +5,6 @@
 #
 # ----
 #
-
 """Builds and updates a patch repository for the
 Touhou Community Reliant Automatic Patcher."""
 
@@ -80,7 +79,7 @@ def patch_build(patch_id, servers, f, t):
     """Updates the patch in the [f]/[patch_id] directory.
 
     Ensures that patch.js contains all necessary keys and values, then updates
-    the checksums in files.js and, if [t] differs from [f9, copies all patch
+    the checksums in files.js and, if [t] differs from [f], copies all patch
     files from [f] to [t].
 
     Returns the contents of the patch ID key in repo.js."""

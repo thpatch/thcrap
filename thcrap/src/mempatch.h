@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Direct memory and Import Address Table patching
+  * Direct memory patching and Import Address Table detouring.
   */
 
 #pragma once
@@ -17,7 +17,7 @@ BOOL VirtualCheckCode(const void *ptr);
 
 // Writes [val] to [ptr] in the address space of the current
 // (or another, in case of the *Ex functions) process),
-// if the current value in [ptr] equals [prev]
+// if the current value in [ptr] equals [prev].
 int PatchRegionNoCheck(void *ptr, void *New, size_t len);
 int PatchRegion(void *ptr, void *Prev, void *New, size_t len);
 int PatchRegionEx(HANDLE hProcess, void *ptr, void *Prev, void *New, size_t len);

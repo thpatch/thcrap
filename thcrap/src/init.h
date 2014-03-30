@@ -24,4 +24,5 @@ json_t* identify(const char *fn);
 // All Import Address Table detour calls required by the engine.
 void thcrap_detour(HMODULE hProc);
 
+// Sets up the engine with the given configuration for the current process.
 int thcrap_init(const char *setup_fn);

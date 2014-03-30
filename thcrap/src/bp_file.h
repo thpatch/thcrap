@@ -125,8 +125,8 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   * Writes a local replacement file to the game's file buffer, and also
   * applies a JSON patch on top of it if available.
   * This breakpoint is mostly placed at the game's own "load-file-into-buffer"
-  * function call. Thus, it allows for manipulation of ESP and EIP,
-  * if necessary.
+  * function call, after the final buffer has been allocated. Thus, it allows
+  * manipulation of ESP and EIP, if necessary.
   * Returns 0 if anything was replaced (to skip execution of the original
   * function in the breakpoint's code cave).
   *

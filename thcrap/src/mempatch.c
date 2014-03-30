@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Direct memory and Import Address Table detouring
+  * Direct memory patching and Import Address Table detouring.
   */
 
 #include "thcrap.h"

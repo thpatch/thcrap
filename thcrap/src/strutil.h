@@ -33,7 +33,7 @@ void str_slash_normalize_win(char *str);
 // Counts the number of digits in [number]
 unsigned int str_num_digits(int number);
 
-// Returns
+// Returns the base of the number in [str].
 int str_num_base(const char *str);
 
 // Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [format]
