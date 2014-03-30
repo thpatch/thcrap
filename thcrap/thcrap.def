@@ -251,6 +251,7 @@ EXPORTS
 	jsondata_game_add
 	jsondata_get
 	jsondata_game_get
+	jsondata_mod_repatch
 	jsondata_mod_exit
 
 	; Exception handler
@@ -264,3 +265,8 @@ EXPORTS
 	; Win32 detours
 	; -------------
 	win32_detour
+
+	; Hot-repatching
+	; --------------
+	repatch_mod_init
+	repatch_mod_exit

@@ -59,6 +59,7 @@
     <ClCompile Include="src\patchfile.c" />
     <ClCompile Include="src\pe.c" />
     <ClCompile Include="src\plugin.c" />
+    <ClCompile Include="src\repatch.c" />
     <ClCompile Include="src\sha256.c">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -85,6 +86,7 @@
     <ClInclude Include="src\patchfile.h" />
     <ClInclude Include="src\pe.h" />
     <ClInclude Include="src\plugin.h" />
+    <ClInclude Include="src\repatch.h" />
     <ClInclude Include="src\sha256.h" />
     <ClInclude Include="src\inject.h" />
     <ClInclude Include="src\stack.h" />

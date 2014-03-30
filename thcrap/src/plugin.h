@@ -44,6 +44,11 @@ typedef int (__stdcall *thcrap_plugin_init_type)(json_t *run_config);
   *   new detours, it should implement this hook, using one or more calls to
   *   detour_cache_add().
   *
+  * • "repatch" (json_t *files_changed)
+  *   Called when the given files have been changed outside the game and need
+  *   to be reloaded. [files_changed] is a JSON object with the respective file
+  *   names as keys.
+  *
   * • "exit" (NULL)
   *   Called when shutting down the process.
   */

@@ -68,6 +68,9 @@
     <ClCompile Include="src\stack.c">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="src\repatch.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
     <ClCompile Include="src\util.c">
       <Filter>Source files</Filter>
     </ClCompile>
@@ -137,6 +140,9 @@
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\stack.h">
+      <Filter>Source files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\repatch.h">
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\util.h">

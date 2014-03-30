@@ -50,6 +50,17 @@ json_t* jsondata_game_get(const char *fn)
 	return (json_t*)jsondata_game_func(fn, (jsondata_func_t)jsondata_get);
 }
 
+void jsondata_mod_repatch(const json_t *files_changed)
+{
+	const char *key;
+	json_t *val;
+	json_object_foreach(jsondata, key, val) {
+		if(json_object_get(files_changed, key)) {
+			jsondata_add(key);
+		}
+	}
+}
+
 void jsondata_mod_exit(void)
 {
 	jsondata = json_decref_safe(jsondata);
