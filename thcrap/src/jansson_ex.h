@@ -68,12 +68,12 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind);
 json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object);
 
 // json_object_get for numeric keys
-json_t* json_object_numkey_get(json_t *object, const json_int_t key);
+json_t* json_object_numkey_get(const json_t *object, const json_int_t key);
 
 // json_object_get for hexadecimal keys.
 // These *must* have the format "0x%x" or "Rx%x" (for values relative to the
 // base address, see json_hex_value()). Padding %x with zeroes will *not* work.
-json_t* json_object_hexkey_get(json_t *object, const size_t key);
+json_t* json_object_hexkey_get(const json_t *object, const size_t key);
 
 // Get the integer value of [key] in [object], automatically
 // converting the JSON value to an integer if necessary.

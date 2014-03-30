@@ -133,14 +133,14 @@ json_t* json_object_get_create(json_t *object, const char *key, json_t *new_obje
 	return ret;
 }
 
-json_t* json_object_numkey_get(json_t *object, const json_int_t key)
+json_t* json_object_numkey_get(const json_t *object, const json_int_t key)
 {
 	char key_str[64];
 	snprintf(key_str, 64, "%lld", key);
 	return json_object_get(object, key_str);
 }
 
-json_t* json_object_hexkey_get(json_t *object, const size_t key)
+json_t* json_object_hexkey_get(const json_t *object, const size_t key)
 {
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 	char key_str[addr_key_len];

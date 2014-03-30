@@ -23,7 +23,7 @@ BOOL VirtualCheckCode(const void *ptr)
 	return VirtualCheckRegion(ptr, 1);
 }
 
-int PatchRegionNoCheck(void *ptr, void *New, size_t len)
+int PatchRegionNoCheck(void *ptr, const void *New, size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
@@ -36,7 +36,7 @@ int PatchRegionNoCheck(void *ptr, void *New, size_t len)
 	return ret;
 }
 
-int PatchRegion(void *ptr, void *Prev, void *New, size_t len)
+int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
@@ -52,7 +52,7 @@ int PatchRegion(void *ptr, void *Prev, void *New, size_t len)
 	return ret;
 }
 
-int PatchRegionEx(HANDLE hProcess, void *ptr, void *Prev, void *New, size_t len)
+int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;

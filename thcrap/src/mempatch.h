@@ -18,9 +18,9 @@ BOOL VirtualCheckCode(const void *ptr);
 // Writes [val] to [ptr] in the address space of the current
 // (or another, in case of the *Ex functions) process),
 // if the current value in [ptr] equals [prev].
-int PatchRegionNoCheck(void *ptr, void *New, size_t len);
-int PatchRegion(void *ptr, void *Prev, void *New, size_t len);
-int PatchRegionEx(HANDLE hProcess, void *ptr, void *Prev, void *New, size_t len);
+int PatchRegionNoCheck(void *ptr, const void *New, size_t len);
+int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
+int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
 int PatchBYTE(void *ptr, BYTE Prev, BYTE val);
 int PatchDWORD(void *ptr, DWORD Prev, DWORD val);
 int PatchFLOAT(void *ptr, FLOAT Prev, FLOAT val);
