@@ -253,3 +253,7 @@ EXPORTS
 	exception_SetUnhandledExceptionFilter
 	exception_mod_detour
 	exception_exit
+
+	; Win32 detours
+	; -------------
+	win32_detour
