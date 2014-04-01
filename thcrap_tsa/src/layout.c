@@ -284,6 +284,7 @@ BOOL WINAPI layout_TextOutU(
 			const json_t *p1 = json_array_get(token, 1);
 			const json_t *p2 = json_array_get(token, 2);
 			const char *p = cmd;
+			size_t tabs_count = json_array_size(Layout_Tabs);
 			// Absolute x-end position of the current tab
 			size_t tab_end;
 
@@ -308,9 +309,9 @@ BOOL WINAPI layout_TextOutU(
 				} else {
 					tab_end = cur_x + GetTextExtentBase(hdc, p2);
 				}
-			} else if(cur_tab < json_array_size(Layout_Tabs)) {
+			} else if(cur_tab < tabs_count) {
 				tab_end = json_array_get_hex(Layout_Tabs, cur_tab) + orig_x;
-			} else if(json_array_size(Layout_Tabs) > 0) {
+			} else if(tabs_count > 0 && i == (json_array_size(tokens) - 1)) {
 				tab_end = bitmap_width;
 			} else {
 				tab_end = cur_x + cur_w;
