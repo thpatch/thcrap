@@ -209,7 +209,10 @@ int sprite_patch_set(
 	sp->rep_x = entry->x + sp->dst_x;
 	sp->rep_y = entry->y + sp->dst_y;
 
-	if(sp->rep_x >= image->img.width || sp->rep_y >= image->img.height) {
+	if(
+		sp->dst_x >= entry->thtx->w || sp->dst_y >= entry->thtx->h ||
+		sp->rep_x >= image->img.width || sp->rep_y >= image->img.height
+	) {
 		return 2;
 	}
 
