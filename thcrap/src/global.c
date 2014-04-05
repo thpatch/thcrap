@@ -47,8 +47,3 @@ void* runconfig_func_get(const char *name)
 	json_t *funcs = json_object_get(run_cfg, "funcs");
 	return (void*)json_object_get_hex(funcs, name);
 }
-
-json_t* runconfig_format_get(const char *format)
-{
-	return json_object_get(json_object_get(run_cfg, "formats"), format);
-}

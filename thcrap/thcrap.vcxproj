@@ -64,6 +64,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\inject.c" />
+    <ClCompile Include="src\specs.c" />
     <ClCompile Include="src\stack.c" />
     <ClCompile Include="src\strings.c" />
     <ClCompile Include="src\util.c" />
@@ -89,6 +90,7 @@
     <ClInclude Include="src\repatch.h" />
     <ClInclude Include="src\sha256.h" />
     <ClInclude Include="src\inject.h" />
+    <ClInclude Include="src\specs.h" />
     <ClInclude Include="src\stack.h" />
     <ClInclude Include="src\strings.h" />
     <ClInclude Include="src\util.h" />

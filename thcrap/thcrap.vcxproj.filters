@@ -77,6 +77,9 @@
     <ClCompile Include="src\jsondata.c">
       <Filter>Source files</Filter>
     </ClCompile>
+    <ClCompile Include="src\specs.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\binhack.h">
@@ -149,6 +152,9 @@
       <Filter>Source files</Filter>
     </ClInclude>
     <ClInclude Include="src\jsondata.h">
+      <Filter>Source files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\specs.h">
       <Filter>Source files</Filter>
     </ClInclude>
   </ItemGroup>

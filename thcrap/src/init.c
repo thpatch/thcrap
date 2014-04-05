@@ -297,22 +297,6 @@ int thcrap_init(const char *run_cfg_fn)
 	log_printf("Plug-in directory: %s\n", dll_dir);
 
 	log_printf("\nInitializing plug-ins...\n");
-
-	{
-		// Copy format links from formats.js
-		json_t *game_formats = json_object_get(run_cfg, "formats");
-		if(game_formats) {
-			json_t *formats_js = stack_json_resolve("formats.js", NULL);
-			json_t *format_link;
-			const char *key;
-			json_object_foreach(game_formats, key, format_link) {
-				json_t *format = json_object_get(formats_js, json_string_value(format_link));
-				json_object_set_nocheck(game_formats, key, format);
-			}
-			json_decref(formats_js);
-		}
-	}
-
 	plugins_load();
 
 	/**

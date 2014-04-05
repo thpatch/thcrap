@@ -30,3 +30,4 @@
 #include "inject.h"
 #include "init.h"
 #include "jsondata.h"
+#include "specs.h"

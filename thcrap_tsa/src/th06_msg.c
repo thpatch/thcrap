@@ -514,10 +514,10 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("msg"));
+	return patch_msg(file_inout, size_out, size_in, patch, specs_get("msg"));
 }
 
 int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("end"));
+	return patch_msg(file_inout, size_out, size_in, patch, specs_get("end"));
 }

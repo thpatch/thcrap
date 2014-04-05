@@ -9,7 +9,6 @@ EXPORTS
 	runconfig_set
 	runconfig_get
 	runconfig_func_get
-	runconfig_format_get
 
 	; SHA-256
 	; -------
@@ -270,3 +269,8 @@ EXPORTS
 	; --------------
 	repatch_mod_init
 	repatch_mod_exit
+
+	; Specs
+	; -----
+	specs_mod_init
+	specs_get
