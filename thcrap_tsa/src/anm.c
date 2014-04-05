@@ -613,8 +613,8 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 		anm_entry_out += entry.nextoffset;
 		anm_entry_clear(&entry);
 	}
-	SAFE_FREE(bounds.buf);
-	SAFE_FREE(png.buf);
+	png_image_clear(&bounds);
+	png_image_clear(&png);
 	log_printf("-------------\n");
 	return 0;
 }

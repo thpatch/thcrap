@@ -22,9 +22,7 @@ int png_image_new(
 {
 	if(image) {
 		size_t image_size;
-		SAFE_FREE(image->buf);
-		png_image_free(&image->img);
-		ZeroMemory(&image->img, sizeof(png_image));
+		png_image_clear(image);
 
 		image->img.version = PNG_IMAGE_VERSION;
 		image->img.width = w;
@@ -123,4 +121,16 @@ int png_image_store(const char *fn, png_image_exp image)
 		}
 	}
 	return ret;
+}
+
+int png_image_clear(png_image_exp image)
+{
+	if(image) {
+		SAFE_FREE(image->buf);
+		SAFE_FREE(image->palette);
+		png_image_free(&image->img);
+		ZeroMemory(&image->img, sizeof(png_image));
+		return 0;
+	}
+	return -1;
 }

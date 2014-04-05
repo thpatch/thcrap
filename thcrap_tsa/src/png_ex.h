@@ -37,3 +37,5 @@ int png_image_resize(
 
 // Essentially a Unicode wrapper around png_image_write_to_file().
 int png_image_store(const char *fn, png_image_exp image);
+
+int png_image_clear(png_image_exp image);
