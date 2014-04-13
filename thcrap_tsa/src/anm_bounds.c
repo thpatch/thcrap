@@ -15,6 +15,8 @@
 
 void bounds_init(png_image_exp image, const thtx_header_t *thtx, const char *fn)
 {
+	// The caller expects the image to be cleared in any case
+	png_image_clear(image);
 	if(thtx && fn) {
 		// Still needing this one?
 		char *bounds_fn = fn_for_bounds(fn);
