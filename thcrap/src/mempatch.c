@@ -253,10 +253,7 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 	// as we can't know what to return to gracefully continue program execution.
 	// So, just crashing outright with nice errors is the best thing we can do.
 	if(!json_array_size(ptrs)) {
-		log_printf(
-			"["__FUNCTION__"]: No detours for %s:%s; typo?\n",
-			dll_name, func_name
-		);
+		log_func_printf("No detours for %s:%s; typo?\n", dll_name, func_name);
 	}
 	// Get the next function after [caller]
 	if(!caller) {
@@ -278,9 +275,8 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 		json_array_append_new(ptrs, json_integer((size_t)next));
 	}
 	if(!next) {
-		log_printf(
-			"["__FUNCTION__"]: Couldn't get original function pointer for %s:%s! "
-			"Time to crash...\n",
+		log_func_printf(
+			"Couldn't get original function pointer for %s:%s! Time to crash...\n",
 			dll_name, func_name
 		);
 	}

@@ -22,6 +22,9 @@ void log_nprint(const char *text, size_t n);
 // Formatted
 void log_vprintf(const char *text, va_list va);
 void log_printf(const char *text, ...);
+
+#define log_func_printf(text, ...) \
+	log_printf("["__FUNCTION__"]: "##text, __VA_ARGS__)
 /// ---------------
 
 /// -------------

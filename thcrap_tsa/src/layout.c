@@ -52,8 +52,8 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 	char *str = *str_reg;
 	// ----------
 	if(!font_dialog || !font_ruby) {
-		log_printf(__FUNCTION__
-			"(): Missing \"font_dialog\" or \"font_ruby\" parameter, skipping..."
+		log_func_printf(
+			"Missing \"font_dialog\" or \"font_ruby\" parameter, skipping..."
 		);
 		return 1;
 	}

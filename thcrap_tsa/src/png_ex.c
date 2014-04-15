@@ -105,16 +105,13 @@ int png_image_store(const char *fn, png_image_exp image)
 				&image->img, fp, 0, image->buf, 0, image->palette
 			);
 			if(ret) {
-				log_printf(
-					"["__FUNCTION__"]: Error writing %s (%s).",
-					fn, image->img.message
-				);
+				log_func_printf("Error writing %s (%s).", fn, image->img.message);
 			}
 			fflush(fp);
 			fclose(fp);
 		} else {
-			log_printf(
-				"["__FUNCTION__"]: Couldn't open %s for writing (%s)\n",
+			log_func_printf(
+				"Couldn't open %s for writing (%s)\n",
 				fn, strerror(errno)
 			);
 			ret = 2;
