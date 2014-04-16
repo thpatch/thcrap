@@ -175,6 +175,12 @@ int WINAPI MultiByteToWideCharU(
 	__in int cchWideChar
 );
 
+BOOL WINAPI RemoveDirectoryU(
+	__in LPCSTR lpPathName
+);
+#undef RemoveDirectory
+#define RemoveDirectory RemoveDirectoryU
+
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 );

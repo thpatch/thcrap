@@ -37,6 +37,7 @@ EXPORTS
 	MoveFileExU
 	MoveFileWithProgressU
 	MultiByteToWideCharU
+	RemoveDirectoryU
 	SetCurrentDirectoryU
 	WideCharToMultiByteU
 

@@ -446,6 +446,13 @@ int WINAPI MultiByteToWideCharU(
 	return ret;
 }
 
+BOOL WINAPI RemoveDirectoryU(
+	__in LPCSTR lpPathName
+)
+{
+	return Wrap1P((Wrap1PFunc_t)RemoveDirectoryW, lpPathName);
+}
+
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 )
