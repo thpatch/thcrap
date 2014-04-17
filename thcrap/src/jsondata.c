@@ -9,6 +9,31 @@
 
 #include "thcrap.h"
 
+/**
+  * This module provides a simple container for other modules to store their
+  * custom JSON data. Not only does this remove the need for modules to
+  * resolve, keep, and free their data in most cases, it also provides
+  * automatic, transparent and thread-safe repatching.
+  *
+  * Instead of simply storing the contents of every file directly as a value
+  * to its file name key, it is wrapped into a JSON array. To repatch a file,
+  * jsondata_mod_repatch() then simply inserts the new version to the front
+  * of the array. Because jsondata_get() always accesses the first element of
+  * this array, it therefore always returns a constant reference to the most
+  * current version of a file in memory.
+  *
+  * This is very important, given that passing constant memory addresses to
+  * strings back to the game is one of the main uses of custom JSON data in
+  * the first place. Requiring every caller to do reference counting would
+  * render this impossible, aside from also complicating the usage of this
+  * module.
+  *
+  * However, this also means that every old version of a file will be kept in
+  * memory until jsondata_mod_exit() is called. I see no straightforward way
+  * to safely clean up unused references, short of the heap inspection methods
+  * used by garbage collectors.
+  */
+
 json_t *jsondata = NULL;
 
 typedef int (*jsondata_func_t)(const char *fn);
