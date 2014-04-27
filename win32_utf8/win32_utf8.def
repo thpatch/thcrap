@@ -20,6 +20,7 @@ EXPORTS
 	CreateDirectoryU
 	CreateFileU
 	CreateProcessU
+	DeleteFileU
 	FindFirstFileU
 	FindNextFileU
 	FormatMessageU

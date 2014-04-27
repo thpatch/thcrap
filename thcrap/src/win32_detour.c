@@ -11,10 +11,11 @@
 
 void win32_detour(void)
 {
-	detour_cache_add("kernel32.dll", 23,
+	detour_cache_add("kernel32.dll", 24,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
 		"CreateProcessA", CreateProcessU,
+		"DeleteFileA", DeleteFileU,
 		"FindFirstFileA", FindFirstFileU,
 		"FindNextFileA", FindNextFileU,
 		"FormatMessageA", FormatMessageU,

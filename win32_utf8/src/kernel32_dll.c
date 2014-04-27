@@ -127,6 +127,13 @@ BOOL WINAPI CreateProcessU(
 	return ret;
 }
 
+BOOL WINAPI DeleteFileU(
+	__in LPCSTR lpFileName
+)
+{
+	return Wrap1P((Wrap1PFunc_t)DeleteFileW, lpFileName);
+}
+
 static void CopyFindDataWToA(
 	__out LPWIN32_FIND_DATAA w32fd_a,
 	__in LPWIN32_FIND_DATAW w32fd_w

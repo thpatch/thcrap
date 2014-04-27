@@ -42,6 +42,12 @@ BOOL WINAPI CreateProcessU(
 #undef CreateProcess
 #define CreateProcess CreateProcessU
 
+BOOL WINAPI DeleteFileU(
+	__in LPCSTR lpFileName
+);
+#undef DeleteFile
+#define DeleteFile DeleteFileU
+
 HANDLE WINAPI FindFirstFileU(
 	__in  LPCSTR lpFileName,
 	__out LPWIN32_FIND_DATAA lpFindFileData
