@@ -181,9 +181,9 @@ int stack_game_png_apply(anm_entry_t *entry);
 
 /// Sprite boundary dumping
 /// -----------------------
-void bounds_init(png_image_exp bounds, const thtx_header_t *thtx, const char *fn);
-
 char* fn_for_bounds(const char *fn);
+
+void bounds_init(png_image_exp bounds, const thtx_header_t *thtx, const char *fn);
 
 int bounds_draw_line(
 	png_image_exp image,

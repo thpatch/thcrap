@@ -2,36 +2,6 @@ LIBRARY
 EXPORTS
 	thcrap_plugin_init	@1
 
-	; Encraption
-	; ----------
-	simple_xor
-	util_xor
-
-	; Spells
-	; ------
-	BP_spell_id
-	BP_spell_name
-	BP_spell_comment_line
-	spells_mod_init
-
-	; PNG extensions
-	; --------------
-	png_image_new
-	png_image_resize
-	png_image_store
-	png_image_clear
-
-	; Bounds
-	; ------
-	fn_for_bounds
-
-	bounds_init
-	bounds_draw_line
-	bounds_draw_hline
-	bounds_draw_vline
-	bounds_draw_rect
-	bounds_store
-
 	; Images
 	; ------
 	struct_get
@@ -45,32 +15,38 @@ EXPORTS
 	anm_entry_init
 	anm_entry_clear
 
-	sprite_alpha_analyze
-	sprite_alpha_analyze_rep
-	sprite_alpha_analyze_dst
-
 	sprite_split_new
 	sprite_split_append
 	sprite_split_x
 	sprite_split_y
-
 	sprite_patch_set
+	sprite_alpha_analyze
+	sprite_alpha_analyze_rep
+	sprite_alpha_analyze_dst
 	sprite_blit
 	sprite_patch
 
-	patch_png_load_for_thtx
-	patch_thtx
 	stack_game_png_apply
 
-	; Music
-	; -----
-	music_title_get
-	music_title_print
+	patch_png_load_for_thtx
+	patch_thtx
+	patch_anm
 
-	BP_music_title
-	BP_music_cmt
+	; Bounds
+	; ------
+	fn_for_bounds
 
-	music_mod_init
+	bounds_init
+	bounds_draw_line
+	bounds_draw_hline
+	bounds_draw_vline
+	bounds_draw_rect
+	bounds_store
+
+	; Encraption
+	; ----------
+	simple_xor
+	util_xor
 
 	; Layout
 	; ------
@@ -92,13 +68,35 @@ EXPORTS
 	layout_mod_detour
 	layout_mod_exit
 
-	; Format patchers
-	; ---------------
+	; Music
+	; -----
+	music_title_get
+	music_title_print
+
+	BP_music_title
+	BP_music_cmt
+
+	music_mod_init
+
+	; PNG extensions
+	; --------------
+	png_image_new
+	png_image_resize
+	png_image_store
+	png_image_clear
+
+	; Spells
+	; ------
+	BP_spell_id
+	BP_spell_name
+	BP_spell_comment_line
+	spells_mod_init
+
+	; Dialog
+	; ------
 	patch_msg
 	patch_msg_dlg
 	patch_msg_end
-
-	patch_anm
 
 	; TSA-specific detours
 	; --------------------
