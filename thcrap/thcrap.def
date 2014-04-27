@@ -257,6 +257,7 @@ EXPORTS
 	str_slash_normalize_win
 	str_num_digits
 	str_num_base
+	str_hexdate_format
 
 	; Win32 detours
 	; -------------

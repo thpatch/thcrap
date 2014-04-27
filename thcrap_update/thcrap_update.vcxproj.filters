@@ -18,6 +18,9 @@
     <ClCompile Include="src\wininet_dll.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\notify.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_update.def">
@@ -29,6 +32,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\update.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\notify.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

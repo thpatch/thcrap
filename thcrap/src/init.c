@@ -18,14 +18,6 @@
 // Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
-static const char *update_url_message =
-	"The new version can be found at\n"
-	"\n"
-	"\t";
-static const char *mbox_copy_message =
-	"\n"
-	"\n"
-	"(Press Ctrl+C to copy the text of this message box and the URL)";
 /// -----------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
@@ -53,21 +45,6 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 json_t* identify_by_size(size_t file_size, json_t *versions)
 {
 	return json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
-}
-
-int IsLatestBuild(json_t *build_obj, json_t **latest, json_t *run_ver)
-{
-	json_t *json_latest = json_object_get(run_ver, "latest");
-	size_t i;
-	if(!json_is_string(build_obj) || !latest || !json_latest) {
-		return -1;
-	}
-	json_flex_array_foreach(json_latest, i, *latest) {
-		if(json_equal(build_obj, *latest)) {
-			return 1;
-		}
-	}
-	return 0;
 }
 
 json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
@@ -154,16 +131,13 @@ json_t* identify(const char *exe_fn)
 		json_object_set(run_ver, "game", game_obj);
 	}
 
-	// Pretty game title
-	{
+	if(size_cmp) {
 		const char *game_title = json_object_get_string(run_ver, "title");
+		int ret;
 		if(game_title) {
 			game = game_title;
 		}
-	}
-
-	if(size_cmp) {
-		int ret = log_mboxf("Unknown version detected", MB_YESNO | MB_ICONQUESTION,
+		ret = log_mboxf("Unknown version detected", MB_YESNO | MB_ICONQUESTION,
 			"You have attached %s to an unknown game version.\n"
 			"According to the file size, this is most likely\n"
 			"\n"
@@ -183,23 +157,6 @@ json_t* identify(const char *exe_fn)
 		);
 		if(ret == IDNO) {
 			run_ver = json_decref_safe(run_ver);
-		}
-	} else {
-		// Old version nagbox
-		json_t *latest = NULL;
-		if(IsLatestBuild(build_obj, &latest, run_ver) == 0 && json_is_string(latest)) {
-			const char *url_update = json_object_get_string(run_ver, "url_update");
-			log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION,
-				"You are running an old version of %s (%s).\n"
-				"\n"
-				"While %s is confirmed to work with this version, we recommend updating "
-				"your game to the latest official version (%s).%s%s%s%s",
-				game, build, PROJECT_NAME_SHORT(), json_string_value(latest),
-				url_update ? "\n\n": "",
-				url_update ? update_url_message : "",
-				url_update ? url_update : "",
-				url_update ? mbox_copy_message : ""
-			);
 		}
 	}
 end:
@@ -246,7 +203,6 @@ int thcrap_init(const char *run_cfg_fn)
 
 	log_printf("Initializing patches...\n");
 	{
-		DWORD min_build = json_object_get_hex(run_cfg, "thcrap_version_min");
 		json_t *patches = json_object_get(run_cfg, "patches");
 		size_t i;
 		json_t *patch_info;
@@ -255,22 +211,6 @@ int thcrap_init(const char *run_cfg_fn)
 			patch_info = patch_init(patch_info);
 			json_array_set(patches, i, patch_info);
 			json_decref(patch_info);
-		}
-		if(min_build > PROJECT_VERSION()) {
-			char format[11];
-			const char *url_engine = json_object_get_string(patch_info, "thcrap_url");
-			str_hexdate_format(format, min_build);
-			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
-				"A new version (%s) of the %s is available.\n"
-				"\n"
-				"This update contains new features and important bug fixes "
-				"for your current patch configuration.%s%s%s%s",
-				format, PROJECT_NAME(),
-				url_engine ? "\n\n": "",
-				url_engine ? update_url_message : "",
-				url_engine ? url_engine : "",
-				url_engine ? mbox_copy_message : ""
-			);
 		}
 	}
 	stack_show_missing();

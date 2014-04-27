@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include "notify.h"
 #include "update.h"
 
 static CRITICAL_SECTION cs_update;
@@ -32,6 +33,9 @@ int BP_update_poll(x86_reg_t *regs, json_t *bp_info)
 int __stdcall thcrap_plugin_init(json_t *run_cfg)
 {
 	http_init();
+
+	update_notify_thcrap();
+	update_notify_game();
 
 	BP_update_poll(NULL, NULL);
 	return 0;
