@@ -55,11 +55,6 @@ EXPORTS
 	layout_match
 	layout_tokenize
 
-	layout_SelectObject
-	layout_CreateCompatibleDC
-	layout_DeleteDC
-	layout_TextOutU
-
 	GetTextExtentBase
 	GetTextExtent
 	GetTextExtentForFont

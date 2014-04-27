@@ -181,7 +181,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		win32_detour();
 		inject_mod_detour();
 
-		ret = inject_CreateProcessU(
+		ret = detour_next("kernel32.dll", "CreateProcessA", NULL, 10,
 			final_exe_fn_local, game_dir, NULL, NULL, TRUE, 0, NULL, game_dir, &si, &pi
 		);
 		if(!ret) {

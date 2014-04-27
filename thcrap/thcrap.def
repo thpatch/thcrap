@@ -51,14 +51,11 @@ EXPORTS
 
 	dialog_translate
 
-	dialog_CreateDialogParamA
-	dialog_DialogBoxParamA
 	dialog_mod_detour
 
 	; Exception handler
 	; -----------------
 	exception_filter
-	exception_SetUnhandledExceptionFilter
 	exception_init
 	exception_mod_detour
 	exception_exit
@@ -90,11 +87,6 @@ EXPORTS
 	ThreadWaitUntil
 	WaitUntilEntryPoint
 
-	inject_CreateRemoteThread
-	inject_CreateProcessU
-	inject_CreateProcessW
-	inject_LoadLibraryU
-	inject_LoadLibraryW
 	inject_mod_detour
 	thcrap_inject
 
@@ -247,15 +239,12 @@ EXPORTS
 	strings_strclr
 	strings_strcat
 
-	strings_MessageBoxA
-
 	strings_mod_init
 	strings_mod_detour
 	strings_mod_exit
 
 	; Text display
 	; ------------
-	textdisp_CreateFontA
 	patch_fonts_load
 
 	textdisp_mod_init
