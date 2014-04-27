@@ -29,7 +29,7 @@ int plugin_init(HMODULE hMod)
 
 int plugins_load(void)
 {
-	BOOL ret = 1;
+	BOOL ret = 0;
 	WIN32_FIND_DATAA w32fd;
 	HANDLE hFind = FindFirstFile("*.dll", &w32fd);
 	if(hFind == INVALID_HANDLE_VALUE) {
@@ -38,7 +38,7 @@ int plugins_load(void)
 	if(!json_is_object(plugins)) {
 		plugins = json_object();
 	}
-	while( (GetLastError() != ERROR_NO_MORE_FILES) && (ret) ) {
+	while(!ret) {
 		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
 		if(plugin) {
 			thcrap_plugin_init_type func =
@@ -52,7 +52,7 @@ int plugins_load(void)
 				FreeLibrary(plugin);
 			}
 		}
-		ret = FindNextFile(hFind, &w32fd);
+		ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));
 	}
 	FindClose(hFind);
 	return 0;

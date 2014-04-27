@@ -29,6 +29,14 @@
 #include <malloc.h>
 #endif
 
+// Most Win32 API functions return TRUE on success and FALSE on failure,
+// requiring a separate call to GetLastError() to get the actual error code.
+// This macro wraps these function calls to use the opposite, more sensible
+// scheme, returning FALSE on success and automatically calling GetLastError()
+// on failure.
+#define W32_ERR_WRAP(x) \
+	x ? 0 : GetLastError()
+
 #define SAFE_FREE(x) \
 	if(x) { \
 		free(x); \

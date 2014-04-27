@@ -146,16 +146,16 @@ DWORD WINAPI repatch_watcher(void *param)
 		ol_changes.hEvent = NULL;
 		ol_changes.Pointer = buf;
 
-		ret_queue = GetQueuedCompletionStatus(
+		ret_queue = W32_ERR_WRAP(GetQueuedCompletionStatus(
 			hIOCompPort, &byte_ret, &key, &ol, COLLECT_THRESHOLD
-		) ? 0 : GetLastError();
+		));
 		for(i = 0; i < dir_handles_num; i++) {
-			ret_changes = ReadDirectoryChangesW(
+			ret_changes = W32_ERR_WRAP(ReadDirectoryChangesW(
 				dir_handles[i], ol_changes.Pointer, sizeof(buf), TRUE,
 				FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
 				FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE,
 				&byte_ret, &ol_changes, NULL
-			) ? 0 : GetLastError();
+			));
 			if(byte_ret) {
 				byte_ret_max = max(byte_ret_max, byte_ret);
 			}
