@@ -37,11 +37,11 @@ typedef int (__stdcall *thcrap_plugin_init_type)(json_t *run_config);
   * the thcrap core, with their parameter, include:
   *
   * • "init" (NULL)
-  *   Called after every DLL has been loaded.
+  *   Called after a DLL has been loaded.
   *
   * • "detour" (NULL)
-  *   Called when building the detour cache. If a module needs to add any
-  *   new detours, it should implement this hook, using one or more calls to
+  *   Called after a DLL has been loaded. If a module needs to add any new
+  *   detours, it should implement this hook, using one or more calls to
   *   detour_cache_add().
   *
   * • "repatch" (json_t *files_changed)
@@ -56,10 +56,17 @@ typedef int (__stdcall *thcrap_plugin_init_type)(json_t *run_config);
 // Module function type.
 typedef void (*mod_call_type)(void *param);
 
-// Runs every exported function ending in "*_mod_[suffix]" across all
-// thcrap DLLs. The order of execution is undefined.
-void mod_func_run(const char *suffix, void *param);
+// Runs every exported function ending in "*_mod_[suffix]" across the
+// functions in [funcs]. The order of execution is undefined.
+void mod_func_run(json_t *funcs, const char *suffix, void *param);
+
+// Calls mod_fun_run() with all registered functions from all thcrap DLLs.
+void mod_func_run_all(const char *suffix, void *param);
 /// ===================
+
+// Initializes a plug-in DLL at [hMod]. This means registering all of its
+// exports, and calling its "init" and "detour" module functions.
+int plugin_init(HMODULE hMod);
 
 // Loads all thcrap plugins from the current directory.
 int plugins_load(void);

@@ -108,7 +108,7 @@ DWORD WINAPI repatch_collector(void *param)
 			files_changed_copy = json_copy(files_changed);
 			json_object_clear(files_changed);
 			LeaveCriticalSection(&cs_changed);
-			mod_func_run("repatch", files_changed_copy);
+			mod_func_run_all("repatch", files_changed_copy);
 			json_decref(files_changed_copy);
 		}
 	}

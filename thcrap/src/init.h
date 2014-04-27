@@ -21,7 +21,7 @@ json_t* identify_by_size(size_t exe_size, json_t *versions);
 // NULL on failure or user cancellation.
 json_t* identify(const char *fn);
 
-// All Import Address Table detour calls required by the engine.
+// Applies the detour cache to the module at [hProc].
 void thcrap_detour(HMODULE hProc);
 
 // Sets up the engine with the given configuration for the current process.

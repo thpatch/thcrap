@@ -214,14 +214,6 @@ void thcrap_detour(HMODULE hProc)
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
 	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
 
-	// Needs to be at the lowest level
-	win32_detour();
-
-	detour_cache_add("kernel32.dll", 1,
-		"ExitProcess", thcrap_ExitProcess
-	);
-	mod_func_run("detour", NULL);
-
 	iat_detour_apply(hProc);
 	VLA_FREE(mod_name);
 }
@@ -293,10 +285,17 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 
+	log_printf("---------------------------\n");
+	log_printf("Complete run configuration:\n");
+	log_printf("---------------------------\n");
+	json_dump_log(run_cfg, JSON_INDENT(2));
+	log_printf("---------------------------\n");
+
 	log_printf("Game directory: %s\n", game_dir);
 	log_printf("Plug-in directory: %s\n", dll_dir);
 
 	log_printf("\nInitializing plug-ins...\n");
+	plugin_init(hThcrap);
 	plugins_load();
 
 	/**
@@ -317,26 +316,8 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 	*/
-	log_printf("---------------------------\n");
-	log_printf("Complete run configuration:\n");
-	log_printf("---------------------------\n");
-	json_dump_log(run_cfg, JSON_INDENT(2));
-	log_printf("---------------------------\n");
-	{
-		const char *key;
-		json_t *val = NULL;
-		json_t *run_funcs = json_object();
-
-		GetExportedFunctions(run_funcs, hThcrap);
-		json_object_foreach(json_object_get(run_cfg, "plugins"), key, val) {
-			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
-		}
-
-		json_object_set_new(run_cfg, "funcs", run_funcs);
-		binhacks_apply(json_object_get(run_cfg, "binhacks"));
-		breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
-	}
-	mod_func_run("init", NULL);
+	binhacks_apply(json_object_get(run_cfg, "binhacks"));
+	breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
 	thcrap_detour(hProc);
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
@@ -351,7 +332,13 @@ int InitDll(HMODULE hDll)
 
 	w32u8_set_fallback_codepage(932);
 	InitializeCriticalSection(&cs_file_access);
+
 	exception_init();
+	// Needs to be at the lowest level
+	win32_detour();
+	detour_cache_add("kernel32.dll", 1,
+		"ExitProcess", thcrap_ExitProcess
+	);
 
 	hThcrap = hDll;
 
@@ -366,7 +353,7 @@ int InitDll(HMODULE hDll)
 
 void ExitDll(HMODULE hDll)
 {
-	mod_func_run("exit", NULL);
+	mod_func_run_all("exit", NULL);
 	plugins_close();
 	breakpoints_remove();
 	run_cfg = json_decref_safe(run_cfg);

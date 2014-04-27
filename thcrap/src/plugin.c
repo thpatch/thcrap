@@ -12,6 +12,21 @@
 
 static const char PLUGINS[] = "plugins";
 
+int plugin_init(HMODULE hMod)
+{
+	json_t *run_cfg = runconfig_get();
+	json_t *funcs_old = json_object_get_create(run_cfg, "funcs", JSON_OBJECT);
+	json_t *funcs_new = json_object();
+	int ret = GetExportedFunctions(funcs_new, hMod);
+	if(!ret) {
+		mod_func_run(funcs_new, "init", NULL);
+		mod_func_run(funcs_new, "detour", NULL);
+	}
+	json_object_merge(funcs_old, funcs_new);
+	json_decref(funcs_new);
+	return ret;
+}
+
 int plugins_load(void)
 {
 	BOOL ret = 1;
@@ -30,6 +45,7 @@ int plugins_load(void)
 			;
 			if(func && !func(run_cfg)) {
 				log_printf("\t%s\n", w32fd.cFileName);
+				plugin_init(plugin);
 				json_object_set_new(plugins, w32fd.cFileName, json_integer((size_t)plugin));
 			} else {
 				FreeLibrary(plugin);
@@ -58,15 +74,14 @@ int plugins_close(void)
 	return 0;
 }
 
-void mod_func_run(const char *pattern, void *param)
+void mod_func_run(json_t *funcs, const char *pattern, void *param)
 {
-	if(pattern) {
+	if(json_is_object(funcs) && pattern) {
 		STRLEN_DEC(pattern);
 		size_t suffix_len = strlen("_mod_%s") + pattern_len;
 		VLA(char, suffix, suffix_len);
 		const char *key;
 		json_t *val;
-		json_t *funcs = json_object_get(run_cfg, "funcs");
 		suffix_len = snprintf(suffix, suffix_len, "_mod_%s", pattern);
 		json_object_foreach(funcs, key, val) {
 			size_t key_len = strlen(key);
@@ -83,4 +98,9 @@ void mod_func_run(const char *pattern, void *param)
 		}
 		VLA_FREE(suffix);
 	}
+}
+
+void mod_func_run_all(const char *pattern, void *param)
+{
+	mod_func_run(json_object_get(runconfig_get(), "funcs"), pattern, param);
 }

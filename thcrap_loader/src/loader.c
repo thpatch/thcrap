@@ -178,7 +178,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		  * control initial startup, it really shouldn't be necessary for now - and
 		  * it really does run way too much unnecessary code for my taste.
 		  */
-		win32_detour();
 		inject_mod_detour();
 
 		ret = detour_next("kernel32.dll", "CreateProcessA", NULL, 10,
