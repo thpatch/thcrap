@@ -8,6 +8,7 @@ EXPORTS
 	PROJECT_VERSION_STRING
 	runconfig_set
 	runconfig_get
+	runconfig_title_get
 	runconfig_func_get
 
 	; SHA-256

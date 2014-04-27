@@ -42,6 +42,16 @@ void runconfig_set(json_t *new_run_cfg)
 	run_cfg = json_incref(new_run_cfg);
 }
 
+const json_t *runconfig_title_get(void)
+{
+	const json_t *id = json_object_get(run_cfg, "game");
+	const json_t *title = strings_get(json_string_value(id));
+	if(!title) {
+		title = json_object_get(run_cfg, "title");
+	}
+	return title ? title : (id ? id : NULL);
+}
+
 void* runconfig_func_get(const char *name)
 {
 	json_t *funcs = json_object_get(run_cfg, "funcs");
