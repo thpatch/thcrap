@@ -10,7 +10,7 @@
 #include "thcrap.h"
 #include "plugin.h"
 
-static const char PLUGINS[] = "plugins";
+static json_t *plugins = NULL;
 
 int plugin_init(HMODULE hMod)
 {
@@ -32,10 +32,11 @@ int plugins_load(void)
 	BOOL ret = 1;
 	WIN32_FIND_DATAA w32fd;
 	HANDLE hFind = FindFirstFile("*.dll", &w32fd);
-	json_t *plugins = json_object_get_create(run_cfg, PLUGINS, JSON_OBJECT);
-
 	if(hFind == INVALID_HANDLE_VALUE) {
 		return 1;
+	}
+	if(!json_is_object(plugins)) {
+		plugins = json_object();
 	}
 	while( (GetLastError() != ERROR_NO_MORE_FILES) && (ret) ) {
 		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
@@ -61,7 +62,6 @@ int plugins_close(void)
 {
 	const char *key;
 	json_t *val;
-	json_t *plugins = json_object_get(run_cfg, PLUGINS);
 
 	log_printf("Removing plug-ins...\n");
 
@@ -71,6 +71,7 @@ int plugins_close(void)
 			FreeLibrary(hInst);
 		}
 	}
+	plugins = json_decref_safe(plugins);
 	return 0;
 }
 
