@@ -70,6 +70,7 @@
     <ClCompile Include="src\util.c" />
     <ClCompile Include="src\textdisp.c" />
     <ClCompile Include="src\win32_detour.c" />
+    <ClCompile Include="src\zip.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.h" />
@@ -97,6 +98,7 @@
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
     <ClInclude Include="src\win32_detour.h" />
+    <ClInclude Include="src\zip.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap.def" />

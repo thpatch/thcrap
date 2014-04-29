@@ -262,3 +262,10 @@ EXPORTS
 	; Win32 detours
 	; -------------
 	win32_detour
+
+	; ZIP
+	; ---
+	zip_list
+	zip_file_load
+	zip_open
+	zip_close

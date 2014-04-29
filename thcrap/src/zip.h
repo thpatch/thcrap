@@ -1,0 +1,26 @@
+/**
+  * Touhou Community Reliant Automatic Patcher
+  * Main DLL
+  *
+  * ----
+  *
+  * Zipfile handling.
+  */
+
+#pragma once
+
+// TODO: This shouldn't be publicly visible
+typedef struct {
+	json_t *files;
+	HANDLE hArc;
+} zip_t;
+
+// Returns a JSON object containing all files in [zip].
+json_t* zip_list(zip_t *zip);
+
+// Unzips [fn] in [zip] to a newly created buffer and returns its file size in
+// [file_size]. Return value has to be free()d by the caller!
+void* zip_file_load(zip_t *zip, const char *fn, size_t *file_size);
+
+zip_t* zip_open(const char *fn);
+zip_t* zip_close(zip_t *zip);
