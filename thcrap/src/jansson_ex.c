@@ -124,7 +124,7 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind)
 json_t* json_object_get_create(json_t *object, const char *key, json_type type)
 {
 	json_t *ret = json_object_get(object, key);
-	if(!ret) {
+	if(!ret && object) {
 		// This actually results in nicer assembly than using the ternary operator!
 		json_t *new_obj = NULL;
 		switch(type) {
