@@ -313,10 +313,10 @@ void ExitDll(HMODULE hDll)
 DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode)
 {
 	ExitDll(NULL);
-	detour_next(
-		"kernel32.dll", "ExitProcess", thcrap_ExitProcess, 1,
-		uExitCode
-	);
+	// The detour cache is already freed at this point, and this will
+	// always be the final detour in the chain, so detour_next() doesn't
+	// make any sense here (and would leak memory as well).
+	ExitProcess(uExitCode);
 }
 
 // Yes, this _has_ to be included in every project.
