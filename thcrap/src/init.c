@@ -300,6 +300,7 @@ void ExitDll(HMODULE hDll)
 	DeleteCriticalSection(&cs_file_access);
 
 	SAFE_FREE(dll_dir);
+	detour_exit();
 #ifdef _WIN32
 #ifdef _DEBUG
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);

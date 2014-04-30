@@ -150,7 +150,7 @@ EXPORTS
 	iat_detour_apply
 	detour_next
 
-	detour_mod_exit
+	detour_exit
 
 	; Patch files
 	; -----------

@@ -295,7 +295,7 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 	}
 }
 
-void detour_mod_exit()
+void detour_exit(void)
 {
 	detours = json_decref_safe(detours);
 }
