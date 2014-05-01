@@ -48,6 +48,9 @@
 #define ZIP_MAGIC_DIR 0x02014b50
 #define ZIP_MAGIC_DIR_END 0x06054b50
 
+#define ZIP_EXTRA_NTFS 0x000a
+#define ZIP_EXTRA_NTFS_TAG 0x0001
+
 typedef struct {
 #ifdef PACK_PRAGMA
 #pragma pack(push,1)
@@ -77,6 +80,32 @@ typedef struct {
 #pragma pack(pop)
 #endif
 } PACK_ATTRIBUTE zip_file_t;
+
+typedef struct {
+#ifdef PACK_PRAGMA
+#pragma pack(push,1)
+#endif
+	uint16_t id;
+	uint16_t len;
+#ifdef PACK_PRAGMA
+#pragma pack(pop)
+#endif
+} PACK_ATTRIBUTE zip_extra_t;
+
+typedef struct {
+#ifdef PACK_PRAGMA
+#pragma pack(push,1)
+#endif
+	uint32_t reserved;
+	uint16_t tag; // == ZIP_EXTRA_NTFS_TAG
+	uint16_t tag_size; // = 24
+	FILETIME mtime;
+	FILETIME atime;
+	FILETIME ctime;
+#ifdef PACK_PRAGMA
+#pragma pack(pop)
+#endif
+} PACK_ATTRIBUTE zip_extra_ntfs1_t;
 
 typedef struct {
 #ifdef PACK_PRAGMA
@@ -118,7 +147,9 @@ typedef struct {
 typedef struct {
 	uint32_t offset;
 	uint16_t compression;
+	FILETIME ctime;
 	FILETIME mtime;
+	FILETIME atime;
 	uint32_t size_compressed;
 	uint32_t size_uncompressed;
 } zip_file_info_t;
@@ -196,6 +227,41 @@ static int zip_file_info_set(zip_file_info_t *file, zip_file_shared_t *s)
 	file->size_uncompressed = s->size_uncompressed;
 	if(file->mtime.dwLowDateTime == 0) {
 		DosDateTimeToFileTime(s->mdate, s->mtime, &file->mtime);
+		file->ctime = file->mtime;
+		file->atime = file->mtime;
+	}
+	return 0;
+}
+
+static int zip_file_extra_parse(zip_file_info_t *file, zip_t *zip, int extra_len)
+{
+	int i = 0;
+	if(!file || !zip) {
+		return -1;
+	}
+	while(i < extra_len) {
+		zip_extra_t extra;
+		DWORD byte_ret;
+		DWORD offset;
+		if(!ReadFile(zip->hArc, &extra, sizeof(extra), &byte_ret, NULL)) {
+			return 1;
+		}
+		i += byte_ret;
+		offset = TellFilePointer(zip->hArc);
+		if(extra.id == ZIP_EXTRA_NTFS && extra.len >= sizeof(zip_extra_ntfs1_t)) {
+			zip_extra_ntfs1_t ntfs;
+			if(
+				ReadFile(zip->hArc, &ntfs, sizeof(ntfs), &byte_ret, NULL)
+				&& (ntfs.tag == ZIP_EXTRA_NTFS_TAG)
+				&& (ntfs.tag_size == 24)
+			) {
+				file->ctime = ntfs.ctime;
+				file->mtime = ntfs.mtime;
+				file->atime = ntfs.atime;
+			}
+		}
+		i += byte_ret;
+		SetFilePointer(zip->hArc, offset + extra.len, NULL, FILE_BEGIN);
 	}
 	return 0;
 }
@@ -233,6 +299,8 @@ static int zip_file_prepare(zip_file_info_t *file, zip_t *zip, const char *fn)
 			&& zd.offset_header != 0xffffffff
 		) {
 			zip_file_info_set(file, &zd.s);
+			SetFilePointer(zip->hArc, zd.s.fn_len, NULL, FILE_CURRENT);
+			zip_file_extra_parse(file, zip, zd.s.extra_len);
 			SetFilePointer(zip->hArc, zd.offset_header, NULL, FILE_BEGIN);
 		} else {
 			return 1;
@@ -243,7 +311,8 @@ static int zip_file_prepare(zip_file_info_t *file, zip_t *zip, const char *fn)
 		);
 		if(!ret) {
 			zip_file_info_set(file, &zf.s);
-			SetFilePointer(zip->hArc, zf.s.fn_len + zf.s.extra_len, NULL, FILE_CURRENT);
+			SetFilePointer(zip->hArc, zf.s.fn_len, NULL, FILE_CURRENT);
+			zip_file_extra_parse(file, zip, zf.s.extra_len);
 		}
 	}
 	return ret;
@@ -435,7 +504,7 @@ int zip_file_unzip(zip_t *zip, const char *fn)
 		);
 		ret = (handle == INVALID_HANDLE_VALUE);
 		if(!ret) {
-			SetFileTime(handle, &file.mtime, &file.mtime, &file.mtime);
+			SetFileTime(handle, &file.ctime, &file.mtime, &file.atime);
 			ret = W32_ERR_WRAP(WriteFile(
 				handle, file_buffer, file.size_uncompressed, &byte_ret, NULL
 			));
