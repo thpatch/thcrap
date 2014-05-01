@@ -266,6 +266,7 @@ EXPORTS
 	; ZIP
 	; ---
 	zip_list
+	zip_comment
 	zip_file_load
 	zip_file_unzip
 	zip_open

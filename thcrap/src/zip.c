@@ -393,9 +393,9 @@ int zip_file_add_from_dir(zip_t *zip)
 	return ret;
 }
 
-// Returns the offset of the end of central directory record in the ZIP file
-// and optionally copies it to [end].
-static size_t zip_dir_end_locate(zip_dir_end_t *dir_end, zip_t *zip)
+// Locates the end of central directory record in the ZIP file and optionally
+// copies it to [end]. Also stores the archive comment in [zip].
+static size_t zip_dir_end_prepare(zip_dir_end_t *dir_end, zip_t *zip)
 {
 	size_t read_back = 0;
 	const int ZDE_SIZE = sizeof(zip_dir_end_t);
@@ -427,6 +427,7 @@ static size_t zip_dir_end_locate(zip_dir_end_t *dir_end, zip_t *zip)
 				&& (end->dir_start_offset < zip_size)
 				&& (end->dir_start_offset + end->dir_len < zip_size)
 			) {
+				size_t end_pos = zip_size - read_back + i;
 				if(end->disk_num != 0 || end->dir_start_disk != 0) {
 					log_func_printf("Multi-part archives are unsupported\n");
 					return -1;
@@ -434,7 +435,16 @@ static size_t zip_dir_end_locate(zip_dir_end_t *dir_end, zip_t *zip)
 				if(dir_end) {
 					memcpy(dir_end, end, ZDE_SIZE);
 				}
-				return zip_size - read_back + i;
+				// Load the archive comment.
+				// Yeah, it's stylistically questionable to shove in this functionality
+				// here, but I'm *really* not in the mood for another round of checks...
+				SetFilePointer(zip->hArc, end_pos + ZDE_SIZE, NULL, FILE_BEGIN);
+				zip->cmt_len = end->cmt_len;
+				if(end->cmt_len) {
+					zip->cmt = malloc(end->cmt_len);
+					ReadFile(zip->hArc, zip->cmt, end->cmt_len, &byte_ret, NULL);
+				}
+				return end_pos;
 			}
 		}
 		SetFilePointer(zip->hArc, -step, NULL, FILE_CURRENT);
@@ -452,7 +462,7 @@ static int zip_prepare(zip_t *zip)
 		return -1;
 	}
 	json_object_clear(zip->files);
-	end_pos = zip_dir_end_locate(&dir_end, zip);
+	end_pos = zip_dir_end_prepare(&dir_end, zip);
 	if(end_pos == -1) {
 		log_func_printf(
 			"End of central directory record could not be located\n"
@@ -478,6 +488,16 @@ static int zip_prepare(zip_t *zip)
 json_t* zip_list(zip_t *zip)
 {
 	return zip ? zip->files : NULL;
+}
+
+const BYTE* zip_comment(zip_t *zip, size_t *cmt_len)
+{
+	BYTE *ret = NULL;
+	if(zip && cmt_len) {
+		ret = zip->cmt;
+		*cmt_len = zip->cmt_len;
+	}
+	return ret;
 }
 
 void* zip_file_load(zip_t *zip, const char *fn, size_t *file_size)
@@ -533,6 +553,8 @@ zip_t* zip_open(const char *fn)
 		}
 		ret->hArc = hArc;
 		ret->files = json_object();
+		ret->cmt_len = 0;
+		ret->cmt = NULL;
 		log_printf("(Zip) Preparing %s...\n", fn);
 		if(zip_prepare(ret)) {
 			ret = zip_close(ret);
@@ -544,6 +566,7 @@ zip_t* zip_open(const char *fn)
 zip_t* zip_close(zip_t *zip)
 {
 	if(zip) {
+		SAFE_FREE(zip->cmt);
 		json_decref(zip->files);
 		CloseHandle(zip->hArc);
 		SAFE_FREE(zip);
