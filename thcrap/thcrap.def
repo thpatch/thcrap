@@ -267,5 +267,6 @@ EXPORTS
 	; ---
 	zip_list
 	zip_file_load
+	zip_file_unzip
 	zip_open
 	zip_close

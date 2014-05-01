@@ -118,6 +118,7 @@ typedef struct {
 typedef struct {
 	uint32_t offset;
 	uint16_t compression;
+	FILETIME mtime;
 	uint32_t size_compressed;
 	uint32_t size_uncompressed;
 } zip_file_info_t;
@@ -193,6 +194,9 @@ static int zip_file_info_set(zip_file_info_t *file, zip_file_shared_t *s)
 	file->compression = s->compression;
 	file->size_compressed = s->size_compressed;
 	file->size_uncompressed = s->size_uncompressed;
+	if(file->mtime.dwLowDateTime == 0) {
+		DosDateTimeToFileTime(s->mdate, s->mtime, &file->mtime);
+	}
 	return 0;
 }
 
@@ -414,6 +418,29 @@ void* zip_file_load(zip_t *zip, const char *fn, size_t *file_size)
 	if(file_size) {
 		ret = zip_file_decompress(&file, zip, fn);
 		*file_size = file.size_uncompressed;
+	}
+	return ret;
+}
+
+int zip_file_unzip(zip_t *zip, const char *fn)
+{
+	int ret = -1;
+	zip_file_info_t file = {0};
+	void* file_buffer = zip_file_decompress(&file, zip, fn);
+	if(file_buffer && !dir_create_for_fn(fn)) {
+		DWORD byte_ret;
+		HANDLE handle = CreateFile(
+			fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
+		);
+		ret = (handle == INVALID_HANDLE_VALUE);
+		if(!ret) {
+			SetFileTime(handle, &file.mtime, &file.mtime, &file.mtime);
+			ret = W32_ERR_WRAP(WriteFile(
+				handle, file_buffer, file.size_uncompressed, &byte_ret, NULL
+			));
+			CloseHandle(handle);
+		}
 	}
 	return ret;
 }
