@@ -306,6 +306,11 @@ abort:
 
 int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)
 {
+	// Remove if the remote specifies a JSON null,
+	// but skip if the file doesn't exit locally
+	if(json_is_null(remote_val)) {
+		return local_val != NULL && patch_file_exists(patch_info, fn);
+	}
 	// Update if remote and local JSON values don't match
 	if(!json_equal(local_val, remote_val)) {
 		return 1;
@@ -414,7 +419,23 @@ int patch_update(json_t *patch_info)
 
 		log_printf("(%*d/%*d) ", file_digits, i, file_digits, file_count);
 
-		if(json_is_integer(remote_val)) {
+		// Delete locally unchanged files with a JSON null value in the remote list
+		if(json_is_null(remote_val) && json_is_integer(local_val)) {
+			file_size = 0;
+			file_buffer = patch_file_load(patch_info, key, &file_size);
+			if(file_buffer && file_size) {
+				DWORD local_crc = crc32(0, (Bytef*)file_buffer, file_size);
+				if(local_crc == json_integer_value(local_val)) {
+					log_printf("Deleting %s...\n", key);
+					if(!patch_file_delete(patch_info, key)) {
+						json_object_del(local_files, key);
+					}
+				} else {
+					log_printf("%s (locally changed, skipping deletion)\n", key);
+				}
+			}
+			SAFE_FREE(file_buffer);
+		} else if(json_is_integer(remote_val)) {
 			DWORD remote_crc = json_integer_value(remote_val);
 			file_buffer = ServerDownloadFile(servers, key, &file_size, &remote_crc);
 		} else {
@@ -423,10 +444,9 @@ int patch_update(json_t *patch_info)
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
 			SAFE_FREE(file_buffer);
-
 			json_object_set(local_files, key, remote_val);
-			patch_json_store(patch_info, files_fn, local_files);
 		}
+		patch_json_store(patch_info, files_fn, local_files);
 	}
 	if(i == file_count) {
 		log_printf("Update completed.\n");

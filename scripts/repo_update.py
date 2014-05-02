@@ -83,7 +83,12 @@ def patch_build(patch_id, servers, f, t):
         patch_js['servers'].append(str_slash_normalize(url))
     utils.json_store(f_patch_fn, patch_js)
 
-    files_js = {}
+    # Reset all old entries to a JSON null. This will delete any files on the
+    # client side that no longer exist in the patch.
+    files_js = utils.json_load(os.path.join(f_path, 'files.js'))
+    for i in files_js:
+        files_js[i] = None
+
     patch_size = 0
     print(patch_id, end='')
     for root, dirs, files in os.walk(f_path):
