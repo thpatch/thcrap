@@ -272,6 +272,14 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 	return ret;
 }
 
+int patch_file_delete(const json_t *patch_info, const char *fn)
+{
+	char *patch_fn = fn_for_patch(patch_info, fn);
+	int ret = W32_ERR_WRAP(DeleteFile(patch_fn));
+	SAFE_FREE(patch_fn);
+	return ret;
+}
+
 json_t* patch_init(const json_t *patch_info)
 {
 	json_t *patch_js = patch_json_load(patch_info, "patch.js", NULL);

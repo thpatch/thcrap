@@ -85,6 +85,8 @@ size_t patch_json_merge(json_t **json_inout, const json_t *patch_info, const cha
 
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size);
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json);
+
+int patch_file_delete(const json_t *patch_info, const char *fn);
 /// ------------------------
 
 /// Initialization
