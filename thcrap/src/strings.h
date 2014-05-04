@@ -45,6 +45,12 @@ const char* strings_strclr(const size_t slot);
 
 // Concatenates [src] to the existing string in [slot].
 const char* strings_strcat(const size_t slot, const char *src);
+
+// Replaces all occurences of [src] in [slot] with [dst]. If [dst] is NULL,
+// the function defaults it to an empty string, thus removing all occurences
+// of [src]. Currently, this function doesn't do translation lookup since we
+// don't yet have any specific use cases.
+const char* strings_replace(const size_t slot, const char *src, const char *dst);
 /// ------------------
 
 void strings_mod_init(void);

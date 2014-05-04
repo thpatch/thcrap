@@ -227,6 +227,38 @@ const char* strings_strcat(const size_t slot, const char *src)
 	return src;
 }
 
+const char* strings_replace(const size_t slot, const char *src, const char *dst)
+{
+	char *ret = strings_storage_get(slot, 0);
+	dst = dst ? dst : "";
+	if(src && ret) {
+		size_t src_len = strlen(src);
+		size_t dst_len = strlen(dst);
+		while(ret) {
+			char *src_pos = NULL;
+			char *copy_pos = NULL;
+			char *rest_pos = NULL;
+			size_t ret_len = strlen(ret);
+			// We do this first since the string address might change after
+			// reallocation, thus invalidating the strstr() result
+			ret = strings_storage_get(slot, ret_len + dst_len);
+			if(!ret) {
+				break;
+			}
+			src_pos = strstr(ret, src);
+			if(!src_pos) {
+				break;
+			}
+			copy_pos = src_pos + dst_len;
+			rest_pos = src_pos + src_len;
+			memmove(copy_pos, rest_pos, strlen(rest_pos) + 1);
+			memcpy(src_pos, dst, dst_len);
+		}
+	}
+	// Try to save the situation at least somewhat...
+	return ret ? ret : dst;
+}
+
 /// String lookup hooks
 /// -------------------
 int WINAPI strings_MessageBoxA(

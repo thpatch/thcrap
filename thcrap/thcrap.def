@@ -239,6 +239,7 @@ EXPORTS
 	strings_vsprintf
 	strings_strclr
 	strings_strcat
+	strings_replace
 
 	strings_mod_init
 	strings_mod_detour
