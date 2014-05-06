@@ -100,7 +100,15 @@ def patch_build(patch_id, servers, f, t):
 
             with open(f_fn, 'rb') as f_file:
                 f_file_data = f_file.read()
-                f_sum = zlib.crc32(f_file_data) & 0xffffffff
+
+            # Ensure Unix line endings for JSON input
+            if fn.endswith(('.js', '.jdiff')) and b'\r\n' in f_file_data:
+                pdb.set_trace()
+                f_file_data = f_file_data.replace(b'\r\n', b'\n')
+                with open(f_fn, 'wb') as f_file:
+                    f_file.write(f_file_data)
+
+            f_sum = zlib.crc32(f_file_data) & 0xffffffff
 
             files_js[str_slash_normalize(patch_fn)] = f_sum
             patch_size += len(f_file_data)
