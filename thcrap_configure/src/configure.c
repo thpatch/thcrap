@@ -271,7 +271,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	json_t *repo_list = NULL;
 
-	const char *start_repo = "http://srv.thpatch.net";
+	const char *start_repo = "http://thcrap.nmlgc.net/repos/nmlgc/";
 
 	json_t *sel_stack = NULL;
 	json_t *new_cfg = json_pack("{s[]}", "patches");
