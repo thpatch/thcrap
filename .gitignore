@@ -219,3 +219,6 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 # ------
+
+# thcrap release archive signatures
+*.sig
