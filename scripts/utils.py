@@ -41,7 +41,9 @@ def json_store(fn, obj, dirs=[''], json_kwargs=json_dump_params):
     executed for every root directory in the array."""
     for i in dirs:
         full_fn = os.path.join(i, fn)
-        os.makedirs(os.path.dirname(full_fn), exist_ok=True)
+        dir = os.path.dirname(full_fn)
+        if dir.strip():
+            os.makedirs(dir, exist_ok=True)
         with open(full_fn, 'w', newline='\n', encoding='utf-8') as file:
             json.dump(obj, file, **json_kwargs)
             file.write('\n')
