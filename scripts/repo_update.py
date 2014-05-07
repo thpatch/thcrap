@@ -85,9 +85,12 @@ def patch_build(patch_id, servers, f, t):
 
     # Reset all old entries to a JSON null. This will delete any files on the
     # client side that no longer exist in the patch.
-    files_js = utils.json_load(os.path.join(f_path, 'files.js'))
-    for i in files_js:
-        files_js[i] = None
+    try:
+        files_js = utils.json_load(os.path.join(f_path, 'files.js'))
+        for i in files_js:
+            files_js[i] = None
+    except FileNotFoundError:
+        files_js = {}
 
     patch_size = 0
     print(patch_id, end='')
@@ -103,7 +106,6 @@ def patch_build(patch_id, servers, f, t):
 
             # Ensure Unix line endings for JSON input
             if fn.endswith(('.js', '.jdiff')) and b'\r\n' in f_file_data:
-                pdb.set_trace()
                 f_file_data = f_file_data.replace(b'\r\n', b'\n')
                 with open(f_fn, 'wb') as f_file:
                     f_file.write(f_file_data)
