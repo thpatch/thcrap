@@ -60,10 +60,8 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
-	json_t *found;
-	char search_path[MAX_PATH * 2] = {0};
 	BROWSEINFO bi = {0};
-	PIDLIST_ABSOLUTE pidl;
+	int repeat = 0;
 
 	cls(0);
 
@@ -121,49 +119,61 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	bi.lpszTitle = L"Root path for game search (cancel to search entire system):";
 	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
 
-	pidl = SHBrowseForFolder(&bi);
-	if(pidl && SHGetPathFromIDList(pidl, search_path)) {
-		PathAddBackslashA(search_path);
-		CoTaskMemFree(pidl);
-	}
-	log_printf(
-		"Searching games%s%s... this may take a while...\n\n",
-		search_path[0] ? " in " : " on the entire system",
-		search_path[0] ? search_path: ""
-	);
-	found = SearchForGames(search_path, games);
-	if(json_object_size(found)) {
-		char *games_js_str = NULL;
-		const char *id;
-		json_t *locs;
+	do {
+		char search_path[MAX_PATH * 2] = {0};
+		json_t *found = NULL;
 
-		json_object_foreach(found, id, locs) {
-			const char *loc = ChooseLocation(id, locs);
-			json_object_set_new(games, id, json_string(loc));
-			printf("\n");
+		PIDLIST_ABSOLUTE pidl = SHBrowseForFolder(&bi);
+		repeat = 0;
+		if(pidl && SHGetPathFromIDList(pidl, search_path)) {
+			PathAddBackslashA(search_path);
+			CoTaskMemFree(pidl);
 		}
-
-		SetCurrentDirectory(games_js_path);
-
-		games_js_str = json_dumps(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-		if(!file_write(games_js_fn, games_js_str, strlen(games_js_str))) {
-			log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
-			log_printf(games_js_str);
-			log_printf("\n");
-		} else if(!file_write_error(games_js_fn)) {
-			games = json_decref_safe(games);
-		}
-		SAFE_FREE(games_js_str);
-	} else if(json_object_size(games)) {
-		log_printf("No new game locations found.\n");
-	} else {
 		log_printf(
-			"No game locations found.\n"
-			"Please re-run this configuration tool after you have acquired some games\n"
-			"supported by the patches.\n"
+			"Searching games%s%s... this may take a while...\n\n",
+			search_path[0] ? " in " : " on the entire system",
+			search_path[0] ? search_path: ""
 		);
-		pause();
-	}
-	json_decref(found);
+		found = SearchForGames(search_path, games);
+		if(json_object_size(found)) {
+			char *games_js_str = NULL;
+			const char *id;
+			json_t *locs;
+
+			json_object_foreach(found, id, locs) {
+				const char *loc = ChooseLocation(id, locs);
+				json_object_set_new(games, id, json_string(loc));
+				printf("\n");
+			}
+
+			SetCurrentDirectory(games_js_path);
+
+			games_js_str = json_dumps(games, JSON_INDENT(2) | JSON_SORT_KEYS);
+			if(!file_write(games_js_fn, games_js_str, strlen(games_js_str))) {
+				log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
+				log_printf(games_js_str);
+				log_printf("\n");
+			} else if(!file_write_error(games_js_fn)) {
+				games = json_decref_safe(games);
+			}
+			SAFE_FREE(games_js_str);
+		} else if(json_object_size(games)) {
+			log_printf("No new game locations found.\n");
+		} else {
+			log_printf("No game locations found.\n");
+			if(search_path[0]) {
+				repeat = Ask("Search in a different directory?");
+			}
+			if(!repeat) {
+				log_printf(
+					"No patch shortcuts will be created.\n"
+					"Please re-run this configuration tool after you have acquired some games\n"
+					"supported by the patches.\n"
+				);
+				pause();
+			}
+		}
+		json_decref(found);
+	} while(repeat);
 	return games;
 }
