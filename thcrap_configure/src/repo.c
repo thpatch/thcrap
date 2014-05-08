@@ -55,7 +55,7 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 			repo_fn_local_str = json_string_value(repo_fn_local);
 			ret = file_write(repo_fn_local_str, repo_buffer, repo_size);
 			json_object_set(id_cache, id, json_true());
-			if(ret && !file_write_error(repo_fn_local_str)) {
+			if(ret && (ret = !file_write_error(repo_fn_local_str))) {
 				goto end;
 			}
 		} else {
