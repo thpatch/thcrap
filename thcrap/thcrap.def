@@ -69,7 +69,6 @@ EXPORTS
 	runconfig_get
 	runconfig_set
 	runconfig_title_get
-	runconfig_func_get
 
 	; Initialization
 	; --------------
@@ -196,6 +195,7 @@ EXPORTS
 
 	; Plugins
 	; -------
+	func_get
 	plugins_load
 	plugins_close
 

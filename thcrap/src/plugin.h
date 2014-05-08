@@ -28,6 +28,10 @@
   */
 typedef int (__stdcall *thcrap_plugin_init_type)(json_t *run_config);
 
+// Returns a pointer to a function with the given name in the list of exported
+// functions. Basically a GetProcAddress across the engine and all plug-ins.
+void* func_get(const char *name);
+
 /// Module functions
 /// ================
 /**

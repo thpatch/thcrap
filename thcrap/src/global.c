@@ -51,9 +51,3 @@ const json_t *runconfig_title_get(void)
 	}
 	return title ? title : (id ? id : NULL);
 }
-
-void* runconfig_func_get(const char *name)
-{
-	json_t *funcs = json_object_get(run_cfg, "funcs");
-	return (void*)json_object_get_hex(funcs, name);
-}

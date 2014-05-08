@@ -88,7 +88,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			strncpy(function, fs, c - fs);
 			function[c - fs] = 0;
 
-			fp = (size_t)runconfig_func_get(function);
+			fp = (size_t)func_get(function);
 			if(fp) {
 				if(func_rel) {
 					fp -= target_addr + written + sizeof(void*);

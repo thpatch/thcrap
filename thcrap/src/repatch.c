@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include "plugin.h"
 
 /**
   * This module monitors all patches for external changes to their files, then

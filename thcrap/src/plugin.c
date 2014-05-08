@@ -8,21 +8,28 @@
   */
 
 #include "thcrap.h"
-#include "plugin.h"
 
+static json_t *funcs = NULL;
 static json_t *plugins = NULL;
+
+void* func_get(const char *name)
+{
+	return (void*)json_object_get_hex(funcs, name);
+}
 
 int plugin_init(HMODULE hMod)
 {
 	json_t *run_cfg = runconfig_get();
-	json_t *funcs_old = json_object_get_create(run_cfg, "funcs", JSON_OBJECT);
 	json_t *funcs_new = json_object();
 	int ret = GetExportedFunctions(funcs_new, hMod);
+	if(!funcs) {
+		funcs = json_object();
+	}
 	if(!ret) {
 		mod_func_run(funcs_new, "init", NULL);
 		mod_func_run(funcs_new, "detour", NULL);
 	}
-	json_object_merge(funcs_old, funcs_new);
+	json_object_merge(funcs, funcs_new);
 	json_decref(funcs_new);
 	return ret;
 }
@@ -63,8 +70,9 @@ int plugins_close(void)
 	const char *key;
 	json_t *val;
 
-	log_printf("Removing plug-ins...\n");
+	funcs = json_decref_safe(funcs);
 
+	log_printf("Removing plug-ins...\n");
 	json_object_foreach(plugins, key, val) {
 		HINSTANCE hInst = (HINSTANCE)json_integer_value(val);
 		if(hInst) {
@@ -103,5 +111,5 @@ void mod_func_run(json_t *funcs, const char *pattern, void *param)
 
 void mod_func_run_all(const char *pattern, void *param)
 {
-	mod_func_run(json_object_get(runconfig_get(), "funcs"), pattern, param);
+	mod_func_run(funcs, pattern, param);
 }

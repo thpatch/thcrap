@@ -26,6 +26,7 @@
 #include "util.h"
 #include "mempatch.h"
 #include "pe.h"
+#include "plugin.h"
 #include "strings.h"
 #include "inject.h"
 #include "init.h"

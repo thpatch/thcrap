@@ -167,7 +167,7 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 
 		// Resolve function
 		if(encryption_func) {
-			state->enc_func = (EncryptionFunc_t)runconfig_func_get(encryption_func);
+			state->enc_func = (EncryptionFunc_t)func_get(encryption_func);
 		}
 		if(json_is_array(encryption_vars)) {
 			size_t i;
