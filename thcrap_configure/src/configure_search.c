@@ -154,8 +154,15 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			games = json_decref_safe(games);
 		}
 		SAFE_FREE(games_js_str);
-	} else {
+	} else if(json_object_size(games)) {
 		log_printf("No new game locations found.\n");
+	} else {
+		log_printf(
+			"No game locations found.\n"
+			"Please re-run this configuration tool after you have acquired some games\n"
+			"supported by the patches.\n"
+		);
+		pause();
 	}
 	json_decref(found);
 	return games;
