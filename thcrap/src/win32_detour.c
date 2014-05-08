@@ -48,6 +48,10 @@ void win32_detour(void)
 		"TextOutA", TextOutU
 	);
 
+	detour_cache_add("shell32.dll", 1,
+		"SHGetPathFromIDList", SHGetPathFromIDListU
+	);
+
 	detour_cache_add("shlwapi.dll", 3,
 		"PathMatchSpecA", PathMatchSpecU,
 		"PathRemoveFileSpecA", PathRemoveFileSpecU,

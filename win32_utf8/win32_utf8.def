@@ -50,6 +50,10 @@ EXPORTS
 	; ---------
 	GetModuleFileNameExU
 
+	; shell32.dll
+	; -----------
+	SHGetPathFromIDListU
+
 	; shlwapi.dll
 	; -----------
 	PathFileExistsU

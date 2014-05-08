@@ -12,6 +12,7 @@
 
 #include <Windows.h>
 #include <psapi.h>
+#include <ShlObj.h>
 #include <stdio.h>
 
 #include "macros.h"
@@ -21,6 +22,7 @@
 #include "kernel32_dll.h"
 #include "msvcrt_dll.h"
 #include "psapi_dll.h"
+#include "shell32_dll.h"
 #include "shlwapi_dll.h"
 #include "user32_dll.h"
 

@@ -83,6 +83,7 @@
     <ClInclude Include="src\macros.h" />
     <ClInclude Include="src\msvcrt_dll.h" />
     <ClInclude Include="src\psapi_dll.h" />
+    <ClInclude Include="src\shell32_dll.h" />
     <ClInclude Include="src\shlwapi_dll.h" />
     <ClInclude Include="src\user32_dll.h" />
     <ClInclude Include="src\utf.h" />
@@ -94,6 +95,7 @@
     <ClCompile Include="src\kernel32_dll.c" />
     <ClCompile Include="src\msvcrt_dll.c" />
     <ClCompile Include="src\psapi_dll.c" />
+    <ClCompile Include="src\shell32_dll.c" />
     <ClCompile Include="src\shlwapi_dll.c" />
     <ClCompile Include="src\user32_dll.c" />
     <ClCompile Include="src\utf.c" />
