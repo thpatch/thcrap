@@ -62,6 +62,8 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	json_t *games;
 	json_t *found;
 	char search_path[MAX_PATH * 2] = {0};
+	BROWSEINFO bi = {0};
+	PIDLIST_ABSOLUTE pidl;
 
 	cls(0);
 
@@ -114,30 +116,21 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			"\n",
 			games_js_fn
 		);
+		pause();
 	}
+	bi.lpszTitle = L"Root path for game search (cancel to search entire system):";
+	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
 
-	while(1) {
-		log_printf(
-			"Root path for search\n"
-			" (keep empty to search entire system): "
-		);
-		console_read(search_path, sizeof(search_path));
-		log_printf("\n");
-
-		if(search_path[0] == '\0') {
-			break;
-		}
-
-		str_slash_normalize_win(search_path);
+	pidl = SHBrowseForFolder(&bi);
+	if(pidl && SHGetPathFromIDList(pidl, search_path)) {
 		PathAddBackslashA(search_path);
-
-		if(!PathFileExists(search_path)) {
-			log_printf("Hmm, that path (%s) does not exist.\n", search_path);
-		} else {
-			break;
-		}
+		CoTaskMemFree(pidl);
 	}
-	log_printf("Searching... this may take a while...\n\n");
+	log_printf(
+		"Searching games%s%s... this may take a while...\n\n",
+		search_path[0] ? " in " : " on the entire system",
+		search_path[0] ? search_path: ""
+	);
 	found = SearchForGames(search_path, games);
 	if(json_object_size(found)) {
 		char *games_js_str = NULL;
