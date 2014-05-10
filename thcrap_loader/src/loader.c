@@ -184,7 +184,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			final_exe_fn_local, game_dir, NULL, NULL, TRUE, 0, NULL, game_dir, &si, &pi
 		));
 		if(ret) {
-			char *msg_str;
+			char *msg_str = "";
 
 			FormatMessage(
 				FORMAT_MESSAGE_FROM_SYSTEM |
@@ -199,13 +199,10 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 				final_exe_fn, msg_str
 			);
 			LocalFree(msg_str);
-			ret = -4;
-			goto end;
 		}
 		VLA_FREE(game_dir);
 		VLA_FREE(final_exe_fn_local);
 	}
-	ret = 0;
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);
