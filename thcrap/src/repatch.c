@@ -89,9 +89,7 @@ void repatch_add(OVERLAPPED *ol)
 		LeaveCriticalSection(&cs_changed);
 		VLA_FREE(fn_utf8);
 		if(next_offset) {
-			p = (FILE_NOTIFY_INFORMATION*)ptr_dword_align(
-				(BYTE*)p + sizeof(DWORD) * 3 + p->FileNameLength
-			);
+			p = (FILE_NOTIFY_INFORMATION*)((BYTE*)p + next_offset);
 		}
 	} while(next_offset);
 }
