@@ -58,6 +58,7 @@ EXPORTS
 	GetTextExtentBase
 	GetTextExtent
 	GetTextExtentForFont
+	GetTextExtentForFontID
 
 	layout_mod_init
 	layout_mod_detour

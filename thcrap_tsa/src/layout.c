@@ -18,6 +18,64 @@ json_t *Layout_Tabs = NULL;
 static HDC text_dc = NULL;
 /// -----------------------
 
+/// TSA font block
+/// --------------
+/**
+  * Retrieves a HFONT pointer using the TSA font block defined in the run
+  * configuration. This font block can be defined using two methods:
+  *
+  * • A JSON object with 4 members:
+  *   • "addr" (hex) for the start address
+  *   • "offset" (int, defaults to sizeof(HFONT)) for the number of bytes
+  *     between the individual font pointers
+  *   • "min" (int, defaults to 0) and "max" (int) to define the lower and
+  *     upper bounds of the block, respectively.
+  *
+  * • A JSON array containing HFONT pointers to all fonts in the game's ID
+  *   order. This can be used if the game doesn't store the pointers in one
+  *   contiguous memory block, which makes automatic calculation impossible.
+  */
+static HFONT* font_block_get(int id)
+{
+	HFONT* ret = NULL;
+	const json_t *run_cfg = runconfig_get();
+	json_t *font_block = json_object_get(run_cfg, "tsa_font_block");
+	json_int_t min = 0, max = 0;
+	if(json_is_object(font_block)) {
+		size_t addr = json_object_get_hex(font_block, "addr");
+		const json_t *block_offset = json_object_get(font_block, "offset");
+		const json_t *block_min = json_object_get(font_block, "min");
+		const json_t *block_max = json_object_get(font_block, "max");
+
+		json_int_t offset = sizeof(HFONT);
+		if(json_is_integer(block_offset)) {
+			offset = json_integer_value(block_offset);
+		}
+		if(json_is_integer(block_min) && json_is_integer(block_max) && addr) {
+			min = json_integer_value(block_min);
+			max = json_integer_value(block_max);
+			if(id >= min && id < max) {
+				ret = (HFONT*)(addr + id * offset);
+			}
+		} else {
+			log_func_printf("invalid TSA font block format\n");
+			return NULL;
+		}
+	} else if(json_is_array(font_block)) {
+		min = 0;
+		max = json_array_size(font_block);
+		ret = (HFONT*)json_array_get_hex(font_block, id);
+	}
+	if(id < min || id > max) {
+		log_func_printf(
+			"index out of bounds (min: %d, max: %d, given: %d\n",
+			min, max, id
+		);
+	}
+	return ret;
+}
+/// --------------
+
 /// Ruby
 /// ----
 
@@ -411,6 +469,12 @@ size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 	size_t ret = GetTextExtent(str);
 	layout_SelectObject(text_dc, prev_font);
 	return ret;
+}
+
+size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
+{
+	HFONT *font = font_block_get(id);
+	return GetTextExtentForFont(str, font ? *font : NULL);
 }
 
 int layout_mod_init(HMODULE hMod)
