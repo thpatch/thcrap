@@ -195,7 +195,7 @@ json_t* json_object_merge(json_t *old_obj, const json_t *new_obj)
 	}
 	json_object_foreach((json_t*)new_obj, key, new_val) {
 		json_t *old_val = json_object_get(old_obj, key);
-		if(json_is_object(old_val)) {
+		if(json_is_object(old_val) && json_is_object(new_val)) {
 			// Recursion!
 			json_object_merge(old_val, new_val);
 		} else {
