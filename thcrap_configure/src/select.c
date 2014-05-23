@@ -117,27 +117,27 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 }
 
 // Returns the number of patches removed.
-int RemovePatch(json_t *sel_stack, size_t id)
+int RemovePatch(json_t *sel_stack, size_t rem_id)
 {
 	int ret = 0;
 	json_t *patches = json_object_get(runconfig_get(), "patches");
-	json_t *sel = json_array_get(sel_stack, id);
+	json_t *sel = json_array_get(sel_stack, rem_id);
 	json_t *patch_id = json_array_get(sel, 1);
-	size_t i;
+	size_t dep_id;
 	json_t *patch_info;
 
-	json_array_remove(patches, id);
-	json_array_remove(sel_stack, id);
+	json_array_remove(patches, rem_id);
+	json_array_remove(sel_stack, rem_id);
 
-	json_array_foreach(patches, i, patch_info) {
+	json_array_foreach(patches, dep_id, patch_info) {
 		json_t *dependencies = json_object_get(patch_info, "dependencies");
 		size_t j;
 		json_t *dep;
 
 		json_flex_array_foreach(dependencies, j, dep) {
 			if(json_equal(patch_id, dep)) {
-				ret += RemovePatch(sel_stack, id);
-				i--;
+				ret += RemovePatch(sel_stack, dep_id);
+				dep_id--;
 				break;
 			}
 		}
