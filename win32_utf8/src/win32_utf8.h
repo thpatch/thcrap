@@ -13,6 +13,7 @@
 #include <Windows.h>
 #include <psapi.h>
 #include <ShlObj.h>
+#include <stddef.h>
 #include <stdio.h>
 
 #include "macros.h"

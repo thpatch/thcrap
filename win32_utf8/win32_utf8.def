@@ -12,6 +12,7 @@ EXPORTS
 	; gdi32.dll
 	; ---------
 	CreateFontU
+	EnumFontFamiliesExU
 	GetTextExtentPoint32U
 	TextOutU
 
