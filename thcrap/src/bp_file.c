@@ -10,6 +10,13 @@
 #include "thcrap.h"
 #include "bp_file.h"
 
+static int file_rep_hooks_run(file_rep_t *fr)
+{
+	return patchhooks_run(
+		fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch
+	);
+}
+
 int file_rep_clear(file_rep_t *fr)
 {
 	if(!fr) {
@@ -180,7 +187,7 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	// Let's do it
 	memcpy(fr->game_buffer, fr->rep_buffer, fr->rep_size);
 
-	patchhooks_run(fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch);
+	file_rep_hooks_run(fr);
 
 	if(eip_jump_dist) {
 		regs->retaddr += eip_jump_dist;
@@ -236,7 +243,7 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 		DumpDatFile(json_string_value(dat_dump), fr);
 	}
 
-	patchhooks_run(fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch);
+	file_rep_hooks_run(fr);
 
 	fr_tls_free();
 	return 1;
