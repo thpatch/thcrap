@@ -52,9 +52,8 @@ file_rep_t* fr_tls_get(void)
 	return fr;
 }
 
-void fr_tls_free(void)
+void fr_tls_free(file_rep_t *fr)
 {
-	file_rep_t *fr = (file_rep_t*)TlsGetValue(fr_tls);
 	if(fr) {
 		file_rep_clear(fr);
 		SAFE_FREE(fr);
@@ -198,7 +197,7 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	if(stack_clear_size) {
 		regs->esp += stack_clear_size;
 	}
-	fr_tls_free();
+	fr_tls_free(fr);
 	return 0;
 }
 
@@ -245,7 +244,7 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 
 	file_rep_hooks_run(fr);
 
-	fr_tls_free();
+	fr_tls_free(fr);
 	return 1;
 }
 

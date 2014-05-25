@@ -46,7 +46,7 @@ int file_rep_clear(file_rep_t *pf);
 /// Thread-local storage
 /// --------------------
 file_rep_t* fr_tls_get(void);
-void fr_tls_free(void);
+void fr_tls_free(file_rep_t *fr);
 /// --------------------
 
 /**
