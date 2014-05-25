@@ -48,10 +48,8 @@ int plugins_load(void)
 	while(!ret) {
 		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
 		if(plugin) {
-			thcrap_plugin_init_type func =
-				(thcrap_plugin_init_type)GetProcAddress(plugin, "thcrap_plugin_init")
-			;
-			if(func && !func(run_cfg)) {
+			FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
+			if(func && !func()) {
 				log_printf("\t%s\n", w32fd.cFileName);
 				plugin_init(plugin);
 				json_object_set_new(plugins, w32fd.cFileName, json_integer((size_t)plugin));

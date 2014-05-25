@@ -30,7 +30,7 @@ int BP_update_poll(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int __stdcall thcrap_plugin_init(json_t *run_cfg)
+int __stdcall thcrap_plugin_init()
 {
 	http_init();
 

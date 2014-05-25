@@ -10,23 +10,14 @@
 #pragma once
 
 /**
-  * int thcrap_plugin_init(json_t *run_cfg)
+  * To be identified as such, every thcrap plugin must export a function named
   *
-  * Parameters
-  * ----------
-  *	json_t *run_cfg
-  *		Run configuration containing game, version, and user settings,
-  *		merged in this order
+  * int __stdcall thcrap_plugin_init()
   *
-  * Return value
-  * ------------
-  *	0 on success
-  *	1 if plugin loading failed and the plugin should be removed
-  *
-  * Called directly after the plugin was loaded via LoadLibrary.
-  * To be identified as such, every thcrap plugin must export this function.
+  * which should return 0 on success, and anything else if the plugin should
+  * be removed. This function is called directly after the plugin was loaded
+  * via LoadLibrary().
   */
-typedef int (__stdcall *thcrap_plugin_init_type)(json_t *run_config);
 
 // Returns a pointer to a function with the given name in the list of exported
 // functions. Basically a GetProcAddress across the engine and all plug-ins.
