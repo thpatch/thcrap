@@ -17,20 +17,21 @@
 
 // File replacement state
 typedef struct {
-	// Combined JSON patch that will be applied to the file
+	// Combined JSON patch to be applied to the file, and its maximum size
 	json_t *patch;
+	size_t patch_size;
 	// JSON array of hook functions to be run on this file
 	json_t *hooks;
 
 	// File name. Enforced to be in UTF-8
 	char *name;
 
-	// Size of the thing we're replacing the game's file with
-	size_t rep_size;
-	// Size of the game's own file in the game's own memory
-	size_t game_size;
-
+	// Potential replacement file, applied before the JSON patch
 	void *rep_buffer;
+	// Size of [rep_buffer] if we have one; otherwise, size of the original
+	// game file. [game_buffer] is guaranteed to be at least this large.
+	size_t pre_json_size;
+
 	void *game_buffer;
 
 	// Pointer to an object of the game's file class.
@@ -76,8 +77,7 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info);
   *		Type: register
   *
   *	[set_patch_size]
-  *		Set to false to not write the size of the patched file
-  *		to the [file_size] register.
+  *		Set to false to skip the call to BP_file_size().
   *		Type: bool
   *
   * Other breakpoints called
@@ -87,10 +87,10 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info);
 int BP_file_size(x86_reg_t *regs, json_t *bp_info);
 
 /**
-  * If we define a larger buffer in [BP_file_size], the game's decompression
-  * algorithm may produce bogus data after the end of the original file.
-  * This breakpoint can be used to write the actual size of the completely
-  * patched file separately from [BP_file_size].
+  * Writes the post-JSON file size to the game's memory. This is a separate
+  * breakpoint because th08's archive decompression algorithm produces bogus
+  * data after the end of the original file in case a larger than expected
+  * file size is written at BP_file_size().
   *
   * Own JSON parameters
   * -------------------

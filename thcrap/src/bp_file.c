@@ -10,10 +10,12 @@
 #include "thcrap.h"
 #include "bp_file.h"
 
+#define POST_JSON_SIZE(fr) (fr)->pre_json_size + (fr)->patch_size
+
 static int file_rep_hooks_run(file_rep_t *fr)
 {
 	return patchhooks_run(
-		fr->hooks, fr->game_buffer, fr->rep_size, fr->game_size, fr->patch
+		fr->hooks, fr->game_buffer, POST_JSON_SIZE(fr), fr->pre_json_size, fr->patch
 	);
 }
 
@@ -25,8 +27,8 @@ int file_rep_clear(file_rep_t *fr)
 	SAFE_FREE(fr->rep_buffer);
 	fr->patch = json_decref_safe(fr->patch);
 	fr->hooks = json_decref_safe(fr->hooks);
-	fr->rep_size = 0;
-	fr->game_size = 0;
+	fr->patch_size = 0;
+	fr->pre_json_size = 0;
 	fr->object = NULL;
 	SAFE_FREE(fr->name);
 	return 0;
@@ -81,7 +83,7 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 	}
 	fn_len = strlen(*file_name) + 1;
 	fr->name = EnsureUTF8(*file_name, fn_len);
-	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->rep_size);
+	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->pre_json_size);
 	fr->hooks = patchhooks_build(fr->name);
 	if(fr->hooks) {
 		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
@@ -93,7 +95,7 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 			fr->patch = stack_game_json_resolve(diff_fn, &diff_size);
 			VLA_FREE(diff_fn);
 		}
-		fr->rep_size += diff_size;
+		fr->patch_size += diff_size;
 	}
 	return 1;
 }
@@ -107,30 +109,15 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
 	int set_patch_size = !(json_is_false(json_object_get(bp_info, "set_patch_size")));
 	// ----------
-
 	// Other breakpoints
 	// -----------------
 	BP_file_name(regs, bp_info);
 	// -----------------
-
-	if(!file_size) {
-		return 1;
+	if(file_size && !fr->pre_json_size) {
+		fr->pre_json_size = *file_size;
 	}
-
-	fr->game_size = *file_size;
-
-	if(fr->patch) {
-		// If we only have a patch and no replacement file, the replacement size
-		// doesn't yet include the actual base file part
-		if(!fr->rep_buffer) {
-			fr->rep_size += fr->game_size;
-		}
-		if(set_patch_size) {
-			*file_size = fr->rep_size;
-		}
-	} else if(fr->rep_buffer && fr->rep_size) {
-		// Set size of replacement file
-		*file_size = fr->rep_size;
+	if(set_patch_size) {
+		BP_file_size_patch(regs, bp_info);
 	}
 	return 1;
 }
@@ -143,8 +130,11 @@ int BP_file_size_patch(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
 	// ----------
-	if(file_size && fr->rep_size && fr->game_size != fr->rep_size) {
-		*file_size = fr->rep_size;
+	size_t post_json_size = POST_JSON_SIZE(fr);
+	// Yes, these checks are necessary because th08 needs to place this
+	// breakpoint on a generic memory allocation call.
+	if(file_size && fr->pre_json_size && fr->pre_json_size != post_json_size) {
+		*file_size = post_json_size;
 	}
 	return 1;
 }
@@ -179,12 +169,12 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	BP_file_buffer(regs, bp_info);
 	// -----------------
 
-	if(!fr->game_buffer || !fr->rep_buffer || !fr->rep_size) {
+	if(!fr->game_buffer || !fr->rep_buffer || !fr->pre_json_size) {
 		return 1;
 	}
 
 	// Let's do it
-	memcpy(fr->game_buffer, fr->rep_buffer, fr->rep_size);
+	memcpy(fr->game_buffer, fr->rep_buffer, fr->pre_json_size);
 
 	file_rep_hooks_run(fr);
 
@@ -217,7 +207,7 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 		sprintf(fn, "%s/%s", dir, fr->name);
 
 		if(!PathFileExists(fn)) {
-			file_write(fn, fr->game_buffer, fr->game_size);
+			file_write(fn, fr->game_buffer, fr->pre_json_size);
 		}
 		VLA_FREE(fn);
 	}
