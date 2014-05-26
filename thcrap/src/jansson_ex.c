@@ -241,15 +241,22 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 	return ret;
 }
 
-json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const char *source)
+json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const char *source)
 {
+	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf};
+	const size_t utf8_bom_len = sizeof(utf8_bom);
 	json_error_t error;
 	json_t *ret;
 
-	if(!buffer) {
+	if(!buffer || !buflen) {
 		return NULL;
 	}
-	ret = json_loadb((char*)buffer, buflen, JSON_DISABLE_EOF_CHECK, &error);
+	// Skip UTF-8 byte order mark, if there
+	if(buflen > utf8_bom_len && !memcmp(buffer, utf8_bom, utf8_bom_len)) {
+		buffer += utf8_bom_len;
+		buflen -= utf8_bom_len;
+	}
+	ret = json_loadb(buffer, buflen, JSON_DISABLE_EOF_CHECK, &error);
 	if(!ret) {
 		log_mboxf(NULL, MB_OK | MB_ICONSTOP,
 			"JSON parsing error:\n"
@@ -266,21 +273,8 @@ json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const
 json_t* json_load_file_report(const char *json_fn)
 {
 	size_t json_size;
-	void *json_buffer;
-	BYTE *json_p;
-	json_t *json = NULL;
-	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf};
-
-	json_p = json_buffer = file_read(json_fn, &json_size);
-	if(!json_buffer || !json_size) {
-		return NULL;
-	}
-	// Skip UTF-8 byte order mark, if there
-	if(!memcmp(json_p, utf8_bom, sizeof(utf8_bom))) {
-		json_p += sizeof(utf8_bom);
-		json_size -= sizeof(utf8_bom);
-	}
-	json = json_loadb_report(json_p, json_size, JSON_DISABLE_EOF_CHECK, json_fn);
+	char *json_buffer = (char*)file_read(json_fn, &json_size);
+	json_t *json = json_loadb_report(json_buffer, json_size, JSON_DISABLE_EOF_CHECK, json_fn);
 	SAFE_FREE(json_buffer);
 	return json;
 }
