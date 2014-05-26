@@ -74,6 +74,16 @@ static HFONT* font_block_get(int id)
 	}
 	return ret;
 }
+
+static HFONT* json_object_get_tsa_font(json_t *object, const char *key)
+{
+	json_t *val = json_object_get(object, key);
+	return
+		json_is_string(val) ? (HFONT*)json_hex_value(val)
+		: json_is_integer(val) ? font_block_get(json_integer_value(val))
+		: NULL
+	;
+}
 /// --------------
 
 /// Ruby
@@ -105,8 +115,8 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	char **str_reg = (char**)json_object_get_register(bp_info, regs, "str");
 	size_t *offset = json_object_get_register(bp_info, regs, "offset");
-	HFONT* font_dialog = (HFONT*)json_object_get_hex(bp_info, "font_dialog");
-	HFONT* font_ruby = (HFONT*)json_object_get_hex(bp_info, "font_ruby");
+	HFONT* font_dialog = json_object_get_tsa_font(bp_info, "font_dialog");
+	HFONT* font_ruby = json_object_get_tsa_font(bp_info, "font_ruby");
 	char *str = *str_reg;
 	// ----------
 	if(!font_dialog || !font_ruby) {
