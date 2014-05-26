@@ -88,13 +88,11 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 	if(fr->hooks) {
 		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
 		size_t diff_size = 0;
-		{
-			VLA(char, diff_fn, diff_fn_len);
-			strcpy(diff_fn, fr->name);
-			strcat(diff_fn, ".jdiff");
-			fr->patch = stack_game_json_resolve(diff_fn, &diff_size);
-			VLA_FREE(diff_fn);
-		}
+		VLA(char, diff_fn, diff_fn_len);
+		strcpy(diff_fn, fr->name);
+		strcat(diff_fn, ".jdiff");
+		fr->patch = stack_game_json_resolve(diff_fn, &diff_size);
+		VLA_FREE(diff_fn);
 		fr->patch_size += diff_size;
 	}
 	return 1;

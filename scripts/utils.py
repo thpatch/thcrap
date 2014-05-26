@@ -30,6 +30,7 @@ json_dump_params = {
     'sort_keys': True
 }
 
+
 # Default parameters for JSON input and output
 def json_load(fn, json_kwargs=json_load_params):
     with open(fn, 'r', encoding='utf-8') as file:

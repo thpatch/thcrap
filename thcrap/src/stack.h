@@ -40,9 +40,9 @@ json_t* resolve_chain_game(const char *fn);
 // [sci] keeps the iteration state.
 int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction);
 
-// Walks through the patch stack configured in <run_cfg>,
-// merging every file with the filename [fn] into a single JSON object.
-// Returns the merged JSON object or NULL if there is no matching file in the patch stack.
+// Walks through the patch stack configured in <run_cfg>, merging every file
+// with the filename [fn] into a single JSON object. Returns the merged JSON
+// object or NULL if there is no matching file in the patch stack.
 // If given, [file_size] receives a _rough estimate_ of the JSON file size.
 json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size);
 json_t* stack_json_resolve(const char *fn, size_t *file_size);

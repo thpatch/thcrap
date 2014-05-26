@@ -43,8 +43,6 @@ static int self_tempname(char *fn, size_t len, const char *prefix)
 		HCRYPTPROV hCryptProv;
 		size_t rnd_num = (len - 1) / 2;
 		VLA(BYTE, rnd, rnd_num);
-		size_t len_w = len;
-		size_t len_conv = 0;
 		size_t i = 0;
 
 		ZeroMemory(fn, len);

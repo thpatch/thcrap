@@ -31,8 +31,8 @@
   */
 typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch);
 
-// Reads the file [fn] into a newly created buffer and returns its file size in [file_size].
-// Return value has to be free()d by the caller!
+// Reads the file [fn] into a newly created buffer and returns its file size
+// in [file_size]. Return value has to be free()d by the caller!
 void* file_read(const char *fn, size_t *file_size);
 
 // Writes [file_buffer] to a file named [fn]. The file is always overwritten!
@@ -88,9 +88,9 @@ int patch_file_delete(const json_t *patch_info, const char *fn);
 
 /// Initialization
 /// --------------
-// Loads the patch.js file of [patch_info], merges it onto this file,
-// and returns the resulting JSON object.
 json_t* patch_init(const json_t *patch_info);
+// Loads the patch.js file of [patch_info], merges [patch_info] onto this
+// file, and returns the resulting JSON object.
 
 // Turns the possibly relative archive path of [patch_info] into an absolute
 // one, relative to [base_path].

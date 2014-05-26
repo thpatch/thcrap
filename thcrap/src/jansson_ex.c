@@ -230,7 +230,7 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 			i++;
 		}
 
-		qsort(keys, size, sizeof(const char *), object_key_compare_keys);
+		qsort((void*)keys, size, sizeof(const char *), object_key_compare_keys);
 
 		ret = json_array();
 		for(i = 0; i < size; i++) {

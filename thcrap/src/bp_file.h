@@ -34,14 +34,12 @@ typedef struct {
 
 	void *game_buffer;
 
-	// Pointer to an object of the game's file class.
-	// Used as another method of linking load calls to files, if file names aren't enough
+	// Pointer to an object of the game's file class. Used as another
+	// method of linking load calls to files, if file names aren't enough.
 	void *object;
 } file_rep_t;
 
-/**
-  * Clears a file_rep_t object.
-  */
+// Clears a file_rep_t object.
 int file_rep_clear(file_rep_t *pf);
 
 /// Thread-local storage

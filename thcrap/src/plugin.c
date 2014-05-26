@@ -19,7 +19,6 @@ void* func_get(const char *name)
 
 int plugin_init(HMODULE hMod)
 {
-	json_t *run_cfg = runconfig_get();
 	json_t *funcs_new = json_object();
 	int ret = GetExportedFunctions(funcs_new, hMod);
 	if(!funcs) {
