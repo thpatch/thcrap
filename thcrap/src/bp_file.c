@@ -107,34 +107,16 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 	// Parameters
 	// ----------
 	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
-	int set_patch_size = !(json_is_false(json_object_get(bp_info, "set_patch_size")));
 	// ----------
 	// Other breakpoints
 	// -----------------
 	BP_file_name(regs, bp_info);
 	// -----------------
-	if(file_size && !fr->pre_json_size) {
-		fr->pre_json_size = *file_size;
-	}
-	if(set_patch_size) {
-		BP_file_size_patch(regs, bp_info);
-	}
-	return 1;
-}
-
-int BP_file_size_patch(x86_reg_t *regs, json_t *bp_info)
-{
-	file_rep_t *fr = fr_tls_get();
-
-	// Parameters
-	// ----------
-	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
-	// ----------
-	size_t post_json_size = POST_JSON_SIZE(fr);
-	// Yes, these checks are necessary because th08 needs to place this
-	// breakpoint on a generic memory allocation call.
-	if(file_size && fr->pre_json_size && fr->pre_json_size != post_json_size) {
-		*file_size = post_json_size;
+	if(file_size && (fr->pre_json_size || fr->patch_size || fr->hooks) ) {
+		if(!fr->pre_json_size) {
+			fr->pre_json_size = *file_size;
+		}
+		*file_size = POST_JSON_SIZE(fr);
 	}
 	return 1;
 }

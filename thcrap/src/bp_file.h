@@ -76,33 +76,11 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info);
   *		Register that contains the size of the file to load.
   *		Type: register
   *
-  *	[set_patch_size]
-  *		Set to false to skip the call to BP_file_size().
-  *		Type: bool
-  *
   * Other breakpoints called
   * ------------------------
   *	BP_file_name
   */
 int BP_file_size(x86_reg_t *regs, json_t *bp_info);
-
-/**
-  * Writes the post-JSON file size to the game's memory. This is a separate
-  * breakpoint because th08's archive decompression algorithm produces bogus
-  * data after the end of the original file in case a larger than expected
-  * file size is written at BP_file_size().
-  *
-  * Own JSON parameters
-  * -------------------
-  *	[file_size]
-  *		Register to write the patch size to.
-  *		Type: register
-  *
-  * Other breakpoints called
-  * ------------------------
-  *	None
-  */
-int BP_file_size_patch(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Reads the file buffer address and stores it in the local file_rep_t object.

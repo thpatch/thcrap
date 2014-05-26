@@ -17,7 +17,6 @@ EXPORTS
 
 	BP_file_name
 	BP_file_size
-	BP_file_size_patch
 	BP_file_buffer
 	BP_file_load
 	BP_file_loaded
