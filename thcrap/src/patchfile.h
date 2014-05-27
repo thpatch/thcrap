@@ -88,9 +88,9 @@ int patch_file_delete(const json_t *patch_info, const char *fn);
 
 /// Initialization
 /// --------------
-json_t* patch_init(const json_t *patch_info);
 // Loads the patch.js file of [patch_info], merges [patch_info] onto this
 // file, and returns the resulting JSON object.
+json_t* patch_init(json_t *patch_info);
 
 // Turns the possibly relative archive path of [patch_info] into an absolute
 // one, relative to [base_path].

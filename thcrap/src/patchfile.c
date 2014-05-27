@@ -280,7 +280,7 @@ int patch_file_delete(const json_t *patch_info, const char *fn)
 	return ret;
 }
 
-json_t* patch_init(const json_t *patch_info)
+json_t* patch_init(json_t *patch_info)
 {
 	json_t *patch_js = patch_json_load(patch_info, "patch.js", NULL);
 	return json_object_merge(patch_js, patch_info);
