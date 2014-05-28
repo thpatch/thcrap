@@ -21,22 +21,24 @@ json_t *dep_to_sel(const char *dep_str)
 	return NULL;
 }
 
-// Returns 1 if the patch [sel] is in [sel_stack]. [sel]'s repository ID can
-// be a JSON NULL object to ignore the repository.
+// Returns 1 if the selectors [a] and [b] refer to the same patch.
+// The repository IDs can be JSON NULLs to ignore them.
+int sel_match(const json_t *a, const json_t *b)
+{
+	json_t *a_r = json_array_get(a, 0);
+	json_t *a_p = json_array_get(a, 1);
+	json_t *b_r = json_array_get(b, 0);
+	json_t *b_p = json_array_get(b, 1);
+	int absolute = json_is_string(a_r) && json_is_string(b_r);
+	return (absolute ? json_equal(a_r, b_r) : 1) && json_equal(a_p, b_p);
+}
+
 int IsSelected(json_t *sel_stack, const json_t *sel)
 {
-	json_t *sel_repo = json_array_get(sel, 0);
-	json_t *sel_patch = json_array_get(sel, 1);
 	json_t *cmp;
 	size_t i;
-
 	json_array_foreach(sel_stack, i, cmp) {
-		json_t *cmp_repo = json_array_get(cmp, 0);
-		json_t *cmp_patch = json_array_get(cmp, 1);
-		if(
-			(json_is_string(sel_repo) ? json_equal(cmp_repo, sel_repo) : 1)
-			&& json_equal(cmp_patch, sel_patch)
-		) {
+		if(sel_match(sel, cmp)) {
 			return 1;
 		}
 	}
