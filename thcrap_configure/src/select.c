@@ -21,19 +21,21 @@ json_t *dep_to_sel(const char *dep_str)
 	return NULL;
 }
 
-// Returns 1 if the patch [patch_id] from [repo_id] is in [sel_stack].
-// [repo_id] can be NULL to ignore the repository.
-int IsSelected(json_t *sel_stack, json_t *repo_id, json_t *patch_id)
+// Returns 1 if the patch [sel] is in [sel_stack]. [sel]'s repository ID can
+// be a JSON NULL object to ignore the repository.
+int IsSelected(json_t *sel_stack, const json_t *sel)
 {
-	json_t *sel;
+	json_t *sel_repo = json_array_get(sel, 0);
+	json_t *sel_patch = json_array_get(sel, 1);
+	json_t *cmp;
 	size_t i;
 
-	json_array_foreach(sel_stack, i, sel) {
-		json_t *sel_repo = json_array_get(sel, 0);
-		json_t *sel_patch = json_array_get(sel, 1);
+	json_array_foreach(sel_stack, i, cmp) {
+		json_t *cmp_repo = json_array_get(cmp, 0);
+		json_t *cmp_patch = json_array_get(cmp, 1);
 		if(
-			(json_is_string(repo_id) ? json_equal(sel_repo, repo_id) : 1)
-			&& json_equal(sel_patch, patch_id)
+			(json_is_string(sel_repo) ? json_equal(cmp_repo, sel_repo) : 1)
+			&& json_equal(cmp_patch, sel_patch)
 		) {
 			return 1;
 		}
@@ -94,10 +96,8 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 	json_flex_array_foreach(dependencies, i, dep) {
 		const char *dep_str = json_string_value(dep);
 		json_t *dep_sel = dep_to_sel(dep_str);
-		json_t *dep_repo = json_array_get(dep_sel, 0);
-		json_t *dep_patch = json_array_get(dep_sel, 1);
 
-		if(!IsSelected(sel_stack, dep_repo, dep_patch)) {
+		if(!IsSelected(sel_stack, dep_sel)) {
 			const char *target_repo = SearchPatch(repo_list, repo_id, dep_sel);
 			if(!target_repo) {
 				log_printf("ERROR: Dependency '%s' of patch '%s' not met!\n", dep_str, patch_id);
@@ -186,10 +186,10 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 	json_array_foreach(patches_sorted, i, patch_id) {
 		const char *patch_id_str = json_string_value(patch_id);
 		const char *patch_title = json_object_get_string(patches, patch_id_str);
+		json_t *sel = json_pack("[ss]", repo_id_str, patch_id_str);
 
-		if(!IsSelected(sel_stack, repo_id, patch_id)) {
-			json_t *sel = json_pack("[ss]", repo_id_str, patch_id_str);
-			json_array_append_new(list_order, sel);
+		if(!IsSelected(sel_stack, sel)) {
+			json_array_append(list_order, sel);
 
 			if(print_header) {
 				const char *contact = json_object_get_string(repo_js, "contact");
@@ -203,6 +203,7 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 			printf(" [%2d] ", ++list_count);
 			PrettyPrintPatch(patch_id_str, patch_title);
 		}
+		json_decref(sel);
 	}
 	if(!print_header) {
 		printf("\n");
