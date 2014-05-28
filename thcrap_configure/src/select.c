@@ -92,6 +92,7 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 	json_t *patch_info = patch_bootstrap(sel, repo_servers);
 	json_t *patch_full = patch_init(patch_info);
 	json_t *dependencies = json_object_get(patch_full, "dependencies");
+	json_t *dep_array = json_array();
 	size_t i;
 	json_t *dep;
 
@@ -109,8 +110,9 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 				ret += AddPatch(sel_stack, repo_list, dep_sel);
 			}
 		}
-		json_decref(dep_sel);
+		json_array_append_new(dep_array, dep_sel);
 	}
+	json_object_set_new(patch_full, "dependencies", dep_array);
 	json_array_append(patches, patch_full);
 	json_array_append(sel_stack, sel);
 	json_decref(patch_full);
@@ -124,7 +126,6 @@ int RemovePatch(json_t *sel_stack, size_t rem_id)
 	int ret = 0;
 	json_t *patches = json_object_get(runconfig_get(), "patches");
 	json_t *sel = json_array_get(sel_stack, rem_id);
-	json_t *patch_id = json_array_get(sel, 1);
 	size_t dep_id;
 	json_t *patch_info;
 
@@ -137,7 +138,7 @@ int RemovePatch(json_t *sel_stack, size_t rem_id)
 		json_t *dep;
 
 		json_flex_array_foreach(dependencies, j, dep) {
-			if(json_equal(patch_id, dep)) {
+			if(sel_match(dep, sel)) {
 				ret += RemovePatch(sel_stack, dep_id);
 				dep_id--;
 				break;
