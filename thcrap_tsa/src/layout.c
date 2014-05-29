@@ -361,7 +361,7 @@ BOOL WINAPI layout_TextOutU(
 			// GetTextExtent() return the correct widths.
 			LOGFONT font_new = font_orig;
 			if(layout_parse_font(&font_new, cmd)) {
-				hFontNew = CreateFontIndirect(&font_new);
+				hFontNew = CreateFontIndirectW(&font_new);
 				SelectObject(hdc, hFontNew);
 			}
 

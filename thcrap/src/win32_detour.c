@@ -42,8 +42,10 @@ void win32_detour(void)
 		"fopen", fopen_u
 	);
 
-	detour_cache_add("gdi32.dll", 4,
+	detour_cache_add("gdi32.dll", 6,
 		"CreateFontA", CreateFontU,
+		"CreateFontIndirectA", CreateFontIndirectU,
+		"CreateFontIndirectExA", CreateFontIndirectExU,
 		"EnumFontFamiliesExA", EnumFontFamiliesExU,
 		"GetTextExtentPoint32A", GetTextExtentPoint32U,
 		"TextOutA", TextOutU

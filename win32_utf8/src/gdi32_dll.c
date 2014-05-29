@@ -8,35 +8,8 @@
 
 #include "win32_utf8.h"
 
-HFONT WINAPI CreateFontU(
-	__in int cHeight,
-	__in int cWidth,
-	__in int cEscapement,
-	__in int cOrientation,
-	__in int cWeight,
-	__in DWORD bItalic,
-	__in DWORD bUnderline,
-	__in DWORD bStrikeOut,
-	__in DWORD iCharSet,
-	__in DWORD iOutPrecision,
-	__in DWORD iClipPrecision,
-	__in DWORD iQuality,
-	__in DWORD iPitchAndFamily,
-	__in_opt LPCSTR pszFaceName
-)
-{
-	HFONT ret;
-	WCHAR_T_DEC(pszFaceName);
-	WCHAR_T_CONV_VLA(pszFaceName);
-	ret = CreateFontW(
-		cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic,
-		bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision,
-		iQuality, iPitchAndFamily, pszFaceName_w
-	);
-	WCHAR_T_FREE(pszFaceName);
-	return ret;
-}
-
+/// Font conversion helpers
+/// -----------------------
 static LOGFONTA* LogfontWToA(LOGFONTA *a, const LOGFONTW *w)
 {
 	if(w) {
@@ -76,6 +49,24 @@ static ENUMLOGFONTEXDVA* EnumLogfontExDVWToA(ENUMLOGFONTEXDVA *a, const ENUMLOGF
 	return w ? a : NULL;
 }
 
+static ENUMLOGFONTEXDVW* EnumLogfontExDVAToW(ENUMLOGFONTEXDVW *w, const ENUMLOGFONTEXDVA *a)
+{
+	if(w) {
+		const ENUMLOGFONTEXA *elfe_a = &a->elfEnumLogfontEx;
+		ENUMLOGFONTEXW *elfe_w = &w->elfEnumLogfontEx;
+		DWORD dv_sizediff = (
+			MM_MAX_NUMAXES - min(a->elfDesignVector.dvNumAxes, MM_MAX_NUMAXES)
+		) * sizeof(LONG);
+
+		LogfontAToW(&elfe_w->elfLogFont, &elfe_a->elfLogFont);
+		StringToUTF16(elfe_w->elfFullName, (char*)elfe_a->elfFullName, LF_FULLFACESIZE);
+		StringToUTF16(elfe_w->elfStyle, (char*)elfe_a->elfStyle, LF_FACESIZE);
+		StringToUTF16(elfe_w->elfScript, (char*)elfe_a->elfScript, LF_FACESIZE);
+		memcpy(&w->elfDesignVector, &a->elfDesignVector, sizeof(DESIGNVECTOR) - dv_sizediff);
+	}
+	return a ? w : NULL;
+}
+
 static ENUMTEXTMETRICA* EnumTextmetricWToA(ENUMTEXTMETRICA *a, const ENUMTEXTMETRICW *w)
 {
 	if(w) {
@@ -99,6 +90,61 @@ static ENUMTEXTMETRICA* EnumTextmetricWToA(ENUMTEXTMETRICA *a, const ENUMTEXTMET
 		}
 	}
 	return w ? a : NULL;
+}
+/// -----------------------
+
+HFONT WINAPI CreateFontU(
+	__in int cHeight,
+	__in int cWidth,
+	__in int cEscapement,
+	__in int cOrientation,
+	__in int cWeight,
+	__in DWORD bItalic,
+	__in DWORD bUnderline,
+	__in DWORD bStrikeOut,
+	__in DWORD iCharSet,
+	__in DWORD iOutPrecision,
+	__in DWORD iClipPrecision,
+	__in DWORD iQuality,
+	__in DWORD iPitchAndFamily,
+	__in_opt LPCSTR pszFaceName
+)
+{
+	LOGFONTA lf_a = {
+		cHeight, cWidth, cEscapement, cOrientation, cWeight, (BYTE)bItalic,
+		(BYTE)bUnderline, (BYTE)bStrikeOut, (BYTE)iCharSet, (BYTE)iOutPrecision,
+		(BYTE)iClipPrecision, (BYTE)iQuality, (BYTE)iPitchAndFamily
+	};
+	// Yes, Windows does the same internally. CreateFont() is *not* a way
+	// to pass a face name longer than 32 characters.
+	if(pszFaceName) {
+		strncpy(lf_a.lfFaceName, pszFaceName, sizeof(lf_a.lfFaceName));
+	}
+	return CreateFontIndirectU(&lf_a);
+}
+
+HFONT WINAPI CreateFontIndirectU(
+	__in CONST LOGFONTA *lplf
+)
+{
+	ENUMLOGFONTEXDVA elfedv_a;
+	const size_t elfedv_lf_diff =
+		sizeof(ENUMLOGFONTEXDVA) - offsetof(ENUMLOGFONTEXDVA, elfEnumLogfontEx.elfFullName)
+	;
+	if(!lplf) {
+		return NULL;
+	}
+	memcpy(&elfedv_a.elfEnumLogfontEx.elfLogFont, lplf, sizeof(LOGFONTA));
+	ZeroMemory(&elfedv_a.elfEnumLogfontEx.elfFullName, elfedv_lf_diff);
+	return CreateFontIndirectExU(&elfedv_a);
+}
+
+HFONT WINAPI CreateFontIndirectExU(
+	__in CONST ENUMLOGFONTEXDVA *lpelfe
+)
+{
+	ENUMLOGFONTEXDVW elfedv_w;
+	return CreateFontIndirectExW(EnumLogfontExDVAToW(&elfedv_w, lpelfe));
 }
 
 typedef struct {

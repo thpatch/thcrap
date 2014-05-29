@@ -27,6 +27,18 @@ HFONT WINAPI CreateFontU(
 #undef CreateFont
 #define CreateFont CreateFontU
 
+HFONT WINAPI CreateFontIndirectU(
+	__in CONST LOGFONTA *lplf
+);
+#undef CreateFontIndirect
+#define CreateFontIndirect CreateFontIndirectU
+
+HFONT WINAPI CreateFontIndirectExU(
+	__in CONST ENUMLOGFONTEXDVA *lpelfe
+);
+#undef CreateFontIndirectEx
+#define CreateFontIndirectEx CreateFontIndirectExU
+
 int WINAPI EnumFontFamiliesExU(
 	__in HDC hdc,
 	__in LPLOGFONTA lpLogfont,
