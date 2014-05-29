@@ -85,6 +85,10 @@ EXPORTS
 	ThreadWaitUntil
 	WaitUntilEntryPoint
 
+	; Yes, these are necessary for injection chaining...
+	inject_LoadLibraryU
+	inject_LoadLibraryW
+
 	inject_mod_detour
 	thcrap_inject
 
