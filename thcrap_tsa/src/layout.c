@@ -495,11 +495,12 @@ int layout_mod_init(HMODULE hMod)
 
 void layout_mod_detour(void)
 {
-	detour_cache_add("gdi32.dll", 4,
+	detour_cache_add("gdi32.dll",
 		"CreateCompatibleDC", layout_CreateCompatibleDC,
 		"DeleteDC", layout_DeleteDC,
 		"SelectObject", layout_SelectObject,
-		"TextOutA", layout_TextOutU
+		"TextOutA", layout_TextOutU,
+		NULL
 	);
 }
 

@@ -948,11 +948,12 @@ HMODULE WINAPI inject_LoadLibraryW(
 
 void inject_mod_detour(void)
 {
-	detour_cache_add("kernel32.dll", 5,
+	detour_cache_add("kernel32.dll",
 		"CreateProcessA", inject_CreateProcessU,
 		"CreateProcessW", inject_CreateProcessW,
 		"CreateRemoteThread", inject_CreateRemoteThread,
 		"LoadLibraryA", inject_LoadLibraryU,
-		"LoadLibraryW", inject_LoadLibraryW
+		"LoadLibraryW", inject_LoadLibraryW,
+		NULL
 	);
 }

@@ -574,8 +574,9 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 
 void dialog_mod_detour(void)
 {
-	detour_cache_add("user32.dll", 2,
+	detour_cache_add("user32.dll",
 		"CreateDialogParamA", dialog_CreateDialogParamA,
-		"DialogBoxParamA", dialog_DialogBoxParamA
+		"DialogBoxParamA", dialog_DialogBoxParamA,
+		NULL
 	);
 }

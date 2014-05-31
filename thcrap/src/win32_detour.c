@@ -11,7 +11,7 @@
 
 void win32_detour(void)
 {
-	detour_cache_add("kernel32.dll", 24,
+	detour_cache_add("kernel32.dll",
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
 		"CreateProcessA", CreateProcessU,
@@ -35,33 +35,38 @@ void win32_detour(void)
 		"MultiByteToWideChar", MultiByteToWideCharU,
 		"RemoveDirectoryA", RemoveDirectoryU,
 		"SetCurrentDirectoryA", SetCurrentDirectoryU,
-		"WideCharToMultiByte", WideCharToMultiByteU
+		"WideCharToMultiByte", WideCharToMultiByteU,
+		NULL
 	);
 
-	detour_cache_add("msvcrt.dll", 1,
-		"fopen", fopen_u
+	detour_cache_add("msvcrt.dll",
+		"fopen", fopen_u,
+		NULL
 	);
 
-	detour_cache_add("gdi32.dll", 6,
+	detour_cache_add("gdi32.dll",
 		"CreateFontA", CreateFontU,
 		"CreateFontIndirectA", CreateFontIndirectU,
 		"CreateFontIndirectExA", CreateFontIndirectExU,
 		"EnumFontFamiliesExA", EnumFontFamiliesExU,
 		"GetTextExtentPoint32A", GetTextExtentPoint32U,
-		"TextOutA", TextOutU
+		"TextOutA", TextOutU,
+		NULL
 	);
 
-	detour_cache_add("shell32.dll", 1,
-		"SHGetPathFromIDList", SHGetPathFromIDListU
+	detour_cache_add("shell32.dll",
+		"SHGetPathFromIDList", SHGetPathFromIDListU,
+		NULL
 	);
 
-	detour_cache_add("shlwapi.dll", 3,
+	detour_cache_add("shlwapi.dll",
 		"PathMatchSpecA", PathMatchSpecU,
 		"PathRemoveFileSpecA", PathRemoveFileSpecU,
-		"PathFileExistsA", PathFileExistsU
+		"PathFileExistsA", PathFileExistsU,
+		NULL
 	);
 
-	detour_cache_add("user32.dll", 17,
+	detour_cache_add("user32.dll",
 		"CharNextA", CharNextU,
 		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,
@@ -79,6 +84,7 @@ void win32_detour(void)
 		"SetDlgItemTextA", SetDlgItemTextU,
 		"SetWindowLongA", SetWindowLongW,
 		"SetWindowLongPtrA", SetWindowLongPtrW,
-		"SetWindowTextA", SetWindowTextU
+		"SetWindowTextA", SetWindowTextU,
+		NULL
 	);
 }

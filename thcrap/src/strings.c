@@ -286,8 +286,9 @@ void strings_mod_init(void)
 
 void strings_mod_detour(void)
 {
-	detour_cache_add("user32.dll", 1,
-		"MessageBoxA", strings_MessageBoxA
+	detour_cache_add("user32.dll",
+		"MessageBoxA", strings_MessageBoxA,
+		NULL
 	);
 }
 

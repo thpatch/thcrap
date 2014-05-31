@@ -127,13 +127,15 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detou
 
 /**
   * Adds one new detour hook for a number of functions in [dll_name].
-  * Expects [detour_count] * 2 additional parameters of the form
+  * Expects additional parameters of the form
   *
   *	"exported name", new_func_ptr,
   *	"exported name", new_func_ptr,
-  * ...
+  *	...,
+  *
+  * terminated by a single NULL parameter.
   */
-int detour_cache_add(const char *dll_name, const size_t detour_count, ...);
+int detour_cache_add(const char *dll_name, ...);
 
 // Applies the cached detours to [hMod].
 int iat_detour_apply(HMODULE hMod);

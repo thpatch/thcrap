@@ -184,12 +184,12 @@ static int detour_cache_func_contains(const json_t *func, const void *new_ptr)
 	return 0;
 }
 
-int detour_cache_add(const char *dll_name, const size_t func_count, ...)
+int detour_cache_add(const char *dll_name, ...)
 {
 	int ret = 0;
 	json_t *dll = NULL;
+	const char *func_name = NULL;
 	va_list va;
-	size_t i;
 
 	if(!dll_name) {
 		return -1;
@@ -198,9 +198,8 @@ int detour_cache_add(const char *dll_name, const size_t func_count, ...)
 		detours = json_object();
 	}
 	dll = json_object_get_create(detours, dll_name, JSON_OBJECT);
-	va_start(va, func_count);
-	for(i = 0; i < func_count; i++) {
-		const char *func_name = va_arg(va, const char*);
+	va_start(va, dll_name);
+	while(func_name = va_arg(va, const char*)) {
 		const void *func_ptr = va_arg(va, const void*);
 		json_t *func = json_object_get_create(dll, func_name, JSON_ARRAY);
 		if(!detour_cache_func_contains(func, func_ptr)) {
@@ -246,6 +245,7 @@ size_t detour_next(const char *dll_name, const char *func_name, void *caller, si
 	json_t *funcs = json_object_get_create(detours, dll_name, JSON_OBJECT);
 	json_t *ptrs = json_object_get_create(funcs, func_name, JSON_ARRAY);
 	FARPROC next = NULL;
+	json_t *ptr = NULL;
 	size_t i;
 	va_list va;
 

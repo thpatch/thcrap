@@ -276,8 +276,9 @@ int InitDll(HMODULE hDll)
 	exception_init();
 	// Needs to be at the lowest level
 	win32_detour();
-	detour_cache_add("kernel32.dll", 1,
-		"ExitProcess", thcrap_ExitProcess
+	detour_cache_add("kernel32.dll",
+		"ExitProcess", thcrap_ExitProcess,
+		NULL
 	);
 
 	hThcrap = hDll;

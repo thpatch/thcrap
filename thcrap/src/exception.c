@@ -86,8 +86,9 @@ void exception_init(void)
 
 void exception_mod_detour(void)
 {
-	detour_cache_add("kernel32.dll", 1,
-		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter
+	detour_cache_add("kernel32.dll",
+		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter,
+		NULL
 	);
 }
 
