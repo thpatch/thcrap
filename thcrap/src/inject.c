@@ -9,6 +9,15 @@
 
 #include "thcrap.h"
 
+/// Detour chains
+/// -------------
+DETOUR_CHAIN_DEF(CreateProcessU);
+DETOUR_CHAIN_DEF(CreateProcessW);
+DETOUR_CHAIN_DEF(CreateRemoteThread);
+DETOUR_CHAIN_DEF(LoadLibraryU);
+DETOUR_CHAIN_DEF(LoadLibraryW);
+/// -------------
+
 /**
   * A more complete DLL injection solution.
   * Adapted from http://www.codeproject.com/Articles/20084/completeinject.
@@ -829,8 +838,7 @@ BOOL WINAPI inject_CreateProcessU(
 	__out LPPROCESS_INFORMATION lpPI
 )
 {
-	BOOL ret = detour_next(
-		"kernel32.dll", "CreateProcessA", inject_CreateProcessU, 10,
+	BOOL ret = chain_CreateProcessU(
 		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
 		dwCreationFlags | CREATE_SUSPENDED,
 		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
@@ -854,8 +862,7 @@ BOOL WINAPI inject_CreateProcessW(
 	__out LPPROCESS_INFORMATION lpPI
 )
 {
-	BOOL ret = detour_next(
-		"kernel32.dll", "CreateProcessW", inject_CreateProcessW, 10,
+	BOOL ret = chain_CreateProcessW(
 		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
 		dwCreationFlags | CREATE_SUSPENDED,
 		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
@@ -911,8 +918,7 @@ __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 		hProcess, lpFunc, kernel32_LoadLibraryW, thcrap_dll, "inject_LoadLibraryW"
 	);
 
-	return (HANDLE)detour_next(
-		"kernel32.dll", "CreateRemoteThread", inject_CreateRemoteThread, 7,
+	return (HANDLE)chain_CreateRemoteThread(
 		hProcess, lpThreadAttributes, dwStackSize, lpFunc,
 		lpParameter, dwCreationFlags, lpThreadId
 	);
@@ -922,10 +928,7 @@ HMODULE WINAPI inject_LoadLibraryU(
 	__in LPCSTR lpLibFileName
 )
 {
-	HMODULE ret = (HMODULE)detour_next(
-		"kernel32.dll", "LoadLibraryA", inject_LoadLibraryU, 1,
-		lpLibFileName
-	);
+	HMODULE ret = (HMODULE)chain_LoadLibraryU(lpLibFileName);
 	if(ret) {
 		thcrap_detour(ret);
 	}
@@ -936,10 +939,7 @@ HMODULE WINAPI inject_LoadLibraryW(
 	__in LPCWSTR lpLibFileName
 )
 {
-	HMODULE ret = (HMODULE)detour_next(
-		"kernel32.dll", "LoadLibraryW", inject_LoadLibraryW, 1,
-		lpLibFileName
-	);
+	HMODULE ret = (HMODULE)chain_LoadLibraryW(lpLibFileName);
 	if(ret) {
 		thcrap_detour(ret);
 	}
@@ -948,12 +948,12 @@ HMODULE WINAPI inject_LoadLibraryW(
 
 void inject_mod_detour(void)
 {
-	detour_cache_add("kernel32.dll",
-		"CreateProcessA", inject_CreateProcessU,
-		"CreateProcessW", inject_CreateProcessW,
-		"CreateRemoteThread", inject_CreateRemoteThread,
-		"LoadLibraryA", inject_LoadLibraryU,
-		"LoadLibraryW", inject_LoadLibraryW,
+	detour_chain("kernel32.dll", 1,
+		"CreateProcessA", inject_CreateProcessU, &chain_CreateProcessU,
+		"CreateProcessW", inject_CreateProcessW, &chain_CreateProcessW,
+		"CreateRemoteThread", inject_CreateRemoteThread, &chain_CreateRemoteThread,
+		"LoadLibraryA", inject_LoadLibraryU, &chain_LoadLibraryU,
+		"LoadLibraryW", inject_LoadLibraryW, &chain_LoadLibraryW,
 		NULL
 	);
 }

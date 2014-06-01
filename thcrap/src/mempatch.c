@@ -9,14 +9,6 @@
 
 #include "thcrap.h"
 
-// Reverse variable argument list macros for detour_next()
-#define va_rev_start(ap,v,num) (\
-	ap = (va_list)_ADDRESSOF(v) + _INTSIZEOF(v) + (num + 1) * sizeof(int) \
-)
-#define va_rev_arg(ap,t) ( \
-	*(t *)((ap -= _INTSIZEOF(t)) - _INTSIZEOF(t)) \
-)
-
 static json_t *detours = NULL;
 
 BOOL VirtualCheckRegion(const void *ptr, const size_t len)
@@ -172,19 +164,7 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	return ret;
 }
 
-static int detour_cache_func_contains(const json_t *func, const void *new_ptr)
-{
-	size_t i;
-	json_t *ptr;
-	json_array_foreach(func, i, ptr) {
-		if((void*)json_integer_value(ptr) == new_ptr) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
-int detour_cache_add(const char *dll_name, ...)
+int detour_chain(const char *dll_name, int return_old_ptrs, ...)
 {
 	int ret = 0;
 	json_t *dll = NULL;
@@ -198,13 +178,20 @@ int detour_cache_add(const char *dll_name, ...)
 		detours = json_object();
 	}
 	dll = json_object_get_create(detours, dll_name, JSON_OBJECT);
-	va_start(va, dll_name);
+	va_start(va, return_old_ptrs);
 	while(func_name = va_arg(va, const char*)) {
+		FARPROC *old_ptr = NULL;
+		FARPROC chain_ptr;
 		const void *func_ptr = va_arg(va, const void*);
-		json_t *func = json_object_get_create(dll, func_name, JSON_ARRAY);
-		if(!detour_cache_func_contains(func, func_ptr)) {
-			ret += json_array_insert_new(func, 0, json_integer((size_t)func_ptr)) == 0;
+		if(
+			return_old_ptrs
+			&& (old_ptr = va_arg(va, FARPROC*))
+			&& (chain_ptr = (FARPROC)json_object_get_hex(dll, func_name))
+			&& (chain_ptr != func_ptr)
+		) {
+			*old_ptr = chain_ptr;
 		}
+		json_object_set_new(dll, func_name, json_integer((size_t)func_ptr));
 	}
 	va_end(va);
 	return ret;
@@ -224,12 +211,12 @@ int iat_detour_apply(HMODULE hMod)
 		size_t func_count = json_object_size(funcs);
 		if(hDll && func_count) {
 			const char *func_name;
-			json_t *ptrs;
+			json_t *ptr;
 			VLA(iat_detour_t, iat_detour, func_count);
 			size_t i = 0;
-			json_object_foreach(funcs, func_name, ptrs) {
+			json_object_foreach(funcs, func_name, ptr) {
 				iat_detour[i].old_func = func_name;
-				iat_detour[i].new_ptr = (const void*)json_array_get_hex(ptrs, 0);
+				iat_detour[i].new_ptr = (FARPROC)json_integer_value(ptr);
 				iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
 				i++;
 			}
@@ -240,59 +227,11 @@ int iat_detour_apply(HMODULE hMod)
 	return ret;
 }
 
-size_t detour_next(const char *dll_name, const char *func_name, void *caller, size_t arg_count, ...)
+FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback)
 {
 	json_t *funcs = json_object_get_create(detours, dll_name, JSON_OBJECT);
-	json_t *ptrs = json_object_get_create(funcs, func_name, JSON_ARRAY);
-	FARPROC next = NULL;
-	json_t *ptr = NULL;
-	size_t i;
-	va_list va;
-
-	// If anything is wrong with a detour_next() call, we're pretty much screwed,
-	// as we can't know what to return to gracefully continue program execution.
-	// So, just crashing outright with nice errors is the best thing we can do.
-	if(!json_array_size(ptrs)) {
-		log_func_printf("No detours for %s:%s; typo?\n", dll_name, func_name);
-	}
-	// Get the next function after [caller]
-	if(!caller) {
-		next = (FARPROC)json_array_get_hex(ptrs, 0);
-	} else {
-		json_t *ptr = NULL;
-		json_array_foreach(ptrs, i, ptr) {
-			if((void*)json_integer_value(ptr) == caller) {
-				next = (FARPROC)json_array_get_hex(ptrs, i + 1);
-				break;
-			}
-		}
-	}
-	if(!next) {
-		HMODULE hDll = GetModuleHandleA(dll_name);
-		next = GetProcAddress(hDll, func_name);
-		// Storing the original pointers at the end of the chain
-		// yields a 5x performance increase!
-		json_array_append_new(ptrs, json_integer((size_t)next));
-	}
-	if(!next) {
-		log_func_printf(
-			"Couldn't get original function pointer for %s:%s! Time to crash...\n",
-			dll_name, func_name
-		);
-	}
-	// This might seem pointless, and we indeed could just set ESP to [va],
-	// but Debug mode doesn't like that.
-	va_rev_start(va, arg_count, arg_count);
-	for(i = 0; i < arg_count; i++) {
-		DWORD param = va_rev_arg(va, DWORD);
-		__asm {
-			push param
-		}
-	}
-	// Same here.
-	__asm {
-		call next
-	}
+	FARPROC ret = (FARPROC)json_object_get_hex(funcs, func_name);
+	return ret ? ret : fallback;
 }
 
 void detour_exit(void)

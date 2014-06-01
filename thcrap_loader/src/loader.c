@@ -163,24 +163,13 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		PathRemoveFileSpec(game_dir);
 
 		/**
-		  * Initialize the detours for the injection module.
-		  *
-		  * This is an unfortunate drawback introduced by detour chaining.
-		  * Without any detours being set up, detour_next() doesn't have any
-		  * chain to execute (and, in fact, doesn't even know its own position).
-		  * Thus, it can only fall back to the original function, CreateProcessA(),
-		  * which in turn means that we lose Unicode support in this instance.
-		  *
-		  * We work around this by hardcoding calls to the necessary detour setup
-		  * functions to make the function run as expected.
-		  * Sure, the alternative would be to set up the entire engine with all
-		  * plug-ins and modules. While it would indeed be nice to allow those to
-		  * control initial startup, it really shouldn't be necessary for now - and
+		  * Sure, the alternative would be to set up the entire engine
+		  * with all plug-ins and modules to correctly run any additional
+		  * detours. While it would indeed be nice to allow those to control
+		  * initial startup, it really shouldn't be necessary for now - and
 		  * it really does run way too much unnecessary code for my taste.
 		  */
-		inject_mod_detour();
-
-		ret = W32_ERR_WRAP(detour_next("kernel32.dll", "CreateProcessA", NULL, 10,
+		ret = W32_ERR_WRAP(inject_CreateProcessU(
 			final_exe_fn_local, game_dir, NULL, NULL, TRUE, 0, NULL, game_dir, &si, &pi
 		));
 		if(ret) {

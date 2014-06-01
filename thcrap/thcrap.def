@@ -88,6 +88,9 @@ EXPORTS
 	; Yes, these are necessary for injection chaining...
 	inject_LoadLibraryU
 	inject_LoadLibraryW
+	; ... and for the loader.
+	inject_CreateProcessU
+	inject_CreateProcessW
 
 	inject_mod_detour
 	thcrap_inject
@@ -148,9 +151,9 @@ EXPORTS
 	func_detour_by_ptr
 
 	iat_detour_funcs
-	detour_cache_add
+	detour_chain
+	detour_top
 	iat_detour_apply
-	detour_next
 
 	detour_exit
 

@@ -18,6 +18,13 @@ json_t *Layout_Tabs = NULL;
 static HDC text_dc = NULL;
 /// -----------------------
 
+/// Detour chains
+/// -------------
+DETOUR_CHAIN_DEF(CreateCompatibleDC);
+DETOUR_CHAIN_DEF(SelectObject);
+DETOUR_CHAIN_DEF(TextOutU);
+/// -------------
+
 /// TSA font block
 /// --------------
 /**
@@ -230,8 +237,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 
 BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 {
-	return detour_next(
-		"gdi32.dll", "TextOutA", layout_TextOutU, 5,
+	return chain_TextOutU(
 		hdc, x, y, json_string_value(str), json_string_length(str)
 	);
 }
@@ -244,10 +250,7 @@ BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
 {
 	if(!text_dc) {
-		HDC ret = (HDC)detour_next(
-			"gdi32.dll", "CreateCompatibleDC", layout_CreateCompatibleDC, 1,
-			hdc
-		);
+		HDC ret = (HDC)chain_CreateCompatibleDC(hdc);
 		text_dc = ret;
 		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
 	}
@@ -268,10 +271,7 @@ HGDIOBJ WINAPI layout_SelectObject(
 	if(h == GetStockObject(SYSTEM_FONT)) {
 		return GetCurrentObject(hdc, OBJ_FONT);
 	} else {
-		return (HGDIOBJ)detour_next(
-			"gdi32.dll", "SelectObject", layout_SelectObject, 2,
-			hdc, h
-		);
+		return (HGDIOBJ)chain_SelectObject(hdc, h);
 	}
 }
 
@@ -495,11 +495,11 @@ int layout_mod_init(HMODULE hMod)
 
 void layout_mod_detour(void)
 {
-	detour_cache_add("gdi32.dll",
-		"CreateCompatibleDC", layout_CreateCompatibleDC,
-		"DeleteDC", layout_DeleteDC,
-		"SelectObject", layout_SelectObject,
-		"TextOutA", layout_TextOutU,
+	detour_chain("gdi32.dll", 1,
+		"CreateCompatibleDC", layout_CreateCompatibleDC, &chain_CreateCompatibleDC,
+		"DeleteDC", layout_DeleteDC, NULL,
+		"SelectObject", layout_SelectObject, &chain_SelectObject,
+		"TextOutA", layout_TextOutU, &chain_TextOutU,
 		NULL
 	);
 }

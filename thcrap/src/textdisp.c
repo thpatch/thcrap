@@ -10,6 +10,11 @@
 #include "thcrap.h"
 #include "textdisp.h"
 
+/// Detour chains
+/// -------------
+DETOUR_CHAIN_DEF(CreateFontU);
+/// -------------
+
 HFONT WINAPI textdisp_CreateFontA(
 	__in int cHeight,
 	__in int cWidth,
@@ -80,8 +85,7 @@ HFONT WINAPI textdisp_CreateFontA(
 		pszFaceName, replaced ? " (repl.)" : "",
 		cHeight, cWeight, iCharSet, iPitchAndFamily
 	);
-	return (HFONT)detour_next(
-		"gdi32.dll", "CreateFontA", textdisp_CreateFontA, 14,
+	return (HFONT)chain_CreateFontU(
 		cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic,
 		bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision,
 		iQuality, iPitchAndFamily, pszFaceName
@@ -113,8 +117,8 @@ void patch_fonts_load(const json_t *patch_info)
 
 void textdisp_mod_detour(void)
 {
-	detour_cache_add("gdi32.dll",
-		"CreateFontA", textdisp_CreateFontA,
+	detour_chain("gdi32.dll", 1,
+		"CreateFontA", textdisp_CreateFontA, &chain_CreateFontU,
 		NULL
 	);
 }

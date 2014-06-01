@@ -10,6 +10,12 @@
 #include <thcrap.h>
 #include "thcrap_tsa.h"
 
+/// Detour chains
+/// -------------
+DETOUR_CHAIN_DEF(CreateWindowExU);
+DETOUR_CHAIN_DEF(GetWindowRect);
+/// -------------
+
 /// Window position hacks
 /// ---------------------
 /**
@@ -121,8 +127,7 @@ HWND WINAPI tsa_CreateWindowExA(
 			json_is_string(game_build) ? json_string_value(game_build) : "");
 		window_title = custom_title;
 	}
-	ret = (HWND)detour_next(
-		"user32.dll", "CreateWindowExA", tsa_CreateWindowExA, 12,
+	ret = (HWND)chain_CreateWindowExU(
 		dwExStyle, lpClassName, window_title, dwStyle, X, Y,
 		nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
 	);
@@ -133,9 +138,9 @@ HWND WINAPI tsa_CreateWindowExA(
 
 void tsa_mod_detour(void)
 {
-	detour_cache_add("user32.dll",
-		"CreateWindowExA", tsa_CreateWindowExA,
-		"GetWindowRect", tsa_GetWindowRect,
+	detour_chain("user32.dll", 1,
+		"CreateWindowExA", tsa_CreateWindowExA, &chain_CreateWindowExU,
+		"GetWindowRect", tsa_GetWindowRect, &chain_GetWindowRect,
 		NULL
 	);
 }

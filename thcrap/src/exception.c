@@ -9,6 +9,11 @@
 
 #include "thcrap.h"
 
+/// Detour chains
+/// -------------
+DETOUR_CHAIN_DEF(SetUnhandledExceptionFilter);
+/// -------------
+
 static LPTOP_LEVEL_EXCEPTION_FILTER lpOrigFilter = NULL;
 
 void log_context_dump(PCONTEXT ctx)
@@ -70,9 +75,7 @@ LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
 {
 	// Don't return our own filter, since this might cause an infinite loop if
 	// the game process caches it.
-	LPTOP_LEVEL_EXCEPTION_FILTER ret = (LPTOP_LEVEL_EXCEPTION_FILTER)detour_next(
-		"kernel32.dll", "SetUnhandledExceptionFilter",
-		exception_SetUnhandledExceptionFilter, 1,
+	LPTOP_LEVEL_EXCEPTION_FILTER ret = (LPTOP_LEVEL_EXCEPTION_FILTER)chain_SetUnhandledExceptionFilter(
 		lpTopLevelExceptionFilter
 	);
 	lpOrigFilter = lpTopLevelExceptionFilter;
@@ -86,8 +89,8 @@ void exception_init(void)
 
 void exception_mod_detour(void)
 {
-	detour_cache_add("kernel32.dll",
-		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter,
+	detour_chain("kernel32.dll", 1,
+		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter, &chain_SetUnhandledExceptionFilter,
 		NULL
 	);
 }
