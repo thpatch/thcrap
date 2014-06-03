@@ -162,31 +162,6 @@ typedef struct {
 } dialog_adjust_t;
 /// ----------
 
-/// Helper functions
-/// ----------------
-size_t dword_align(const size_t val)
-{
-	return (val + 3) & ~3;
-}
-
-BYTE* ptr_dword_align(const BYTE *in)
-{
-	return (BYTE*)dword_align((UINT_PTR)in);
-}
-
-size_t ptr_advance(const unsigned char **src, size_t num)
-{
-	*src += num;
-	return num;
-}
-
-size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num)
-{
-	memcpy(dst, *src, num);
-	return ptr_advance(src, num);
-}
-/// ----------------
-
 /// dialog_adjust_t
 /// ---------------
 
@@ -311,8 +286,8 @@ void dialog_adjust(
 	} else if(button_style == BS_PUSHBUTTON || button_style == BS_DEFPUSHBUTTON) {
 		rect.right += 3;
 	}
-	item->cx = max(rect.right, item->cx);
-	item->cy = max(rect.bottom, item->cy);
+	item->cx = (short)max(rect.right, item->cx);
+	item->cy = (short)max(rect.bottom, item->cy);
 	adj->dst_header->cx = max(item->x + item->cx, adj->dst_header->cx);
 	adj->dst_header->cy = max(item->y + item->cy, adj->dst_header->cy);
 }
@@ -565,7 +540,8 @@ HWND WINAPI dialog_CreateDialogParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = CreateDialogParamU(
+		ret = (HWND)detour_next(
+			"user32.dll", "CreateDialogParamA", dialog_CreateDialogParamA, 5,
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
@@ -588,16 +564,17 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = DialogBoxParamU(
+		ret = detour_next(
+			"user32.dll", "DialogBoxParamA", dialog_DialogBoxParamA, 5,
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
 	return ret;
 }
 
-int dialog_detour(HMODULE hMod)
+void dialog_mod_detour(void)
 {
-	return iat_detour_funcs_var(hMod, "user32.dll", 2,
+	detour_cache_add("user32.dll", 2,
 		"CreateDialogParamA", dialog_CreateDialogParamA,
 		"DialogBoxParamA", dialog_DialogBoxParamA
 	);

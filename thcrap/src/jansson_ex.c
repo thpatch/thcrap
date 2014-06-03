@@ -121,26 +121,34 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind)
 	return json_is_array(flarr) ? json_array_get(flarr, ind) : flarr;
 }
 
-json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object)
+json_t* json_object_get_create(json_t *object, const char *key, json_type type)
 {
 	json_t *ret = json_object_get(object, key);
-	if(!ret) {
-		json_object_set_new(object, key, new_object);
-		return new_object;
-	} else {
-		json_decref(new_object);
+	if(!ret && object) {
+		// This actually results in nicer assembly than using the ternary operator!
+		json_t *new_obj = NULL;
+		switch(type) {
+			case JSON_OBJECT:
+				new_obj = json_object();
+				break;
+			case JSON_ARRAY:
+				new_obj = json_array();
+				break;
+		}
+		json_object_set_new(object, key, new_obj);
+		return new_obj;
 	}
 	return ret;
 }
 
-json_t* json_object_numkey_get(json_t *object, const json_int_t key)
+json_t* json_object_numkey_get(const json_t *object, const json_int_t key)
 {
 	char key_str[64];
 	snprintf(key_str, 64, "%lld", key);
 	return json_object_get(object, key_str);
 }
 
-json_t* json_object_hexkey_get(json_t *object, const size_t key)
+json_t* json_object_hexkey_get(const json_t *object, const size_t key)
 {
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 	char key_str[addr_key_len];
@@ -177,7 +185,7 @@ const char* json_object_get_string(const json_t *object, const char *key)
 	return json_string_value(json_object_get(object, key));
 }
 
-json_t* json_object_merge(json_t *old_obj, const json_t *new_obj)
+json_t* json_object_merge(json_t *old_obj, json_t *new_obj)
 {
 	const char *key;
 	json_t *new_val;
@@ -185,9 +193,13 @@ json_t* json_object_merge(json_t *old_obj, const json_t *new_obj)
 	if(!old_obj || !new_obj) {
 		return old_obj;
 	}
-	json_object_foreach((json_t*)new_obj, key, new_val) {
+	if(!json_is_object(old_obj) || !json_is_object(new_obj)) {
+		json_decref(old_obj);
+		return json_incref(new_obj);
+	}
+	json_object_foreach(new_obj, key, new_val) {
 		json_t *old_val = json_object_get(old_obj, key);
-		if(json_is_object(old_val)) {
+		if(json_is_object(old_val) && json_is_object(new_val)) {
 			// Recursion!
 			json_object_merge(old_val, new_val);
 		} else {
@@ -222,7 +234,7 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 			i++;
 		}
 
-		qsort(keys, size, sizeof(const char *), object_key_compare_keys);
+		qsort((void*)keys, size, sizeof(const char *), object_key_compare_keys);
 
 		ret = json_array();
 		for(i = 0; i < size; i++) {
@@ -233,15 +245,22 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 	return ret;
 }
 
-json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const char *source)
+json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const char *source)
 {
+	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf};
+	const size_t utf8_bom_len = sizeof(utf8_bom);
 	json_error_t error;
 	json_t *ret;
 
-	if(!buffer) {
+	if(!buffer || !buflen) {
 		return NULL;
 	}
-	ret = json_loadb((char*)buffer, buflen, JSON_DISABLE_EOF_CHECK, &error);
+	// Skip UTF-8 byte order mark, if there
+	if(buflen > utf8_bom_len && !memcmp(buffer, utf8_bom, utf8_bom_len)) {
+		buffer += utf8_bom_len;
+		buflen -= utf8_bom_len;
+	}
+	ret = json_loadb(buffer, buflen, JSON_DISABLE_EOF_CHECK, &error);
 	if(!ret) {
 		log_mboxf(NULL, MB_OK | MB_ICONSTOP,
 			"Erreur de syntaxe JSON:\n"
@@ -258,21 +277,8 @@ json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const
 json_t* json_load_file_report(const char *json_fn)
 {
 	size_t json_size;
-	void *json_buffer;
-	BYTE *json_p;
-	json_t *json = NULL;
-	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf};
-
-	json_p = json_buffer = file_read(json_fn, &json_size);
-	if(!json_buffer || !json_size) {
-		return NULL;
-	}
-	// Skip UTF-8 byte order mark, if there
-	if(!memcmp(json_p, utf8_bom, sizeof(utf8_bom))) {
-		json_p += sizeof(utf8_bom);
-		json_size -= sizeof(utf8_bom);
-	}
-	json = json_loadb_report(json_p, json_size, JSON_DISABLE_EOF_CHECK, json_fn);
+	char *json_buffer = (char*)file_read(json_fn, &json_size);
+	json_t *json = json_loadb_report(json_buffer, json_size, JSON_DISABLE_EOF_CHECK, json_fn);
 	SAFE_FREE(json_buffer);
 	return json;
 }

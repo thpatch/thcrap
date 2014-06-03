@@ -8,13 +8,8 @@
   */
 
 #include "thcrap.h"
-#include "plugin.h"
 #include "binhack.h"
-#include "exception.h"
 #include "sha256.h"
-#include "bp_file.h"
-#include "dialog.h"
-#include "textdisp.h"
 #include "win32_detour.h"
 
 /// Static global variables
@@ -22,14 +17,6 @@
 // Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
-static const char *update_url_message =
-	"La nouvelle version peut-être trouvée à\n"
-	"\n"
-	"\t";
-static const char *mbox_copy_message =
-	"\n"
-	"\n"
-	"(Faites CTRL+C pour copier le texte et l'URL de cette boîte de dialogue dans le presse-papiers)";
 /// -----------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
@@ -59,19 +46,17 @@ json_t* identify_by_size(size_t file_size, json_t *versions)
 	return json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
 }
 
-int IsLatestBuild(json_t *build_obj, json_t **latest, json_t *run_ver)
+json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 {
-	json_t *json_latest = json_object_get(run_ver, "latest");
-	size_t i;
-	if(!json_is_string(build_obj) || !latest || !json_latest) {
-		return -1;
+	json_t *ret = NULL;
+	json_t *chain = resolve_chain(fn);
+	if(json_array_size(chain)) {
+		json_array_insert_new(chain, 0, json_string("global.js"));
+		log_printf("(JSON) Resolving configuration for %s... ", fn);
+		ret = stack_json_resolve_chain(chain, file_size);
 	}
-	json_flex_array_foreach(json_latest, i, *latest) {
-		if(json_equal(build_obj, *latest)) {
-			return 1;
-		}
-	}
-	return 0;
+	json_decref(chain);
+	return ret;
 }
 
 json_t* identify(const char *exe_fn)
@@ -128,13 +113,13 @@ json_t* identify(const char *exe_fn)
 	log_printf("→ %s %s %s\n", game, build, variety);
 
 	if(stricmp(PathFindExtensionA(game), ".js")) {
-		size_t ver_fn_len = strlen(game) + 1 + strlen(".js") + 1;
+		size_t ver_fn_len = json_string_length(game_obj) + 1 + strlen(".js") + 1;
 		VLA(char, ver_fn, ver_fn_len);
 		sprintf(ver_fn, "%s.js", game);
-		run_ver = stack_json_resolve(ver_fn, NULL);
+		run_ver = stack_cfg_resolve(ver_fn, NULL);
 		VLA_FREE(ver_fn);
 	} else {
-		run_ver = stack_json_resolve(game, NULL);
+		run_ver = stack_cfg_resolve(game, NULL);
 	}
 
 	// Ensure that we have a configuration with a "game" key
@@ -145,16 +130,13 @@ json_t* identify(const char *exe_fn)
 		json_object_set(run_ver, "game", game_obj);
 	}
 
-	// Pretty game title
-	{
+	if(size_cmp) {
 		const char *game_title = json_object_get_string(run_ver, "title");
+		int ret;
 		if(game_title) {
 			game = game_title;
 		}
-	}
-
-	if(size_cmp) {
-		int ret = log_mboxf("Version inconnue détectée", MB_YESNO | MB_ICONQUESTION,
+		ret = log_mboxf("Version inconnue détectée", MB_YESNO | MB_ICONQUESTION,
 			"Vous avez assigné %s à une version inconnue\n"
 			"D'après la taille du fichier, il y a de bonnes chances pour qu'il s'agisse de\n"
 			"\n"
@@ -175,23 +157,6 @@ json_t* identify(const char *exe_fn)
 		if(ret == IDNO) {
 			run_ver = json_decref_safe(run_ver);
 		}
-	} else {
-		// Old version nagbox
-		json_t *latest = NULL;
-		if(IsLatestBuild(build_obj, &latest, run_ver) == 0 && json_is_string(latest)) {
-			const char *url_update = json_object_get_string(run_ver, "url_update");
-			log_mboxf("Version obsolète détectée", MB_OK | MB_ICONINFORMATION,
-				"Vous utilisez une version obsolète de %s (%s).\n"
-				"\n"
-				"Bien qu'il soit confirmé que %s fonctionne sous cette version, nous vous recommandons de mettre à jour"
-				"votre jeu vers la version officielle la plus récente (%s).%s%s%s%s",
-				game, build, PROJECT_NAME_SHORT(), json_string_value(latest),
-				url_update ? "\n\n": "",
-				url_update ? update_url_message : "",
-				url_update ? url_update : "",
-				url_update ? mbox_copy_message : ""
-			);
-		}
 	}
 end:
 	json_decref(versions_js);
@@ -208,19 +173,12 @@ void thcrap_detour(HMODULE hProc)
 		PROJECT_NAME_SHORT(), mod_name
 	);
 
-	win32_detour(hProc);
-	exception_detour(hProc);
-	textdisp_detour(hProc);
-	dialog_detour(hProc);
-	strings_detour(hProc);
-	inject_detour(hProc);
-
+	iat_detour_apply(hProc);
 	VLA_FREE(mod_name);
 }
 
 int thcrap_init(const char *run_cfg_fn)
 {
-	json_t *game_cfg = NULL;
 	json_t *user_cfg = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
 
@@ -242,104 +200,45 @@ int thcrap_init(const char *run_cfg_fn)
 		log_init(json_is_true(console_val));
 	}
 
+	json_object_set_new(run_cfg, "thcrap_dir", json_string(dll_dir));
 	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
 	log_printf("Fichier de configuration: %s\n\n", run_cfg_fn);
 
-	thcrap_detour(hProc);
-
-	log_printf("Nom du fichier EXE: %s\n", exe_fn);
-
-	game_cfg = identify(exe_fn);
-	// Merge run configurations in their correct order
-	// (global.js ← <game>.js ← <build>.js ← user.js)
-	if(game_cfg) {
-		json_t *full_cfg = stack_json_resolve("global.js", NULL);
-		if(!full_cfg) {
-			full_cfg = json_object();
-		}
-		json_object_merge(full_cfg, game_cfg);
-		json_object_merge(full_cfg, user_cfg);
-		runconfig_set(full_cfg);
-		json_decref(full_cfg);
-	}
 	log_printf("Initialisation des patchs...\n");
 	{
 		json_t *patches = json_object_get(run_cfg, "patches");
 		size_t i;
 		json_t *patch_info;
-		DWORD min_build = 0;
-		const char *url_engine = NULL;
-
 		json_array_foreach(patches, i, patch_info) {
-			DWORD cur_min_build;
-
-			// Why, hello there, C89.
-			int dummy = patch_rel_to_abs(patch_info, run_cfg_fn);
-
+			patch_rel_to_abs(patch_info, run_cfg_fn);
 			patch_info = patch_init(patch_info);
 			json_array_set(patches, i, patch_info);
-
-			cur_min_build = json_object_get_hex(patch_info, "min_build");
-			if(cur_min_build > min_build) {
-				// ... OK, there *could* be the case where people stack patches from
-				// different repositories which all require their own fork of the
-				// patcher, and then one side updates their fork, causing this prompt,
-				// and the users overwrite the modifications of another fork which they
-				// need for running a certain patch configuration in the first place...
-				// Let's just hope that it will never get that complicated.
-				min_build = cur_min_build;
-				url_engine = json_object_get_string(patch_info, "url_engine");
-			}
 			json_decref(patch_info);
 		}
-		if(min_build > PROJECT_VERSION()) {
-			char format[11];
-			str_hexdate_format(format, min_build);
-			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
-				"Une nouvelle version (%s) de %s est disponible\n"
-				"\n"
-				"Cette mise à jour contient de nouvelles fonctionalités et d'importantes corrections de bugs"
-				"pour votre patch actuel.%s%s%s%s",
-				format, PROJECT_NAME(),
-				url_engine ? "\n\n": "",
-				url_engine ? update_url_message : "",
-				url_engine ? url_engine : "",
-				url_engine ? mbox_copy_message : ""
-			);
+	}
+	stack_show_missing();
+
+	log_printf("Nom du fichier EXE: %s\n", exe_fn);
+	{
+		json_t *full_cfg = identify(exe_fn);
+		if(full_cfg) {
+			json_object_merge(full_cfg, user_cfg);
+			runconfig_set(full_cfg);
+			json_decref(full_cfg);
 		}
 	}
 
-	stack_show_missing();
+	log_printf("--------------------------------------\n");
+	log_printf("Configuration de l'exécution complête:\n");
+	log_printf("--------------------------------------\n");
+	json_dump_log(run_cfg, JSON_INDENT(2));
+	log_printf("--------------------------------------\n");
 
 	log_printf("Dossier du jeu: %s\n", game_dir);
 	log_printf("Dossier du Plug-in: %s\n", dll_dir);
 
 	log_printf("\nInitialisation des plug-ins\n");
-
-	{
-		// Copy format links from formats.js
-		json_t *game_formats = json_object_get(run_cfg, "formats");
-		if(game_formats) {
-			json_t *formats_js = stack_json_resolve("formats.js", NULL);
-			json_t *format_link;
-			const char *key;
-			json_object_foreach(game_formats, key, format_link) {
-				json_t *format = json_object_get(formats_js, json_string_value(format_link));
-				json_object_set_nocheck(game_formats, key, format);
-			}
-			json_decref(formats_js);
-		}
-	}
-
-#ifdef HAVE_BP_FILE
-	bp_file_init();
-#endif
-#ifdef HAVE_STRINGS
-	strings_init();
-#endif
-#ifdef HAVE_TEXTDISP
-	textdisp_init();
-#endif
+	plugin_init(hThcrap);
 	plugins_load();
 
 	/**
@@ -360,30 +259,13 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 	*/
-	log_printf("--------------------------------------\n");
-	log_printf("Configuration de l'exécution complête:\n");
-	log_printf("--------------------------------------\n");
-	json_dump_log(run_cfg, JSON_INDENT(2));
-	log_printf("--------------------------------------\n");
-	{
-		const char *key;
-		json_t *val = NULL;
-		json_t *run_funcs = json_object();
-
-		GetExportedFunctions(run_funcs, hThcrap);
-		json_object_foreach(json_object_get(run_cfg, "plugins"), key, val) {
-			GetExportedFunctions(run_funcs, (HMODULE)json_integer_value(val));
-		}
-
-		json_object_set_new(run_cfg, "funcs", run_funcs);
-		binhacks_apply(json_object_get(run_cfg, "binhacks"));
-		breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
-	}
+	binhacks_apply(json_object_get(run_cfg, "binhacks"));
+	breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
+	thcrap_detour(hProc);
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	json_decref(user_cfg);
-	json_decref(game_cfg);
 	return 0;
 }
 
@@ -393,19 +275,13 @@ int InitDll(HMODULE hDll)
 
 	w32u8_set_fallback_codepage(932);
 	InitializeCriticalSection(&cs_file_access);
-	exception_init();
 
-#ifdef _WIN32
-#ifdef _DEBUG
-	// Activate memory leak debugging
-	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
-	_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDOUT);
-	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-	_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
-#endif
-#endif
+	exception_init();
+	// Needs to be at the lowest level
+	win32_detour();
+	detour_cache_add("kernel32.dll", 1,
+		"ExitProcess", thcrap_ExitProcess
+	);
 
 	hThcrap = hDll;
 
@@ -420,18 +296,14 @@ int InitDll(HMODULE hDll)
 
 void ExitDll(HMODULE hDll)
 {
+	mod_func_run_all("exit", NULL);
 	plugins_close();
 	breakpoints_remove();
 	run_cfg = json_decref_safe(run_cfg);
 	DeleteCriticalSection(&cs_file_access);
 
-#ifdef HAVE_BP_FILE
-	bp_file_exit();
-#endif
-#ifdef HAVE_STRINGS
-	strings_exit();
-#endif
 	SAFE_FREE(dll_dir);
+	detour_exit();
 #ifdef _WIN32
 #ifdef _DEBUG
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
@@ -440,6 +312,15 @@ void ExitDll(HMODULE hDll)
 #endif
 #endif
 	log_exit();
+}
+
+DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode)
+{
+	ExitDll(NULL);
+	// The detour cache is already freed at this point, and this will
+	// always be the final detour in the chain, so detour_next() doesn't
+	// make any sense here (and would leak memory as well).
+	ExitProcess(uExitCode);
 }
 
 // Yes, this _has_ to be included in every project.

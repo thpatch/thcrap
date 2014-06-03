@@ -18,6 +18,74 @@ json_t *Layout_Tabs = NULL;
 static HDC text_dc = NULL;
 /// -----------------------
 
+/// TSA font block
+/// --------------
+/**
+  * Retrieves a HFONT pointer using the TSA font block defined in the run
+  * configuration. This font block can be defined using two methods:
+  *
+  * • A JSON object with 4 members:
+  *   • "addr" (hex) for the start address
+  *   • "offset" (int, defaults to sizeof(HFONT)) for the number of bytes
+  *     between the individual font pointers
+  *   • "min" (int, defaults to 0) and "max" (int) to define the lower and
+  *     upper bounds of the block, respectively.
+  *
+  * • A JSON array containing HFONT pointers to all fonts in the game's ID
+  *   order. This can be used if the game doesn't store the pointers in one
+  *   contiguous memory block, which makes automatic calculation impossible.
+  */
+static HFONT* font_block_get(int id)
+{
+	HFONT* ret = NULL;
+	const json_t *run_cfg = runconfig_get();
+	json_t *font_block = json_object_get(run_cfg, "tsa_font_block");
+	json_int_t min = 0, max = 0;
+	if(json_is_object(font_block)) {
+		size_t addr = json_object_get_hex(font_block, "addr");
+		const json_t *block_offset = json_object_get(font_block, "offset");
+		const json_t *block_min = json_object_get(font_block, "min");
+		const json_t *block_max = json_object_get(font_block, "max");
+
+		json_int_t offset = sizeof(HFONT);
+		if(json_is_integer(block_offset)) {
+			offset = json_integer_value(block_offset);
+		}
+		if(json_is_integer(block_min) && json_is_integer(block_max) && addr) {
+			min = json_integer_value(block_min);
+			max = json_integer_value(block_max);
+			if(id >= min && id < max) {
+				ret = (HFONT*)(addr + id * offset);
+			}
+		} else {
+			log_func_printf("invalid TSA font block format\n");
+			return NULL;
+		}
+	} else if(json_is_array(font_block)) {
+		min = 0;
+		max = json_array_size(font_block);
+		ret = (HFONT*)json_array_get_hex(font_block, id);
+	}
+	if(id < min || id > max) {
+		log_func_printf(
+			"index out of bounds (min: %d, max: %d, given: %d\n",
+			min, max, id
+		);
+	}
+	return ret;
+}
+
+static HFONT* json_object_get_tsa_font(json_t *object, const char *key)
+{
+	json_t *val = json_object_get(object, key);
+	return
+		json_is_string(val) ? (HFONT*)json_hex_value(val)
+		: json_is_integer(val) ? font_block_get(json_integer_value(val))
+		: NULL
+	;
+}
+/// --------------
+
 /// Ruby
 /// ----
 
@@ -47,11 +115,17 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	char **str_reg = (char**)json_object_get_register(bp_info, regs, "str");
 	size_t *offset = json_object_get_register(bp_info, regs, "offset");
-	HFONT font_dialog = *(HFONT*)json_object_get_hex(bp_info, "font_dialog");
-	HFONT font_ruby = *(HFONT*)json_object_get_hex(bp_info, "font_ruby");
+	HFONT* font_dialog = json_object_get_tsa_font(bp_info, "font_dialog");
+	HFONT* font_ruby = json_object_get_tsa_font(bp_info, "font_ruby");
 	char *str = *str_reg;
 	// ----------
-	if(str && str[0] == '\t' && offset && font_dialog && font_ruby) {
+	if(!font_dialog || !font_ruby) {
+		log_func_printf(
+			"Missing \"font_dialog\" or \"font_ruby\" parameter, skipping..."
+		);
+		return 1;
+	}
+	if(str && str[0] == '\t' && offset) {
 		char *str_offset = str + 1;
 		char *str_offset_end = strchr(str_offset, '\t');
 		char *str_base = str_offset_end + 3;
@@ -69,9 +143,9 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 		*str_offset_end = '\0';
 		*str_base_end = '\0';
 		*offset =
-			GetTextExtentForFont(str_offset, font_dialog)
-			+ (GetTextExtentForFont(str_base, font_dialog) / 2)
-			- (GetTextExtentForFont(str_ruby, font_ruby) / 2);
+			GetTextExtentForFont(str_offset, *font_dialog)
+			+ (GetTextExtentForFont(str_base, *font_dialog) / 2)
+			- (GetTextExtentForFont(str_ruby, *font_ruby) / 2);
 		*str_offset_end = '\t';
 		*str_base_end = '\t';
 
@@ -156,31 +230,10 @@ json_t* layout_tokenize(const char *str, size_t len)
 
 BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 {
-	return TextOutU(hdc, x, y, json_string_value(str), json_string_length(str));
-}
-
-// Outputs the ruby annotation [top_str], relative to [bottom_str] starting at
-// [bottom_x], at [top_y] with [hFontRuby] on [hdc]. :)
-BOOL layout_textout_ruby(
-	__in HDC hdc,
-	__in int bottom_x,
-	__in const json_t *bottom_str,
-	__in int top_y,
-	__in const json_t *top_str,
-	__in HFONT hFontRuby
-) {
-	BOOL ret = 0;
-	if(json_is_string(bottom_str) && json_is_string(top_str)) {
-		size_t bottom_w = GetTextExtentBase(hdc, bottom_str);
-		HGDIOBJ hFontOrig = SelectObject(hdc, hFontRuby);
-		size_t top_w = GetTextExtentBase(hdc, top_str);
-		int top_x = (bottom_w / 2) - (top_w / 2) + bottom_x;
-
-		ret = layout_textout_raw(hdc, top_x, top_y, top_str);
-
-		SelectObject(hdc, hFontOrig);
-	}
-	return ret;
+	return detour_next(
+		"gdi32.dll", "TextOutA", layout_TextOutU, 5,
+		hdc, x, y, json_string_value(str), json_string_length(str)
+	);
 }
 
 /// Hooked functions
@@ -191,7 +244,10 @@ BOOL layout_textout_ruby(
 HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
 {
 	if(!text_dc) {
-		HDC ret = CreateCompatibleDC(hdc);
+		HDC ret = (HDC)detour_next(
+			"gdi32.dll", "CreateCompatibleDC", layout_CreateCompatibleDC, 1,
+			hdc
+		);
 		text_dc = ret;
 		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
 	}
@@ -212,8 +268,33 @@ HGDIOBJ WINAPI layout_SelectObject(
 	if(h == GetStockObject(SYSTEM_FONT)) {
 		return GetCurrentObject(hdc, OBJ_FONT);
 	} else {
-		return SelectObject(hdc, h);
+		return (HGDIOBJ)detour_next(
+			"gdi32.dll", "SelectObject", layout_SelectObject, 2,
+			hdc, h
+		);
 	}
+}
+
+// Modifies [lf] according to the font-related commands in [cmd].
+// Returns 1 if anything in [lf] was changed.
+int layout_parse_font(LOGFONT *lf, const char *cmd)
+{
+	int ret = 0;
+	if(lf && cmd) {
+		while(*cmd) {
+			if(*cmd == 'b') {
+				// Bold font
+				lf->lfWeight *= 2;
+				ret = 1;
+			} else if(*cmd == 'i') {
+				// Italic font
+				lf->lfItalic = TRUE;
+				ret = 1;
+			}
+			cmd++;
+		}
+	}
+	return ret;
 }
 
 BOOL WINAPI layout_TextOutU(
@@ -225,7 +306,6 @@ BOOL WINAPI layout_TextOutU(
 ) {
 	HBITMAP hBitmap = (HBITMAP)GetCurrentObject(hdc, OBJ_BITMAP);
 	HFONT hFontOrig = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
-	HFONT hFontRuby = NULL;
 
 	LOGFONT font_orig;
 
@@ -236,11 +316,10 @@ BOOL WINAPI layout_TextOutU(
 
 	size_t i = 0;
 	int cur_x = orig_x;
-	int ruby_y = 0;
 	size_t cur_tab = 0;
 
 	if(!lpString || !c) {
-		return 0;
+		return ret;
 	}
 
 	if(c >= strlen(lpString)) {
@@ -262,26 +341,6 @@ BOOL WINAPI layout_TextOutU(
 
 	tokens = layout_tokenize(lpString, c);
 
-	// Preprocessing
-	json_array_foreach(tokens, i, token) {
-		if(json_is_array(token)) {
-			const char *cmd = json_array_get_string(token, 0);
-			// If we have ruby, derive a smaller font from the current one
-			// and shift down orig_y
-			if(!hFontRuby && strchr(cmd, 'f')) {
-				LOGFONT font_ruby;
-				memcpy(&font_ruby, &font_orig, sizeof(LOGFONT));
-				font_ruby.lfHeight /= 2.25;
-				font_ruby.lfWidth /= 2.25;
-				font_ruby.lfWeight = 0;
-				font_ruby.lfQuality = NONANTIALIASED_QUALITY;
-				hFontRuby = CreateFontIndirect(&font_ruby);
-				ruby_y = orig_y;
-				orig_y += font_ruby.lfHeight / 2.5;
-			}
-		}
-	}
-
 	// Layout!
 	json_array_foreach(tokens, i, token) {
 		const json_t *draw_str = NULL;
@@ -293,13 +352,18 @@ BOOL WINAPI layout_TextOutU(
 			const json_t *p1 = json_array_get(token, 1);
 			const json_t *p2 = json_array_get(token, 2);
 			const char *p = cmd;
+			size_t tabs_count = json_array_size(Layout_Tabs);
 			// Absolute x-end position of the current tab
 			size_t tab_end;
 
-			LOGFONT font_new;
-			int font_recreate = 0;
-
-			memcpy(&font_new, &font_orig, sizeof(LOGFONT));
+			// If requested, derive a bold/italic font from the current one.
+			// This is done before anything else to guarantee that any calls to
+			// GetTextExtent() return the correct widths.
+			LOGFONT font_new = font_orig;
+			if(layout_parse_font(&font_new, cmd)) {
+				hFontNew = CreateFontIndirect(&font_new);
+				SelectObject(hdc, hFontNew);
+			}
 
 			cur_w = GetTextExtentBase(hdc, p1);
 			draw_str = p1;
@@ -313,33 +377,33 @@ BOOL WINAPI layout_TextOutU(
 				} else {
 					tab_end = cur_x + GetTextExtentBase(hdc, p2);
 				}
-			} else if(cur_tab < json_array_size(Layout_Tabs)) {
+			} else if(cur_tab < tabs_count) {
 				tab_end = json_array_get_hex(Layout_Tabs, cur_tab) + orig_x;
-			} else if(json_array_size(Layout_Tabs) > 0) {
+			} else if(tabs_count > 0 && i == (json_array_size(tokens) - 1)) {
 				tab_end = bitmap_width;
 			} else {
 				tab_end = cur_x + cur_w;
 			}
 
+			p = cmd;
 			while(*p) {
+				size_t j = 2;
+				const json_t *str_obj = NULL;
 				switch(p[0]) {
 					case 's':
 						// Don't actually print anything
-						tab_end = cur_w = 0;
+						tab_end = cur_x;
 						draw_str = NULL;
 						break;
 					case 't':
 						// Tabstop definition
-						{
-							// The width of the first parameter is already in cur_w, so...
-							size_t j = 2;
-							const json_t *str_obj = NULL;
-							while(str_obj = json_array_get(token, j++)) {
-								size_t new_w = GetTextExtentBase(hdc, str_obj);
-								cur_w = max(new_w, cur_w);
-							}
+						// The width of the first parameter is already in cur_w, so...
+						tab_end = cur_w;
+						while(str_obj = json_array_get(token, j++)) {
+							size_t new_w = GetTextExtentBase(hdc, str_obj);
+							tab_end = max(new_w, tab_end);
 						}
-						tab_end = cur_x + cur_w;
+						tab_end += cur_x;
 						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
 						break;
 					case 'c':
@@ -350,33 +414,11 @@ BOOL WINAPI layout_TextOutU(
 						// Right alignment
 						cur_x = (tab_end - cur_w);
 						break;
-					case 'b':
-						// Bold font
-						font_new.lfWeight *= 2;
-						font_recreate = 1;
-						break;
-					case 'i':
-						// Italic font
-						font_new.lfItalic = TRUE;
-						font_recreate = 1;
-						break;
-					case 'f':
-						// Ruby
-						layout_textout_ruby(hdc, cur_x, p1, ruby_y, p2, hFontRuby);
-						tab_end = 0;
-						break;
 				}
 				p++;
 			}
-			if(font_recreate) {
-				hFontNew = CreateFontIndirect(&font_new);
-				SelectObject(hdc, hFontNew);
-				tab_end = cur_x + GetTextExtentBase(hdc, draw_str);
-			}
-			if(tab_end) {
-				cur_tab++;
-				cur_w = tab_end - cur_x;
-			}
+			cur_tab++;
+			cur_w = tab_end - cur_x;
 		} else if(json_is_string(token)) {
 			draw_str = token;
 			cur_w = GetTextExtentBase(hdc, token);
@@ -390,9 +432,6 @@ BOOL WINAPI layout_TextOutU(
 			hFontNew = NULL;
 		}
 		cur_x += cur_w;
-	}
-	if(hFontRuby) {
-		DeleteObject(hFontRuby);
 	}
 	json_decref(tokens);
 	return ret;
@@ -434,7 +473,7 @@ size_t __stdcall GetTextExtent(const char *str)
 	return ret;
 }
 
-size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font)
+size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 {
 	HGDIOBJ prev_font = layout_SelectObject(text_dc, font);
 	size_t ret = GetTextExtent(str);
@@ -442,11 +481,21 @@ size_t __stdcall GetTextExtentForFont(const char *str, HGDIOBJ font)
 	return ret;
 }
 
-int layout_init(HMODULE hMod)
+size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
+{
+	HFONT *font = font_block_get(id);
+	return GetTextExtentForFont(str, font ? *font : NULL);
+}
+
+int layout_mod_init(HMODULE hMod)
 {
 	Layout_Tabs = json_array();
+	return 0;
+}
 
-	return iat_detour_funcs_var(GetModuleHandle(NULL), "gdi32.dll", 4,
+void layout_mod_detour(void)
+{
+	detour_cache_add("gdi32.dll", 4,
 		"CreateCompatibleDC", layout_CreateCompatibleDC,
 		"DeleteDC", layout_DeleteDC,
 		"SelectObject", layout_SelectObject,
@@ -454,10 +503,11 @@ int layout_init(HMODULE hMod)
 	);
 }
 
-void layout_exit(void)
+void layout_mod_exit(void)
 {
 	Layout_Tabs = json_decref_safe(Layout_Tabs);
 	if(text_dc) {
 		DeleteDC(text_dc);
+		text_dc = NULL;
 	}
 }

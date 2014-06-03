@@ -9,12 +9,9 @@
 
 #pragma once
 
-#define HAVE_STRINGS 1
-
 // Returns [id] from the string definition table,
 // or NULL if no string for [id] available.
 const json_t* strings_get(const char *id);
-const char* strings_get_value(const char *id);
 
 // Returns the translated string for [in] from the string definition table,
 // or [in] itself if no translation is available.
@@ -48,9 +45,15 @@ const char* strings_strclr(const size_t slot);
 
 // Concatenates [src] to the existing string in [slot].
 const char* strings_strcat(const size_t slot, const char *src);
+
+// Replaces all occurences of [src] in [slot] with [dst]. If [dst] is NULL,
+// the function defaults it to an empty string, thus removing all occurences
+// of [src]. Currently, this function doesn't do translation lookup since we
+// don't yet have any specific use cases.
+const char* strings_replace(const size_t slot, const char *src, const char *dst);
 /// ------------------
 
-void strings_init(void);
+void strings_mod_init(void);
 // Adds string lookup wrappers to functions that don't have them yet.
-int strings_detour(HMODULE hMod);
-void strings_exit(void);
+void strings_mod_detour(void);
+void strings_mod_exit(void);

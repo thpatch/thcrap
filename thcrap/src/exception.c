@@ -70,7 +70,11 @@ LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
 {
 	// Don't return our own filter, since this might cause an infinite loop if
 	// the game process caches it.
-	LPTOP_LEVEL_EXCEPTION_FILTER ret = SetUnhandledExceptionFilter(exception_filter);
+	LPTOP_LEVEL_EXCEPTION_FILTER ret = (LPTOP_LEVEL_EXCEPTION_FILTER)detour_next(
+		"kernel32.dll", "SetUnhandledExceptionFilter",
+		exception_SetUnhandledExceptionFilter, 1,
+		lpTopLevelExceptionFilter
+	);
 	lpOrigFilter = lpTopLevelExceptionFilter;
 	return ret == exception_filter ? NULL : ret;
 }
@@ -80,9 +84,9 @@ void exception_init(void)
 	SetUnhandledExceptionFilter(exception_filter);
 }
 
-void exception_detour(HMODULE hMod)
+void exception_mod_detour(void)
 {
-	iat_detour_funcs_var(hMod, "kernel32.dll", 1,
+	detour_cache_add("kernel32.dll", 1,
 		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter
 	);
 }

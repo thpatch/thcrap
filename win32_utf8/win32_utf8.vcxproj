@@ -81,20 +81,26 @@
     <ClInclude Include="src\gdi32_dll.h" />
     <ClInclude Include="src\kernel32_dll.h" />
     <ClInclude Include="src\macros.h" />
+    <ClInclude Include="src\msvcrt_dll.h" />
     <ClInclude Include="src\psapi_dll.h" />
+    <ClInclude Include="src\shell32_dll.h" />
     <ClInclude Include="src\shlwapi_dll.h" />
     <ClInclude Include="src\user32_dll.h" />
     <ClInclude Include="src\utf.h" />
     <ClInclude Include="src\win32_utf8.h" />
+    <ClInclude Include="src\wrappers.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\gdi32_dll.c" />
     <ClCompile Include="src\kernel32_dll.c" />
+    <ClCompile Include="src\msvcrt_dll.c" />
     <ClCompile Include="src\psapi_dll.c" />
+    <ClCompile Include="src\shell32_dll.c" />
     <ClCompile Include="src\shlwapi_dll.c" />
     <ClCompile Include="src\user32_dll.c" />
     <ClCompile Include="src\utf.c" />
     <ClCompile Include="src\win32_utf8.c" />
+    <ClCompile Include="src\wrappers.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="win32_utf8.def" />

@@ -17,5 +17,5 @@ LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
 );
 
 void exception_init(void);
-void exception_detour(HMODULE hMod);
+void exception_mod_detour(void);
 void exception_exit(void);

@@ -9,91 +9,23 @@
 
 #include <thcrap.h>
 #include <png.h>
+#include "png_ex.h"
 #include "thcrap_tsa.h"
 #include "anm.h"
 
-png_bytep bounds_init(png_image_exp image, const thtx_header_t *thtx, const char *fn)
+void bounds_init(png_image_exp image, const thtx_header_t *thtx, const char *fn)
 {
-	size_t bounds_size;
-
-	if(!image || !thtx) {
-		return NULL;
-	}
-
-	SAFE_FREE(image->buf);
-	png_image_free(&image->img);
-	ZeroMemory(&image->img, sizeof(png_image));
-
-	// Still needing this one?
-	{
+	// The caller expects the image to be cleared in any case
+	png_image_clear(image);
+	if(thtx && fn) {
+		// Still needing this one?
 		char *bounds_fn = fn_for_bounds(fn);
 		int ret = PathFileExists(bounds_fn);
 		SAFE_FREE(bounds_fn);
-		if(ret) {
-			return NULL;
+		if(!ret) {
+			png_image_new(image, thtx->w, thtx->h, PNG_FORMAT_RGBA);
 		}
 	}
-
-	image->img.version = PNG_IMAGE_VERSION;
-	image->img.width = thtx->w;
-	image->img.height = thtx->h;
-	image->img.format = PNG_FORMAT_RGBA;
-
-	bounds_size = PNG_IMAGE_SIZE(image->img);
-
-	image->buf = malloc(bounds_size);
-	if(image->buf) {
-		ZeroMemory(image->buf, bounds_size);
-	}
-	return image->buf;
-}
-
-png_bytep bounds_resize(png_image_exp image, const size_t new_w, const size_t new_h)
-{
-	size_t prev_w;
-	size_t prev_h;
-	size_t prev_stride;
-	size_t prev_size;
-	size_t new_size;
-	size_t new_stride;
-
-	if(!image || !image->buf) {
-		return NULL;
-	}
-
-	prev_w = image->img.width;
-	prev_h = image->img.height;
-
-	if(prev_w >= new_w && prev_h >= new_h) {
-		return image->buf;
-	}
-
-	prev_stride = PNG_IMAGE_ROW_STRIDE(image->img);
-	prev_size = PNG_IMAGE_SIZE(image->img);
-
-	image->img.width = new_w;
-	image->img.height = new_h;
-	new_stride = PNG_IMAGE_ROW_STRIDE(image->img);
-	new_size = PNG_IMAGE_SIZE(image->img);
-
-	image->buf = realloc(image->buf, new_size);
-	if(image->buf) {
-		ZeroMemory(image->buf + prev_size, new_size - prev_size);
-
-		// If the width has changed, we need to move all rows in the image,
-		// going from bottom to top.
-		// (Luckily, this is the only case we have to implement.)
-		if(new_w > prev_w && new_h >= prev_h) {
-			png_bytep in = image->buf + (prev_stride * (prev_h - 1));
-			png_bytep out = image->buf + (new_stride * (prev_h - 1));
-			size_t i;
-			for(i = 0; i < prev_h; i++, out -= new_stride, in -= prev_stride) {
-				memmove(out, in, prev_stride);
-				ZeroMemory(out + prev_stride, new_stride - prev_stride);
-			}
-		}
-	}
-	return image->buf;
 }
 
 char* fn_for_bounds(const char *fn)
@@ -211,7 +143,7 @@ int bounds_store(const char *fn, png_image_exp image)
 	if(!bounds_fn) {
 		return 1;
 	}
-	png_image_write_to_file(&image->img, bounds_fn, 0, image->buf, 0, NULL);
+	png_image_store(bounds_fn, image);
 	SAFE_FREE(bounds_fn);
 	return 0;
 }

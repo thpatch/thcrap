@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <win32_detour.h>
 
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
@@ -161,13 +162,29 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		strcpy(game_dir, final_exe_fn);
 		PathRemoveFileSpec(game_dir);
 
-		ret = inject_CreateProcessU(
-			final_exe_fn_local, game_dir, NULL, NULL, TRUE, 0, NULL, game_dir, &si, &pi
-		);
-		if(!ret) {
-			char *msg_str;
+		/**
+		  * Initialize the detours for the injection module.
+		  *
+		  * This is an unfortunate drawback introduced by detour chaining.
+		  * Without any detours being set up, detour_next() doesn't have any
+		  * chain to execute (and, in fact, doesn't even know its own position).
+		  * Thus, it can only fall back to the original function, CreateProcessA(),
+		  * which in turn means that we lose Unicode support in this instance.
+		  *
+		  * We work around this by hardcoding calls to the necessary detour setup
+		  * functions to make the function run as expected.
+		  * Sure, the alternative would be to set up the entire engine with all
+		  * plug-ins and modules. While it would indeed be nice to allow those to
+		  * control initial startup, it really shouldn't be necessary for now - and
+		  * it really does run way too much unnecessary code for my taste.
+		  */
+		inject_mod_detour();
 
-			ret = GetLastError();
+		ret = W32_ERR_WRAP(detour_next("kernel32.dll", "CreateProcessA", NULL, 10,
+			final_exe_fn_local, game_dir, NULL, NULL, TRUE, 0, NULL, game_dir, &si, &pi
+		));
+		if(ret) {
+			char *msg_str = "";
 
 			FormatMessage(
 				FORMAT_MESSAGE_FROM_SYSTEM |
@@ -182,13 +199,10 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 				final_exe_fn, msg_str
 			);
 			LocalFree(msg_str);
-			ret = -4;
-			goto end;
 		}
 		VLA_FREE(game_dir);
 		VLA_FREE(final_exe_fn_local);
 	}
-	ret = 0;
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);

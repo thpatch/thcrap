@@ -121,7 +121,8 @@ HWND WINAPI tsa_CreateWindowExA(
 			json_is_string(game_build) ? json_string_value(game_build) : "");
 		window_title = custom_title;
 	}
-	ret = CreateWindowExU(
+	ret = (HWND)detour_next(
+		"user32.dll", "CreateWindowExA", tsa_CreateWindowExA, 12,
 		dwExStyle, lpClassName, window_title, dwStyle, X, Y,
 		nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
 	);
@@ -130,9 +131,9 @@ HWND WINAPI tsa_CreateWindowExA(
 }
 /// ---------------------
 
-int tsa_detour(HMODULE hMod)
+void tsa_mod_detour(void)
 {
-	return iat_detour_funcs_var(hMod, "user32.dll", 2,
+	detour_cache_add("user32.dll", 2,
 		"CreateWindowExA", tsa_CreateWindowExA,
 		"GetWindowRect", tsa_GetWindowRect
 	);

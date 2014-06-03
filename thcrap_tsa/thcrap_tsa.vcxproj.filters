@@ -38,6 +38,9 @@
     <ClCompile Include="src\win32_tsa.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\png_ex.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_tsa.def">
@@ -52,6 +55,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="src\anm.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\png_ex.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

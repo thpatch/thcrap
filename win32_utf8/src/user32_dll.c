@@ -131,6 +131,65 @@ int WINAPI DrawTextU(
 	return ret;
 }
 
+BOOL WINAPI InsertMenuItemU(
+	__in HMENU hmenu,
+	__in UINT item,
+	__in BOOL fByPosition,
+	__in LPCMENUITEMINFOA lpmi
+)
+{
+	BOOL ret;
+	MENUITEMINFOW lpmi_w;
+	wchar_t *str_w = NULL;
+	if(lpmi) {
+		memcpy(&lpmi_w, lpmi, sizeof(MENUITEMINFOW));
+		if(lpmi->fMask & MIIM_TYPE || lpmi->fMask & MIIM_STRING) {
+			// yes, [cch] is ignored
+			const char *str_local = lpmi->dwTypeData;
+			WCHAR_T_DEC(str_local);
+			WCHAR_T_CONV(str_local);
+			str_w = lpmi_w.dwTypeData = str_local_w;
+		}
+	} else {
+		ZeroMemory(&lpmi_w, sizeof(MENUITEMINFOW));
+	}
+	ret = InsertMenuItemW(hmenu, item, fByPosition, &lpmi_w);
+	VLA_FREE(str_w);
+	return ret;
+}
+
+int WINAPI LoadStringU(
+	__in_opt HINSTANCE hInstance,
+	__in UINT uID,
+	__out_ecount_part(cchBufferMax, return + 1) LPSTR lpBuffer,
+	__in int cchBufferMax
+)
+{
+	int ret = -1;
+	// Since LoadStringW() could also return double-null-terminated strings
+	// (see http://blogs.msdn.com/b/oldnewthing/archive/2009/10/09/9904648.aspx),
+	// this indeed is not as easy as simply calling LoadStringW() and
+	// converting the result.
+	HRSRC hrsrc = FindResource(hInstance,
+		MAKEINTRESOURCEW((LOWORD(uID) >> 4) + 1), (LPWSTR)RT_STRING
+	);
+	IMAGE_RESOURCE_DIR_STRING_U *str_res = LoadResource(hInstance, hrsrc);
+	if(hrsrc && str_res && cchBufferMax) {
+		unsigned int id = uID & 0x000f;
+		while(id--) {
+			str_res = (IMAGE_RESOURCE_DIR_STRING_U*)(
+				((LPCWSTR)str_res) + str_res->Length + 1
+			);
+		}
+		ret = WideCharToMultiByte(
+			CP_UTF8, 0, str_res->NameString, str_res->Length,
+			lpBuffer, cchBufferMax, NULL, NULL
+		);
+		lpBuffer[ret] = 0;
+	}
+	return ret;
+}
+
 int WINAPI MessageBoxU(
 	__in_opt HWND hWnd,
 	__in_opt LPCSTR lpText,

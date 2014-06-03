@@ -88,7 +88,7 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 
 		strcpy(bp_key, "BP_");
 		strncat(bp_key, key, key_len);
-		ret = (BreakpointFunc_t)runconfig_func_get(bp_key);
+		ret = (BreakpointFunc_t)func_get(bp_key);
 		VLA_FREE(bp_key);
 	}
 	return ret;
@@ -218,7 +218,7 @@ int breakpoint_apply(breakpoint_local_t *bp)
 		bp_asm[0] = 0xe8;
 		memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
 
-		PatchRegionNoCheck(bp->addr, bp_asm, bp->cavesize);
+		PatchRegion(bp->addr, NULL, bp_asm, bp->cavesize);
 		log_printf("OK\n");
 		return 0;
 	}

@@ -9,4 +9,5 @@
 
 #pragma once
 
-void win32_detour(HMODULE hMod);
+// *Not* a _mod_ function to ensure that this remains on the lowest level
+void win32_detour(void);

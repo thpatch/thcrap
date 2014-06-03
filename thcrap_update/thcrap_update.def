@@ -1,6 +1,6 @@
 LIBRARY
 EXPORTS
-	thcrap_init_plugin	@1
+	thcrap_plugin_init	@1
 
 	http_init
 	http_exit

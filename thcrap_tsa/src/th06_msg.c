@@ -167,7 +167,7 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 
 		// Resolve function
 		if(encryption_func) {
-			state->enc_func = (EncryptionFunc_t)runconfig_func_get(encryption_func);
+			state->enc_func = (EncryptionFunc_t)func_get(encryption_func);
 		}
 		if(json_is_array(encryption_vars)) {
 			size_t i;
@@ -270,15 +270,15 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 	}
 
 	if(json_is_array(state->diff_lines)) {
-		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line++);
-		if(validate_line(json_line)) {
+		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line);
+		int ret = validate_line(json_line);
+		if(ret) {
 			rep_func(cmd_out, state, json_line);
 			state->last_line_cmd = cmd_out;
 			state->last_line_op = cur_op;
-			return 1;
 		}
-		// Line not present in the patch file, remove it
-		return 0;
+		state->cur_line++;
+		return ret;
 	}
 	// If this dialog box contains no lines to patch, take original line
 	return 1;
@@ -512,12 +512,12 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	return 0;
 }
 
-int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("msg"));
+	return patch_msg(file_inout, size_out, size_in, patch, specs_get("msg"));
 }
 
-int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, runconfig_format_get("end"));
+	return patch_msg(file_inout, size_out, size_in, patch, specs_get("end"));
 }

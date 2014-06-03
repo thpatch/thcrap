@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Direct memory and Import Address Table patching
+  * Direct memory patching and Import Address Table detouring.
   */
 
 #pragma once
@@ -15,18 +15,10 @@
 BOOL VirtualCheckRegion(const void *ptr, const size_t len);
 BOOL VirtualCheckCode(const void *ptr);
 
-// Writes [val] to [ptr] in the address space of the current
-// (or another, in case of the *Ex functions) process),
-// if the current value in [ptr] equals [prev]
-int PatchRegionNoCheck(void *ptr, void *New, size_t len);
-int PatchRegion(void *ptr, void *Prev, void *New, size_t len);
-int PatchRegionEx(HANDLE hProcess, void *ptr, void *Prev, void *New, size_t len);
-int PatchBYTE(void *ptr, BYTE Prev, BYTE val);
-int PatchDWORD(void *ptr, DWORD Prev, DWORD val);
-int PatchFLOAT(void *ptr, FLOAT Prev, FLOAT val);
-int PatchBYTEEx(HANDLE hProcess, void *ptr, BYTE Prev, BYTE val);
-int PatchDWORDEx(HANDLE hProcess, void *ptr, DWORD Prev, DWORD val);
-int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT val);
+// Writes [len] bytes from [new] to [ptr] in the address space of the current
+// or another process if the current value in [ptr] equals [prev].
+int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
+int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
 
 /// DLL function macros
 /// -------------------
@@ -88,18 +80,77 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 
 // Detours [detour_count] functions in the [iat_detour] array
 int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detour, const size_t detour_count);
+/// ----------
+
+/// Detour chaining
+/// ---------------
+/**
+  * This system allows the support of an arbitrary number of detour hooks
+  * for any given API function.
+  *
+  * Prior to this, detours weren't really reliably extensible by plugins.
+  * Since they mostly need to call the original function they hook, they used
+  * to imply a certain hierarchy and required knowledge of the entire
+  * detour sequence (with the win32_utf8 functions mostly being on the lowest
+  * level) in order to work as intended. This could have led to cases where
+  * newer detours could have potentially override existing functionality
+  * (see https://bitbucket.org/nmlgc/thpatch-bugs/issue/18).
+  *
+  * It took a while to come up with a proper solution to this problem that
+  * wouldn't impose any restrictions on what detour functions are able to do.
+  * After all, they may need to call the original function multiple times,
+  * or pass locally constructed data as a parameter.
+  *
+  * After some further thought, it then became clear that, for most reasonable
+  * cases where detours only modify function parameters or return values, the
+  * order in which they are called doesn't actually matter. Sure, win32_utf8
+  * must be at the bottom, but as an integral part of the engine, it can
+  * always be treated separately.
+  *
+  * This realization allows us to build "detour chains": Instead of patching
+  * the IAT directly with some function pointer, we first prepare lists of
+  * function pointers for every function in every DLL we want to detour. Once
+  * we have a module handle, we patch the IAT with the address of the first
+  * function in each chain.
+  *
+  * Each detour function should then call a custom chaining function anywhere
+  * it previously called the original function. This will recursively call
+  * all subsequent hooks in the chain, with the original function at the end.
+  *
+  * However, the chaining function has the downside of adding one more
+  * instance of unportable, architecture-specific code to the engine. It needs
+  * to pass a variable number of parameters to functions with a constant
+  * parameter list. Since C doesn't have a way of resolving a va_list back
+  * into individual parameters, our only option is to directly build the
+  * function call stack using inline assembly.
+  */
 
 /**
-  * Variadic wrapper around iat_detour_funcs().
-  * Detours a number of functions imported from [dll_name] in the module based at [hMod].
-  *
+  * Adds one new detour hook for a number of functions in [dll_name].
   * Expects [detour_count] * 2 additional parameters of the form
   *
   *	"exported name", new_func_ptr,
   *	"exported name", new_func_ptr,
   * ...
   */
-int iat_detour_funcs_var(HMODULE hMod, const char *dll_name, const size_t detour_count, ...);
-/// ----------
+int detour_cache_add(const char *dll_name, const size_t detour_count, ...);
+
+// Applies the cached detours to [hMod].
+int iat_detour_apply(HMODULE hMod);
+
+// Calls the next detour hook for [func_name] in [dll_name], passing
+// [arg_count] variadic parameters.
+// The list index is derived from [caller], which should be a pointer to the
+// currently executing *detour* function. This has to be a function that was
+// previously added using detour_add(), so be careful if you're using helper
+// functions. If [caller] happens to be the last detour for the given
+// function, the original function is called.
+// [caller] can also be NULL to run the entire chain from the beginning.
+size_t detour_next(const char *dll_name, const char *func_name, void *caller, size_t arg_count, ...);
+
+// *Not* a module function because we want to call it manually after
+// everything else has been cleaned up.
+void detour_exit(void);
+/// ---------------
 
 /// =============================

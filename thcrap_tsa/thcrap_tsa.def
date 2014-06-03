@@ -1,31 +1,6 @@
 LIBRARY
 EXPORTS
-	thcrap_init_plugin	@1
-
-	; Encraption
-	; ----------
-	simple_xor
-	util_xor
-
-	; Spells
-	; ------
-	BP_spell_id
-	BP_spell_name
-	BP_spell_comment_line
-	spells_init
-	spells_exit
-
-	; Bounds
-	; ------
-	fn_for_bounds
-
-	bounds_init
-	bounds_resize
-	bounds_draw_line
-	bounds_draw_hline
-	bounds_draw_vline
-	bounds_draw_rect
-	bounds_store
+	thcrap_plugin_init	@1
 
 	; Images
 	; ------
@@ -40,22 +15,54 @@ EXPORTS
 	anm_entry_init
 	anm_entry_clear
 
-	sprite_alpha_analyze
-	sprite_alpha_analyze_rep
-	sprite_alpha_analyze_dst
-
 	sprite_split_new
 	sprite_split_append
 	sprite_split_x
 	sprite_split_y
-
 	sprite_patch_set
+	sprite_alpha_analyze
+	sprite_alpha_analyze_rep
+	sprite_alpha_analyze_dst
 	sprite_blit
 	sprite_patch
 
+	stack_game_png_apply
+
 	patch_png_load_for_thtx
 	patch_thtx
-	stack_game_png_apply
+	patch_anm
+
+	; Bounds
+	; ------
+	fn_for_bounds
+
+	bounds_init
+	bounds_draw_line
+	bounds_draw_hline
+	bounds_draw_vline
+	bounds_draw_rect
+	bounds_store
+
+	; Encraption
+	; ----------
+	simple_xor
+	util_xor
+
+	; Layout
+	; ------
+	BP_ruby_offset
+
+	layout_match
+	layout_tokenize
+
+	GetTextExtentBase
+	GetTextExtent
+	GetTextExtentForFont
+	GetTextExtentForFontID
+
+	layout_mod_init
+	layout_mod_detour
+	layout_mod_exit
 
 	; Music
 	; -----
@@ -65,35 +72,28 @@ EXPORTS
 	BP_music_title
 	BP_music_cmt
 
-	music_init
-	music_exit
+	music_mod_init
 
-	; Layout
+	; PNG extensions
+	; --------------
+	png_image_new
+	png_image_resize
+	png_image_store
+	png_image_clear
+
+	; Spells
 	; ------
-	BP_ruby_offset
+	BP_spell_id
+	BP_spell_name
+	BP_spell_comment_line
+	spells_mod_init
 
-	layout_match
-	layout_tokenize
-
-	layout_textout_ruby
-
-	layout_SelectObject
-	layout_CreateCompatibleDC
-	layout_DeleteDC
-	layout_TextOutU
-
-	GetTextExtentBase
-	GetTextExtent
-	GetTextExtentForFont
-
-	layout_init
-	layout_exit
-
-	; Format patchers
-	; ---------------
+	; Dialog
+	; ------
 	patch_msg
 	patch_msg_dlg
 	patch_msg_end
 
-	patch_std
-	patch_anm
+	; TSA-specific detours
+	; --------------------
+	tsa_mod_detour

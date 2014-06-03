@@ -13,7 +13,7 @@
     <Link>
       <OptimizeReferences>true</OptimizeReferences>
       <StringPooling>true</StringPooling>
-      <AdditionalDependencies>win32_utf8.lib;jansson.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>win32_utf8.lib;jansson.lib;zlib1.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>

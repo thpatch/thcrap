@@ -12,6 +12,7 @@ EXPORTS
 	; gdi32.dll
 	; ---------
 	CreateFontU
+	EnumFontFamiliesExU
 	GetTextExtentPoint32U
 	TextOutU
 
@@ -20,22 +21,39 @@ EXPORTS
 	CreateDirectoryU
 	CreateFileU
 	CreateProcessU
+	DeleteFileU
 	FindFirstFileU
 	FindNextFileU
 	FormatMessageU
 	GetCurrentDirectoryU
 	GetEnvironmentVariableU
+	GetFileAttributesU
+	GetFileAttributesExU
 	GetModuleFileNameU
-	GetModuleFileNameExU
 	GetPrivateProfileIntU
 	GetStartupInfoU
+	GetTempPathU
 	IsDBCSLeadByteFB
 	LoadLibraryU
+	MoveFileU
+	MoveFileExU
+	MoveFileWithProgressU
+	MultiByteToWideCharU
+	RemoveDirectoryU
 	SetCurrentDirectoryU
+	WideCharToMultiByteU
+
+	; msvcrt.dll
+	; ----------
+	fopen_u
 
 	; psapi.dll
 	; ---------
 	GetModuleFileNameExU
+
+	; shell32.dll
+	; -----------
+	SHGetPathFromIDListU
 
 	; shlwapi.dll
 	; -----------
@@ -50,6 +68,8 @@ EXPORTS
 	CreateWindowExU
 	DialogBoxParamU
 	DrawTextU
+	InsertMenuItemU
+	LoadStringU
 	MessageBoxU
 	RegisterClassU
 	RegisterClassExU

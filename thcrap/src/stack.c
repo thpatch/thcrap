@@ -9,99 +9,104 @@
 
 #include "thcrap.h"
 
-// Helper function for stack_json_resolve.
-size_t stack_json_load(json_t **json_inout, json_t *patch_info, const char *fn)
+json_t* resolve_chain(const char *fn)
 {
-	size_t file_size = 0;
-	if(fn && json_inout) {
-		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
-		if(json_new) {
-			patch_print_fn(patch_info, fn);
-			if(!*json_inout) {
-				*json_inout = json_new;
-			} else {
-				json_object_merge(*json_inout, json_new);
-				json_decref(json_new);
-			}
+	json_t *ret = fn ? json_array() : NULL;
+	char *fn_build = fn_for_build(fn);
+	json_array_append_new(ret, json_string(fn));
+	json_array_append_new(ret, json_string(fn_build));
+	SAFE_FREE(fn_build);
+	return ret;
+}
+
+json_t* resolve_chain_game(const char *fn)
+{
+	char *fn_common = fn_for_game(fn);
+	const char *fn_common_ptr = fn_common ? fn_common : fn;
+	json_t *ret = resolve_chain(fn_common_ptr);
+	SAFE_FREE(fn_common);
+	return ret;
+}
+
+int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction)
+{
+	int ret = 0;
+	size_t chain_size = json_array_size(chain);
+	if(sci && direction && chain_size) {
+		int chain_idx;
+		// Setup
+		if(!sci->patches) {
+			sci->patches = json_object_get(run_cfg, "patches");
+			sci->step =
+				(direction < 0) ? (json_array_size(sci->patches) * chain_size) - 1 : 0
+			;
+		} else {
+			sci->step += direction;
 		}
+		chain_idx = sci->step % chain_size;
+		sci->fn = json_array_get_string(chain, chain_idx);
+		if(chain_idx == (direction < 0) * (chain_size - 1)) {
+			sci->patch_info = json_array_get(sci->patches, sci->step / chain_size);
+		}
+		ret = sci->patch_info != NULL;
 	}
-	return file_size;
+	return ret;
+}
+
+json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size)
+{
+	json_t *ret = NULL;
+	stack_chain_iterate_t sci = {0};
+	size_t json_size = 0;
+	while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
+		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
+	}
+	log_printf(ret ? "\n" : "introuvable\n");
+	if(file_size) {
+		*file_size = json_size;
+	}
+	return ret;
 }
 
 json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
-	char *fn_build = NULL;
 	json_t *ret = NULL;
-	json_t *patch_array = json_object_get(run_cfg, "patches");
-	json_t *patch_obj;
-	size_t i;
-	size_t json_size = 0;
+	json_t *chain = resolve_chain(fn);
+	if(json_array_size(chain)) {
+		log_printf("JSON) Recherche de %s... ", fn);
+		ret = stack_json_resolve_chain(chain, file_size);
+	}
+	json_decref(chain);
+	return ret;
+}
 
-	if(!fn) {
-		return NULL;
-	}
-	fn_build = fn_for_build(fn);
-	log_printf("(JSON) Recherche de %s... ", fn);
+void* stack_file_resolve_chain(const json_t *chain, size_t *file_size)
+{
+	void *ret = NULL;
+	stack_chain_iterate_t sci = {0};
 
-	json_array_foreach(patch_array, i, patch_obj) {
-		json_size += stack_json_load(&ret, patch_obj, fn);
-		json_size += stack_json_load(&ret, patch_obj, fn_build);
+	// Both the patch stack and the chain have to be traversed backwards: Later
+	// patches take priority over earlier ones, and build-specific files are
+	// preferred over generic ones.
+	while(stack_chain_iterate(&sci, chain, SCI_BACKWARDS) && !ret) {
+		ret = patch_file_load(sci.patch_info, sci.fn, file_size);
+		if(ret) {
+			patch_print_fn(sci.patch_info, sci.fn);
+		}
 	}
-	if(!ret) {
-		log_printf("introuvable\n");
-	} else {
-		log_printf("\n");
-	}
-	if(file_size) {
-		*file_size = json_size;
-	}
-	SAFE_FREE(fn_build);
+	log_printf(ret ? "\n" : "introuvable\n");
 	return ret;
 }
 
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
 	void *ret = NULL;
-	int i;
-	json_t *patch_array = json_object_get(run_cfg, "patches");
-
-	// Meh, const correctness.
-	char *fn_common = fn_for_game(fn);
-	const char *fn_common_ptr = fn_common ? fn_common : fn;
-	char *fn_build = fn_for_build(fn_common_ptr);
-
-	if(!fn) {
-		return NULL;
+	json_t *chain = resolve_chain_game(fn);
+	if(json_array_size(chain)) {
+		log_printf("(Data) Recherche %s... ", json_array_get_string(chain, 0));
+		ret = stack_file_resolve_chain(chain, file_size);
 	}
-
-	log_printf("(Data) Recherche %s... ", fn_common_ptr);
-	// Patch stack has to be traversed backwards because later patches take
-	// priority over earlier ones, and build-specific files are preferred.
-	for(i = json_array_size(patch_array) - 1; i > -1; i--) {
-		json_t *patch_obj = json_array_get(patch_array, i);
-		const char *log_fn = NULL;
-		ret = NULL;
-
-		if(fn_build) {
-			ret = patch_file_load(patch_obj, fn_build, file_size);
-			log_fn = fn_build;
-		}
-		if(!ret) {
-			ret = patch_file_load(patch_obj, fn_common_ptr, file_size);
-			log_fn = fn_common_ptr;
-		}
-		if(ret) {
-			patch_print_fn(patch_obj, log_fn);
-			break;
-		}
-	}
-	SAFE_FREE(fn_common);
-	SAFE_FREE(fn_build);
-	if(!ret) {
-		log_printf("introuvable\n");
-	} else {
-		log_printf("\n");
-	}
+	json_decref(chain);
 	return ret;
 }
 
@@ -134,20 +139,20 @@ void stack_show_missing(void)
 		VLA(char, rem_arcs_str, rem_arcs_str_len);
 		size_t i;
 		json_t *archive_obj;
+		char *p = rem_arcs_str;
 
-		rem_arcs_str[0] = 0;
 		json_array_foreach(rem_arcs, i, archive_obj) {
-			strcat(rem_arcs_str, "\t");
-			strcat(rem_arcs_str, json_string_value(archive_obj));
-			strcat(rem_arcs_str, "\n");
+			if(json_is_string(archive_obj)) {
+				p += sprintf(p, "\t%s\n", json_string_value(archive_obj));
+			}
 		}
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"Certains patchs n'ont pas été trouvés dans votre configuration:\n"
+			"Certains patchs n'ont pas Ã©tÃ© trouvÃ©s dans votre configuration:\n"
 			"\n"
 			"%s"
 			"\n"
-			"Veuillez reconfigurer votre sélection de patchs - soit en executant l'outil de configuration, "
-			"soit en éditant votre fichier de configuration à la main (%s).",
+			"Veuillez reconfigurer votre sÃ©lection de patchs - soit en executant l'outil de configuration, "
+			"soit en Ã©ditant votre fichier de configuration Ã  la main (%s).",
 			rem_arcs_str, json_object_get_string(runconfig_get(), "run_cfg_fn")
 		);
 		VLA_FREE(rem_arcs_str);

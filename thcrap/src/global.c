@@ -22,7 +22,7 @@ const char* PROJECT_NAME_SHORT(void)
 }
 const DWORD PROJECT_VERSION(void)
 {
-	return 0x20140127;
+	return 0x20140528;
 }
 const char* PROJECT_VERSION_STRING(void)
 {
@@ -42,13 +42,12 @@ void runconfig_set(json_t *new_run_cfg)
 	run_cfg = json_incref(new_run_cfg);
 }
 
-void* runconfig_func_get(const char *name)
+const json_t *runconfig_title_get(void)
 {
-	json_t *funcs = json_object_get(run_cfg, "funcs");
-	return (void*)json_object_get_hex(funcs, name);
-}
-
-json_t* runconfig_format_get(const char *format)
-{
-	return json_object_get(json_object_get(run_cfg, "formats"), format);
+	const json_t *id = json_object_get(run_cfg, "game");
+	const json_t *title = strings_get(json_string_value(id));
+	if(!title) {
+		title = json_object_get(run_cfg, "title");
+	}
+	return title ? title : (id ? id : NULL);
 }

@@ -28,7 +28,7 @@ void* file_read(const char *fn, size_t *file_size)
 		DWORD byte_ret;
 
 		handle = CreateFile(
-			fn, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+			fn, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 		);
 		if(handle != INVALID_HANDLE_VALUE) {
@@ -240,6 +240,24 @@ json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_s
 	return file_json;
 }
 
+size_t patch_json_merge(json_t **json_inout, const json_t *patch_info, const char *fn)
+{
+	size_t file_size = 0;
+	if(fn && json_inout) {
+		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
+		if(json_new) {
+			patch_print_fn(patch_info, fn);
+			if(!*json_inout) {
+				*json_inout = json_new;
+			} else {
+				json_object_merge(*json_inout, json_new);
+				json_decref(json_new);
+			}
+		}
+	}
+	return file_size;
+}
+
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json)
 {
 	char *file_buffer = NULL;
@@ -254,7 +272,15 @@ int patch_json_store(const json_t *patch_info, const char *fn, const json_t *jso
 	return ret;
 }
 
-json_t* patch_init(const json_t *patch_info)
+int patch_file_delete(const json_t *patch_info, const char *fn)
+{
+	char *patch_fn = fn_for_patch(patch_info, fn);
+	int ret = W32_ERR_WRAP(DeleteFile(patch_fn));
+	SAFE_FREE(patch_fn);
+	return ret;
+}
+
+json_t* patch_init(json_t *patch_info)
 {
 	json_t *patch_js = patch_json_load(patch_info, "patch.js", NULL);
 	return json_object_merge(patch_js, patch_info);
@@ -303,8 +329,8 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 
 int patchhook_register(const char *wildcard, func_patch_t patch_func)
 {
-	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, json_object());
-	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, json_array());
+	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, JSON_OBJECT);
+	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, JSON_ARRAY);
 	if(!patch_func) {
 		return -1;
 	}
@@ -330,7 +356,7 @@ json_t* patchhooks_build(const char *fn)
 	return ret;
 }
 
-int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	json_t *val;
 	size_t i;
@@ -343,7 +369,7 @@ int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, 
 	json_array_foreach(hook_array, i, val) {
 		func_patch_t func = (func_patch_t)json_integer_value(val);
 		if(func) {
-			func(file_inout, size_out, size_in, patch, run_cfg);
+			func(file_inout, size_out, size_in, patch);
 		}
 	}
 	return 0;

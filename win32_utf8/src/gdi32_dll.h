@@ -27,6 +27,16 @@ HFONT WINAPI CreateFontU(
 #undef CreateFont
 #define CreateFont CreateFontU
 
+int WINAPI EnumFontFamiliesExU(
+	__in HDC hdc,
+	__in LPLOGFONTA lpLogfont,
+	__in FONTENUMPROCA lpProc,
+	__in LPARAM lParam,
+	__in DWORD dwFlags
+);
+#undef EnumFontFamiliesEx
+#define EnumFontFamiliesEx EnumFontFamiliesExU
+
 BOOL APIENTRY GetTextExtentPoint32U(
 	__in HDC hdc,
 	__in_ecount(c) LPCSTR lpString,

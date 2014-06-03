@@ -271,7 +271,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	json_t *repo_list = NULL;
 
-	const char *start_repo = "http://srv.thpatch.net";
+	const char *start_repo = "http://thcrap.nmlgc.net/repos/nmlgc/";
 
 	json_t *sel_stack = NULL;
 	json_t *new_cfg = json_pack("{s[]}", "patches");
@@ -290,7 +290,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		GetModuleHandleA("kernel32.dll"), "wine_get_unix_file_name"
 	) != 0;
 
-	strings_init();
+	strings_mod_init();
 	log_init(1);
 
 	// Necessary to correctly process *any* input of non-ASCII characters
@@ -350,11 +350,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"Cet outil va creer un nouvelle configuration de patch pour le\n"
 		"Patcheur automatique de la communaute Touhou\n"
 		"\n"
-		"Malheureusement, nous n'avons pas reussi a creer a temps une belle interface\n"
-		"graphique pour la configuration des patch a l'occasion de la sortie de Double\n"
-		"Dealing Character.\n"
-		"Nous esperons tout de meme que ceci sera toujours suffisamment intuitif pour la\n"
-		"configuration basique.\n"
+		"Want a more user-friendly graphical configuration tool?\n"
+		"Draw us some custom artwork, and we'll get to it - we might even pay you!\n"
+		"For details, see\n"
+		"\thttp://thpatch.net/wiki/Touhou_Patch_Center:Artwork\n"
 		"\n"
 		"\n"
 		"Ce processus se fera en deux etapes:\n"

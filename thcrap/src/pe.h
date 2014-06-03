@@ -23,7 +23,8 @@ PIMAGE_EXPORT_DIRECTORY GetDllExportDesc(HMODULE hMod);
 // Returns the section header named [section_name]
 PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name);
 
-// Fills [funcs] with the names and function pointers of all exported functions of the DLL at [hDll].
+// Adds the names and function pointers of all exported functions in the DLL
+// at [hDll] to the JSON object [funcs].
 int GetExportedFunctions(json_t *funcs, HMODULE hDll);
 /// -----
 

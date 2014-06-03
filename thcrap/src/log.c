@@ -175,5 +175,6 @@ void log_exit(void)
 	}
 	if(log_file) {
 		fclose(log_file);
+		log_file = NULL;
 	}
 }

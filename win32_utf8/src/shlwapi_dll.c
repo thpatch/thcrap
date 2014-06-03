@@ -8,17 +8,13 @@
 
 #include <Shlwapi.h>
 #include "win32_utf8.h"
+#include "wrappers.h"
 
 BOOL STDAPICALLTYPE PathFileExistsU(
 	__in LPCSTR pszPath
 )
 {
-	BOOL ret;
-	WCHAR_T_DEC(pszPath);
-	WCHAR_T_CONV_VLA(pszPath);
-	ret = PathFileExistsW(pszPath_w);
-	VLA_FREE(pszPath_w);
-	return ret;
+	return Wrap1P((Wrap1PFunc_t)PathFileExistsW, pszPath);
 }
 
 BOOL STDAPICALLTYPE PathMatchSpecU(

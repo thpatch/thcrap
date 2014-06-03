@@ -35,20 +35,22 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_update.def</ModuleDefinitionFile>
-      <AdditionalDependencies>wininet.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;wininet.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <Link>
-      <AdditionalDependencies>thcrap_d.lib;zlibwapid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>thcrap_d.lib;zlib1d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <Link>
-      <AdditionalDependencies>thcrap.lib;zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>thcrap.lib;zlib1.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\notify.c" />
+    <ClCompile Include="src\self.c" />
     <ClCompile Include="src\thcrap_update.c" />
     <ClCompile Include="src\update.c" />
     <ClCompile Include="src\wininet_dll.c" />
@@ -57,6 +59,8 @@
     <None Include="thcrap_update.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\notify.h" />
+    <ClInclude Include="src\self.h" />
     <ClInclude Include="src\update.h" />
     <ClInclude Include="src\wininet_dll.h" />
   </ItemGroup>

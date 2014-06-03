@@ -12,6 +12,7 @@
 
 #include <thcrap.h>
 #include <png.h>
+#include "png_ex.h"
 #include "thcrap_tsa.h"
 #include "anm.h"
 
@@ -208,7 +209,10 @@ int sprite_patch_set(
 	sp->rep_x = entry->x + sp->dst_x;
 	sp->rep_y = entry->y + sp->dst_y;
 
-	if(sp->rep_x >= image->img.width || sp->rep_y >= image->img.height) {
+	if(
+		sp->dst_x >= entry->thtx->w || sp->dst_y >= entry->thtx->h ||
+		sp->rep_x >= image->img.width || sp->rep_y >= image->img.height
+	) {
 		return 2;
 	}
 
@@ -537,39 +541,27 @@ int stack_game_png_apply(anm_entry_t *entry)
 {
 	int ret = -1;
 	if(entry && entry->hasbitmap && entry->thtx && entry->name) {
-		char *fn_common = fn_for_game(entry->name);
-		const char *fn_common_ptr = fn_common ? fn_common : entry->name;
-		char *fn_build = fn_for_build(fn_common_ptr);
-
-		json_t *patch_array = json_object_get(runconfig_get(), "patches");
-		size_t i;
-		json_t *patch_info;
+		stack_chain_iterate_t sci = {0};
+		json_t *chain = resolve_chain_game(entry->name);
 		ret = 0;
-
-		log_printf("(PNG) Recherche de %s... ", fn_common_ptr);
-		json_array_foreach(patch_array, i, patch_info) {
-			if(!patch_png_apply(entry, patch_info, fn_common_ptr)) {
-				ret = 1;
-			}
-			if(!patch_png_apply(entry, patch_info, fn_build)) {
+		if(json_array_size(chain)) {
+			log_printf("(PNG) Recherche de %s... ", json_array_get_string(chain, 0));
+		}
+		while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
+			if(!patch_png_apply(entry, sci.patch_info, sci.fn)) {
 				ret = 1;
 			}
 		}
-		if(!ret) {
-			log_printf("introuvable\n");
-		} else {
-			log_printf("\n");
-		}
-		SAFE_FREE(fn_common);
-		SAFE_FREE(fn_build);
+		log_printf(ret ? "\n" : "introuvable\n");
+		json_decref(chain);
 	}
 	return ret;
 }
 
-int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg)
+int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	json_t *format = runconfig_format_get("anm");
-	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
+	json_t *format = specs_get("anm");
+	json_t *dat_dump = json_object_get(runconfig_get(), "dat_dump");
 	size_t headersize = json_object_get_hex(format, "headersize");
 
 	// Some ANMs reference the same file name multiple times in a row
@@ -604,7 +596,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 				}
 				name_prev = entry.name;
 			}
-			bounds_resize(&bounds, entry.x + entry.thtx->w, entry.y + entry.thtx->h);
+			png_image_resize(&bounds, entry.x + entry.thtx->w, entry.y + entry.thtx->h);
 			if(entry.sprites) {
 				size_t i;
 				for(i = 0; i < entry.sprite_num; i++) {
@@ -621,8 +613,8 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 		anm_entry_out += entry.nextoffset;
 		anm_entry_clear(&entry);
 	}
-	SAFE_FREE(bounds.buf);
-	SAFE_FREE(png.buf);
+	png_image_clear(&bounds);
+	png_image_clear(&png);
 	log_printf("-------------\n");
 	return 0;
 }

@@ -9,36 +9,57 @@
 
 #include "thcrap.h"
 
-void win32_detour(HMODULE hMod)
+void win32_detour(void)
 {
-	iat_detour_funcs_var(hMod, "kernel32.dll", 12,
+	detour_cache_add("kernel32.dll", 24,
 		"CreateDirectoryA", CreateDirectoryU,
 		"CreateFileA", CreateFileU,
+		"CreateProcessA", CreateProcessU,
+		"DeleteFileA", DeleteFileU,
 		"FindFirstFileA", FindFirstFileU,
 		"FindNextFileA", FindNextFileU,
 		"FormatMessageA", FormatMessageU,
 		"GetCurrentDirectoryA", GetCurrentDirectoryU,
 		"GetEnvironmentVariableA", GetEnvironmentVariableU,
+		"GetFileAttributesA", GetFileAttributesU,
+		"GetFileAttributesExA", GetFileAttributesExU,
 		"GetModuleFileNameA", GetModuleFileNameU,
 		"GetPrivateProfileIntA", GetPrivateProfileIntU,
 		"GetStartupInfoA", GetStartupInfoU,
+		"GetTempPathA", GetTempPathU,
 		"IsDBCSLeadByte", IsDBCSLeadByteFB,
-		"SetCurrentDirectoryA", SetCurrentDirectoryU
+		"LoadLibraryA", LoadLibraryU,
+		"MoveFileA", MoveFileU,
+		"MoveFileExA", MoveFileExU,
+		"MoveFileWithProgressA", MoveFileWithProgressU,
+		"MultiByteToWideChar", MultiByteToWideCharU,
+		"RemoveDirectoryA", RemoveDirectoryU,
+		"SetCurrentDirectoryA", SetCurrentDirectoryU,
+		"WideCharToMultiByte", WideCharToMultiByteU
 	);
 
-	iat_detour_funcs_var(hMod, "gdi32.dll", 3,
+	detour_cache_add("msvcrt.dll", 1,
+		"fopen", fopen_u
+	);
+
+	detour_cache_add("gdi32.dll", 4,
 		"CreateFontA", CreateFontU,
+		"EnumFontFamiliesExA", EnumFontFamiliesExU,
 		"GetTextExtentPoint32A", GetTextExtentPoint32U,
 		"TextOutA", TextOutU
 	);
 
-	iat_detour_funcs_var(hMod, "shlwapi.dll", 3,
+	detour_cache_add("shell32.dll", 1,
+		"SHGetPathFromIDList", SHGetPathFromIDListU
+	);
+
+	detour_cache_add("shlwapi.dll", 3,
 		"PathMatchSpecA", PathMatchSpecU,
 		"PathRemoveFileSpecA", PathRemoveFileSpecU,
 		"PathFileExistsA", PathFileExistsU
 	);
 
-	iat_detour_funcs_var(hMod, "user32.dll", 15,
+	detour_cache_add("user32.dll", 17,
 		"CharNextA", CharNextU,
 		"CreateDialogParamA", CreateDialogParamU,
 		"CreateWindowExA", CreateWindowExU,
@@ -48,6 +69,8 @@ void win32_detour(HMODULE hMod)
 		"DrawTextA", DrawTextU,
 		"GetWindowLongA", GetWindowLongW,
 		"GetWindowLongPtrA", GetWindowLongPtrW,
+		"InsertMenuItemA", InsertMenuItemU,
+		"LoadStringA", LoadStringU,
 		"MessageBoxA", MessageBoxU,
 		"RegisterClassA", RegisterClassU,
 		"RegisterClassExA", RegisterClassExU,

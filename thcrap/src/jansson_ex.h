@@ -64,16 +64,17 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind);
 
 /// Objects
 /// -------
-// Same as json_object_get, but creates a [new_object] if the [key] doesn't exist
-json_t* json_object_get_create(json_t *object, const char *key, json_t *new_object);
+// Same as json_object_get, but creates a new JSON value of type [type]
+// if the [key] doesn't exist.
+json_t* json_object_get_create(json_t *object, const char *key, json_type type);
 
 // json_object_get for numeric keys
-json_t* json_object_numkey_get(json_t *object, const json_int_t key);
+json_t* json_object_numkey_get(const json_t *object, const json_int_t key);
 
 // json_object_get for hexadecimal keys.
 // These *must* have the format "0x%x" or "Rx%x" (for values relative to the
 // base address, see json_hex_value()). Padding %x with zeroes will *not* work.
-json_t* json_object_hexkey_get(json_t *object, const size_t key);
+json_t* json_object_hexkey_get(const json_t *object, const size_t key);
 
 // Get the integer value of [key] in [object], automatically
 // converting the JSON value to an integer if necessary.
@@ -85,8 +86,9 @@ const char* json_object_get_string(const json_t *object, const char *key);
 // Merge [new_obj] recursively into [old_obj].
 // [new_obj] has priority; any element of [old_obj] that is present
 // in [new_obj] and is *not* an object itself is overwritten.
-// Returns [old_obj].
-json_t* json_object_merge(json_t *old_obj, const json_t *new_obj);
+// Returns [old_obj] if both are JSON objects, or a new reference to
+// [new_obj] otherwise.
+json_t* json_object_merge(json_t *old_obj, json_t *new_obj);
 
 // Return an alphabetically sorted JSON array of the keys in [object].
 json_t* json_object_get_keys_sorted(const json_t *object);
@@ -94,9 +96,9 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 
 // Wrapper around json_loadb and json_load_file with indirect UTF-8 filename
 // support and nice error reporting.
-// [source] can be specified to show the source of the JSON buffer in case of an error
-// (since json_error_t::source would just say "<buffer>").
-json_t* json_loadb_report(const void *buffer, size_t buflen, size_t flags, const char *source);
+// [source] can be specified to show the source of the JSON buffer in case of
+//  an error (since json_error_t::source would just say "<buffer>").
+json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const char *source);
 json_t* json_load_file_report(const char *json_fn);
 
 // log_print for json_dump

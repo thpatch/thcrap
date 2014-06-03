@@ -1,48 +1,92 @@
 LIBRARY
 EXPORTS
+	; Binary hacks
+	; -------------
+	is_valid_hex
+	binhack_calc_size
+	binhack_render
+	hackpoints_count
+	binhacks_apply
+
+	; File breakpoints
+	; ----------------
+	file_rep_clear
+
+	fr_tls_get
+	fr_tls_free
+
+	BP_file_name
+	BP_file_size
+	BP_file_buffer
+	BP_file_load
+	BP_file_loaded
+
+	bp_file_mod_init
+	bp_file_mod_exit
+
+	; Breakpoints
+	; -----------
+	reg
+	json_object_get_register
+	breakpoint_func_get
+	breakpoint_process
+	breakpoints_apply
+	breakpoints_remove
+
+	; Win32 dialogs
+	; -------------
+	dialog_adjust_init
+	dialog_adjust
+	dialog_adjust_clear
+
+	sz_or_ord_size
+	sz_or_ord_build
+
+	dialog_template_ex_size
+	dialog_template_ex_build
+
+	dialog_item_template_ex_size
+	dialog_item_template_ex_build
+
+	dialog_translate
+
+	dialog_mod_detour
+
+	; Exception handler
+	; -----------------
+	exception_filter
+	exception_init
+	exception_mod_detour
+	exception_exit
+
 	; Globals
 	; -------
 	PROJECT_NAME
 	PROJECT_NAME_SHORT
 	PROJECT_VERSION
 	PROJECT_VERSION_STRING
-	runconfig_set
 	runconfig_get
-	runconfig_func_get
-	runconfig_format_get
+	runconfig_set
+	runconfig_title_get
 
-	; SHA-256
-	; -------
-	sha256_init
-	sha256_update
-	sha256_final
+	; Initialization
+	; --------------
+	identify
+	identify_by_hash
+	identify_by_size
 
-	; PE structures
-	; -------------
-	GetNtHeader
-	GetDllImportDesc
-	GetDllExportDesc
-	GetSectionHeader
-	GetExportedFunctions
-	GetRemoteModuleNtHeader
-	GetRemoteModuleEntryPoint
-	GetRemoteModuleHandle
-	GetRemoteProcAddress
-	ReadProcessString
+	thcrap_detour
+	thcrap_init
 
-	; Memory patching
-	; ---------------
-	VirtualCheckRegion
-	VirtualCheckCode
+	; Injection
+	; ---------
+	entry_from_context
 
-	; IAT detouring
-	; -------------
-	func_detour
-	func_detour_by_name
-	func_detour_by_ptr
+	ThreadWaitUntil
+	WaitUntilEntryPoint
 
-	iat_detour_funcs
-	iat_detour_funcs_var
+	inject_mod_detour
+	thcrap_inject
 
 	; JSON extensions
 	; ---------------
@@ -67,11 +111,44 @@ EXPORTS
 	json_load_file_report
 	json_dump_log
 
-	; Identification
-	; --------------
-	identify
-	identify_by_hash
-	identify_by_size
+	; JSON data storage
+	; -----------------
+	jsondata_add
+	jsondata_game_add
+	jsondata_get
+	jsondata_game_get
+	jsondata_mod_repatch
+	jsondata_mod_exit
+
+	; Logging
+	; -------
+	log_print
+	log_nprint
+	log_vprintf
+	log_printf
+	log_mbox
+	log_vmboxf
+	log_mboxf
+	log_init
+	log_exit
+
+	; Memory patching
+	; ---------------
+	VirtualCheckRegion
+	VirtualCheckCode
+
+	; IAT detouring
+	; -------------
+	func_detour
+	func_detour_by_name
+	func_detour_by_ptr
+
+	iat_detour_funcs
+	detour_cache_add
+	iat_detour_apply
+	detour_next
+
+	detour_exit
 
 	; Patch files
 	; -----------
@@ -88,19 +165,13 @@ EXPORTS
 	patch_file_blacklisted
 	patch_file_load
 	patch_json_load
+	patch_json_merge
 	patch_file_store
 	patch_json_store
+	patch_file_delete
 
 	patch_init
 	patch_rel_to_abs
-
-	; Stack
-	; -----
-	stack_json_resolve
-	stack_game_file_resolve
-	stack_game_json_resolve
-
-	stack_show_missing
 
 	; Hooks
 	; -----
@@ -108,65 +179,58 @@ EXPORTS
 	patchhooks_build
 	patchhooks_run
 
-	; Injection
-	; ---------
-	entry_from_context
+	; PE structures
+	; -------------
+	GetNtHeader
+	GetDllImportDesc
+	GetDllExportDesc
+	GetSectionHeader
+	GetExportedFunctions
+	GetRemoteModuleNtHeader
+	GetRemoteModuleEntryPoint
+	GetRemoteModuleHandle
+	GetRemoteProcAddress
+	ReadProcessString
 
-	ThreadWaitUntil
-	WaitUntilEntryPoint
+	; Plugins
+	; -------
+	func_get
+	plugins_load
+	plugins_close
 
-	inject_CreateRemoteThread
-	inject_CreateProcessU
-	inject_CreateProcessW
-	inject_LoadLibraryU
-	inject_LoadLibraryW
-	inject_detour
+	; Hot-repatching
+	; --------------
+	repatch_mod_init
+	repatch_mod_exit
 
-	thcrap_detour
-	thcrap_inject
-	thcrap_init
+	; SHA-256
+	; -------
+	sha256_init
+	sha256_update
+	sha256_final
 
-	; Hackpoints
-	; ----------
-	hackpoints_count
+	; Specs
+	; -----
+	specs_mod_init
+	specs_get
 
-	; Binary hacks
-	; ------------
-	is_valid_hex
-	binhack_calc_size
-	binhack_render
-	binhacks_apply
+	; Stack
+	; -----
+	resolve_chain
+	resolve_chain_game
+	stack_chain_iterate
 
-	; Breakpoints
-	; -----------
-	reg
-	json_object_get_register
-	breakpoint_func_get
-	breakpoint_process
-	breakpoints_apply
-	breakpoints_remove
+	stack_json_resolve_chain
+	stack_json_resolve
+	stack_file_resolve_chain
+	stack_game_file_resolve
+	stack_game_json_resolve
 
-	; File breakpoints
-	; ----------------
-	file_rep_clear
-
-	fr_tls_get
-	fr_tls_free
-
-	BP_file_name
-	BP_file_buffer
-	BP_file_size
-	BP_file_size_patch
-	BP_file_load
-	BP_file_loaded
-
-	bp_file_init
-	bp_file_exit
+	stack_show_missing
 
 	; Hardcoded string translation
 	; ----------------------------
 	strings_get
-	strings_get_value
 	strings_lookup
 	strings_va_lookup
 	strings_storage_get
@@ -174,70 +238,37 @@ EXPORTS
 	strings_vsprintf
 	strings_strclr
 	strings_strcat
+	strings_replace
 
-	strings_MessageBoxA
+	strings_mod_init
+	strings_mod_detour
+	strings_mod_exit
 
-	strings_init
-	strings_detour
-	strings_exit
+	; Text display
+	; ------------
+	patch_fonts_load
 
-	; Logging
-	; -------
-	log_print
-	log_nprint
-	log_vprintf
-	log_printf
-	log_mbox
-	log_vmboxf
-	log_mboxf
-	log_init
-	log_exit
+	textdisp_mod_init
+	textdisp_mod_detour
 
-	; String utility functions
+	; Random utility functions
 	; ------------------------
-	str_num_base
 	str_ascii_replace
 	str_slash_normalize
 	str_slash_normalize_win
 	str_num_digits
+	str_num_base
+	str_hexdate_format
 
-	; Text display
-	; ------------
-	textdisp_CreateFontA
-	patch_fonts_load
-
-	textdisp_init
-	textdisp_detour
-
-	; Win32 dialogs
+	; Win32 detours
 	; -------------
-	dialog_adjust_init
-	dialog_adjust
-	dialog_adjust_clear
+	win32_detour
 
-	sz_or_ord_size
-	sz_or_ord_build
-
-	dialog_template_ex_size
-	dialog_template_ex_build
-
-	dialog_item_template_ex_size
-	dialog_item_template_ex_build
-
-	dialog_translate
-
-	dialog_CreateDialogParamA
-	dialog_DialogBoxParamA
-	dialog_detour
-
-	; Plugins
-	; -------
-	plugins_load
-	plugins_close
-
-	; Exception handler
-	; -----------------
-	exception_init
-	exception_filter
-	exception_SetUnhandledExceptionFilter
-	exception_exit
+	; ZIP
+	; ---
+	zip_list
+	zip_comment
+	zip_file_load
+	zip_file_unzip
+	zip_open
+	zip_close

@@ -4,10 +4,20 @@
   *
   * ----
   *
-  * Direct memory and Import Address Table detouring
+  * Direct memory patching and Import Address Table detouring.
   */
 
 #include "thcrap.h"
+
+// Reverse variable argument list macros for detour_next()
+#define va_rev_start(ap,v,num) (\
+	ap = (va_list)_ADDRESSOF(v) + _INTSIZEOF(v) + (num + 1) * sizeof(int) \
+)
+#define va_rev_arg(ap,t) ( \
+	*(t *)((ap -= _INTSIZEOF(t)) - _INTSIZEOF(t)) \
+)
+
+static json_t *detours = NULL;
 
 BOOL VirtualCheckRegion(const void *ptr, const size_t len)
 {
@@ -23,7 +33,7 @@ BOOL VirtualCheckCode(const void *ptr)
 	return VirtualCheckRegion(ptr, 1);
 }
 
-int PatchRegionNoCheck(void *ptr, void *New, size_t len)
+int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
@@ -31,20 +41,7 @@ int PatchRegionNoCheck(void *ptr, void *New, size_t len)
 
 	VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
 	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
-	memcpy(ptr, New, len);
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);
-	return ret;
-}
-
-int PatchRegion(void *ptr, void *Prev, void *New, size_t len)
-{
-	MEMORY_BASIC_INFORMATION mbi;
-	DWORD oldProt;
-	int ret = 0;
-
-	VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
-	if(!memcmp(ptr, Prev, len)) {
+	if(Prev ? !memcmp(ptr, Prev, len) : 1) {
 		memcpy(ptr, New, len);
 		ret = 1;
 	}
@@ -52,7 +49,7 @@ int PatchRegion(void *ptr, void *Prev, void *New, size_t len)
 	return ret;
 }
 
-int PatchRegionEx(HANDLE hProcess, void *ptr, void *Prev, void *New, size_t len)
+int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
@@ -62,42 +59,12 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, void *Prev, void *New, size_t len)
 	VirtualQueryEx(hProcess, ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
 	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
 	ReadProcessMemory(hProcess, ptr, old_val, len, &byte_ret);
-	if(!memcmp(old_val, Prev, len)) {
+	if(Prev ? !memcmp(old_val, Prev, len) : 1) {
 		WriteProcessMemory(hProcess, ptr, New, len, &byte_ret);
 	}
 	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);
 	VLA_FREE(old_val);
 	return byte_ret != len;
-}
-
-int PatchBYTE(void *ptr, BYTE Prev, BYTE Val)
-{
-	return PatchRegion(ptr, (void*)Prev, (void*)Val, sizeof(BYTE));
-}
-
-int PatchDWORD(void *ptr, DWORD Prev, DWORD Val)
-{
-	return PatchRegion(ptr, (void*)Prev, (void*)Val, sizeof(DWORD));
-}
-
-int PatchFLOAT(void *ptr, FLOAT Prev, FLOAT Val)
-{
-	return PatchRegion(ptr, &Prev, &Val, sizeof(FLOAT));
-}
-
-int PatchBYTEEx(HANDLE hProcess, void *ptr, BYTE Prev, BYTE Val)
-{
-	return PatchRegionEx(hProcess, ptr, (void*)Prev, (void*)Val, sizeof(BYTE));
-}
-
-int PatchDWORDEx(HANDLE hProcess, void *ptr, DWORD Prev, DWORD Val)
-{
-	return PatchRegionEx(hProcess, ptr, (void*)Prev, (void*)Val, sizeof(DWORD));
-}
-
-int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT Val)
-{
-	return PatchRegionEx(hProcess, ptr, &Prev, &Val, sizeof(FLOAT));
 }
 
 /// Import Address Table detouring
@@ -107,13 +74,7 @@ int PatchFLOATEx(HANDLE hProcess, void *ptr, FLOAT Prev, FLOAT Val)
 /// ---------
 int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 {
-	MEMORY_BASIC_INFORMATION mbi;
-	DWORD oldProt;
-	VirtualQuery(&pThunk->u1.Function, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
-	pThunk->u1.Function = (DWORD)new_ptr;
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);
-	return 1;
+	return PatchRegion(&pThunk->u1.Function, NULL, &new_ptr, sizeof(new_ptr));
 }
 
 int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
@@ -211,31 +172,132 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	return ret;
 }
 
-int iat_detour_funcs_var(HMODULE hMod, const char *dll_name, const size_t func_count, ...)
+static int detour_cache_func_contains(const json_t *func, const void *new_ptr)
 {
-	HMODULE hDll;
-	va_list va;
-	VLA(iat_detour_t, iat_detour, func_count);
 	size_t i;
-	int ret;
+	json_t *ptr;
+	json_array_foreach(func, i, ptr) {
+		if((void*)json_integer_value(ptr) == new_ptr) {
+			return 1;
+		}
+	}
+	return 0;
+}
 
-	if(!dll_name || !hMod) {
+int detour_cache_add(const char *dll_name, const size_t func_count, ...)
+{
+	int ret = 0;
+	json_t *dll = NULL;
+	va_list va;
+	size_t i;
+
+	if(!dll_name) {
 		return -1;
 	}
-	hDll = GetModuleHandleA(dll_name);
-	if(!hDll) {
-		return -2;
+	if(!detours) {
+		detours = json_object();
 	}
+	dll = json_object_get_create(detours, dll_name, JSON_OBJECT);
 	va_start(va, func_count);
 	for(i = 0; i < func_count; i++) {
-		iat_detour[i].old_func = va_arg(va, const char*);
-		iat_detour[i].new_ptr = va_arg(va, const void*);
-		iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
+		const char *func_name = va_arg(va, const char*);
+		const void *func_ptr = va_arg(va, const void*);
+		json_t *func = json_object_get_create(dll, func_name, JSON_ARRAY);
+		if(!detour_cache_func_contains(func, func_ptr)) {
+			ret += json_array_insert_new(func, 0, json_integer((size_t)func_ptr)) == 0;
+		}
 	}
 	va_end(va);
-	ret = iat_detour_funcs(hMod, dll_name, iat_detour, func_count);
-	VLA_FREE(iat_detour);
 	return ret;
+}
+
+int iat_detour_apply(HMODULE hMod)
+{
+	const char *dll_name;
+	json_t *funcs;
+	int ret = 0;
+
+	if(!hMod) {
+		return -1;
+	}
+	json_object_foreach(detours, dll_name, funcs) {
+		HMODULE hDll = GetModuleHandleA(dll_name);
+		size_t func_count = json_object_size(funcs);
+		if(hDll && func_count) {
+			const char *func_name;
+			json_t *ptrs;
+			VLA(iat_detour_t, iat_detour, func_count);
+			size_t i = 0;
+			json_object_foreach(funcs, func_name, ptrs) {
+				iat_detour[i].old_func = func_name;
+				iat_detour[i].new_ptr = (const void*)json_array_get_hex(ptrs, 0);
+				iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
+				i++;
+			}
+			ret += iat_detour_funcs(hMod, dll_name, iat_detour, func_count);
+			VLA_FREE(iat_detour);
+		}
+	}
+	return ret;
+}
+
+size_t detour_next(const char *dll_name, const char *func_name, void *caller, size_t arg_count, ...)
+{
+	json_t *funcs = json_object_get_create(detours, dll_name, JSON_OBJECT);
+	json_t *ptrs = json_object_get_create(funcs, func_name, JSON_ARRAY);
+	FARPROC next = NULL;
+	size_t i;
+	va_list va;
+
+	// If anything is wrong with a detour_next() call, we're pretty much screwed,
+	// as we can't know what to return to gracefully continue program execution.
+	// So, just crashing outright with nice errors is the best thing we can do.
+	if(!json_array_size(ptrs)) {
+		log_func_printf("No detours for %s:%s; typo?\n", dll_name, func_name);
+	}
+	// Get the next function after [caller]
+	if(!caller) {
+		next = (FARPROC)json_array_get_hex(ptrs, 0);
+	} else {
+		json_t *ptr = NULL;
+		json_array_foreach(ptrs, i, ptr) {
+			if((void*)json_integer_value(ptr) == caller) {
+				next = (FARPROC)json_array_get_hex(ptrs, i + 1);
+				break;
+			}
+		}
+	}
+	if(!next) {
+		HMODULE hDll = GetModuleHandleA(dll_name);
+		next = GetProcAddress(hDll, func_name);
+		// Storing the original pointers at the end of the chain
+		// yields a 5x performance increase!
+		json_array_append_new(ptrs, json_integer((size_t)next));
+	}
+	if(!next) {
+		log_func_printf(
+			"Couldn't get original function pointer for %s:%s! Time to crash...\n",
+			dll_name, func_name
+		);
+	}
+	// This might seem pointless, and we indeed could just set ESP to [va],
+	// but Debug mode doesn't like that.
+	va_rev_start(va, arg_count, arg_count);
+	for(i = 0; i < arg_count; i++) {
+		DWORD param = va_rev_arg(va, DWORD);
+		__asm {
+			push param
+		}
+	}
+	// Same here.
+	__asm {
+		call next
+	}
+}
+
+void detour_exit(void)
+{
+	detours = json_decref_safe(detours);
 }
 /// ----------
 

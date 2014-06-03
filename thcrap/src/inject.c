@@ -829,7 +829,8 @@ BOOL WINAPI inject_CreateProcessU(
 	__out LPPROCESS_INFORMATION lpPI
 )
 {
-	BOOL ret = CreateProcessU(
+	BOOL ret = detour_next(
+		"kernel32.dll", "CreateProcessA", inject_CreateProcessU, 10,
 		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
 		dwCreationFlags | CREATE_SUSPENDED,
 		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
@@ -853,7 +854,8 @@ BOOL WINAPI inject_CreateProcessW(
 	__out LPPROCESS_INFORMATION lpPI
 )
 {
-	BOOL ret = CreateProcessW(
+	BOOL ret = detour_next(
+		"kernel32.dll", "CreateProcessW", inject_CreateProcessW, 10,
 		lpAppName, lpCmdLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles,
 		dwCreationFlags | CREATE_SUSPENDED,
 		lpEnvironment, lpCurrentDirectory, lpSI, lpPI
@@ -909,7 +911,8 @@ __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 		hProcess, lpFunc, kernel32_LoadLibraryW, thcrap_dll, "inject_LoadLibraryW"
 	);
 
-	return CreateRemoteThread(
+	return (HANDLE)detour_next(
+		"kernel32.dll", "CreateRemoteThread", inject_CreateRemoteThread, 7,
 		hProcess, lpThreadAttributes, dwStackSize, lpFunc,
 		lpParameter, dwCreationFlags, lpThreadId
 	);
@@ -919,7 +922,10 @@ HMODULE WINAPI inject_LoadLibraryU(
 	__in LPCSTR lpLibFileName
 )
 {
-	HMODULE ret = LoadLibraryU(lpLibFileName);
+	HMODULE ret = (HMODULE)detour_next(
+		"kernel32.dll", "LoadLibraryA", inject_LoadLibraryU, 1,
+		lpLibFileName
+	);
 	if(ret) {
 		thcrap_detour(ret);
 	}
@@ -930,16 +936,19 @@ HMODULE WINAPI inject_LoadLibraryW(
 	__in LPCWSTR lpLibFileName
 )
 {
-	HMODULE ret = LoadLibraryW(lpLibFileName);
+	HMODULE ret = (HMODULE)detour_next(
+		"kernel32.dll", "LoadLibraryW", inject_LoadLibraryW, 1,
+		lpLibFileName
+	);
 	if(ret) {
 		thcrap_detour(ret);
 	}
 	return ret;
 }
 
-int inject_detour(HMODULE hMod)
+void inject_mod_detour(void)
 {
-	return iat_detour_funcs_var(hMod, "kernel32.dll", 5,
+	detour_cache_add("kernel32.dll", 5,
 		"CreateProcessA", inject_CreateProcessU,
 		"CreateProcessW", inject_CreateProcessW,
 		"CreateRemoteThread", inject_CreateRemoteThread,

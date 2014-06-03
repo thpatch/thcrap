@@ -23,9 +23,10 @@ const char* PROJECT_VERSION_STRING(void);
 json_t* runconfig_get(void);
 void runconfig_set(json_t *new_run_cfg);
 
-// Returns a pointer to a function named [func] in the list of exported functions.
-// Basically a GetProcAddress across the engine and all loaded plug-ins.
-void* runconfig_func_get(const char *name);
-
-// Returns the format specification for [format].
-json_t* runconfig_format_get(const char *format);
+// Returns the prettiest representation of a game title available,
+// in this order:
+// • 1. Localized game title from the string table
+// • 2. "title" value from the run configuration
+// • 3. The plain game ID
+// • 4. NULL
+const json_t *runconfig_title_get(void);

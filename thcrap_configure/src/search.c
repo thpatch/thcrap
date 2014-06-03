@@ -49,7 +49,7 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 
 		// Alright, found a game!
 		// Add it into the result object
-		game_val = json_object_get_create(state.found, key, json_object());
+		game_val = json_object_get_create(state.found, key, JSON_OBJECT);
 
 		EnterCriticalSection(&state.cs_result);
 		{

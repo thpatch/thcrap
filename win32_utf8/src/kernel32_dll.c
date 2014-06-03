@@ -7,6 +7,7 @@
   */
 
 #include "win32_utf8.h"
+#include "wrappers.h"
 
 // GetStartupInfo
 // --------------
@@ -126,6 +127,13 @@ BOOL WINAPI CreateProcessU(
 	return ret;
 }
 
+BOOL WINAPI DeleteFileU(
+	__in LPCSTR lpFileName
+)
+{
+	return Wrap1P((Wrap1PFunc_t)DeleteFileW, lpFileName);
+}
+
 static void CopyFindDataWToA(
 	__out LPWIN32_FIND_DATAA w32fd_a,
 	__in LPWIN32_FIND_DATAW w32fd_w
@@ -222,24 +230,7 @@ DWORD WINAPI GetCurrentDirectoryU(
 	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
 )
 {
-	DWORD ret;
-	VLA(wchar_t, lpBuffer_w, nBufferLength);
-
-	if(!lpBuffer) {
-		VLA_FREE(lpBuffer_w);
-	}
-	ret = GetCurrentDirectoryW(nBufferLength, lpBuffer_w);
-	if(lpBuffer) {
-		StringToUTF8(lpBuffer, lpBuffer_w, nBufferLength);
-	} else {
-		// Hey, let's be nice and return the _actual_ length.
-		VLA(wchar_t, lpBufferReal_w, ret);
-		GetCurrentDirectoryW(ret, lpBufferReal_w);
-		ret = StringToUTF8(NULL, lpBufferReal_w, 0);
-		VLA_FREE(lpBufferReal_w);
-	}
-	VLA_FREE(lpBuffer_w);
-	return ret;
+	return WrapGetString(GetCurrentDirectoryW, nBufferLength, lpBuffer);
 }
 
 DWORD WINAPI GetEnvironmentVariableU(
@@ -261,23 +252,24 @@ DWORD WINAPI GetEnvironmentVariableU(
 	return ret;
 }
 
-#define INI_MACRO_EXPAND(macro) \
-	macro(lpAppName); \
-	macro(lpKeyName); \
-	macro(lpFileName)
-
-UINT WINAPI GetPrivateProfileIntU(
-	__in LPCSTR lpAppName,
-	__in LPCSTR lpKeyName,
-	__in INT nDefault,
-	__in_opt LPCSTR lpFileName
+DWORD WINAPI GetFileAttributesU(
+	__in LPCSTR lpFileName
 )
 {
-	UINT ret;
-	INI_MACRO_EXPAND(WCHAR_T_DEC);
-	INI_MACRO_EXPAND(WCHAR_T_CONV);
-	ret = GetPrivateProfileIntW(lpAppName_w, lpKeyName_w, nDefault, lpFileName_w);
-	INI_MACRO_EXPAND(WCHAR_T_FREE);
+	return Wrap1P(GetFileAttributesW, lpFileName);
+}
+
+BOOL WINAPI GetFileAttributesExU(
+	__in LPCSTR lpFileName,
+	__in GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	__out LPVOID lpFileInformation
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(lpFileName);
+	WCHAR_T_CONV_VLA(lpFileName);
+	ret = GetFileAttributesExW(lpFileName_w, fInfoLevelId, lpFileInformation);
+	WCHAR_T_FREE(lpFileName);
 	return ret;
 }
 
@@ -326,6 +318,26 @@ DWORD WINAPI GetModuleFileNameU(
 	return ret;
 }
 
+#define INI_MACRO_EXPAND(macro) \
+	macro(lpAppName); \
+	macro(lpKeyName); \
+	macro(lpFileName)
+
+UINT WINAPI GetPrivateProfileIntU(
+	__in LPCSTR lpAppName,
+	__in LPCSTR lpKeyName,
+	__in INT nDefault,
+	__in_opt LPCSTR lpFileName
+)
+{
+	UINT ret;
+	INI_MACRO_EXPAND(WCHAR_T_DEC);
+	INI_MACRO_EXPAND(WCHAR_T_CONV);
+	ret = GetPrivateProfileIntW(lpAppName_w, lpKeyName_w, nDefault, lpFileName_w);
+	INI_MACRO_EXPAND(WCHAR_T_FREE);
+	return ret;
+}
+
 VOID WINAPI GetStartupInfoU(
 	__out LPSTARTUPINFOA lpSI
 )
@@ -351,6 +363,14 @@ VOID WINAPI GetStartupInfoU(
 	lpSI->lpTitle = startupinfo_title;
 }
 
+DWORD WINAPI GetTempPathU(
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
+)
+{
+	return WrapGetString(GetTempPathW, nBufferLength, lpBuffer);
+}
+
 BOOL WINAPI IsDBCSLeadByteFB(
 	__in BYTE TestChar
 )
@@ -363,24 +383,105 @@ HMODULE WINAPI LoadLibraryU(
 	__in LPCSTR lpLibFileName
 )
 {
-	HMODULE ret;
-	WCHAR_T_DEC(lpLibFileName);
-	WCHAR_T_CONV_VLA(lpLibFileName);
-	ret = LoadLibraryW(lpLibFileName_w);
-	VLA_FREE(lpLibFileName_w);
+	return (HMODULE)Wrap1P((Wrap1PFunc_t)LoadLibraryW, lpLibFileName);
+}
+
+BOOL WINAPI MoveFileU(
+	__in LPCSTR lpExistingFileName,
+	__in LPCSTR lpNewFileName
+)
+{
+	return MoveFileEx(lpExistingFileName, lpNewFileName, MOVEFILE_COPY_ALLOWED);
+}
+
+BOOL WINAPI MoveFileExU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in DWORD dwFlags
+)
+{
+	return MoveFileWithProgress(
+		lpExistingFileName, lpNewFileName, NULL, NULL, dwFlags
+	);
+}
+
+BOOL WINAPI MoveFileWithProgressU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in_opt LPPROGRESS_ROUTINE lpProgressRoutine,
+	__in_opt LPVOID lpData,
+	__in DWORD dwFlags
+)
+{
+	BOOL ret;
+	WCHAR_T_DEC(lpExistingFileName);
+	WCHAR_T_DEC(lpNewFileName);
+	WCHAR_T_CONV_VLA(lpExistingFileName);
+	WCHAR_T_CONV_VLA(lpNewFileName);
+	ret = MoveFileWithProgressW(
+		lpExistingFileName_w, lpNewFileName_w, lpProgressRoutine, lpData, dwFlags
+	);
+	WCHAR_T_FREE(lpExistingFileName);
+	WCHAR_T_FREE(lpNewFileName);
 	return ret;
+}
+
+int WINAPI MultiByteToWideCharU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_bcount(cbMultiByte) LPCSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__out_ecount_opt(cchWideChar) __transfer(lpMultiByteStr) LPWSTR lpWideCharStr,
+	__in int cchWideChar
+)
+{
+	int ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+		lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar
+	);
+	if(!ret) {
+		extern UINT fallback_codepage;
+		if(lpMultiByteStr[cbMultiByte - 1] != 0) {
+			// The previous conversion attempt still lingers in [lpMultiByteStr].
+			// If we don't clear it, garbage may show up at the end of the
+			// converted string if the original string wasn't null-terminated...
+			ZeroMemory(lpWideCharStr, cchWideChar * sizeof(wchar_t));
+		}
+		ret = MultiByteToWideChar(fallback_codepage, MB_PRECOMPOSED,
+			lpMultiByteStr, cbMultiByte, lpWideCharStr, cchWideChar
+		);
+	}
+	return ret;
+}
+
+BOOL WINAPI RemoveDirectoryU(
+	__in LPCSTR lpPathName
+)
+{
+	return Wrap1P((Wrap1PFunc_t)RemoveDirectoryW, lpPathName);
 }
 
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 )
 {
-	BOOL ret;
-	WCHAR_T_DEC(lpPathName);
-	WCHAR_T_CONV_VLA(lpPathName);
-	ret = SetCurrentDirectoryW(lpPathName_w);
-	VLA_FREE(lpPathName_w);
-	return ret;
+	return Wrap1P((Wrap1PFunc_t)SetCurrentDirectoryW, lpPathName);
+}
+
+int WINAPI WideCharToMultiByteU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_ecount(cchWideChar) LPCWSTR lpWideCharStr,
+	__in int cchWideChar,
+	__out_bcount_opt(cbMultiByte) __transfer(lpWideCharStr) LPSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__in_opt LPCSTR lpDefaultChar,
+	__out_opt LPBOOL lpUsedDefaultChar
+)
+{
+	return WideCharToMultiByte(
+		CP_UTF8, 0, lpWideCharStr, cchWideChar,
+		lpMultiByteStr, cbMultiByte, NULL, NULL
+	);
 }
 
 // Patcher functions

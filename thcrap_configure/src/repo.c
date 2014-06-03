@@ -55,7 +55,7 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 			repo_fn_local_str = json_string_value(repo_fn_local);
 			ret = file_write(repo_fn_local_str, repo_buffer, repo_size);
 			json_object_set(id_cache, id, json_true());
-			if(ret && !file_write_error(repo_fn_local_str)) {
+			if(ret && (ret = !file_write_error(repo_fn_local_str))) {
 				goto end;
 			}
 		} else {
@@ -86,7 +86,7 @@ end:
 
 json_t* RepoLoadLocal(json_t *url_cache)
 {
-	BOOL find_ret = 1;
+	BOOL find_ret = 0;
 	json_t *repo_list;
 	WIN32_FIND_DATAA w32fd;
 	// Too bad we can't do "*/repo.js" or something similar.
@@ -96,7 +96,7 @@ json_t* RepoLoadLocal(json_t *url_cache)
 		return NULL;
 	}
 	repo_list = json_object();
-	while( (GetLastError() != ERROR_NO_MORE_FILES) && (find_ret) ) {
+	while(!find_ret) {
 		if(
 			(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			&& strcmp(w32fd.cFileName, ".")
@@ -114,7 +114,7 @@ json_t* RepoLoadLocal(json_t *url_cache)
 			json_object_set_new(repo_list, id, repo_js);
 			json_decref(repo_local_fn);
 		}
-		find_ret = FindNextFile(hFind, &w32fd);
+		find_ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));
 	}
 	FindClose(hFind);
 	return repo_list;

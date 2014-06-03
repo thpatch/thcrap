@@ -15,24 +15,18 @@ typedef struct {
 	char str;
 } storage_string_t;
 
-static json_t *stringdefs = NULL;
-static json_t *stringlocs = NULL;
 static json_t *strings_storage = NULL;
 
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
 
 const json_t* strings_get(const char *id)
 {
-	return json_object_get(stringdefs, id);
-}
-
-const char* strings_get_value(const char *id)
-{
-	return json_object_get_string(stringdefs, id);
+	return json_object_get(jsondata_get("stringdefs.js"), id);
 }
 
 const char* strings_lookup(const char *in, size_t *out_len)
 {
+	const json_t *stringlocs = NULL;
 	const char *id_key = NULL;
 	const char *ret = in;
 
@@ -40,9 +34,11 @@ const char* strings_lookup(const char *in, size_t *out_len)
 		return in;
 	}
 
+	stringlocs = jsondata_game_get("stringlocs.js");
 	id_key = json_string_value(json_object_hexkey_get(stringlocs, (size_t)in));
+
 	if(id_key) {
-		const char *new_str = strings_get_value(id_key);
+		const char *new_str = json_string_value(strings_get(id_key));
 		if(new_str && new_str[0]) {
 			ret = new_str;
 		}
@@ -231,6 +227,38 @@ const char* strings_strcat(const size_t slot, const char *src)
 	return src;
 }
 
+const char* strings_replace(const size_t slot, const char *src, const char *dst)
+{
+	char *ret = strings_storage_get(slot, 0);
+	dst = dst ? dst : "";
+	if(src && ret) {
+		size_t src_len = strlen(src);
+		size_t dst_len = strlen(dst);
+		while(ret) {
+			char *src_pos = NULL;
+			char *copy_pos = NULL;
+			char *rest_pos = NULL;
+			size_t ret_len = strlen(ret);
+			// We do this first since the string address might change after
+			// reallocation, thus invalidating the strstr() result
+			ret = strings_storage_get(slot, ret_len + dst_len);
+			if(!ret) {
+				break;
+			}
+			src_pos = strstr(ret, src);
+			if(!src_pos) {
+				break;
+			}
+			copy_pos = src_pos + dst_len;
+			rest_pos = src_pos + src_len;
+			memmove(copy_pos, rest_pos, strlen(rest_pos) + 1);
+			memcpy(src_pos, dst, dst_len);
+		}
+	}
+	// Try to save the situation at least somewhat...
+	return ret ? ret : dst;
+}
+
 /// String lookup hooks
 /// -------------------
 int WINAPI strings_MessageBoxA(
@@ -242,31 +270,32 @@ int WINAPI strings_MessageBoxA(
 {
 	lpText = strings_lookup(lpText, NULL);
 	lpCaption = strings_lookup(lpCaption, NULL);
-	return MessageBoxU(hWnd, lpText, lpCaption, uType);
+	return detour_next(
+		"user32.dll", "MessageBoxA", strings_MessageBoxA, 4,
+		hWnd, lpText, lpCaption, uType
+	);
 }
 /// -------------------
 
-void strings_init(void)
+void strings_mod_init(void)
 {
-	stringdefs = stack_json_resolve("stringdefs.js", NULL);
-	stringlocs = stack_game_json_resolve("stringlocs.js", NULL);
+	jsondata_add("stringdefs.js");
+	jsondata_game_add("stringlocs.js");
 	strings_storage = json_object();
 }
 
-int strings_detour(HMODULE hMod)
+void strings_mod_detour(void)
 {
-	return iat_detour_funcs_var(hMod, "user32.dll", 1,
+	detour_cache_add("user32.dll", 1,
 		"MessageBoxA", strings_MessageBoxA
 	);
 }
 
-void strings_exit(void)
+void strings_mod_exit(void)
 {
 	const char *key;
 	json_t *val;
 
-	stringdefs = json_decref_safe(stringdefs);
-	stringlocs = json_decref_safe(stringlocs);
 	json_object_foreach(strings_storage, key, val) {
 		storage_string_t *p = (storage_string_t*)json_hex_value(val);
 		SAFE_FREE(p);

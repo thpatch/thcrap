@@ -112,18 +112,8 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
 
-/**
-  * For now, this is merely a dummy hook to make sure that the spell files are
-  * reloaded at the beginning of a stage.
-  * We don't want to hook ECL files because newer games use more than one per
-  * stage, and their file names are not really predictable anymore.
-  * We also don't just do this once on plug-in initialization because the files
-  * may be changed by an automatic update at any time.
-  */
-int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-
-void spells_init(void);
-void spells_exit(void);
+void spells_mod_init(void);
+void spells_mod_exit(void);
 /// ------
 
 /// Music Room
@@ -187,19 +177,19 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
 
-void music_init(void);
-void music_exit(void);
+void music_mod_init(void);
+void music_mod_exit(void);
 /// ----------
 
 /// Format patchers
 /// ---------------
 int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
-int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
-int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
 /// ---------------
 
 /// Win32 wrappers
 /// --------------
-int tsa_detour(HMODULE hMod);
+void tsa_mod_detour(void);
 /// --------------

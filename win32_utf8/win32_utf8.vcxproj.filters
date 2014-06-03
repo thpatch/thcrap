@@ -37,6 +37,15 @@
     <ClInclude Include="src\psapi_dll.h">
       <Filter>Wrappers</Filter>
     </ClInclude>
+    <ClInclude Include="src\wrappers.h">
+      <Filter>General</Filter>
+    </ClInclude>
+    <ClInclude Include="src\msvcrt_dll.h">
+      <Filter>Wrappers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\shell32_dll.h">
+      <Filter>Wrappers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\utf.c">
@@ -58,6 +67,15 @@
       <Filter>General</Filter>
     </ClCompile>
     <ClCompile Include="src\psapi_dll.c">
+      <Filter>Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\wrappers.c">
+      <Filter>General</Filter>
+    </ClCompile>
+    <ClCompile Include="src\msvcrt_dll.c">
+      <Filter>Wrappers</Filter>
+    </ClCompile>
+    <ClCompile Include="src\shell32_dll.c">
       <Filter>Wrappers</Filter>
     </ClCompile>
   </ItemGroup>

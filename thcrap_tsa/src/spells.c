@@ -11,8 +11,6 @@
 #include "thcrap_tsa.h"
 
 // Lookup cache
-static json_t *spells = NULL;
-static json_t *spellcomments = NULL;
 static int cache_spell_id = 0;
 static int cache_spell_id_real = 0;
 
@@ -54,6 +52,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 	if(spell_name && cache_spell_id_real >= cache_spell_id) {
 		const char *new_name = NULL;
 		int i = cache_spell_id_real;
+		json_t *spells = jsondata_game_get("spells.js");
 
 		// Count down from the real number to the given number
 		// until we find something
@@ -87,6 +86,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 	if(str && comment_num) {
 		json_t *json_cmt = NULL;
 		int i = cache_spell_id_real;
+		json_t *spellcomments = jsondata_game_get("spellcomments.js");
 
 		size_t cmt_key_str_len = strlen("comment_") + 16 + 1;
 		VLA(char, cmt_key_str, cmt_key_str_len);
@@ -107,22 +107,8 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int patch_std(BYTE *msg_out, size_t size_out, size_t size_in, json_t *patch, json_t *format)
+void spells_mod_init(void)
 {
-	// TODO: This could be much nicer once issue #5 has been dealt with.
-	spells_exit();
-	spells_init();
-	return 0;
-}
-
-void spells_init(void)
-{
-	spells = stack_game_json_resolve("spells.js", NULL);
-	spellcomments = stack_game_json_resolve("spellcomments.js", NULL);
-}
-
-void spells_exit(void)
-{
-	spells = json_decref_safe(spells);
-	spellcomments = json_decref_safe(spellcomments);
+	jsondata_game_add("spells.js");
+	jsondata_game_add("spellcomments.js");
 }

@@ -27,15 +27,12 @@
   *	json_t *patch
   *		Patch data to be applied.
   *
-  *	json_t *run_cfg
-  *		The current run configuration.
-  *
   * Returns nothing.
   */
-typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch);
 
-// Reads the file [fn] into a newly created buffer and returns its file size in [file_size].
-// Return value has to be free()d by the caller!
+// Reads the file [fn] into a newly created buffer and returns its file size
+// in [file_size]. Return value has to be free()d by the caller!
 void* file_read(const char *fn, size_t *file_size);
 
 // Writes [file_buffer] to a file named [fn]. The file is always overwritten!
@@ -44,13 +41,13 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size);
 /// ----------
 /// File names
 /// ----------
-// Returns the alternate file name for [fn] specific to the
-// currently running build. Return value has to be free()d by the caller!
-char* fn_for_build(const char *fn);
-
 // Returns the full patch-relative name of a game-relative file.
 // Return value has to be free()d by the caller!
 char* fn_for_game(const char *fn);
+
+// Returns the alternate file name for [fn] specific to the
+// currently running build. Return value has to be free()d by the caller!
+char* fn_for_build(const char *fn);
 
 // Prints the full path of a patch-relative file name to the log.
 void patch_print_fn(const json_t *patch_info, const char *fn);
@@ -79,15 +76,21 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 // If given, [file_size] receives the size of the input file.
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size);
 
+// Loads [fn] from the patch [patch_info] and merges it into [json_inout].
+// Returns the file size of [fn].
+size_t patch_json_merge(json_t **json_inout, const json_t *patch_info, const char *fn);
+
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size);
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json);
+
+int patch_file_delete(const json_t *patch_info, const char *fn);
 /// ------------------------
 
 /// Initialization
 /// --------------
-// Loads the patch.js file of [patch_info], merges it onto this file,
-// and returns the resulting JSON object.
-json_t* patch_init(const json_t *patch_info);
+// Loads the patch.js file of [patch_info], merges [patch_info] onto this
+// file, and returns the resulting JSON object.
+json_t* patch_init(json_t *patch_info);
 
 // Turns the possibly relative archive path of [patch_info] into an absolute
 // one, relative to [base_path].
@@ -105,5 +108,5 @@ int patchhook_register(const char *ext, func_patch_t patch_func);
 json_t* patchhooks_build(const char *fn);
 
 // Runs all hook functions in [hook_array] on the given data.
-int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *run_cfg);
+int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch);
 /// -----

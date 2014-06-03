@@ -42,6 +42,12 @@ BOOL WINAPI CreateProcessU(
 #undef CreateProcess
 #define CreateProcess CreateProcessU
 
+BOOL WINAPI DeleteFileU(
+	__in LPCSTR lpFileName
+);
+#undef DeleteFile
+#define DeleteFile DeleteFileU
+
 HANDLE WINAPI FindFirstFileU(
 	__in  LPCSTR lpFileName,
 	__out LPWIN32_FIND_DATAA lpFindFileData
@@ -83,6 +89,20 @@ DWORD WINAPI GetEnvironmentVariableU(
 #undef GetEnvironmentVariable
 #define GetEnvironmentVariable GetEnvironmentVariableU
 
+DWORD WINAPI GetFileAttributesU(
+	__in LPCSTR lpFileName
+);
+#undef GetFileAttributes
+#define GetFileAttributes GetFileAttributesU
+
+BOOL WINAPI GetFileAttributesExU(
+	__in LPCSTR lpFileName,
+	__in GET_FILEEX_INFO_LEVELS fInfoLevelId,
+	__out LPVOID lpFileInformation
+);
+#undef GetFileAttributesEx
+#define GetFileAttributesEx GetFileAttributesExU
+
 DWORD WINAPI GetModuleFileNameU(
 	__in_opt HMODULE hModule,
 	__out_ecount_part(nSize, return + 1) LPSTR lpFilename,
@@ -106,6 +126,13 @@ VOID WINAPI GetStartupInfoU(
 #undef GetStartupInfo
 #define GetStartupInfo GetStartupInfoU
 
+DWORD WINAPI GetTempPathU(
+	__in DWORD nBufferLength,
+	__out_ecount_part_opt(nBufferLength, return + 1) LPSTR lpBuffer
+);
+#undef GetTempPath
+#define GetTempPath GetTempPathU
+
 // Only implemented using the fallback codepage, since UTF-8 has
 // no way to differentiate between continuation bytes and end bytes.
 BOOL WINAPI IsDBCSLeadByteFB(
@@ -120,11 +147,62 @@ HMODULE WINAPI LoadLibraryU(
 #undef LoadLibrary
 #define LoadLibrary LoadLibraryU
 
+BOOL WINAPI MoveFileU(
+	__in LPCSTR lpExistingFileName,
+	__in LPCSTR lpNewFileName
+);
+#undef MoveFile
+#define MoveFile MoveFileU
+
+BOOL WINAPI MoveFileExU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in DWORD dwFlags
+);
+#undef MoveFileEx
+#define MoveFileEx MoveFileExU
+
+BOOL WINAPI MoveFileWithProgressU(
+	__in LPCSTR lpExistingFileName,
+	__in_opt LPCSTR lpNewFileName,
+	__in_opt LPPROGRESS_ROUTINE lpProgressRoutine,
+	__in_opt LPVOID lpData,
+	__in DWORD dwFlags
+);
+#undef MoveFileWithProgress
+#define MoveFileWithProgress MoveFileWithProgressU
+
+int WINAPI MultiByteToWideCharU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_bcount(cbMultiByte) LPCSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__out_ecount_opt(cchWideChar) __transfer(lpMultiByteStr) LPWSTR lpWideCharStr,
+	__in int cchWideChar
+);
+
+BOOL WINAPI RemoveDirectoryU(
+	__in LPCSTR lpPathName
+);
+#undef RemoveDirectory
+#define RemoveDirectory RemoveDirectoryU
+
 BOOL WINAPI SetCurrentDirectoryU(
 	__in LPCSTR lpPathName
 );
 #undef SetCurrentDirectory
 #define SetCurrentDirectory SetCurrentDirectoryU
+
+int WINAPI WideCharToMultiByteU(
+	__in UINT CodePage,
+	__in DWORD dwFlags,
+	__in_ecount(cchWideChar) LPCWSTR lpWideCharStr,
+	__in int cchWideChar,
+	__out_bcount_opt(cbMultiByte) __transfer(lpWideCharStr) LPSTR lpMultiByteStr,
+	__in int cbMultiByte,
+	__in_opt LPCSTR lpDefaultChar,
+	__out_opt LPBOOL lpUsedDefaultChar
+);
 
 // Patchers
 int kernel32_init(HMODULE hMod);
