@@ -197,7 +197,7 @@ static int self_verify_buffer(
 	}
 	ret = W32_ERR_WRAP(CryptHashData(hHash, (BYTE*)file_buf, file_len, 0));
 	if(ret) {
-		log_printf("couldn't hash the file data?!?)\n");
+		log_printf("couldn't hash the file data?!?\n");
 		goto end;
 	}
 	ret = W32_ERR_WRAP(CryptVerifySignature(

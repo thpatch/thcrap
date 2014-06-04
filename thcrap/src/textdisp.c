@@ -30,13 +30,13 @@ HFONT WINAPI textdisp_CreateFontA(
 	__in DWORD iQuality,
 	__in DWORD iPitchAndFamily,
 	__in_opt LPCSTR pszFaceName
-	)
+)
 {
 	int replaced = 0;
 	const char *string_font;
 
-	// Check hardcoded strings and the run configuration for a replacement font.
-	// Hardcoded strings take priority here.
+	// Check hardcoded strings and the run configuration for a replacement
+	// font. Hardcoded strings take priority here.
 	string_font = strings_lookup(pszFaceName, NULL);
 	if(string_font != pszFaceName) {
 		pszFaceName = string_font;
@@ -67,19 +67,6 @@ HFONT WINAPI textdisp_CreateFontA(
 	if(pszFaceName && pszFaceName[0]) {
 		iCharSet = DEFAULT_CHARSET;
 	}
-	/**
-	  * As long as we convert "ＭＳ ゴシック" to UTF-16, it will work on Western
-	  * systems, too, provided that Japanese support is installed in the first place.
-	  * No need to add an intransparent font substitution which annoys those
-	  * who don't want to use translation patches at all.
-	  */
-	/*
-	const wchar_t *japfonts = L"ＭＳ";
-	// ＭＳ ゴシック
-	if(!replaced && !wcsncmp(face_w, japfonts, 2)) {
-		face_w = L"Calibri";
-	}
-	*/
 	log_printf(
 		"CreateFontA: %s%s %d (Weight %d, CharSet %d, PitchAndFamily 0x%0x)\n",
 		pszFaceName, replaced ? " (repl.)" : "",

@@ -1,11 +1,11 @@
-/*
- * Touhou Community Reliant Automatic Patcher
- * DLL component
+/**
+  * Touhou Community Reliant Automatic Patcher
+  * DLL component
   *
   * ----
   *
   * Stuff related to text rendering.
- */
+  */
 
 #pragma once
 

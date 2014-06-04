@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include "binhack.h"
 #include "sha256.h"
 #include "win32_detour.h"
 

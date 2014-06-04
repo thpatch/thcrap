@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Translation of hardcoded strings.
+  * Persistent string storage, and translation of hardcoded strings.
   */
 
 #include "thcrap.h"

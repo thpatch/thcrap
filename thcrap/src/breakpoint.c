@@ -157,8 +157,7 @@ void cave_fix(BYTE *cave, BYTE *bp_addr)
 	/// ------------------
 
 	// #1: Relative far call / jump at the very beginning
-	if(cave[0] == 0xe8 || cave[0] == 0xe9)
-	{
+	if(cave[0] == 0xe8 || cave[0] == 0xe9) {
 		size_t dist_old = *((size_t*)(cave + 1));
 		size_t dist_new = dist_old + bp_addr - cave;
 

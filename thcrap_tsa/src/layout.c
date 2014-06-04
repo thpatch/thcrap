@@ -75,7 +75,7 @@ static HFONT* font_block_get(int id)
 	}
 	if(id < min || id > max) {
 		log_func_printf(
-			"index out of bounds (min: %d, max: %d, given: %d\n",
+			"index out of bounds (min: %d, max: %d, given: %d)\n",
 			min, max, id
 		);
 	}
@@ -235,12 +235,37 @@ json_t* layout_tokenize(const char *str, size_t len)
 }
 /// ------------
 
-BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
+/// Layout processing
+/// -----------------
+BOOL layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 {
 	return chain_TextOutU(
 		hdc, x, y, json_string_value(str), json_string_length(str)
 	);
 }
+
+// Modifies [lf] according to the font-related commands in [cmd].
+// Returns 1 if anything in [lf] was changed.
+int layout_parse_font(LOGFONT *lf, const char *cmd)
+{
+	int ret = 0;
+	if(lf && cmd) {
+		while(*cmd) {
+			if(*cmd == 'b') {
+				// Bold font
+				lf->lfWeight *= 2;
+				ret = 1;
+			} else if(*cmd == 'i') {
+				// Italic font
+				lf->lfItalic = TRUE;
+				ret = 1;
+			}
+			cmd++;
+		}
+	}
+	return ret;
+}
+/// -----------------
 
 /// Hooked functions
 /// ----------------
@@ -273,28 +298,6 @@ HGDIOBJ WINAPI layout_SelectObject(
 	} else {
 		return (HGDIOBJ)chain_SelectObject(hdc, h);
 	}
-}
-
-// Modifies [lf] according to the font-related commands in [cmd].
-// Returns 1 if anything in [lf] was changed.
-int layout_parse_font(LOGFONT *lf, const char *cmd)
-{
-	int ret = 0;
-	if(lf && cmd) {
-		while(*cmd) {
-			if(*cmd == 'b') {
-				// Bold font
-				lf->lfWeight *= 2;
-				ret = 1;
-			} else if(*cmd == 'i') {
-				// Italic font
-				lf->lfItalic = TRUE;
-				ret = 1;
-			}
-			cmd++;
-		}
-	}
-	return ret;
 }
 
 BOOL WINAPI layout_TextOutU(
@@ -365,8 +368,8 @@ BOOL WINAPI layout_TextOutU(
 				SelectObject(hdc, hFontNew);
 			}
 
-			cur_w = GetTextExtentBase(hdc, p1);
 			draw_str = p1;
+			cur_w = GetTextExtentBase(hdc, draw_str);
 
 			if(p2) {
 				const char *p2_str = json_string_value(p2);
@@ -385,7 +388,6 @@ BOOL WINAPI layout_TextOutU(
 				tab_end = cur_x + cur_w;
 			}
 
-			p = cmd;
 			while(*p) {
 				size_t j = 2;
 				const json_t *str_obj = NULL;
@@ -421,7 +423,7 @@ BOOL WINAPI layout_TextOutU(
 			cur_w = tab_end - cur_x;
 		} else if(json_is_string(token)) {
 			draw_str = token;
-			cur_w = GetTextExtentBase(hdc, token);
+			cur_w = GetTextExtentBase(hdc, draw_str);
 		}
 		if(draw_str) {
 			ret = layout_textout_raw(hdc, cur_x, orig_y, draw_str);

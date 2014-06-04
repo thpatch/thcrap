@@ -142,7 +142,7 @@ void anm_entry_clear(anm_entry_t *entry);
 /// Sprite-level patching
 /// ---------------------
 // Splits a [sprite] that wraps around the texture into two non-wrapping parts,
-// storing the newly created sprites in in [entry->sprites_wrap].
+// storing the newly created sprites in [entry->sprites_wrap].
 int sprite_split_x(anm_entry_t *entry, sprite_t *sprite);
 int sprite_split_y(anm_entry_t *entry, sprite_t *sprite);
 

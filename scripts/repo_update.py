@@ -39,11 +39,11 @@ parser.add_argument(
 
 
 def str_slash_normalize(string):
-	return string.replace('\\', '/')
+    return string.replace('\\', '/')
 
 
 def enter_missing(obj, key, prompt):
-    while not key in obj or not obj[key].strip():
+    while key not in obj or not obj[key].strip():
         obj[key] = input(prompt)
 
 
@@ -144,7 +144,7 @@ def repo_build(f, t):
     enter_missing(repo_js, 'contact', 'Enter a contact e-mail address: ')
     utils.json_store('repo.js', repo_js, dirs=[f, t])
 
-    while not 'servers' in repo_js or not repo_js['servers'][0].strip():
+    while 'servers' not in repo_js or not repo_js['servers'][0].strip():
         repo_js['servers'] = [input(
             'Enter the public URL of your repository '
             '(the path that contains repo.js): '
