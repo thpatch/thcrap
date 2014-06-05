@@ -318,7 +318,7 @@ BOOL WINAPI layout_TextOutU(
 	LONG bitmap_width = 0;
 
 	size_t i = 0;
-	int cur_x = orig_x;
+	int cur_x = 0;
 	size_t cur_tab = 0;
 
 	if(!lpString || !c) {
@@ -376,12 +376,11 @@ BOOL WINAPI layout_TextOutU(
 				// Use full bitmap with empty second parameter
 				if(p2_str && !p2_str[0]) {
 					tab_end = bitmap_width;
-					cur_x = orig_x;
 				} else {
 					tab_end = cur_x + GetTextExtentBase(hdc, p2);
 				}
 			} else if(cur_tab < tabs_count) {
-				tab_end = json_array_get_hex(Layout_Tabs, cur_tab) + orig_x;
+				tab_end = json_array_get_hex(Layout_Tabs, cur_tab);
 			} else if(tabs_count > 0 && i == (json_array_size(tokens) - 1)) {
 				tab_end = bitmap_width;
 			} else {
@@ -406,7 +405,7 @@ BOOL WINAPI layout_TextOutU(
 							tab_end = max(new_w, tab_end);
 						}
 						tab_end += cur_x;
-						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
+						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end));
 						break;
 					case 'c':
 						// Center alignment
@@ -426,7 +425,7 @@ BOOL WINAPI layout_TextOutU(
 			cur_w = GetTextExtentBase(hdc, draw_str);
 		}
 		if(draw_str) {
-			ret = layout_textout_raw(hdc, cur_x, orig_y, draw_str);
+			ret = layout_textout_raw(hdc, orig_x + cur_x, orig_y, draw_str);
 		}
 		if(hFontNew) {
 			SelectObject(hdc, hFontOrig);
