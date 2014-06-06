@@ -328,6 +328,10 @@ int layout_parse_tabs(layout_state_t *lay, const json_t *token)
 				tab_end += lay->cur_x;
 				json_array_set_new_expand(Layout_Tabs, lay->cur_tab, json_integer(tab_end));
 				break;
+			case 'l':
+				// Left alignment
+				// Does nothing, but shouldn't hit the default case.
+				break;
 			case 'c':
 				// Center alignment
 				lay->cur_x += ((tab_end - lay->cur_x) / 2) - (lay->cur_w / 2);
