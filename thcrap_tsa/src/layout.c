@@ -283,11 +283,14 @@ int layout_parse_font(LOGFONT *lf, const json_t *token)
 	return ret;
 }
 
+// Returns the number of tab commands parsed.
 int layout_parse_tabs(layout_state_t *lay, const json_t *token)
 {
 	size_t tabs_count = json_array_size(Layout_Tabs);
 	size_t tab_end; // Absolute x-end position of the current tab
-	const char *cmd = json_array_get_string(token, 0);
+	const json_t *cmd_json = json_array_get(token, 0);
+	const char *cmd = json_string_value(cmd_json);
+	int ret = json_string_length(cmd_json);
 	const json_t *p2 = json_array_get(token, 2);
 	if(p2) {
 		const char *p2_str = json_string_value(p2);
@@ -333,11 +336,16 @@ int layout_parse_tabs(layout_state_t *lay, const json_t *token)
 				// Right alignment
 				lay->cur_x = (tab_end - lay->cur_w);
 				break;
+			default:
+				ret--;
+				break;
 		}
 		cmd++;
 	}
-	lay->cur_tab++;
-	lay->cur_w = tab_end - lay->cur_x;
+	if(ret) {
+		lay->cur_tab++;
+		lay->cur_w = tab_end - lay->cur_x;
+	}
 	return 1;
 }
 /// -----------------
