@@ -237,6 +237,22 @@ json_t* layout_tokenize(const char *str, size_t len)
 
 /// Layout processing
 /// -----------------
+typedef struct {
+	/// Environment
+	HDC hdc;
+	LONG bitmap_width;
+
+	/// State
+	json_t *tokens;
+	size_t cur_tab;
+	int cur_x;
+
+	/// Current pass
+	size_t token_id;
+	json_t *draw_str; // String to draw
+	size_t cur_w; // Amount of pixels to advance [cur_x] after drawing
+} layout_state_t;
+
 BOOL layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 {
 	return chain_TextOutU(
@@ -246,9 +262,10 @@ BOOL layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 
 // Modifies [lf] according to the font-related commands in [cmd].
 // Returns 1 if anything in [lf] was changed.
-int layout_parse_font(LOGFONT *lf, const char *cmd)
+int layout_parse_font(LOGFONT *lf, const json_t *token)
 {
 	int ret = 0;
+	const char *cmd = json_array_get_string(token, 0);
 	if(lf && cmd) {
 		while(*cmd) {
 			if(*cmd == 'b') {
@@ -264,6 +281,64 @@ int layout_parse_font(LOGFONT *lf, const char *cmd)
 		}
 	}
 	return ret;
+}
+
+int layout_parse_tabs(layout_state_t *lay, const json_t *token)
+{
+	size_t tabs_count = json_array_size(Layout_Tabs);
+	size_t tab_end; // Absolute x-end position of the current tab
+	const char *cmd = json_array_get_string(token, 0);
+	const json_t *p2 = json_array_get(token, 2);
+	if(p2) {
+		const char *p2_str = json_string_value(p2);
+		// Use full bitmap with empty second parameter
+		if(p2_str && !p2_str[0]) {
+			tab_end = lay->bitmap_width;
+		} else {
+			tab_end = lay->cur_x + GetTextExtentBase(lay->hdc, p2);
+		}
+	} else if(lay->cur_tab < tabs_count) {
+		tab_end = json_array_get_hex(Layout_Tabs, lay->cur_tab);
+	} else if(tabs_count > 0 && lay->token_id == (json_array_size(lay->tokens) - 1)) {
+		tab_end = lay->bitmap_width;
+	} else {
+		tab_end = lay->cur_x + lay->cur_w;
+	}
+
+	while(*cmd) {
+		size_t j = 2;
+		const json_t *str_obj = NULL;
+		switch(cmd[0]) {
+			case 's':
+				// Don't actually print anything
+				tab_end = lay->cur_x;
+				lay->draw_str = NULL;
+				break;
+			case 't':
+				// Tabstop definition
+				// The width of the first parameter is already in cur_w, so...
+				tab_end = lay->cur_w;
+				while(str_obj = json_array_get(token, j++)) {
+					size_t new_w = GetTextExtentBase(lay->hdc, str_obj);
+					tab_end = max(new_w, tab_end);
+				}
+				tab_end += lay->cur_x;
+				json_array_set_new_expand(Layout_Tabs, lay->cur_tab, json_integer(tab_end));
+				break;
+			case 'c':
+				// Center alignment
+				lay->cur_x += ((tab_end - lay->cur_x) / 2) - (lay->cur_w / 2);
+				break;
+			case 'r':
+				// Right alignment
+				lay->cur_x = (tab_end - lay->cur_w);
+				break;
+		}
+		cmd++;
+	}
+	lay->cur_tab++;
+	lay->cur_w = tab_end - lay->cur_x;
+	return 1;
 }
 /// -----------------
 
@@ -307,19 +382,14 @@ BOOL WINAPI layout_TextOutU(
 	__in_ecount(c) LPCSTR lpString,
 	__in int c
 ) {
+	layout_state_t lay = {hdc};
 	HBITMAP hBitmap = (HBITMAP)GetCurrentObject(hdc, OBJ_BITMAP);
 	HFONT hFontOrig = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
 
 	LOGFONT font_orig;
 
 	BOOL ret = FALSE;
-	json_t *tokens;
 	json_t *token;
-	LONG bitmap_width = 0;
-
-	size_t i = 0;
-	int cur_x = 0;
-	size_t cur_tab = 0;
 
 	if(!lpString || !c) {
 		return ret;
@@ -335,106 +405,47 @@ BOOL WINAPI layout_TextOutU(
 		// Find a way to get this width here, too.
 		DIBSECTION dibsect;
 		GetObject(hBitmap, sizeof(DIBSECTION), &dibsect);
-		bitmap_width = dibsect.dsBm.bmWidth;
+		lay.bitmap_width = dibsect.dsBm.bmWidth;
 	}
 	if(hFontOrig) {
 		// could change after a layout command
 		GetObject(hFontOrig, sizeof(LOGFONT), &font_orig);
 	}
 
-	tokens = layout_tokenize(lpString, c);
+	lay.tokens = layout_tokenize(lpString, c);
 
 	// Layout!
-	json_array_foreach(tokens, i, token) {
-		const json_t *draw_str = NULL;
+	json_array_foreach(lay.tokens, lay.token_id, token) {
 		HFONT hFontNew = NULL;
-		size_t cur_w = 0;
-
 		if(json_is_array(token)) {
-			const char *cmd = json_array_get_string(token, 0);
-			const json_t *p1 = json_array_get(token, 1);
-			const json_t *p2 = json_array_get(token, 2);
-			const char *p = cmd;
-			size_t tabs_count = json_array_size(Layout_Tabs);
-			// Absolute x-end position of the current tab
-			size_t tab_end;
+			LOGFONT font_new = font_orig;
+			lay.draw_str = json_array_get(token, 1);
 
 			// If requested, derive a bold/italic font from the current one.
-			// This is done before anything else to guarantee that any calls to
-			// GetTextExtent() return the correct widths.
-			LOGFONT font_new = font_orig;
-			if(layout_parse_font(&font_new, cmd)) {
+			// This is done before evaluating tab commmands to guarantee that
+			// any calls to GetTextExtent() return the correct widths.
+			if(layout_parse_font(&font_new, token)) {
 				hFontNew = CreateFontIndirectW(&font_new);
 				SelectObject(hdc, hFontNew);
 			}
 
-			draw_str = p1;
-			cur_w = GetTextExtentBase(hdc, draw_str);
-
-			if(p2) {
-				const char *p2_str = json_string_value(p2);
-				// Use full bitmap with empty second parameter
-				if(p2_str && !p2_str[0]) {
-					tab_end = bitmap_width;
-				} else {
-					tab_end = cur_x + GetTextExtentBase(hdc, p2);
-				}
-			} else if(cur_tab < tabs_count) {
-				tab_end = json_array_get_hex(Layout_Tabs, cur_tab);
-			} else if(tabs_count > 0 && i == (json_array_size(tokens) - 1)) {
-				tab_end = bitmap_width;
-			} else {
-				tab_end = cur_x + cur_w;
-			}
-
-			while(*p) {
-				size_t j = 2;
-				const json_t *str_obj = NULL;
-				switch(p[0]) {
-					case 's':
-						// Don't actually print anything
-						tab_end = cur_x;
-						draw_str = NULL;
-						break;
-					case 't':
-						// Tabstop definition
-						// The width of the first parameter is already in cur_w, so...
-						tab_end = cur_w;
-						while(str_obj = json_array_get(token, j++)) {
-							size_t new_w = GetTextExtentBase(hdc, str_obj);
-							tab_end = max(new_w, tab_end);
-						}
-						tab_end += cur_x;
-						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end));
-						break;
-					case 'c':
-						// Center alignment
-						cur_x += ((tab_end - cur_x) / 2) - (cur_w / 2);
-						break;
-					case 'r':
-						// Right alignment
-						cur_x = (tab_end - cur_w);
-						break;
-				}
-				p++;
-			}
-			cur_tab++;
-			cur_w = tab_end - cur_x;
+			lay.cur_w = GetTextExtentBase(hdc, lay.draw_str);
+			layout_parse_tabs(&lay, token);
 		} else if(json_is_string(token)) {
-			draw_str = token;
-			cur_w = GetTextExtentBase(hdc, draw_str);
+			lay.draw_str = token;
+			lay.cur_w = GetTextExtentBase(hdc, lay.draw_str);
 		}
-		if(draw_str) {
-			ret = layout_textout_raw(hdc, orig_x + cur_x, orig_y, draw_str);
+		if(lay.draw_str) {
+			ret = layout_textout_raw(hdc, orig_x + lay.cur_x, orig_y, lay.draw_str);
 		}
 		if(hFontNew) {
 			SelectObject(hdc, hFontOrig);
 			DeleteObject(hFontNew);
 			hFontNew = NULL;
 		}
-		cur_x += cur_w;
+		lay.cur_x += lay.cur_w;
 	}
-	json_decref(tokens);
+	json_decref(lay.tokens);
 	return ret;
 }
 /// ----------------
