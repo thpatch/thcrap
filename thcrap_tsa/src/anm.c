@@ -171,7 +171,7 @@ void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t fo
 			const int dst_alpha = 0xf - rep_a;
 
 			dst[1] =
-				min(new_alpha, 0xf) |
+				(min(new_alpha, 0xf) << 4) |
 				((dst_r * dst_alpha + rep_r * rep_a) >> 4);
 			dst[0] =
 				(dst_g * dst_alpha + rep_g * rep_a & 0xf0) |
