@@ -246,6 +246,8 @@ typedef struct {
 	/// State
 	json_t *tokens;
 	size_t cur_tab;
+	// After layout processing completed, this contains
+	// the total rendered width of the full string.
 	int cur_x;
 
 	/// Current pass
@@ -483,27 +485,12 @@ size_t GetTextExtentBase(HDC hdc, const json_t *str_obj)
 
 size_t __stdcall GetTextExtent(const char *str)
 {
-	json_t *tokens;
-	json_t *token;
-	size_t i;
 	size_t ret = 0;
-	size_t str_len;
-
-	str = strings_lookup(str, &str_len);
-	tokens = layout_tokenize(str, str_len);
-	json_array_foreach(tokens, i, token) {
-		size_t w = 0;
-		if(json_is_array(token)) {
-			// p1 is the one that's going to be printed.
-			// TODO: full layout width calculations all over again?
-			w = GetTextExtentBase(text_dc, json_array_get(token, 1));
-		} else if(json_is_string(token)) {
-			w = GetTextExtentBase(text_dc, token);
-		}
-		ret += w / 2;
-	}
+	layout_state_t lay = {text_dc};
+	STRLEN_DEC(str);
+	layout_process(&lay, str, str_len);
+	ret = lay.cur_x /= 2;
 	log_printf("GetTextExtent('%s') = %d\n", str, ret);
-	json_decref(tokens);
 	return ret;
 }
 
