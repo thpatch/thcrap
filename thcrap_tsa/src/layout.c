@@ -240,6 +240,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 typedef struct {
 	/// Environment
 	HDC hdc;
+	POINT orig; // Drawing origin
 	LONG bitmap_width;
 
 	/// State
@@ -352,6 +353,76 @@ int layout_parse_tabs(layout_state_t *lay, const json_t *token)
 	}
 	return 1;
 }
+
+// Performs layout of the string [str] with length [len]. [lay] needs to be
+// initialized with the HDC and the origin point before calling this function.
+int layout_process(layout_state_t *lay, const char *str, size_t len)
+{
+	int ret = 1;
+	HBITMAP hBitmap;
+	HFONT hFontOrig;
+	LOGFONT font_orig;
+	json_t *token;
+	if(!lay || !lay->hdc || !str || !len) {
+		return -1;
+	}
+	hBitmap = (HBITMAP)GetCurrentObject(lay->hdc, OBJ_BITMAP);
+	hFontOrig = (HFONT)GetCurrentObject(lay->hdc, OBJ_FONT);
+
+	if(len >= strlen(str)) {
+		str = strings_lookup(str, &len);
+	}
+
+	if(hBitmap) {
+		// TODO: This gets the full width of the rendering backbuffer.
+		// In-game text rendering mostly only uses a shorter width, though.
+		// Find a way to get this width here, too.
+		DIBSECTION dibsect;
+		GetObject(hBitmap, sizeof(DIBSECTION), &dibsect);
+		lay->bitmap_width = dibsect.dsBm.bmWidth;
+	}
+	if(hFontOrig) {
+		// could change after a layout command
+		GetObject(hFontOrig, sizeof(LOGFONT), &font_orig);
+	}
+
+	lay->tokens = layout_tokenize(str, len);
+
+	json_array_foreach(lay->tokens, lay->token_id, token) {
+		HFONT hFontNew = NULL;
+		if(json_is_array(token)) {
+			LOGFONT font_new = font_orig;
+			lay->draw_str = json_array_get(token, 1);
+
+			// If requested, derive a bold/italic font from the current one.
+			// This is done before evaluating tab commmands to guarantee that
+			// any calls to GetTextExtent() return the correct widths.
+			if(layout_parse_font(&font_new, token)) {
+				hFontNew = CreateFontIndirectW(&font_new);
+				SelectObject(lay->hdc, hFontNew);
+			}
+
+			lay->cur_w = GetTextExtentBase(lay->hdc, lay->draw_str);
+			layout_parse_tabs(lay, token);
+		} else if(json_is_string(token)) {
+			lay->draw_str = token;
+			lay->cur_w = GetTextExtentBase(lay->hdc, lay->draw_str);
+		}
+		if(lay->draw_str) {
+			ret = layout_textout_raw(
+				lay->hdc, lay->orig.x + lay->cur_x, lay->orig.y, lay->draw_str
+			);
+		}
+		if(hFontNew) {
+			SelectObject(lay->hdc, hFontOrig);
+			DeleteObject(hFontNew);
+			hFontNew = NULL;
+		}
+		lay->cur_x += lay->cur_w;
+	}
+	lay->tokens = json_decref_safe(lay->tokens);
+	return ret;
+}
 /// -----------------
 
 /// Hooked functions
@@ -394,71 +465,8 @@ BOOL WINAPI layout_TextOutU(
 	__in_ecount(c) LPCSTR lpString,
 	__in int c
 ) {
-	layout_state_t lay = {hdc};
-	HBITMAP hBitmap = (HBITMAP)GetCurrentObject(hdc, OBJ_BITMAP);
-	HFONT hFontOrig = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
-
-	LOGFONT font_orig;
-
-	BOOL ret = FALSE;
-	json_t *token;
-
-	if(!lpString || !c) {
-		return ret;
-	}
-
-	if(c >= strlen(lpString)) {
-		lpString = strings_lookup(lpString, &c);
-	}
-
-	if(hBitmap) {
-		// TODO: This gets the full width of the rendering backbuffer.
-		// In-game text rendering mostly only uses a shorter width, though.
-		// Find a way to get this width here, too.
-		DIBSECTION dibsect;
-		GetObject(hBitmap, sizeof(DIBSECTION), &dibsect);
-		lay.bitmap_width = dibsect.dsBm.bmWidth;
-	}
-	if(hFontOrig) {
-		// could change after a layout command
-		GetObject(hFontOrig, sizeof(LOGFONT), &font_orig);
-	}
-
-	lay.tokens = layout_tokenize(lpString, c);
-
-	// Layout!
-	json_array_foreach(lay.tokens, lay.token_id, token) {
-		HFONT hFontNew = NULL;
-		if(json_is_array(token)) {
-			LOGFONT font_new = font_orig;
-			lay.draw_str = json_array_get(token, 1);
-
-			// If requested, derive a bold/italic font from the current one.
-			// This is done before evaluating tab commmands to guarantee that
-			// any calls to GetTextExtent() return the correct widths.
-			if(layout_parse_font(&font_new, token)) {
-				hFontNew = CreateFontIndirectW(&font_new);
-				SelectObject(hdc, hFontNew);
-			}
-
-			lay.cur_w = GetTextExtentBase(hdc, lay.draw_str);
-			layout_parse_tabs(&lay, token);
-		} else if(json_is_string(token)) {
-			lay.draw_str = token;
-			lay.cur_w = GetTextExtentBase(hdc, lay.draw_str);
-		}
-		if(lay.draw_str) {
-			ret = layout_textout_raw(hdc, orig_x + lay.cur_x, orig_y, lay.draw_str);
-		}
-		if(hFontNew) {
-			SelectObject(hdc, hFontOrig);
-			DeleteObject(hFontNew);
-			hFontNew = NULL;
-		}
-		lay.cur_x += lay.cur_w;
-	}
-	json_decref(lay.tokens);
-	return ret;
+	layout_state_t lay = {hdc, {orig_x, orig_y}};
+	return layout_process(&lay, lpString, c);
 }
 /// ----------------
 
