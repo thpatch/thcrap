@@ -254,11 +254,14 @@ typedef struct {
 	size_t cur_w; // Amount of pixels to advance [cur_x] after drawing
 } layout_state_t;
 
-BOOL layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
+BOOL layout_textout_raw(layout_state_t *lay, POINT p)
 {
-	return chain_TextOutU(
-		hdc, x, y, json_string_value(str), json_string_length(str)
-	);
+	if(lay) {
+		const char *str = json_string_value(lay->draw_str);
+		const size_t len = json_string_length(lay->draw_str);
+		return chain_TextOutU(lay->hdc, p.x, p.y, str, len);
+	}
+	return 0;
 }
 
 // Modifies [lf] according to the font-related commands in [cmd].
@@ -409,9 +412,8 @@ int layout_process(layout_state_t *lay, const char *str, size_t len)
 			lay->cur_w = GetTextExtentBase(lay->hdc, lay->draw_str);
 		}
 		if(lay->draw_str) {
-			ret = layout_textout_raw(
-				lay->hdc, lay->orig.x + lay->cur_x, lay->orig.y, lay->draw_str
-			);
+			POINT p = {lay->orig.x + lay->cur_x, lay->orig.y};
+			ret = layout_textout_raw(lay, p);
 		}
 		if(hFontNew) {
 			SelectObject(lay->hdc, hFontOrig);
