@@ -169,10 +169,10 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 /// ------------
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
 {
+	size_t i = 1;
 	const char *p = NULL;
-	const char *s = NULL; // argument start
+	const char *s = str + i; // argument start
 	json_t *ret = NULL;
-	size_t i = 0;
 	int n = 0; // nesting level
 
 	if(!str || !len) {
@@ -183,7 +183,6 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 	}
 
 	ret = json_array();
-	s = str + 1;
 	for(p = s; (i < len) && (n >= 0); i++, p++) {
 		n += (*p == '<');
 		n -= (*p == '>');
