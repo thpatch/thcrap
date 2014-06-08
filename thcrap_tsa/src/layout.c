@@ -256,6 +256,10 @@ typedef struct {
 	size_t cur_w; // Amount of pixels to advance [cur_x] after drawing
 } layout_state_t;
 
+// A function to be called for every substring to be rendered.
+// [lay->draw_str] points to the string, [p] is the absolute drawing position.
+typedef BOOL (*layout_func_t)(layout_state_t *lay, POINT p);
+
 BOOL layout_textout_raw(layout_state_t *lay, POINT p)
 {
 	if(lay) {
@@ -361,7 +365,8 @@ int layout_parse_tabs(layout_state_t *lay, const json_t *token)
 
 // Performs layout of the string [str] with length [len]. [lay] needs to be
 // initialized with the HDC and the origin point before calling this function.
-int layout_process(layout_state_t *lay, const char *str, size_t len)
+// [func] is called for each substring to be rendered.
+int layout_process(layout_state_t *lay, layout_func_t func, const char *str, size_t len)
 {
 	int ret = 1;
 	HBITMAP hBitmap;
@@ -413,9 +418,9 @@ int layout_process(layout_state_t *lay, const char *str, size_t len)
 			lay->draw_str = token;
 			lay->cur_w = GetTextExtentBase(lay->hdc, lay->draw_str);
 		}
-		if(lay->draw_str) {
+		if(lay->draw_str && func) {
 			POINT p = {lay->orig.x + lay->cur_x, lay->orig.y};
-			ret = layout_textout_raw(lay, p);
+			ret = func(lay, p);
 		}
 		if(hFontNew) {
 			SelectObject(lay->hdc, hFontOrig);
@@ -470,7 +475,7 @@ BOOL WINAPI layout_TextOutU(
 	__in int c
 ) {
 	layout_state_t lay = {hdc, {orig_x, orig_y}};
-	return layout_process(&lay, lpString, c);
+	return layout_process(&lay, layout_textout_raw, lpString, c);
 }
 /// ----------------
 
@@ -488,7 +493,7 @@ size_t __stdcall GetTextExtent(const char *str)
 	size_t ret = 0;
 	layout_state_t lay = {text_dc};
 	STRLEN_DEC(str);
-	layout_process(&lay, str, str_len);
+	layout_process(&lay, NULL, str, str_len);
 	ret = lay.cur_x /= 2;
 	log_printf("GetTextExtent('%s') = %d\n", str, ret);
 	return ret;
