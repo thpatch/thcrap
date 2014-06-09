@@ -93,7 +93,10 @@ static ENUMTEXTMETRICA* EnumTextmetricWToA(ENUMTEXTMETRICA *a, const ENUMTEXTMET
 }
 /// -----------------------
 
-HFONT WINAPI CreateFontU(
+/// Promotion wrappers
+/// ------------------
+HFONT WINAPI lower_CreateFontA(
+	__in CreateFontIndirectA_type down_func,
 	__in int cHeight,
 	__in int cWidth,
 	__in int cEscapement,
@@ -120,10 +123,11 @@ HFONT WINAPI CreateFontU(
 	if(pszFaceName) {
 		strncpy(lf_a.lfFaceName, pszFaceName, sizeof(lf_a.lfFaceName));
 	}
-	return CreateFontIndirectU(&lf_a);
+	return down_func(&lf_a);
 }
 
-HFONT WINAPI CreateFontIndirectU(
+HFONT WINAPI lower_CreateFontIndirectA(
+	__in CreateFontIndirectExA_type down_func,
 	__in CONST LOGFONTA *lplf
 )
 {
@@ -136,7 +140,39 @@ HFONT WINAPI CreateFontIndirectU(
 	}
 	memcpy(&elfedv_a.elfEnumLogfontEx.elfLogFont, lplf, sizeof(LOGFONTA));
 	ZeroMemory(&elfedv_a.elfEnumLogfontEx.elfFullName, elfedv_lf_diff);
-	return CreateFontIndirectExU(&elfedv_a);
+	return down_func(&elfedv_a);
+}
+/// ------------------
+
+HFONT WINAPI CreateFontU(
+	__in int cHeight,
+	__in int cWidth,
+	__in int cEscapement,
+	__in int cOrientation,
+	__in int cWeight,
+	__in DWORD bItalic,
+	__in DWORD bUnderline,
+	__in DWORD bStrikeOut,
+	__in DWORD iCharSet,
+	__in DWORD iOutPrecision,
+	__in DWORD iClipPrecision,
+	__in DWORD iQuality,
+	__in DWORD iPitchAndFamily,
+	__in_opt LPCSTR pszFaceName
+)
+{
+	return lower_CreateFontA(CreateFontIndirectU,
+		cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic,
+		bUnderline, bStrikeOut, iCharSet, iOutPrecision,
+		iClipPrecision, iQuality, iPitchAndFamily, pszFaceName
+	);
+}
+
+HFONT WINAPI CreateFontIndirectU(
+	__in CONST LOGFONTA *lplf
+)
+{
+	return lower_CreateFontIndirectA(CreateFontIndirectExU, lplf);
 }
 
 HFONT WINAPI CreateFontIndirectExU(

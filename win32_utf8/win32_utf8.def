@@ -11,6 +11,9 @@ EXPORTS
 
 	; gdi32.dll
 	; ---------
+	lower_CreateFontA
+	lower_CreateFontIndirectA
+
 	CreateFontU
 	CreateFontIndirectU
 	CreateFontIndirectExU
