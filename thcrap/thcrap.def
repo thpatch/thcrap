@@ -205,6 +205,10 @@ EXPORTS
 	plugins_load
 	plugins_close
 
+	; Detour promotion
+	; ----------------
+	promote_mod_init
+
 	; Hot-repatching
 	; --------------
 	repatch_mod_init
