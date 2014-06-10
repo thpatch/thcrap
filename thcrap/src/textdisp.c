@@ -17,6 +17,25 @@ DETOUR_CHAIN_DEF(CreateFontU);
 static CreateFontIndirectExA_type chain_CreateFontIndirectExU = CreateFontIndirectExU;
 /// -------------
 
+/// LOGFONT stringification
+/// -----------------------
+const char* logfont_stringify(const LOGFONTA *lf)
+{
+	char face[LF_FACESIZE + 2];
+	if(!lf) {
+		return NULL;
+	}
+	if(lf->lfFaceName[0]) {
+		snprintf(face, sizeof(face), "'%s'", lf->lfFaceName);
+	} else {
+		snprintf(face, sizeof(face), "%u", lf->lfPitchAndFamily);
+	}
+	return strings_sprintf((size_t)lf, "(%s %d %d %d)",
+		face, lf->lfHeight, lf->lfWidth, lf->lfWeight
+	);
+}
+/// -----------------------
+
 // This detour is kept for backwards compatibility to patch configurations
 // that replace multiple fonts via hardcoded string translation. Due to the
 // fact that lower levels copy [pszFaceName] into the LOGFONT structure,
@@ -61,10 +80,14 @@ HFONT WINAPI textdisp_CreateFontIndirectExA(
 )
 {
 	LOGFONTA *lf = NULL;
+	wchar_t face_w[LF_FACESIZE];
 	if(!lpelfe) {
 		return NULL;
 	}
 	lf = &lpelfe->elfEnumLogfontEx.elfLogFont;
+	// Ensure that the font face is in UTF-8
+	StringToUTF16(face_w, lf->lfFaceName, LF_FACESIZE);
+	StringToUTF8(lf->lfFaceName, face_w, LF_FACESIZE);
 	/**
 	  * CreateFont() prioritizes [lfCharSet] and ensures that the font
 	  * created can display the given charset. If the font given in
@@ -88,11 +111,7 @@ HFONT WINAPI textdisp_CreateFontIndirectExA(
 	if(lf->lfFaceName[0]) {
 		lf->lfCharSet = DEFAULT_CHARSET;
 	}
-	log_printf(
-		"CreateFont: %s %d (Weight %d, CharSet %d, PitchAndFamily 0x%0x)\n",
-		lf->lfFaceName, lf->lfHeight, lf->lfWeight,
-		lf->lfCharSet, lf->lfPitchAndFamily
-	);
+	log_printf("(Font) Creating %s...\n", logfont_stringify(lf));
 	return chain_CreateFontIndirectExU(lpelfe);
 }
 
