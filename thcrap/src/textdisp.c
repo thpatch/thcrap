@@ -66,11 +66,14 @@ HFONT WINAPI textdisp_CreateFontIndirectExA(
 	}
 	lf = &lpelfe->elfEnumLogfontEx.elfLogFont;
 	/**
-	  * CreateFont() prioritizes [lfCharSet] and ensures that the final font
-	  * can display the given charset. If the font given in [lfFaceName]
-	  * doesn't claim to cover the range of codepoints used in [lfCharSet],
-	  * Windows will just ignore [lfFaceName], select a different font
-	  * that does, and return that instead.
+	  * CreateFont() prioritizes [lfCharSet] and ensures that the font
+	  * created can display the given charset. If the font given in
+	  * [lfFaceName] is not found *or* does not claim to cover the range of
+	  * codepoints used in [lfCharSet], GDI will just ignore [lfFaceName]
+	  * and instead select the font that provides the closest match for
+	  * [lfPitchAndFamily], out of all installed fonts that cover
+	  * [lfCharSet].
+	  *
 	  * To ensure that we actually get the named font, we instead specify
 	  * DEFAULT_CHARSET, which refers to the charset of the current system
 	  * locale. Yes, there's unfortunately no DONTCARE_CHARSET, but this
@@ -78,8 +81,9 @@ HFONT WINAPI textdisp_CreateFontIndirectExA(
 	  *
 	  * However, we only do this if we *have* a face name, either from the
 	  * original code or the run configuration. If [lfFaceName] is NULL or
-	  * empty, CreateFont() should simply use the default system font for
-	  * [lfCharSet], and DEFAULT_CHARSET might result in a different font.
+	  * empty, the original intention of the CreateFont() call was indeed
+	  * to select the default match for [lfPitchAndFamily] and [lfCharSet].
+	  * DEFAULT_CHARSET might therefore result in a different font.
 	  */
 	if(lf->lfFaceName[0]) {
 		lf->lfCharSet = DEFAULT_CHARSET;
