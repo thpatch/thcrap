@@ -24,19 +24,21 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument(
     'arc',
-    help='Archive to sign. For the signature file name, .sig is appended.'
+    help='Archive à signer. Extension .sig ajoutée au nom du fichier '
+	     'signature.'
 )
 
 parser.add_argument(
     '-a', '--alg',
-    help='Hash algorithm to use, out of the ones supported by thcrap.',
+    help='Algorithme de hachage à utiliser, en dehors de ceux supportés par '
+         'thcrap.',
     choices=thcrap_hashes,
     default=thcrap_hashes[0]
 )
 
 parser.add_argument(
     '-k', '--key',
-    help='Private key file.',
+    help='Fichier contenant la clé privée.',
     required=True
 )
 

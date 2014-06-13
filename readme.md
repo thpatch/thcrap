@@ -52,9 +52,9 @@ As of now, all subprojects only include a Visual C++ 2010 project file for build
 
 * [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
-* Les scripts du dossier `scripts` sont écrits en [Python 3] (http://python.org/). Some of them require further third-party libraries:
+Les scripts du dossier `scripts` sont écrits en [Python 3] (http://python.org/). Certains nécessitent davantage de bibliothèques tierces :
 
-* [PyCrypto] (https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
+* [PyCrypto] (https://www.dlitz.net/software/pycrypto/) est requis par `release_sign.py`.
 
 ### License ###
 

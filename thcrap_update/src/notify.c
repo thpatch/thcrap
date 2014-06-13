@@ -32,73 +32,80 @@ static UINT self_msg_type[] = {
 };
 
 static const char *self_header_failure =
-	"A new version (${build}) of the ${project} is available.\n"
+	"Une nouvelle version (${build}) de ${project} est disponible.\n"
 	"\n";
 
 static const char *self_body[] = {
 	// SELF_OK
-	"The ${project} has been successfully updated to version ${build}.\n"
+	"Le ${project} est passé à la version ${build} avec succès.\n"
 	"\n"
-	"For further information about this new release, visit\n"
+	"Pour plus d'informations sur cette nouvelle version, rendez-vous sur\n"
 	"\n"
 	"\t${desc_url}",
 	// SELF_NO_PUBLIC_KEY
-	"Due to the lack of a digital signature on the currently running "
-	"patcher build, an automatic update was not attempted.\n"
+	"Une mise à jour automatique n'a pas été tentée, suite à l'absence "
+	"de signature numérique dans le patcheur en cours d'exécution.\n"
 	"\n"
-	"You can manually download the update archive from\n"
+	"Vous pouvez télécharger l'archive manuellement sur\n"
 	"\n"
 	"\t${desc_url}\n"
 	"\n"
-	"However, we can't prove its authenticity. Be careful!",
+	"Cependant, nous ne pouvons pas vérifier son authenticité. Soyez "
+	"vigilant !",
 	// SELF_SERVER_ERROR
-	"An automatic update was attempted, but none of the download servers "
-	"could be reached.\n"
+	"Une mise à jour automatique a été tentée, mais aucun serveur de "
+	"téléchargement n'a pu être atteint.\n"
 	"\n"
-	"The new version can be found at\n"
+	"La nouvelle version peut être trouvée sur\n"
 	"\n"
 	"\t${desc_url}\n"
 	"\n"
-	"However, instead of manually downloading the archive, we recommend "
-	"to repeat this automatic update later, as this process also checks "
-	"the digital signature on the archive for authenticity.",
+	"En revanche, plutôt que télécharger l'archive manuellement, nous "
+	"conseillons de réessayer la mise à jour automatique plus tard, "
+	"puisque ce processus vérifie aussi l'authenticitié de l'archive par "
+	"sa signature numérique.",
 	// SELF_DISK_ERROR
-	"An automatic update was attempted, but the update archive could not "
-	"be saved to disk, possibly due to a lack of writing permissions in "
-	"the ${project_short} directory (${thcrap_dir}).\n"
+	"Une mise à jour automatique a été tentée, mais l'archive n'a pas pu "
+	"être sauvergardée sur le disque. Ceci est peut-être dû à l'absence "
+	"de permissions d'écriture dans le répertoire ${project_short} "
+	"(${thcrap_dir}).\n"
 	"\n"
-	"You can manually download the update archive from\n"
+	"Vous pouvez télécharger l'archive manuellement sur\n"
 	"\n"
 	"\t${desc_url}",
 	// SELF_NO_SIG
-	"An automatic update was attempted, but the server did not provide a "
-	"digital signature to prove the authenticity of the update archive.\n"
+	"Une mise à jour automatique a été tentée, mais le serveur n'a pas "
+	"fourni de  signature numérique pour prouver l'authenticité de "
+	"l'archive.\n"
 	"\n"
-	"Thus, it may have been maliciously altered.",
+	"De plus, elle pourrait avoir été altérée intentionnellement.",
 	// SELF_SIG_FAIL
-	"An automatic update was attempted, but the digital signature of the "
-	"update archive could not be verified against the public key on the "
-	"currently running patcher build.\n"
+	"Une mise à jour automatique a été tentée, mais la signature "
+	"numérique de l'archive n'a pas pu être comparée à la clé publique du "
+	"patcheur actuellement en cours d'exécution.\n"
 	"\n"
-	"This means that the update has been maliciously altered.",
+	"Cela signifie que la mise à jour a été altérée intentionnellement.",
 	// SELF_REPLACE_ERROR
-	"An automatic update was attempted, but the current build could not "
-	"be replaced with the new one, possibly due to a lack of writing "
-	"permissions.\n"
+	"Une mise à jour automatique a été tentée, mais la version actuelle "
+	"n'a pas pu être remplacée par la nouvelle. Ceci est peut-être dû à "
+	"l'absence de permissions d'écriture.\n"
 	"\n"
-	"Please manually extract the new version from the update archive that "
-	"has been saved to your thcrap directory (${thcrap_dir}${arc_fn}). "
-	"Its digital signature has already been verified to be authentic.\n"
+	"Veuillez extraire manuellement la nouvelle version depuis l'archive "
+	"qui a été sauvegardée dans votre répertoire ${project_short} "
+	"(${thcrap_dir}${arc_fn}). "
+	"Sa signature numérique a déjà été vérifiée, l'archive est "
+	"authentique.\n"
 	"\n"
-	"For further information about this new release, visit\n"
+	"Pour plus d'informations sur cette nouvelle version, rendez-vous "
+	"sur\n"
 	"\n"
 	"\t${desc_url}"
 };
 
 const char *self_sig_error =
 	"\n"
-	"We advise against downloading it from the originating website until "
-	"this problem has been resolved.";
+	"Nous déconseillons le téléchargement depuis le site d'origine "
+	"jusqu'à ce que le problème soit résolu.";
 /// ----------------------
 
 int IsLatestBuild(json_t *build, json_t **latest)

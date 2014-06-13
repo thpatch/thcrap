@@ -116,7 +116,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		);
 		pause();
 	}
-	bi.lpszTitle = L"Root path for game search (cancel to search entire system):";
+	bi.lpszTitle = L"Répertoire racine pour chercher les jeux (annuler : sur tout le système) :";
 	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
 
 	do {
@@ -130,8 +130,8 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			CoTaskMemFree(pidl);
 		}
 		log_printf(
-			"Searching games%s%s... this may take a while...\n\n",
-			search_path[0] ? " in " : " on the entire system",
+			"Recherche de jeux%s%s... Ceci peut prendre un moment...\n\n",
+			search_path[0] ? " dans " : " sur tout le systeme",
 			search_path[0] ? search_path: ""
 		);
 		found = SearchForGames(search_path, games);
@@ -158,17 +158,17 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			}
 			SAFE_FREE(games_js_str);
 		} else if(json_object_size(games)) {
-			log_printf("No new game locations found.\n");
+			log_printf("Aucun nouveau jeu trouve.\n");
 		} else {
-			log_printf("No game locations found.\n");
+			log_printf("Aucun jeu trouve.\n");
 			if(search_path[0]) {
-				repeat = Ask("Search in a different directory?");
+				repeat = Ask("Chercher dans un autre repertoire ?");
 			}
 			if(!repeat) {
 				log_printf(
-					"No patch shortcuts will be created.\n"
-					"Please re-run this configuration tool after you have acquired some games\n"
-					"supported by the patches.\n"
+					"Aucun raccourci de patch ne sera cree.\n"
+					"Veuillez relancer l'outil de configuration quand vous vous serez procure\n"
+					"quelques jeux supportes par les patchs.\n"
 				);
 				pause();
 			}
