@@ -1,54 +1,54 @@
-Touhou Community Reliant Automatic Patcher
-------------------------------------------
+Patcheur automatique de la communauté Touhou
+--------------------------------------------
 
 ### Description ###
 
-Basically, this is an almost-generic, easily expandable and customizable framework to patch Windows applications in memory, specifically tailored towards the translation of Japanese games.
+En gros, ceci est un framework customisable et améliorable pour patcher des appliquations Windows, concu en particulier pour la traduction de jeux japonais.
 
-It is mainly developed to facilitate self-updating, multilingual translation of the [Touhou Project] (http://en.wikipedia.org/wiki/Touhou_Project) games on [Touhou Patch Center] (http://thpatch.net/), but can theoretically be used for just about any other patch for these games, without going through that site.
+Ce framework est développé pour faciliter l'auto mise à jour, la traduction en plusieurs langues des jeux [Touhou Project] (http://en.wikipedia.org/wiki/Touhou_Project) sur [Touhou Patch Center] (http://thpatch.net/), mais peuvent être utilisés théoriquement pour n'importe quel autre patch de ces jeux, sans passer par ce site.
 
-#### Main features of the base engine #####
+#### Fonctions principales du moteur de base #####
 
-* Easy **DLL injection** of the main engine and plug-ins into the target process.
+* **Injections DLL** facile du moteur principal et des plug-ins dans le processus cible.
 
-* **Full propagation to child processes**. This allows the usage of other third-party patches which also use DLL injection, together with thcrap. (Yes, this was developed mainly for vpatch.)
+* **Propagation complète vers les processus fils**. Cela permet l'utilisation d'autres patchs externes qui utilisent aussi des injections de DLL, avec thcrap. (Oui, ça a essentiellement été développé pour vpatch.)
 
-* Uses **JSON for all patch configuration data**, making the patches themselves open-source by design. By recursively merging JSON objects, this gives us...
+* Utilise **JSON pour toute les données de configuration de patch**, rendant les patchs open-source. En fusionnant les objets JSON de façon récursive, cela nous donne...
 
-* **Patch stacking** - apply any number of patches at the same time, sorted by a priority list. Supports wildcard-based blacklisting of files in certain patches through the run configuration.
+* **Accumulation de patchs** - Appliquez n'importe quel nombre de patch à la fois, triés par ordre de priorité. Permet la mise en liste noir de fichiers à l'aide de jokers dans certain patchs lors de la configuration.
 
 * Automatically adds **transparent Unicode filename support** via Win32 API wrappers to target processes using the Win32 ANSI functions, without the need for programs like [AppLocale] (http://en.wikipedia.org/wiki/AppLocale).
 
-* Patches can support **multiple builds and versions** of a single program, identified by a combination of SHA-256 hashes and .EXE file sizes.
+* Les patchs peuvent gérer **plusieurs builds et versions** d'un même programme, identifié par une combinaison de hachage en SHA-256 et de tailles de fichier .EXE.
 
-* **Binary hacks** for arbitrary in-memory modifications of the original program (mostly used for custom assembly).
+* **Binary hacks** pour les modifiquations arbitraires de la mémoire interne du programme original (utilisé surtout pour des assemblages customisés).
 
-* **Breakpoints** to call custom DLL functions at any instruction of the original code. These functions can read and modify the current CPU register state.
+* **Points d'arrêt** Pour appeller des fonctions DLL customisées à n'importe quel instruction du code original. Ces fonctions peuvent lire et modifier l'état actuel du registre CPU.
 
- * **File breakpoints** to replace data files in memory with replacements from patches.
+ * **Points d'arrêt fichier** pour remplacer les fichiers en mémoire depuis ceux des patchs.
 
-* Wildcard-based **file format patching hooks** called on file replacements - can apply patches to data files according to a (stackable!) JSON description.
+* Wildcard-based **crochet de patching de format de fichier** appellés lors du remplacement de fichier - peut appliquer les patchs au fichiers selon une description JSON (accumulable!).
 
-* ... and all that without any significant impact on performance. ☺
+* ... Et tout ça sans aucun impact signficatif sur les performances. ☺
 
-### Modules included ###
+### Modules inclus ###
 
-* `win32_utf8`: A UTF-8 wrapper library around the Win32 API calls we require. This is a stand-alone project and can (and should) be freely used in other applications, too.
-* `thcrap`: The main patch engine.
-* `thcrap_loader`: A command-line loader to call the injection functions of `thcrap` on a newly created process.
-* `thcrap_configure`: A rather cheap command-line patch configuration utility. Will eventually be replaced with a GUI tool.
-* `thcrap_tsa`: A thcrap plug-in containing patch hooks for games using the STG engine by Team Shanghai Alice.
-* `thcrap_update`: A thcrap plug-in containing updating functionality for patches.
+* `win32_utf8`: une bibliothèque de wrapper UTF-8 autour de l'API Win32 dont nous avons besoin. C'est un projet stand-alone qui peut (et devrait) être utilisé librement dans tout autre application.
+* `thcrap`: Le moteur principal de patch
+* `thcrap_loader`: Un chargeur de ligne de commande pour appeller les fonction d'injection de `thcrap` sur un processus récemment créé
+* `thcrap_configure`: un petit utilitaire de configuration de patch à lignes de commandes. Sera à terme remplacé par un outil à interface graphique.
+* `thcrap_tsa`: un plug-in thcrap contenant des hooks de patch pour les jeux utilisant le moteur STG de Team Shanghai Alice.
+* `thcrap_update`: un plug-in de thcrap contenant des fonctionalités de mise à jour pour les patchs
 
-### Building ###
+### Compilation ###
 
-As of now, all subprojects only include a Visual C++ 2010 project file for building. SP1 is recommended, if only for correct version identification in Explorer. Build configurations for different systems are always welcome.
+Jusqu'à maintenant, tout les sous-projets ne sont constitués que d'un fichier de projet Visual C++ 2010 pour la compilation. SP1 est recommandé, ne serait-ce que pour une identifiquation correcte de la version dans l'explorateur Windows. Des configurations de compilation pour d'autres systemes d'exploitation sont toujours les bienvenues.
 
-#### Dependencies ####
+#### Dépendences ####
 
-* [Jansson] (http://www.digip.org/jansson/) is required for every module apart from `win32_utf8`. Compile it from the [latest source] (https://github.com/akheron/jansson), then add its include and library directories to every project.
+* [Jansson] (http://www.digip.org/jansson/) est nécessaire pour tout les modules sauf `win32_utf8`. Compilez le à partir de la [dernière source] (https://github.com/akheron/jansson), et ensuite ajoutez ses includes et dossiers de bibliothèques à chaque projet.
 
-* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** is required by `thcrap_tsa` for image patching.
+* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** est requis par `thcrap_tsa` pour le patching d'images.
 
 * [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
@@ -56,28 +56,26 @@ Les scripts du dossier `scripts` sont écrits en [Python 3] (http://python.org/)
 
 * [PyCrypto] (https://www.dlitz.net/software/pycrypto/) est requis par `release_sign.py`.
 
-### License ###
+### Licence ###
 
-The Touhou Community Reliant Patcher and all accompanying modules are licensed under the Do What The Fuck You Want To Public License ([WTFPL] (http://www.wtfpl.net/)), unless stated otherwise. This should eliminate any confusion about licensing terms, as well as any possible inquiries on that matter.
+Le patcheur automatique de la communaute Touhou francophone et traduit par Touhou-Online, et tous les modules l'accompagnant sont la propriété de Touhou-Online ([TO] (http://www.touhou-online.net)), sauf mention contraire. Cela devrait éliminer toute confusion possible à propos des termes de licence, ainsi que toute question.
 
-This license is very appropriate given the subject matter. We realize that the Touhou fandom itself thrives by everyone just *doing what the fuck they want to*, ripping off everyone else in the process and not respecting the ego of individuals. Having benefited from that mindset ourselves, we indeed embrace this state of affairs.
+Cette licence est publique. La communauté Touhou nous octroie l'opportunité de disposer d'un tel outil, et nous nous permettons donc d'apposer notre propre licence sur cet outil suite à l'accord de la licence d'origine.
 
-Thus, in such a non-serious, fragmented global environment that would not even exist without piracy of the source material, the very idea of a license seems both hypocritical and pointless. It can only possibly have a negative impact on the people who *choose* to respect it in the first place.
+Nous avons choisi une licence plus stricte, afin de faire respecter cette licence et cet outil au sein de la communauté francophone. Cependant, si vous souhaitez effectuer les modifications, cela ne devrait pas poser problème, tant que vous respectez les conditions.
 
-Even if we *did* choose a more restrictive license, our chances of actually *enforcing* it are very slim, especially once language barriers come into play (hello, Chinese hackers). 
+Ceci dit, nous ne tenons pas à ce que notre ego vous empêche de faire des trucs geniaux avec tout ça. Repacker un build customisé avec de beaux artworks faire de la pub pour votre propre comunauté? Génial ! Réarranger le projet pour se focaliser sur la traduction de visual novel via serveur privé? Génial! Changer de larges portions du code par vous même, créant ainsi un projet supérieur et plus abouti? Génial, il se pourrait même que nous supportions votre projet à la place du notre!
 
-But really, we don't want our ego to stand in the way of you doing awesome stuff with this. Repackage a custom build with nice artwork to promote your own community? Awesome! Rebrand the project to focus on visual novel translation via private servers? Awesome! Change large sections of the code on your own, creating a superior project with better PR and greater reach in the process? Awesome, we might even jump ship and support yours instead!
+Cela dit, nous apprecions *quand même* les attributions ☺
 
-That said, we *do* appreciate attribution. ☺
+### Contribuer ###
 
-### Contributing ###
+Ce projet est en dévelopement actif, et les contributions sont toujours les bienvenues.
 
-This project is actively developed, and contributions are always welcome.
+Nous suivons le statut du dévelopement de futures fonctions de ce projet sur la page de GitHub de thpatch.net associée. N'hésitez pas à intervenir, discuter des détails d'implémentation, et à contribuer au code - nous apprécierions *vraiment* pouvoir partager la charge de travail avec plus de développeurs.
 
-We track the development status of future features on the GitHub Issues page of this repository. Feel free to chip in, discuss implementation details and contribute code - we would *really* appreciate being able to share the workload between a number of developers.
+Si, pour une raison quelquonque, vous ne voulez pas passer par GitHub, vous pouvez aussi contacter Nmlgc par mail à nmlgc@thpatch.net. Vous pouvez aussi contacter NightLunya par mail à nightlunya@touhou-online.net, pour d'autres requêtes.
 
-If, for whatever reason, you don't want to go through GitHub, you can also contact Nmlgc by mail under nmlgc@thpatch.net.
+### Dévelopement de Plug-in ###
 
-### Plug-in development ###
-
-At this stage, we recommend that you regularly send us pull requests for whatever custom plug-ins you develop around the base engine. The API of the base engine is far from finalized and may be subject to change. In case we *do* end up changing something, these changes can then directly be reflected in your project.
+A cette étape, nous vous recommandons de nous envoyer régulierement des requêtes pour n'importe quel plug-in que vous développez autour du moteur de base. l'API du moteur de base est loin d'être finie et peut être sujette à des modifications. Dans le cas où nous y changerions quelque chose, ces changements peuvent directement affecter votre projet.
