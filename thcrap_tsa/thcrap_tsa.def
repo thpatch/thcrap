@@ -48,6 +48,11 @@ EXPORTS
 	simple_xor
 	util_xor
 
+	; Generic text
+	; ------------
+	BP_gentext
+	gentext_mod_init
+
 	; Layout
 	; ------
 	BP_ruby_offset
