@@ -52,6 +52,12 @@ size_t* reg(x86_reg_t *regs, const char *regname);
 // Returns a pointer to the register in [regs] specified by [key] in [object]
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
 
+// Returns 0 if "cave_exec" in [bp_info] is set to false, 1 otherwise.
+// Should be used as the return value for a breakpoint function after it made
+// changes to a register which could require original code to be skipped
+// (since that code might overwrite the modified data otherwise).
+int breakpoint_cave_exec_flag(json_t *bp_info);
+
 // Looks up the breakpoint function for [key] in the list of exported functions.
 // [key] is delimited by the first '#' character. This can be used to call a
 // single breakpoint function at any number of points in the original code.

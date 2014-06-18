@@ -28,6 +28,7 @@ EXPORTS
 	; -----------
 	reg
 	json_object_get_register
+	breakpoint_cave_exec_flag
 	breakpoint_func_get
 	breakpoint_process
 	breakpoints_apply
