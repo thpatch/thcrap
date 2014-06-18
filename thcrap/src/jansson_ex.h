@@ -54,6 +54,8 @@ size_t json_flex_array_size(const json_t *json);
 // or [flarr] itself otherwise.
 json_t *json_flex_array_get(json_t *flarr, size_t ind);
 
+const char* json_flex_array_get_string_safe(json_t *flarr, size_t ind);
+
 #define json_flex_array_foreach(flarr, ind, val) \
 	for(ind = 0; 	(\
 			ind < json_flex_array_size(flarr) && \

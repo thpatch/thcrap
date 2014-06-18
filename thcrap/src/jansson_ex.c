@@ -121,6 +121,17 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind)
 	return json_is_array(flarr) ? json_array_get(flarr, ind) : flarr;
 }
 
+const char* json_flex_array_get_string_safe(json_t *flarr, size_t ind)
+{
+	if(json_is_array(flarr)) {
+		const char *ret = json_array_get_string(flarr, ind);
+		return ret ? ret : "";
+	} else if(json_is_string(flarr)) {
+		return ind == 0 ? json_string_value(flarr) : "";
+	}
+	return NULL;
+}
+
 json_t* json_object_get_create(json_t *object, const char *key, json_type type)
 {
 	json_t *ret = json_object_get(object, key);
