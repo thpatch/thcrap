@@ -44,6 +44,10 @@ void* func_get(const char *name);
   *   to be reloaded. [files_changed] is a JSON object with the respective file
   *   names as keys.
   *
+  * • "thread_exit" (NULL)
+  *   Called whenever a thread in the process exits (DLL_THREAD_DETACH in
+  *   DllMain()).
+  *
   * • "exit" (NULL)
   *   Called when shutting down the process.
   */
