@@ -189,7 +189,7 @@ void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t fo
 int sprite_patch_set(
 	sprite_patch_t *sp,
 	const anm_entry_t *entry,
-	const sprite_t *sprite,
+	const sprite_local_t *sprite,
 	const png_image_exp image
 )
 {
@@ -203,8 +203,8 @@ int sprite_patch_set(
 	sp->format = entry->thtx->format;
 	sp->bpp = format_Bpp(sp->format);
 
-	sp->dst_x = (png_uint_32)sprite->x;
-	sp->dst_y = (png_uint_32)sprite->y;
+	sp->dst_x = sprite->x;
+	sp->dst_y = sprite->y;
 
 	sp->rep_x = entry->x + sp->dst_x;
 	sp->rep_y = entry->y + sp->dst_y;
@@ -219,8 +219,8 @@ int sprite_patch_set(
 	sp->rep_stride = image->img.width * sp->bpp;
 	sp->dst_stride = entry->thtx->w * sp->bpp;
 
-	sp->copy_w = min((png_uint_32)sprite->w, (image->img.width - sp->rep_x));
-	sp->copy_h = min((png_uint_32)sprite->h, (image->img.height - sp->rep_y));
+	sp->copy_w = min(sprite->w, (image->img.width - sp->rep_x));
+	sp->copy_h = min(sprite->h, (image->img.height - sp->rep_y));
 
 	sp->dst_buf = entry->thtx->data + (sp->dst_y * sp->dst_stride) + (sp->dst_x * sp->bpp);
 	sp->rep_buf = image->buf + (sp->rep_y * sp->rep_stride) + (sp->rep_x * sp->bpp);
@@ -312,44 +312,24 @@ sprite_alpha_t sprite_patch(const sprite_patch_t *sp)
 
 /// ANM structure
 /// -------------
-sprite_t *sprite_split_new(anm_entry_t *entry)
+sprite_local_t *sprite_split_new(anm_entry_t *entry)
 {
-	sprite_t *wrap_new = (sprite_t*)realloc(
-		entry->sprites_wrap, (entry->sprite_wrap_num + 1) * sizeof(sprite_t)
+	sprite_local_t *sprites_new = (sprite_local_t*)realloc(
+		entry->sprites, (entry->sprite_num + 1) * sizeof(sprite_local_t)
 	);
-	if(!wrap_new) {
+	if(!sprites_new) {
 		return NULL;
 	}
-	entry->sprites_wrap = wrap_new;
-	return &wrap_new[entry->sprite_wrap_num++];
+	entry->sprites = sprites_new;
+	return &sprites_new[entry->sprite_num++];
 }
 
-int sprite_split_append(anm_entry_t *entry)
-{
-	if(entry && entry->sprite_wrap_num) {
-		sprite_t **sprites_new = (sprite_t**)realloc(entry->sprites,
-			sizeof(sprite_t*) * (entry->sprite_num + entry->sprite_wrap_num)
-		);
-		size_t i;
-		if(!sprites_new) {
-			return 1;
-		}
-		for(i = 0; i < entry->sprite_wrap_num; i++) {
-			sprites_new[i + entry->sprite_num] = &entry->sprites_wrap[i];
-		}
-		entry->sprite_num += entry->sprite_wrap_num;
-		entry->sprites = sprites_new;
-		return 0;
-	}
-	return -1;
-}
-
-int sprite_split_x(anm_entry_t *entry, sprite_t *sprite)
+int sprite_split_x(anm_entry_t *entry, sprite_local_t *sprite)
 {
 	if(entry && entry->thtx && entry->thtx->w && sprite) {
-		float split_w = sprite->x + sprite->w;
+		png_uint_32 split_w = sprite->x + sprite->w;
 		if(split_w > entry->thtx->w) {
-			sprite_t *sprite_new = sprite_split_new(entry);
+			sprite_local_t *sprite_new = sprite_split_new(entry);
 			if(!sprite_new) {
 				return 1;
 			}
@@ -364,12 +344,12 @@ int sprite_split_x(anm_entry_t *entry, sprite_t *sprite)
 	return -1;
 }
 
-int sprite_split_y(anm_entry_t *entry, sprite_t *sprite)
+int sprite_split_y(anm_entry_t *entry, sprite_local_t *sprite)
 {
 	if(entry && entry->thtx && entry->thtx->h && sprite) {
-		float split_h = sprite->y + sprite->h;
+		png_uint_32 split_h = sprite->y + sprite->h;
 		if(split_h > entry->thtx->h) {
-			sprite_t *sprite_new = sprite_split_new(entry);
+			sprite_local_t *sprite_new = sprite_split_new(entry);
 			if(!sprite_new) {
 				return 1;
 			}
@@ -424,17 +404,22 @@ int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format)
 	// Prepare sprite pointers if we have a header size.
 	// Otherwise, we fall back to basic patching later.
 	if(headersize) {
+		// This will change with splits being appended...
+		size_t sprite_orig_num = entry->sprite_num;
 		size_t i;
 		DWORD *sprite_in = (DWORD*)(in + headersize);
-		entry->sprites = malloc(sizeof(sprite_t*) * entry->sprite_num);
-		for(i = 0; i < entry->sprite_num; i++, sprite_in++) {
-			sprite_t *sprite = (sprite_t*)(in + *sprite_in);
-			entry->sprites[i] = sprite;
+		entry->sprites = malloc(sizeof(sprite_local_t) * sprite_orig_num);
+		for(i = 0; i < sprite_orig_num; i++, sprite_in++) {
+			const sprite_t *s_orig = (const sprite_t*)(in + *sprite_in);
+			sprite_local_t *s_local = &entry->sprites[i];
 
-			sprite_split_x(entry, sprite);
-			sprite_split_y(entry, sprite);
+			s_local->x = (png_uint_32)s_orig->x;
+			s_local->y = (png_uint_32)s_orig->y;
+			s_local->w = (png_uint_32)s_orig->w;
+			s_local->h = (png_uint_32)s_orig->h;
+			sprite_split_x(entry, s_local);
+			sprite_split_y(entry, s_local);
 		}
-		sprite_split_append(entry);
 	}
 	return 0;
 }
@@ -443,7 +428,6 @@ void anm_entry_clear(anm_entry_t *entry)
 {
 	if(entry) {
 		SAFE_FREE(entry->sprites);
-		SAFE_FREE(entry->sprites_wrap);
 		ZeroMemory(entry, sizeof(*entry));
 	}
 }
@@ -503,13 +487,13 @@ int patch_thtx(anm_entry_t *entry, png_image_exp image)
 		size_t i;
 		for(i = 0; i < entry->sprite_num; i++) {
 			sprite_patch_t sp;
-			if(!sprite_patch_set(&sp, entry, entry->sprites[i], image)) {
+			if(!sprite_patch_set(&sp, entry, &entry->sprites[i], image)) {
 				sprite_patch(&sp);
 			}
 		}
 	} else {
 		// Construct a fake sprite covering the entire texture
-		sprite_t sprite = {0};
+		sprite_local_t sprite = {0};
 		sprite_patch_t sp = {0};
 
 		sprite.w = entry->thtx->w;
@@ -600,7 +584,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 			if(entry.sprites) {
 				size_t i;
 				for(i = 0; i < entry.sprite_num; i++) {
-					bounds_draw_rect(&bounds, entry.x, entry.y, entry.sprites[i]);
+					bounds_draw_rect(&bounds, entry.x, entry.y, &entry.sprites[i]);
 				}
 			}
 			// Do the patching

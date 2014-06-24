@@ -16,7 +16,6 @@ EXPORTS
 	anm_entry_clear
 
 	sprite_split_new
-	sprite_split_append
 	sprite_split_x
 	sprite_split_y
 	sprite_patch_set
