@@ -122,7 +122,8 @@ def patch_build(patch_id, servers, f, t):
     utils.json_store('files.js', files_js, dirs=[f_path, t_path])
     print(
         '{num} files, {size}'.format(
-            num=len(files_js), size=sizeof_fmt(patch_size)
+            num=len({k: v for k, v in files_js.items() if v is not None}),
+            size=sizeof_fmt(patch_size)
         )
     )
     return patch_js['title']
