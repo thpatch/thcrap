@@ -167,7 +167,7 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	if(stack_clear_size) {
 		regs->esp += stack_clear_size;
 	}
-	fr_tls_free(fr);
+	file_rep_clear(fr);
 	return 0;
 }
 
@@ -213,8 +213,7 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	file_rep_hooks_run(fr);
-
-	fr_tls_free(fr);
+	file_rep_clear(fr);
 	return 1;
 }
 
@@ -222,6 +221,11 @@ int bp_file_mod_init(void)
 {
 	fr_tls = TlsAlloc();
 	return 0;
+}
+
+void bp_file_mod_thread_exit(void)
+{
+	fr_tls_free((file_rep_t*)TlsGetValue(fr_tls));
 }
 
 int bp_file_mod_exit(void)
