@@ -20,6 +20,7 @@ typedef struct {
 
 // Creates a new, empty PNG image with the given [format] and dimensions.
 // [image] must either be zeroed out or represent a valid PNG image.
+// Returns 0 on success, 1 on allocation failure.
 int png_image_new(
 	png_image_exp image,
 	const png_uint_32 w,
