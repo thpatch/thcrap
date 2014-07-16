@@ -5,7 +5,7 @@ Touhou Community Reliant Automatic Patcher
 
 Basically, this is an almost-generic, easily expandable and customizable framework to patch Windows applications in memory, specifically tailored towards the translation of Japanese games.
 
-It is mainly developed to facilitate self-updating, multilingual translation of the [Touhou Project] (http://en.wikipedia.org/wiki/Touhou_Project) games on [Touhou Patch Center] (http://thpatch.net/), but can theoretically be used for just about any other patch for these games, without going through that site.
+It is mainly developed to facilitate self-updating, multilingual translation of the [Touhou Project](http://en.wikipedia.org/wiki/Touhou_Project) games on [Touhou Patch Center](http://thpatch.net/), but can theoretically be used for just about any other patch for these games, without going through that site.
 
 #### Main features of the base engine #####
 
@@ -17,7 +17,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * **Patch stacking** - apply any number of patches at the same time, sorted by a priority list. Supports wildcard-based blacklisting of files in certain patches through the run configuration.
 
-* Automatically adds **transparent Unicode filename support** via Win32 API wrappers to target processes using the Win32 ANSI functions, without the need for programs like [AppLocale] (http://en.wikipedia.org/wiki/AppLocale).
+* Automatically adds **transparent Unicode filename support** via Win32 API wrappers to target processes using the Win32 ANSI functions, without the need for programs like [AppLocale](http://en.wikipedia.org/wiki/AppLocale).
 
 * Patches can support **multiple builds and versions** of a single program, identified by a combination of SHA-256 hashes and .EXE file sizes.
 
@@ -46,19 +46,19 @@ As of now, all subprojects only include a Visual C++ 2010 project file for build
 
 #### Dependencies ####
 
-* [Jansson] (http://www.digip.org/jansson/) is required for every module apart from `win32_utf8`. Compile it from the [latest source] (https://github.com/akheron/jansson), then add its include and library directories to every project.
+* [Jansson](http://www.digip.org/jansson/) is required for every module apart from `win32_utf8`. Compile it from the [latest source](https://github.com/akheron/jansson), then add its include and library directories to every project.
 
-* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** is required by `thcrap_tsa` for image patching.
+* [libpng](http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** is required by `thcrap_tsa` for image patching.
 
-* [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
+* [zlib](http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
-The scripts in the `scripts` directory are written in [Python 3] (http://python.org/). Some of them require further third-party libraries:
+The scripts in the `scripts` directory are written in [Python 3](http://python.org/). Some of them require further third-party libraries:
 
-* [PyCrypto] (https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
+* [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
 
 ### License ###
 
-The Touhou Community Reliant Patcher and all accompanying modules are licensed under the Do What The Fuck You Want To Public License ([WTFPL] (http://www.wtfpl.net/)), unless stated otherwise. This should eliminate any confusion about licensing terms, as well as any possible inquiries on that matter.
+The Touhou Community Reliant Patcher and all accompanying modules are licensed under the Do What The Fuck You Want To Public License ([WTFPL](http://www.wtfpl.net/)), unless stated otherwise. This should eliminate any confusion about licensing terms, as well as any possible inquiries on that matter.
 
 This license is very appropriate given the subject matter. We realize that the Touhou fandom itself thrives by everyone just *doing what the fuck they want to*, ripping off everyone else in the process and not respecting the ego of individuals. Having benefited from that mindset ourselves, we indeed embrace this state of affairs.
 
