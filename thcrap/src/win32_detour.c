@@ -56,6 +56,7 @@ void win32_detour(void)
 
 	detour_chain("shell32.dll", 0,
 		"SHGetPathFromIDList", SHGetPathFromIDListU,
+		"DragQueryFileA", DragQueryFileU,
 		NULL
 	);
 

@@ -58,6 +58,7 @@ EXPORTS
 
 	; shell32.dll
 	; -----------
+	DragQueryFileU
 	SHGetPathFromIDListU
 
 	; shlwapi.dll
