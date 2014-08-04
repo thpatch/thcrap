@@ -73,6 +73,11 @@ size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *ke
 	return reg(regs, json_object_get_string(object, key));
 }
 
+int breakpoint_cave_exec_flag(json_t *bp_info)
+{
+	return !json_is_false(json_object_get(bp_info, "cave_exec"));
+}
+
 BreakpointFunc_t breakpoint_func_get(const char *key)
 {
 	BreakpointFunc_t ret = NULL;
@@ -157,8 +162,7 @@ void cave_fix(BYTE *cave, BYTE *bp_addr)
 	/// ------------------
 
 	// #1: Relative far call / jump at the very beginning
-	if(cave[0] == 0xe8 || cave[0] == 0xe9)
-	{
+	if(cave[0] == 0xe8 || cave[0] == 0xe9) {
 		size_t dist_old = *((size_t*)(cave + 1));
 		size_t dist_new = dist_old + bp_addr - cave;
 

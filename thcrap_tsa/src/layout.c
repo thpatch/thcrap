@@ -18,6 +18,13 @@ json_t *Layout_Tabs = NULL;
 static HDC text_dc = NULL;
 /// -----------------------
 
+/// Detour chains
+/// -------------
+DETOUR_CHAIN_DEF(CreateCompatibleDC);
+DETOUR_CHAIN_DEF(SelectObject);
+DETOUR_CHAIN_DEF(TextOutU);
+/// -------------
+
 /// TSA font block
 /// --------------
 /**
@@ -68,7 +75,7 @@ static HFONT* font_block_get(int id)
 	}
 	if(id < min || id > max) {
 		log_func_printf(
-			"index out of bounds (min: %d, max: %d, given: %d\n",
+			"index out of bounds (min: %d, max: %d, given: %d)\n",
 			min, max, id
 		);
 	}
@@ -162,10 +169,10 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 /// ------------
 json_t* layout_match(size_t *match_len, const char *str, size_t len)
 {
+	size_t i = 1;
 	const char *p = NULL;
-	const char *s = NULL; // argument start
+	const char *s = str + i; // argument start
 	json_t *ret = NULL;
-	size_t i = 0;
 	int n = 0; // nesting level
 
 	if(!str || !len) {
@@ -176,7 +183,6 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 	}
 
 	ret = json_array();
-	s = str + 1;
 	for(p = s; (i < len) && (n >= 0); i++, p++) {
 		n += (*p == '<');
 		n -= (*p == '>');
@@ -228,13 +234,204 @@ json_t* layout_tokenize(const char *str, size_t len)
 }
 /// ------------
 
-BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
+/// Layout processing
+/// -----------------
+typedef struct {
+	/// Environment
+	HDC hdc;
+	POINT orig; // Drawing origin
+	LONG bitmap_width;
+
+	/// State
+	json_t *tokens;
+	size_t cur_tab;
+	// After layout processing completed, this contains
+	// the total rendered width of the full string.
+	int cur_x;
+
+	/// Current pass
+	size_t token_id;
+	json_t *draw_str; // String to draw
+	size_t cur_w; // Amount of pixels to advance [cur_x] after drawing
+} layout_state_t;
+
+// A function to be called for every substring to be rendered.
+// [lay->draw_str] points to the string, [p] is the absolute drawing position.
+typedef BOOL (*layout_func_t)(layout_state_t *lay, POINT p);
+
+BOOL layout_textout_raw(layout_state_t *lay, POINT p)
 {
-	return detour_next(
-		"gdi32.dll", "TextOutA", layout_TextOutU, 5,
-		hdc, x, y, json_string_value(str), json_string_length(str)
-	);
+	if(lay) {
+		const char *str = json_string_value(lay->draw_str);
+		const size_t len = json_string_length(lay->draw_str);
+		return chain_TextOutU(lay->hdc, p.x, p.y, str, len);
+	}
+	return 0;
 }
+
+// Modifies [lf] according to the font-related commands in [cmd].
+// Returns 1 if anything in [lf] was changed.
+int layout_parse_font(LOGFONT *lf, const json_t *token)
+{
+	int ret = 0;
+	const char *cmd = json_array_get_string(token, 0);
+	if(lf && cmd) {
+		while(*cmd) {
+			if(*cmd == 'b') {
+				// Bold font
+				lf->lfWeight *= 2;
+				ret = 1;
+			} else if(*cmd == 'i') {
+				// Italic font
+				lf->lfItalic = TRUE;
+				ret = 1;
+			}
+			cmd++;
+		}
+	}
+	return ret;
+}
+
+// Returns the number of tab commands parsed.
+int layout_parse_tabs(layout_state_t *lay, const json_t *token)
+{
+	size_t tabs_count = json_array_size(Layout_Tabs);
+	size_t tab_end; // Absolute x-end position of the current tab
+	const json_t *cmd_json = json_array_get(token, 0);
+	const char *cmd = json_string_value(cmd_json);
+	int ret = json_string_length(cmd_json);
+	const json_t *p2 = json_array_get(token, 2);
+	if(p2) {
+		const char *p2_str = json_string_value(p2);
+		// Use full bitmap with empty second parameter
+		if(p2_str && !p2_str[0]) {
+			tab_end = lay->bitmap_width;
+		} else {
+			tab_end = lay->cur_x + GetTextExtentBase(lay->hdc, p2);
+		}
+	} else if(lay->cur_tab < tabs_count) {
+		tab_end = json_array_get_hex(Layout_Tabs, lay->cur_tab);
+	} else if(tabs_count > 0 && lay->token_id == (json_array_size(lay->tokens) - 1)) {
+		tab_end = lay->bitmap_width;
+	} else {
+		tab_end = lay->cur_x + lay->cur_w;
+	}
+
+	while(*cmd) {
+		size_t j = 2;
+		const json_t *str_obj = NULL;
+		switch(cmd[0]) {
+			case 's':
+				// Don't actually print anything
+				tab_end = lay->cur_x;
+				lay->draw_str = NULL;
+				break;
+			case 't':
+				// Tabstop definition
+				// The width of the first parameter is already in cur_w, so...
+				tab_end = lay->cur_w;
+				while(str_obj = json_array_get(token, j++)) {
+					size_t new_w = GetTextExtentBase(lay->hdc, str_obj);
+					tab_end = max(new_w, tab_end);
+				}
+				tab_end += lay->cur_x;
+				json_array_set_new_expand(Layout_Tabs, lay->cur_tab, json_integer(tab_end));
+				break;
+			case 'l':
+				// Left alignment
+				// Does nothing, but shouldn't hit the default case.
+				break;
+			case 'c':
+				// Center alignment
+				lay->cur_x += ((tab_end - lay->cur_x) / 2) - (lay->cur_w / 2);
+				break;
+			case 'r':
+				// Right alignment
+				lay->cur_x = (tab_end - lay->cur_w);
+				break;
+			default:
+				ret--;
+				break;
+		}
+		cmd++;
+	}
+	if(ret) {
+		lay->cur_tab++;
+		lay->cur_w = tab_end - lay->cur_x;
+	}
+	return 1;
+}
+
+// Performs layout of the string [str] with length [len]. [lay] needs to be
+// initialized with the HDC and the origin point before calling this function.
+// [func] is called for each substring to be rendered.
+int layout_process(layout_state_t *lay, layout_func_t func, const char *str, size_t len)
+{
+	int ret = 1;
+	HBITMAP hBitmap;
+	HFONT hFontOrig;
+	LOGFONT font_orig;
+	json_t *token;
+	if(!lay || !lay->hdc || !str || !len) {
+		return -1;
+	}
+	hBitmap = (HBITMAP)GetCurrentObject(lay->hdc, OBJ_BITMAP);
+	hFontOrig = (HFONT)GetCurrentObject(lay->hdc, OBJ_FONT);
+
+	if(len >= strlen(str)) {
+		str = strings_lookup(str, &len);
+	}
+
+	if(hBitmap) {
+		// TODO: This gets the full width of the rendering backbuffer.
+		// In-game text rendering mostly only uses a shorter width, though.
+		// Find a way to get this width here, too.
+		DIBSECTION dibsect;
+		GetObject(hBitmap, sizeof(DIBSECTION), &dibsect);
+		lay->bitmap_width = dibsect.dsBm.bmWidth;
+	}
+	if(hFontOrig) {
+		// could change after a layout command
+		GetObject(hFontOrig, sizeof(LOGFONT), &font_orig);
+	}
+
+	lay->tokens = layout_tokenize(str, len);
+
+	json_array_foreach(lay->tokens, lay->token_id, token) {
+		HFONT hFontNew = NULL;
+		if(json_is_array(token)) {
+			LOGFONT font_new = font_orig;
+			lay->draw_str = json_array_get(token, 1);
+
+			// If requested, derive a bold/italic font from the current one.
+			// This is done before evaluating tab commmands to guarantee that
+			// any calls to GetTextExtent() return the correct widths.
+			if(layout_parse_font(&font_new, token)) {
+				hFontNew = CreateFontIndirectW(&font_new);
+				SelectObject(lay->hdc, hFontNew);
+			}
+
+			lay->cur_w = GetTextExtentBase(lay->hdc, lay->draw_str);
+			layout_parse_tabs(lay, token);
+		} else if(json_is_string(token)) {
+			lay->draw_str = token;
+			lay->cur_w = GetTextExtentBase(lay->hdc, lay->draw_str);
+		}
+		if(lay->draw_str && func) {
+			POINT p = {lay->orig.x + lay->cur_x, lay->orig.y};
+			ret = func(lay, p);
+		}
+		if(hFontNew) {
+			SelectObject(lay->hdc, hFontOrig);
+			DeleteObject(hFontNew);
+			hFontNew = NULL;
+		}
+		lay->cur_x += lay->cur_w;
+	}
+	lay->tokens = json_decref_safe(lay->tokens);
+	return ret;
+}
+/// -----------------
 
 /// Hooked functions
 /// ----------------
@@ -244,10 +441,7 @@ BOOL WINAPI layout_textout_raw(HDC hdc, int x, int y, const json_t *str)
 HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
 {
 	if(!text_dc) {
-		HDC ret = (HDC)detour_next(
-			"gdi32.dll", "CreateCompatibleDC", layout_CreateCompatibleDC, 1,
-			hdc
-		);
+		HDC ret = (HDC)chain_CreateCompatibleDC(hdc);
 		text_dc = ret;
 		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
 	}
@@ -268,33 +462,8 @@ HGDIOBJ WINAPI layout_SelectObject(
 	if(h == GetStockObject(SYSTEM_FONT)) {
 		return GetCurrentObject(hdc, OBJ_FONT);
 	} else {
-		return (HGDIOBJ)detour_next(
-			"gdi32.dll", "SelectObject", layout_SelectObject, 2,
-			hdc, h
-		);
+		return (HGDIOBJ)chain_SelectObject(hdc, h);
 	}
-}
-
-// Modifies [lf] according to the font-related commands in [cmd].
-// Returns 1 if anything in [lf] was changed.
-int layout_parse_font(LOGFONT *lf, const char *cmd)
-{
-	int ret = 0;
-	if(lf && cmd) {
-		while(*cmd) {
-			if(*cmd == 'b') {
-				// Bold font
-				lf->lfWeight *= 2;
-				ret = 1;
-			} else if(*cmd == 'i') {
-				// Italic font
-				lf->lfItalic = TRUE;
-				ret = 1;
-			}
-			cmd++;
-		}
-	}
-	return ret;
 }
 
 BOOL WINAPI layout_TextOutU(
@@ -304,137 +473,8 @@ BOOL WINAPI layout_TextOutU(
 	__in_ecount(c) LPCSTR lpString,
 	__in int c
 ) {
-	HBITMAP hBitmap = (HBITMAP)GetCurrentObject(hdc, OBJ_BITMAP);
-	HFONT hFontOrig = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
-
-	LOGFONT font_orig;
-
-	BOOL ret = FALSE;
-	json_t *tokens;
-	json_t *token;
-	LONG bitmap_width = 0;
-
-	size_t i = 0;
-	int cur_x = orig_x;
-	size_t cur_tab = 0;
-
-	if(!lpString || !c) {
-		return ret;
-	}
-
-	if(c >= strlen(lpString)) {
-		lpString = strings_lookup(lpString, &c);
-	}
-
-	if(hBitmap) {
-		// TODO: This gets the full width of the rendering backbuffer.
-		// In-game text rendering mostly only uses a shorter width, though.
-		// Find a way to get this width here, too.
-		DIBSECTION dibsect;
-		GetObject(hBitmap, sizeof(DIBSECTION), &dibsect);
-		bitmap_width = dibsect.dsBm.bmWidth;
-	}
-	if(hFontOrig) {
-		// could change after a layout command
-		GetObject(hFontOrig, sizeof(LOGFONT), &font_orig);
-	}
-
-	tokens = layout_tokenize(lpString, c);
-
-	// Layout!
-	json_array_foreach(tokens, i, token) {
-		const json_t *draw_str = NULL;
-		HFONT hFontNew = NULL;
-		size_t cur_w = 0;
-
-		if(json_is_array(token)) {
-			const char *cmd = json_array_get_string(token, 0);
-			const json_t *p1 = json_array_get(token, 1);
-			const json_t *p2 = json_array_get(token, 2);
-			const char *p = cmd;
-			size_t tabs_count = json_array_size(Layout_Tabs);
-			// Absolute x-end position of the current tab
-			size_t tab_end;
-
-			// If requested, derive a bold/italic font from the current one.
-			// This is done before anything else to guarantee that any calls to
-			// GetTextExtent() return the correct widths.
-			LOGFONT font_new = font_orig;
-			if(layout_parse_font(&font_new, cmd)) {
-				hFontNew = CreateFontIndirect(&font_new);
-				SelectObject(hdc, hFontNew);
-			}
-
-			cur_w = GetTextExtentBase(hdc, p1);
-			draw_str = p1;
-
-			if(p2) {
-				const char *p2_str = json_string_value(p2);
-				// Use full bitmap with empty second parameter
-				if(p2_str && !p2_str[0]) {
-					tab_end = bitmap_width;
-					cur_x = orig_x;
-				} else {
-					tab_end = cur_x + GetTextExtentBase(hdc, p2);
-				}
-			} else if(cur_tab < tabs_count) {
-				tab_end = json_array_get_hex(Layout_Tabs, cur_tab) + orig_x;
-			} else if(tabs_count > 0 && i == (json_array_size(tokens) - 1)) {
-				tab_end = bitmap_width;
-			} else {
-				tab_end = cur_x + cur_w;
-			}
-
-			p = cmd;
-			while(*p) {
-				size_t j = 2;
-				const json_t *str_obj = NULL;
-				switch(p[0]) {
-					case 's':
-						// Don't actually print anything
-						tab_end = cur_x;
-						draw_str = NULL;
-						break;
-					case 't':
-						// Tabstop definition
-						// The width of the first parameter is already in cur_w, so...
-						tab_end = cur_w;
-						while(str_obj = json_array_get(token, j++)) {
-							size_t new_w = GetTextExtentBase(hdc, str_obj);
-							tab_end = max(new_w, tab_end);
-						}
-						tab_end += cur_x;
-						json_array_set_new_expand(Layout_Tabs, cur_tab, json_integer(tab_end - orig_x));
-						break;
-					case 'c':
-						// Center alignment
-						cur_x += ((tab_end - cur_x) / 2) - (cur_w / 2);
-						break;
-					case 'r':
-						// Right alignment
-						cur_x = (tab_end - cur_w);
-						break;
-				}
-				p++;
-			}
-			cur_tab++;
-			cur_w = tab_end - cur_x;
-		} else if(json_is_string(token)) {
-			draw_str = token;
-			cur_w = GetTextExtentBase(hdc, token);
-		}
-		if(draw_str) {
-			ret = layout_textout_raw(hdc, cur_x, orig_y, draw_str);
-		}
-		if(hFontNew) {
-			SelectObject(hdc, hFontOrig);
-			DeleteObject(hFontNew);
-			hFontNew = NULL;
-		}
-		cur_x += cur_w;
-	}
-	json_decref(tokens);
-	return ret;
+	layout_state_t lay = {hdc, {orig_x, orig_y}};
+	return layout_process(&lay, layout_textout_raw, lpString, c);
 }
 /// ----------------
 
@@ -449,27 +489,12 @@ size_t GetTextExtentBase(HDC hdc, const json_t *str_obj)
 
 size_t __stdcall GetTextExtent(const char *str)
 {
-	json_t *tokens;
-	json_t *token;
-	size_t i;
 	size_t ret = 0;
-	size_t str_len;
-
-	str = strings_lookup(str, &str_len);
-	tokens = layout_tokenize(str, str_len);
-	json_array_foreach(tokens, i, token) {
-		size_t w = 0;
-		if(json_is_array(token)) {
-			// p1 is the one that's going to be printed.
-			// TODO: full layout width calculations all over again?
-			w = GetTextExtentBase(text_dc, json_array_get(token, 1));
-		} else if(json_is_string(token)) {
-			w = GetTextExtentBase(text_dc, token);
-		}
-		ret += w / 2;
-	}
+	layout_state_t lay = {text_dc};
+	STRLEN_DEC(str);
+	layout_process(&lay, NULL, str, str_len);
+	ret = lay.cur_x /= 2;
 	log_printf("GetTextExtent('%s') = %d\n", str, ret);
-	json_decref(tokens);
 	return ret;
 }
 
@@ -495,11 +520,12 @@ int layout_mod_init(HMODULE hMod)
 
 void layout_mod_detour(void)
 {
-	detour_cache_add("gdi32.dll", 4,
-		"CreateCompatibleDC", layout_CreateCompatibleDC,
-		"DeleteDC", layout_DeleteDC,
-		"SelectObject", layout_SelectObject,
-		"TextOutA", layout_TextOutU
+	detour_chain("gdi32.dll", 1,
+		"CreateCompatibleDC", layout_CreateCompatibleDC, &chain_CreateCompatibleDC,
+		"DeleteDC", layout_DeleteDC, NULL,
+		"SelectObject", layout_SelectObject, &chain_SelectObject,
+		"TextOutA", layout_TextOutU, &chain_TextOutU,
+		NULL
 	);
 }
 

@@ -8,6 +8,35 @@
 
 #pragma once
 
+/// Promotion wrappers
+/// ------------------
+typedef HFONT (WINAPI *CreateFontIndirectA_type)(CONST LOGFONTA*);
+typedef HFONT (WINAPI *CreateFontIndirectExA_type)(CONST ENUMLOGFONTEXDVA*);
+
+HFONT WINAPI lower_CreateFontA(
+	__in CreateFontIndirectA_type down_func,
+	__in int cHeight,
+	__in int cWidth,
+	__in int cEscapement,
+	__in int cOrientation,
+	__in int cWeight,
+	__in DWORD bItalic,
+	__in DWORD bUnderline,
+	__in DWORD bStrikeOut,
+	__in DWORD iCharSet,
+	__in DWORD iOutPrecision,
+	__in DWORD iClipPrecision,
+	__in DWORD iQuality,
+	__in DWORD iPitchAndFamily,
+	__in_opt LPCSTR pszFaceName
+);
+
+HFONT WINAPI lower_CreateFontIndirectA(
+	__in CreateFontIndirectExA_type down_func,
+	__in CONST LOGFONTA *lplf
+);
+/// ------------------
+
 HFONT WINAPI CreateFontU(
 	__in int cHeight,
 	__in int cWidth,
@@ -26,6 +55,18 @@ HFONT WINAPI CreateFontU(
 );
 #undef CreateFont
 #define CreateFont CreateFontU
+
+HFONT WINAPI CreateFontIndirectU(
+	__in CONST LOGFONTA *lplf
+);
+#undef CreateFontIndirect
+#define CreateFontIndirect CreateFontIndirectU
+
+HFONT WINAPI CreateFontIndirectExU(
+	__in CONST ENUMLOGFONTEXDVA *lpelfe
+);
+#undef CreateFontIndirectEx
+#define CreateFontIndirectEx CreateFontIndirectExU
 
 int WINAPI EnumFontFamiliesExU(
 	__in HDC hdc,

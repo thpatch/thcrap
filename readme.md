@@ -5,7 +5,7 @@ Patcheur automatique de la communauté Touhou
 
 En gros, ceci est un framework customisable et améliorable pour patcher des appliquations Windows, concu en particulier pour la traduction de jeux japonais.
 
-Ce framework est développé pour faciliter l'auto mise à jour, la traduction en plusieurs langues des jeux [Touhou Project] (http://en.wikipedia.org/wiki/Touhou_Project) sur [Touhou Patch Center] (http://thpatch.net/), mais peuvent être utilisés théoriquement pour n'importe quel autre patch de ces jeux, sans passer par ce site.
+Ce framework est développé pour faciliter l'auto mise à jour, la traduction en plusieurs langues des jeux [Touhou Project](http://en.wikipedia.org/wiki/Touhou_Project) sur [Touhou Patch Center](http://thpatch.net/), mais peuvent être utilisés théoriquement pour n'importe quel autre patch de ces jeux, sans passer par ce site.
 
 #### Fonctions principales du moteur de base #####
 
@@ -46,19 +46,19 @@ Jusqu'à maintenant, tout les sous-projets ne sont constitués que d'un fichier 
 
 #### Dépendences ####
 
-* [Jansson] (http://www.digip.org/jansson/) est nécessaire pour tout les modules sauf `win32_utf8`. Compilez le à partir de la [dernière source] (https://github.com/akheron/jansson), et ensuite ajoutez ses includes et dossiers de bibliothèques à chaque projet.
+* [Jansson](http://www.digip.org/jansson/) est nécessaire pour tout les modules sauf `win32_utf8`. Compilez le à partir de la [dernière source] (https://github.com/akheron/jansson), et ensuite ajoutez ses includes et dossiers de bibliothèques à chaque projet.
 
-* [libpng] (http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** est requis par `thcrap_tsa` pour le patching d'images.
+* [libpng](http://www.libpng.org/pub/png/libpng.html) **(>= 1.6.0)** est requis par `thcrap_tsa` pour le patching d'images.
 
-* [zlib] (http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
+* [zlib](http://zlib.net/) is required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
 Les scripts du dossier `scripts` sont écrits en [Python 3] (http://python.org/). Certains nécessitent davantage de bibliothèques tierces :
 
-* [PyCrypto] (https://www.dlitz.net/software/pycrypto/) est requis par `release_sign.py`.
+* [PyCrypto](https://www.dlitz.net/software/pycrypto/) est requis par `release_sign.py`.
 
 ### Licence ###
 
-Le patcheur automatique de la communaute Touhou francophone et traduit par Touhou-Online, et tous les modules l'accompagnant sont la propriété de Touhou-Online ([TO] (http://www.touhou-online.net)), sauf mention contraire. Cela devrait éliminer toute confusion possible à propos des termes de licence, ainsi que toute question.
+Le patcheur automatique de la communaute Touhou francophone et traduit par Touhou-Online, et tous les modules l'accompagnant sont la propriété de Touhou-Online ([TO](http://www.touhou-online.net)), sauf mention contraire. Cela devrait éliminer toute confusion possible à propos des termes de licence, ainsi que toute question.
 
 Cette licence est publique. La communauté Touhou nous octroie l'opportunité de disposer d'un tel outil, et nous nous permettons donc d'apposer notre propre licence sur cet outil suite à l'accord de la licence d'origine.
 

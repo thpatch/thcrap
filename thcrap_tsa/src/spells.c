@@ -41,7 +41,6 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 	// Parameters
 	// ----------
 	const char **spell_name = (const char**)json_object_get_register(bp_info, regs, "spell_name");
-	json_t *cave_exec = json_object_get(bp_info, "cave_exec");
 	// ----------
 
 	// Other breakpoints
@@ -62,7 +61,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 
 		if(new_name) {
 			*spell_name = new_name;
-			return !json_is_false(cave_exec);
+			return breakpoint_cave_exec_flag(bp_info);
 		}
 	}
 	return 1;
@@ -75,7 +74,6 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 	const char **str = (const char**)json_object_get_register(bp_info, regs, "str");
 	size_t comment_num = json_object_get_hex(bp_info, "comment_num");
 	size_t line_num = json_object_get_hex(bp_info, "line_num");
-	json_t *cave_exec = json_object_get(bp_info, "cave_exec");
 	// ----------
 
 	// Other breakpoints
@@ -101,7 +99,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 
 		if(json_is_array(json_cmt)) {
 			*str = json_array_get_string_safe(json_cmt, line_num);
-			return !json_is_false(cave_exec);
+			return breakpoint_cave_exec_flag(bp_info);
 		}
 	}
 	return 1;

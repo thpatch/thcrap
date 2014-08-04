@@ -22,12 +22,14 @@ EXPORTS
 	BP_file_loaded
 
 	bp_file_mod_init
+	bp_file_mod_thread_exit
 	bp_file_mod_exit
 
 	; Breakpoints
 	; -----------
 	reg
 	json_object_get_register
+	breakpoint_cave_exec_flag
 	breakpoint_func_get
 	breakpoint_process
 	breakpoints_apply
@@ -85,6 +87,13 @@ EXPORTS
 	ThreadWaitUntil
 	WaitUntilEntryPoint
 
+	; Yes, these are necessary for injection chaining...
+	inject_LoadLibraryU
+	inject_LoadLibraryW
+	; ... and for the loader.
+	inject_CreateProcessU
+	inject_CreateProcessW
+
 	inject_mod_detour
 	thcrap_inject
 
@@ -100,6 +109,7 @@ EXPORTS
 	json_array_from_wchar_array
 	json_flex_array_size
 	json_flex_array_get
+	json_flex_array_get_string_safe
 	json_object_get_create
 	json_object_numkey_get
 	json_object_hexkey_get
@@ -144,9 +154,9 @@ EXPORTS
 	func_detour_by_ptr
 
 	iat_detour_funcs
-	detour_cache_add
+	detour_chain
+	detour_top
 	iat_detour_apply
-	detour_next
 
 	detour_exit
 
@@ -197,6 +207,10 @@ EXPORTS
 	func_get
 	plugins_load
 	plugins_close
+
+	; Detour promotion
+	; ----------------
+	promote_mod_init
 
 	; Hot-repatching
 	; --------------

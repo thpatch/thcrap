@@ -44,6 +44,10 @@ void* func_get(const char *name);
   *   to be reloaded. [files_changed] is a JSON object with the respective file
   *   names as keys.
   *
+  * • "thread_exit" (NULL)
+  *   Called whenever a thread in the process exits (DLL_THREAD_DETACH in
+  *   DllMain()).
+  *
   * • "exit" (NULL)
   *   Called when shutting down the process.
   */
@@ -51,8 +55,12 @@ void* func_get(const char *name);
 // Module function type.
 typedef void (*mod_call_type)(void *param);
 
-// Runs every exported function ending in "*_mod_[suffix]" across the
-// functions in [funcs]. The order of execution is undefined.
+// Builds a JSON object all module hook functions in [funcs].
+json_t* mod_func_build(json_t *funcs);
+
+// Runs every module hook function for [suffix] in [mod_funcs]. The execution
+// order of the hook functions follows the order their DLLs were originally
+// loaded in, but is undefined within the functions of a single DLL.
 void mod_func_run(json_t *funcs, const char *suffix, void *param);
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.

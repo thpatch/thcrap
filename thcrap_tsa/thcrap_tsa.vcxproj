@@ -52,6 +52,7 @@
     <ClCompile Include="src\anm.c" />
     <ClCompile Include="src\anm_bounds.c" />
     <ClCompile Include="src\encraption.c" />
+    <ClCompile Include="src\gentext.c" />
     <ClCompile Include="src\layout.c" />
     <ClCompile Include="src\music.c" />
     <ClCompile Include="src\png_ex.c" />

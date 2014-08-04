@@ -40,11 +40,11 @@ parser.add_argument(
 
 
 def str_slash_normalize(string):
-	return string.replace('\\', '/')
+    return string.replace('\\', '/')
 
 
 def enter_missing(obj, key, prompt):
-    while not key in obj or not obj[key].strip():
+    while key not in obj or not obj[key].strip():
         obj[key] = input(prompt)
 
 
@@ -124,7 +124,8 @@ def patch_build(patch_id, servers, f, t):
     utils.json_store('files.js', files_js, dirs=[f_path, t_path])
     print(
         '{num} files, {size}'.format(
-            num=len(files_js), size=sizeof_fmt(patch_size)
+            num=len({k: v for k, v in files_js.items() if v is not None}),
+            size=sizeof_fmt(patch_size)
         )
     )
     return patch_js['title']
@@ -148,7 +149,7 @@ def repo_build(f, t):
     )
     utils.json_store('repo.js', repo_js, dirs=[f, t])
 
-    while not 'servers' in repo_js or not repo_js['servers'][0].strip():
+    while 'servers' not in repo_js or not repo_js['servers'][0].strip():
         repo_js['servers'] = [input(
             "Saisissez l'URL publique de votre dépôt "
             "(le chemin d'accès qui contient le fichier repo.js) : "

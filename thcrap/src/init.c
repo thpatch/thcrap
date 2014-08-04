@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include "binhack.h"
 #include "sha256.h"
 #include "win32_detour.h"
 
@@ -279,8 +278,9 @@ int InitDll(HMODULE hDll)
 	exception_init();
 	// Needs to be at the lowest level
 	win32_detour();
-	detour_cache_add("kernel32.dll", 1,
-		"ExitProcess", thcrap_ExitProcess
+	detour_chain("kernel32.dll", 0,
+		"ExitProcess", thcrap_ExitProcess,
+		NULL
 	);
 
 	hThcrap = hDll;
@@ -296,6 +296,8 @@ int InitDll(HMODULE hDll)
 
 void ExitDll(HMODULE hDll)
 {
+	// Yes, the main thread does not receive a DLL_THREAD_DETACH message
+	mod_func_run_all("thread_exit", NULL);
 	mod_func_run_all("exit", NULL);
 	plugins_close();
 	breakpoints_remove();
@@ -323,9 +325,6 @@ DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode)
 	ExitProcess(uExitCode);
 }
 
-// Yes, this _has_ to be included in every project.
-// Visual C++ won't use it when imported from a library
-// and just defaults to msvcrt's one in this case.
 BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 {
 	switch(ulReasonForCall) {
@@ -334,6 +333,9 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 			break;
 		case DLL_PROCESS_DETACH:
 			ExitDll(hDll);
+			break;
+		case DLL_THREAD_DETACH:
+			mod_func_run_all("thread_exit", NULL);
 			break;
 	}
 	return TRUE;

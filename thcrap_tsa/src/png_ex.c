@@ -34,7 +34,7 @@ int png_image_new(
 		if(image->buf) {
 			ZeroMemory(image->buf, image_size);
 		}
-		return image->buf != NULL;
+		return image->buf == NULL;
 	}
 	return -1;
 }

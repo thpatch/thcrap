@@ -60,6 +60,12 @@
   *	original resource.
   */
 
+/// Detour chains
+/// -------------
+static FARPROC chain_CreateDialogParamA = (FARPROC)CreateDialogParamU;
+static FARPROC chain_DialogBoxParamA = (FARPROC)DialogBoxParamU;
+/// -------------
+
 /// Structures
 /// ----------
 // Ordinal-or-string structure
@@ -540,8 +546,7 @@ HWND WINAPI dialog_CreateDialogParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = (HWND)detour_next(
-			"user32.dll", "CreateDialogParamA", dialog_CreateDialogParamA, 5,
+		ret = (HWND)chain_CreateDialogParamA(
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
@@ -564,8 +569,7 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = detour_next(
-			"user32.dll", "DialogBoxParamA", dialog_DialogBoxParamA, 5,
+		ret = chain_DialogBoxParamA(
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
@@ -574,8 +578,9 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 
 void dialog_mod_detour(void)
 {
-	detour_cache_add("user32.dll", 2,
-		"CreateDialogParamA", dialog_CreateDialogParamA,
-		"DialogBoxParamA", dialog_DialogBoxParamA
+	detour_chain("user32.dll", 1,
+		"CreateDialogParamA", dialog_CreateDialogParamA, &chain_CreateDialogParamA,
+		"DialogBoxParamA", dialog_DialogBoxParamA, &chain_DialogBoxParamA,
+		NULL
 	);
 }

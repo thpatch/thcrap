@@ -11,7 +11,12 @@ EXPORTS
 
 	; gdi32.dll
 	; ---------
+	lower_CreateFontA
+	lower_CreateFontIndirectA
+
 	CreateFontU
+	CreateFontIndirectU
+	CreateFontIndirectExU
 	EnumFontFamiliesExU
 	GetTextExtentPoint32U
 	TextOutU
@@ -53,6 +58,7 @@ EXPORTS
 
 	; shell32.dll
 	; -----------
+	DragQueryFileU
 	SHGetPathFromIDListU
 
 	; shlwapi.dll

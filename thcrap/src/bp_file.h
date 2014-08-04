@@ -141,4 +141,5 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info);
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
 int bp_file_init(void);
+void bp_file_mod_thread_exit(void);
 int bp_file_exit(void);

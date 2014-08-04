@@ -4,10 +4,15 @@
   *
   * ----
   *
-  * Translation of hardcoded strings.
+  * Persistent string storage, and translation of hardcoded strings.
   */
 
 #include "thcrap.h"
+
+/// Detour chains
+/// -------------
+DETOUR_CHAIN_DEF(MessageBoxU);
+/// -------------
 
 // Length-prefixed string object used for persistent storage
 typedef struct {
@@ -270,10 +275,7 @@ int WINAPI strings_MessageBoxA(
 {
 	lpText = strings_lookup(lpText, NULL);
 	lpCaption = strings_lookup(lpCaption, NULL);
-	return detour_next(
-		"user32.dll", "MessageBoxA", strings_MessageBoxA, 4,
-		hWnd, lpText, lpCaption, uType
-	);
+	return chain_MessageBoxU(hWnd, lpText, lpCaption, uType);
 }
 /// -------------------
 
@@ -286,8 +288,9 @@ void strings_mod_init(void)
 
 void strings_mod_detour(void)
 {
-	detour_cache_add("user32.dll", 1,
-		"MessageBoxA", strings_MessageBoxA
+	detour_chain("user32.dll", 1,
+		"MessageBoxA", strings_MessageBoxA, &chain_MessageBoxU,
+		NULL
 	);
 }
 

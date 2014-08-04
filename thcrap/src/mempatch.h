@@ -107,46 +107,54 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detou
   * must be at the bottom, but as an integral part of the engine, it can
   * always be treated separately.
   *
-  * This realization allows us to build "detour chains": Instead of patching
-  * the IAT directly with some function pointer, we first prepare lists of
-  * function pointers for every function in every DLL we want to detour. Once
-  * we have a module handle, we patch the IAT with the address of the first
-  * function in each chain.
+  * This realization allows us to build a "detour chaining" mechanism, similar
+  * to the interrupt chaining used in MS-DOS TSR applications. Instead of
+  * patching the IAT directly with some function pointer, modules first
+  * register sequences of detours for each API function in advance, using
+  * detour_chain().
+  * For every detoured function, detour_chain() records the pointer to the
+  * last hook registered. Adding a new hook by calling detour_chain() again
+  * for the same DLL and function then returns this pointer, before replacing
+  * it with the new one.
   *
-  * Each detour function should then call a custom chaining function anywhere
-  * it previously called the original function. This will recursively call
-  * all subsequent hooks in the chain, with the original function at the end.
+  * Detours then use their returned chaining pointer to invoke the original
+  * functionality anywhere they need it. As a result, this calls all
+  * subsequent hooks in the chain recursively.
+  * By initalizing its chaining pointer to point to the original API function,
+  * every link in the chain also defaults to well-defined, reliable end point.
   *
-  * However, the chaining function has the downside of adding one more
-  * instance of unportable, architecture-specific code to the engine. It needs
-  * to pass a variable number of parameters to functions with a constant
-  * parameter list. Since C doesn't have a way of resolving a va_list back
-  * into individual parameters, our only option is to directly build the
-  * function call stack using inline assembly.
+  * To apply the chain, we then simply patch the IAT with the last recorded
+  * function pointers, once we have a module handle.
   */
 
+// Defines a function pointer used to continue a detour chain. It is
+// initialized to [func], which should the default function to be called
+// if this is the last link in the chain.
+#define DETOUR_CHAIN_DEF(func) \
+	static FARPROC chain_##func = (FARPROC)func;
+
 /**
-  * Adds one new detour hook for a number of functions in [dll_name].
-  * Expects [detour_count] * 2 additional parameters of the form
+  * Inserts a new hook for a number of functions in [dll_name] at the
+  * beginning of their respective detour chains. For each function,
+  * 3 or 2 (if return_old_ptrs == 0) additional parameters of the form
   *
-  *	"exported name", new_func_ptr,
-  *	"exported name", new_func_ptr,
-  * ...
+  *	"exported name", new_func_ptr, (&old_func_ptr,)
+  *	"exported name", new_func_ptr, (&old_func_ptr,)
+  *	...,
+  *
+  * are consumed.
+  * If [return_old_ptrs] is nonzero, [old_func_ptr] is set to the next
+  * function pointer in the chain, or left unchanged if no hook was
+  * registered before.
   */
-int detour_cache_add(const char *dll_name, const size_t detour_count, ...);
+int detour_chain(const char *dll_name, int return_old_ptrs, ...);
+
+// Returns a pointer to the first function in a specific detour chain, or
+// [fallback] if no hook has been registered so far.
+FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback);
 
 // Applies the cached detours to [hMod].
 int iat_detour_apply(HMODULE hMod);
-
-// Calls the next detour hook for [func_name] in [dll_name], passing
-// [arg_count] variadic parameters.
-// The list index is derived from [caller], which should be a pointer to the
-// currently executing *detour* function. This has to be a function that was
-// previously added using detour_add(), so be careful if you're using helper
-// functions. If [caller] happens to be the last detour for the given
-// function, the original function is called.
-// [caller] can also be NULL to run the entire chain from the beginning.
-size_t detour_next(const char *dll_name, const char *func_name, void *caller, size_t arg_count, ...);
 
 // *Not* a module function because we want to call it manually after
 // everything else has been cleaned up.

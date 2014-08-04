@@ -4,11 +4,13 @@
   *
   * ----
   *
-  * Translation of hardcoded strings.
+  * Persistent string storage, and translation of hardcoded strings.
   */
 
 #pragma once
 
+/// Translation
+/// -----------
 // Returns [id] from the string definition table,
 // or NULL if no string for [id] available.
 const json_t* strings_get(const char *id);
@@ -22,6 +24,7 @@ const char* strings_lookup(const char *in, size_t *out_len);
 // String lookup for variable argument lists. Parses [format] and calls
 // [strings_lookup] for every string parameter in [va].
 void strings_va_lookup(va_list va, const char *format);
+/// -----------
 
 /// Persistent storage
 /// ------------------
