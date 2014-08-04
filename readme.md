@@ -56,20 +56,6 @@ The scripts in the `scripts` directory are written in [Python 3](http://python.o
 
 * [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
 
-### License ###
-
-The Touhou Community Reliant Patcher and all accompanying modules are licensed under the Do What The Fuck You Want To Public License ([WTFPL](http://www.wtfpl.net/)), unless stated otherwise. This should eliminate any confusion about licensing terms, as well as any possible inquiries on that matter.
-
-This license is very appropriate given the subject matter. We realize that the Touhou fandom itself thrives by everyone just *doing what the fuck they want to*, ripping off everyone else in the process and not respecting the ego of individuals. Having benefited from that mindset ourselves, we indeed embrace this state of affairs.
-
-Thus, in such a non-serious, fragmented global environment that would not even exist without piracy of the source material, the very idea of a license seems both hypocritical and pointless. It can only possibly have a negative impact on the people who *choose* to respect it in the first place.
-
-Even if we *did* choose a more restrictive license, our chances of actually *enforcing* it are very slim, especially once language barriers come into play (hello, Chinese hackers). 
-
-But really, we don't want our ego to stand in the way of you doing awesome stuff with this. Repackage a custom build with nice artwork to promote your own community? Awesome! Rebrand the project to focus on visual novel translation via private servers? Awesome! Change large sections of the code on your own, creating a superior project with better PR and greater reach in the process? Awesome, we might even jump ship and support yours instead!
-
-That said, we *do* appreciate attribution. ☺
-
 ### Contributing ###
 
 This project is actively developed, and contributions are always welcome.
