@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/thpatch/thcrap.png?label=ready&title=Ready)](https://waffle.io/thpatch/thcrap)
 Touhou Community Reliant Automatic Patcher
 ------------------------------------------
 
