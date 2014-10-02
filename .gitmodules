@@ -1,3 +1,12 @@
 [submodule "win32_utf8"]
 	path = win32_utf8
 	url = https://github.com/thpatch/win32_utf8.git
+[submodule "jansson"]
+	path = jansson
+	url = https://github.com/akheron/jansson.git
+[submodule "libpng"]
+	path = libpng
+	url = http://git.code.sf.net/p/libpng/code
+[submodule "zlib"]
+	path = zlib
+	url = https://github.com/madler/zlib.git
