@@ -1,0 +1,3 @@
+[submodule "win32_utf8"]
+	path = win32_utf8
+	url = https://github.com/thpatch/win32_utf8.git
