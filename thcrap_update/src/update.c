@@ -332,7 +332,8 @@ int patch_update(json_t *patch_info)
 	DWORD remote_files_js_size;
 	BYTE *remote_files_js_buffer = NULL;
 
-	json_t *remote_files = NULL;
+	json_t *remote_files_orig = NULL;
+	json_t *remote_files_to_get = NULL;
 	json_t *remote_val;
 
 	int ret = 0;
@@ -377,31 +378,33 @@ int patch_update(json_t *patch_info)
 		goto end_update;
 	}
 
-	remote_files = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
-	if(!json_is_object(remote_files)) {
+	remote_files_orig = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
+	if(!json_is_object(remote_files_orig)) {
 		// Remote files.js is invalid!
 		ret = 4;
 		goto end_update;
 	}
 
-	// Yay for doubled loops... just to get the correct number
-	json_object_foreach(remote_files, key, remote_val) {
+	// Determine files to download
+	remote_files_to_get = json_object();
+	json_object_foreach(remote_files_orig, key, remote_val) {
 		json_t *local_val = json_object_get(local_files, key);
 		if(PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)) {
-			file_count++;
+			json_object_set(remote_files_to_get, key, remote_val);
 		}
 	}
+	
+	file_count = json_object_size(remote_files_to_get);
 	if(!file_count) {
-		log_printf("Everything up-to-date.\n", file_count);
+		log_printf("Everything up-to-date.\n");
 		ret = 0;
 		goto end_update;
 	}
-
 	file_digits = str_num_digits(file_count);
 	log_printf("Need to get %d files.\n", file_count);
 
 	i = 0;
-	json_object_foreach(remote_files, key, remote_val) {
+	json_object_foreach(remote_files_to_get, key, remote_val) {
 		void *file_buffer;
 		DWORD file_size;
 		json_t *local_val;
@@ -411,13 +414,8 @@ int patch_update(json_t *patch_info)
 			break;
 		}
 
+		log_printf("(%*d/%*d) ", file_digits, ++i, file_digits, file_count);
 		local_val = json_object_get(local_files, key);
-		if(!PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)) {
-			continue;
-		}
-		i++;
-
-		log_printf("(%*d/%*d) ", file_digits, i, file_digits, file_count);
 
 		// Delete locally unchanged files with a JSON null value in the remote list
 		if(json_is_null(remote_val) && json_is_integer(local_val)) {
@@ -458,7 +456,8 @@ end_update:
 		log_printf("Can't reach any valid server at the moment.\nCancelling update...\n");
 	}
 	SAFE_FREE(remote_files_js_buffer);
-	json_decref(remote_files);
+	json_decref(remote_files_to_get);
+	json_decref(remote_files_orig);
 	json_decref(local_files);
 	return ret;
 }
