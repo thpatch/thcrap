@@ -374,7 +374,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		json_t *sel;
 
 		log_printf("Bootstrapping selected patches...\n");
-		stack_update();
+		stack_update(NULL, NULL);
 
 		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {

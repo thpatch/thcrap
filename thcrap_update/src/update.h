@@ -48,6 +48,12 @@ void* ServerDownloadFile(
 	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
 );
 
-// Updates the patch in [patch_info].
-int patch_update(json_t *patch_info);
-void stack_update(void);
+// High-level patch and stack updates.
+// These can optionally take a filter function to limit the number of files
+// downloaded.
+typedef int (*update_filter_func_t)(const char *fn, json_t *filter_data);
+
+int patch_update(
+	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data
+);
+void stack_update(update_filter_func_t filter_func, json_t *filter_data);

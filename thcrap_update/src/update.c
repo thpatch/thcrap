@@ -322,7 +322,7 @@ int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *lo
 	return 0;
 }
 
-int patch_update(json_t *patch_info)
+int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data)
 {
 	const char *files_fn = "files.js";
 
@@ -389,7 +389,10 @@ int patch_update(json_t *patch_info)
 	remote_files_to_get = json_object();
 	json_object_foreach(remote_files_orig, key, remote_val) {
 		json_t *local_val = json_object_get(local_files, key);
-		if(PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)) {
+		if(
+			(filter_func ? filter_func(key, filter_data) : 1)
+			&& PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)
+		) {
 			json_object_set(remote_files_to_get, key, remote_val);
 		}
 	}
@@ -462,12 +465,12 @@ end_update:
 	return ret;
 }
 
-void stack_update(void)
+void stack_update(update_filter_func_t filter_func, json_t *filter_data)
 {
 	json_t *patch_array = json_object_get(runconfig_get(), "patches");
 	size_t i;
 	json_t *patch_info;
 	json_array_foreach(patch_array, i, patch_info) {
-		patch_update(patch_info);
+		patch_update(patch_info, filter_func, filter_data);
 	}
 }
