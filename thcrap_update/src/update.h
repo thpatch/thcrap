@@ -53,6 +53,12 @@ void* ServerDownloadFile(
 // downloaded.
 typedef int (*update_filter_func_t)(const char *fn, json_t *filter_data);
 
+// Returns 1 for all global file names, i.e. those without a slash.
+int update_filter_global(const char *fn, json_t *null);
+// Returns 1 for all global file names and those that are specific to a game
+// in the flexible JSON array [games].
+int update_filter_games(const char *fn, json_t *games);
+
 int patch_update(
 	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data
 );

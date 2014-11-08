@@ -341,7 +341,9 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"The configuration process has two steps:\n"
 		"\n"
 		"\t\t1. Selecting patches\n"
-		"\t\t2. Locating game installations\n"
+		"\t\t2. Download game-independent data\n"
+		"\t\t3. Locating game installations\n"
+		"\t\t4. Download game-specific data\n"
 		"\n"
 		"\n"
 		"\n"
@@ -373,8 +375,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		size_t i;
 		json_t *sel;
 
-		log_printf("Bootstrapping selected patches...\n");
-		stack_update(NULL, NULL);
+		log_printf("Downloading game-independent data...\n");
+		stack_update(update_filter_global, NULL);
 
 		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {
@@ -404,6 +406,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	games = ConfigureLocateGames(cur_dir);
 
 	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
+		json_t *filter = json_object_get_keys_sorted(games);
+		log_printf("\nDownloading data specific to the located games...\n");
+		stack_update(update_filter_games, filter);
+		filter = json_decref_safe(filter);
 		log_printf(
 			"\n"
 			"\n"

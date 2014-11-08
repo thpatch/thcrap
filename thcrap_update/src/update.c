@@ -322,6 +322,30 @@ int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *lo
 	return 0;
 }
 
+int update_filter_global(const char *fn, json_t *null)
+{
+	return strchr(fn, '/') == NULL;
+}
+
+int update_filter_games(const char *fn, json_t *games)
+{
+	STRLEN_DEC(fn);
+	size_t i = 0;
+	json_t *val;
+	json_flex_array_foreach(games, i, val) {
+		// We will need to match "th14", but not "th143".
+		size_t val_len = json_string_length(val);
+		if(
+			fn_len > val_len
+			&& !strnicmp(fn, json_string_value(val), val_len)
+			&& fn[val_len] == '/'
+		) {
+			return 1;
+		}
+	}
+	return update_filter_global(fn, NULL);
+}
+
 int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data)
 {
 	const char *files_fn = "files.js";

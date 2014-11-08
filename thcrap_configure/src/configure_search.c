@@ -77,7 +77,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	if(json_object_size(games) != 0) {
 		log_printf("You already have a %s with the following contents:\n\n", games_js_fn);
 		json_dump_log(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-		log_printf("\n\n");
+		log_printf("\n\nPatch data will be downloaded or updated for all the games listed.\n\n");
 		if(Ask("Should the paths of these games be re-scanned?")) {
 			json_object_clear(games);
 		} else if(!Ask("Should new games be added to this list?")) {
@@ -88,13 +88,13 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		log_printf(
 			"You don't have a %s yet.\n"
 			"\n"
-			"Thus, I now need to search for all Touhou games installed on your system.\n"
+			"Thus, I now need to search for patchable games installed on your system.\n"
 			"This only has to be done once - unless, of course, you later move the games to\n"
 			"different directories.\n"
 			"\n"
 			"Depending on the number of drives and your directory structure,\n"
-			"this may take a while. You can speed up this process by giving me the\n"
-			"_common_ root path all of your Touhou games share.\n"
+			"this may take a while. You can speed up this process by giving me a\n"
+			"common root path shared by all games you want to patch.\n"
 			"\n"
 			"For example, if you have 'Double Dealing Character' in \n"
 			"\n"
