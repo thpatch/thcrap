@@ -148,6 +148,12 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detou
   * registered before.
   */
 int detour_chain(const char *dll_name, int return_old_ptrs, ...);
+/**
+  * detour_chain() for the function pair list of a single DLL returned by
+  * win32_utf8. Does obviously not return any pointers to functions that may
+  * have been part of the respective chains before.
+  */
+int detour_chain_w32u8(const w32u8_dll_t *dll);
 
 // Returns a pointer to the first function in a specific detour chain, or
 // [fallback] if no hook has been registered so far.

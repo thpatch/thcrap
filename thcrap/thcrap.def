@@ -155,6 +155,7 @@ EXPORTS
 
 	iat_detour_funcs
 	detour_chain
+	detour_chain_w32u8
 	detour_top
 	iat_detour_apply
 
