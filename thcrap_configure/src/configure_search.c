@@ -116,7 +116,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		);
 		pause();
 	}
-	bi.lpszTitle = L"Root path for game search (cancel to search entire system):";
+	bi.lpszTitle = "Root path for game search (cancel to search entire system):";
 	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
 
 	do {
