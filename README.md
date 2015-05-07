@@ -42,7 +42,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 ### Building ###
 
-As of now, all subprojects only include a Visual C++ 2010 project file for building. SP1 is recommended, if only for correct version identification in Explorer. Build configurations for different systems are always welcome.
+As of now, all subprojects only include a Visual C++ 2013 project file for building. SP1 is recommended, if only for correct version identification in Explorer. Build configurations for different systems are always welcome.
 
 #### Dependencies ####
 

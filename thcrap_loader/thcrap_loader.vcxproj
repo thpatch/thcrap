@@ -17,7 +17,6 @@
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>Application</ConfigurationType>
-    <IntDir>$(SolutionDir)\$(Configuration)\$(RootNamespace)\</IntDir>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />

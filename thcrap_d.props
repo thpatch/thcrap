@@ -11,7 +11,7 @@
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>win32_utf8_d.lib;jansson_d.lib;zlib1d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>win32_utf8_dynamic_x86_debug.lib;jansson_d.lib;zlib1d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 </Project>
