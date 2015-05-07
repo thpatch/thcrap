@@ -38,7 +38,6 @@
     <ClCompile Include="src\self.c" />
     <ClCompile Include="src\thcrap_update.c" />
     <ClCompile Include="src\update.c" />
-    <ClCompile Include="src\wininet_dll.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="thcrap_update.def" />
@@ -47,6 +46,5 @@
     <ClInclude Include="src\notify.h" />
     <ClInclude Include="src\self.h" />
     <ClInclude Include="src\update.h" />
-    <ClInclude Include="src\wininet_dll.h" />
   </ItemGroup>
 </Project>

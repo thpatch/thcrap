@@ -11,7 +11,6 @@
 #include <MMSystem.h>
 #include <WinInet.h>
 #include <zlib.h>
-#include "wininet_dll.h"
 #include "update.h"
 
 HINTERNET hHTTP = NULL;
