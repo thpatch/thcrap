@@ -438,7 +438,7 @@ int layout_process(layout_state_t *lay, layout_func_t func, const char *str, siz
 // Games prior to MoF call this every time a text is rendered.
 // However, we require the DC to be present at all times for GetTextExtent.
 // Thus, we keep only one DC in memory (the game doesn't need more anyway).
-HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
+HDC WINAPI layout_CreateCompatibleDC(HDC hdc)
 {
 	if(!text_dc) {
 		HDC ret = (HDC)chain_CreateCompatibleDC(hdc);
@@ -448,16 +448,16 @@ HDC WINAPI layout_CreateCompatibleDC( __in_opt HDC hdc)
 	return text_dc;
 }
 
-BOOL WINAPI layout_DeleteDC( __in HDC hdc)
+BOOL WINAPI layout_DeleteDC(HDC hdc)
 {
 	// Bypass this function - we delete our DC on layout_exit()
 	return 1;
 }
 
 HGDIOBJ WINAPI layout_SelectObject(
-	__in HDC hdc,
-	__in HGDIOBJ h
-	)
+	HDC hdc,
+	HGDIOBJ h
+)
 {
 	if(h == GetStockObject(SYSTEM_FONT)) {
 		return GetCurrentObject(hdc, OBJ_FONT);
@@ -467,11 +467,11 @@ HGDIOBJ WINAPI layout_SelectObject(
 }
 
 BOOL WINAPI layout_TextOutU(
-	__in HDC hdc,
-	__in int orig_x,
-	__in int orig_y,
-	__in_ecount(c) LPCSTR lpString,
-	__in int c
+	HDC hdc,
+	int orig_x,
+	int orig_y,
+	LPCSTR lpString,
+	int c
 ) {
 	layout_state_t lay = {hdc, {orig_x, orig_y}};
 	return layout_process(&lay, layout_textout_raw, lpString, c);

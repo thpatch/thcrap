@@ -313,7 +313,7 @@ void ExitDll(HMODULE hDll)
 	log_exit();
 }
 
-DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode)
+VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
 {
 	ExitDll(NULL);
 	// The detour cache is already freed at this point, and this will

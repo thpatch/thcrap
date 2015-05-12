@@ -267,10 +267,10 @@ const char* strings_replace(const size_t slot, const char *src, const char *dst)
 /// String lookup hooks
 /// -------------------
 int WINAPI strings_MessageBoxA(
-	__in_opt HWND hWnd,
-	__in_opt LPCSTR lpText,
-	__in_opt LPCSTR lpCaption,
-	__in UINT uType
+	HWND hWnd,
+	LPCSTR lpText,
+	LPCSTR lpCaption,
+	UINT uType
 )
 {
 	lpText = strings_lookup(lpText, NULL);

@@ -32,4 +32,4 @@ int thcrap_init(const char *setup_fn);
 // http://blogs.msdn.com/b/oldnewthing/archive/2007/05/03/2383346.aspx.)
 // As a result, we have to detour this function to properly shut down any
 // threads created by thcrap plugins or modules before calling ExitProcess().
-DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(__in UINT uExitCode);
+DECLSPEC_NORETURN VOID WINAPI thcrap_ExitProcess(UINT uExitCode);

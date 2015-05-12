@@ -811,9 +811,9 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 
 // Injection calls shared between the U and W versions
 static void inject_CreateProcess_helper(
-	__in LPPROCESS_INFORMATION lpPI,
-	__in_opt LPCSTR lpAppName,
-	__in DWORD dwCreationFlags
+	LPPROCESS_INFORMATION lpPI,
+	LPCSTR lpAppName,
+	DWORD dwCreationFlags
 )
 {
 	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
@@ -826,16 +826,16 @@ static void inject_CreateProcess_helper(
 }
 
 BOOL WINAPI inject_CreateProcessU(
-	__in_opt LPCSTR lpAppName,
-	__inout_opt LPSTR lpCmdLine,
-	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in BOOL bInheritHandles,
-	__in DWORD dwCreationFlags,
-	__in_opt LPVOID lpEnvironment,
-	__in_opt LPCSTR lpCurrentDirectory,
-	__in LPSTARTUPINFOA lpSI,
-	__out LPPROCESS_INFORMATION lpPI
+	LPCSTR lpAppName,
+	LPSTR lpCmdLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCSTR lpCurrentDirectory,
+	LPSTARTUPINFOA lpSI,
+	LPPROCESS_INFORMATION lpPI
 )
 {
 	BOOL ret = chain_CreateProcessU(
@@ -850,16 +850,16 @@ BOOL WINAPI inject_CreateProcessU(
 }
 
 BOOL WINAPI inject_CreateProcessW(
-	__in_opt LPCWSTR lpAppName,
-	__inout_opt LPWSTR lpCmdLine,
-	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in BOOL bInheritHandles,
-	__in DWORD dwCreationFlags,
-	__in_opt LPVOID lpEnvironment,
-	__in_opt LPCWSTR lpCurrentDirectory,
-	__in LPSTARTUPINFOW lpSI,
-	__out LPPROCESS_INFORMATION lpPI
+	LPCWSTR lpAppName,
+	LPWSTR lpCmdLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCWSTR lpCurrentDirectory,
+	LPSTARTUPINFOW lpSI,
+	LPPROCESS_INFORMATION lpPI
 )
 {
 	BOOL ret = chain_CreateProcessW(
@@ -877,11 +877,11 @@ BOOL WINAPI inject_CreateProcessW(
 }
 
 LPTHREAD_START_ROUTINE inject_change_start_func(
-	__in HANDLE hProcess,
-	__in LPTHREAD_START_ROUTINE lpStartAddress,
-	__in FARPROC rep_func,
-	__in const char *new_dll,
-	__in const char *new_func
+	HANDLE hProcess,
+	LPTHREAD_START_ROUTINE lpStartAddress,
+	FARPROC rep_func,
+	const char *new_dll,
+	const char *new_func
 )
 {
 	LPTHREAD_START_ROUTINE ret = NULL;
@@ -892,14 +892,14 @@ LPTHREAD_START_ROUTINE inject_change_start_func(
 	return ret ? ret : lpStartAddress;
 }
 
-__out_opt HANDLE WINAPI inject_CreateRemoteThread(
-	__in HANDLE hProcess,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in SIZE_T dwStackSize,
-	__in LPTHREAD_START_ROUTINE lpFunc,
-	__in_opt LPVOID lpParameter,
-	__in DWORD dwCreationFlags,
-	__out_opt LPDWORD lpThreadId
+HANDLE WINAPI inject_CreateRemoteThread(
+	HANDLE hProcess,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	SIZE_T dwStackSize,
+	LPTHREAD_START_ROUTINE lpFunc,
+	LPVOID lpParameter,
+	DWORD dwCreationFlags,
+	LPDWORD lpThreadId
 )
 {
 #ifdef _DEBUG
@@ -925,7 +925,7 @@ __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 }
 
 HMODULE WINAPI inject_LoadLibraryU(
-	__in LPCSTR lpLibFileName
+	LPCSTR lpLibFileName
 )
 {
 	HMODULE ret = (HMODULE)chain_LoadLibraryU(lpLibFileName);
@@ -936,7 +936,7 @@ HMODULE WINAPI inject_LoadLibraryU(
 }
 
 HMODULE WINAPI inject_LoadLibraryW(
-	__in LPCWSTR lpLibFileName
+	LPCWSTR lpLibFileName
 )
 {
 	HMODULE ret = (HMODULE)chain_LoadLibraryW(lpLibFileName);

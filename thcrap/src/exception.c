@@ -70,7 +70,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 }
 
 LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
-	__in_opt LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter
+	LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter
 )
 {
 	// Don't return our own filter, since this might cause an infinite loop if

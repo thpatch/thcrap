@@ -184,20 +184,20 @@ int fontrules_apply(LOGFONTA *lf)
 // fact that lower levels copy [pszFaceName] into the LOGFONT structure,
 // it would be impossible to look up a replacement font name there.
 HFONT WINAPI textdisp_CreateFontA(
-	__in int cHeight,
-	__in int cWidth,
-	__in int cEscapement,
-	__in int cOrientation,
-	__in int cWeight,
-	__in DWORD bItalic,
-	__in DWORD bUnderline,
-	__in DWORD bStrikeOut,
-	__in DWORD iCharSet,
-	__in DWORD iOutPrecision,
-	__in DWORD iClipPrecision,
-	__in DWORD iQuality,
-	__in DWORD iPitchAndFamily,
-	__in_opt LPCSTR pszFaceName
+	int cHeight,
+	int cWidth,
+	int cEscapement,
+	int cOrientation,
+	int cWeight,
+	DWORD bItalic,
+	DWORD bUnderline,
+	DWORD bStrikeOut,
+	DWORD iCharSet,
+	DWORD iOutPrecision,
+	DWORD iClipPrecision,
+	DWORD iQuality,
+	DWORD iPitchAndFamily,
+	LPCSTR pszFaceName
 )
 {
 	// Check hardcoded strings and the run configuration for a replacement
@@ -219,7 +219,7 @@ HFONT WINAPI textdisp_CreateFontA(
 }
 
 HFONT WINAPI textdisp_CreateFontIndirectExA(
-	__in ENUMLOGFONTEXDVA *lpelfe
+	ENUMLOGFONTEXDVA *lpelfe
 )
 {
 	LOGFONTA *lf = NULL;

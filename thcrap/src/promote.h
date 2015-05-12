@@ -33,24 +33,24 @@
 /// CreateFont() family (promoting to CreateFontIndirectExA)
 /// -------------------
 HFONT WINAPI promote_CreateFontA(
-	__in int cHeight,
-	__in int cWidth,
-	__in int cEscapement,
-	__in int cOrientation,
-	__in int cWeight,
-	__in DWORD bItalic,
-	__in DWORD bUnderline,
-	__in DWORD bStrikeOut,
-	__in DWORD iCharSet,
-	__in DWORD iOutPrecision,
-	__in DWORD iClipPrecision,
-	__in DWORD iQuality,
-	__in DWORD iPitchAndFamily,
-	__in_opt LPCSTR pszFaceName
+	int cHeight,
+	int cWidth,
+	int cEscapement,
+	int cOrientation,
+	int cWeight,
+	DWORD bItalic,
+	DWORD bUnderline,
+	DWORD bStrikeOut,
+	DWORD iCharSet,
+	DWORD iOutPrecision,
+	DWORD iClipPrecision,
+	DWORD iQuality,
+	DWORD iPitchAndFamily,
+	LPCSTR pszFaceName
 );
 
 HFONT WINAPI promote_CreateFontIndirectA(
-	__in CONST LOGFONTA *lplf
+	CONST LOGFONTA *lplf
 );
 /// -------------------
 
