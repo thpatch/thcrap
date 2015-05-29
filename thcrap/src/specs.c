@@ -7,7 +7,7 @@
   * Specifications for various versions of file formats used by a game.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 
 void specs_mod_init(void)
 {

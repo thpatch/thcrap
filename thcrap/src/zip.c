@@ -7,7 +7,7 @@
   * Zipfile handling.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 #include <zlib.h>
 
 /**

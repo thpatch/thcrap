@@ -102,13 +102,13 @@ int fontrule_parse(LOGFONTA *lf, const char *str)
 }
 
 #define FONTRULE_MATCH(rule, dst, val) \
-	if(rule##->##val && rule##->##val != dst##->##val) {\
+	if(rule->val && rule->val != dst->val) {\
 		return 0; \
 	}
 
 #define FONTRULE_APPLY(dst, rep, val) \
-	if(rep##->##val && priority ? 1 : !dst##->##val) { \
-		dst##->##val = rep##->##val; \
+	if(rep->val && priority ? 1 : !dst->val) { \
+		dst->val = rep->val; \
 	}
 
 #define FONTRULE_MACRO_EXPAND(macro, p1, p2) \
