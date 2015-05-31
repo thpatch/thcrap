@@ -39,12 +39,8 @@
     <ClCompile Include="src\search.c" />
     <ClCompile Include="src\select.c" />
     <ClCompile Include="src\shelllink.cpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="src\configure.h" />
     <ClInclude Include="src\repo.h" />
-  </ItemGroup>
-  <ItemGroup>
     <ResourceCompile Include="thcrap_configure.rc" />
   </ItemGroup>
 </Project>

@@ -38,13 +38,9 @@
     <ClCompile Include="src\self.c" />
     <ClCompile Include="src\thcrap_update.c" />
     <ClCompile Include="src\update.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="thcrap_update.def" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="src\notify.h" />
     <ClInclude Include="src\self.h" />
     <ClInclude Include="src\update.h" />
+    <None Include="thcrap_update.def" />
   </ItemGroup>
 </Project>
