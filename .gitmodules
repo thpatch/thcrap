@@ -7,6 +7,6 @@
 [submodule "libpng"]
 	path = libpng
 	url = http://git.code.sf.net/p/libpng/code
-[submodule "zlib"]
-	path = zlib
-	url = https://github.com/madler/zlib.git
+[submodule "zlib-ng"]
+	path = libs/zlib-ng
+	url = https://github.com/Dead2/zlib-ng

@@ -4,13 +4,15 @@
 
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <TargetName Condition="$(UseDebugLibraries)!=true">$(RootNamespace)</TargetName>
+    <TargetName Condition="$(UseDebugLibraries)==true">$(RootNamespace)_d</TargetName>
     <TargetName Condition="'$(Configuration)'=='Debug'">$(RootNamespace)_d</TargetName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <PlatformToolset>v120_xp</PlatformToolset>
     <OutDir>$(SolutionDir)bin\</OutDir>
-    <IntDir>$(SolutionDir)obj\$(RootNamespace) $(Configuration) Dynamic $(PlatformShortName)\</IntDir>
+    <IntDir>$(SolutionDir)obj\$(RootNamespace) $(Configuration) $(PlatformShortName)\</IntDir>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
