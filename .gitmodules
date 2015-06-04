@@ -5,7 +5,7 @@
 	path = jansson
 	url = https://github.com/akheron/jansson.git
 [submodule "libpng"]
-	path = libpng
+	path = libs/libpng
 	url = http://git.code.sf.net/p/libpng/code
 [submodule "zlib-ng"]
 	path = libs/zlib-ng
