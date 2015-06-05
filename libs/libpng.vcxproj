@@ -18,24 +18,15 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <Import Project="Static+Dynamic.props" />
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D6973076-9317-4EF2-A0B8-B7A18AC0713E}</ProjectGuid>
-    <Keyword>Win32Proj</Keyword>
     <RootNamespace>libpng16</RootNamespace>
     <ZLibIncludeDir>$(SolutionDir)libs/</ZLibIncludeDir>
   </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <ConfigurationType Condition="'$(Configuration)'=='Debug Dynamic'">DynamicLibrary</ConfigurationType>
-    <ConfigurationType Condition="'$(Configuration)'=='Release Dynamic'">DynamicLibrary</ConfigurationType>
-    <ConfigurationType Condition="'$(Configuration)'=='Debug Static'">StaticLibrary</ConfigurationType>
-    <ConfigurationType Condition="'$(Configuration)'=='Release Static'">StaticLibrary</ConfigurationType>
-
-    <UseDebugLibraries Condition="'$(Configuration)'=='Debug Dynamic'">true</UseDebugLibraries>
-    <UseDebugLibraries Condition="'$(Configuration)'=='Debug Static'">true</UseDebugLibraries>
-
-    <WholeProgramOptimization Condition="$(UseDebugLibraries)!=true">true</WholeProgramOptimization>
-  </PropertyGroup>
-  <Import Project="$(SolutionDir)\base.props" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(SolutionDir)\base.props" />
+  </ImportGroup>
   <PropertyGroup>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
@@ -48,7 +39,7 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
 %(Command)</Command>
     </PreBuildEvent>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ZLibIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ZLibIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BasicRuntimeChecks Condition="$(UseDebugLibraries)==true">EnableFastChecks</BasicRuntimeChecks>
       <BrowseInformation>true</BrowseInformation>
       <CompileAs>CompileAsC</CompileAs>
@@ -58,8 +49,6 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <MinimalRebuild>false</MinimalRebuild>
-      <Optimization Condition="$(UseDebugLibraries)!=true">Full</Optimization>
-      <Optimization Condition="$(UseDebugLibraries)==true">Disabled</Optimization>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pngpriv.h</PrecompiledHeaderFile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -77,8 +66,6 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">zdll-ng.lib</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">zdll-ng_d.lib</AdditionalDependencies>
       <EnableCOMDATFolding Condition="$(UseDebugLibraries)!=true">true</EnableCOMDATFolding>
-      <OptimizeReferences Condition="$(UseDebugLibraries)!=true">true</OptimizeReferences>
-      <SubSystem>Windows</SubSystem>
       <Version>16</Version>
     </Link>
     <Lib>
