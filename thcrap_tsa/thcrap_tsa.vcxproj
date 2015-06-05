@@ -12,7 +12,6 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C8DB0AF8-1441-4ECD-BD63-30922EF17701}</ProjectGuid>
-    <Keyword>Win32Proj</Keyword>
     <RootNamespace>thcrap_tsa</RootNamespace>
   </PropertyGroup>
   <PropertyGroup>

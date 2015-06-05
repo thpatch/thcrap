@@ -3,9 +3,6 @@
 <!-- Base settings for libraries that can be built both statically and dynamically in Debug and Release builds. -->
 
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Label="Globals">
-    <Keyword>Win32Proj</Keyword>
-  </PropertyGroup>
   <PropertyGroup Label="Configuration">
     <ConfigurationType Condition="'$(Configuration)'=='Debug Dynamic'">DynamicLibrary</ConfigurationType>
     <ConfigurationType Condition="'$(Configuration)'=='Release Dynamic'">DynamicLibrary</ConfigurationType>

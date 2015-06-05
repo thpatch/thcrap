@@ -12,7 +12,6 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2DB35726-8702-4CC8-9394-3D4FFF47F7DD}</ProjectGuid>
-    <Keyword>Win32Proj</Keyword>
     <RootNamespace>thcrap_loader</RootNamespace>
   </PropertyGroup>
   <PropertyGroup>

@@ -3,6 +3,9 @@
 <!-- Base settings shared by all thcrap modules and the dependencies we provide our own project files for. -->
 
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
   <PropertyGroup>
     <TargetName Condition="$(UseDebugLibraries)!=true">$(RootNamespace)</TargetName>
     <TargetName Condition="$(UseDebugLibraries)==true">$(RootNamespace)_d</TargetName>
