@@ -2,7 +2,7 @@
 	path = win32_utf8
 	url = https://github.com/thpatch/win32_utf8.git
 [submodule "jansson"]
-	path = jansson
+	path = libs/jansson
 	url = https://github.com/akheron/jansson.git
 [submodule "libpng"]
 	path = libs/libpng
