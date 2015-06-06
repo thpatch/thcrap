@@ -3,10 +3,13 @@
 <!-- Base settings and include/library paths shared by all thcrap modules. -->
 
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
+  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="base.props" />
-    <Import Condition="'$(Configuration)'=='Debug'" Project="thcrap_d.props" />
-    <Import Condition="'$(Configuration)'=='Release'" Project="thcrap_r.props" />
+    <Import Condition="$(UseDebugLibraries)==true" Project="thcrap_d.props" />
+    <Import Condition="$(UseDebugLibraries)!=true" Project="thcrap_r.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>

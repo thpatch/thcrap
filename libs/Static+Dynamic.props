@@ -3,7 +3,7 @@
 <!-- Base settings for libraries that can be built both statically and dynamically in Debug and Release builds. -->
 
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup Label="Configuration">
+  <PropertyGroup>
     <ConfigurationType Condition="'$(Configuration)'=='Debug Dynamic'">DynamicLibrary</ConfigurationType>
     <ConfigurationType Condition="'$(Configuration)'=='Release Dynamic'">DynamicLibrary</ConfigurationType>
     <ConfigurationType Condition="'$(Configuration)'=='Debug Static'">StaticLibrary</ConfigurationType>
@@ -11,8 +11,6 @@
 
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug Dynamic'">true</UseDebugLibraries>
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug Static'">true</UseDebugLibraries>
-
-    <WholeProgramOptimization Condition="$(UseDebugLibraries)!=true">true</WholeProgramOptimization>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>

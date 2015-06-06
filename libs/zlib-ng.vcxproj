@@ -40,7 +40,6 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <Import Project="Static+Dynamic.props" />
   <PropertyGroup Label="Globals">
     <ProjectGuid>{EE4A787C-16D5-4192-870F-E1461AFFA469}</ProjectGuid>
     <ConfigurationType Condition="'$(Configuration)'=='Debug Static zlib1'">StaticLibrary</ConfigurationType>
@@ -61,6 +60,7 @@
     <RootNamespace Condition="$(BuildZLib1)!=true">zlib-ng</RootNamespace>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
+    <Import Project="Static+Dynamic.props" />
     <Import Project="$(SolutionDir)\base.props" />
   </ImportGroup>
   <PropertyGroup>

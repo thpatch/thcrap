@@ -18,13 +18,13 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <Import Project="Static+Dynamic.props" />
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D6973076-9317-4EF2-A0B8-B7A18AC0713E}</ProjectGuid>
     <RootNamespace>libpng16</RootNamespace>
     <ZLibIncludeDir>$(SolutionDir)libs/</ZLibIncludeDir>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
+    <Import Project="Static+Dynamic.props" />
     <Import Project="$(SolutionDir)\base.props" />
   </ImportGroup>
   <PropertyGroup>
@@ -53,8 +53,8 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
       <PrecompiledHeaderFile>pngpriv.h</PrecompiledHeaderFile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(ConfigurationType)'=='DynamicLibrary'">_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="$(UseDebugLibraries)!=true">NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="$(UseDebugLibraries)==true">_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="$(UseDebugLibraries)!=true">NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary Condition="'$(ConfigurationType)'=='StaticLibrary'">MultiThreaded</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(ConfigurationType)|$(UseDebugLibraries)'=='StaticLibrary|true'">MultiThreadedDebug</RuntimeLibrary>
       <StringPooling>true</StringPooling>
@@ -63,8 +63,8 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
       <WarningLevel>Level4</WarningLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">zdll-ng.lib</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">zdll-ng_d.lib</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">zdll-ng.lib</AdditionalDependencies>
       <EnableCOMDATFolding Condition="$(UseDebugLibraries)!=true">true</EnableCOMDATFolding>
       <Version>16</Version>
     </Link>
@@ -91,8 +91,7 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
     <ClCompile Include="libpng\pngwtran.c" />
     <ClCompile Include="libpng\pngwutil.c" />
     <ResourceCompile Include="libpng\scripts\pngwin.rc">
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Debug Static'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)'=='Release Static'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(ConfigurationType)'=='StaticLibrary'">true</ExcludedFromBuild>
     </ResourceCompile>
   </ItemGroup>
 </Project>

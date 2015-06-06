@@ -7,15 +7,15 @@
     <Keyword>Win32Proj</Keyword>
   </PropertyGroup>
   <PropertyGroup>
-    <TargetName Condition="$(UseDebugLibraries)!=true">$(RootNamespace)</TargetName>
     <TargetName Condition="$(UseDebugLibraries)==true">$(RootNamespace)_d</TargetName>
-    <TargetName Condition="'$(Configuration)'=='Debug'">$(RootNamespace)_d</TargetName>
+    <TargetName Condition="$(UseDebugLibraries)!=true">$(RootNamespace)</TargetName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
     <PlatformToolset>v120_xp</PlatformToolset>
     <OutDir>$(SolutionDir)bin\</OutDir>
     <IntDir>$(SolutionDir)obj\$(RootNamespace) $(Configuration) $(PlatformShortName)\</IntDir>
+    <WholeProgramOptimization Condition="$(UseDebugLibraries)!=true">true</WholeProgramOptimization>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
@@ -28,8 +28,8 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <Optimization Condition="$(UseDebugLibraries)!=true">Full</Optimization>
       <Optimization Condition="$(UseDebugLibraries)==true">Disabled</Optimization>
+      <Optimization Condition="$(UseDebugLibraries)!=true">Full</Optimization>
       <WarningLevel>Level3</WarningLevel>
       <TreatSpecificWarningsAsErrors>4013;4028;4133</TreatSpecificWarningsAsErrors>
       <PreprocessorDefinitions>BUILDER_NAME_W=L"$(USERNAME)";UNICODE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
