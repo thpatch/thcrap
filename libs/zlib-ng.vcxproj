@@ -63,8 +63,6 @@
     <Import Project="Static+Dynamic.props" />
   </ImportGroup>
   <PropertyGroup>
-    <LinkIncremental Condition="$(UseDebugLibraries)==true">true</LinkIncremental>
-    <LinkIncremental Condition="$(UseDebugLibraries)!=true">false</LinkIncremental>
     <ExtensionsToDeleteOnClean>$(ProjectDir)\zconf.h;$(ProjectDir)\zlib.h;$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -77,9 +75,6 @@ copy /y $(ProjectDir)\zlib-ng\zlib.h $(ProjectDir)\
     <ClCompile>
       <PreprocessorDefinitions Condition="$(BuildZLib1)==true">WITH_GZFILEOP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
-    <Lib>
-      <TargetMachine Condition="'$(Platform)'=='Win32'">MachineX86</TargetMachine>
-    </Lib>
     <Link>
       <ModuleDefinitionFile Condition="$(BuildZLib1)==true">zlib-ng\win32\zlibcompat.def</ModuleDefinitionFile>
       <ModuleDefinitionFile Condition="$(BuildZLib1)!=true">zlib-ng\win32\zlib.def</ModuleDefinitionFile>

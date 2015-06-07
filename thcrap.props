@@ -12,7 +12,6 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)libs/;$(SolutionDir)thcrap/src/;$(SolutionDir)win32_utf8/src/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">win32_utf8_dynamic_x86_debug.lib;jansson_d.lib;zdll-ng_d.lib;%(AdditionalDependencies)</AdditionalDependencies>

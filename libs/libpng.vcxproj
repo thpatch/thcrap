@@ -26,9 +26,6 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="Static+Dynamic.props" />
   </ImportGroup>
-  <PropertyGroup>
-    <LinkIncremental>false</LinkIncremental>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <PreBuildEvent>
       <Command>
@@ -52,11 +49,8 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
       <PrecompiledHeaderFile>pngpriv.h</PrecompiledHeaderFile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(ConfigurationType)'=='DynamicLibrary'">_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="$(UseDebugLibraries)==true">_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="$(UseDebugLibraries)!=true">NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary Condition="'$(ConfigurationType)'=='StaticLibrary'">MultiThreaded</RuntimeLibrary>
       <RuntimeLibrary Condition="'$(ConfigurationType)|$(UseDebugLibraries)'=='StaticLibrary|true'">MultiThreadedDebug</RuntimeLibrary>
-      <StringPooling>true</StringPooling>
       <TreatWarningAsError>true</TreatWarningAsError>
       <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
       <WarningLevel>Level4</WarningLevel>
@@ -64,12 +58,8 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
     <Link>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">zdll-ng_d.lib</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">zdll-ng.lib</AdditionalDependencies>
-      <EnableCOMDATFolding Condition="$(UseDebugLibraries)!=true">true</EnableCOMDATFolding>
       <Version>16</Version>
     </Link>
-    <Lib>
-      <LinkTimeCodeGeneration Condition="$(UseDebugLibraries)!=true">true</LinkTimeCodeGeneration>
-    </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="libpng\png.c">
