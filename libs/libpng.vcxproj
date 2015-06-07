@@ -26,6 +26,9 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="Static+Dynamic.props" />
   </ImportGroup>
+  <PropertyGroup>
+    <ExtensionsToDeleteOnClean>$(ProjectDir)\pnglibconf.h;$(ProjectDir)\png.h;$(ProjectDir)\pngconf.h;$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <PreBuildEvent>
       <Command>
