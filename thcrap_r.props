@@ -12,7 +12,6 @@
     <Link>
       <OptimizeReferences>true</OptimizeReferences>
       <StringPooling>true</StringPooling>
-      <AdditionalDependencies>win32_utf8_dynamic_x86.lib;jansson.lib;zdll-ng.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>

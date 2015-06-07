@@ -8,7 +8,6 @@
       <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>win32_utf8_dynamic_x86_debug.lib;jansson_d.lib;zdll-ng_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 </Project>
