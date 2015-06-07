@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<!-- Base settings shared by all thcrap modules and the dependencies we provide our own project files for. -->
+<!-- Base settings shared by all thcrap modules and the dependencies we
+   - provide our own project files for. For a debug build, $(UseDebugLibraries)
+   - should be set to true before this file is included. Any other value,
+   - including none at all, will create a Release build. -->
 
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Globals">
@@ -20,6 +23,8 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="PropertySheets">
+    <Import Condition="$(UseDebugLibraries)==true" Project="Debug.props" />
+    <Import Condition="$(UseDebugLibraries)!=true" Project="Release.props" />
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup>

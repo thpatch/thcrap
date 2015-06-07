@@ -7,9 +7,7 @@
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
-    <Import Project="base.props" />
-    <Import Condition="$(UseDebugLibraries)==true" Project="thcrap_d.props" />
-    <Import Condition="$(UseDebugLibraries)!=true" Project="thcrap_r.props" />
+    <Import Project="Base.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>

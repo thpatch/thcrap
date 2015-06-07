@@ -61,7 +61,6 @@
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="Static+Dynamic.props" />
-    <Import Project="$(SolutionDir)\base.props" />
   </ImportGroup>
   <PropertyGroup>
     <LinkIncremental Condition="$(UseDebugLibraries)==true">true</LinkIncremental>
