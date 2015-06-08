@@ -422,10 +422,10 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0x6a;
 		*p++ = 0x00;
 	} else {
-		// PUSH 0x00000100 (dwFlags = LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
+		// PUSH 0x00000900 (dwFlags = LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32)
 		*p++ = 0x68;
 		*p++ = 0x00;
-		*p++ = 0x01;
+		*p++ = 0x09;
 		*p++ = 0x00;
 		*p++ = 0x00;
 	}
