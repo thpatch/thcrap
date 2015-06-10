@@ -94,7 +94,8 @@ EXPORTS
 	inject_CreateProcessW
 
 	inject_mod_detour
-	thcrap_inject
+	thcrap_inject_into_running
+	thcrap_inject_into_new
 
 	; JSON extensions
 	; ---------------

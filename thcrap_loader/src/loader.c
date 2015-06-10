@@ -116,8 +116,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		ret = -2;
 		goto end;
 	}
-	runconfig_set(run_cfg);
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
 	final_exe_fn = cmd_exe_fn ? cmd_exe_fn : cfg_exe_fn;
 
 	/*
@@ -149,49 +147,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		ret = -3;
 		goto end;
 	}
-	{
-		STRLEN_DEC(final_exe_fn);
-		VLA(char, game_dir, final_exe_fn_len);
-		VLA(char, final_exe_fn_local, final_exe_fn_len);
-		STARTUPINFOA si = {0};
-		PROCESS_INFORMATION pi = {0};
-
-		strcpy(final_exe_fn_local, final_exe_fn);
-		str_slash_normalize_win(final_exe_fn_local);
-
-		strcpy(game_dir, final_exe_fn);
-		PathRemoveFileSpec(game_dir);
-
-		/**
-		  * Sure, the alternative would be to set up the entire engine
-		  * with all plug-ins and modules to correctly run any additional
-		  * detours. While it would indeed be nice to allow those to control
-		  * initial startup, it really shouldn't be necessary for now - and
-		  * it really does run way too much unnecessary code for my taste.
-		  */
-		ret = W32_ERR_WRAP(inject_CreateProcessU(
-			final_exe_fn_local, game_dir, NULL, NULL, TRUE, 0, NULL, game_dir, &si, &pi
-		));
-		if(ret) {
-			char *msg_str = "";
-
-			FormatMessage(
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL, ret, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPSTR)&msg_str, 0, NULL
-			);
-
-			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"Failed to start %s: %s",
-				final_exe_fn, msg_str
-			);
-			LocalFree(msg_str);
-		}
-		VLA_FREE(game_dir);
-		VLA_FREE(final_exe_fn_local);
-	}
+	ret = thcrap_inject_into_new(final_exe_fn, NULL, run_cfg_fn);
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);
