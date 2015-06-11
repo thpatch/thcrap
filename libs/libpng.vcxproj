@@ -40,7 +40,6 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
     <ClCompile>
       <AdditionalIncludeDirectories>$(ZLibIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BasicRuntimeChecks Condition="$(UseDebugLibraries)==true">EnableFastChecks</BasicRuntimeChecks>
-      <BrowseInformation>true</BrowseInformation>
       <CompileAs>CompileAsC</CompileAs>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <DisableSpecificWarnings>4996;4127</DisableSpecificWarnings>
