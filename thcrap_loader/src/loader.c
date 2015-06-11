@@ -10,6 +10,14 @@
 #include <thcrap.h>
 #include <win32_detour.h>
 
+const char *EXE_HELP =
+	"The executable can either be a game ID which is then looked up in "
+	"games.js, or simply the relative or absolute path to an .exe file.\n"
+	"It can either be given as a command line parameter, or through the "
+	"run configuration as a \"game\" value for a game ID or an \"exe\" "
+	"value for an .exe file path. If both are given, \"exe\" takes "
+	"precedence.";
+
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
 	int ret;
@@ -31,14 +39,14 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			"\n"
 			"You are probably looking for the configuration tool to set up shortcuts for the simple usage of the patcher - that would be thcrap_configure.\n"
 			"\n"
-			"If not, this is how to use the loader directly:\n"
+			"If not, this is how to use the loader from the command line:\n"
 			"\n"
-			"\tthcrap_loader runconfig.js [game_id] [game.exe]\n"
+			"\tthcrap_loader runconfig.js executable\n"
 			"\n"
-			"- The run configuration file must end in .js\n"
-			"- If [game_id] is given, the location of the game executable is read from games.js\n"
-			"- Later command-line parameters take priority over earlier ones\n",
-			PROJECT_NAME()
+			"- The run configuration file must end in .js to be recognized as such.\n"
+			"- %s\n"
+			"- Also, later command-line parameters take priority over earlier ones.\n",
+			PROJECT_NAME(), EXE_HELP
 		);
 		ret = -1;
 		goto end;
@@ -113,6 +121,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		ret = -2;
 		goto end;
 	}
+	// Command-line arguments take precedence over run configuration values
 	final_exe_fn = cmd_exe_fn ? cmd_exe_fn : cfg_exe_fn;
 
 	/*
@@ -134,12 +143,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	// Still none?
 	if(!final_exe_fn) {
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"No game executable file given!\n"
-			"\n"
-			"This could either be given as a command line argument "
-			"(just add something ending in .exe), "
-			"or as an \"exe\" value in your run configuration (%s).\n",
-			run_cfg_fn
+			"No target executable given.\n\n%s", EXE_HELP
 		);
 		ret = -3;
 		goto end;
