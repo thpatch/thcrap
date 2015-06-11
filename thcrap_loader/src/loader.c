@@ -24,6 +24,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	json_t *args = NULL;
 	json_t *games_js = NULL;
 
+	int run_cfg_seen = 0;
 	const char *run_cfg_fn = NULL;
 	json_t *run_cfg = NULL;
 
@@ -90,6 +91,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		if(!stricmp(param_ext, ".js")) {
 			const char *new_exe_fn = NULL;
 
+			run_cfg_seen = 1;
 			// Sorry guys, no run configuration stacking yet
 			if(json_is_object(run_cfg)) {
 				json_decref(run_cfg);
@@ -113,11 +115,14 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	}
 
 	if(!run_cfg) {
-		log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"No valid run configuration file given!\n"
-			"\n"
-			"If you do not have one yet, use the thcrap_configure tool to create one.\n"
-		);
+		if(!run_cfg_seen) {
+			log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"No run configuration .js file given.\n"
+				"\n"
+				"If you do not have one yet, use the "
+				"thcrap_configure tool to create one.\n"
+			);
+		}
 		ret = -2;
 		goto end;
 	}
