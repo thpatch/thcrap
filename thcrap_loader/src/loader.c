@@ -78,10 +78,9 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	for(i = 1; i < json_array_size(args); i++) {
 		const char *arg = json_array_get_string(args, i);
 		const char *param_ext = PathFindExtensionA(arg);
-		const char *new_exe_fn = NULL;
 
 		if(!stricmp(param_ext, ".js")) {
-			const char *game = NULL;
+			const char *new_exe_fn = NULL;
 
 			// Sorry guys, no run configuration stacking yet
 			if(json_is_object(run_cfg)) {
@@ -90,12 +89,10 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			run_cfg_fn = arg;
 			run_cfg = json_load_file_report(run_cfg_fn);
 
-			// First, evaluate runconfig values, then command line overrides
-			game = json_object_get_string(run_cfg, "game");
-			new_exe_fn = json_object_get_string(games_js, game);
-
+			new_exe_fn = json_object_get_string(run_cfg, "exe");
 			if(!new_exe_fn) {
-				new_exe_fn = json_object_get_string(run_cfg, "exe");
+				const char *game = json_object_get_string(run_cfg, "game");
+				new_exe_fn = json_object_get_string(games_js, game);
 			}
 			if(new_exe_fn) {
 				cfg_exe_fn = new_exe_fn;
