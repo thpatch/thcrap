@@ -18,6 +18,17 @@ const char *EXE_HELP =
 	"value for an .exe file path. If both are given, \"exe\" takes "
 	"precedence.";
 
+const char *game_missing = NULL;
+
+const char* game_lookup(const json_t *games_js, const char *game)
+{
+	const json_t *ret = json_object_get(games_js, game);
+	if(!json_string_length(ret)) {
+		game_missing = game;
+	}
+	return json_string_value(ret);
+}
+
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
 	int ret;
@@ -102,15 +113,18 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			new_exe_fn = json_object_get_string(run_cfg, "exe");
 			if(!new_exe_fn) {
 				const char *game = json_object_get_string(run_cfg, "game");
-				new_exe_fn = json_object_get_string(games_js, game);
+				if(game) {
+					new_exe_fn = game_lookup(games_js, game);
+				}
 			}
 			if(new_exe_fn) {
 				cfg_exe_fn = new_exe_fn;
 			}
 		} else if(!stricmp(param_ext, ".exe")) {
 			cmd_exe_fn = arg;
-		} else if(games_js) {
-			cmd_exe_fn = json_object_get_string(games_js, arg);
+		} else {
+			// Need to set game_missing even if games_js is null.
+			cmd_exe_fn = game_lookup(games_js, arg);
 		}
 	}
 
@@ -147,9 +161,16 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	*/
 	// Still none?
 	if(!final_exe_fn) {
-		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"No target executable given.\n\n%s", EXE_HELP
-		);
+		if(game_missing || !games_js) {
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"The game ID \"%s\" is missing in games.js.",
+				game_missing
+			);
+		} else {
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"No target executable given.\n\n%s", EXE_HELP
+			);
+		}
 		ret = -3;
 		goto end;
 	}
