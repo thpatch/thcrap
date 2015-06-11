@@ -35,7 +35,9 @@
   <ItemGroup>
     <ClCompile Include="src\notify.c" />
     <ClCompile Include="src\self.c" />
-    <ClCompile Include="src\thcrap_update.c" />
+    <ClCompile Include="src\thcrap_update.c">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\update.c" />
     <ClInclude Include="src\notify.h" />
     <ClInclude Include="src\self.h" />

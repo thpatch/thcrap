@@ -7,10 +7,10 @@
   * Main include file.
   */
 
+#pragma once
+
 #define WIN32_LEAN_AND_MEAN
 
-#include <windows.h>
-#include <shlwapi.h>
 #include <win32_utf8.h>
 #include <jansson.h>
 #include "..\config.h"

@@ -42,7 +42,9 @@
     <ClCompile Include="src\png_ex.c" />
     <ClCompile Include="src\spells.c" />
     <ClCompile Include="src\th06_msg.c" />
-    <ClCompile Include="src\thcrap_tsa.c" />
+    <ClCompile Include="src\thcrap_tsa.c">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\win32_tsa.c" />
     <ClInclude Include="src\anm.h" />
     <ClInclude Include="src\layout.h" />

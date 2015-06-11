@@ -9,13 +9,11 @@
 
 extern "C"
 {
-	#include <thcrap.h>
+	#include <win32_utf8.h>
 	#include <shobjidl.h>
 	#include <objbase.h>
 	#include <objidl.h>
 	#include <shlguid.h>
-
-	#include "configure.h"
 
 	#define LINK_MACRO_EXPAND(macro) \
 		macro(link_fn); \

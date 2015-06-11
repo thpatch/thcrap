@@ -32,12 +32,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\configure.c" />
+    <ClCompile Include="src\configure.c">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\configure_search.c" />
     <ClCompile Include="src\repo.c" />
     <ClCompile Include="src\search.c" />
     <ClCompile Include="src\select.c" />
-    <ClCompile Include="src\shelllink.cpp" />
+    <ClCompile Include="src\shelllink.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClInclude Include="src\configure.h" />
     <ClInclude Include="src\repo.h" />
     <ResourceCompile Include="thcrap_configure.rc" />
