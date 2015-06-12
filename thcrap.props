@@ -13,11 +13,12 @@
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>thcrap.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)libs/;$(SolutionDir)thcrap/src/;$(SolutionDir)win32_utf8/src/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)libs/;$(SolutionDir)thcrap/src/;$(SolutionDir)win32_utf8/src/;$(QT5_VS2013_PATH)/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">win32_utf8_dynamic_x86_debug.lib;jansson_d.lib;zdll-ng_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">win32_utf8_dynamic_x86.lib;jansson.lib;zdll-ng.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(QT5_VS2013_PATH)/lib/;%(AdditionalLibraryDirectories);</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
 </Project>

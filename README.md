@@ -43,9 +43,26 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 ### Building ###
 
-A ready-made Visual Studio build configuration, covering all modules and their dependencies, is provided as part of this repository. To set up the build:
+A ready-made Visual Studio build configuration, covering all modules and their dependencies (with the exception of Qt), is provided as part of this repository. To set up the build:
 
 * Install [Visual Studio Community 2013](https://www.visualstudio.com/products/visual-studio-community-vs).
+* Install the [Qt 32-bit Windows package for VS2013](http://www.qt.io/download-open-source/#section-5). OpenGL or not doesn't matter.
+* After the Qt installation, point MSBuild to your Qt path by adding an environment variable named `QT5_VS2013_PATH` containing the root directory of the Qt *library*, i.e. the directory inside your Qt installation that contains `lib/Qt5Core.lib`. This can be done in two ways:
+ 
+	* system-wide by using *Control Panel → System → Advanced → Environment Variables...*, which requires a reboot 
+	* or by adding an MSBuild property to your user settings at `%LOCALAPPDATA%\Microsoft\MSBuild\v4.0\Microsoft.Cpp.Win32.user.props`:
+
+	```xml
+	<?xml version="1.0" encoding="utf-8"?>
+	<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+		<PropertyGroup>
+			<QT5_VS2013_PATH>C:\path\to\your\local\Qt\5.4.2\5.4\msvc2013\</QT5_VS2013_PATH>
+		</PropertyGroup>
+	</Project>
+	```
+
+	Note that this option takes precedence over a system-wide environment variable with the same name.
+
 * Make sure that you've pulled all Git submodules together with this repo:
 
 		git clone --recursive https://github.com/thpatch/thcrap.git
@@ -66,11 +83,13 @@ in the thcrap directory. The binaries will end up in the `bin/` subdirectory.
 
 Visual Studio Community 2013 is recommended for building, and the build configuration references the Visual Studio 2013 platform toolset with Windows XP targeting support by default. However, the project should generally build under every version since Visual C++ 2010 Express after changing the `<PlatformToolset>` value in `Base.props`. For a list of all platform toolsets available on your system, open the `Properties` dialog for any included project and refer to the drop-down menu at *Configuration Properties → General → Platform Toolset*.
 
-Compilation with MinGW is currently not supported. This is not likely to change in the foreseeable future as we don't see much value in it.
+Compilation of the non-Qt, core engine parts with MinGW is currently not supported. This is not likely to change in the foreseeable future as we don't see much value in it.
 
 #### Dependencies ####
 
-All required third-party libraries for the C code are included as Git submodules. These are:
+The GUI modules (currently just thcrap_loader) use [Qt 5.4](http://www.qt.io/qt5-4/) as their framework. Due to its large size, it is not included in this repository and must be installed separately.
+
+All other required third-party libraries for the C code are included as Git submodules. These are:
 
 * [Jansson](http://www.digip.org/jansson/), required for every module apart from `win32_utf8`.
 
