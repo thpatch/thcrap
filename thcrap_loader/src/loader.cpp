@@ -9,8 +9,6 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QFileInfo>
-#include <QtCore/QJsonObject>
-#include <QtCore/QJsonDocument>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QPushButton>
@@ -28,59 +26,6 @@ const char *EXE_HELP =
 	"run configuration as a <tt>\"game\"</tt> value for a game ID or an "
 	"<tt>\"exe\"</tt> value for an .exe file path. If both are given, "
 	"<tt>\"exe\"</tt> takes precedence.";
-
-int QJsonParseErrorMessage(const QJsonParseError& err, const QByteArray& data, const QString& source)
-{
-	if(err.error == QJsonParseError::NoError) {
-		return QMessageBox::Ok;
-	}
-	int line = 1;
-	int col = 0;
-	int i = 0;
-
-	// Skip UTF-8 byte order mark, if there
-	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf, 0};
-	if(data.startsWith((const char *)utf8_bom)) {
-		i = sizeof(utf8_bom) - 1;
-	}
-	for(; i < err.offset; i++) {
-		col++;
-		if(data[i] == '\n') {
-			col = 0;
-			line++;
-		}
-	}
-	// TODO: Show at least 2 lines of context, with a nice UTF-8 arrow
-	// pointing to the exact position of the parse error.
-	QMessageBox msg;
-	msg.setIcon(QMessageBox::Critical);
-	msg.setText(QString(
-		"JSON parsing error: %1 (%2, line %3, column %4)"
-		).arg(err.errorString()
-		).arg(source
-		).arg(line
-		).arg(col
-	));
-	msg.addButton(QMessageBox::Ok);
-	msg.addButton(QMessageBox::Retry);
-	return msg.exec();
-}
-
-QJsonDocument QJsonDocumentFromFileReport(const QString& fn)
-{
-	QJsonParseError err;
-	QByteArray data;
-	QJsonDocument ret;
-	do {
-		QFile file(fn);
-		if(!file.open(QIODevice::ReadOnly)) {
-			return QJsonDocument();
-		}
-		data = file.readAll();
-		ret = QJsonDocument::fromJson(data, &err);
-	} while(QJsonParseErrorMessage(err, data, fn) == QMessageBox::Retry);
-	return ret;
-}
 
 int main(int argc, char **argv)
 {
@@ -117,9 +62,9 @@ int main(int argc, char **argv)
 	// Make sure to get the arguments in Unicode
 	auto args = app.arguments();
 
-	auto games = QJsonDocumentFromFileReport(
-		app.applicationDirPath() + "/games.js"
-	).object();
+	auto games = json_load_file_report(
+		(app.applicationDirPath() + "/games.js").toUtf8().data()
+	);
 
 	// Parse command line
 	bool run_cfg_seen = false; // We don't display an error if we have
@@ -130,34 +75,35 @@ int main(int argc, char **argv)
 
 	QString game_missing;
 
-	auto game_lookup = [&game_missing, &games](const QString& game) {
-		auto& ret = games[game].toString();
-		if(ret.isEmpty()) {
+	auto game_lookup = [&game_missing, &games](const char *game) {
+		auto ret = json_object_get(games, game);
+		if(!json_string_length(ret)) {
 			game_missing = game;
 		}
-		return ret;
+		return json_string_value(ret);
 	};
 	for(int i = 1; i < args.size(); i++) {
-		auto& arg = args[i];
+		auto arg = args[i].toUtf8();
 		auto arg_ext = QFileInfo(args[i]).suffix();
 
 		if(!arg_ext.compare("js", Qt::CaseInsensitive)) {
 			run_cfg_seen = true;
-			auto run_cfg = QJsonDocumentFromFileReport(arg);
-			if(!run_cfg.isNull()) {
+			auto run_cfg = json_load_file_report(arg);
+			if(json_is_object(run_cfg)) {
 				run_cfg_fn = arg;
 
-				auto new_exe_fn = run_cfg.object()["exe"].toString();
-				if(new_exe_fn.isEmpty()) {
-					auto& game = run_cfg.object()["game"].toString();
-					if(!game.isEmpty()) {
+				auto new_exe_fn = json_object_get_string(run_cfg, "exe");
+				if(!new_exe_fn) {
+					auto game = json_object_get_string(run_cfg, "game");
+					if(game) {
 						new_exe_fn = game_lookup(game);
 					}
 				}
-				if(!new_exe_fn.isEmpty()) {
+				if(new_exe_fn) {
 					cfg_exe_fn = new_exe_fn;
 				}
 			}
+			json_decref(run_cfg);
 		} else if(!arg_ext.compare("exe", Qt::CaseInsensitive)) {
 			cmd_exe_fn = arg;
 		} else {
@@ -184,7 +130,7 @@ int main(int argc, char **argv)
 	if(final_exe_fn.isEmpty()) {
 		QMessageBox msg;
 		msg.setIcon(QMessageBox::Critical);
-		if(!game_missing.isEmpty() || games.isEmpty()) {
+		if(!game_missing.isEmpty() || !games) {
 			msg.setText(QString(
 				"The game ID <tt>\"%1\"</tt> is missing in <tt>games.js</tt>."
 				).arg(game_missing)
