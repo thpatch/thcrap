@@ -46,7 +46,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		(LPTSTR)lpER->ExceptionAddress,
 		&crash_mod
 	)) {
-		size_t crash_fn_len = GetModuleFileNameU(crash_mod, NULL, 0);
+		size_t crash_fn_len = GetModuleFileNameU(crash_mod, NULL, 0) + 1;
 		VLA(char, crash_fn, crash_fn_len);
 		if(GetModuleFileNameU(crash_mod, crash_fn, crash_fn_len)) {
 			log_printf(

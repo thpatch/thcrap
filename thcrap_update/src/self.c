@@ -90,7 +90,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 	{
 		// CryptQueryObject() forces us to use the W version, but only
 		// our U version can calculate the length of the string, so...
-		size_t self_fn_len = GetModuleFileNameU(self_mod, NULL, 0);
+		size_t self_fn_len = GetModuleFileNameU(self_mod, NULL, 0) + 1;
 		VLA(wchar_t, self_fn, self_fn_len * UTF8_MUL);
 		VLA(char, self_fn_utf8, self_fn_len);
 		GetModuleFileNameU(self_mod, self_fn_utf8, self_fn_len);
