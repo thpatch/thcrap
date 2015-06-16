@@ -2,6 +2,8 @@
 Touhou Community Reliant Automatic Patcher
 ------------------------------------------
 
+[![Join the chat at https://gitter.im/thpatch/thcrap](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/thpatch/thcrap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ### Description ###
 
 Basically, this is an almost-generic, easily expandable and customizable framework to patch Windows applications in memory, specifically tailored towards the translation of Japanese games.
