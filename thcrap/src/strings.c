@@ -90,9 +90,13 @@ const char* printf_format_parse(printf_format_t *fmt, const char *p)
 
 	memset(fmt, 0, sizeof(printf_format_t));
 
+	if(!(*p)) {
+		return p;
+	}
+
 	// Skip flags. From left to right:
 	// prefix sign, prefix space, left-align, zero padding, alternate
-	while(strchr("+ -0#", *p) != NULL) {
+	while(strchr("+ -0#", *p)) {
 		p++;
 	}
 
