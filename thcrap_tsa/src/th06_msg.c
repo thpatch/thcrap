@@ -203,9 +203,28 @@ th06_msg_t* th06_msg_advance(const th06_msg_t* msg)
 	return (th06_msg_t*)((BYTE*)msg + th06_msg_full_len(msg));
 }
 
+size_t get_len_at_last_codepoint(const char *str, const size_t limit)
+{
+	size_t ret = 0;
+	while(str[ret]) {
+		size_t old_ret = ret;
+		ret++;
+		// Every string that gets here is UTF-8 anyway.
+		while((str[ret] & 0xc0) == 0x80) {
+			ret++;
+		}
+		if(ret >= limit) {
+			ret = old_ret;
+			break;
+		}
+	}
+	return ret + 1;
+}
+
 void replace_line(BYTE *dst, const char *rep, const size_t len, patch_msg_state_t *state)
 {
 	memcpy(dst, rep, len);
+	dst[len - 1] = '\0';
 	if(state->enc_func) {
 		state->enc_func(dst, len, state->enc_vars, state->enc_var_count);
 	}
@@ -213,17 +232,18 @@ void replace_line(BYTE *dst, const char *rep, const size_t len, patch_msg_state_
 
 void replace_auto_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *rep)
 {
-	cmd_out->length = strlen(rep) + 1;
+	cmd_out->length = get_len_at_last_codepoint(rep, 255);
 	replace_line(cmd_out->data, rep, cmd_out->length, state);
 }
 
 void replace_hard_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *rep)
 {
 	hard_line_data_t* line = (hard_line_data_t*)cmd_out->data;
+	size_t line_copy_len = get_len_at_last_codepoint(rep, 255 - 4);
 
 	line->linenum = state->cur_line;
-	cmd_out->length = strlen(rep) + 4 + 1;
-	replace_line(line->str, rep, cmd_out->length - 4, state);
+	cmd_out->length = line_copy_len + 4;
+	replace_line(line->str, rep, line_copy_len, state);
 }
 
 void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind)
