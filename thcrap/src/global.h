@@ -25,8 +25,8 @@ void runconfig_set(json_t *new_run_cfg);
 
 // Returns the prettiest representation of a game title available,
 // in this order:
-// • 1. Localized game title from the string table
-// • 2. "title" value from the run configuration
-// • 3. The plain game ID
-// • 4. NULL
+// â€¢ 1. Localized game title from the string table
+// â€¢ 2. "title" value from the run configuration
+// â€¢ 3. The plain game ID
+// â€¢ 4. NULL
 const json_t *runconfig_title_get(void);
