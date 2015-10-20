@@ -48,6 +48,18 @@ void* ServerDownloadFile(
 	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
 );
 
-// Updates the patch in [patch_info].
-int patch_update(json_t *patch_info);
-void stack_update(void);
+// High-level patch and stack updates.
+// These can optionally take a filter function to limit the number of files
+// downloaded.
+typedef int (*update_filter_func_t)(const char *fn, json_t *filter_data);
+
+// Returns 1 for all global file names, i.e. those without a slash.
+int update_filter_global(const char *fn, json_t *null);
+// Returns 1 for all global file names and those that are specific to a game
+// in the flexible JSON array [games].
+int update_filter_games(const char *fn, json_t *games);
+
+int patch_update(
+	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data
+);
+void stack_update(update_filter_func_t filter_func, json_t *filter_data);
