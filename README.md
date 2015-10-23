@@ -41,7 +41,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 * `thcrap_loader`: A command-line loader to call the injection functions of `thcrap` on a newly created process.
 * `thcrap_configure`: A rather cheap command-line patch configuration utility. Will eventually be replaced with a GUI tool.
 * `thcrap_tsa`: A thcrap plug-in containing patch hooks for games using the STG engine by Team Shanghai Alice.
-* `thcrap_update`: A thcrap plug-in containing updating functionality for patches.
+* `thcrap_update`: A thcrap plug-in containing updating functionality for patches as well as digitally signed automatic updates of thcrap itself.
 
 ### Building ###
 
@@ -51,6 +51,13 @@ A ready-made Visual Studio build configuration, covering all modules and their d
 * Make sure that you've pulled all Git submodules together with this repo:
 
 		git clone --recursive https://github.com/thpatch/thcrap.git
+
+* (Optional) If your thcrap build should be able to automatically update itself, you need to create a code signing certificate. To do this, run the following commands on the Visual Studio command prompt (`vcvarsall.bat`) in the root directory of this repo (the one with `thcrap.sln`):
+
+		makecert -n "CN=Your Name,E=yourmail@provider.net" -$ individual -a sha256 -len 4096 -r -cy authority -sky signature -pe -sv cert.pvk cert.cer
+		pvk2pfx -pvk cert.pvk -spc cert.cer -pfx cert.pfx
+
+	`cert.pfx` is used to sign the binaries as part of the build, so don't change the file name.
 
 Then, open `thcrap.sln`, choose Debug or Release from the drop-down menu in the toolbar (or the Configuration Manager) and run *Build → Build Solution* from the main menu.
 
@@ -63,6 +70,12 @@ or
 		msbuild /m /p:Configuration=Release
 
 in the thcrap directory. The binaries will end up in the `bin/` subdirectory.
+
+#### Signing a release archive for automatic updates ####
+First, convert `cert.pvk` to a .pem file using OpenSSL, then use this file together with `scripts/release_sign.py`:
+
+	openssl rsa -inform pvk -in cert.pvk -outform pem -out cert.pem
+	python release_sign.py -k cert.pem thcrap.zip
 
 #### Using different compilers ####
 
