@@ -69,7 +69,9 @@ static const char *self_body[] = {
 	"\n"
 	"You can manually download the update archive from\n"
 	"\n"
-	"\t${desc_url}",
+	"\t${desc_url}\n"
+	"\n"
+	"Its digital signature has already been verified to be authentic.",
 	// SELF_NO_SIG
 	"An automatic update was attempted, but the server did not provide a "
 	"digital signature to prove the authenticity of the update archive.\n"
