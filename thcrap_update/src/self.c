@@ -287,6 +287,7 @@ static self_result_t self_replace(zip_t *zip)
 		char backup_dir[TEMP_FN_LEN];
 		const char *fn;
 		json_t *val;
+		size_t i;
 
 		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING());
 		self_tempname(backup_dir, sizeof(backup_dir), prefix_backup);
@@ -308,6 +309,9 @@ static self_result_t self_replace(zip_t *zip)
 			if(local_ret || zip_file_unzip(zip, fn)) {
 				goto end;
 			}
+		}
+		json_array_foreach(zip_list_empty(zip), i, val) {
+			DeleteFileU(json_string_value(val));
 		}
 		ret = SELF_OK;
 	}
