@@ -531,6 +531,7 @@ int zip_file_unzip(zip_t *zip, const char *fn)
 			CloseHandle(handle);
 		}
 	}
+	SAFE_FREE(file_buffer);
 	return ret;
 }
 
