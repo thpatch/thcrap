@@ -24,9 +24,8 @@ static void* self_download(DWORD *arc_len, const char *arc_fn)
 	// Yup, hardcoded download URLs. After all, these should be a property
 	// of the engine, and now that it is capable of updating itself,
 	// there's no need to include these in any patch.
-	json_t *self_ddls = json_pack("{s[ss]}", "servers",
-		"http://thcrap.thpatch.net/",
-		"http://thcrap.nmlgc.net/releases/"
+	json_t *self_ddls = json_pack("{s[s]}", "servers",
+		"http://thcrap.thpatch.net/"
 	);
 	json_t *self_ddl_servers = ServerInit(self_ddls);
 	void *arc_buf = ServerDownloadFile(self_ddl_servers, arc_fn, arc_len, NULL);
