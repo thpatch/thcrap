@@ -268,6 +268,9 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	// Global URL cache to not download anything twice
 	json_t *url_cache = json_object();
+	// Repository ID cache to prioritize the most local repository if more
+	// than one repository with the same name is discovered in the network
+	json_t *id_cache = json_object();
 
 	json_t *repo_list = NULL;
 
@@ -360,10 +363,13 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	);
 	pause();
 
-	if(RepoDiscover(start_repo, NULL, url_cache)) {
+	if(RepoDiscoverAtURL(start_repo, id_cache, url_cache)) {
 		goto end;
 	}
-	repo_list = RepoLoadLocal(url_cache);
+	if(RepoDiscoverFromLocal(id_cache, url_cache)) {
+		goto end;
+	}
+	repo_list = RepoLoad();
 	if(!json_object_size(repo_list)) {
 		log_printf("No patch repositories available...\n");
 		pause();
@@ -435,5 +441,6 @@ end:
 	VLA_FREE(cur_dir);
 	json_decref(repo_list);
 	json_decref(url_cache);
+	json_decref(id_cache);
 	return 0;
 }

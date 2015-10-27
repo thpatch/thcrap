@@ -27,7 +27,7 @@ int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
 	json_array_foreach(neighbors, i, neighbor) {
 		const char *neighbor_str = json_string_value(neighbor);
 		// Recursion!
-		ret = RepoDiscover(neighbor_str, id_cache, url_cache);
+		ret = RepoDiscoverAtURL(neighbor_str, id_cache, url_cache);
 		if(ret) {
 			break;
 		}
@@ -35,7 +35,7 @@ int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
 	return ret;
 }
 
-int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
+int RepoDiscoverAtURL(const char *start_url, json_t *id_cache, json_t *url_cache)
 {
 	int ret = 0;
 	const char *repo_fn = "repo.js";
@@ -90,38 +90,64 @@ end:
 	return ret;
 }
 
-json_t* RepoLoadLocal(json_t *url_cache)
+json_t* RepoLocalNext(HANDLE *hFind)
 {
-	BOOL find_ret = 0;
-	json_t *repo_list;
+	json_t *repo_local_fn;
+	json_t *repo_js;
 	WIN32_FIND_DATAA w32fd;
-	// Too bad we can't do "*/repo.js" or something similar.
-	HANDLE hFind = FindFirstFile("*", &w32fd);
-
-	if(hFind == INVALID_HANDLE_VALUE) {
+	BOOL find_ret = 0;
+	if(*hFind == NULL) {
+		// Too bad we can't do "*/repo.js" or something similar.
+		*hFind = FindFirstFile("*", &w32fd);
+		if(*hFind == INVALID_HANDLE_VALUE) {
+			return NULL;
+		}
+	} else {
+		find_ret = W32_ERR_WRAP(FindNextFile(*hFind, &w32fd));
+	}
+	while(!find_ret && (
+		!(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		|| !strcmp(w32fd.cFileName, ".")
+		|| !strcmp(w32fd.cFileName, "..")
+	)) {
+		find_ret = W32_ERR_WRAP(FindNextFile(*hFind, &w32fd));
+	}
+	if(find_ret) {
+		FindClose(*hFind);
 		return NULL;
 	}
-	repo_list = json_object();
-	while(!find_ret) {
-		if(
-			(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			&& strcmp(w32fd.cFileName, ".")
-			&& strcmp(w32fd.cFileName, "..")
-		) {
-			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
-			json_t *repo_js = json_load_file_report(json_string_value(repo_local_fn));
-			const char *id = json_object_get_string(repo_js, "id");
+	repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
+	repo_js = json_load_file_report(json_string_value(repo_local_fn));
+	json_decref(repo_local_fn);
+	return repo_js;
+}
 
-			json_t *servers = ServerInit(repo_js);
-			const json_t *first = json_array_get(servers, 0);
-			const char *first_url = json_object_get_string(first, "url");
-			RepoDiscover(first_url, NULL, url_cache);
-
-			json_object_set_new(repo_list, id, repo_js);
-			json_decref(repo_local_fn);
+int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
+{
+	int ret = 0;
+	HANDLE hFind = NULL;
+	json_t *repo_js;
+	while(repo_js = RepoLocalNext(&hFind)) {
+		json_t *servers = ServerInit(repo_js);
+		const json_t *first = json_array_get(servers, 0);
+		const char *first_url = json_object_get_string(first, "url");
+		ret = RepoDiscoverAtURL(first_url, id_cache, url_cache);
+		if(!ret) {
+			ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache);
 		}
-		find_ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));
+		json_decref(repo_js);
 	}
-	FindClose(hFind);
+	return ret;
+}
+
+json_t* RepoLoad(void)
+{
+	HANDLE hFind = NULL;
+	json_t *repo_list = json_object();
+	json_t *repo_js;
+	while(repo_js = RepoLocalNext(&hFind)) {
+		const char *id = json_object_get_string(repo_js, "id");
+		json_object_set_new(repo_list, id, repo_js);
+	}
 	return repo_list;
 }
