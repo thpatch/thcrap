@@ -14,8 +14,8 @@
 
 #define TEMP_FN_LEN 41
 
-const char *ARC_FN = "thcrap.zip";
-const char *SIG_FN = "thcrap.zip.sig";
+const char *ARC_FN = "thcrap_brliron.zip";
+const char *SIG_FN = "thcrap_brliron.zip.sig";
 const char *PREFIX_BACKUP = "thcrap_old_%s_";
 const char *PREFIX_NEW = "thcrap_new_";
 
