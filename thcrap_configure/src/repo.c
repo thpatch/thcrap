@@ -18,6 +18,23 @@ json_t* RepoGetLocalFN(const char *id)
 	return json_pack("s++", id, "/", repo_fn);
 }
 
+int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
+{
+	int ret = 0;
+	json_t *neighbors = json_object_get(repo_js, "neighbors");
+	size_t i;
+	json_t *neighbor;
+	json_array_foreach(neighbors, i, neighbor) {
+		const char *neighbor_str = json_string_value(neighbor);
+		// Recursion!
+		ret = RepoDiscover(neighbor_str, id_cache, url_cache);
+		if(ret) {
+			break;
+		}
+	}
+	return ret;
+}
+
 int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 {
 	int ret = 0;
@@ -27,9 +44,6 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 	void *repo_buffer = NULL;
 	json_t *repo_js = NULL;
 	const char *id = NULL;
-	json_t *neighbors = NULL;
-	size_t i;
-	json_t *neighbor;
 	json_t *repo_fn_local = NULL;
 	const char *repo_fn_local_str;
 
@@ -65,15 +79,7 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache)
 		log_printf("Repository file does not specify an ID!\n");
 	}
 
-	neighbors = json_object_get(repo_js, "neighbors");
-	json_array_foreach(neighbors, i, neighbor) {
-		const char *neighbor_str = json_string_value(neighbor);
-		// Recursion!
-		ret = RepoDiscover(neighbor_str, id_cache, url_cache);
-		if(ret) {
-			break;
-		}
-	}
+	ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache);
 end:
 	json_decref(repo_fn_local);
 	SAFE_FREE(repo_buffer);
