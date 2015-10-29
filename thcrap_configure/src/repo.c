@@ -132,6 +132,7 @@ json_t* RepoLocalNext(HANDLE *hFind)
 		) {
 			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
 			repo_js = json_load_file_report(json_string_value(repo_local_fn));
+			ServerInit(repo_js);
 			json_decref(repo_local_fn);
 			if(repo_js) {
 				return repo_js;
@@ -149,7 +150,7 @@ int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
 	HANDLE hFind = NULL;
 	json_t *repo_js;
 	while(repo_js = RepoLocalNext(&hFind)) {
-		json_t *servers = ServerInit(repo_js);
+		json_t *servers = json_object_get(repo_js, "servers");
 		ret = RepoDiscoverAtServers(servers, id_cache, url_cache);
 		if(!ret) {
 			ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache);
