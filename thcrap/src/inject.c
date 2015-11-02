@@ -422,10 +422,10 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0x6a;
 		*p++ = 0x00;
 	} else {
-		// PUSH 0x00000100 (dwFlags = LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)
+		// PUSH 0x00000900 (dwFlags = LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32)
 		*p++ = 0x68;
 		*p++ = 0x00;
-		*p++ = 0x01;
+		*p++ = 0x09;
 		*p++ = 0x00;
 		*p++ = 0x00;
 	}
@@ -675,14 +675,14 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	return injRet;
 }
 
-int thcrap_inject(HANDLE hProcess, const char *run_cfg_fn)
+int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 {
 	int ret = -1;
 	HMODULE inj_mod = NULL;
 
 	if(GetModuleHandleEx(
 		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-		(LPTSTR)thcrap_inject,
+		(LPTSTR)thcrap_inject_into_running,
 		&inj_mod
 	)) {
 		size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
@@ -713,6 +713,61 @@ int thcrap_inject(HANDLE hProcess, const char *run_cfg_fn)
 		VLA_FREE(abs_run_cfg_fn);
 		VLA_FREE(inj_dir);
 		VLA_FREE(inj_dll);
+	}
+	return ret;
+}
+
+BOOL thcrap_inject_into_new(const char *exe_fn, char *args, const char *run_cfg_fn)
+{
+	int ret = 0;
+	json_t *run_cfg = json_load_file_report(run_cfg_fn);
+	if(!run_cfg) {
+		return 1;
+	};
+	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
+	runconfig_set(run_cfg);
+	{
+		STRLEN_DEC(exe_fn);
+		VLA(char, exe_dir, exe_fn_len);
+		VLA(char, exe_fn_local, exe_fn_len);
+		STARTUPINFOA si = {0};
+		PROCESS_INFORMATION pi = {0};
+
+		strcpy(exe_fn_local, exe_fn);
+		str_slash_normalize_win(exe_fn_local);
+
+		strcpy(exe_dir, exe_fn);
+		PathRemoveFileSpec(exe_dir);
+
+		/**
+		  * Sure, the alternative would be to set up the entire engine
+		  * with all plug-ins and modules to correctly run any additional
+		  * detours. While it would indeed be nice to allow those to control
+		  * initial startup, it really shouldn't be necessary for now - and
+		  * it really does run way too much unnecessary code for my taste.
+		  */
+		ret = W32_ERR_WRAP(inject_CreateProcessU(
+			exe_fn_local, args, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
+		));
+		if(ret) {
+			char *msg_str = "";
+
+			FormatMessage(
+				FORMAT_MESSAGE_FROM_SYSTEM |
+				FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_IGNORE_INSERTS,
+				NULL, ret, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+				(LPSTR)&msg_str, 0, NULL
+			);
+
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"Failed to start %s: %s",
+				exe_fn, msg_str
+			);
+			LocalFree(msg_str);
+		}
+		VLA_FREE(exe_fn_local);
+		VLA_FREE(exe_dir);
 	}
 	return ret;
 }
@@ -811,14 +866,14 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 
 // Injection calls shared between the U and W versions
 static void inject_CreateProcess_helper(
-	__in LPPROCESS_INFORMATION lpPI,
-	__in_opt LPCSTR lpAppName,
-	__in DWORD dwCreationFlags
+	LPPROCESS_INFORMATION lpPI,
+	LPCSTR lpAppName,
+	DWORD dwCreationFlags
 )
 {
 	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
 		const char *run_cfg_fn = json_object_get_string(run_cfg, "run_cfg_fn");
-		thcrap_inject(lpPI->hProcess, run_cfg_fn);
+		thcrap_inject_into_running(lpPI->hProcess, run_cfg_fn);
 	}
 	if(~dwCreationFlags & CREATE_SUSPENDED) {
 		ResumeThread(lpPI->hThread);
@@ -826,16 +881,16 @@ static void inject_CreateProcess_helper(
 }
 
 BOOL WINAPI inject_CreateProcessU(
-	__in_opt LPCSTR lpAppName,
-	__inout_opt LPSTR lpCmdLine,
-	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in BOOL bInheritHandles,
-	__in DWORD dwCreationFlags,
-	__in_opt LPVOID lpEnvironment,
-	__in_opt LPCSTR lpCurrentDirectory,
-	__in LPSTARTUPINFOA lpSI,
-	__out LPPROCESS_INFORMATION lpPI
+	LPCSTR lpAppName,
+	LPSTR lpCmdLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCSTR lpCurrentDirectory,
+	LPSTARTUPINFOA lpSI,
+	LPPROCESS_INFORMATION lpPI
 )
 {
 	BOOL ret = chain_CreateProcessU(
@@ -850,16 +905,16 @@ BOOL WINAPI inject_CreateProcessU(
 }
 
 BOOL WINAPI inject_CreateProcessW(
-	__in_opt LPCWSTR lpAppName,
-	__inout_opt LPWSTR lpCmdLine,
-	__in_opt LPSECURITY_ATTRIBUTES lpProcessAttributes,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in BOOL bInheritHandles,
-	__in DWORD dwCreationFlags,
-	__in_opt LPVOID lpEnvironment,
-	__in_opt LPCWSTR lpCurrentDirectory,
-	__in LPSTARTUPINFOW lpSI,
-	__out LPPROCESS_INFORMATION lpPI
+	LPCWSTR lpAppName,
+	LPWSTR lpCmdLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCWSTR lpCurrentDirectory,
+	LPSTARTUPINFOW lpSI,
+	LPPROCESS_INFORMATION lpPI
 )
 {
 	BOOL ret = chain_CreateProcessW(
@@ -877,11 +932,11 @@ BOOL WINAPI inject_CreateProcessW(
 }
 
 LPTHREAD_START_ROUTINE inject_change_start_func(
-	__in HANDLE hProcess,
-	__in LPTHREAD_START_ROUTINE lpStartAddress,
-	__in FARPROC rep_func,
-	__in const char *new_dll,
-	__in const char *new_func
+	HANDLE hProcess,
+	LPTHREAD_START_ROUTINE lpStartAddress,
+	FARPROC rep_func,
+	const char *new_dll,
+	const char *new_func
 )
 {
 	LPTHREAD_START_ROUTINE ret = NULL;
@@ -892,14 +947,14 @@ LPTHREAD_START_ROUTINE inject_change_start_func(
 	return ret ? ret : lpStartAddress;
 }
 
-__out_opt HANDLE WINAPI inject_CreateRemoteThread(
-	__in HANDLE hProcess,
-	__in_opt LPSECURITY_ATTRIBUTES lpThreadAttributes,
-	__in SIZE_T dwStackSize,
-	__in LPTHREAD_START_ROUTINE lpFunc,
-	__in_opt LPVOID lpParameter,
-	__in DWORD dwCreationFlags,
-	__out_opt LPDWORD lpThreadId
+HANDLE WINAPI inject_CreateRemoteThread(
+	HANDLE hProcess,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	SIZE_T dwStackSize,
+	LPTHREAD_START_ROUTINE lpFunc,
+	LPVOID lpParameter,
+	DWORD dwCreationFlags,
+	LPDWORD lpThreadId
 )
 {
 #ifdef _DEBUG
@@ -925,7 +980,7 @@ __out_opt HANDLE WINAPI inject_CreateRemoteThread(
 }
 
 HMODULE WINAPI inject_LoadLibraryU(
-	__in LPCSTR lpLibFileName
+	LPCSTR lpLibFileName
 )
 {
 	HMODULE ret = (HMODULE)chain_LoadLibraryU(lpLibFileName);
@@ -936,7 +991,7 @@ HMODULE WINAPI inject_LoadLibraryU(
 }
 
 HMODULE WINAPI inject_LoadLibraryW(
-	__in LPCWSTR lpLibFileName
+	LPCWSTR lpLibFileName
 )
 {
 	HMODULE ret = (HMODULE)chain_LoadLibraryW(lpLibFileName);

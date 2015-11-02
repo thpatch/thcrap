@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Base settings shared by all thcrap modules and the dependencies we
+   - provide our own project files for. For a debug build, $(UseDebugLibraries)
+   - should be set to true before this file is included. Any other value,
+   - including none at all, will create a Release build. -->
+
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetName Condition="$(UseDebugLibraries)==true">$(RootNamespace)_d</TargetName>
+    <TargetName Condition="$(UseDebugLibraries)!=true">$(RootNamespace)</TargetName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <PlatformToolset>v120_xp</PlatformToolset>
+    <OutDir>$(SolutionDir)bin\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(RootNamespace) $(Configuration) $(PlatformShortName)\</IntDir>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="PropertySheets">
+    <Import Condition="$(UseDebugLibraries)==true" Project="Debug.props" />
+    <Import Condition="$(UseDebugLibraries)!=true" Project="Release.props" />
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ExceptionHandling>false</ExceptionHandling>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatSpecificWarningsAsErrors>4013;4028;4133</TreatSpecificWarningsAsErrors>
+      <PreprocessorDefinitions>BUILDER_NAME_W=L"$(USERNAME)";UNICODE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+    <PostBuildEvent>
+      <Command>if exist $(SolutionDir)cert.pfx (
+	signtool sign /v /f $(SolutionDir)cert.pfx /t http://timestamp.verisign.com/scripts/timstamp.dll /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"
+) else (
+	echo warning: $(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.
+	echo Please see README.md for instructions on how to generate this file.
+)
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+</Project>

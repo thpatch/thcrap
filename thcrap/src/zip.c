@@ -7,7 +7,7 @@
   * Zipfile handling.
   */
 
-#include <thcrap.h>
+#include "thcrap.h"
 #include <zlib.h>
 
 /**
@@ -363,8 +363,15 @@ static int zip_file_add(zip_t *zip, zip_file_shared_t *zf, json_int_t offset)
 		ReadFile(zip->hArc, fn, zf->fn_len, &byte_ret, NULL);
 		fn[zf->fn_len] = 0;
 		SetFilePointer(zip->hArc, zf->extra_len, NULL, FILE_CURRENT);
-		if(zf->fn_len && zf->size_compressed) {
-			json_object_set_new(zip->files, fn, json_integer(offset));
+		if(zf->fn_len) {
+			if(zf->size_compressed != 0) {
+				json_object_set_new(zip->files, fn, json_integer(offset));
+			} else {
+				char last = fn[zf->fn_len - 1];
+				if(last != '/' && last != '\\') {
+					json_array_append_new(zip->files_empty, json_string(fn));
+				}
+			}
 		}
 		VLA_FREE(fn);
 		ret = 0;
@@ -490,6 +497,11 @@ json_t* zip_list(zip_t *zip)
 	return zip ? zip->files : NULL;
 }
 
+json_t* zip_list_empty(zip_t *zip)
+{
+	return zip ? zip->files_empty : NULL;
+}
+
 const BYTE* zip_comment(zip_t *zip, size_t *cmt_len)
 {
 	BYTE *ret = NULL;
@@ -531,6 +543,7 @@ int zip_file_unzip(zip_t *zip, const char *fn)
 			CloseHandle(handle);
 		}
 	}
+	SAFE_FREE(file_buffer);
 	return ret;
 }
 
@@ -553,6 +566,7 @@ zip_t* zip_open(const char *fn)
 		}
 		ret->hArc = hArc;
 		ret->files = json_object();
+		ret->files_empty = json_array();
 		ret->cmt_len = 0;
 		ret->cmt = NULL;
 		log_printf("(Zip) Preparing %s...\n", fn);
@@ -567,6 +581,7 @@ zip_t* zip_close(zip_t *zip)
 {
 	if(zip) {
 		SAFE_FREE(zip->cmt);
+		json_decref(zip->files_empty);
 		json_decref(zip->files);
 		CloseHandle(zip->hArc);
 		SAFE_FREE(zip);

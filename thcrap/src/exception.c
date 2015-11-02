@@ -46,7 +46,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		(LPTSTR)lpER->ExceptionAddress,
 		&crash_mod
 	)) {
-		size_t crash_fn_len = GetModuleFileNameU(crash_mod, NULL, 0);
+		size_t crash_fn_len = GetModuleFileNameU(crash_mod, NULL, 0) + 1;
 		VLA(char, crash_fn, crash_fn_len);
 		if(GetModuleFileNameU(crash_mod, crash_fn, crash_fn_len)) {
 			log_printf(
@@ -70,7 +70,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 }
 
 LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
-	__in_opt LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter
+	LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter
 )
 {
 	// Don't return our own filter, since this might cause an infinite loop if

@@ -531,11 +531,11 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 }
 
 HWND WINAPI dialog_CreateDialogParamA(
-    __in_opt HINSTANCE hInstance,
-    __in LPCSTR lpTemplateName,
-    __in_opt HWND hWndParent,
-    __in_opt DLGPROC lpDialogFunc,
-    __in LPARAM dwInitParam
+	HINSTANCE hInstance,
+	LPCSTR lpTemplateName,
+	HWND hWndParent,
+	DLGPROC lpDialogFunc,
+	LPARAM dwInitParam
 )
 {
 	HWND ret;
@@ -554,11 +554,11 @@ HWND WINAPI dialog_CreateDialogParamA(
 }
 
 INT_PTR WINAPI dialog_DialogBoxParamA(
-    __in_opt HINSTANCE hInstance,
-    __in LPCSTR lpTemplateName,
-    __in_opt HWND hWndParent,
-    __in_opt DLGPROC lpDialogFunc,
-    __in LPARAM dwInitParam
+	HINSTANCE hInstance,
+	LPCSTR lpTemplateName,
+	HWND hWndParent,
+	DLGPROC lpDialogFunc,
+	LPARAM dwInitParam
 )
 {
 	INT_PTR ret;

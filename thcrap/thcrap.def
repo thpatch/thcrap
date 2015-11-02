@@ -1,4 +1,3 @@
-LIBRARY
 EXPORTS
 	; Binary hacks
 	; -------------
@@ -95,7 +94,8 @@ EXPORTS
 	inject_CreateProcessW
 
 	inject_mod_detour
-	thcrap_inject
+	thcrap_inject_into_running
+	thcrap_inject_into_new
 
 	; JSON extensions
 	; ---------------
@@ -155,6 +155,7 @@ EXPORTS
 
 	iat_detour_funcs
 	detour_chain
+	detour_chain_w32u8
 	detour_top
 	iat_detour_apply
 
@@ -281,6 +282,7 @@ EXPORTS
 	; ZIP
 	; ---
 	zip_list
+	zip_list_empty
 	zip_comment
 	zip_file_load
 	zip_file_unzip

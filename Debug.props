@@ -1,17 +1,19 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Configuration">
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
   <PropertyGroup>
     <LinkIncremental>true</LinkIncremental>
-  </PropertyGroup>
-  <PropertyGroup Label="Configuration">
-    <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <Optimization>Disabled</Optimization>
+      <!-- Ensures assert()s to be compiled in, among other things. -->
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>win32_utf8_d.lib;jansson_d.lib;zlib1d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OptimizeReferences>false</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
 </Project>

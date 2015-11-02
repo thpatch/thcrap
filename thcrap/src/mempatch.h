@@ -20,35 +20,6 @@ BOOL VirtualCheckCode(const void *ptr);
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
 int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
 
-/// DLL function macros
-/// -------------------
-// For external DLL functions, the form [(dll)_(func)] is used for the individual function pointers.
-
-#define DLL_FUNC(dll, func) \
-	dll##_##func
-#define DLL_FUNC_TYPE(dll, func) \
-	DLL_FUNC(dll, func)##_type
-
-#define DLL_FUNC_DEC(dll, func) \
-	extern DLL_FUNC_TYPE(dll, func) DLL_FUNC(dll, func)
-
-#define DLL_FUNC_DEF(dll, func) \
-	DLL_FUNC_TYPE(dll, func) DLL_FUNC(dll, func) = NULL
-
-#define DLL_GET_PROC_ADDRESS(handle, dll, func) \
-	DLL_FUNC(dll, func) = (DLL_FUNC_TYPE(dll, func))GetProcAddress(handle, #func)
-
-#define DLL_GET_PROC_ADDRESS_REPORT(handle, dll, func) \
-	DLL_GET_PROC_ADDRESS(handle, dll, func) \
-	if(!DLL_FUNC(dll, func)) { \
-		log_mboxf(NULL, MB_ICONEXCLAMATION | MB_OK, \
-			"Function <%s> not found!", name); \
-	}
-
-#define DLL_SET_IAT_DETOUR(num, dll, old_func, new_func) \
-	iat_detour_set(&patch[num], #old_func, DLL_FUNC(dll, old_func), new_func)
-/// -------------------
-
 /// Import Address Table patching
 /// =============================
 
@@ -148,6 +119,12 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *iat_detou
   * registered before.
   */
 int detour_chain(const char *dll_name, int return_old_ptrs, ...);
+/**
+  * detour_chain() for the function pair list of a single DLL returned by
+  * win32_utf8. Does obviously not return any pointers to functions that may
+  * have been part of the respective chains before.
+  */
+int detour_chain_w32u8(const w32u8_dll_t *dll);
 
 // Returns a pointer to the first function in a specific detour chain, or
 // [fallback] if no hook has been registered so far.

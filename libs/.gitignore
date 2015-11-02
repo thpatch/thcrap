@@ -1,0 +1,7 @@
+# Automatically copied into this directory at build time.
+jansson.h
+pngconf.h
+pnglibconf.h
+png.h
+zconf.h
+zlib.h

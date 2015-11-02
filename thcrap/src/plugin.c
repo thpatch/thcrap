@@ -57,15 +57,21 @@ int plugins_load(void)
 		plugins = json_object();
 	}
 	while(!ret) {
-		HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
-		if(plugin) {
-			FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
-			if(func && !func()) {
-				log_printf("\t%s\n", w32fd.cFileName);
-				plugin_init(plugin);
-				json_object_set_new(plugins, w32fd.cFileName, json_integer((size_t)plugin));
-			} else {
-				FreeLibrary(plugin);
+		// Necessary to avoid the nonsensical "Bad Image" message
+		// box if you try to LoadLibrary() a 0-byte file.
+		if(w32fd.nFileSizeHigh > 0 || w32fd.nFileSizeLow > 0) {
+			HINSTANCE plugin = LoadLibrary(w32fd.cFileName);
+			if(plugin) {
+				FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
+				if(func && !func()) {
+					log_printf("\t%s\n", w32fd.cFileName);
+					plugin_init(plugin);
+					json_object_set_new(
+						plugins, w32fd.cFileName, json_integer((size_t)plugin)
+					);
+				} else {
+					FreeLibrary(plugin);
+				}
 			}
 		}
 		ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));

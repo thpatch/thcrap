@@ -10,12 +10,32 @@
 #include <thcrap.h>
 #include <win32_detour.h>
 
+const char *EXE_HELP =
+	"The executable can either be a game ID which is then looked up in "
+	"games.js, or simply the relative or absolute path to an .exe file.\n"
+	"It can either be given as a command line parameter, or through the "
+	"run configuration as a \"game\" value for a game ID or an \"exe\" "
+	"value for an .exe file path. If both are given, \"exe\" takes "
+	"precedence.";
+
+const char *game_missing = NULL;
+
+const char* game_lookup(const json_t *games_js, const char *game)
+{
+	const json_t *ret = json_object_get(games_js, game);
+	if(!json_string_length(ret)) {
+		game_missing = game;
+	}
+	return json_string_value(ret);
+}
+
 int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
 	int ret;
 	json_t *args = NULL;
 	json_t *games_js = NULL;
 
+	int run_cfg_seen = 0;
 	const char *run_cfg_fn = NULL;
 	json_t *run_cfg = NULL;
 
@@ -31,14 +51,14 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			"\n"
 			"Vous recherchez probablement l'outil de configuration pour mettre en place des raccourcis pour l'usage simplifié du patcheur - il s'agit dans ce cas de thcrap_configure.\n"
 			"\n"
-			"Sinon, Voici comment utiliser le loader directement:\n"
+			"Sinon, Voici comment utiliser le loader en ligne de commande :\n"
 			"\n"
-			"\tthcrap_loader runconfig.js [game_id] [game.exe]\n"
+			"\tthcrap_loader runconfig.js executable\n"
 			"\n"
-			"- le fichier de configuration doit se terminer par .js\n"
-			"- Si [game_id] est donné, l'emplacement de l'exécutable du jeu est lu depuis games.js\n"
-			"- les derniers paramètres des lignes de commande ont priorité sur les premiers\n",
-			PROJECT_NAME()
+			"- Le fichier de configuration doit se terminer par .js\n"
+			"- %s\n"
+			"- De plus, les derniers paramètres des lignes de commande ont priorité sur les premiers\n",
+			PROJECT_NAME(), EXE_HELP
 		);
 		ret = -1;
 		goto end;
@@ -78,11 +98,11 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	for(i = 1; i < json_array_size(args); i++) {
 		const char *arg = json_array_get_string(args, i);
 		const char *param_ext = PathFindExtensionA(arg);
-		const char *new_exe_fn = NULL;
 
 		if(!stricmp(param_ext, ".js")) {
-			const char *game = NULL;
+			const char *new_exe_fn = NULL;
 
+			run_cfg_seen = 1;
 			// Sorry guys, no run configuration stacking yet
 			if(json_is_object(run_cfg)) {
 				json_decref(run_cfg);
@@ -90,34 +110,36 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 			run_cfg_fn = arg;
 			run_cfg = json_load_file_report(run_cfg_fn);
 
-			// First, evaluate runconfig values, then command line overrides
-			game = json_object_get_string(run_cfg, "game");
-			new_exe_fn = json_object_get_string(games_js, game);
-
+			new_exe_fn = json_object_get_string(run_cfg, "exe");
 			if(!new_exe_fn) {
-				new_exe_fn = json_object_get_string(run_cfg, "exe");
+				const char *game = json_object_get_string(run_cfg, "game");
+				if(game) {
+					new_exe_fn = game_lookup(games_js, game);
+				}
 			}
 			if(new_exe_fn) {
 				cfg_exe_fn = new_exe_fn;
 			}
 		} else if(!stricmp(param_ext, ".exe")) {
 			cmd_exe_fn = arg;
-		} else if(games_js) {
-			cmd_exe_fn = json_object_get_string(games_js, arg);
+		} else {
+			// Need to set game_missing even if games_js is null.
+			cmd_exe_fn = game_lookup(games_js, arg);
 		}
 	}
 
 	if(!run_cfg) {
-		log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"Aucun fichier de configuration valide donné!\n"
-			"\n"
-			"Si vous n'en avez pas encore, utilisez l'outil thcrap_configure pour en créer un.\n"
-		);
+		if(!run_cfg_seen) {
+			log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"Aucun fichier de configuration valide donné!\n"
+				"\n"
+				"Si vous n'en avez pas encore, utilisez l'outil thcrap_configure pour en créer un.\n"
+			);
+		}
 		ret = -2;
 		goto end;
 	}
-	runconfig_set(run_cfg);
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
+	// Command-line arguments take precedence over run configuration values
 	final_exe_fn = cmd_exe_fn ? cmd_exe_fn : cfg_exe_fn;
 
 	/*
@@ -138,60 +160,20 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	*/
 	// Still none?
 	if(!final_exe_fn) {
-		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"Aucun fichier de jeu exécutable donné!\n"
-			"\n"
-			"Celui-ci peut-être donné en argument de ligne de commande"
-			"(Ajoutez simplement quelque chose se terminant par .exe), "
-			"ou en tant que \"exe\" dans votre configuration de lancement (%s).\n",
-			run_cfg_fn
-		);
+		if(game_missing || !games_js) {
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"games.js ne contient pas l'identifiant de jeu \"%s\".",
+				game_missing
+			);
+		} else {
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"Aucun exécutable cible n'a été donné.\n\n%s", EXE_HELP
+			);
+		}
 		ret = -3;
 		goto end;
 	}
-	{
-		STRLEN_DEC(final_exe_fn);
-		VLA(char, game_dir, final_exe_fn_len);
-		VLA(char, final_exe_fn_local, final_exe_fn_len);
-		STARTUPINFOA si = {0};
-		PROCESS_INFORMATION pi = {0};
-
-		strcpy(final_exe_fn_local, final_exe_fn);
-		str_slash_normalize_win(final_exe_fn_local);
-
-		strcpy(game_dir, final_exe_fn);
-		PathRemoveFileSpec(game_dir);
-
-		/**
-		  * Sure, the alternative would be to set up the entire engine
-		  * with all plug-ins and modules to correctly run any additional
-		  * detours. While it would indeed be nice to allow those to control
-		  * initial startup, it really shouldn't be necessary for now - and
-		  * it really does run way too much unnecessary code for my taste.
-		  */
-		ret = W32_ERR_WRAP(inject_CreateProcessU(
-			final_exe_fn_local, game_dir, NULL, NULL, TRUE, 0, NULL, game_dir, &si, &pi
-		));
-		if(ret) {
-			char *msg_str = "";
-
-			FormatMessage(
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL, ret, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPSTR)&msg_str, 0, NULL
-			);
-
-			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"Echec du lancement de %s: %s",
-				final_exe_fn, msg_str
-			);
-			LocalFree(msg_str);
-		}
-		VLA_FREE(game_dir);
-		VLA_FREE(final_exe_fn_local);
-	}
+	ret = thcrap_inject_into_new(final_exe_fn, NULL, run_cfg_fn);
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);

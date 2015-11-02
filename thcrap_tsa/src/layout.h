@@ -24,11 +24,11 @@ json_t* layout_tokenize(const char *str, size_t len);
 
 // Text layout wrapper
 BOOL WINAPI layout_TextOutU(
-	__in HDC hdc,
-	__in int orig_x,
-	__in int orig_y,
-	__in_ecount(c) LPCSTR lpString,
-	__in int c
+	HDC hdc,
+	int orig_x,
+	int orig_y,
+	LPCSTR lpString,
+	int c
 );
 
 // Raw text width calculation, without taking layout markup into account.

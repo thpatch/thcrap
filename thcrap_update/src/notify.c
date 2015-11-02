@@ -72,7 +72,9 @@ static const char *self_body[] = {
 	"\n"
 	"Vous pouvez télécharger l'archive manuellement sur\n"
 	"\n"
-	"\t${desc_url}",
+	"\t${desc_url}\n"
+	"\n"
+	"Its digital signature has already been verified to be authentic.",
 	// SELF_NO_SIG
 	"Une mise à jour automatique a été tentée, mais le serveur n'a pas "
 	"fourni de  signature numérique pour prouver l'authenticité de "
@@ -90,18 +92,10 @@ static const char *self_body[] = {
 	"n'a pas pu être remplacée par la nouvelle. Ceci est peut-être dû à "
 	"l'absence de permissions d'écriture.\n"
 	"\n"
-<<<<<<< HEAD
 	"Veuillez extraire manuellement la nouvelle version depuis l'archive "
 	"qui a été sauvegardée dans votre répertoire ${project_short} "
 	"(${thcrap_dir}${arc_fn}). "
-	"Sa signature numérique a déjà été vérifiée, l'archive est "
-	"authentique.\n"
-=======
-	"Please manually extract the new version from the update archive that "
-	"has been saved to your ${project_short} directory "
-	"(${thcrap_dir}${arc_fn}). "
-	"Its digital signature has already been verified to be authentic.\n"
->>>>>>> cf72825
+	"Sa signature numérique a déjà été vérifiée et est authentique.\n"
 	"\n"
 	"Pour plus d'informations sur cette nouvelle version, rendez-vous "
 	"sur\n"

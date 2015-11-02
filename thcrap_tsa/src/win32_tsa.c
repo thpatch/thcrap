@@ -34,8 +34,8 @@ DETOUR_CHAIN_DEF(GetWindowRect);
   * even when the window in question is minimized.
   */
 BOOL WINAPI tsa_GetWindowRect(
-	__in HWND hWnd,
-	__out LPRECT lpRect
+	HWND hWnd,
+	LPRECT lpRect
 )
 {
 	BOOL ret;
@@ -81,18 +81,18 @@ int coord_clamp(int p1, int w1, int p2, int w2)
 }
 
 HWND WINAPI tsa_CreateWindowExA(
-	__in DWORD dwExStyle,
-	__in_opt LPCSTR lpClassName,
-	__in_opt LPCSTR lpWindowName,
-	__in DWORD dwStyle,
-	__in int X,
-	__in int Y,
-	__in int nWidth,
-	__in int nHeight,
-	__in_opt HWND hWndParent,
-	__in_opt HMENU hMenu,
-	__in_opt HINSTANCE hInstance,
-	__in_opt LPVOID lpParam
+	DWORD dwExStyle,
+	LPCSTR lpClassName,
+	LPCSTR lpWindowName,
+	DWORD dwStyle,
+	int X,
+	int Y,
+	int nWidth,
+	int nHeight,
+	HWND hWndParent,
+	HMENU hMenu,
+	HINSTANCE hInstance,
+	LPVOID lpParam
 )
 {
 	HWND ret;

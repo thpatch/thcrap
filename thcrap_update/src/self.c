@@ -14,8 +14,8 @@
 
 #define TEMP_FN_LEN 41
 
-const char *ARC_FN = "thcrap.zip";
-const char *SIG_FN = "thcrap.zip.sig";
+const char *ARC_FN = "thcrap_brliron.zip";
+const char *SIG_FN = "thcrap_brliron.zip.sig";
 const char *PREFIX_BACKUP = "thcrap_old_%s_";
 const char *PREFIX_NEW = "thcrap_new_";
 
@@ -24,9 +24,8 @@ static void* self_download(DWORD *arc_len, const char *arc_fn)
 	// Yup, hardcoded download URLs. After all, these should be a property
 	// of the engine, and now that it is capable of updating itself,
 	// there's no need to include these in any patch.
-	json_t *self_ddls = json_pack("{s[ss]}", "servers",
-		"http://thcrap.thpatch.net/",
-		"http://thcrap.nmlgc.net/releases/"
+	json_t *self_ddls = json_pack("{s[s]}", "servers",
+		"http://thcrap.thpatch.net/"
 	);
 	json_t *self_ddl_servers = ServerInit(self_ddls);
 	void *arc_buf = ServerDownloadFile(self_ddl_servers, arc_fn, arc_len, NULL);
@@ -90,7 +89,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 	{
 		// CryptQueryObject() forces us to use the W version, but only
 		// our U version can calculate the length of the string, so...
-		size_t self_fn_len = GetModuleFileNameU(self_mod, NULL, 0);
+		size_t self_fn_len = GetModuleFileNameU(self_mod, NULL, 0) + 1;
 		VLA(wchar_t, self_fn, self_fn_len * UTF8_MUL);
 		VLA(char, self_fn_utf8, self_fn_len);
 		GetModuleFileNameU(self_mod, self_fn_utf8, self_fn_len);
@@ -287,6 +286,7 @@ static self_result_t self_replace(zip_t *zip)
 		char backup_dir[TEMP_FN_LEN];
 		const char *fn;
 		json_t *val;
+		size_t i;
 
 		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING());
 		self_tempname(backup_dir, sizeof(backup_dir), prefix_backup);
@@ -308,6 +308,9 @@ static self_result_t self_replace(zip_t *zip)
 			if(local_ret || zip_file_unzip(zip, fn)) {
 				goto end;
 			}
+		}
+		json_array_foreach(zip_list_empty(zip), i, val) {
+			DeleteFileU(json_string_value(val));
 		}
 		ret = SELF_OK;
 	}

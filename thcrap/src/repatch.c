@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include "repatch.h"
 
 /**
   * This module monitors all patches for external changes to their files, then

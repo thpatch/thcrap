@@ -126,7 +126,7 @@ static void OpenConsole(void)
 
 void log_init(int console)
 {
-	log_file = fopen(LOG, "wb");
+	log_file = fopen(LOG, "wt");
 #ifdef _DEBUG
 	OpenConsole();
 #else

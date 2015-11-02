@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Base settings for libraries that can be built both statically and dynamically in Debug and Release builds. -->
+
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ConfigurationType Condition="'$(Configuration)'=='Debug Dynamic'">DynamicLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(Configuration)'=='Release Dynamic'">DynamicLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(Configuration)'=='Debug Static'">StaticLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(Configuration)'=='Release Static'">StaticLibrary</ConfigurationType>
+
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug Dynamic'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug Static'">true</UseDebugLibraries>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(SolutionDir)\Base.props" />
+  </ImportGroup>
+</Project>

@@ -1,29 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Base settings and include/library paths shared by all thcrap modules. -->
+
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <ImportGroup Label="PropertySheets">
-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Debug'">
-    <Import Project="thcrap_d.props" />
-  </ImportGroup>
-  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)'=='Release'">
-    <Import Project="thcrap_r.props" />
-  </ImportGroup>
   <PropertyGroup>
-    <CharacterSet>Unicode</CharacterSet>
+    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
   </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="Base.props" />
+  </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
-      <TreatSpecificWarningsAsErrors>4013;4028;4133</TreatSpecificWarningsAsErrors>
-      <PreprocessorDefinitions>BUILDER_NAME_W=L"$(USERNAME)";UNICODE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)thcrap\src\;$(SolutionDir)win32_utf8\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>thcrap.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)libs/;$(SolutionDir)thcrap/src/;$(SolutionDir)win32_utf8/src/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">win32_utf8_dynamic_x86_debug.lib;jansson_d.lib;zdll-ng_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">win32_utf8_dynamic_x86.lib;jansson.lib;zdll-ng.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 </Project>

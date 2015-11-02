@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <assert.h>
 
 /// Detour chains
 /// -------------
@@ -54,33 +55,18 @@ const char* strings_lookup(const char *in, size_t *out_len)
 	return ret;
 }
 
-va_list printf_parse_num(va_list va, const char **p)
-{
-	if(**p == '*') {
-		// width specified in next variable argument
-		(*p)++;
-		va_arg(va, int);
-	} else while(isdigit(**p)) {
-		(*p)++;
-	}
-	return va;
-}
-
-// The printf format parsing below is based on Wine's implementation for
-// msvcrt.dll (dlls/msvcrt/printf.h).
 void strings_va_lookup(va_list va, const char *format)
 {
 	const char *p = format;
 	while(*p) {
-		char fmt;
-		int flag_double = 0;
+		printf_format_t fmt;
+		int i;
 
 		// Skip characters before '%'
 		for(; *p && *p != '%'; p++);
 		if(!*p) {
 			break;
 		}
-
 		// *p == '%' here
 		p++;
 
@@ -89,61 +75,16 @@ void strings_va_lookup(va_list va, const char *format)
 			p++;
 			continue;
 		}
-
-		// Skip flags. From left to right:
-		// prefix sign, prefix space, left-align, zero padding, alternate
-		while(strchr("+ -0#", *p) != NULL) {
-			p++;
+		p = printf_format_parse(&fmt, p);
+		for(i = 0; i < fmt.argc_before_type; i++) {
+			va_arg(va, int);
 		}
-
-		// Width
-		va = printf_parse_num(va, &p);
-
-		// Precision
-		if(*p == '.') {
-			p++;
-			va = printf_parse_num(va, &p);
-		}
-
-		// Argument size modifier
-		while(*p) {
-			if(*p=='l' && *(p+1)=='l') {
-				flag_double = 1;
-				p += 2;
-			} else if(*p=='h' || *p=='l' || *p=='L') {
-				p++;
-			} else if(*p == 'I') {
-				if(*(p+1)=='6' && *(p+2)=='4') {
-					flag_double = 1;
-					p += 3;
-				} else if(*(p+1)=='3' && *(p+2)=='2') {
-					p += 3;
-				} else if(isdigit(*(p+1)) || !*(p+1)) {
-					break;
-				} else {
-					p++;
-				}
-			} else if(*p == 'w' || *p == 'F') {
-				p++;
-			} else {
-				break;
-			}
-		}
-		fmt = *p;
-		if(fmt == 's' || fmt == 'S') {
+		if(fmt.type == 's' || fmt.type == 'S') {
 			*(const char**)va = strings_lookup(*(const char**)va, NULL);
 		}
-		// Advance [va] if the format is among the valid ones
-		if(strchr("aeEfgG", fmt)) {
-			va_arg(va, double);
-		}
-		if(strchr("sScCpndiouxX", fmt)) {
+		for(i = 0; i < fmt.type_size_in_ints; i++) {
 			va_arg(va, int);
-			if(flag_double) {
-				va_arg(va, int);
-			}
 		}
-		p++;
 	}
 }
 
@@ -267,10 +208,10 @@ const char* strings_replace(const size_t slot, const char *src, const char *dst)
 /// String lookup hooks
 /// -------------------
 int WINAPI strings_MessageBoxA(
-	__in_opt HWND hWnd,
-	__in_opt LPCSTR lpText,
-	__in_opt LPCSTR lpCaption,
-	__in UINT uType
+	HWND hWnd,
+	LPCSTR lpText,
+	LPCSTR lpCaption,
+	UINT uType
 )
 {
 	lpText = strings_lookup(lpText, NULL);

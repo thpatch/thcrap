@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug Static|Win32">
+      <Configuration>Debug Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Dynamic|Win32">
+      <Configuration>Debug Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Static|Win32">
+      <Configuration>Release Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Dynamic|Win32">
+      <Configuration>Release Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D6973076-9317-4EF2-A0B8-B7A18AC0713E}</ProjectGuid>
+    <RootNamespace>libpng16</RootNamespace>
+    <ZLibIncludeDir>$(SolutionDir)libs/</ZLibIncludeDir>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="Static+Dynamic.props" />
+  </ImportGroup>
+  <PropertyGroup>
+    <ExtensionsToDeleteOnClean>$(ProjectDir)\pnglibconf.h;$(ProjectDir)\png.h;$(ProjectDir)\pngconf.h;$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>
+copy /y $(ProjectDir)\libpng\scripts\pnglibconf.h.prebuilt $(ProjectDir)\pnglibconf.h
+copy /y $(ProjectDir)\libpng\png.h $(ProjectDir)\
+copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
+%(Command)</Command>
+    </PreBuildEvent>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ZLibIncludeDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <BasicRuntimeChecks Condition="$(UseDebugLibraries)==true">EnableFastChecks</BasicRuntimeChecks>
+      <CompileAs>CompileAsC</CompileAs>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DisableSpecificWarnings>4996;4127</DisableSpecificWarnings>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pngpriv.h</PrecompiledHeaderFile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(ConfigurationType)'=='DynamicLibrary'">_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary Condition="'$(ConfigurationType)'=='StaticLibrary'">MultiThreaded</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(ConfigurationType)|$(UseDebugLibraries)'=='StaticLibrary|true'">MultiThreadedDebug</RuntimeLibrary>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <WarningLevel>Level4</WarningLevel>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">zdll-ng_d.lib</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">zdll-ng.lib</AdditionalDependencies>
+      <Version>16</Version>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="libpng\png.c">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="libpng\pngerror.c" />
+    <ClCompile Include="libpng\pngget.c" />
+    <ClCompile Include="libpng\pngmem.c" />
+    <ClCompile Include="libpng\pngpread.c" />
+    <ClCompile Include="libpng\pngread.c" />
+    <ClCompile Include="libpng\pngrio.c" />
+    <ClCompile Include="libpng\pngrtran.c" />
+    <ClCompile Include="libpng\pngrutil.c" />
+    <ClCompile Include="libpng\pngset.c" />
+    <ClCompile Include="libpng\pngtrans.c" />
+    <ClCompile Include="libpng\pngwio.c" />
+    <ClCompile Include="libpng\pngwrite.c" />
+    <ClCompile Include="libpng\pngwtran.c" />
+    <ClCompile Include="libpng\pngwutil.c" />
+    <ResourceCompile Include="libpng\scripts\pngwin.rc">
+      <ExcludedFromBuild Condition="'$(ConfigurationType)'=='StaticLibrary'">true</ExcludedFromBuild>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>

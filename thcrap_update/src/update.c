@@ -11,7 +11,6 @@
 #include <MMSystem.h>
 #include <WinInet.h>
 #include <zlib.h>
-#include "wininet_dll.h"
 #include "update.h"
 
 HINTERNET hHTTP = NULL;
@@ -322,7 +321,31 @@ int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *lo
 	return 0;
 }
 
-int patch_update(json_t *patch_info)
+int update_filter_global(const char *fn, json_t *null)
+{
+	return strchr(fn, '/') == NULL;
+}
+
+int update_filter_games(const char *fn, json_t *games)
+{
+	STRLEN_DEC(fn);
+	size_t i = 0;
+	json_t *val;
+	json_flex_array_foreach(games, i, val) {
+		// We will need to match "th14", but not "th143".
+		size_t val_len = json_string_length(val);
+		if(
+			fn_len > val_len
+			&& !strnicmp(fn, json_string_value(val), val_len)
+			&& fn[val_len] == '/'
+		) {
+			return 1;
+		}
+	}
+	return update_filter_global(fn, NULL);
+}
+
+int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data)
 {
 	const char *files_fn = "files.js";
 
@@ -332,7 +355,8 @@ int patch_update(json_t *patch_info)
 	DWORD remote_files_js_size;
 	BYTE *remote_files_js_buffer = NULL;
 
-	json_t *remote_files = NULL;
+	json_t *remote_files_orig = NULL;
+	json_t *remote_files_to_get = NULL;
 	json_t *remote_val;
 
 	int ret = 0;
@@ -377,31 +401,36 @@ int patch_update(json_t *patch_info)
 		goto end_update;
 	}
 
-	remote_files = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
-	if(!json_is_object(remote_files)) {
+	remote_files_orig = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
+	if(!json_is_object(remote_files_orig)) {
 		// Remote files.js is invalid!
 		ret = 4;
 		goto end_update;
 	}
 
-	// Yay for doubled loops... just to get the correct number
-	json_object_foreach(remote_files, key, remote_val) {
+	// Determine files to download
+	remote_files_to_get = json_object();
+	json_object_foreach(remote_files_orig, key, remote_val) {
 		json_t *local_val = json_object_get(local_files, key);
-		if(PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)) {
-			file_count++;
+		if(
+			(filter_func ? filter_func(key, filter_data) : 1)
+			&& PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)
+		) {
+			json_object_set(remote_files_to_get, key, remote_val);
 		}
 	}
+	
+	file_count = json_object_size(remote_files_to_get);
 	if(!file_count) {
-		log_printf("Tout est à jour\n", file_count);
+		log_printf("Tout est à jour.\n");
 		ret = 0;
 		goto end_update;
 	}
-
 	file_digits = str_num_digits(file_count);
 	log_printf("%d fichiers à récuperer\n", file_count);
 
 	i = 0;
-	json_object_foreach(remote_files, key, remote_val) {
+	json_object_foreach(remote_files_to_get, key, remote_val) {
 		void *file_buffer;
 		DWORD file_size;
 		json_t *local_val;
@@ -411,13 +440,8 @@ int patch_update(json_t *patch_info)
 			break;
 		}
 
+		log_printf("(%*d/%*d) ", file_digits, ++i, file_digits, file_count);
 		local_val = json_object_get(local_files, key);
-		if(!PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)) {
-			continue;
-		}
-		i++;
-
-		log_printf("(%*d/%*d) ", file_digits, i, file_digits, file_count);
 
 		// Delete locally unchanged files with a JSON null value in the remote list
 		if(json_is_null(remote_val) && json_is_integer(local_val)) {
@@ -458,17 +482,18 @@ end_update:
 		log_printf("Aucun serveur trouvé pour le moment.\nAnnulation de la mise à jour\n");
 	}
 	SAFE_FREE(remote_files_js_buffer);
-	json_decref(remote_files);
+	json_decref(remote_files_to_get);
+	json_decref(remote_files_orig);
 	json_decref(local_files);
 	return ret;
 }
 
-void stack_update(void)
+void stack_update(update_filter_func_t filter_func, json_t *filter_data)
 {
 	json_t *patch_array = json_object_get(runconfig_get(), "patches");
 	size_t i;
 	json_t *patch_info;
 	json_array_foreach(patch_array, i, patch_info) {
-		patch_update(patch_info);
+		patch_update(patch_info, filter_func, filter_data);
 	}
 }

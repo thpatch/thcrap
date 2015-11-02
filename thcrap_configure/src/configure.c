@@ -268,6 +268,9 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 
 	// Global URL cache to not download anything twice
 	json_t *url_cache = json_object();
+	// Repository ID cache to prioritize the most local repository if more
+	// than one repository with the same name is discovered in the network
+	json_t *id_cache = json_object();
 
 	json_t *repo_list = NULL;
 
@@ -350,17 +353,12 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"Cet outil va creer un nouvelle configuration de patch pour le\n"
 		"Patcheur automatique de la communaute Touhou\n"
 		"\n"
-		"Voulez-vous un outil de configuration graphique plus convivial ?\n"
-		"Dessinez-nous alors votre propre illustration, et nous nous en chargerons -"
-		"nous pourrions meme vous payer !\n"
-		"Pour plus de détails, rendez-vous sur\n"
-		"\thttp://thpatch.net/wiki/Touhou_Patch_Center:Artwork\n"
-		"\n"
-		"\n"
-		"Ce processus se fera en deux etapes:\n"
+		"Ce processus se fera en quatre etapes:\n"
 		"\n"
 		"\t\t1. Selection des patchs\n"
-		"\t\t2. Localisation des dossiers d'installation des jeux\n"
+		"\t\t2. Telechargement des donnees independantes des jeux\n"
+		"\t\t3. Localisation des dossiers d'installation des jeux\n"
+		"\t\t4. Telechargement des donnees specifiques aux jeux\n"
 		"\n"
 		"\n"
 		"\n"
@@ -377,10 +375,13 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	);
 	pause();
 
-	if(RepoDiscover(start_repo, NULL, url_cache)) {
+	if(RepoDiscoverAtURL(start_repo, id_cache, url_cache)) {
 		goto end;
 	}
-	repo_list = RepoLoadLocal(url_cache);
+	if(RepoDiscoverFromLocal(id_cache, url_cache)) {
+		goto end;
+	}
+	repo_list = RepoLoad();
 	if(!json_object_size(repo_list)) {
 		log_printf("Aucun depot de patchs disponible...\n");
 		pause();
@@ -392,8 +393,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		size_t i;
 		json_t *sel;
 
-		log_printf("Amorcage des patchs selectionnes...\n");
-		stack_update();
+		log_printf("Telechargement des donnees independantes des jeux...\n");
+		stack_update(update_filter_global, NULL);
 
 		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {
@@ -423,6 +424,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	games = ConfigureLocateGames(cur_dir);
 
 	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
+		json_t *filter = json_object_get_keys_sorted(games);
+		log_printf("\nDownloading data specific to the located games...\n");
+		stack_update(update_filter_games, filter);
+		filter = json_decref_safe(filter);
 		log_printf(
 			"\n"
 			"\n"
@@ -448,5 +453,6 @@ end:
 	VLA_FREE(cur_dir);
 	json_decref(repo_list);
 	json_decref(url_cache);
+	json_decref(id_cache);
 	return 0;
 }

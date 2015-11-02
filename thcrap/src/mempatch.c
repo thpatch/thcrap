@@ -197,6 +197,28 @@ int detour_chain(const char *dll_name, int return_old_ptrs, ...)
 	return ret;
 }
 
+int detour_chain_w32u8(const w32u8_dll_t *dll)
+{
+	const w32u8_pair_t *pair = NULL;
+	json_t *detours_dll = NULL;
+
+	if(!dll || !dll->name || !dll->funcs) {
+		return -1;
+	}
+	if(!detours) {
+		detours = json_object();
+	}
+	detours_dll = json_object_get_create(detours, dll->name, JSON_OBJECT);
+	pair = dll->funcs;
+	while(pair && pair->ansi_name && pair->utf8_ptr) {
+		json_object_set_new(
+			detours_dll, pair->ansi_name, json_integer((size_t)pair->utf8_ptr)
+		);
+		pair++;
+	}
+	return 0;
+}
+
 int iat_detour_apply(HMODULE hMod)
 {
 	const char *dll_name;

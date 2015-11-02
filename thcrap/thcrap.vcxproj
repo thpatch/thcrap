@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -12,19 +12,11 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8D7455CC-BE95-4F59-9047-D390454C7261}</ProjectGuid>
-    <Keyword>Win32Proj</Keyword>
     <RootNamespace>thcrap</RootNamespace>
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <IntDir>$(SolutionDir)\$(Configuration)\$(RootNamespace)\</IntDir>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <TargetName>$(RootNamespace)_d</TargetName>
-  </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
   </ImportGroup>
@@ -32,10 +24,6 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <ItemDefinitionGroup>
-    <ClCompile>
-      <PrecompiledHeader>Use</PrecompiledHeader>
-      <PrecompiledHeaderFile>thcrap.h</PrecompiledHeaderFile>
-    </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -72,8 +60,6 @@
     <ClCompile Include="src\textdisp.c" />
     <ClCompile Include="src\win32_detour.c" />
     <ClCompile Include="src\zip.c" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="config.h" />
     <ClInclude Include="src\dialog.h" />
     <ClInclude Include="src\exception.h" />
@@ -101,8 +87,6 @@
     <ClInclude Include="src\thcrap.h" />
     <ClInclude Include="src\win32_detour.h" />
     <ClInclude Include="src\zip.h" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="thcrap.def" />
   </ItemGroup>
 </Project>

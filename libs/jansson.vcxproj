@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug Static|Win32">
+      <Configuration>Debug Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Dynamic|Win32">
+      <Configuration>Debug Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Static|Win32">
+      <Configuration>Release Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Dynamic|Win32">
+      <Configuration>Release Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{91E1D907-56ED-493E-AF3B-35CC16E3E4F2}</ProjectGuid>
+    <RootNamespace>jansson</RootNamespace>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="Static+Dynamic.props" />
+  </ImportGroup>
+  <PropertyGroup>
+    <ExtensionsToDeleteOnClean>$(ProjectDir)\jansson.h;$(ExtensionsToDeleteOnClean)</ExtensionsToDeleteOnClean>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <PreBuildEvent>
+      <Command>
+copy /y $(ProjectDir)\jansson\src\jansson.h $(ProjectDir)\jansson.h
+%(Command)</Command>
+    </PreBuildEvent>
+    <ClCompile>
+      <PreprocessorDefinitions>HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>jansson\src\jansson.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="jansson_config.h" />
+    <ClInclude Include="jansson_private_config.h" />
+    <ClInclude Include="jansson\src\hashtable.h" />
+    <ClInclude Include="jansson\src\jansson_private.h" />
+    <ClInclude Include="jansson\src\strbuffer.h" />
+    <ClInclude Include="jansson\src\utf.h" />
+    <ClInclude Include="jansson\src\jansson.h" />
+    <ClCompile Include="jansson\src\dump.c" />
+    <ClCompile Include="jansson\src\error.c" />
+    <ClCompile Include="jansson\src\hashtable.c" />
+    <ClCompile Include="jansson\src\hashtable_seed.c" />
+    <ClCompile Include="jansson\src\load.c" />
+    <ClCompile Include="jansson\src\memory.c" />
+    <ClCompile Include="jansson\src\pack_unpack.c" />
+    <ClCompile Include="jansson\src\strbuffer.c" />
+    <ClCompile Include="jansson\src\strconv.c" />
+    <ClCompile Include="jansson\src\utf.c" />
+    <ClCompile Include="jansson\src\value.c" />
+    <None Include="jansson\src\jansson.def" />
+  </ItemGroup>
+</Project>

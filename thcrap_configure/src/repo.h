@@ -16,10 +16,13 @@ json_t* RepoGetLocalFN(const char *id);
 // and downloads any repository files found in the process.
 // [url_cache] and [id_cache] are used to detect duplicate URLs and repos.
 // These can be NULL if the caller doesn't intend to keep these caches.
-int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache);
+int RepoDiscoverAtURL(const char *start_url, json_t *id_cache, json_t *url_cache);
 
-// Loads repository files from all subdirectories of the current directory,
-// then calls RepoDiscover() with [url_cache] on their server URLs.
+// Calls RepoDiscover() for the repositories in all subdirectories of the
+// current directory, as well as their neighbors.
+int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache);
+
+// Loads repository files from all subdirectories of the current directory.
 // Returns a JSON object in the following format:
 // {
 //	"<repository ID>": {
@@ -27,4 +30,4 @@ int RepoDiscover(const char *start_url, json_t *id_cache, json_t *url_cache);
 //	},
 //	...
 // }
-json_t* RepoLoadLocal(json_t *url_cache);
+json_t* RepoLoad(void);

@@ -77,7 +77,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	if(json_object_size(games) != 0) {
 		log_printf("Vous disposez deja de %s avec les contenus suivant\n\n", games_js_fn);
 		json_dump_log(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-		log_printf("\n\n");
+		log_printf("\n\nLes données de patch seront téléchargées ou mises à jour pour tous les jeux listés.\n\n");
 		if(Ask("Recommencer le scan de l'emplacement de ces jeux?")) {
 			json_object_clear(games);
 		} else if(!Ask("Ajouter de nouveaux jeux a cette liste?")) {
@@ -94,7 +94,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			"\n"
 			"Cela peut prendre un moment selon le nombre de disque dur present\n"
 			"et la structure de vos dossiers. Vous pouvez accelerer le processus en\n"
-			"indiquant le dossier racine de tous vos jeux Touhou.\n"
+			"indiquant un dossier commun partagé par tous vos jeux Touhou.\n"
 			"\n"
 			"Par exemple, si vous avez 'Double Dealing Character' dans\n"
 			"\n"
@@ -116,7 +116,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		);
 		pause();
 	}
-	bi.lpszTitle = L"Répertoire racine pour chercher les jeux (annuler : sur tout le système) :";
+	bi.lpszTitle = "Répertoire racine pour chercher les jeux (annuler pour chercher sur tout l'ordinateur) :";
 	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
 
 	do {
