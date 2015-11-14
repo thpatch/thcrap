@@ -728,16 +728,19 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, const char *run_cfg_
 	runconfig_set(run_cfg);
 	{
 		STRLEN_DEC(exe_fn);
-		VLA(char, exe_dir, exe_fn_len);
+		VLA(char, exe_dir_local, exe_fn_len);
 		VLA(char, exe_fn_local, exe_fn_len);
 		STARTUPINFOA si = {0};
 		PROCESS_INFORMATION pi = {0};
+		char *exe_dir = NULL;
 
 		strcpy(exe_fn_local, exe_fn);
 		str_slash_normalize_win(exe_fn_local);
 
-		strcpy(exe_dir, exe_fn);
-		PathRemoveFileSpec(exe_dir);
+		strcpy(exe_dir_local, exe_fn);
+		if(PathRemoveFileSpec(exe_dir_local)) {
+			exe_dir = exe_dir_local;
+		}
 
 		/**
 		  * Sure, the alternative would be to set up the entire engine
@@ -767,7 +770,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, const char *run_cfg_
 			LocalFree(msg_str);
 		}
 		VLA_FREE(exe_fn_local);
-		VLA_FREE(exe_dir);
+		VLA_FREE(exe_dir_local);
 	}
 	return ret;
 }
