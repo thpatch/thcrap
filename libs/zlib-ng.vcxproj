@@ -89,6 +89,9 @@ copy /y $(ProjectDir)\zlib-ng\zlib.h $(ProjectDir)\
     <ClCompile Include="zlib-ng\compress.c" />
     <ClCompile Include="zlib-ng\crc32.c" />
     <ClCompile Include="zlib-ng\deflate.c" />
+    <ClCompile Include="zlib-ng\deflate_fast.c" />
+    <ClCompile Include="zlib-ng\deflate_medium.c" />
+    <ClCompile Include="zlib-ng\deflate_slow.c" />
     <ClCompile Include="zlib-ng\gzclose.c">
       <ExcludedFromBuild Condition="$(BuildZLib1)!=true">true</ExcludedFromBuild>
     </ClCompile>
