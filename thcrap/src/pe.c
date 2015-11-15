@@ -40,6 +40,7 @@ PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 
 PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *DLLName)
 {
+	DWORD ImportVA;
 	PIMAGE_NT_HEADERS pNTH;
 	PIMAGE_IMPORT_DESCRIPTOR pImportDesc;
 
@@ -50,12 +51,11 @@ PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *DLLName)
 	if(!pNTH) {
 		return NULL;
 	}
-	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)hMod +
-		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress));
-
-	if(pImportDesc == (PIMAGE_IMPORT_DESCRIPTOR)pNTH) {
+	ImportVA = pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+	if(ImportVA == 0) {
 		return NULL;
 	}
+	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)hMod + ImportVA);
 	while(pImportDesc->Name) {
 		char *name = (char*)((DWORD)hMod + (DWORD)pImportDesc->Name);
 		if(stricmp(name, DLLName) == 0) {
