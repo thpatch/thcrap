@@ -14,6 +14,10 @@
 // Returns the IMAGE_NT_HEADERS structure of [hMod]
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod);
 
+// Returns a pointer to the given data directory in the NT header of [hMod],
+// or NULL if [hMod] does not have an entry for that directory.
+void *GetNtDataDirectory(HMODULE hMod, BYTE directory);
+
 // Returns the import descriptor of [DLLName]
 PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *dll_name);
 

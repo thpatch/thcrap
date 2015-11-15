@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <assert.h>
 
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 {
@@ -38,27 +39,33 @@ PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 	return pNTH;
 }
 
-PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *DLLName)
+void *GetNtDataDirectory(HMODULE hMod, BYTE directory)
 {
-	DWORD ImportVA;
 	PIMAGE_NT_HEADERS pNTH;
+
+	assert(directory <= IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR);
+
+	pNTH = GetNtHeader(hMod);
+	if(pNTH) {
+		DWORD DirVA = pNTH->OptionalHeader.DataDirectory[directory].VirtualAddress;
+		if(DirVA) {
+			return (BYTE*)hMod + DirVA;
+		}
+	}
+	return NULL;
+}
+
+PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *dll_name)
+{
 	PIMAGE_IMPORT_DESCRIPTOR pImportDesc;
 
-	if(!hMod || !DLLName) {
-		return 0;
-	}
-	pNTH = GetNtHeader(hMod);
-	if(!pNTH) {
+	pImportDesc = GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_IMPORT);
+	if(!pImportDesc) {
 		return NULL;
 	}
-	ImportVA = pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
-	if(ImportVA == 0) {
-		return NULL;
-	}
-	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)((DWORD)hMod + ImportVA);
 	while(pImportDesc->Name) {
 		char *name = (char*)((DWORD)hMod + (DWORD)pImportDesc->Name);
-		if(stricmp(name, DLLName) == 0) {
+		if(stricmp(name, dll_name) == 0) {
 			return pImportDesc;
 		}
 		++pImportDesc;
@@ -68,16 +75,7 @@ PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *DLLName)
 
 PIMAGE_EXPORT_DIRECTORY GetDllExportDesc(HMODULE hMod)
 {
-	PIMAGE_NT_HEADERS pNTH;
-	if(!hMod) {
-		return NULL;
-	}
-	pNTH = GetNtHeader(hMod);
-	if(!pNTH) {
-		return NULL;
-	}
-	return (PIMAGE_EXPORT_DIRECTORY)((DWORD)hMod +
-		(DWORD)(pNTH->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress));
+	return GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_EXPORT);
 }
 
 PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
