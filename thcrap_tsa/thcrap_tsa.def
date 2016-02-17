@@ -31,6 +31,11 @@ EXPORTS
 	patch_thtx
 	patch_anm
 
+	BP_th06_file_name
+	BP_th06_file_size
+	BP_th06_file_load
+	BP_th06_file_loaded
+
 	; Bounds
 	; ------
 	fn_for_bounds

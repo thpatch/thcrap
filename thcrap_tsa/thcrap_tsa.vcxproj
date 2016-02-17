@@ -27,7 +27,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tsa.def</ModuleDefinitionFile>
-      <AdditionalDependencies>comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;libpng16_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -41,7 +41,9 @@
     <ClCompile Include="src\music.c" />
     <ClCompile Include="src\png_ex.c" />
     <ClCompile Include="src\spells.c" />
+    <ClCompile Include="src\th06_bp_file.c" />
     <ClCompile Include="src\th06_msg.c" />
+    <ClCompile Include="src\th06_pngsplit.c" />
     <ClCompile Include="src\thcrap_tsa.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -49,6 +51,7 @@
     <ClInclude Include="src\anm.h" />
     <ClInclude Include="src\layout.h" />
     <ClInclude Include="src\png_ex.h" />
+    <ClInclude Include="src\th06_pngsplit.h" />
     <ClInclude Include="src\thcrap_tsa.h" />
     <None Include="thcrap_tsa.def" />
   </ItemGroup>
