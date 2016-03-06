@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <assert.h>
 #include <WinCrypt.h>
 #include "update.h"
 #include "self.h"
@@ -32,6 +33,156 @@ static void* self_download(DWORD *arc_len, const char *arc_fn)
 	self_ddls = json_decref_safe(self_ddls);
 	return arc_buf;
 }
+
+/// Download notification window
+/// ----------------------------
+/*
+ * Not meant to be particularly pretty, just to have at least something in
+ * that regard for now. The move to Qt is going to blow up the download size
+ * significantly, and while we do want to block for that download because of
+ * the message box we pop up at the end, we don't want to block without any
+ * visual indication to the user until an archive of multiple megabytes has
+ * finished downloading.
+ *
+ * Written using raw calls to Ye Olde Win32 API mainly for practice reasons.
+ * Windows 1.0-style dialog resource scripts are terrible if you want to do
+ * i18n and automatic layout, being just a simple flat list of widgets
+ * positioned using "dialog units" (which really are just a way of expressing
+ * pixels independent of font sizes). Therefore, I think we should stop using
+ * them even for the smallest of dialogs like this one. Just compare the
+ * lengths we'll then have to go to in order to simply *translate* them
+ * automatically (thcrap's dialog.c) with what we're doing here ourselves.
+ *
+ * The smartdlg naming scheme is because I'm thinking about writing some
+ * Win32-specific GUIs in the future that use these same ideas – being easy
+ * to translate and automatically adjusting their layout while still using as
+ * much of Ye Olde Win32 API as possible.
+ *
+ * ~ Nmlgc
+ */
+
+#define RECT_EXPAND(rect) rect.left, rect.top, rect.right, rect.bottom
+
+typedef struct {
+	DWORD thread_id;
+	HFONT hFont;
+	HWND hWnd;
+} smartdlg_state_t;
+
+LRESULT CALLBACK smartdlg_proc(
+	HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
+)
+{
+	switch(uMsg) {
+	case WM_CLOSE: // Yes, this is not handled by DefDlgProc().
+		DestroyWindow(hWnd);
+	}
+	return DefDlgProcW(hWnd, uMsg, wParam, lParam);
+}
+
+void smartdlg_close(smartdlg_state_t *state)
+{
+	assert(state);
+	if(state->hWnd) {
+		SendMessageW(state->hWnd, WM_CLOSE, 0, 0);
+	}
+	if(state->hFont) {
+		DeleteObject(state->hFont);
+	}
+}
+
+DWORD WINAPI self_window_thread(smartdlg_state_t *state)
+{
+	MSG msg;
+	BOOL msg_ret;
+
+	assert(state);
+
+	while((msg_ret = GetMessage(&msg, NULL, 0, 0)) != 0) {
+		if(msg_ret != -1) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
+
+	return msg.wParam;
+}
+
+void self_window_create(smartdlg_state_t *state)
+{
+	const char *TEXT =
+		"A new build of the ${project} is being downloaded, please wait...";
+	const size_t TEXT_SLOT = (size_t)TEXT;
+	const char *text_final;
+
+	assert(state);
+
+	HMODULE hMod = GetModuleHandle(NULL);
+	HDC hDC = GetDC(0);
+	HWND label = NULL;
+	DWORD wnd_style = WS_BORDER | WS_POPUP | WS_CAPTION | WS_DISABLED;
+	DWORD wnd_style_ex = WS_EX_TOPMOST | WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT | WS_EX_DLGMODALFRAME;
+	RECT screen_rect = {0};
+	RECT wnd_rect = {0};
+	RECT label_rect = {0};
+	LONG font_pad = 0;
+
+	NONCLIENTMETRICSW nc_metrics = {sizeof(nc_metrics)};
+
+	if(SystemParametersInfoW(
+		SPI_GETNONCLIENTMETRICS, sizeof(nc_metrics), &nc_metrics, 0
+	)) {
+		int height = nc_metrics.lfMessageFont.lfHeight;
+		state->hFont = CreateFontIndirectW(&nc_metrics.lfMessageFont);
+		font_pad = (height < 0 ? -height : height);
+	}
+	if(!SystemParametersInfoW(SPI_GETWORKAREA, sizeof(RECT), &screen_rect, 0)) {
+		screen_rect.right = GetSystemMetrics(SM_CXSCREEN);
+		screen_rect.bottom = GetSystemMetrics(SM_CYSCREEN);
+	}
+
+	if(state->hFont) {
+		SelectObject(hDC, state->hFont);
+	}
+
+	strings_strcat(TEXT_SLOT, TEXT);
+	text_final = strings_replace(TEXT_SLOT, "${project}", PROJECT_NAME());
+
+	DrawText(hDC, text_final, -1, &label_rect, DT_CALCRECT);
+
+	wnd_rect = label_rect;
+	label_rect.left += font_pad;
+	label_rect.top += font_pad;
+	wnd_rect.right += font_pad * 2;
+	wnd_rect.bottom += font_pad * 2;
+	AdjustWindowRectEx(&wnd_rect, wnd_style, FALSE, wnd_style_ex);
+	wnd_rect.right -= wnd_rect.left;
+	wnd_rect.bottom -= wnd_rect.top;
+	wnd_rect.left = (screen_rect.right / 2) - (wnd_rect.right / 2);
+	wnd_rect.top = (screen_rect.bottom / 2) - (wnd_rect.bottom / 2);
+
+	state->hWnd = CreateWindowExU(
+		wnd_style_ex, MAKEINTRESOURCEA(WC_DIALOG), PROJECT_NAME(), wnd_style,
+		RECT_EXPAND(wnd_rect), NULL, NULL, hMod, NULL
+	);
+
+	label = CreateWindowExU(
+		WS_EX_NOPARENTNOTIFY, "Static", text_final, WS_CHILD | WS_VISIBLE,
+		RECT_EXPAND(label_rect), state->hWnd, NULL, hMod, NULL
+	);
+
+	SetWindowLongPtrW(state->hWnd, GWLP_WNDPROC, (LPARAM)smartdlg_proc);
+
+	if(state->hFont) {
+		SendMessageW(state->hWnd, WM_SETFONT, (WPARAM)state->hFont, 0);
+		SendMessageW(label, WM_SETFONT, (WPARAM)state->hFont, 0);
+	}
+	ShowWindow(state->hWnd, SW_SHOW);
+	UpdateWindow(state->hWnd);
+
+	CreateThread(NULL, 0, self_window_thread, state, 0, &state->thread_id);
+}
+/// ----------------------------
 
 // A superior GetTempFileName.
 static int self_tempname(char *fn, size_t len, const char *prefix)
@@ -329,6 +480,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	void *sig_buf = NULL;
 	json_t *sig = NULL;
 	PCCERT_CONTEXT context = NULL;
+	smartdlg_state_t window;
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
@@ -339,6 +491,9 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		ret = SELF_NO_PUBLIC_KEY;
 		goto end;
 	}
+
+	self_window_create(&window);
+
 	arc_buf = self_download(&arc_len, ARC_FN);
 	if(!arc_buf) {
 		ret = SELF_SERVER_ERROR;
@@ -377,5 +532,6 @@ end:
 	}
 	SetCurrentDirectory(cur_dir);
 	VLA_FREE(cur_dir);
+	smartdlg_close(&window);
 	return ret;
 }
