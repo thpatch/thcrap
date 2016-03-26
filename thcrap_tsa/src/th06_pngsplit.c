@@ -111,7 +111,6 @@ void pngsplit_free(pngsplit_png_t *png)
 
 
 
-
 void pngsplit_read_callback(png_struct *png, png_bytep out, png_uint_32 len)
 {
 	pngsplit_io_t *io = png_get_io_ptr(png);
@@ -190,10 +189,11 @@ void pngsplit_write(char *buff, pngsplit_png_t *png)
 		io.pos = 0;
 		png_set_write_fn(png->png, &io, pngsplit_write_callback, pngsplit_write_flush_callback);
 
-		png_set_PLTE(png->png, png->info, png->plt, png->plt_size);
+		if (png->plt) {
+			png_set_PLTE(png->png, png->info, png->plt, png->plt_size);
+		}
 		png_write_info(png->png, png->info);
 
-		png_set_compression_level(png->png, 9);
 		png_write_image(png->png, png->row_pointers);
 		png_write_end(png->png, NULL);
 	}
@@ -206,7 +206,7 @@ void pngsplit_write(char *buff, pngsplit_png_t *png)
 
 
 
-pngsplit_png_t *pngsplit_create_png_mask(pngsplit_png_t *in)
+pngsplit_png_t *pngsplit_create_png_mask_plt(pngsplit_png_t *in)
 {
 	int err = -1;
 
@@ -245,6 +245,47 @@ pngsplit_png_t *pngsplit_create_png_mask(pngsplit_png_t *in)
 						out->row_pointers[y][x / 2] &= 0xF0;
 						out->row_pointers[y][x / 2] |= px[3] >> 4;
 					}
+				}
+			}
+			err = 0;
+		}
+	}
+
+	if (err == -1) {
+		pngsplit_free(out);
+		out = NULL;
+	}
+
+	return out;
+}
+
+pngsplit_png_t *pngsplit_create_png_mask(pngsplit_png_t *in)
+{
+	int err = -1;
+
+	pngsplit_png_t *out = pngsplit_alloc(PNGSPLIT_ALLOC_WRITE);
+	if (!out)
+		return NULL;
+	if (!setjmp(png_jmpbuf(out->png))) {
+		out->width = in->width; out->height = in->height;
+		png_set_IHDR(out->png,
+			out->info,
+			out->width, out->height,
+			8,
+			PNG_COLOR_TYPE_RGB,
+			PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_DEFAULT,
+			PNG_FILTER_TYPE_DEFAULT
+			);
+
+		if (pngsplit_alloc_data(out) != -1) {
+			for (png_uint_32 y = 0; y < in->height; y++) {
+				png_bytep row = in->row_pointers[y];
+				for (png_uint_32 x = 0; x < in->width; x++) {
+					png_bytep px = &(row[x * 4]);
+					out->row_pointers[y][x * 3 + 0] = px[3];
+					out->row_pointers[y][x * 3 + 1] = px[3];
+					out->row_pointers[y][x * 3 + 2] = px[3];
 				}
 			}
 			err = 0;
@@ -386,7 +427,7 @@ static UINT32 get_assoc(UINT32 px, UINT32* assoc_table, int assoc_table_size)
 	}
 }
 
-pngsplit_png_t *pngsplit_create_rgb_file(pngsplit_png_t *in)
+pngsplit_png_t *pngsplit_create_rgb_file_plt(pngsplit_png_t *in)
 {
 	png_uint_32 *plt = NULL, *assoc_table = NULL;
 	int plt_size, assoc_table_size;
@@ -416,7 +457,7 @@ pngsplit_png_t *pngsplit_create_rgb_file(pngsplit_png_t *in)
 
 		out->plt = malloc(plt_size * sizeof(png_color));
 		out->plt_size = 0;
-		if (plt && assoc_table && out->plt) {
+		if (plt && assoc_table && out->plt && pngsplit_alloc_data(out) != -1) {
 			for (int i = 0; i < plt_size; i++) {
 				if ((plt[i] & 0xFF000000) == 0) {
 					png_bytep px = (png_bytep)(plt + i);
@@ -427,7 +468,6 @@ pngsplit_png_t *pngsplit_create_rgb_file(pngsplit_png_t *in)
 				}
 			}
 
-			pngsplit_alloc_data(out);
 			for (png_uint_32 y = 0; y < in->height; y++) {
 				png_uint_32 *row = (png_uint_32*)in->row_pointers[y];
 				for (png_uint_32 x = 0; x < in->width; x++) {
@@ -455,6 +495,50 @@ pngsplit_png_t *pngsplit_create_rgb_file(pngsplit_png_t *in)
 
 	SAFE_FREE(plt);
 	SAFE_FREE(assoc_table);
+	if (err == -1) {
+		pngsplit_free(out);
+		out = NULL;
+	}
+
+	return out;
+}
+
+pngsplit_png_t *pngsplit_create_rgb_file(pngsplit_png_t *in)
+{
+	int err = -1;
+
+	pngsplit_png_t *out;
+	out = pngsplit_alloc(PNGSPLIT_ALLOC_WRITE);
+	if (out == NULL) {
+		return NULL;
+	}
+
+	if (!setjmp(png_jmpbuf(out->png))) {
+		out->width = in->width; out->height = in->height;
+		png_set_IHDR(out->png,
+			out->info,
+			out->width, out->height,
+			8,
+			PNG_COLOR_TYPE_RGB,
+			PNG_INTERLACE_NONE,
+			PNG_COMPRESSION_TYPE_DEFAULT,
+			PNG_FILTER_TYPE_DEFAULT
+			);
+
+		if (pngsplit_alloc_data(out) != -1) {
+			for (png_uint_32 y = 0; y < in->height; y++) {
+				png_bytep row = in->row_pointers[y];
+				for (png_uint_32 x = 0; x < in->width; x++) {
+					png_bytep px = &(row[x * 4]); // px is in RGBA BE format.
+					out->row_pointers[y][x * 3 + 0] = px[0];
+					out->row_pointers[y][x * 3 + 1] = px[1];
+					out->row_pointers[y][x * 3 + 2] = px[2];
+				}
+			}
+			err = 0;
+		}
+	}
+
 	if (err == -1) {
 		pngsplit_free(out);
 		out = NULL;

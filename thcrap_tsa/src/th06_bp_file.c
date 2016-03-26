@@ -32,11 +32,11 @@ typedef enum {
 } th06_pngsplit_t;
 
 // Maximum size of the generated image.
-const pngsplit_max_image_size =
+const size_t pngsplit_max_image_size =
 	8 // Magic
 	+ 12 + 13 // IDHR
 	+ 12 + 3 * 256 // PLTE
-	+ 12 + 257 * 256 // IDAT
+	+ 12 + 257 * 256 * 3 // IDAT
 	+ 12; // IEND
 
 th06_pngsplit_t pngsplit_state;
@@ -66,11 +66,16 @@ int BP_th06_file_size(x86_reg_t *regs, json_t *bp_info)
 {
 	if (pngsplit_state != TH06_PNGSPLIT_NONE) {
 		// Ensure we'll have enough space for the patched PNG file
-		int *file_size = (int*)json_object_get_register(bp_info, regs, "file_size");
+		size_t *file_size = (size_t*)json_object_get_register(bp_info, regs, "file_size");
+		file_rep_t *fr = fr_tls_get();
 
 		if (*file_size < pngsplit_max_image_size) {
 			*file_size = pngsplit_max_image_size;
 		}
+		if (*file_size < fr->pre_json_size) {
+			*file_size = fr->pre_json_size;
+		}
+		return 1;
 	}
 	return BP_file_size(regs, bp_info);
 }
@@ -131,17 +136,31 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 			return BP_file_loaded(regs, bp_info);
 		}
 
-		// If the original PNG doesn't use a palette, the game's PNG parser will handle any PNG file.
-		if (((png_bytep)fr->game_buffer)[8 /* magic */ + 8 /* chunk header */ + 9 /* index of color type in IHRD */] != PNG_COLOR_TYPE_PALETTE) {
+		png_byte orig_bit_depth = ((png_bytep)fr->game_buffer)[8 /* magic */ + 8 /* chunk header */ + 8 /* index of bit depth in IHRD */];
+		png_byte orig_color_type = ((png_bytep)fr->game_buffer)[8 /* magic */ + 8 /* chunk header */ + 9 /* index of color type in IHRD */];
+		if (orig_color_type != PNG_COLOR_TYPE_RGB && orig_color_type != PNG_COLOR_TYPE_PALETTE) { // I don't think the game uses another color type. Maybe RGBA, and in that case the input file will probably be RGBA as well.
 			return th06_skip_image(fr);
 		}
 
 		if (pngsplit_state == TH06_PNGSPLIT_ALPHA) {
-			if (((png_bytep)fr->game_buffer)[8 /* magic */ + 8 /* chunk header */ + 8 /* index of bit depth in IHRD */] == 4) {
+			if (fr->name && strlen(fr->name) >= 6 &&
+				!strcmp(fr->name + strlen(fr->name) - 6, "_a.png")) {
 				// Compute the alpha mask
 				log_print("(PNG) Computing alpha mask\n");
-				void *dst = pngsplit_create_png_mask(pngsplit_png);
+				void *dst;
+				if (orig_color_type == PNG_COLOR_TYPE_PALETTE) {
+					dst = pngsplit_create_png_mask_plt(pngsplit_png);
+				} else {
+					dst = pngsplit_create_png_mask(pngsplit_png);
+				}
+				if (!dst) {
+					log_print("(PNG) Error\n");
+					PNGSPLIT_SAFE_FREE(pngsplit_png);
+					pngsplit_state = TH06_PNGSPLIT_NONE;
+					return BP_file_loaded(regs, bp_info);
+				}
 				pngsplit_write(fr->game_buffer, dst);
+				dst = NULL;
 
 				PNGSPLIT_SAFE_FREE(pngsplit_png);
 				pngsplit_state = TH06_PNGSPLIT_NONE;
@@ -156,7 +175,7 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 		if (pngsplit_state == TH06_PNGSPLIT_RGB)
 		{
 			// If we have an alpha mask here, that means the patch developer tries to replace the image for the alpha mask, and... let's hope he knows what he does.
-			if (((png_bytep)fr->game_buffer)[8 /* magic */ + 8 /* chunk header */ + 8 /* index of bit depth in IHRD */] != 8) {
+			if (orig_color_type == PNG_COLOR_TYPE_PALETTE && orig_bit_depth != 8) {
 				return th06_skip_image(fr);
 			}
 
@@ -168,8 +187,14 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 				return BP_file_loaded(regs, bp_info);
 			}
 
+
 			log_print("(PNG) Computing indexed image\n");
-			void* dst = pngsplit_create_rgb_file(pngsplit_png);
+			void* dst;
+			if (orig_color_type == PNG_COLOR_TYPE_PALETTE) {
+				dst = pngsplit_create_rgb_file_plt(pngsplit_png);
+			} else {
+				dst = pngsplit_create_rgb_file(pngsplit_png);
+			}
 			if (!dst) {
 				log_print("(PNG) Error\n");
 				PNGSPLIT_SAFE_FREE(pngsplit_png);
@@ -177,6 +202,7 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 				return BP_file_loaded(regs, bp_info);
 			}
 			pngsplit_write(fr->game_buffer, dst);
+			dst = NULL;
 
 			file_rep_clear(fr);
 			pngsplit_state = TH06_PNGSPLIT_ALPHA;
