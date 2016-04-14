@@ -148,11 +148,7 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 				// Compute the alpha mask
 				log_print("(PNG) Computing alpha mask\n");
 				void *dst;
-				if (orig_color_type == PNG_COLOR_TYPE_PALETTE) {
-					dst = pngsplit_create_png_mask_plt(pngsplit_png);
-				} else {
-					dst = pngsplit_create_png_mask(pngsplit_png);
-				}
+				dst = pngsplit_create_png_mask(pngsplit_png);
 				if (!dst) {
 					log_print("(PNG) Error\n");
 					PNGSPLIT_SAFE_FREE(pngsplit_png);
@@ -190,11 +186,7 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 
 			log_print("(PNG) Computing indexed image\n");
 			void* dst;
-			if (orig_color_type == PNG_COLOR_TYPE_PALETTE) {
-				dst = pngsplit_create_rgb_file_plt(pngsplit_png);
-			} else {
-				dst = pngsplit_create_rgb_file(pngsplit_png);
-			}
+			dst = pngsplit_create_rgb_file(pngsplit_png);
 			if (!dst) {
 				log_print("(PNG) Error\n");
 				PNGSPLIT_SAFE_FREE(pngsplit_png);
