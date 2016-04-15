@@ -23,8 +23,13 @@ void log_nprint(const char *text, size_t n);
 void log_vprintf(const char *text, va_list va);
 void log_printf(const char *text, ...);
 
-#define log_func_printf(text, ...) \
-	log_printf("["__FUNCTION__"]: "##text, __VA_ARGS__)
+#ifdef _MSC_VER
+# define log_func_printf(text, ...) \
+	log_printf("["__FUNCTION__"]: "text, __VA_ARGS__)
+#else
+# define log_func_printf(text, ...) \
+	log_printf("[%s]: "text, __func__, ##__VA_ARGS__)
+#endif
 /// ---------------
 
 /// -------------
