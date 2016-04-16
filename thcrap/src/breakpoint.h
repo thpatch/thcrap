@@ -63,9 +63,13 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 // single breakpoint function at any number of points in the original code.
 BreakpointFunc_t breakpoint_func_get(const char *key);
 
-// Main breakpoint hook function. A CALL to this function is written to every
-// breakpoint's address.
-void breakpoint_process(void);
+// Breakpoint hook function, implemented in assembly. A CALL to this function
+// is written to every breakpoint's address.
+void breakpoint_entry(void);
+
+// Performs breakpoint lookup, invocation and stack adjustments. Returns the
+// number of bytes the stack has to be moved downwards by breakpoint_entry().
+size_t breakpoint_process(x86_reg_t *regs);
 
 // Sets up all breakpoints in [breakpoints].
 int breakpoints_apply(json_t *breakpoints);

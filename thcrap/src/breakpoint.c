@@ -99,31 +99,16 @@ BreakpointFunc_t breakpoint_func_get(const char *key)
 	return ret;
 }
 
-__declspec(naked) void breakpoint_process(void)
+size_t breakpoint_process(x86_reg_t *regs)
 {
-	breakpoint_local_t *bp;
-	x86_reg_t *regs;
-
+	breakpoint_local_t *bp = NULL;
+	size_t esp_diff = 0;
 	int i;
-	int cave_exec;
+	int cave_exec = 1;
 
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
 	// to be able to manipulate it.
-	size_t esp_prev;
-
-	__asm {
-		// Save registers, allocate local variables
-		pushad	// Needs to be first to save ESP correctly
-		pushfd
-		mov ebp, esp
-		sub esp, __LOCAL_SIZE
-		mov regs, ebp
-	}
-
-	// Initialize (needs to be here because of __declspec(naked))
-	bp = NULL;
-	cave_exec = 1;
-	esp_prev = regs->esp;
+	size_t esp_prev = regs->esp;
 
 	for(i = 0; (i < BP_Count) && !bp; i++) {
 		if(BP_Local[i].addr == UlongToPtr(regs->retaddr - CALL_LEN)) {
@@ -142,18 +127,10 @@ __declspec(naked) void breakpoint_process(void)
 	if(esp_prev != regs->esp) {
 		// ESP change requested.
 		// Shift down the regs structure by the requested amount
-		size_t esp_diff = regs->esp - esp_prev;
+		esp_diff = regs->esp - esp_prev;
 		memmove((BYTE*)(regs) + esp_diff, regs, sizeof(x86_reg_t));
-		__asm {
-			add ebp, esp_diff
-		}
 	}
-	__asm {
-		mov esp, ebp
-		popfd
-		popad
-		retn
-	}
+	return esp_diff;
 }
 
 void cave_fix(BYTE *cave, BYTE *bp_addr)
@@ -204,7 +181,7 @@ int breakpoint_apply(breakpoint_local_t *bp)
 {
 	if(bp) {
 		size_t cave_dist = bp->addr - (bp->cave + CALL_LEN);
-		size_t bp_dist = (BYTE*)breakpoint_process - (bp->addr + CALL_LEN);
+		size_t bp_dist = (BYTE*)breakpoint_entry - (bp->addr + CALL_LEN);
 		BYTE bp_asm[BP_Offset];
 
 		/// Cave assembly
@@ -218,7 +195,7 @@ int breakpoint_apply(breakpoint_local_t *bp)
 
 		/// Breakpoint assembly
 		memset(bp_asm, 0x90, bp->cavesize);
-		// CALL breakpoint_process
+		// CALL breakpoint_entry
 		bp_asm[0] = 0xe8;
 		memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
 
