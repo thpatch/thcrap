@@ -9,6 +9,8 @@
 
 #pragma once
 
+#define PNG_FORMAT_INVALID (-1)
+
 // Why couldn't libpng just include the buffer pointers into the png_image
 // structure. Are different pointer sizes (thus, differing structure sizes)
 // really that bad?

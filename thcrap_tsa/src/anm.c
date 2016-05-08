@@ -61,7 +61,7 @@ unsigned int format_Bpp(format_t format)
 	}
 }
 
-unsigned int format_png_equiv(format_t format)
+png_uint_32 format_png_equiv(format_t format)
 {
 	switch(format) {
 		case FORMAT_BGRA8888:
@@ -72,7 +72,7 @@ unsigned int format_png_equiv(format_t format)
 			return PNG_FORMAT_GRAY;
 		default:
 			log_printf("unknown format: %u\n", format);
-			return 0;
+			return PNG_FORMAT_INVALID;
 	}
 }
 
@@ -458,7 +458,7 @@ int patch_png_load_for_thtx(png_image_exp image, const json_t *patch_info, const
 
 	if(png_image_begin_read_from_memory(&image->img, file_buffer, file_size)) {
 		image->img.format = format_png_equiv(thtx->format);
-		if(image->img.format) {
+		if(image->img.format != PNG_FORMAT_INVALID) {
 			size_t png_size = PNG_IMAGE_SIZE(image->img);
 			image->buf = (png_bytep)malloc(png_size);
 

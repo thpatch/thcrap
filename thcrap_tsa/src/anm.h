@@ -111,7 +111,7 @@ typedef struct {
 /// Formats
 /// -------
 unsigned int format_Bpp(format_t format);
-unsigned int format_png_equiv(format_t format);
+png_uint_32 format_png_equiv(format_t format);
 
 // Returns the maximum alpha value (representing 100% opacity) for [format].
 png_byte format_alpha_max(format_t format);
