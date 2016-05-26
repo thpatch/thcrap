@@ -163,21 +163,31 @@ int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, c
 	}
 	return ret;
 }
+/// ----------
+
+/// Detour chaining
+/// ---------------
+json_t* detour_get_create(const char *dll_name)
+{
+	json_t *ret = NULL;
+	STRLWR_DEC(dll_name);
+	STRLWR_CONV(dll_name);
+	if(!detours) {
+		detours = json_object();
+	}
+	ret = json_object_get_create(detours, dll_name_lower, JSON_OBJECT);
+	VLA_FREE(dll_name_lower);
+
+	return ret;
+}
 
 int detour_chain(const char *dll_name, int return_old_ptrs, ...)
 {
 	int ret = 0;
-	json_t *dll = NULL;
+	json_t *dll = detour_get_create(dll_name);
 	const char *func_name = NULL;
 	va_list va;
 
-	if(!dll_name) {
-		return -1;
-	}
-	if(!detours) {
-		detours = json_object();
-	}
-	dll = json_object_get_create(detours, dll_name, JSON_OBJECT);
 	va_start(va, return_old_ptrs);
 	while(func_name = va_arg(va, const char*)) {
 		FARPROC *old_ptr = NULL;
@@ -205,10 +215,7 @@ int detour_chain_w32u8(const w32u8_dll_t *dll)
 	if(!dll || !dll->name || !dll->funcs) {
 		return -1;
 	}
-	if(!detours) {
-		detours = json_object();
-	}
-	detours_dll = json_object_get_create(detours, dll->name, JSON_OBJECT);
+	detours_dll = detour_get_create(dll->name);
 	pair = dll->funcs;
 	while(pair && pair->ansi_name && pair->utf8_ptr) {
 		json_object_set_new(

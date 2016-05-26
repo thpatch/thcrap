@@ -50,4 +50,13 @@ int str_num_base(const char *str);
 
 // Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [format]
 void str_hexdate_format(char format[11], DWORD date);
+
+// Creates a lowercase copy of [str].
+#define STRLWR_DEC(str) \
+	STRLEN_DEC(str); \
+	VLA(char, str##_lower, str##_len);
+
+#define STRLWR_CONV(str) \
+	memcpy(str##_lower, str, str##_len); \
+	strlwr(str##_lower);
 /// -------
