@@ -111,13 +111,6 @@ int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *det
 
 /// High-level
 /// ----------
-void iat_detour_set(iat_detour_t *detour, const char *old_func, const void *old_ptr, const void *new_ptr)
-{
-	detour->old_func = old_func;
-	detour->old_ptr = old_ptr;
-	detour->new_ptr = new_ptr;
-}
-
 int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour)
 {
 	PIMAGE_THUNK_DATA pOT = NULL;
@@ -139,29 +132,6 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 		}
 	}
 	return -1;
-}
-
-int iat_detour_funcs(HMODULE hMod, const char *dll_name, iat_detour_t *detour, const size_t detour_count)
-{
-	PIMAGE_IMPORT_DESCRIPTOR pImpDesc = GetDllImportDesc(hMod, dll_name);
-	int ret = detour_count;
-	UINT c;
-
-	if(!pImpDesc) {
-		return -1;
-	}
-
-	log_printf("Detouring DLL functions (%s)...\n", dll_name);
-
-	for(c = 0; c < detour_count; c++) {
-		int local_ret = iat_detour_func(hMod, pImpDesc, &detour[c]);
-		log_printf(
-			"(%2d/%2d) %s... %s\n",
-			c + 1, detour_count, detour[c].old_func, local_ret ? "OK" : "not found"
-		);
-		ret -= local_ret;
-	}
-	return ret;
 }
 /// ----------
 
@@ -228,30 +198,51 @@ int detour_chain_w32u8(const w32u8_dll_t *dll)
 
 int iat_detour_apply(HMODULE hMod)
 {
-	const char *dll_name;
-	json_t *funcs;
 	int ret = 0;
+	PIMAGE_IMPORT_DESCRIPTOR pImpDesc;
 
-	if(!hMod) {
-		return -1;
+	pImpDesc = GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_IMPORT);
+	if(!pImpDesc) {
+		return ret;
 	}
-	json_object_foreach(detours, dll_name, funcs) {
+
+	while(pImpDesc->Name) {
+		json_t *funcs;
+		size_t func_count;
+		char *dll_name = (char*)((DWORD)hMod + (DWORD)pImpDesc->Name);
 		HMODULE hDll = GetModuleHandleA(dll_name);
-		size_t func_count = json_object_size(funcs);
+		STRLWR_DEC(dll_name);
+
+		STRLWR_CONV(dll_name);
+		funcs = json_object_get(detours, dll_name_lower);
+		func_count = json_object_size(funcs);
+
 		if(hDll && func_count) {
 			const char *func_name;
 			json_t *ptr;
-			VLA(iat_detour_t, iat_detour, func_count);
 			size_t i = 0;
+
+			log_printf("Detouring DLL functions (%s)...\n", dll_name_lower);
+
 			json_object_foreach(funcs, func_name, ptr) {
-				iat_detour[i].old_func = func_name;
-				iat_detour[i].new_ptr = (FARPROC)json_integer_value(ptr);
-				iat_detour[i].old_ptr = GetProcAddress(hDll, iat_detour[i].old_func);
+				iat_detour_t detour;
+				int local_ret;
+
+				detour.old_func = func_name;
+				detour.old_ptr = GetProcAddress(hDll, detour.old_func);
+				detour.new_ptr = (FARPROC)json_integer_value(ptr);
+
+				local_ret = iat_detour_func(hMod, pImpDesc, &detour);
+
+				log_printf(
+					"(%2d/%2d) %s... %s\n",
+					i + 1, func_count, detour.old_func,
+					local_ret ? "OK" : "not found"
+				);
 				i++;
 			}
-			ret += iat_detour_funcs(hMod, dll_name, iat_detour, func_count);
-			VLA_FREE(iat_detour);
 		}
+		pImpDesc++;
 	}
 	return ret;
 }

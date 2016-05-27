@@ -154,7 +154,6 @@ EXPORTS
 	func_detour_by_name
 	func_detour_by_ptr
 
-	iat_detour_funcs
 	detour_chain
 	detour_chain_w32u8
 	detour_top
