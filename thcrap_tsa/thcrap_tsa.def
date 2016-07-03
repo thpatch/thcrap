@@ -80,6 +80,7 @@ EXPORTS
 
 	BP_music_title
 	BP_music_cmt
+	BP_th06_music_title_in_game
 
 	music_mod_init
 

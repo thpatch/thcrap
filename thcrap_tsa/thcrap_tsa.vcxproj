@@ -42,6 +42,7 @@
     <ClCompile Include="src\png_ex.c" />
     <ClCompile Include="src\spells.c" />
     <ClCompile Include="src\th06_bp_file.c" />
+    <ClCompile Include="src\th06_bp_music.c" />
     <ClCompile Include="src\th06_msg.c" />
     <ClCompile Include="src\th06_pngsplit.c" />
     <ClCompile Include="src\thcrap_tsa.c">
