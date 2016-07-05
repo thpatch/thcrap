@@ -149,7 +149,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			SetCurrentDirectory(games_js_path);
 
 			games_js_str = json_dumps(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-			if(!file_write(games_js_fn, games_js_str, strlen(games_js_str))) {
+			if(!file_write_text(games_js_fn, games_js_str)) {
 				log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
 				log_printf(games_js_str);
 				log_printf("\n");

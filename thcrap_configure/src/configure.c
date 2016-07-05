@@ -116,6 +116,18 @@ void pause(void)
 	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
+int file_write_text(const char *fn, const char *str)
+{
+	int ret;
+	FILE *file = fopen_u(fn, "wt");
+	if(!file) {
+		return -1;
+	}
+	ret = fputs(str, file);
+	fclose(file);
+	return ret;
+}
+
 json_t* patch_build(const json_t *sel)
 {
 	const char *repo_id = json_array_get_string(sel, 0);
@@ -394,7 +406,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	run_cfg_fn_js = strings_storage_get(RUN_CFG_FN_JS, 0);
 
 	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
-	if(!file_write(run_cfg_fn_js, run_cfg_str, strlen(run_cfg_str))) {
+	if(!file_write_text(run_cfg_fn_js, run_cfg_str)) {
 		log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
 		log_printf(run_cfg_str);
 		log_printf("\n\n");
