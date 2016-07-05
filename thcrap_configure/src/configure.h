@@ -8,6 +8,9 @@
 // Yes, I know this is the wrong way, but wineconsole...
 extern int wine_flag;
 
+// Writes [str] to a new file name [fn] in text mode.
+int file_write_text(const char *fn, const char *str);
+
 /// Patch selection format: ["repo_id", "patch_id"]
 
 // Builds a new patch object with an archive directory from a patch selection.
