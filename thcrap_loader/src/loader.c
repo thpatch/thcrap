@@ -136,8 +136,20 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 				"If you do not have one yet, use the "
 				"thcrap_configure tool to create one.\n"
 			);
+			ret = -2;
+		} else {
+			size_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
+			VLA(char, cur_dir, cur_dir_len);
+			GetCurrentDirectoryU(cur_dir_len, cur_dir);
+
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"The run configuration file \"%s\" was not found in the current directory (%s).\n",
+				run_cfg_fn, cur_dir
+			);
+
+			VLA_FREE(cur_dir);
+			ret = -4;
 		}
-		ret = -2;
 		goto end;
 	}
 	// Command-line arguments take precedence over run configuration values
