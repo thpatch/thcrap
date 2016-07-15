@@ -66,9 +66,11 @@ json_t* identify(const char *exe_fn)
 	json_t *game_obj = NULL;
 	json_t *build_obj = NULL;
 	json_t *variety_obj = NULL;
+	json_t *codepage_obj = NULL;
 	const char *game = NULL;
 	const char *build = NULL;
 	const char *variety = NULL;
+	UINT codepage;
 
 	// Result of the EXE identification (array)
 	json_t *id_array = NULL;
@@ -95,13 +97,19 @@ json_t* identify(const char *exe_fn)
 	game_obj = json_array_get(id_array, 0);
 	build_obj = json_array_get(id_array, 1);
 	variety_obj = json_array_get(id_array, 2);
+	codepage_obj = json_array_get(id_array, 3);
 	game = json_string_value(game_obj);
 	build = json_string_value(build_obj);
 	variety = json_string_value(variety_obj);
+	codepage = json_hex_value(codepage_obj);
 
 	if(!game || !build) {
 		log_printf("Invalid version format!");
 		goto end;
+	}
+
+	if(codepage) {
+		w32u8_set_fallback_codepage(codepage);
 	}
 
 	// Store build in the runconfig to be recalled later for
@@ -109,7 +117,7 @@ json_t* identify(const char *exe_fn)
 	// run_cfg because we already require it down below to resolve ver_fn.
 	json_object_set(run_cfg, "build", build_obj);
 
-	log_printf("→ %s %s %s\n", game, build, variety);
+	log_printf("→ %s %s %s (codepage %d)\n", game, build, variety, codepage);
 
 	if(stricmp(PathFindExtensionA(game), ".js")) {
 		size_t ver_fn_len = json_string_length(game_obj) + 1 + strlen(".js") + 1;
