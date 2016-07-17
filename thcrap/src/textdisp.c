@@ -14,7 +14,7 @@
 /// -------------
 DETOUR_CHAIN_DEF(CreateFontU);
 // Type-safety is nice
-static CreateFontIndirectExA_type chain_CreateFontIndirectExU = CreateFontIndirectExU;
+static CreateFontIndirectExA_type *chain_CreateFontIndirectExU = CreateFontIndirectExU;
 /// -------------
 
 /// LOGFONT stringification

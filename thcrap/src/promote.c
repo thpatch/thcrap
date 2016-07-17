@@ -29,7 +29,7 @@ HFONT WINAPI promote_CreateFontA(
 	LPCSTR pszFaceName
 )
 {
-	CreateFontIndirectA_type target = (CreateFontIndirectA_type)detour_top(
+	CreateFontIndirectA_type *target = (CreateFontIndirectA_type*)detour_top(
 		"gdi32.dll", "CreateFontIndirectA", (FARPROC)CreateFontIndirectU
 	);
 	return lower_CreateFontA(target,
@@ -43,7 +43,7 @@ HFONT WINAPI promote_CreateFontIndirectA(
 	CONST LOGFONTA *lplf
 )
 {
-	CreateFontIndirectExA_type target = (CreateFontIndirectExA_type)detour_top(
+	CreateFontIndirectExA_type *target = (CreateFontIndirectExA_type*)detour_top(
 		"gdi32.dll", "CreateFontIndirectExA", (FARPROC)CreateFontIndirectExU
 	);
 	return lower_CreateFontIndirectA(target, lplf);
