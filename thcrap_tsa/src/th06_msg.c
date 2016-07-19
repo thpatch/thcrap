@@ -317,16 +317,20 @@ void box_end(patch_msg_state_t *state)
 			th06_msg_t *new_line_cmd = th06_msg_advance(state->last_line_cmd);
 			ptrdiff_t move_len;
 			int hard_line;
+			size_t extra_param_len;
 			size_t line_offset;
+			size_t line_len_trimmed;
 
 			move_len = (BYTE*)th06_msg_advance(state->cmd_out) - (BYTE*)new_line_cmd;
 
 			hard_line = (state->last_line_op->cmd == OP_HARD_LINE);
-			line_offset = sizeof(th06_msg_t) + (hard_line ? 4 : 0);
+			extra_param_len = hard_line ? 4 : 0;
+			line_offset = sizeof(th06_msg_t) + extra_param_len;
+			line_len_trimmed = get_len_at_last_codepoint(json_line, 255 - extra_param_len);
 
 			// Make room for the new line
 			memmove(
-				(BYTE*)(new_line_cmd) + line_offset + strlen(json_line) + 1,
+				(BYTE*)(new_line_cmd) + line_offset + line_len_trimmed,
 				new_line_cmd,
 				move_len
 			);
