@@ -165,7 +165,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	FARPROC getprocaddress = GetProcAddress(kernel32, "GetProcAddress");
 	FARPROC exitthread = GetProcAddress(kernel32, "ExitThread");
 	FARPROC freelibraryandexitthread = GetProcAddress(kernel32, "FreeLibraryAndExitThread");
-	int have_kb2269637 = GetProcAddress(kernel32, "SetDefaultDllDirectories") != 0;
+	int have_kb2533623 = GetProcAddress(kernel32, "SetDefaultDllDirectories") != 0;
 
 	// The workspace we will build the codecave on locally.
 	// workspaceSize gets incremented with the final length of the error strings.
@@ -465,7 +465,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0xD6;
 	}
 
-	if(PathIsRelativeA(dll_fn) || !have_kb2269637) {
+	if(PathIsRelativeA(dll_fn) || !have_kb2533623) {
 		// PUSH 0x00 (dwFlags = 0)
 		*p++ = 0x6a;
 		*p++ = 0x00;
