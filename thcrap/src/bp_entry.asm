@@ -20,3 +20,6 @@ _breakpoint_entry:
 	popf
 	popa
 	ret
+
+// /SAFESEH compliance. Note that the @feat.00 symbol *must not* be global.
+	.set @feat.00, 1
