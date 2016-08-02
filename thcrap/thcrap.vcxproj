@@ -20,6 +20,9 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
   </ImportGroup>
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(ProjectDir)\gas.props" />
+  </ImportGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
@@ -87,6 +90,10 @@
     <ClInclude Include="src\thcrap.h" />
     <ClInclude Include="src\win32_detour.h" />
     <ClInclude Include="src\zip.h" />
+    <GAS Include="src\bp_entry.asm" />
     <None Include="thcrap.def" />
   </ItemGroup>
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="gas.targets" />
+  </ImportGroup>
 </Project>
