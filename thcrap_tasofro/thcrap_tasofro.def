@@ -1,0 +1,6 @@
+LIBRARY
+EXPORTS
+	thcrap_plugin_init	@1
+
+	BP_file_header
+	BP_replace_file
