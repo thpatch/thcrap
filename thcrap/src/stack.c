@@ -85,6 +85,11 @@ void* stack_file_resolve_chain(const json_t *chain, size_t *file_size)
 	void *ret = NULL;
 	stack_chain_iterate_t sci = {0};
 
+	// Empty stacks are a thing, too.
+	if(file_size) {
+		*file_size = 0;
+	}
+
 	// Both the patch stack and the chain have to be traversed backwards: Later
 	// patches take priority over earlier ones, and build-specific files are
 	// preferred over generic ones.

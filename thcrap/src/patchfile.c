@@ -31,6 +31,7 @@ void* file_read(const char *fn, size_t *file_size)
 			fn, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 		);
+		*file_size = 0;
 		if(handle != INVALID_HANDLE_VALUE) {
 			*file_size = GetFileSize(handle, NULL);
 			if(*file_size != 0) {
@@ -211,7 +212,6 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 	if(!file_size) {
 		return NULL;
 	}
-	*file_size = 0;
 	if(!patch_file_blacklisted(patch_info, fn)) {
 		ret = file_read(patch_fn, file_size);
 	}
