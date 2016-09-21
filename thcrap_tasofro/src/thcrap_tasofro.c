@@ -90,12 +90,13 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	if (path && *path) {
 		log_printf("path: %s", *path);
 
-		if ((*path)[1] != ':') {
-			header_cache = hash_to_file_header(filename_to_hash(*path));
+		const char* local_path = *path;
+		if ((*path)[1] == ':') { // The game uses a full path for whatever reason
+			local_path = strstr(local_path, "data/"); // TODO: use a reverse strstr
+			if (local_path == NULL)
+				return 1;
 		}
-		else { // The game uses a full path for whatever reason
-			header_cache = hash_to_file_header(filename_to_hash(strstr(*path, "data/"))); // TODO: use a reverse strstr
-		}
+		header_cache = hash_to_file_header(filename_to_hash(local_path));
 
 		if (header_cache) {
 			log_printf(";   known path: %s", header_cache->path);
