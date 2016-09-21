@@ -36,6 +36,15 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	if (full_header->path[0]) {
 		full_header->file_rep = stack_game_file_resolve(full_header->path, &full_header->file_rep_size);
 	}
+
+	// If the game loads a DDS file and we have no corresponding DDS file, try to replace it with a PNG file (the game will deal with it)
+	if (full_header->file_rep == NULL && full_header->path[0] && strlen(full_header->path) > 4 && strcmp(full_header->path + strlen(full_header->path) - 4, ".dds") == 0) {
+		char png_path[MAX_PATH];
+		strcpy(png_path, full_header->path);
+		strcpy(png_path + strlen(full_header->path) - 3, "png");
+		full_header->file_rep = stack_game_file_resolve(png_path, &full_header->file_rep_size);
+	}
+
 	if (full_header->file_rep != NULL) {
 		crypt_block(full_header->file_rep, full_header->file_rep_size, full_header->key);
 		(*header)->size = full_header->file_rep_size;
