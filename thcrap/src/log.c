@@ -105,17 +105,15 @@ int log_mboxf(const char *caption, const UINT type, const char *text, ...)
 
 static void OpenConsole(void)
 {
-	int hCrt;
-	FILE *hf;
-
 	if(console_open) {
 		return;
 	}
-	// Some magical code copy-pasted from somewhere
 	AllocConsole();
-	hCrt = _open_osfhandle((long)GetStdHandle(STD_OUTPUT_HANDLE), _O_TEXT);
-	hf = _fdopen(hCrt, "w");
-	*stdout = *hf;
+
+	// To match the behavior of the native Windows console, Wine additionally
+	// needs read rights because its WriteConsole() implementation calls
+	// GetConsoleMode(), and setvbuf() because… I don't know?
+	freopen("CONOUT$", "w+b", stdout);
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	/// This breaks all normal, unlogged printf() calls to stdout!
