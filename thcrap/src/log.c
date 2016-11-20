@@ -17,7 +17,37 @@
 static FILE *log_file = NULL;
 static int console_open = 0;
 static const char LOG[] = "thcrap_log.txt";
+static const char LOG_ROTATED[] = "thcrap_log.%d.txt";
+static const int ROTATIONS = 1; // Number of backups to keep
 // -----------------------
+
+// Rotation
+// --------
+void log_fn_for_rotation(char *fn, int rotnum)
+{
+	if(rotnum == 0) {
+		strcpy(fn, LOG);
+	} else {
+		sprintf(fn, LOG_ROTATED, rotnum);
+	}
+}
+
+void log_rotate(void)
+{
+	size_t rot_fn_len = max(sizeof(LOG_ROTATED), sizeof(LOG));
+	VLA(char, rot_from, rot_fn_len);
+	VLA(char, rot_to, rot_fn_len);
+
+	for(int rotation = ROTATIONS; rotation > 0; rotation--) {
+		log_fn_for_rotation(rot_from, rotation - 1);
+		log_fn_for_rotation(rot_to, rotation);
+		MoveFileExU(rot_from, rot_to, MOVEFILE_REPLACE_EXISTING);
+	}
+
+	VLA_FREE(rot_from);
+	VLA_FREE(rot_to);
+}
+// --------
 
 #define VLA_VSPRINTF(str, va) \
 	size_t str##_full_len = _vscprintf(str, va) + 1; \
@@ -124,6 +154,8 @@ static void OpenConsole(void)
 
 void log_init(int console)
 {
+	log_rotate();
+
 	log_file = fopen(LOG, "wt");
 #ifdef _DEBUG
 	OpenConsole();
