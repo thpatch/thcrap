@@ -28,10 +28,10 @@ static const char LOG[] = "thcrap_log.txt";
 void log_print(const char *str)
 {
 	if(console_open) {
-		fprintf(stdout, str);
+		fprintf(stdout, "%s", str);
 	}
 	if(log_file) {
-		fprintf(log_file, str);
+		fprintf(log_file, "%s", str);
 		fflush(log_file);
 	}
 }
