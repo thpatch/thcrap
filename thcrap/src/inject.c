@@ -852,7 +852,6 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	ReadProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
 	WriteProcessMemory(hProcess, addr, entry_asm_delay, sizeof(entry_asm_delay), &byte_ret);
 	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_delay));
-	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, old_prot, &old_prot);
 
 	context.ContextFlags = CONTEXT_CONTROL;
 	while(context.Eip != (DWORD)addr) {
@@ -865,6 +864,8 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	// Write back the original code
 	WriteProcessMemory(hProcess, addr, entry_asm_orig, sizeof(entry_asm_orig), &byte_ret);
 	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_orig));
+
+	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, old_prot, &old_prot);
 	return 0;
 }
 
