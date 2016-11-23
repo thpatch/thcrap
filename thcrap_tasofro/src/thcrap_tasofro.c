@@ -109,7 +109,7 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	}
 
 
-	if (buffer && *buffer && size && ret_size && ret_size && header_cache) {
+	if (buffer && *buffer && size && ret_size && *ret_size && header_cache) {
 		log_printf("buffer: %p, size: %d", *buffer, *size);
 		if (header_cache->file_rep) {
 			int copy_size;
