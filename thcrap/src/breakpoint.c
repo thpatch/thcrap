@@ -226,7 +226,7 @@ int breakpoints_apply(json_t *breakpoints)
 		return 0;
 	}
 	BP_Count = breakpoint_count;
-	BP_Local = calloc(BP_Count, sizeof(breakpoint_local_t));
+	BP_Local = (breakpoint_local_t *)calloc(BP_Count, sizeof(breakpoint_local_t));
 	BP_CodeCave = (BYTE*)VirtualAlloc(0, breakpoint_count * BP_Offset, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 	memset(BP_CodeCave, 0xcc, breakpoint_count * BP_Offset);
 

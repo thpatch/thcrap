@@ -99,7 +99,7 @@ char* strings_storage_get(const size_t slot, size_t min_len)
 	// MSVCRT's realloc implementation moves the buffer every time, even if the
 	// new length is shorter...
 	if(!ret || (min_len && ret->len < min_len)) {
-		storage_string_t *ret_new = realloc(ret, min_len + sizeof(storage_string_t));
+		storage_string_t *ret_new = (storage_string_t*)realloc(ret, min_len + sizeof(storage_string_t));
 		// Yes, this correctly handles a realloc failure.
 		if(ret_new) {
 			ret_new->len = min_len;

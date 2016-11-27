@@ -20,7 +20,7 @@ static char *dll_dir = NULL;
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
-	unsigned char *file_buffer = file_read(fn, file_size);
+	unsigned char *file_buffer = (unsigned char*)file_read(fn, file_size);
 	SHA256_CTX sha256_ctx;
 	BYTE hash[32];
 	char hash_str[65];

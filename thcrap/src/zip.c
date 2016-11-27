@@ -448,7 +448,7 @@ static size_t zip_dir_end_prepare(zip_dir_end_t *dir_end, zip_t *zip)
 				SetFilePointer(zip->hArc, end_pos + ZDE_SIZE, NULL, FILE_BEGIN);
 				zip->cmt_len = end->cmt_len;
 				if(end->cmt_len) {
-					zip->cmt = malloc(end->cmt_len);
+					zip->cmt = (BYTE *)malloc(end->cmt_len);
 					ReadFile(zip->hArc, zip->cmt, end->cmt_len, &byte_ret, NULL);
 				}
 				return end_pos;
@@ -560,7 +560,7 @@ zip_t* zip_open(const char *fn)
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_RANDOM_ACCESS, NULL
 	);
 	if(hArc != INVALID_HANDLE_VALUE) {
-		ret = malloc(sizeof(zip_t));
+		ret = (zip_t *)malloc(sizeof(zip_t));
 		if(!ret) {
 			return NULL;
 		}

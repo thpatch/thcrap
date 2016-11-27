@@ -201,7 +201,7 @@ int iat_detour_apply(HMODULE hMod)
 	int ret = 0;
 	PIMAGE_IMPORT_DESCRIPTOR pImpDesc;
 
-	pImpDesc = GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_IMPORT);
+	pImpDesc = (PIMAGE_IMPORT_DESCRIPTOR)GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_IMPORT);
 	if(!pImpDesc) {
 		return ret;
 	}

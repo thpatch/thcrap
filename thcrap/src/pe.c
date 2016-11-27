@@ -59,7 +59,7 @@ PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *dll_name)
 {
 	PIMAGE_IMPORT_DESCRIPTOR pImportDesc;
 
-	pImportDesc = GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_IMPORT);
+	pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_IMPORT);
 	if(!pImportDesc) {
 		return NULL;
 	}
@@ -75,7 +75,7 @@ PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *dll_name)
 
 PIMAGE_EXPORT_DIRECTORY GetDllExportDesc(HMODULE hMod)
 {
-	return GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_EXPORT);
+	return (PIMAGE_EXPORT_DIRECTORY)GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_EXPORT);
 }
 
 PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
@@ -99,7 +99,7 @@ PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 	}
 	// Search
 	for(c = 0; c < pNTH->FileHeader.NumberOfSections; c++) {
-		if(strncmp(pSH->Name, section_name, 8) == 0) {
+		if(strncmp((const char*)pSH->Name, section_name, 8) == 0) {
 			return pSH;
 		}
 		++pSH;
@@ -171,7 +171,7 @@ char* ReadProcessString(HANDLE hProcess, LPCVOID lpBaseAddress)
 
 		region_len = (size_t)mbi.BaseAddress + mbi.RegionSize - (size_t)addr;
 		full_len += region_len;
-		new_ret = realloc(ret, full_len);
+		new_ret = (char *)realloc(ret, full_len);
 		if(new_ret) {
 			ret = new_ret;
 		} else {
@@ -294,9 +294,9 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 		size_t name_ptrs_size = ExportDesc.NumberOfNames * sizeof(DWORD);
 		size_t name_indices_size = ExportDesc.NumberOfNames * sizeof(WORD);
 
-		func_ptrs = malloc(func_ptrs_size);
-		name_ptrs = malloc(name_ptrs_size);
-		name_indices = malloc(name_indices_size);
+		func_ptrs = (DWORD *)malloc(func_ptrs_size);
+		name_ptrs = (DWORD *)malloc(name_ptrs_size);
+		name_indices = (WORD *)malloc(name_indices_size);
 		if(
 			!func_ptrs || !name_ptrs || !name_indices
 			|| !ReadProcessMemory(hProcess, func_ptrs_pos, func_ptrs, func_ptrs_size, NULL)

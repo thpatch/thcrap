@@ -190,7 +190,7 @@ int repatch_mod_init(void)
 	if(!patches_num) {
 		return 1;
 	}
-	dir_handles = calloc(sizeof(HANDLE), patches_num);
+	dir_handles = (HANDLE *)calloc(sizeof(HANDLE), patches_num);
 	if(!dir_handles) {
 		return 2;
 	}

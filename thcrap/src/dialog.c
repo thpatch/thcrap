@@ -527,7 +527,7 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 	}
 	json_decref(trans);
 	SAFE_FREE(hDlg_rep);
-	return dlg_out;
+	return (DLGTEMPLATE *)dlg_out;
 }
 
 HWND WINAPI dialog_CreateDialogParamA(

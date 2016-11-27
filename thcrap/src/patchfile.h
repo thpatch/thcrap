@@ -14,7 +14,7 @@
   *
   * Parameters
   * ----------
-  *	BYTE* file_inout
+  *	void* file_inout
   *		Buffer containing the original file.
   *		Should contain the patched result after this function.
   *
@@ -29,7 +29,7 @@
   *
   * Returns nothing.
   */
-typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch);
+typedef int (*func_patch_t)(void* file_inout, size_t size_out, size_t size_in, json_t *patch);
 
 // Reads the file [fn] into a newly created buffer and returns its file size
 // in [file_size]. Return value has to be free()d by the caller!

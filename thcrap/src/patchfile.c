@@ -230,7 +230,7 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size)
 {
 	size_t json_size;
-	void *file_buffer = patch_file_load(patch_info, fn, &json_size);
+	char *file_buffer = (char *)patch_file_load(patch_info, fn, &json_size);
 	json_t *file_json = json_loadb_report(file_buffer, json_size, JSON_DISABLE_EOF_CHECK, fn);
 
 	if(file_size) {
