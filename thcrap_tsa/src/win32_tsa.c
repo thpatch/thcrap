@@ -12,7 +12,12 @@
 
 /// Detour chains
 /// -------------
-DETOUR_CHAIN_DEF(CreateWindowExU);
+typedef BOOL WINAPI GetWindowRect_type(
+	HWND hWnd,
+	LPRECT lpRect
+);
+
+W32U8_DETOUR_CHAIN_DEF(CreateWindowEx);
 DETOUR_CHAIN_DEF(GetWindowRect);
 /// -------------
 

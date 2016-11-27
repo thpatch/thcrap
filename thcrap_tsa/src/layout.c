@@ -20,9 +20,18 @@ static HDC text_dc = NULL;
 
 /// Detour chains
 /// -------------
+typedef HDC WINAPI CreateCompatibleDC_type(
+	HDC hdc
+);
+
+typedef HGDIOBJ WINAPI SelectObject_type(
+	HDC hdc,
+	HGDIOBJ h
+);
+
 DETOUR_CHAIN_DEF(CreateCompatibleDC);
 DETOUR_CHAIN_DEF(SelectObject);
-DETOUR_CHAIN_DEF(TextOutU);
+W32U8_DETOUR_CHAIN_DEF(TextOut);
 /// -------------
 
 /// TSA font block

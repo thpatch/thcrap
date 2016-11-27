@@ -12,7 +12,7 @@
 
 /// Detour chains
 /// -------------
-DETOUR_CHAIN_DEF(MessageBoxU);
+W32U8_DETOUR_CHAIN_DEF(MessageBox);
 /// -------------
 
 // Length-prefixed string object used for persistent storage

@@ -62,8 +62,8 @@
 
 /// Detour chains
 /// -------------
-static FARPROC chain_CreateDialogParamA = (FARPROC)CreateDialogParamU;
-static FARPROC chain_DialogBoxParamA = (FARPROC)DialogBoxParamU;
+W32U8_DETOUR_CHAIN_DEF(CreateDialogParam);
+W32U8_DETOUR_CHAIN_DEF(DialogBoxParam);
 /// -------------
 
 /// Structures
@@ -546,7 +546,7 @@ HWND WINAPI dialog_CreateDialogParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = (HWND)chain_CreateDialogParamA(
+		ret = chain_CreateDialogParamU(
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
@@ -569,7 +569,7 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 		);
 		SAFE_FREE(dlg_trans);
 	} else {
-		ret = chain_DialogBoxParamA(
+		ret = chain_DialogBoxParamU(
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
@@ -579,8 +579,8 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 void dialog_mod_detour(void)
 {
 	detour_chain("user32.dll", 1,
-		"CreateDialogParamA", dialog_CreateDialogParamA, &chain_CreateDialogParamA,
-		"DialogBoxParamA", dialog_DialogBoxParamA, &chain_DialogBoxParamA,
+		"CreateDialogParamA", dialog_CreateDialogParamA, &chain_CreateDialogParamU,
+		"DialogBoxParamA", dialog_DialogBoxParamA, &chain_DialogBoxParamU,
 		NULL
 	);
 }

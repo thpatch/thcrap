@@ -12,9 +12,8 @@
 
 /// Detour chains
 /// -------------
-DETOUR_CHAIN_DEF(CreateFontU);
-// Type-safety is nice
-static CreateFontIndirectExA_type *chain_CreateFontIndirectExU = CreateFontIndirectExU;
+W32U8_DETOUR_CHAIN_DEF(CreateFont);
+W32U8_DETOUR_CHAIN_DEF(CreateFontIndirectEx);
 /// -------------
 
 /// LOGFONT stringification

@@ -11,6 +11,10 @@
 
 /// Detour chains
 /// -------------
+typedef LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter_type(
+	LPTOP_LEVEL_EXCEPTION_FILTER
+);
+
 DETOUR_CHAIN_DEF(SetUnhandledExceptionFilter);
 /// -------------
 
@@ -75,7 +79,7 @@ LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
 {
 	// Don't return our own filter, since this might cause an infinite loop if
 	// the game process caches it.
-	LPTOP_LEVEL_EXCEPTION_FILTER ret = (LPTOP_LEVEL_EXCEPTION_FILTER)chain_SetUnhandledExceptionFilter(
+	LPTOP_LEVEL_EXCEPTION_FILTER ret = chain_SetUnhandledExceptionFilter(
 		lpTopLevelExceptionFilter
 	);
 	lpOrigFilter = lpTopLevelExceptionFilter;

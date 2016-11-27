@@ -11,11 +11,42 @@
 
 /// Detour chains
 /// -------------
-DETOUR_CHAIN_DEF(CreateProcessU);
+typedef BOOL WINAPI CreateProcessW_type(
+	LPCWSTR lpApplicationName,
+	LPWSTR lpCommandLine,
+	LPSECURITY_ATTRIBUTES lpProcessAttributes,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	BOOL bInheritHandles,
+	DWORD dwCreationFlags,
+	LPVOID lpEnvironment,
+	LPCWSTR lpCurrentDirectory,
+	LPSTARTUPINFOW lpStartupInfo,
+	LPPROCESS_INFORMATION lpProcessInformation
+);
+
+typedef HANDLE WINAPI CreateRemoteThread_type(
+	HANDLE hProcess,
+	LPSECURITY_ATTRIBUTES lpThreadAttributes,
+	SIZE_T dwStackSize,
+	LPTHREAD_START_ROUTINE lpStartAddress,
+	LPVOID lpParameter,
+	DWORD dwCreationFlags,
+	LPDWORD lpThreadId
+);
+
+typedef BOOL WINAPI FreeLibrary_type(
+	HMODULE hLibModule
+);
+
+typedef HMODULE WINAPI LoadLibraryW_type(
+	LPCWSTR lpLibFileName
+);
+
+W32U8_DETOUR_CHAIN_DEF(CreateProcess);
 DETOUR_CHAIN_DEF(CreateProcessW);
 DETOUR_CHAIN_DEF(CreateRemoteThread);
 DETOUR_CHAIN_DEF(FreeLibrary);
-DETOUR_CHAIN_DEF(LoadLibraryU);
+W32U8_DETOUR_CHAIN_DEF(LoadLibrary);
 DETOUR_CHAIN_DEF(LoadLibraryW);
 /// -------------
 
@@ -1035,7 +1066,7 @@ HMODULE WINAPI inject_LoadLibraryU(
 	LPCSTR lpLibFileName
 )
 {
-	HMODULE ret = (HMODULE)chain_LoadLibraryU(lpLibFileName);
+	HMODULE ret = chain_LoadLibraryU(lpLibFileName);
 	if(ret && inject_refcount_inc(ret) == 1) {
 		thcrap_detour(ret);
 	}
