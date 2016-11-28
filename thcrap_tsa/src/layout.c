@@ -139,7 +139,7 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 		char *str_base_end = NULL;
 		char *str_ruby = NULL;
 
-		if(!str_offset_end || !str_offset_end[1] == ',' || str_base[-1] != '\t') {
+		if(!str_offset_end || str_offset_end[1] != ',' || str_base[-1] != '\t') {
 			return 1;
 		}
 		str_base_end = strchr(str_base, '\t');
