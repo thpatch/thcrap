@@ -11,6 +11,10 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <win32_utf8.h>
 #include <jansson.h>
 #include "..\config.h"
@@ -33,3 +37,8 @@
 #include "jsondata.h"
 #include "specs.h"
 #include "zip.h"
+#include "bp_file.h"
+
+#ifdef __cplusplus
+}
+#endif

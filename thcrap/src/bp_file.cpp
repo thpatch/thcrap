@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include "bp_file.h"
 
 #define POST_JSON_SIZE(fr) (fr)->pre_json_size + (fr)->patch_size
 
