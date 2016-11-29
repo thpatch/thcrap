@@ -11,13 +11,13 @@
 #include <bp_file.h>
 #include "thcrap_tasofro.h"
 
-
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
 {
 	BYTE* filenames_list;
 	size_t filenames_list_size;
 	
+	patchhook_register("*/stage*.pl", patch_pl);
 	filenames_list = stack_game_file_resolve("fileslist.txt", &filenames_list_size);
 	LoadFileNameListFromMemory(filenames_list, filenames_list_size);
 	return 0;
@@ -32,36 +32,55 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	DWORD **key = (DWORD**)json_object_get_register(bp_info, regs, "key");
 	// ----------
 	struct FileHeaderFull *full_header = register_file_header(*header, *key);
+	file_rep_t fr;
+	ZeroMemory(&fr, sizeof(file_rep_t));
 
 	if (full_header->path[0]) {
-		full_header->file_rep = stack_game_file_resolve(full_header->path, &full_header->file_rep_size);
+		file_rep_init(&fr, full_header->path);
 	}
 
 	// If the game loads a DDS file and we have no corresponding DDS file, try to replace it with a PNG file (the game will deal with it)
-	if (full_header->file_rep == NULL && full_header->path[0] && strlen(full_header->path) > 4 && strcmp(full_header->path + strlen(full_header->path) - 4, ".dds") == 0) {
+	if (fr.rep_buffer == NULL && strlen(fr.name) > 4 && strcmp(fr.name + strlen(fr.name) - 4, ".dds") == 0) {
 		char png_path[MAX_PATH];
 		strcpy(png_path, full_header->path);
 		strcpy(png_path + strlen(full_header->path) - 3, "png");
-		full_header->file_rep = stack_game_file_resolve(png_path, &full_header->file_rep_size);
+		file_rep_clear(&fr);
+		file_rep_init(&fr, png_path);
 	}
 
-	if (full_header->file_rep != NULL) {
+	if (fr.rep_buffer == NULL && fr.patch != NULL) {
+		log_print("Patching without replacement file isn't supported yet. Please provide the file you are patching.\n");
+	}
+
+	// TODO: I want my json patch even if I don't have a replacement file!!!
+	if (fr.rep_buffer != NULL) {
+		fr.game_buffer = malloc(fr.pre_json_size + fr.patch_size);
+		memcpy(fr.game_buffer, fr.rep_buffer, fr.pre_json_size);
+		patchhooks_run( // TODO: replace with file_rep_hooks_run
+			fr.hooks, fr.game_buffer, fr.pre_json_size + fr.patch_size, fr.pre_json_size, fr.patch
+			);
+
+		full_header->file_rep = fr.game_buffer;
+		full_header->file_rep_size = fr.pre_json_size + fr.patch_size;
 		crypt_block(full_header->file_rep, full_header->file_rep_size, full_header->key);
 		(*header)->size = full_header->file_rep_size;
 		full_header->size = full_header->file_rep_size;
 	}
+	file_rep_clear(&fr);
+
 	return 1;
 }
 
 /**
   * So, the game seem to call ReadFile in a quite random way. I'll guess some things:
   * - First, it always do a 1st read of size 0x10000, and uses it to check the magic bytes.
-  * - Then, it reads the file from the beginning (yeah, it always re-read the 0x10000 first bytes), in one of more calls.
+  * - Then, for most file types, it reads the file from the beginning (yeah, it re-reads the 0x10000 first bytes), in one of more calls.
   *   + With an ogg file, it reads the file by blocks of 0x10000 bytes. title.ogg (2377849 bytes) is read with the first read of 0x10000, then 4 read of 0x10000.
   *   + With a dds  file, it reads the file entirely in one call (after the magic check).
   *   + With a TFBM file, it reads a first block of 0x10000, then the remaining bytes.
   *   + With a png  file, it re-reads the first 0x10000 bytes 2 more times, then reads the file like an ogg file (so the game ends up reading the first bytes 4 times).
-  * - For some file extensions (csv, dll, nut, maybe some others), the game don't do another read to check the magic bytes. It reads the entire file in one go.
+  *   + With an act file, it skips 8 bytes for the 2nd read.
+  * - For some file extensions (csv, dll, nut, maybe some others), the game doesn't do another read to check the magic bytes. It reads the entire file in one go.
   *
   * From these guessings, the following may work for all files:
   * - For the first read, give the number requested bytes from the beginning (repeat this step 3 times for a png file).
@@ -98,8 +117,11 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 		}
 		header_cache = hash_to_file_header(filename_to_hash(local_path));
 
-		if (header_cache) {
+		if (header_cache && header_cache->path[0]) {
 			log_printf(";   known path: %s", header_cache->path);
+		}
+		else {
+			log_printf(";   Path unknown");
 		}
 
 		// Reset the reader
@@ -115,7 +137,7 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 			int copy_size;
 			if (stage == 1) {
 				// Skipping
-				log_print("\nStage 1");
+				log_print("\t\t\tStage 1");
 
 				copy_size = min(header_cache->file_rep_size, *size);
 				log_printf(": file_rep_size: %d, input size: %d, chosen size: %d", header_cache->file_rep_size, *size, copy_size);
@@ -124,6 +146,9 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 
 				if (repeat_stage_1 == 0 && **(DWORD**)buffer == 0x474E5089 /* \x89PNG */) {
 					repeat_stage_1 = 3;
+				}
+				if (**(DWORD**)buffer == 0x31544341 /* ACT1 */) {
+					offset = 8;
 				}
 				if (repeat_stage_1 > 0) {
 					repeat_stage_1--;
@@ -134,7 +159,7 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 			}
 			else if (stage == 2) {
 				// Reading the first bytes
-				log_print("\nStage 2");
+				log_print("\t\t\tStage 2");
 
 				copy_size = min(header_cache->file_rep_size - offset, *size);
 				log_printf(": offset: %d, file_rep_size left: %d, input size: %d, chosen size: %d", offset, header_cache->file_rep_size - offset, *size, copy_size);

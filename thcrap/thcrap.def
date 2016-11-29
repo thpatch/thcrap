@@ -9,6 +9,7 @@ EXPORTS
 
 	; File breakpoints
 	; ----------------
+	file_rep_init
 	file_rep_clear
 
 	fr_tls_get

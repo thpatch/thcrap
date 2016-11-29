@@ -39,8 +39,11 @@ typedef struct {
 	void *object;
 } file_rep_t;
 
+// Initialize a file_rep_t object, and loads the replacement file and patch for file_name.
+int file_rep_init(file_rep_t *fr, const char *file_name);
+
 // Clears a file_rep_t object.
-int file_rep_clear(file_rep_t *pf);
+int file_rep_clear(file_rep_t *fr);
 
 /// Thread-local storage
 /// --------------------

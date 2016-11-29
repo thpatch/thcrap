@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <jansson.h>
+
 struct FileHeader
 {
 	DWORD filename_hash;
@@ -35,10 +37,11 @@ extern "C" {
 
 int LoadFileNameList(const char* FileName);
 int LoadFileNameListFromMemory(char* list, size_t size);
-DWORD filename_to_hash(char* filename);
+DWORD filename_to_hash(const char* filename);
 struct FileHeaderFull* register_file_header(struct FileHeader* header, DWORD *key);
 struct FileHeaderFull* hash_to_file_header(DWORD hash);
 DWORD crypt_block(BYTE* Data, DWORD FileSize, DWORD* Key);
+int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
 
 #ifdef __cplusplus
 }

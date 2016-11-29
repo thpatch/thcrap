@@ -34,6 +34,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\crypt_block.c" />
+    <ClCompile Include="src\pl.c" />
     <ClCompile Include="src\thcrap_tasofro.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

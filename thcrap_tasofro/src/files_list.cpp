@@ -12,7 +12,7 @@
 #include "thcrap_tasofro.h"
 
 // Normalized Hash
-DWORD SpecialFNVHash(char *begin, char *end, DWORD initHash = 0x811C9DC5u)
+DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C9DC5u)
 {
 	DWORD hash; // eax@1
 	DWORD ch; // esi@2
@@ -69,7 +69,7 @@ extern "C" int LoadFileNameListFromMemory(char* list, size_t size)
 	return 0;
 }
 
-extern "C" DWORD filename_to_hash(char* filename)
+extern "C" DWORD filename_to_hash(const char* filename)
 {
 	return SpecialFNVHash(filename, filename + strlen(filename));
 }
@@ -85,6 +85,8 @@ extern "C" struct FileHeaderFull* register_file_header(FileHeader* header, DWORD
 	full_header.key[1] = key[1] * -1;
 	full_header.key[2] = key[2] * -1;
 	full_header.key[3] = key[3] * -1;
+	full_header.file_rep = NULL;
+	full_header.file_rep_size = 0;
 	return &full_header;
 }
 

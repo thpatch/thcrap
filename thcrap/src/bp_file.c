@@ -12,6 +12,30 @@
 
 #define POST_JSON_SIZE(fr) (fr)->pre_json_size + (fr)->patch_size
 
+int file_rep_init(file_rep_t *fr, const char *file_name)
+{
+	size_t fn_len;
+
+	if (fr->name) {
+		file_rep_clear(fr);
+	}
+	fn_len = strlen(file_name) + 1;
+	fr->name = EnsureUTF8(file_name, fn_len);
+	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->pre_json_size);
+	fr->hooks = patchhooks_build(fr->name);
+	if (fr->hooks) {
+		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
+		size_t diff_size = 0;
+		VLA(char, diff_fn, diff_fn_len);
+		strcpy(diff_fn, fr->name);
+		strcat(diff_fn, ".jdiff");
+		fr->patch = stack_game_json_resolve(diff_fn, &diff_size);
+		VLA_FREE(diff_fn);
+		fr->patch_size += diff_size;
+	}
+	return 1;
+}
+
 static int file_rep_hooks_run(file_rep_t *fr)
 {
 	return patchhooks_run(
@@ -68,8 +92,6 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
 
-	size_t fn_len;
-
 	// Parameters
 	// ----------
 	char **file_name = (char**)json_object_get_register(bp_info, regs, "file_name");
@@ -78,23 +100,7 @@ int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 	if(!file_name) {
 		return 1;
 	}
-	if(fr->name) {
-		file_rep_clear(fr);
-	}
-	fn_len = strlen(*file_name) + 1;
-	fr->name = EnsureUTF8(*file_name, fn_len);
-	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->pre_json_size);
-	fr->hooks = patchhooks_build(fr->name);
-	if(fr->hooks) {
-		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
-		size_t diff_size = 0;
-		VLA(char, diff_fn, diff_fn_len);
-		strcpy(diff_fn, fr->name);
-		strcat(diff_fn, ".jdiff");
-		fr->patch = stack_game_json_resolve(diff_fn, &diff_size);
-		VLA_FREE(diff_fn);
-		fr->patch_size += diff_size;
-	}
+	file_rep_init(fr, *file_name);
 	return 1;
 }
 
