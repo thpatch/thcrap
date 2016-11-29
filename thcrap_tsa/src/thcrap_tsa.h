@@ -112,6 +112,26 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
 
+/**
+* Writes a translated spell card owner name.
+*
+* Own JSON parameters
+* -------------------
+*	[spell_owner]
+*		Register to write to.
+*		Type: register
+*
+*	[cave_exec]
+*		Set to false to disable the execution of the code cave
+*		if the spell owner name is replaced.
+*		Type: bool
+*
+* Other breakpoints called
+* ------------------------
+*	BP_spell_id
+*/
+int BP_spell_owner(x86_reg_t *regs, json_t *bp_info);
+
 void spells_mod_init(void);
 void spells_mod_exit(void);
 /// ------

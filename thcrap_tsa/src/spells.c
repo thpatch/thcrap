@@ -105,6 +105,37 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
+int BP_spell_owner(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	const char **spell_owner = (const char**)json_object_get_register(bp_info, regs, "spell_name");
+	// ----------
+
+	// Other breakpoints
+	// -----------------
+	BP_spell_id(regs, bp_info);
+	// -----------------
+
+	if (spell_owner && cache_spell_id_real >= cache_spell_id) {
+		const char *new_owner = NULL;
+		int i = cache_spell_id_real;
+		json_t *spellcomments = jsondata_game_get("spellcomments.js");
+
+		// Count down from the real number to the given number
+		// until we find something
+		do {
+			new_owner = json_string_value(json_object_get(json_object_numkey_get(spellcomments, i), "owner"));
+		} while ((i-- > cache_spell_id) && i >= 0 && !new_owner);
+
+		if (new_owner) {
+			*spell_owner = new_owner;
+			return breakpoint_cave_exec_flag(bp_info);
+		}
+	}
+	return 1;
+}
+
 void spells_mod_init(void)
 {
 	jsondata_game_add("spells.js");
