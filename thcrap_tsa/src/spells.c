@@ -109,7 +109,7 @@ int BP_spell_owner(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	const char **spell_owner = (const char**)json_object_get_register(bp_info, regs, "spell_name");
+	const char **spell_owner = (const char**)json_object_get_register(bp_info, regs, "spell_owner");
 	// ----------
 
 	// Other breakpoints
