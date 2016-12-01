@@ -154,7 +154,7 @@ json_t* identify(const char *exe_fn)
 			"\n"
 			"Please post <%s> in one of the following places:\n"
 			"\n"
-			"• Gitter: https://gitter.im/thpatch/thcrap. Requires a GitHub or Twitter account.\n"
+			"• Discord: http://discord.thpatch.net\n"
 			"• IRC: #thcrap on irc.freenode.net. Webchat at https://webchat.freenode.net/?channels=#thcrap\n"
 			"\n"
 			"We will take a look at it, and add support if possible.\n"
