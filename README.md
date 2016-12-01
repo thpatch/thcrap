@@ -1,8 +1,7 @@
- [![Stories in Ready](https://badge.waffle.io/thpatch/thcrap.svg?label=ready&title=Ready)](http://waffle.io/thpatch/thcrap)
 Touhou Community Reliant Automatic Patcher
 ------------------------------------------
 
-[![Join the chat at https://gitter.im/thpatch/thcrap](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/thpatch/thcrap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://discord.gg/KGDVQKp](https://discordapp.com/api/guilds/213769640852193282/widget.png)](https://discord.gg/KGDVQKp)
 
 ### Description ###
 
