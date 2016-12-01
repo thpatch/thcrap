@@ -1,7 +1,7 @@
 Touhou Community Reliant Automatic Patcher
 ------------------------------------------
 
-[![Join the chat at https://discord.gg/KGDVQKp](https://discordapp.com/api/guilds/213769640852193282/widget.png)](https://discord.gg/KGDVQKp)
+[![Join the chat at http://discord.thpatch.net](https://discordapp.com/api/guilds/213769640852193282/widget.png)](http://discord.thpatch.net/)
 
 ### Description ###
 
