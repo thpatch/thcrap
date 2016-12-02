@@ -60,3 +60,14 @@ void str_hexdate_format(char format[11], DWORD date);
 	memcpy(str##_lower, str, str##_len); \
 	strlwr(str##_lower);
 /// -------
+
+/**
+  * Returns the numeric value of a stringified address at the machine's word
+  * size. The following string prefixes are supported:
+  *
+  *	- "0x": Hexadecimal, as expected.
+  *	- "Rx": Hexadecimal value relative to the base address of the main module
+  *	        of the current process.
+  *	- Everything else is parsed as a decimal number.
+  */
+size_t str_address_value(const char *str);

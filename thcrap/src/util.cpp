@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <errno.h>
 
 size_t dword_align(const size_t val)
 {
@@ -79,4 +80,25 @@ void str_hexdate_format(char format[11], DWORD date)
 		(date & 0x0000ff00) >> 8,
 		(date & 0x000000ff)
 	);
+}
+
+size_t str_address_value(const char *str)
+{
+	int base = 10;
+	size_t offset = 0;
+	size_t ret = 0;
+
+	if(str[0] != '\0' && str[1] != '\0' && str[2] != '\0') {
+		// Module-relative hex values
+		if(!strnicmp(str, "Rx", 2)) {
+			ret += (size_t)GetModuleHandle(NULL);
+			base = 16;
+			offset = 2;
+		} else if(!strnicmp(str, "0x", 2)) {
+			base = 16;
+			offset = 2;
+		}
+	}
+	ret += strtol(str + offset, NULL, base);
+	return ret;
 }

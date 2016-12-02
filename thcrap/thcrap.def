@@ -275,6 +275,7 @@ EXPORTS
 	str_num_digits
 	str_num_base
 	str_hexdate_format
+	str_address_value
 
 	; Win32 detours
 	; -------------

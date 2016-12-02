@@ -14,14 +14,8 @@ json_t* json_decref_safe(json_t *json);
 
 /**
   * Unfortunately, JSON doesn't support native hexadecimal values.
-  * This function works with both string and integer values and returns the
-  * correct, positive number at the machine's word size.
-  * The following string prefixes are supported:
-  *
-  *	- "0x": Hexadecimal, as expected.
-  *	- "Rx": Hexadecimal value relative to the base address of the main module
-  *	        of the current process.
-  *	- Everything else is parsed as a decimal number.
+  * This function works with both JSON integers and strings, parsing the
+  * latter using str_address_value().
   */
 size_t json_hex_value(json_t *val);
 
