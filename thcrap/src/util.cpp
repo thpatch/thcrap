@@ -82,11 +82,12 @@ void str_hexdate_format(char format[11], DWORD date)
 	);
 }
 
-size_t str_address_value(const char *str)
+size_t str_address_value(const char *str, uint8_t *error)
 {
 	int base = 10;
 	size_t offset = 0;
 	size_t ret = 0;
+	char *endptr;
 
 	if(str[0] != '\0' && str[1] != '\0' && str[2] != '\0') {
 		// Module-relative hex values
@@ -99,6 +100,18 @@ size_t str_address_value(const char *str)
 			offset = 2;
 		}
 	}
-	ret += strtol(str + offset, NULL, base);
+	errno = 0;
+	ret += strtol(str + offset, &endptr, base);
+
+	if(error) {
+		*error = STR_ADDRESS_ERROR_NONE;
+
+		if(errno == ERANGE) {
+			*error |= STR_ADDRESS_ERROR_OVERFLOW;
+		}
+		if(*endptr != '\0') {
+			*error |= STR_ADDRESS_ERROR_GARBAGE;
+		}
+	}
 	return ret;
 }

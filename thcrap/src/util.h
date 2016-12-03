@@ -61,6 +61,10 @@ void str_hexdate_format(char format[11], DWORD date);
 	strlwr(str##_lower);
 /// -------
 
+#define STR_ADDRESS_ERROR_NONE 0
+#define STR_ADDRESS_ERROR_OVERFLOW 0x1
+#define STR_ADDRESS_ERROR_GARBAGE 0x2
+
 /**
   * Returns the numeric value of a stringified address at the machine's word
   * size. The following string prefixes are supported:
@@ -69,5 +73,8 @@ void str_hexdate_format(char format[11], DWORD date);
   *	- "Rx": Hexadecimal value relative to the base address of the main module
   *	        of the current process.
   *	- Everything else is parsed as a decimal number.
+  *
+  * If [error] is not NULL, it is filled with the STR_ADDRESS_ERROR_* values
+  * to indicate potential parse errors.
   */
-size_t str_address_value(const char *str);
+size_t str_address_value(const char *str, uint8_t *error);
