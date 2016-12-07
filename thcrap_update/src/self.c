@@ -8,7 +8,6 @@
   */
 
 #include <thcrap.h>
-#include <assert.h>
 #include <WinCrypt.h>
 #include "update.h"
 #include "self.h"

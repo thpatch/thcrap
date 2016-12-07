@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <assert.h>
 
 /// Detour chains
 /// -------------

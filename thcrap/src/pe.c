@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <assert.h>
 
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 {
