@@ -95,3 +95,9 @@ All required third-party libraries for the C code are included as Git submodules
 The scripts in the `scripts` directory are written in [Python 3](http://python.org/). Some of them require further third-party libraries not included in this repository:
 
 * [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
+
+### License ###
+
+The Touhou Community Reliant Patcher and all accompanying modules are released to the Public Domain, unless stated otherwise. This means you can do whatever you want with this code without so much as crediting us.
+
+That said, we *do* appreciate attribution. ☺
