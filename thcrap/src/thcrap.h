@@ -11,6 +11,12 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#ifdef THCRAP_EXPORTS
+# define THCRAP_API __declspec(dllexport)
+#else
+# define THCRAP_API __declspec(dllimport)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -38,6 +44,7 @@ extern "C" {
 #include "specs.h"
 #include "zip.h"
 #include "bp_file.h"
+#include "xpcompat.h"
 
 #ifdef __cplusplus
 }

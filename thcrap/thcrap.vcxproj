@@ -27,6 +27,9 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>THCRAP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -62,6 +65,7 @@
     <ClCompile Include="src\util.cpp" />
     <ClCompile Include="src\textdisp.cpp" />
     <ClCompile Include="src\win32_detour.cpp" />
+    <ClCompile Include="src\xpcompat.cpp" />
     <ClCompile Include="src\zip.cpp" />
     <ClInclude Include="config.h" />
     <ClInclude Include="src\dialog.h" />
@@ -89,6 +93,7 @@
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
     <ClInclude Include="src\win32_detour.h" />
+    <ClInclude Include="src\xpcompat.h" />
     <ClInclude Include="src\zip.h" />
     <GAS Include="src\bp_entry.asm" />
     <None Include="thcrap.def" />
