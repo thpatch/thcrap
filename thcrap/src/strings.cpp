@@ -91,16 +91,13 @@ const char* strings_lookup(const char *in, size_t *out_len)
 	}
 
 	AcquireSRWLockShared(&stringlocs_srwlock);
-	try {
-		const char *id_key = stringlocs.at(in);
-
-		if(id_key) {
-			const char *new_str = json_string_value(strings_get(id_key));
-			if(new_str && new_str[0]) {
-				ret = new_str;
-			}
+	auto id_key = stringlocs.find(in);
+	if(id_key != stringlocs.end()) {
+		const char *new_str = json_string_value(strings_get(id_key->second));
+		if(new_str && new_str[0]) {
+			ret = new_str;
 		}
-	} catch (std::out_of_range) {}
+	}
 	ReleaseSRWLockShared(&stringlocs_srwlock);
 
 	if(out_len) {
