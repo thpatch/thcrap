@@ -59,4 +59,5 @@ const char* strings_replace(const size_t slot, const char *src, const char *dst)
 void strings_mod_init(void);
 // Adds string lookup wrappers to functions that don't have them yet.
 void strings_mod_detour(void);
+void strings_mod_repatch(json_t *files_changed);
 void strings_mod_exit(void);

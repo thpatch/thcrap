@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <unordered_map>
 
 /// Detour chains
 /// -------------
@@ -22,7 +23,59 @@ typedef struct {
 
 static json_t *strings_storage = NULL;
 
+SRWLOCK stringlocs_srwlock = {SRWLOCK_INIT};
+std::unordered_map<const char *, const char *> stringlocs;
+
 #define addr_key_len 2 + (sizeof(void*) * 2) + 1
+
+void stringlocs_reparse(void)
+{
+	// Since we can't use the jsondata module to make this repatchable,
+	// we only need to keep the last parsed JSON object around to
+	// provide the "backing memory" for the ID strings.
+	static json_t *backing_obj = NULL;
+
+	json_t* new_obj = stack_game_json_resolve("stringlocs.js", NULL);
+	const char *key;
+	const json_t *val;
+
+	AcquireSRWLockExclusive(&stringlocs_srwlock);
+	stringlocs.clear();
+
+	json_object_foreach(new_obj, key, val) {
+		// TODO: For now, we're nagging developers with one message box for
+		// every single parse error. It'd certainly be better if we gathered
+		// all errors into a single message box to be printed at the end of
+		// the parsing, and even had a somewhat generic solution if we do
+		// more of these conversions.
+#define stringlocs_log_error(msg) \
+	log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION, \
+		"Error parsing stringlocs.js: \"%s\" "msg".", key, sizeof(size_t) * 8 \
+	)
+
+		if(!json_is_string(val)) {
+			stringlocs_log_error("must be a JSON string");
+			continue;
+		}
+		uint8_t error;
+		const char *addr = (const char *)str_address_value(key, &error);
+		if(error == STR_ADDRESS_ERROR_NONE) {
+			stringlocs[addr] = json_string_value(val);
+		}
+		if(error & STR_ADDRESS_ERROR_OVERFLOW) {
+			stringlocs_log_error("exceeds %d bits");
+		}
+		if(error & STR_ADDRESS_ERROR_GARBAGE) {
+			stringlocs_log_error("has garbage at the end");
+		}
+#undef stringlocs_log_error
+	}
+
+	json_decref(backing_obj);
+	backing_obj = new_obj;
+
+	ReleaseSRWLockExclusive(&stringlocs_srwlock);
+}
 
 const json_t* strings_get(const char *id)
 {
@@ -31,23 +84,25 @@ const json_t* strings_get(const char *id)
 
 const char* strings_lookup(const char *in, size_t *out_len)
 {
-	const json_t *stringlocs = NULL;
-	const char *id_key = NULL;
 	const char *ret = in;
 
 	if(!in) {
 		return in;
 	}
 
-	stringlocs = jsondata_game_get("stringlocs.js");
-	id_key = json_string_value(json_object_hexkey_get(stringlocs, (size_t)in));
+	AcquireSRWLockShared(&stringlocs_srwlock);
+	try {
+		const char *id_key = stringlocs.at(in);
 
-	if(id_key) {
-		const char *new_str = json_string_value(strings_get(id_key));
-		if(new_str && new_str[0]) {
-			ret = new_str;
+		if(id_key) {
+			const char *new_str = json_string_value(strings_get(id_key));
+			if(new_str && new_str[0]) {
+				ret = new_str;
+			}
 		}
-	}
+	} catch (std::out_of_range) {}
+	ReleaseSRWLockShared(&stringlocs_srwlock);
+
 	if(out_len) {
 		*out_len = strlen(ret) + 1;
 	}
@@ -222,7 +277,7 @@ int WINAPI strings_MessageBoxA(
 void strings_mod_init(void)
 {
 	jsondata_add("stringdefs.js");
-	jsondata_game_add("stringlocs.js");
+	stringlocs_reparse();
 	strings_storage = json_object();
 }
 
@@ -232,6 +287,17 @@ void strings_mod_detour(void)
 		"MessageBoxA", strings_MessageBoxA, &chain_MessageBoxU,
 		NULL
 	);
+}
+
+void strings_mod_repatch(json_t *files_changed)
+{
+	const char *key;
+	const json_t *val;
+	json_object_foreach(files_changed, key, val) {
+		if(strstr(key, "/stringlocs.")) {
+			stringlocs_reparse();
+		}
+	}
 }
 
 void strings_mod_exit(void)
