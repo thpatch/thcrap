@@ -142,21 +142,6 @@ json_t* json_object_numkey_get(const json_t *object, const json_int_t key)
 	return json_object_get(object, key_str);
 }
 
-json_t* json_object_hexkey_get(const json_t *object, const size_t key)
-{
-#define addr_key_len 2 + (sizeof(void*) * 2) + 1
-	char key_str[addr_key_len];
-	json_t *ret = NULL;
-
-	snprintf(key_str, addr_key_len, "Rx%x", key - (size_t)GetModuleHandle(NULL));
-	ret = json_object_get(object, key_str);
-	if(!ret) {
-		snprintf(key_str, addr_key_len, "0x%x", key);
-		ret = json_object_get(object, key_str);
-	}
-	return ret;
-}
-
 size_t json_object_get_hex(json_t *object, const char *key)
 {
 	json_t *val = json_object_get(object, key);
