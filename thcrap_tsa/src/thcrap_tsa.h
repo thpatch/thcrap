@@ -9,6 +9,37 @@
 
 #pragma once
 
+typedef enum {
+	// • msg: Hard lines only
+	TH06,
+	TH07,
+
+	// • msg: Text starts being encrypted with a simple XOR
+	// • msg: Automatic lines mostly, hard lines for effect
+	TH08,
+
+	// • msg: Hard lines stop being used
+	// • msg: Text starts being encrypted with a more complicated XOR using
+	//        two step variables
+	TH09,
+
+	// • Introduces a custom format for mission.msg
+	TH095,
+
+	// • msg: Different opcodes
+	// • end: Now uses the regular MSG format with a different set of opcodes
+	TH10,
+	ALCOSTG,
+
+	// • anm: Header structure is changed
+	TH11,
+
+	// Any future game without relevant changes
+	TH_FUTURE,
+} tsa_game_t;
+
+extern tsa_game_t game_id;
+
 /// ------
 /// Spells
 /// ------
