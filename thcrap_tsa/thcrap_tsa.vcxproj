@@ -35,6 +35,7 @@
   <ItemGroup>
     <ClCompile Include="src\anm.c" />
     <ClCompile Include="src\anm_bounds.c" />
+    <ClCompile Include="src\devicelost.c" />
     <ClCompile Include="src\encraption.c" />
     <ClCompile Include="src\gentext.c" />
     <ClCompile Include="src\layout.c" />

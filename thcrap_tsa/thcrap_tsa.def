@@ -36,6 +36,8 @@ EXPORTS
 	BP_th06_file_load
 	BP_th06_file_loaded
 
+	BP_devicelost
+
 	; Bounds
 	; ------
 	fn_for_bounds
