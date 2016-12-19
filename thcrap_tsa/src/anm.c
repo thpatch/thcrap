@@ -219,8 +219,14 @@ int sprite_patch_set(
 	sp->rep_stride = image->img.width * sp->bpp;
 	sp->dst_stride = entry->thtx->w * sp->bpp;
 
-	sp->copy_w = min(sprite->w, (image->img.width - sp->rep_x));
-	sp->copy_h = min(sprite->h, (image->img.height - sp->rep_y));
+	// See th11's face/enemy5/face05lo.png (the dummy 8x8 one from
+	// stgenm06.anm, not stgenm05.anm) for an example where the sprite
+	// width and height actually exceed the dimensions of the THTX.
+	png_uint_32 sprite_clamped_w = min(sprite->w, (entry->thtx->w - sprite->x));
+	png_uint_32 sprite_clamped_h = min(sprite->h, (entry->thtx->h - sprite->y));
+
+	sp->copy_w = min(sprite_clamped_w, (image->img.width - sp->rep_x));
+	sp->copy_h = min(sprite_clamped_h, (image->img.height - sp->rep_y));
 
 	sp->dst_buf = entry->thtx->data + (sp->dst_y * sp->dst_stride) + (sp->dst_x * sp->bpp);
 	sp->rep_buf = image->buf + (sp->rep_y * sp->rep_stride) + (sp->rep_x * sp->bpp);
