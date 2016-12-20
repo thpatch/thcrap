@@ -9,9 +9,32 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
+#include "pl.h"
 
 #define MOVE_BUFF(buff, size, n) (buff) += n; (size) -= n;
 #define PUT_CHAR(buff, size, c) *(buff) = c; MOVE_BUFF(buff, size, 1);
+#define PUT_STR(buff, size, str) strcpy(buff, str); MOVE_BUFF(buff, size, strlen(str));
+
+static balloon_t balloon;
+
+void balloon_set_character(BYTE* line, size_t size)
+{
+	unsigned int i;
+
+	for (i = 0; i < size && line[i] != '#' && line[i] != ' ' && line[i] != '\t' && line[i] != '\r' && line[i] != '\n'; i++);
+	if (i < size) {
+		line[i] = '\0';
+		strcpy(balloon.owner, line);
+		line[i] = '\t';
+	}
+}
+
+balloon_t *balloon_get()
+{
+	balloon.cur_line = 1;
+	balloon.nb_lines = 0;
+	return &balloon;
+}
 
 static void next_line(BYTE **file, size_t *size)
 {
@@ -36,6 +59,9 @@ static BOOL ignore_line(BYTE *file, size_t size)
 		*file == ',' ||
 		*file == '\r' ||
 		*file == '\n') {
+		if (strncmp(file, ",SetFocus,", 10) == 0) {
+			balloon_set_character(file + 10, size - 10);
+		}
 		return TRUE;
 	}
 	return FALSE;
@@ -53,75 +79,108 @@ static void copy_line(BYTE *file_in, size_t size_in, BYTE *file_out, size_t size
 	}
 }
 
-static void prepare_balloon(BYTE* balloon, int n_line, int total_line)
+static int balloon_gen_name(balloon_t *balloon, int cur_line, json_t *lines)
 {
 	// TODO: actually look for a nice balloon size
-	strcpy(balloon + 5, "_1_1");
-	balloon[6] = n_line + '0';
-	balloon[8] = total_line + '0';
+	const char *line;
+
+	line = json_array_get_string(lines, cur_line);
+	if (strncmp(line, "<balloon", 8) == 0) {
+		if (line[8] == '$') {
+			strncpy(balloon->name, line + 9, 5);
+		}
+		balloon->cur_line = 0;
+		balloon->nb_lines = 0;
+		return 0;
+	}
+
+	if (balloon->nb_lines == 0) {
+		unsigned int i;
+		for (i = cur_line + 1; i < json_array_size(lines); i++) {
+			line = json_array_get_string(lines, i);
+			if (strncmp(line, "<balloon", 8) == 0) {
+				break;
+			}
+		}
+		balloon->nb_lines = i - cur_line;
+	}
+
+	strcpy(balloon->name + 5, "_1_1");
+	balloon->name[6] = balloon->cur_line + '0';
+	balloon->name[8] = balloon->nb_lines + '0';
+	return 1;
 }
 
 static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, unsigned int balloon_nb, json_t *lines)
 {
-	BOOL line_break;
-	BYTE balloon[10];
-	unsigned int cur_line;
+	balloon_t *balloon = balloon_get();
 	unsigned int i;
-	unsigned int nb_lines;
 
 	// Skip the original text
 	if (*file_in != '"') {
 		while (size_in > 0 && *file_in != '\n' && *file_in != ',') {
 			MOVE_BUFF(file_in, size_in, 1);
 		}
-		line_break = file_in[-1] == '\\';
+		balloon->has_pause = file_in[-1] == '\\';
 	}
 	else {
 		MOVE_BUFF(file_in, size_in, 1);
 		while (size_in > 0 && *file_in != '\n' && *file_in != '"') {
 			MOVE_BUFF(file_in, size_in, 1);
 		}
-		line_break = file_in[-1] == '\\';
+		balloon->has_pause = file_in[-1] == '\\';
 		MOVE_BUFF(file_in, size_in, 1);
 	}
 	MOVE_BUFF(file_in, size_in, 1);
 
 	// Copy the balloon name from the original file
 	for (i = 0; size_in > 0 && *file_in != '\n' && *file_in != ',' && i < 10; i++, file_in++, size_in--) {
-		balloon[i] = *file_in;
+		balloon->name[i] = *file_in;
 	}
 
 	// Write to the output file
-	nb_lines = json_array_size(lines);
-	if (nb_lines > 3) {
-		log_printf("Warning: a balloon can have at most 3 lines, but the balloon %d have %d lines.\n"
-			"The lines after the 3rd one will be ignored.\n", balloon_nb, nb_lines);
-		nb_lines = 3;
-	}
-	for (cur_line = 0; cur_line < nb_lines; cur_line++) {
+	unsigned int cur_line = 0;
+	unsigned int nb_lines = json_array_size(lines);
+	int ignore_clear_balloon = 1;
+
+	for (; cur_line < nb_lines; cur_line++, balloon->cur_line++) {
+		if (balloon_gen_name(balloon, cur_line, lines) == 0)
+			continue;
 		const char *json_line = json_array_get_string(lines, cur_line);
 
-		prepare_balloon(balloon, cur_line + 1, nb_lines);
+		// Add the "ClearBalloon" command if needed
+		if (ignore_clear_balloon == 0 && balloon->cur_line == 1) {
+			PUT_STR(*file_out, *size_out, ",ClearBalloon,");
+			PUT_STR(*file_out, *size_out, balloon->owner);
+			PUT_CHAR(*file_out, *size_out, '\r');
+			PUT_CHAR(*file_out, *size_out, '\n');
+		}
+		if (ignore_clear_balloon == 1) {
+			ignore_clear_balloon = 0;
+		}
+
 		// Writing the replacement text
 		PUT_CHAR(*file_out, *size_out, '"');
-		strcpy(*file_out, json_line);
-		MOVE_BUFF(*file_out, *size_out, strlen(json_line));
-		if (line_break && cur_line + 1 == nb_lines) {
+		PUT_STR(*file_out, *size_out, json_line);
+			if (balloon->has_pause && balloon->cur_line == balloon->nb_lines) {
 			PUT_CHAR(*file_out, *size_out, '\\');
 		}
 		PUT_CHAR(*file_out, *size_out, '"');
 		PUT_CHAR(*file_out, *size_out, ',');
 
 		// Writing the balloon name
-		strcpy(*file_out, balloon);
-		MOVE_BUFF(*file_out, *size_out, strlen(balloon));
+		PUT_STR(*file_out, *size_out, balloon->name);
 
 		// Appenfing the end of the original text
 		for (i = 0; i < size_in && file_in[i] != '\n' && *size_out > 0; i++) {
-			**file_out = file_in[i];
-			MOVE_BUFF(*file_out, *size_out, 1);
+			PUT_CHAR(*file_out, *size_out, file_in[i]);
 		}
 		PUT_CHAR(*file_out, *size_out, '\n');
+
+		// Ensure we won't make a 4-lines balloon
+		if (balloon->cur_line == 3) {
+			balloon->cur_line = 0;
+		}
 	}
 }
 
