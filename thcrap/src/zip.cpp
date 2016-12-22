@@ -51,10 +51,8 @@
 #define ZIP_EXTRA_NTFS 0x000a
 #define ZIP_EXTRA_NTFS_TAG 0x0001
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	uint16_t version;
 	uint16_t flag;
 	uint16_t compression;
@@ -65,52 +63,36 @@ typedef struct {
 	uint32_t size_uncompressed;
 	uint16_t fn_len;
 	uint16_t extra_len;
-#ifdef PACK_PRAGMA
+} zip_file_shared_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE zip_file_shared_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	uint32_t sig; // = ZIP_MAGIC_FILE
 	zip_file_shared_t s;
-#ifdef PACK_PRAGMA
+} zip_file_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE zip_file_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	uint16_t id;
 	uint16_t len;
-#ifdef PACK_PRAGMA
+} zip_extra_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE zip_extra_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	uint32_t reserved;
 	uint16_t tag; // == ZIP_EXTRA_NTFS_TAG
 	uint16_t tag_size; // = 24
 	FILETIME mtime;
 	FILETIME atime;
 	FILETIME ctime;
-#ifdef PACK_PRAGMA
+} zip_extra_ntfs1_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE zip_extra_ntfs1_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	uint32_t sig; // = ZIP_MAGIC_DIR
 	uint16_t made_by;
 	zip_file_shared_t s;
@@ -119,15 +101,11 @@ typedef struct {
 	uint16_t attrib_intern;
 	uint32_t attrib_extern;
 	uint32_t offset_header;
-#ifdef PACK_PRAGMA
+} zip_dir_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE zip_dir_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	uint32_t sig; // = ZIP_MAGIC_DIR_END
 	uint16_t disk_num;
 	uint16_t dir_start_disk;
@@ -136,10 +114,8 @@ typedef struct {
 	uint32_t dir_len;
 	uint32_t dir_start_offset;
 	uint16_t cmt_len;
-#ifdef PACK_PRAGMA
+} zip_dir_end_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE zip_dir_end_t;
 /// --------------
 
 // All the file information *we* care about

@@ -81,10 +81,8 @@ typedef union {
 } sz_Or_Ord;
 
 // Constant-width part of the dialog header structure
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	WORD dlgVer;
 	WORD signature;
 	DWORD helpID;
@@ -108,16 +106,12 @@ typedef struct {
 	// Only present if DS_SETFONT is set in [style].
 	DLGTEMPLATEEX_FONT font;
 */
-#ifdef PACK_PRAGMA
+} DLGTEMPLATEEX_START;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE DLGTEMPLATEEX_START;
 
 // Font definition structure.
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	WORD pointsize;
 	WORD weight;
 	BYTE italic;
@@ -127,16 +121,12 @@ typedef struct {
   *
 	wchar_t typeface[];
 */
-#ifdef PACK_PRAGMA
+} DLGTEMPLATEEX_FONT;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE DLGTEMPLATEEX_FONT;
 
 // Constant-width part of the dialog item structure
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	DWORD helpID;
 	DWORD exStyle;
 	DWORD style;
@@ -153,10 +143,8 @@ typedef struct {
 	WORD extraCount;
 	BYTE extraData[];
 */
-#ifdef PACK_PRAGMA
+} DLGITEMTEMPLATEEX_START;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE DLGITEMTEMPLATEEX_START;
 
 // Size adjustment state.
 typedef struct {

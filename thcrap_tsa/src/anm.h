@@ -19,32 +19,24 @@ typedef enum {
 	FORMAT_GRAY8 = 7
 } format_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	char magic[4];
 	WORD zero;
 	WORD format;
 	// These may be different from the parent entry.
 	WORD w, h;
 	DWORD size;
-#ifdef PACK_PRAGMA
-#pragma pack(pop)
-#endif
 	unsigned char data[];
-} PACK_ATTRIBUTE thtx_header_t;
+} thtx_header_t;
+#pragma pack(pop)
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	DWORD id;
 	float x, y, w, h;
-#ifdef PACK_PRAGMA
+} sprite_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE sprite_t;
 /// ---------
 
 /// Patching types

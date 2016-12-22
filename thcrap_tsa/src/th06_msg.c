@@ -13,30 +13,22 @@
 #include <thcrap.h>
 #include "thcrap_tsa.h"
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	WORD time;
 	BYTE type;
 	BYTE length;
-#ifdef PACK_PRAGMA
-#pragma pack(pop)
-#endif
 	BYTE data[];
-} PACK_ATTRIBUTE th06_msg_t;
+} th06_msg_t;
+#pragma pack(pop)
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	WORD side;
 	WORD linenum;
-#ifdef PACK_PRAGMA
-#pragma pack(pop)
-#endif
 	BYTE str[];
-} PACK_ATTRIBUTE hard_line_data_t;
+} hard_line_data_t;
+#pragma pack(pop)
 
 // Supported opcode commands
 typedef enum {
