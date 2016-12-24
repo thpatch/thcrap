@@ -28,6 +28,32 @@ __inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 
 /// Strings
 /// -------
+__inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
+{
+	assert(src);
+	dst[len] = '\0';
+	return memcpy_advance_dst(dst, src, len);
+}
+
+// Reference to a string somewhere else in memory with a given length.
+// TODO: Rip out and change to std::string_view once C++17 is more widespread.
+typedef struct {
+	const char *str;
+	size_t len;
+} stringref_t;
+
+#define STRINGREF_FROM_LITERAL(str) \
+	{str, sizeof(str) - 1}
+
+#define STRINGREF_FROM_LITERAL_DEC(name, str) \
+	static const stringref_t name = STRINGREF_FROM_LITERAL(str);
+
+__inline char* stringref_copy_advance_dst(char *dst, const stringref_t *strref)
+ {
+	assert(strref);
+	return strncpy_advance_dst(dst, strref->str, strref->len);
+}
+
 // Replaces every occurence of the ASCII character [from] in [str] with [to].
 void str_ascii_replace(char *str, const char from, const char to);
 
