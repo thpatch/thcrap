@@ -77,16 +77,20 @@ extern "C" DWORD filename_to_hash(const char* filename)
 extern "C" struct FileHeaderFull* register_file_header(FileHeader* header, DWORD *key)
 {
 	FileHeaderFull& full_header = fileHashToName[header->filename_hash];
+
 	full_header.filename_hash = header->filename_hash;
 	full_header.unknown = header->unknown;
 	full_header.offset = header->offset;
 	full_header.size = header->size;
+
 	full_header.key[0] = key[0] * -1;
 	full_header.key[1] = key[1] * -1;
 	full_header.key[2] = key[2] * -1;
 	full_header.key[3] = key[3] * -1;
 	full_header.file_rep = NULL;
 	full_header.file_rep_size = 0;
+	full_header.effective_offset = -1;
+
 	return &full_header;
 }
 

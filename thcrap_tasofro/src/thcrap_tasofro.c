@@ -72,110 +72,56 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 }
 
 /**
-  * So, the game seem to call ReadFile in a quite random way. I'll guess some things:
-  * - First, it always do a 1st read of size 0x10000, and uses it to check the magic bytes.
-  * - Then, for most file types, it reads the file from the beginning (yeah, it re-reads the 0x10000 first bytes), in one of more calls.
-  *   + With an ogg file, it reads the file by blocks of 0x10000 bytes. title.ogg (2377849 bytes) is read with the first read of 0x10000, then 4 read of 0x10000.
-  *   + With a dds  file, it reads the file entirely in one call (after the magic check).
-  *   + With a TFBM file, it reads a first block of 0x10000, then the remaining bytes.
-  *   + With a png  file, it re-reads the first 0x10000 bytes 2 more times, then reads the file like an ogg file (so the game ends up reading the first bytes 4 times).
-  *   + With an act file, it skips 8 bytes for the 2nd read.
-  * - For some file extensions (csv, dll, nut, maybe some others), the game doesn't do another read to check the magic bytes. It reads the entire file in one go.
-  *
-  * From these guessings, the following may work for all files:
-  * - For the first read, give the number requested bytes from the beginning (repeat this step 3 times for a png file).
-  * - If there is a second read, give again the numbre of requested bytes from the beginning.
-  * - For all the following reads, give the number of requested bytes from the end of the last read.
+  * Replace file, 3rd attempt - hopefully I won't have to write a 4th one.
+  * This breakpoint takes care of patching the files.
+  * It takes place in the game's file reader, right after it calls its ReadFile caller.
+  * At this point, we have the game's file structure in ESI, and so the filename's hash - we can't
+  * read the wrong file.
+  * The game's file structure have the following fields:
+  * DWORD unknown1;
+  * HANDLE hFile;
+  * BYTE buffer[0x10000];
+  * DWORD LastReadFileSize; // Last value returned in lpNumberOfBytesRead in ReadFile
+  * DWORD Offset; // Offset for the reader. I don't know what happens to it when it's bigger than 0x10000
+  * DWORD LastReadSize; // Last read size asked to the reader
+  * DWORD unknown2;
+  * DWORD FileSize;
+  * DWORD FileNameHash;
+  * DWORD unknown3;
+  * DWORD XorOffset; // Offset used by the XOR function
+  * DWORD Key[5]; // 32-bytes encryption key used for XORing. The 5th DWORD is a copy of the 1st DWORD.
+  * DWORD Aux; // Contains the last DWORD read from the file. Used during XORing.
+  * We use hFile (file_struct + 4), buffer (file_struct + 8) and FileNameHash (file_struct + 0x1001c).
+  * All the other fields are listed for documentation.
   */
 int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 {
-	static struct FileHeaderFull *header_cache = NULL;
-	static int stage = 1;
-	static int repeat_stage_1 = 0;
-	static size_t offset = 0;
-
 	// Parameters
 	// ----------
-	char **path      = (char**)json_object_get_register(bp_info, regs, "path");
-	char **buffer    = (char**)json_object_get_register(bp_info, regs, "buffer");
-	DWORD *size      = (DWORD*)json_object_get_register(bp_info, regs, "size");
-	DWORD **ret_size = (DWORD**)json_object_get_register(bp_info, regs, "ret_size");
+	BYTE **file_struct = (BYTE**)json_object_get_register(bp_info, regs, "file_struct");
 	// ----------
 
-	BOOL skip_call = FALSE;
-
-	log_print("[replace_file] ");
-
-	if (path && *path) {
-		log_printf("path: %s", *path);
-
-		const char* local_path = *path;
-		if ((*path)[1] == ':') { // The game uses a full path for whatever reason
-			local_path = strstr(local_path, "data/"); // TODO: use a reverse strstr
-			if (local_path == NULL)
-				return 1;
-		}
-		header_cache = hash_to_file_header(filename_to_hash(local_path));
-
-		if (header_cache && header_cache->path[0]) {
-			log_printf(";   known path: %s", header_cache->path);
-		}
-		else {
-			log_printf(";   Path unknown");
-		}
-
-		// Reset the reader
-		stage = 1;
-		repeat_stage_1 = 0;
-		offset = 0;
+	if (!file_struct) {
+		return 1;
 	}
 
-
-	if (buffer && *buffer && size && ret_size && *ret_size && header_cache) {
-		log_printf("buffer: %p, size: %d", *buffer, *size);
-		if (header_cache->file_rep) {
-			int copy_size;
-			if (stage == 1) {
-				// Skipping
-				log_print("\t\t\tStage 1");
-
-				copy_size = min(header_cache->file_rep_size, *size);
-				log_printf(": file_rep_size: %d, input size: %d, chosen size: %d", header_cache->file_rep_size, *size, copy_size);
-				memcpy(*buffer, (BYTE*)header_cache->file_rep, copy_size);
-				**ret_size = copy_size;
-
-				if (repeat_stage_1 == 0 && **(DWORD**)buffer == 0x474E5089 /* \x89PNG */) {
-					repeat_stage_1 = 3;
-				}
-				if (**(DWORD**)buffer == 0x31544341 /* ACT1 */) {
-					offset = 8;
-				}
-				if (repeat_stage_1 > 0) {
-					repeat_stage_1--;
-				}
-				if (repeat_stage_1 <= 0) {
-					stage = 2;
-				}
-			}
-			else if (stage == 2) {
-				// Reading the first bytes
-				log_print("\t\t\tStage 2");
-
-				copy_size = min(header_cache->file_rep_size - offset, *size);
-				log_printf(": offset: %d, file_rep_size left: %d, input size: %d, chosen size: %d", offset, header_cache->file_rep_size - offset, *size, copy_size);
-				memcpy(*buffer, (BYTE*)header_cache->file_rep + offset, copy_size);
-				**ret_size = copy_size;
-				offset += copy_size;
-			}
-			skip_call = TRUE;
-		}
+	struct FileHeaderFull *header = hash_to_file_header(*(DWORD*)(*file_struct + 0x1001c));
+	if (!header || !header->path[0] || !header->file_rep) {
+		// Nothing to patch.
+		return 1;
 	}
-	log_print("\n");
 
-	if (skip_call == TRUE) {
-		// Skipping the original call
-		regs->esp += 20;
-		return 0;
+	if (header->effective_offset == -1) {
+		header->effective_offset = SetFilePointer(*(HANDLE*)(*file_struct + 4), 0, NULL, FILE_CURRENT) - 65536;
 	}
+
+	char *buffer = *file_struct + 8;
+	size_t offset = SetFilePointer(*(HANDLE*)(*file_struct + 4), 0, NULL, FILE_CURRENT) - 65536 - header->effective_offset;
+	int copy_size = min(header->file_rep_size - offset, 65536);
+
+	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %d, file_rep_size left: %d, chosen size: %d\n",
+		header->path, *(DWORD*)(*file_struct + 0x1001c), offset, header->file_rep_size - offset, copy_size);
+	memcpy(buffer, (BYTE*)header->file_rep + offset, copy_size);
+
 	return 1;
 }

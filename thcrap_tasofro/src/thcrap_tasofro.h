@@ -25,9 +25,11 @@ struct FileHeaderFull
 	DWORD unknown;
 	DWORD offset;
 	DWORD size;
+
 	DWORD key[4];
 	void* file_rep;
 	size_t file_rep_size;
+	DWORD effective_offset;
 	char path[MAX_PATH];
 };
 
