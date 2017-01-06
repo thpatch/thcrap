@@ -365,13 +365,24 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	size_t file_digits = 0;
 
 	const char *key;
+	const char *patch_name = json_object_get_string(patch_info, "id");
 
 	if(!patch_info) {
 		return -1;
 	}
 
+	// Assuming the repo/patch hierarchy here, but if we ever support
+	// repository-less Git patches, they won't be using the files.js
+	// protocol anyway.
+	if(patch_file_exists(patch_info, "../.git")) {
+		if(patch_name) {
+			log_printf("(%s is under revision control, not updating.)\n", patch_name);
+		}
+		ret = 1;
+		goto end_update;
+	}
 	if(json_is_false(json_object_get(patch_info, "update"))) {
-		// Updating deactivated on this patch
+		// Updating manually deactivated on this patch
 		ret = 1;
 		goto end_update;
 	}
@@ -387,11 +398,8 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	if(!json_is_object(local_files)) {
 		local_files = json_object();
 	}
-	{
-		const char *patch_name = json_object_get_string(patch_info, "id");
-		if(patch_name) {
-			log_printf("Checking for updates of %s...\n", patch_name);
-		}
+	if(patch_name) {
+		log_printf("Checking for updates of %s...\n", patch_name);
 	}
 
 	remote_files_js_buffer = ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
