@@ -8,7 +8,6 @@
   */
 
 #include <thcrap.h>
-#include <bp_file.h>
 #include "thcrap_tasofro.h"
 
 // TODO: read the file names list in JSON format
@@ -32,41 +31,42 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	DWORD **key = (DWORD**)json_object_get_register(bp_info, regs, "key");
 	// ----------
 	struct FileHeaderFull *full_header = register_file_header(*header, *key);
-	file_rep_t fr;
-	ZeroMemory(&fr, sizeof(file_rep_t));
+	file_rep_t *fr = &full_header->fr;
 
 	if (full_header->path[0]) {
-		file_rep_init(&fr, full_header->path);
+		file_rep_init(fr, full_header->path);
 	}
 
 	// If the game loads a DDS file and we have no corresponding DDS file, try to replace it with a PNG file (the game will deal with it)
-	if (fr.rep_buffer == NULL && strlen(fr.name) > 4 && strcmp(fr.name + strlen(fr.name) - 4, ".dds") == 0) {
+	if (fr->rep_buffer == NULL && strlen(fr->name) > 4 && strcmp(fr->name + strlen(fr->name) - 4, ".dds") == 0) {
 		char png_path[MAX_PATH];
 		strcpy(png_path, full_header->path);
 		strcpy(png_path + strlen(full_header->path) - 3, "png");
-		file_rep_clear(&fr);
-		file_rep_init(&fr, png_path);
+		file_rep_clear(fr);
+		file_rep_init(fr, png_path);
 	}
 
-	if (fr.rep_buffer == NULL && fr.patch != NULL) {
-		log_print("Patching without replacement file isn't supported yet. Please provide the file you are patching.\n");
-	}
+	if (fr->rep_buffer != NULL) {
+		full_header->size = fr->pre_json_size + fr->patch_size;
+		(*header)->size = full_header->size;
 
-	// TODO: I want my json patch even if I don't have a replacement file!!!
-	if (fr.rep_buffer != NULL) {
-		fr.game_buffer = malloc(fr.pre_json_size + fr.patch_size);
-		memcpy(fr.game_buffer, fr.rep_buffer, fr.pre_json_size);
+		fr->game_buffer = malloc(full_header->size);
+		memcpy(fr->game_buffer, fr->rep_buffer, fr->pre_json_size);
 		patchhooks_run( // TODO: replace with file_rep_hooks_run
-			fr.hooks, fr.game_buffer, fr.pre_json_size + fr.patch_size, fr.pre_json_size, fr.patch
+			fr->hooks, fr->game_buffer, fr->pre_json_size + fr->patch_size, fr->pre_json_size, fr->patch
 			);
 
-		full_header->file_rep = fr.game_buffer;
-		full_header->file_rep_size = fr.pre_json_size + fr.patch_size;
-		crypt_block(full_header->file_rep, full_header->file_rep_size, full_header->key);
-		(*header)->size = full_header->file_rep_size;
-		full_header->size = full_header->file_rep_size;
+		crypt_block(fr->game_buffer, full_header->size, full_header->key);
 	}
-	file_rep_clear(&fr);
+
+	if (fr->rep_buffer == NULL && fr->patch != NULL) {
+		// If we have no rep buffer but we have a patch buffer, we will patch the file later, so we need to keep the file_rep.
+		(*header)->size += fr->patch_size;
+		full_header->size = (*header)->size;
+	}
+	else {
+		file_rep_clear(fr);
+	}
 
 	return 1;
 }
@@ -106,22 +106,42 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	struct FileHeaderFull *header = hash_to_file_header(*(DWORD*)(*file_struct + 0x1001c));
-	if (!header || !header->path[0] || !header->file_rep) {
+	if (!header || !header->path[0] || (!header->fr.game_buffer && !header->fr.patch)) {
 		// Nothing to patch.
 		return 1;
 	}
 
+	HANDLE hFile = *(HANDLE*)(*file_struct + 4);
+	char *buffer = *file_struct + 8;
+
 	if (header->effective_offset == -1) {
-		header->effective_offset = SetFilePointer(*(HANDLE*)(*file_struct + 4), 0, NULL, FILE_CURRENT) - 65536;
+		header->effective_offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - 65536;
+
+		// We couldn't patch the file earlier, but now we have a hFile and an offset, so we should be able to.
+		if (header->fr.game_buffer == NULL && header->fr.patch != NULL) {
+			SetFilePointer(hFile, -65536, NULL, FILE_CURRENT);
+			
+			DWORD nbOfBytesRead;
+			header->fr.game_buffer = malloc(header->size);
+			ReadFile(hFile, header->fr.game_buffer, header->orig_size, &nbOfBytesRead, NULL);
+
+			uncrypt_block(header->fr.game_buffer, header->orig_size, header->key);
+			patchhooks_run(
+				header->fr.hooks, header->fr.game_buffer, header->size, header->orig_size, header->fr.patch
+				);
+			crypt_block(header->fr.game_buffer, header->size, header->key);
+
+			SetFilePointer(hFile, header->effective_offset + 65536, NULL, FILE_BEGIN);
+			file_rep_clear(&header->fr);
+		}
 	}
 
-	char *buffer = *file_struct + 8;
-	size_t offset = SetFilePointer(*(HANDLE*)(*file_struct + 4), 0, NULL, FILE_CURRENT) - 65536 - header->effective_offset;
-	int copy_size = min(header->file_rep_size - offset, 65536);
+	size_t offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - 65536 - header->effective_offset;
+	int copy_size = min(header->size - offset, 65536);
 
 	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %d, file_rep_size left: %d, chosen size: %d\n",
-		header->path, *(DWORD*)(*file_struct + 0x1001c), offset, header->file_rep_size - offset, copy_size);
-	memcpy(buffer, (BYTE*)header->file_rep + offset, copy_size);
+		header->path, *(DWORD*)(*file_struct + 0x1001c), offset, header->size - offset, copy_size);
+	memcpy(buffer, (BYTE*)header->fr.game_buffer + offset, copy_size);
 
 	return 1;
 }

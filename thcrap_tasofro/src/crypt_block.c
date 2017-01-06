@@ -10,6 +10,23 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 
+void uncrypt_block(BYTE* Data, DWORD FileSize, DWORD* Key)
+{
+	BYTE *key = (BYTE*)Key;
+	BYTE aux[4];
+	DWORD i;
+
+	for (i = 0; i < 4; i++) {
+		aux[i] = key[i];
+	}
+
+	for (i = 0; i < FileSize; i++) {
+		BYTE tmp = Data[i];
+		Data[i] = Data[i] ^ key[i % 16] ^ aux[i % 4];
+		aux[i % 4] = tmp;
+	}
+}
+
 DWORD crypt_block_internal(BYTE* Data, DWORD FileSize, DWORD* Key, DWORD Aux)
 {
 	BYTE *key = (BYTE*)Key;

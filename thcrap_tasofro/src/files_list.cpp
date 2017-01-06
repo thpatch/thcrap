@@ -87,9 +87,10 @@ extern "C" struct FileHeaderFull* register_file_header(FileHeader* header, DWORD
 	full_header.key[1] = key[1] * -1;
 	full_header.key[2] = key[2] * -1;
 	full_header.key[3] = key[3] * -1;
-	full_header.file_rep = NULL;
-	full_header.file_rep_size = 0;
 	full_header.effective_offset = -1;
+	full_header.orig_size = header->size;
+
+	ZeroMemory(&full_header.fr, sizeof(file_rep_t));
 
 	return &full_header;
 }

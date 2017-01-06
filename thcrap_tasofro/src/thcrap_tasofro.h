@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <thcrap.h>
+#include <bp_file.h>
 #include <jansson.h>
 
 struct FileHeader
@@ -21,15 +23,20 @@ struct FileHeader
 
 struct FileHeaderFull
 {
+	// Copy of FileHeader
 	DWORD filename_hash;
 	DWORD unknown;
 	DWORD offset;
 	DWORD size;
 
+	// XOR key
 	DWORD key[4];
-	void* file_rep;
-	size_t file_rep_size;
+	file_rep_t fr;
+	// Offset to the file in its pak file
 	DWORD effective_offset;
+	// Size of the original game file
+	DWORD orig_size;
+
 	char path[MAX_PATH];
 };
 
@@ -42,6 +49,7 @@ int LoadFileNameListFromMemory(char* list, size_t size);
 DWORD filename_to_hash(const char* filename);
 struct FileHeaderFull* register_file_header(struct FileHeader* header, DWORD *key);
 struct FileHeaderFull* hash_to_file_header(DWORD hash);
+void uncrypt_block(BYTE* Data, DWORD FileSize, DWORD* Key);
 DWORD crypt_block(BYTE* Data, DWORD FileSize, DWORD* Key);
 int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
 
