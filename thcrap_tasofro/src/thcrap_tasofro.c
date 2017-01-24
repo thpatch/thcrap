@@ -17,6 +17,7 @@ int __stdcall thcrap_plugin_init()
 	size_t filenames_list_size;
 	
 	patchhook_register("*/stage*.pl", patch_pl);
+	patchhook_register("*.csv", patch_tfcs);
 	filenames_list = stack_game_file_resolve("fileslist.txt", &filenames_list_size);
 	LoadFileNameListFromMemory(filenames_list, filenames_list_size);
 	return 0;
