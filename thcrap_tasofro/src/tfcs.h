@@ -25,7 +25,7 @@ typedef struct {
 extern "C" {
 #endif
 
-	int patch_TFCS(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+	int patch_tfcs(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
 
 #ifdef __cplusplus
 }

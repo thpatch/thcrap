@@ -9,6 +9,8 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
+#include "pl.h"
+#include "tfcs.h"
 
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
