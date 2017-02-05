@@ -111,37 +111,12 @@ static int balloon_gen_name(balloon_t *balloon, int cur_line, json_t *lines)
 	return 1;
 }
 
-static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, unsigned int balloon_nb, json_t *lines)
+static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
 {
-	balloon_t *balloon = balloon_get();
-	unsigned int i;
-
-	// Skip the original text
-	if (*file_in != '"') {
-		while (size_in > 0 && *file_in != '\n' && *file_in != ',') {
-			MOVE_BUFF(file_in, size_in, 1);
-		}
-		balloon->has_pause = file_in[-1] == '\\';
-	}
-	else {
-		MOVE_BUFF(file_in, size_in, 1);
-		while (size_in > 0 && *file_in != '\n' && *file_in != '"') {
-			MOVE_BUFF(file_in, size_in, 1);
-		}
-		balloon->has_pause = file_in[-1] == '\\';
-		MOVE_BUFF(file_in, size_in, 1);
-	}
-	MOVE_BUFF(file_in, size_in, 1);
-
-	// Copy the balloon name from the original file
-	for (i = 0; size_in > 0 && *file_in != '\n' && *file_in != ',' && i < 10; i++, file_in++, size_in--) {
-		balloon->name[i] = *file_in;
-	}
-
-	// Write to the output file
 	unsigned int cur_line = 0;
 	unsigned int nb_lines = json_array_size(lines);
 	int ignore_clear_balloon = 1;
+	unsigned int i;
 
 	for (; cur_line < nb_lines; cur_line++, balloon->cur_line++) {
 		if (balloon_gen_name(balloon, cur_line, lines) == 0)
@@ -162,10 +137,11 @@ static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t 
 		// Writing the replacement text
 		PUT_CHAR(*file_out, *size_out, '"');
 		PUT_STR(*file_out, *size_out, json_line);
-			if (balloon->has_pause && balloon->cur_line == balloon->nb_lines) {
+		if (balloon->has_pause && balloon->cur_line == balloon->nb_lines) {
 			PUT_CHAR(*file_out, *size_out, '\\');
 		}
 		PUT_CHAR(*file_out, *size_out, '"');
+
 		PUT_CHAR(*file_out, *size_out, ',');
 
 		// Writing the balloon name
@@ -181,6 +157,66 @@ static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t 
 		if (balloon->cur_line == 3) {
 			balloon->cur_line = 0;
 		}
+	}
+}
+
+static void put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
+{
+	unsigned int cur_line = 0;
+	unsigned int nb_lines = json_array_size(lines);
+
+	PUT_CHAR(*file_out, *size_out, '"');
+	for (; cur_line < nb_lines; cur_line++) {
+		const char *json_line = json_array_get_string(lines, cur_line);
+		if (cur_line != 0) {
+			PUT_STR(*file_out, *size_out, "\\n");
+		}
+		PUT_STR(*file_out, *size_out, json_line);
+	}
+	if (balloon->has_pause) {
+		PUT_CHAR(*file_out, *size_out, '\\');
+	}
+	PUT_STR(*file_out, *size_out, "\"\n");
+}
+
+static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, unsigned int balloon_nb, json_t *lines)
+{
+	balloon_t *balloon = balloon_get();
+	unsigned int i;
+
+	// Skip the original text
+	if (*file_in != '"') {
+		while (size_in > 0 && *file_in != '\r' && *file_in != '\n' && *file_in != ',') {
+			MOVE_BUFF(file_in, size_in, 1);
+		}
+		balloon->has_pause = file_in[-1] == '\\';
+	}
+	else {
+		MOVE_BUFF(file_in, size_in, 1);
+		while (size_in > 0 && *file_in != '\r' && *file_in != '\n' && *file_in != '"') {
+			MOVE_BUFF(file_in, size_in, 1);
+		}
+		balloon->has_pause = file_in[-1] == '\\';
+		MOVE_BUFF(file_in, size_in, 1);
+	}
+
+	if (*file_in == ',') {
+		balloon->is_ending = 1;
+		MOVE_BUFF(file_in, size_in, 1);
+		// Copy the balloon name from the original file
+		for (i = 0; size_in > 0 && *file_in != '\n' && *file_in != ',' && i < 10; i++, file_in++, size_in--) {
+			balloon->name[i] = *file_in;
+		}
+	}
+	else {
+		balloon->is_ending = 0;
+	}
+
+	if (balloon->is_ending) {
+		put_line_story(file_in, size_in, file_out, size_out, lines, balloon);
+	}
+	else {
+		put_line_ending(file_in, size_in, file_out, size_out, lines, balloon);
 	}
 }
 
@@ -204,7 +240,7 @@ int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 
 	balloon = 1;
 
-	for (; size_in > 0; next_line(&file_in, &size_in)) {
+	while (size_in > 0) {
 		need_to_copy_line = TRUE;
 		if (!ignore_line(file_in, size_in)) {
 
@@ -221,6 +257,10 @@ int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 					replace_line(file_in, size_in, &file_inout, &size_out, balloon, lines);
 					need_to_copy_line = FALSE;
 
+					// If the text is on more than 1 line (like in the endings or in the english patch), skip the other lines.
+					while (ignore_line(file_in, size_in) == FALSE) {
+						next_line(&file_in, &size_in);
+					}
 				}
 				json_decref_safe(lines);
 			}
@@ -229,6 +269,7 @@ int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 
 		if (need_to_copy_line) {
 			copy_line(file_in, size_in, file_inout, size_out);
+			next_line(&file_in, &size_in);
 			next_line(&file_inout, &size_out);
 		}
 	}

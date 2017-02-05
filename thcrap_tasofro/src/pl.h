@@ -16,6 +16,7 @@ typedef struct {
 	char name[10];
 
 	int has_pause;
+	int is_ending;
 
 	int cur_line;
 	int nb_lines;
