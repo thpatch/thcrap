@@ -111,6 +111,25 @@ static int balloon_gen_name(balloon_t *balloon, int cur_line, json_t *lines)
 	return 1;
 }
 
+static void put_line(BYTE **file_out, size_t *size_out, const char *line)
+{
+	int i;
+
+	for (i = 0; line[i]; i++) {
+		if (line[i] == '"') {
+			// If we're at the beginning of the line, the game engine will confuse our escaping with the surrounding quotes.
+			// I'll put a space to ensure it doesn't.
+			if (i == 0) {
+				PUT_CHAR(*file_out, *size_out, ' ');
+			}
+			PUT_STR(*file_out, *size_out, "\"\"")
+		}
+		else {
+			PUT_CHAR(*file_out, *size_out, line[i]);
+		}
+	}
+}
+
 static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
 {
 	unsigned int cur_line = 0;
@@ -136,7 +155,7 @@ static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 
 		// Writing the replacement text
 		PUT_CHAR(*file_out, *size_out, '"');
-		PUT_STR(*file_out, *size_out, json_line);
+		put_line(file_out, size_out, json_line);
 		if (balloon->last_char == '\\' && balloon->cur_line == balloon->nb_lines) {
 			PUT_CHAR(*file_out, *size_out, '\\');
 		}
@@ -187,7 +206,7 @@ static int put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 		if (cur_line != 0) {
 			PUT_STR(*file_out, *size_out, "\\n");
 		}
-		PUT_STR(*file_out, *size_out, json_line);
+		put_line(file_out, size_out, json_line);
 	}
 	if (balloon->last_char == '\\') {
 		PUT_CHAR(*file_out, *size_out, '\\');
