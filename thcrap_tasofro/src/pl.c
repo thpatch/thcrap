@@ -124,6 +124,18 @@ static void put_line(BYTE **file_out, size_t *size_out, const char *line)
 			}
 			PUT_STR(*file_out, *size_out, "\"\"")
 		}
+		else if (strncmp(line + i, "{{ruby|", 7) == 0) {
+			i += 7;
+			PUT_STR(*file_out, *size_out, "\\R[");
+			while (line[i] && strncmp(line + i, "}}", 2) != 0) {
+				PUT_CHAR(*file_out, *size_out, line[i]);
+				i++;
+			}
+			PUT_CHAR(*file_out, *size_out, ']');
+			if (line[i]) {
+				i++;
+			}
+		}
 		else {
 			PUT_CHAR(*file_out, *size_out, line[i]);
 		}
