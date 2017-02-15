@@ -137,7 +137,7 @@ static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 		// Writing the replacement text
 		PUT_CHAR(*file_out, *size_out, '"');
 		PUT_STR(*file_out, *size_out, json_line);
-		if (balloon->has_pause && balloon->cur_line == balloon->nb_lines) {
+		if (balloon->last_char == '\\' && balloon->cur_line == balloon->nb_lines) {
 			PUT_CHAR(*file_out, *size_out, '\\');
 		}
 		PUT_CHAR(*file_out, *size_out, '"');
@@ -160,7 +160,7 @@ static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 	}
 }
 
-static void put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
+static int put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
 {
 	unsigned int cur_line = 0;
 	unsigned int nb_lines = json_array_size(lines);
@@ -168,18 +168,40 @@ static void put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size
 	PUT_CHAR(*file_out, *size_out, '"');
 	for (; cur_line < nb_lines; cur_line++) {
 		const char *json_line = json_array_get_string(lines, cur_line);
+		if (balloon->last_char == '@' && cur_line == nb_lines - 1) {
+			if (cur_line != 0) {
+				// If the input already contains a pause mark, remove it.
+				if (strncmp(*file_out - 2, "\\.", 2) == 0) {
+					*file_out -= 2;
+					*size_out += 2;
+				}
+				PUT_STR(*file_out, *size_out, "@\"\n");
+			}
+			else {
+				// Remove the quote
+				(*file_out)--;
+				(*size_out)++;
+			}
+			PUT_STR(*file_out, *size_out, ",Function,\"::story.BeginStaffroll();\"\n\"");
+		}
 		if (cur_line != 0) {
 			PUT_STR(*file_out, *size_out, "\\n");
 		}
 		PUT_STR(*file_out, *size_out, json_line);
 	}
-	if (balloon->has_pause) {
+	if (balloon->last_char == '\\') {
 		PUT_CHAR(*file_out, *size_out, '\\');
 	}
 	PUT_STR(*file_out, *size_out, "\"\n");
+	return balloon->last_char == '@';
 }
 
-static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, unsigned int balloon_nb, json_t *lines)
+/**
+  * Replaces a line in a PL file (for both story mode and endings).
+  * If we are in an ending file and the caller needs to skip the story.BeginStaffroll call, this function returns 1.
+  * Otherwise, it returns 0.
+  */
+static int replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, unsigned int balloon_nb, json_t *lines)
 {
 	balloon_t *balloon = balloon_get();
 	unsigned int i;
@@ -189,14 +211,14 @@ static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t 
 		while (size_in > 0 && *file_in != '\r' && *file_in != '\n' && *file_in != ',') {
 			MOVE_BUFF(file_in, size_in, 1);
 		}
-		balloon->has_pause = file_in[-1] == '\\';
+		balloon->last_char = file_in[-1];
 	}
 	else {
 		MOVE_BUFF(file_in, size_in, 1);
 		while (size_in > 0 && *file_in != '\r' && *file_in != '\n' && *file_in != '"') {
 			MOVE_BUFF(file_in, size_in, 1);
 		}
-		balloon->has_pause = file_in[-1] == '\\';
+		balloon->last_char = file_in[-1];
 		MOVE_BUFF(file_in, size_in, 1);
 	}
 
@@ -214,9 +236,10 @@ static void replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t 
 
 	if (balloon->is_ending) {
 		put_line_story(file_in, size_in, file_out, size_out, lines, balloon);
+		return 0;
 	}
 	else {
-		put_line_ending(file_in, size_in, file_out, size_out, lines, balloon);
+		return put_line_ending(file_in, size_in, file_out, size_out, lines, balloon);
 	}
 }
 
@@ -254,11 +277,22 @@ int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 				if (json_is_array(lines)) {
 
 					// We have an array of lines; we can replace our text.
-					replace_line(file_in, size_in, &file_inout, &size_out, balloon, lines);
+					int skip_staff_roll = replace_line(file_in, size_in, &file_inout, &size_out, balloon, lines);
 					need_to_copy_line = FALSE;
 
-					// If the text is on more than 1 line (like in the endings or in the english patch), skip the other lines.
-					while (ignore_line(file_in, size_in) == FALSE) {
+					next_line(&file_in, &size_in);
+					/**
+					  * If we are in the last line of the endings:
+					  * - skip the end of the line;
+					  * - skip the story.BeginStaffroll call;
+					  * - skip the last line of test.
+					  */
+					if (skip_staff_roll)
+					{
+						while (ignore_line(file_in, size_in) == FALSE) {
+							next_line(&file_in, &size_in);
+						}
+						next_line(&file_in, &size_in);
 						next_line(&file_in, &size_in);
 					}
 				}
