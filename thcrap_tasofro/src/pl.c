@@ -149,6 +149,13 @@ static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 	int ignore_clear_balloon = 1;
 	unsigned int i;
 
+	// If the balloon is too small for our text to fit, expand it automatically.
+	if (nb_lines > 1 && strncmp(balloon->name + 1, "05x2", 4) == 0) {
+		strncpy(balloon->name + 1, "11x2", 3);
+	}
+	if (nb_lines > 2 && strncmp(balloon->name + 1, "11x2", 4) == 0) {
+		strncpy(balloon->name + 1, "15x3", 4);
+	}
 	for (; cur_line < nb_lines; cur_line++, balloon->cur_line++) {
 		if (balloon_gen_name(balloon, cur_line, lines) == 0)
 			continue;
