@@ -201,11 +201,25 @@ static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 static int put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
 {
 	unsigned int cur_line = 0;
+	unsigned int balloon_cur_line = 1;
 	unsigned int nb_lines = json_array_size(lines);
 
-	PUT_CHAR(*file_out, *size_out, '"');
-	for (; cur_line < nb_lines; cur_line++) {
+	for (; cur_line < nb_lines; cur_line++, balloon_cur_line++) {
 		const char *json_line = json_array_get_string(lines, cur_line);
+
+		if (strncmp(json_line, "<balloon", 8) == 0) {
+			if (balloon_cur_line != 1) {
+				if (balloon->last_char == '\\') {
+					PUT_CHAR(*file_out, *size_out, '\\');
+				}
+				PUT_STR(*file_out, *size_out, "\"\n");
+			}
+			balloon_cur_line = 0;
+			continue;
+		}
+		if (balloon_cur_line == 1) {
+			PUT_CHAR(*file_out, *size_out, '"');
+		}
 		if (balloon->last_char == '@' && cur_line == nb_lines - 1) {
 			if (cur_line != 0) {
 				// If the input already contains a pause mark, remove it.
@@ -222,15 +236,17 @@ static int put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 			}
 			PUT_STR(*file_out, *size_out, ",Function,\"::story.BeginStaffroll();\"\n\"");
 		}
-		if (cur_line != 0) {
+		if (balloon_cur_line > 1) {
 			PUT_STR(*file_out, *size_out, "\\n");
 		}
 		put_line(file_out, size_out, json_line);
 	}
-	if (balloon->last_char == '\\') {
-		PUT_CHAR(*file_out, *size_out, '\\');
+	if (balloon_cur_line > 1) {
+		if (balloon->last_char == '\\') {
+			PUT_CHAR(*file_out, *size_out, '\\');
+		}
+		PUT_STR(*file_out, *size_out, "\"\n");
 	}
-	PUT_STR(*file_out, *size_out, "\"\n");
 	return balloon->last_char == '@';
 }
 
