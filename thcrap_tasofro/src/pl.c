@@ -245,19 +245,26 @@ static int replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *
 	unsigned int i;
 
 	// Skip the original text
-	if (*file_in != '"') {
-		while (size_in > 0 && *file_in != '\r' && *file_in != '\n' && *file_in != ',') {
-			MOVE_BUFF(file_in, size_in, 1);
+	int is_in_quote = 0;
+	while (size_in > 0) {
+		if (is_in_quote == 0 && (*file_in == '\r' || *file_in == '\n' || *file_in == ',')) {
+			break;
 		}
+		if (*file_in == '"') {
+			if (is_in_quote == 1 && file_in[1] == '"') {
+				MOVE_BUFF(file_in, size_in, 1);
+			}
+			else {
+				is_in_quote = !is_in_quote;
+			}
+		}
+		MOVE_BUFF(file_in, size_in, 1);
+	}
+	if (file_in[-1] != '"') {
 		balloon->last_char = file_in[-1];
 	}
 	else {
-		MOVE_BUFF(file_in, size_in, 1);
-		while (size_in > 0 && *file_in != '\r' && *file_in != '\n' && *file_in != '"') {
-			MOVE_BUFF(file_in, size_in, 1);
-		}
-		balloon->last_char = file_in[-1];
-		MOVE_BUFF(file_in, size_in, 1);
+		balloon->last_char = file_in[-2];
 	}
 
 	if (*file_in == ',') {
