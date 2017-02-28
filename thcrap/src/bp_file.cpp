@@ -115,7 +115,12 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 	// -----------------
 	BP_file_name(regs, bp_info);
 	// -----------------
-	if(file_size && (fr->pre_json_size || fr->patch_size || fr->hooks) ) {
+	// th09 needs the POST_JSON_SIZE to be unconditionally written out to a
+	// scratch register inside its file decryption function, where the final
+	// decrypted buffer is allocated. The actually intended size register is
+	// used as the loop counter for the decryption, and putting anything else
+	// there will result in a few bytes of corruption at the end.
+	if(file_size) {
 		if(!fr->pre_json_size) {
 			fr->pre_json_size = *file_size;
 		}
