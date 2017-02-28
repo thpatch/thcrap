@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 	int patch_tfcs(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+	int patch_csv(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
 
 #ifdef __cplusplus
 }

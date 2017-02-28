@@ -5,9 +5,10 @@
   * ----
   *
   * On-the-fly th145 TFCS patcher (*.csv)
-  * CSV files aren't supported for now because the ULiL TFCS parser
-  * is way more reliable than the ULiL CSVF parser.
-  * If we add CSV support, I think we'd better do it in the form of CSV=>TFCS conversion,
+  * Most CSV files can also be provided as TFCS files (and are provided by the game as TFCS files).
+  * These CSV files aren't supported for now because the ULiL TFCS parser
+  * is way more reliable than the ULiL CSV parser for these files.
+  * If we add CSV support here, I think we'd better do it in the form of CSV=>TFCS conversion,
   * followed by TFCS patching.
   */
 
@@ -77,7 +78,7 @@ int patch_tfcs(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	header = (tfcs_header_t*)file_inout;
 	if (size_in < sizeof(header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
 		// Invalid TFCS file (probably a regular CSV file)
-		return 0;
+		return patch_csv(file_inout, size_out, size_in, patch);
 	}
 
 	BYTE *file_in_uncomp = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, header->uncomp_size);
@@ -136,8 +137,8 @@ int patch_tfcs(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	int ret = deflate_bytes(file_out_uncomp, file_out_uncomp_size, header->data, &size_out);
 	header->comp_size = size_out;
 
-	free(file_in_uncomp);
-	free(file_out_uncomp);
+	HeapFree(GetProcessHeap(), 0, file_in_uncomp);
+	HeapFree(GetProcessHeap(), 0, file_out_uncomp);
 
 	return 0;
 }
