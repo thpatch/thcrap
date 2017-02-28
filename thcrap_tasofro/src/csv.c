@@ -35,7 +35,7 @@ static int next_line(BYTE *in, size_t size_in, BYTE *out, int copy)
 	}
 	return i;
 }
-#define _DEBUG
+
 int patch_csv(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	BYTE* file_in = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
