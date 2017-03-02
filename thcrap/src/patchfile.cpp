@@ -212,6 +212,7 @@ void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_siz
 	if(!file_size) {
 		return NULL;
 	}
+	*file_size = 0; // *Especially* if the file is blacklisted!
 	if(!patch_file_blacklisted(patch_info, fn)) {
 		ret = file_read(patch_fn, file_size);
 	}
