@@ -135,12 +135,12 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 	// FORMAT_GRAY8 is fully handled by libpng
 }
 
-void format_copy(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
+void format_copy(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format)
 {
 	memcpy(dst, rep, pixels * format_Bpp(format));
 }
 
-void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
+void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format)
 {
 	// Alpha values are added and clamped to the format's maximum. This avoids a
 	// flaw in the blending algorithm, which may decrease the alpha value even if

@@ -116,12 +116,12 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
 // Blitting operations
 // -------------------
 // These blit a row with length [pixels] from [rep] to [dst], using [format].
-typedef void (*BlitFunc_t)(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format);
+typedef void (*BlitFunc_t)(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
 
 // Simply overwrites a number of [pixels] in [rep] with [dst].
-void format_copy(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format);
+void format_copy(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
 // Alpha-blends a number of [pixels] from [rep] on top of [dst].
-void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format);
+void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
 // -------------------
 /// -------
 
