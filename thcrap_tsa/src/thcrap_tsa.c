@@ -14,6 +14,9 @@
 
 int __stdcall thcrap_plugin_init()
 {
+	if(!stack_game_covered_by("base_tsa")) {
+		return 1;
+	}
 	// th06_msg
 	patchhook_register("msg*.dat", patch_msg_dlg); // th06-08
 	patchhook_register("p*.msg", patch_msg_dlg); // th09

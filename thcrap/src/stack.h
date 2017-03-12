@@ -64,4 +64,18 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 // Displays a message box showing missing archives in the current patch stack,
 // if there are any.
 void stack_show_missing(void);
+
+// Returns 1 if the current patch stack contains a patch with the given name,
+// and if that patch in turn contains a .js file for the current game.
+//
+// DLLs that add game support should call this in their thcrap_plugin_init()
+// function with their corresponding base patch, i.e., the name of the patch
+// that would contain that DLL if we had patch-level plugins yet. If this
+// function returns a nonzero value, thcrap_plugin_init() can then itself
+// return a nonzero value to disable that DLL, since thcrap is not patching
+// any of the games it supports.
+// This avoids the need for hardcoding a list of supported games in the patch
+// DLL itself, when there is already a patch with JSON files that fulfill
+// essentially the same function.
+int stack_game_covered_by(const char *patch_id);
 /// -----------

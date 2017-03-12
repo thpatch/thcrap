@@ -242,6 +242,7 @@ EXPORTS
 	stack_game_json_resolve
 
 	stack_show_missing
+	stack_game_covered_by
 
 	; Hardcoded string translation
 	; ----------------------------

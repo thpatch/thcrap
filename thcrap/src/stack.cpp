@@ -164,3 +164,31 @@ void stack_show_missing(void)
 	}
 	json_decref(rem_arcs);
 }
+
+int stack_game_covered_by(const char *patch_id)
+{
+	auto runconfig = runconfig_get();
+	auto game = json_object_get(runconfig, "game");
+
+	if(!json_is_string(game)) {
+		return 0;
+	}
+
+	auto patches = json_object_get(runconfig, "patches");
+	size_t i;
+	json_t *patch_info;
+
+	json_array_foreach(patches, i, patch_info) {
+		const char *id = json_object_get_string(patch_info, "id");
+		if(!strcmp(id, patch_id)) {
+			size_t game_js_len = json_string_length(game) + strlen(".js") + 1;
+			VLA(char, game_js, game_js_len);
+			sprintf(game_js, "%s.js", json_string_value(game));
+
+			auto ret = patch_file_exists(patch_info, game_js);
+			VLA_FREE(game_js);
+			return ret;
+		}
+	}
+	return 0;
+}
