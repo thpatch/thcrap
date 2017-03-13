@@ -233,12 +233,6 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 
-	log_printf("---------------------------\n");
-	log_printf("Complete run configuration:\n");
-	log_printf("---------------------------\n");
-	json_dump_log(run_cfg, JSON_INDENT(2));
-	log_printf("---------------------------\n");
-
 	log_printf("Game directory: %s\n", game_dir);
 	log_printf("Plug-in directory: %s\n", dll_dir);
 
@@ -271,6 +265,12 @@ int thcrap_init(const char *run_cfg_fn)
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	json_decref(user_cfg);
+
+	log_printf("---------------------------\n");
+	log_printf("Complete run configuration:\n");
+	log_printf("---------------------------\n");
+	json_dump_log(run_cfg, JSON_INDENT(2));
+	log_printf("---------------------------\n");
 	return 0;
 }
 
