@@ -14,7 +14,7 @@
 
 int __stdcall thcrap_plugin_init()
 {
-	if(!stack_game_covered_by("base_tsa")) {
+	if(stack_remove_if_unneeded("base_tsa")) {
 		return 1;
 	}
 	// th06_msg

@@ -165,30 +165,36 @@ void stack_show_missing(void)
 	json_decref(rem_arcs);
 }
 
-int stack_game_covered_by(const char *patch_id)
+int stack_remove_if_unneeded(const char *patch_id)
 {
 	auto runconfig = runconfig_get();
 	auto game = json_object_get(runconfig, "game");
-
-	if(!json_is_string(game)) {
-		return 0;
-	}
-
 	auto patches = json_object_get(runconfig, "patches");
 	size_t i;
 	json_t *patch_info;
 
+	// (No early return if we have no game name, since we want
+	//  to slice out the patch in that case too.)
+
 	json_array_foreach(patches, i, patch_info) {
 		const char *id = json_object_get_string(patch_info, "id");
-		if(!strcmp(id, patch_id)) {
-			size_t game_js_len = json_string_length(game) + strlen(".js") + 1;
+		if(strcmp(id, patch_id)) {
+			continue;
+		}
+		int game_js_found = 0;
+		if(json_is_string(game)) {
+			auto game_len = json_string_length(game);
+			size_t game_js_len = game_len + strlen(".js") + 1;
 			VLA(char, game_js, game_js_len);
 			sprintf(game_js, "%s.js", json_string_value(game));
 
-			auto ret = patch_file_exists(patch_info, game_js);
+			game_js_found = patch_file_exists(patch_info, game_js);
 			VLA_FREE(game_js);
-			return ret;
 		}
+		if(!game_js_found) {
+			json_array_remove(patches, i);
+		}
+		return !game_js_found;
 	}
-	return 0;
+	return -1;
 }
