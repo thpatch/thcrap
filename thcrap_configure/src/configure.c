@@ -4,7 +4,7 @@
   */
 
 #include <thcrap.h>
-#include <thcrap_update/src/update.h>
+#include <thcrap/src/thcrap_update_wrapper.h>
 #include "configure.h"
 #include "repo.h"
 
@@ -150,7 +150,7 @@ json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 	VLA(char, remote_patch_fn, remote_patch_fn_len);
 	sprintf(remote_patch_fn, "%s/%s", json_string_value(patch_id), main_fn);
 
-	patch_js_buffer = (char*)ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
+	patch_js_buffer = (char*)ServerDownloadFile_wrapper(repo_servers, remote_patch_fn, &patch_js_size, NULL);
 	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
 	// TODO: Nice, friendly error
 
@@ -332,7 +332,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
 	}
 
-	http_init();
+	http_init_wrapper();
 
 	if(json_array_size(args) > 1) {
 		start_repo = json_array_get_string(args, 1);
@@ -389,7 +389,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		json_t *sel;
 
 		log_printf("Downloading game-independent data...\n");
-		stack_update(update_filter_global, NULL);
+		stack_update_wrapper(update_filter_global_wrapper, NULL);
 
 		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {
@@ -421,7 +421,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
 		json_t *filter = json_object_get_keys_sorted(games);
 		log_printf("\nDownloading data specific to the located games...\n");
-		stack_update(update_filter_games, filter);
+		stack_update_wrapper(update_filter_games_wrapper, filter);
 		filter = json_decref_safe(filter);
 		log_printf(
 			"\n"

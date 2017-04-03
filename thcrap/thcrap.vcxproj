@@ -64,6 +64,7 @@
     <ClCompile Include="src\strings.cpp" />
     <ClCompile Include="src\util.cpp" />
     <ClCompile Include="src\textdisp.cpp" />
+    <ClCompile Include="src\thcrap_update_wrapper.cpp" />
     <ClCompile Include="src\win32_detour.cpp" />
     <ClCompile Include="src\xpcompat.cpp" />
     <ClCompile Include="src\zip.cpp" />
@@ -91,6 +92,7 @@
     <ClInclude Include="src\util.h" />
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
+    <ClInclude Include="src\thcrap_update_wrapper.h" />
     <ClInclude Include="src\win32_detour.h" />
     <ClInclude Include="src\xpcompat.h" />
     <ClInclude Include="src\zip.h" />

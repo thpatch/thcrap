@@ -9,7 +9,7 @@
 
 #include <thcrap.h>
 #include "configure.h"
-#include <thcrap_update/src/update.h>
+#include <thcrap/src/thcrap_update_wrapper.h>
 #include "repo.h"
 
 json_t* RepoGetLocalFN(const char *id)
@@ -59,7 +59,7 @@ int RepoDiscoverAtServers(json_t *servers, json_t *id_cache, json_t *url_cache)
 			i--;
 		}
 	}
-	repo_buffer = ServerDownloadFile(in_mirrors, repo_fn, &repo_size, NULL);
+	repo_buffer = ServerDownloadFile_wrapper(in_mirrors, repo_fn, &repo_size, NULL);
 	if(repo_buffer) {
 		repo_js = json_loadb_report(repo_buffer, repo_size, 0, repo_fn);
 	}
@@ -104,7 +104,7 @@ end:
 
 int RepoDiscoverAtURL(const char *start_url, json_t *id_cache, json_t *url_cache)
 {
-	json_t *in_mirrors = ServerBuild(start_url);
+	json_t *in_mirrors = ServerBuild_wrapper(start_url);
 	int ret = RepoDiscoverAtServers(in_mirrors, id_cache, url_cache);
 	json_decref(in_mirrors);
 	return ret;
@@ -132,7 +132,7 @@ json_t* RepoLocalNext(HANDLE *hFind)
 		) {
 			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
 			repo_js = json_load_file_report(json_string_value(repo_local_fn));
-			ServerInit(repo_js);
+			ServerInit_wrapper(repo_js);
 			json_decref(repo_local_fn);
 			if(repo_js) {
 				return repo_js;
