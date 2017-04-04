@@ -209,36 +209,42 @@ static int zip_file_info_set(zip_file_info_t *file, zip_file_shared_t *s)
 	return 0;
 }
 
-static int zip_file_extra_parse(zip_file_info_t *file, zip_t *zip, int extra_len)
+static void zip_file_extra_parse(zip_file_info_t *file, const char *buf, size_t len)
 {
-	int i = 0;
-	if(!file || !zip) {
-		return -1;
-	}
-	while(i < extra_len) {
-		zip_extra_t extra;
-		DWORD byte_ret;
-		DWORD offset;
-		if(!ReadFile(zip->hArc, &extra, sizeof(extra), &byte_ret, NULL)) {
-			return 1;
-		}
-		i += byte_ret;
-		offset = TellFilePointer(zip->hArc);
-		if(extra.id == ZIP_EXTRA_NTFS && extra.len >= sizeof(zip_extra_ntfs1_t)) {
-			zip_extra_ntfs1_t ntfs;
-			if(
-				ReadFile(zip->hArc, &ntfs, sizeof(ntfs), &byte_ret, NULL)
-				&& (ntfs.tag == ZIP_EXTRA_NTFS_TAG)
-				&& (ntfs.tag_size == 24)
-			) {
-				file->ctime = ntfs.ctime;
-				file->mtime = ntfs.mtime;
-				file->atime = ntfs.atime;
+	assert(file);
+	assert(buf);
+
+	auto p = buf;
+	while(p < buf + len) {
+		const auto extra = (zip_extra_t *)p;
+		p += sizeof(zip_extra_t);
+
+		if(extra->id == ZIP_EXTRA_NTFS && extra->len >= sizeof(zip_extra_ntfs1_t)) {
+			const auto ntfs = (zip_extra_ntfs1_t *)p;
+			if(ntfs->tag == ZIP_EXTRA_NTFS_TAG && ntfs->tag_size == 24) {
+				file->ctime = ntfs->ctime;
+				file->mtime = ntfs->mtime;
+				file->atime = ntfs->atime;
 			}
 		}
-		i += byte_ret;
-		SetFilePointer(zip->hArc, offset + extra.len, NULL, FILE_BEGIN);
+		p += extra->len;
 	}
+}
+
+static int zip_file_extra_read(zip_file_info_t *file, zip_t *zip, int extra_len)
+{
+	assert(file);
+	assert(zip);
+
+	VLA(char, extra_buf, extra_len);
+	DWORD byte_ret;
+	int ret = W32_ERR_WRAP(ReadFile(
+		zip->hArc, extra_buf, extra_len, &byte_ret, NULL
+	));
+	if(!ret) {
+		zip_file_extra_parse(file, extra_buf, byte_ret);
+	}
+	VLA_FREE(extra_buf);
 	return 0;
 }
 
@@ -276,7 +282,7 @@ static int zip_file_prepare(zip_file_info_t *file, zip_t *zip, const char *fn)
 		) {
 			zip_file_info_set(file, &zd.s);
 			SetFilePointer(zip->hArc, zd.s.fn_len, NULL, FILE_CURRENT);
-			zip_file_extra_parse(file, zip, zd.s.extra_len);
+			zip_file_extra_read(file, zip, zd.s.extra_len);
 			SetFilePointer(zip->hArc, zd.offset_header, NULL, FILE_BEGIN);
 		} else {
 			return 1;
@@ -288,7 +294,7 @@ static int zip_file_prepare(zip_file_info_t *file, zip_t *zip, const char *fn)
 		if(!ret) {
 			zip_file_info_set(file, &zf.s);
 			SetFilePointer(zip->hArc, zf.s.fn_len, NULL, FILE_CURRENT);
-			zip_file_extra_parse(file, zip, zf.s.extra_len);
+			zip_file_extra_read(file, zip, zf.s.extra_len);
 		}
 	}
 	return ret;
