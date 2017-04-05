@@ -169,6 +169,7 @@ int stack_remove_if_unneeded(const char *patch_id)
 {
 	auto runconfig = runconfig_get();
 	auto game = json_object_get(runconfig, "game");
+	auto build = json_object_get(runconfig, "build");
 	auto patches = json_object_get(runconfig, "patches");
 	size_t i;
 	json_t *patch_info;
@@ -181,20 +182,34 @@ int stack_remove_if_unneeded(const char *patch_id)
 		if(strcmp(id, patch_id)) {
 			continue;
 		}
-		int game_js_found = 0;
+		int game_found = 0;
 		if(json_is_string(game)) {
 			auto game_len = json_string_length(game);
-			size_t game_js_len = game_len + strlen(".js") + 1;
-			VLA(char, game_js, game_js_len);
-			sprintf(game_js, "%s.js", json_string_value(game));
+			auto game_val = json_string_value(game);
+			auto build_len = json_string_length(build);
+			auto build_val = json_string_value(build);
 
-			game_js_found = patch_file_exists(patch_info, game_js);
-			VLA_FREE(game_js);
+			size_t js_len = game_len + 1 + build_len + strlen(".js") + 1;
+			VLA(char, js, js_len);
+
+			// <game>.js
+			sprintf(js, "%s.js", game_val);
+			game_found |= patch_file_exists(patch_info, js);
+
+			// <game>/ (directory)
+			game_found |= patch_file_exists(patch_info, game_val);
+
+			if(build_val && !game_found) {
+				// <game>.<build>.js
+				sprintf(js, "%s.%s.js", game_val, build_val);
+				game_found |= patch_file_exists(patch_info, js);
+			}
+			VLA_FREE(js);
 		}
-		if(!game_js_found) {
+		if(!game_found) {
 			json_array_remove(patches, i);
 		}
-		return !game_js_found;
+		return !game_found;
 	}
 	return -1;
 }

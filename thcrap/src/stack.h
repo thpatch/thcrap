@@ -70,9 +70,10 @@ void stack_show_missing(void);
 /// ------------
 // Returns:
 // •  0 if the current patch stack contains a patch with the given name, and
-//      if that patch in turn contains a .js file for the current game.
-// •  1 if there is such a patch, but no .js file for the current game. This
-//      patch is then removed from the stack.
+//      if that patch in turn contains a .js file or directory for the current
+//      game.
+// •  1 if there is such a patch, but no .js file or directory for the current
+//      game. This patch is then removed from the stack.
 // • -1 if the current patch stack contains no patch with the given name.
 //
 // DLLs that add game support should call this in their thcrap_plugin_init()
