@@ -22,3 +22,6 @@ EXPORTS
 
 	UpdateThread
 	BP_update_poll
+
+	RepoDiscoverAtURL
+	RepoDiscoverFromLocal

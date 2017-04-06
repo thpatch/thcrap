@@ -1,6 +1,6 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Cheap command-line patch stack configuration tool
+  * Update Plugin
   *
   * ----
   *
@@ -8,15 +8,9 @@
   */
 
 #include <thcrap.h>
-#include "configure.h"
-#include <thcrap/src/thcrap_update_wrapper.h>
 #include "repo.h"
+#include "update.h"
 
-json_t* RepoGetLocalFN(const char *id)
-{
-	const char *repo_fn = "repo.js";
-	return json_pack("s++", id, "/", repo_fn);
-}
 
 int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
 {
@@ -59,7 +53,7 @@ int RepoDiscoverAtServers(json_t *servers, json_t *id_cache, json_t *url_cache)
 			i--;
 		}
 	}
-	repo_buffer = ServerDownloadFile_wrapper(in_mirrors, repo_fn, &repo_size, NULL);
+	repo_buffer = ServerDownloadFile(in_mirrors, repo_fn, &repo_size, NULL);
 	if(repo_buffer) {
 		repo_js = json_loadb_report(repo_buffer, repo_size, 0, repo_fn);
 	}
@@ -81,7 +75,14 @@ int RepoDiscoverAtServers(json_t *servers, json_t *id_cache, json_t *url_cache)
 			repo_fn_local_str = json_string_value(repo_fn_local);
 			ret = file_write(repo_fn_local_str, repo_buffer, repo_size);
 			json_object_set(id_cache, id, json_true());
-			if(ret && (ret = !file_write_error(repo_fn_local_str))) {
+			if(ret) {
+				log_printf(
+					"\n"
+					"Error writing to %s!\n"
+					"You probably do not have the permission to write to the current directory,\n"
+					"or the file itself is write-protected.\n",
+					repo_fn_local_str
+				);
 				goto end;
 			}
 		} else {
@@ -104,44 +105,10 @@ end:
 
 int RepoDiscoverAtURL(const char *start_url, json_t *id_cache, json_t *url_cache)
 {
-	json_t *in_mirrors = ServerBuild_wrapper(start_url);
+	json_t *in_mirrors = ServerBuild(start_url);
 	int ret = RepoDiscoverAtServers(in_mirrors, id_cache, url_cache);
 	json_decref(in_mirrors);
 	return ret;
-}
-
-json_t* RepoLocalNext(HANDLE *hFind)
-{
-	json_t *repo_js = NULL;
-	WIN32_FIND_DATAA w32fd;
-	BOOL find_ret = 0;
-	if(*hFind == NULL) {
-		// Too bad we can't do "*/repo.js" or something similar.
-		*hFind = FindFirstFile("*", &w32fd);
-		if(*hFind == INVALID_HANDLE_VALUE) {
-			return NULL;
-		}
-	} else {
-		find_ret = W32_ERR_WRAP(FindNextFile(*hFind, &w32fd));
-	}
-	while(!find_ret) {
-		if(
-			(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			&& strcmp(w32fd.cFileName, ".")
-			&& strcmp(w32fd.cFileName, "..")
-		) {
-			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
-			repo_js = json_load_file_report(json_string_value(repo_local_fn));
-			ServerInit_wrapper(repo_js);
-			json_decref(repo_local_fn);
-			if(repo_js) {
-				return repo_js;
-			}
-		}
-		find_ret = W32_ERR_WRAP(FindNextFile(*hFind, &w32fd));
-	};
-	FindClose(*hFind);
-	return NULL;
 }
 
 int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
@@ -158,16 +125,4 @@ int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
 		json_decref(repo_js);
 	}
 	return ret;
-}
-
-json_t* RepoLoad(void)
-{
-	HANDLE hFind = NULL;
-	json_t *repo_list = json_object();
-	json_t *repo_js;
-	while(repo_js = RepoLocalNext(&hFind)) {
-		const char *id = json_object_get_string(repo_js, "id");
-		json_object_set_new(repo_list, id, repo_js);
-	}
-	return repo_list;
 }

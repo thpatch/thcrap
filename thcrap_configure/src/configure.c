@@ -370,10 +370,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	);
 	pause();
 
-	if(RepoDiscoverAtURL(start_repo, id_cache, url_cache)) {
+	if(RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache)) {
 		goto end;
 	}
-	if(RepoDiscoverFromLocal(id_cache, url_cache)) {
+	if(RepoDiscoverFromLocal_wrapper(id_cache, url_cache)) {
 		goto end;
 	}
 	repo_list = RepoLoad();

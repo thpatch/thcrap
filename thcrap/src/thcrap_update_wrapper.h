@@ -28,6 +28,9 @@ int update_filter_games_wrapper(const char *fn, json_t *games);
 int patch_update_wrapper(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data);
 void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data);
 
+int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache);
+int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache);
+
 #ifdef __cplusplus
 }
 #endif

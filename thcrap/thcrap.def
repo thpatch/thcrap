@@ -218,6 +218,11 @@ EXPORTS
 	repatch_mod_init
 	repatch_mod_exit
 
+	; Repository handling
+	RepoLoad
+	RepoLocalNext
+	RepoGetLocalFN
+
 	; SHA-256
 	; -------
 	sha256_init
@@ -289,6 +294,8 @@ EXPORTS
 	update_filter_games_wrapper
 	patch_update_wrapper
 	stack_update_wrapper
+	RepoDiscoverAtURL_wrapper
+	RepoDiscoverFromLocal_wrapper
 
 	; Win32 detours
 	; -------------

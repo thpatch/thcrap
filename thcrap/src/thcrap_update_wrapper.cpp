@@ -82,3 +82,15 @@ void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data)
 {
 	CALL_WRAPPED_FUNCTION((void (*)(update_filter_func_t, json_t *)), "stack_update", filter_func, filter_data)
 }
+
+int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache)
+{
+	CALL_WRAPPED_FUNCTION((int (*)(const char *, json_t *, json_t *)), "RepoDiscoverAtURL", start_url, id_cache, url_cache)
+	return 0;
+}
+
+int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache)
+{
+	CALL_WRAPPED_FUNCTION((int (*)(json_t *, json_t *)), "RepoDiscoverFromLocal", id_cache, url_cache)
+	return 0;
+}

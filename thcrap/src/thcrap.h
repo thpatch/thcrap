@@ -44,6 +44,7 @@ extern "C" {
 #include "zip.h"
 #include "bp_file.h"
 #include "xpcompat.h"
+#include "repo.h"
 
 #ifdef __cplusplus
 }
