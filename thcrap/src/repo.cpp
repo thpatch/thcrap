@@ -8,7 +8,6 @@
   */
 
 #include <thcrap.h>
-#include "configure.h"
 #include "thcrap_update_wrapper.h"
 
 json_t* RepoGetLocalFN(const char *id)
