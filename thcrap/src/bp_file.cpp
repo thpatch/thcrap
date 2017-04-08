@@ -115,12 +115,20 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 	// -----------------
 	BP_file_name(regs, bp_info);
 	// -----------------
-	// th09 needs the POST_JSON_SIZE to be unconditionally written out to a
-	// scratch register inside its file decryption function, where the final
-	// decrypted buffer is allocated. The actually intended size register is
-	// used as the loop counter for the decryption, and putting anything else
-	// there will result in a few bytes of corruption at the end.
-	if(file_size) {
+	// th08 and th09 use their file size variable as the loop counter for LZSS
+	// decompression. Putting anything other than the original file size from
+	// the archive there (by writing to that variable) will result in a few
+	// bytes of corruption at the end of the decompressed file.
+	// Therefore, these games need the POST_JSON_SIZE to be unconditionally
+	// written out to registers three separate times.
+
+	// However, we *do* check whether we have a file name. If we don't, we
+	// can't possibly have resolved a replacement file that would give us a
+	// custom file size.
+	// This allows this breakpoint to be placed in front of memory allocation
+	// calls that are used for more than just replaceable files, without
+	// affecting unrelated memory allocations.
+	if(file_size && fr->name) {
 		if(!fr->pre_json_size) {
 			fr->pre_json_size = *file_size;
 		}
