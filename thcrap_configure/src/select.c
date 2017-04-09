@@ -4,7 +4,7 @@
   */
 
 #include <thcrap.h>
-#include <thcrap_update/src/update.h>
+#include <thcrap/src/thcrap_update_wrapper.h>
 #include "configure.h"
 #include "search.h"
 
@@ -89,7 +89,7 @@ int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
 	const char *patch_id = json_array_get_string(sel, 1);
 	const json_t *repo = json_object_get(repo_list, repo_id);
 	json_t *repo_servers = json_object_get(repo, "servers");
-	json_t *patch_info = patch_bootstrap(sel, repo_servers);
+	json_t *patch_info = patch_bootstrap_wrapper(sel, repo_servers);
 	json_t *patch_full = patch_init(patch_info);
 	json_t *dependencies = json_object_get(patch_full, "dependencies");
 	json_t *dep_array = json_array();

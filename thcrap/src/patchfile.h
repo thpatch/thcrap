@@ -97,6 +97,10 @@ json_t* patch_init(json_t *patch_info);
 int patch_rel_to_abs(json_t *patch_info, const char *base_path);
 /// --------------
 
+// Patch selection format: ["repo_id", "patch_id"]
+// Builds a new patch object with an archive directory from a patch selection.
+json_t* patch_build(const json_t *sel);
+
 /// -----
 /// Hooks
 /// -----

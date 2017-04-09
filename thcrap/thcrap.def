@@ -181,6 +181,7 @@ EXPORTS
 	patch_json_store
 	patch_file_delete
 
+	patch_build
 	patch_init
 	patch_rel_to_abs
 
@@ -296,6 +297,7 @@ EXPORTS
 	stack_update_wrapper
 	RepoDiscoverAtURL_wrapper
 	RepoDiscoverFromLocal_wrapper
+	patch_bootstrap_wrapper
 
 	; Win32 detours
 	; -------------

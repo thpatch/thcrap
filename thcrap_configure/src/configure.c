@@ -128,37 +128,6 @@ int file_write_text(const char *fn, const char *str)
 	return ret;
 }
 
-json_t* patch_build(const json_t *sel)
-{
-	const char *repo_id = json_array_get_string(sel, 0);
-	const char *patch_id = json_array_get_string(sel, 1);
-	return json_pack("{ss+++}",
-		"archive", repo_id, "/", patch_id, "/"
-	);
-}
-
-json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
-{
-	const char *main_fn = "patch.js";
-	char *patch_js_buffer;
-	DWORD patch_js_size;
-	json_t *patch_info = patch_build(sel);
-	const json_t *patch_id = json_array_get(sel, 1);
-	size_t patch_len = json_string_length(patch_id) + 1;
-
-	size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
-	VLA(char, remote_patch_fn, remote_patch_fn_len);
-	sprintf(remote_patch_fn, "%s/%s", json_string_value(patch_id), main_fn);
-
-	patch_js_buffer = (char*)ServerDownloadFile_wrapper(repo_servers, remote_patch_fn, &patch_js_size, NULL);
-	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
-	// TODO: Nice, friendly error
-
-	VLA_FREE(remote_patch_fn);
-	SAFE_FREE(patch_js_buffer);
-	return patch_info;
-}
-
 const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 {
 	const char *ret = NULL;

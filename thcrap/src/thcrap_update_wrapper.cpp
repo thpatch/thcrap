@@ -94,3 +94,9 @@ int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache)
 	CALL_WRAPPED_FUNCTION((int (*)(json_t *, json_t *)), "RepoDiscoverFromLocal", id_cache, url_cache)
 	return 0;
 }
+
+json_t *patch_bootstrap_wrapper(const json_t *sel, json_t *repo_servers)
+{
+	CALL_WRAPPED_FUNCTION((json_t *(*)(const json_t *, json_t *)), "patch_bootstrap", sel, repo_servers)
+	return patch_build(sel);
+}

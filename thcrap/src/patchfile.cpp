@@ -281,6 +281,15 @@ int patch_file_delete(const json_t *patch_info, const char *fn)
 	return ret;
 }
 
+json_t* patch_build(const json_t *sel)
+{
+	const char *repo_id = json_array_get_string(sel, 0);
+	const char *patch_id = json_array_get_string(sel, 1);
+	return json_pack("{ss+++}",
+		"archive", repo_id, "/", patch_id, "/"
+	);
+}
+
 json_t* patch_init(json_t *patch_info)
 {
 	json_t *patch_js = patch_json_load(patch_info, "patch.js", NULL);

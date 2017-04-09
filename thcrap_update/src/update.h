@@ -59,6 +59,10 @@ int update_filter_global(const char *fn, json_t *null);
 // in the flexible JSON array [games].
 int update_filter_games(const char *fn, json_t *games);
 
+// Bootstraps the patch selection [sel] by building a patch object, downloading
+// patch.js from [repo_servers], and storing it inside the returned object.
+json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers);
+
 int patch_update(
 	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data
 );

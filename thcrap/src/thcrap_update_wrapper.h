@@ -31,6 +31,8 @@ void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data)
 int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache);
 int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache);
 
+json_t* patch_bootstrap_wrapper(const json_t *sel, json_t *repo_servers);
+
 #ifdef __cplusplus
 }
 #endif
