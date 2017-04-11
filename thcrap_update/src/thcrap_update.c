@@ -32,8 +32,6 @@ int BP_update_poll(x86_reg_t *regs, json_t *bp_info)
 
 int __stdcall thcrap_plugin_init()
 {
-	http_init();
-
 	update_notify_thcrap();
 	update_notify_game();
 
@@ -43,6 +41,7 @@ int __stdcall thcrap_plugin_init()
 
 int InitDll(HMODULE hDll)
 {
+	http_init();
 	InitializeCriticalSection(&cs_update);
 	return 0;
 }

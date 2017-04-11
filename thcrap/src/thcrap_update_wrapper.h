@@ -15,9 +15,6 @@
 extern "C" {
 #endif
 
-int http_init_wrapper(void);
-void http_exit_wrapper(void);
-
 json_t* ServerBuild_wrapper(const char *start_url);
 json_t* ServerInit_wrapper(json_t *patch_js);
 

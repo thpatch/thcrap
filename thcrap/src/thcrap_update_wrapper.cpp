@@ -36,16 +36,6 @@ if (cached_func) { \
 	return (cast cached_func)(__VA_ARGS__); \
 }
 
-int http_init_wrapper(void)
-{
-	CALL_WRAPPED_FUNCTION((int (*)(void)), "http_init")
-	return 0;
-}
-void http_exit_wrapper(void)
-{
-	CALL_WRAPPED_FUNCTION((void (*)(void)), "http_exit")
-}
-
 json_t* ServerBuild_wrapper(const char *start_url)
 {
 	CALL_WRAPPED_FUNCTION((json_t *(*)(const char *)), "ServerBuild", start_url)

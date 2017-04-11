@@ -301,8 +301,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
 	}
 
-	http_init_wrapper();
-
 	if(json_array_size(args) > 1) {
 		start_repo = json_array_get_string(args, 1);
 	}
