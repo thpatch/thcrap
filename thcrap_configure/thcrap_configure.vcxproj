@@ -36,7 +36,6 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\configure_search.c" />
-    <ClCompile Include="src\search.c" />
     <ClCompile Include="src\select.c" />
     <ClCompile Include="src\shelllink.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

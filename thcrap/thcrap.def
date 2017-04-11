@@ -220,9 +220,14 @@ EXPORTS
 	repatch_mod_exit
 
 	; Repository handling
+	; -------------------
 	RepoLoad
 	RepoLocalNext
 	RepoGetLocalFN
+
+	; Search on disk
+	; --------------
+	SearchForGames
 
 	; SHA-256
 	; -------
@@ -286,6 +291,7 @@ EXPORTS
 	str_address_value
 
 	; thcrap_update wrapper functions
+	; -------------------------------
 	http_init_wrapper
 	http_exit_wrapper
 	ServerBuild_wrapper

@@ -1,10 +1,13 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Cheap command-line patch stack configuration tool
+  * Main DLL
+  *
+  * ----
+  *
+  * Games search on disk
   */
 
 #include <thcrap.h>
-#include "configure.h"
 
 typedef struct {
 	DWORD size_min;
@@ -35,7 +38,7 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 		strcat(exe_fn, w32fd->cFileName);
 		str_slash_normalize(exe_fn);
 
-		ver = identify_by_hash(exe_fn, &w32fd->nFileSizeLow, state.versions);
+		ver = identify_by_hash(exe_fn, (size_t*)&w32fd->nFileSizeLow, state.versions);
 		if(!ver) {
 			return ret;
 		}
