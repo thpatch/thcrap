@@ -9,8 +9,6 @@
 #include "repo.h"
 
 typedef enum {
-	LINK_FN,
-	LINK_ARGS,
 	RUN_CFG_FN,
 	RUN_CFG_FN_JS
 } configure_slot_t;
@@ -164,55 +162,6 @@ const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 			ret = strings_strcat(slot, patch_id);
 		}
 	}
-	return ret;
-}
-
-int CreateShortcuts(const char *run_cfg_fn, json_t *games)
-{
-#ifdef _DEBUG
-	const char *loader_exe = "thcrap_loader_d.exe";
-#else
-	const char *loader_exe = "thcrap_loader.exe";
-#endif
-	int ret = 0;
-	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	VLA(char, self_fn, self_fn_len);
-
-	GetModuleFileNameU(NULL, self_fn, self_fn_len);
-	PathRemoveFileSpec(self_fn);
-	PathAddBackslashA(self_fn);
-
-	// Yay, COM.
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	{
-		const char *key = NULL;
-		json_t *cur_game = NULL;
-		VLA(char, self_path, self_fn_len);
-		strcpy(self_path, self_fn);
-
-		strcat(self_fn, loader_exe);
-
-		log_printf("Creating shortcuts");
-
-		json_object_foreach(games, key, cur_game) {
-			const char *game_fn = json_string_value(cur_game);
-			const char *link_fn = strings_sprintf(LINK_FN, "%s (%s).lnk", key, run_cfg_fn);
-			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
-
-			log_printf(".");
-
-			if(
-				CreateLink(link_fn, self_fn, link_args, self_path, game_fn)
-				&& !file_write_error(link_fn)
-			) {
-				ret = 1;
-				break;
-			}
-		}
-		VLA_FREE(self_path);
-	}
-	VLA_FREE(self_fn);
-	CoUninitialize();
 	return ret;
 }
 

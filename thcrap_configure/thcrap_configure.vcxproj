@@ -37,9 +37,6 @@
     </ClCompile>
     <ClCompile Include="src\configure_search.c" />
     <ClCompile Include="src\select.c" />
-    <ClCompile Include="src\shelllink.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClInclude Include="src\configure.h" />
     <ResourceCompile Include="thcrap_configure.rc" />
   </ItemGroup>

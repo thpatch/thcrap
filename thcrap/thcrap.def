@@ -235,6 +235,11 @@ EXPORTS
 	sha256_update
 	sha256_final
 
+	; Shortcuts
+	; ---------
+	CreateLink
+	CreateShortcuts
+
 	; Specs
 	; -----
 	specs_mod_init

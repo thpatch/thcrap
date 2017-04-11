@@ -46,6 +46,7 @@ extern "C" {
 #include "xpcompat.h"
 #include "repo.h"
 #include "search.h"
+#include "shelllink.h"
 
 #ifdef __cplusplus
 }
