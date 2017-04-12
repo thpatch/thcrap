@@ -33,13 +33,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\notify.c" />
-    <ClCompile Include="src\repo.c" />
-    <ClCompile Include="src\self.c" />
-    <ClCompile Include="src\thcrap_update.c">
+    <ClCompile Include="src\notify.cpp" />
+    <ClCompile Include="src\repo.cpp" />
+    <ClCompile Include="src\self.cpp" />
+    <ClCompile Include="src\thcrap_update.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\update.c" />
+    <ClCompile Include="src\update.cpp" />
     <ClInclude Include="src\notify.h" />
     <ClInclude Include="src\repo.h" />
     <ClInclude Include="src\self.h" />

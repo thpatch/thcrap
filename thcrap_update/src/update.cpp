@@ -348,7 +348,7 @@ int update_filter_games(const char *fn, json_t *games)
 json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 {
 	const char *main_fn = "patch.js";
-	char *patch_js_buffer;
+	void *patch_js_buffer;
 	DWORD patch_js_size;
 	json_t *patch_info = patch_build(sel);
 	const json_t *patch_id = json_array_get(sel, 1);
@@ -358,7 +358,7 @@ json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 	VLA(char, remote_patch_fn, remote_patch_fn_len);
 	sprintf(remote_patch_fn, "%s/%s", json_string_value(patch_id), main_fn);
 
-	patch_js_buffer = (char*)ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
+	patch_js_buffer = ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
 	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
 	// TODO: Nice, friendly error
 
@@ -375,7 +375,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	json_t *local_files = NULL;
 
 	DWORD remote_files_js_size;
-	BYTE *remote_files_js_buffer = NULL;
+	char *remote_files_js_buffer = NULL;
 
 	json_t *remote_files_orig = NULL;
 	json_t *remote_files_to_get = NULL;
@@ -424,7 +424,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		log_printf("Checking for updates of %s...\n", patch_name);
 	}
 
-	remote_files_js_buffer = ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
+	remote_files_js_buffer = (char *)ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
 	if(!remote_files_js_buffer) {
 		// All servers offline...
 		ret = 3;
@@ -476,7 +476,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		// Delete locally unchanged files with a JSON null value in the remote list
 		if(json_is_null(remote_val) && json_is_integer(local_val)) {
 			file_size = 0;
-			file_buffer = patch_file_load(patch_info, key, &file_size);
+			file_buffer = patch_file_load(patch_info, key, (size_t*)&file_size);
 			if(file_buffer && file_size) {
 				DWORD local_crc = crc32(0, (Bytef*)file_buffer, file_size);
 				if(local_crc == json_integer_value(local_val)) {

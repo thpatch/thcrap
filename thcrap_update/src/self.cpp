@@ -179,7 +179,9 @@ void self_window_create(smartdlg_state_t *state)
 	ShowWindow(state->hWnd, SW_SHOW);
 	UpdateWindow(state->hWnd);
 
-	CreateThread(NULL, 0, self_window_thread, state, 0, &state->thread_id);
+	CreateThread(
+		NULL, 0, (LPTHREAD_START_ROUTINE)self_window_thread, state, 0, &state->thread_id
+	);
 }
 /// ----------------------------
 
@@ -277,7 +279,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 		if(ret) {
 			continue;
 		}
-		signer_info = malloc(param_len);
+		signer_info = (PCERT_INFO)malloc(param_len);
 		// MANDATORY
 		ZeroMemory(signer_info, param_len);
 		ret = W32_ERR_WRAP(CryptMsgGetParam(
@@ -323,7 +325,7 @@ static int self_verify_buffer(
 		sig_base64, sig_base64_len, CRYPT_STRING_BASE64, NULL, &sig_len, NULL, NULL
 	));
 	if(!ret) {
-		sig_buf = malloc(sig_len);
+		sig_buf = (BYTE *)malloc(sig_len);
 		ret = W32_ERR_WRAP(CryptStringToBinaryA(
 			sig_base64, sig_base64_len, CRYPT_STRING_BASE64, sig_buf, &sig_len, NULL, NULL
 		));
@@ -476,7 +478,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	void *arc_buf = NULL;
 	zip_t *arc = NULL;
 	DWORD sig_len = 0;
-	void *sig_buf = NULL;
+	char *sig_buf = NULL;
 	json_t *sig = NULL;
 	PCCERT_CONTEXT context = NULL;
 	smartdlg_state_t window;
@@ -498,7 +500,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		ret = SELF_SERVER_ERROR;
 		goto end;
 	}
-	sig_buf = self_download(&sig_len, SIG_FN);
+	sig_buf = (char *)self_download(&sig_len, SIG_FN);
 	sig = json_loadb_report(sig_buf, sig_len, JSON_DISABLE_EOF_CHECK, SIG_FN);
 	if(!sig) {
 		ret = SELF_NO_SIG;
@@ -526,7 +528,7 @@ end:
 		DeleteFile(arc_fn);
 	}
 	if(arc_fn_ptr) {
-		*arc_fn_ptr = malloc(TEMP_FN_LEN);
+		*arc_fn_ptr = (char *)malloc(TEMP_FN_LEN);
 		memcpy(*arc_fn_ptr, arc_fn, TEMP_FN_LEN);
 	}
 	SetCurrentDirectory(cur_dir);

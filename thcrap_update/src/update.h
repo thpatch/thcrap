@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
 	GET_OUT_OF_MEMORY = -2,
 	GET_INVALID_PARAMETER = -1,
@@ -67,3 +71,7 @@ int patch_update(
 	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data
 );
 void stack_update(update_filter_func_t filter_func, json_t *filter_data);
+
+#ifdef __cplusplus
+}
+#endif

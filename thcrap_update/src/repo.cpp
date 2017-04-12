@@ -37,7 +37,7 @@ int RepoDiscoverAtServers(json_t *servers, json_t *id_cache, json_t *url_cache)
 	size_t i;
 	json_t *server;
 	DWORD repo_size;
-	void *repo_buffer = NULL;
+	char *repo_buffer = NULL;
 	json_t *repo_js = NULL;
 	const char *id = NULL;
 	json_t *repo_fn_local = NULL;
@@ -53,7 +53,7 @@ int RepoDiscoverAtServers(json_t *servers, json_t *id_cache, json_t *url_cache)
 			i--;
 		}
 	}
-	repo_buffer = ServerDownloadFile(in_mirrors, repo_fn, &repo_size, NULL);
+	repo_buffer = (char *)ServerDownloadFile(in_mirrors, repo_fn, &repo_size, NULL);
 	if(repo_buffer) {
 		repo_js = json_loadb_report(repo_buffer, repo_size, 0, repo_fn);
 	}
