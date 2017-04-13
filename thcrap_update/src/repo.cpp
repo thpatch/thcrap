@@ -29,13 +29,10 @@ int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
 	return ret;
 }
 
-int RepoDiscoverAtServers(json_t *servers, json_t *id_cache, json_t *url_cache)
+int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache)
 {
 	int ret = 0;
 	const char *repo_fn = "repo.js";
-	json_t *in_mirrors = json_copy(servers);
-	size_t i;
-	json_t *server;
 	DWORD repo_size;
 	char *repo_buffer = NULL;
 	json_t *repo_js = NULL;
@@ -46,23 +43,22 @@ int RepoDiscoverAtServers(json_t *servers, json_t *id_cache, json_t *url_cache)
 	url_cache = json_is_object(url_cache) ? json_incref(url_cache) : json_object();
 	id_cache = json_is_object(id_cache) ? json_incref(id_cache) : json_object();
 
-	json_array_foreach(in_mirrors, i, server) {
-		const char *server_url = json_object_get_string(server, "url");
-		if(json_object_get(url_cache, server_url)) {
-			json_array_remove(in_mirrors, i);
-			i--;
+	auto it = servers.begin();
+	while(it != servers.end()) {
+		if(json_object_get(url_cache, (*it).url)) {
+			it = servers.erase(it);
+		} else {
+			it++;
 		}
 	}
-	repo_buffer = (char *)ServerDownloadFile(in_mirrors, repo_fn, &repo_size, NULL);
+	repo_buffer = (char *)servers.download(&repo_size, repo_fn, NULL);
 	if(repo_buffer) {
 		repo_js = json_loadb_report(repo_buffer, repo_size, 0, repo_fn);
 	}
 	// Cache all servers that have been visited
-	json_array_foreach(in_mirrors, i, server) {
-		json_t *server_time = json_object_get(server, "time");
-		if(!(json_integer_value(server) == 1)) {
-			const char *server_url = json_object_get_string(server, "url");
-			json_object_set(url_cache, server_url, json_true());
+	for(auto it : servers) {
+		if(it.visited()) {
+			json_object_set(url_cache, it.url, json_true());
 		}
 	}
 
@@ -97,7 +93,6 @@ end:
 	json_decref(repo_fn_local);
 	SAFE_FREE(repo_buffer);
 	json_decref(repo_js);
-	json_decref(in_mirrors);
 	json_decref(url_cache);
 	json_decref(id_cache);
 	return ret;
@@ -105,10 +100,8 @@ end:
 
 int RepoDiscoverAtURL(const char *start_url, json_t *id_cache, json_t *url_cache)
 {
-	json_t *in_mirrors = ServerBuild(start_url);
-	int ret = RepoDiscoverAtServers(in_mirrors, id_cache, url_cache);
-	json_decref(in_mirrors);
-	return ret;
+	servers_t in_servers(start_url);
+	return RepoDiscoverAtServers(in_servers, id_cache, url_cache);
 }
 
 int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
@@ -117,7 +110,8 @@ int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
 	HANDLE hFind = NULL;
 	json_t *repo_js;
 	while(repo_js = RepoLocalNext(&hFind)) {
-		json_t *servers = json_object_get(repo_js, "servers");
+		servers_t servers;
+		servers.from(json_object_get(repo_js, "servers"));
 		ret = RepoDiscoverAtServers(servers, id_cache, url_cache);
 		if(!ret) {
 			ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache);

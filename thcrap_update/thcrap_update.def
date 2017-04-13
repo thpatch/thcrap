@@ -5,14 +5,6 @@ EXPORTS
 	http_init
 	http_exit
 
-	ServerBuild
-	ServerInit
-
-	ServerNewSession
-	ServerGetFirst
-	ServerGetNumActive
-	ServerDisable
-
 	ServerDownloadFile
 
 	update_filter_global

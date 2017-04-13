@@ -38,7 +38,6 @@ json_t* RepoLocalNext(HANDLE *hFind)
 		) {
 			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
 			repo_js = json_load_file_report(json_string_value(repo_local_fn));
-			ServerInit_wrapper(repo_js);
 			json_decref(repo_local_fn);
 			if(repo_js) {
 				return repo_js;

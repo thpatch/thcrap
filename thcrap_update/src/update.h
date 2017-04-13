@@ -24,25 +24,6 @@ typedef enum {
 int http_init(void);
 void http_exit(void);
 
-// Builds a server object from [start_url].
-json_t* ServerBuild(const char *start_url);
-
-// Initializes the <servers> object in [patch_js].
-json_t* ServerInit(json_t *patch_js);
-
-// "Initiates a new downloading session".
-// That is, resets all time values of the [servers].
-void ServerNewSession(json_t *servers);
-
-// Returns the index of the first server to try.
-// This selects the fastest server based on the measurements of previous download times.
-const int ServerGetFirst(const json_t *servers);
-
-// Returns the number of active [servers].
-size_t ServerGetNumActive(const json_t *servers);
-
-int ServerDisable(json_t *server);
-
 // Tries to download the given [fn] from any server in [servers].
 // If successful, [file_size] receives the size of the downloaded file.
 // [exp_crc] can be optionally given to enforce the downloaded file to have a
@@ -74,4 +55,56 @@ void stack_update(update_filter_func_t filter_func, json_t *filter_data);
 
 #ifdef __cplusplus
 }
+
+/// Internal C++ server connection handling
+/// ---------------------------------------
+#include <vector>
+
+struct server_t {
+	// This either comes from a JSON object with a lifetime longer than any
+	// instance of this strucuture, or a hardcoded string, so no need to use
+	// std::string here.
+	// TODO: Turn this into a std::string_view once we've migrated to a C++17
+	// compiler.
+	const char *url = NULL;
+
+	int time = 0;
+
+	bool  active() const { return time >= 0; }
+	bool  unused() const { return time == 0; }
+	bool visited() const { return time  > 0; }
+
+	void disable() {
+		this->time = -1;
+	}
+
+	server_t() {
+	}
+
+	server_t(const char *_url) : url(_url) {
+ 	}
+};
+
+struct servers_t : std::vector<server_t> {
+	// Returns the index of the first server to try. This selects the fastest
+	// server based on the measurements of previous download times.
+	int get_first() const;
+
+	// Returns the number of active servers.
+	int num_active() const;
+
+	// Internal version of ServerDownloadFile().
+	void* download(DWORD *file_size, const char *fn, const DWORD *exp_crc);
+
+	// Fills this instance with data from a JSON "servers" object as used
+	// in repo.js and patch.js.
+	void from(const json_t *servers);
+
+	servers_t() {
+	}
+
+	servers_t(const char *url) : std::vector<server_t>({url}) {
+	}
+};
+/// ---------------------------------------
 #endif

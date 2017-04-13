@@ -40,17 +40,6 @@ if (cached_func) { \
 	return (cast cached_func)(__VA_ARGS__); \
 }
 
-json_t* ServerBuild_wrapper(const char *start_url)
-{
-	CALL_WRAPPED_FUNCTION((json_t *(*)(const char *)), "ServerBuild", start_url)
-	return json_object();
-}
-json_t* ServerInit_wrapper(json_t *patch_js)
-{
-	CALL_WRAPPED_FUNCTION((json_t *(*)(json_t *)), "ServerInit", patch_js)
-	return json_object();
-}
-
 void* ServerDownloadFile_wrapper(json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc)
 {
 	CALL_WRAPPED_FUNCTION((void *(*)(json_t *, const char *, DWORD *, const DWORD *)), "ServerDownloadFile", servers, fn, file_size, exp_crc)

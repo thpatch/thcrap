@@ -15,9 +15,6 @@
 extern "C" {
 #endif
 
-json_t* ServerBuild_wrapper(const char *start_url);
-json_t* ServerInit_wrapper(json_t *patch_js);
-
 void* ServerDownloadFile_wrapper(json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc);
 
 int update_filter_global_wrapper(const char *fn, json_t *null);

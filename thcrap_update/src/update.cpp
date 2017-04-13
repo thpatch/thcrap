@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <unordered_map>
 #include <MMSystem.h>
 #include <WinInet.h>
 #include <zlib.h>
@@ -120,66 +121,27 @@ void http_exit(void)
 	}
 }
 
-json_t* ServerBuild(const char *start_url)
+/// Internal C++ server connection handling
+/// ---------------------------------------
+int servers_t::get_first() const
 {
-	return json_pack("[{sssb}]",
-		"url", start_url,
-		"time", 1
-	);
-}
-
-json_t* ServerInit(json_t *patch_js)
-{
-	json_t *servers = json_object_get(patch_js, "servers");
-	json_t *val;
-	size_t i;
-
-	json_array_foreach(servers, i, val) {
-		json_t *obj = val;
-		if(json_is_string(val)) {
-			// Convert to object
-			obj = json_object();
-			json_object_set(obj, "url", val);
-			json_array_set_new(servers, i, obj);
-		}
-		json_object_set(obj, "time", json_true());
-	}
-	return servers;
-}
-
-void ServerNewSession(json_t *servers)
-{
-	size_t i;
-	json_t *server;
-
-	json_array_foreach(servers, i, server) {
-		json_object_set_nocheck(server, "time", json_true());
-	}
-}
-
-const int ServerGetFirst(const json_t *servers)
-{
-	unsigned int last_time = -1;
+	int last_time = INT_MAX;
 	size_t i = 0;
 	int fastest = -1;
 	int tryout = -1;
-	json_t *server;
 
-	// Any verification is performed in ServerDownloadFile().
-	if(json_array_size(servers) == 0) {
+	// Any verification is performed in servers::download().
+	if(this->size() == 0) {
 		return 0;
 	}
 
 	// Get fastest server from previous data
-	json_array_foreach(servers, i, server) {
-		const json_t *server_time = json_object_get(server, "time");
-		if(json_is_integer(server_time)) {
-			json_int_t cur_time = json_integer_value(server_time);
-			if(cur_time < last_time) {
-				last_time = (unsigned int)cur_time;
-				fastest = i;
-			}
-		} else if(json_is_true(server_time)) {
+	for(i = 0; i < this->size(); i++) {
+		const auto &server = (*this)[i];
+		if(server.visited() && server.time < last_time) {
+			last_time = server.time;
+			fastest = i;
+		} else if(server.unused()) {
 			tryout = i;
 		}
 	}
@@ -193,37 +155,26 @@ const int ServerGetFirst(const json_t *servers)
 	}
 }
 
-size_t ServerGetNumActive(const json_t *servers)
+int servers_t::num_active() const
 {
-	size_t i;
-	json_t *server;
-	int ret = json_array_size(servers);
-
-	json_array_foreach(servers, i, server) {
-		if(json_is_false(json_object_get(server, "time"))) {
-			ret--;
+	int ret = 0;
+	for(const auto& i : (*this)) {
+		if(i.active()) {
+			ret++;
 		}
 	}
 	return ret;
 }
 
-int ServerDisable(json_t *server)
-{
-	json_object_set(server, "time", json_false());
-	return 0;
-}
-
-void* ServerDownloadFile(
-	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
-)
+void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc)
 {
 	BYTE *file_buffer = NULL;
 	int i;
 
-	int servers_first = ServerGetFirst(servers);
-	int servers_total = json_array_size(servers);
+	int servers_first = this->get_first();
+	auto servers_total = this->size();
 	// gets decremented in the loop
-	int servers_left = servers_total;
+	auto servers_left = servers_total;
 
 	if(!fn || !file_size || servers_first < 0) {
 		return NULL;
@@ -234,31 +185,28 @@ void* ServerDownloadFile(
 		DWORD time;
 		DWORD crc = 0;
 		get_result_t get_ret;
-		json_t *server = json_array_get(servers, i);
-		json_t *server_time = json_object_get(server, "time");
+		server_t &server = (*this)[i];
 
-		if(json_is_false(server_time)) {
+		if(!server.active()) {
 			continue;
 		}
 		servers_left--;
 
 		{
 			URL_COMPONENTSA uc = {0};
-			const json_t *server_url_obj = json_object_get(server, "url");
-			const char *server_url = json_string_value(server_url_obj);
-			size_t server_url_len = json_string_length(server_url_obj);
+			auto server_len = strlen(server.url) + 1;
 			// * 3 because characters may be URL-encoded
-			DWORD url_len = server_url_len + 1 + (strlen(fn) * 3) + 1;
-			VLA(char, server_host, server_url_len);
+			DWORD url_len = server_len + (strlen(fn) * 3) + 1;
+			VLA(char, server_host, server_len);
 			VLA(char, url, url_len);
 
-			InternetCombineUrl(server_url, fn, url, &url_len, 0);
+			InternetCombineUrl(server.url, fn, url, &url_len, 0);
 
 			uc.dwStructSize = sizeof(uc);
 			uc.lpszHostName = server_host;
-			uc.dwHostNameLength = server_url_len;
+			uc.dwHostNameLength = server_len;
 
-			InternetCrackUrl(server_url, 0, 0, &uc);
+			InternetCrackUrl(server.url, 0, 0, &uc);
 
 			log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
@@ -276,23 +224,23 @@ void* ServerDownloadFile(
 				goto abort;
 
 			case GET_SERVER_ERROR:
-				ServerDisable(server);
+				server.disable();
 				continue;
 		}
 		if(*file_size == 0) {
 			log_printf(" 0-byte file! %s\n", servers_left ? "Trying next server..." : "");
-			ServerDisable(server);
+			server.disable();
 			continue;
 		}
 
 		time = timeGetTime() - time_start;
 		log_printf(" (%d b, %d ms)\n", *file_size, time);
-		json_object_set_new(server, "time", json_integer(time));
+		server.time = time;
 
 		crc = crc32(crc, file_buffer, *file_size);
 		if(exp_crc && *exp_crc != crc) {
 			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
-			ServerDisable(server);
+			server.disable();
 			SAFE_FREE(file_buffer);
 		} else {
 			return file_buffer;
@@ -301,6 +249,37 @@ void* ServerDownloadFile(
 abort:
 	SAFE_FREE(file_buffer);
 	return NULL;
+}
+
+void servers_t::from(const json_t *servers)
+{
+	auto servers_len = json_array_size(servers);
+	this->resize(servers_len);
+	for(size_t i = 0; i < servers_len; i++) {
+		json_t *val = json_array_get(servers, i);
+		assert(json_is_string(val));
+		(*this)[i].url = json_string_value(val);
+		(*this)[i].time = 0;
+	}
+}
+
+servers_t& servers_cache(const json_t *servers)
+{
+	static std::unordered_map<const json_t *, servers_t> patch_servers;
+
+	servers_t &srvs = patch_servers[servers];
+	if(srvs.size() == 0) {
+		srvs.from(servers);
+	}
+	return srvs;
+}
+/// ---------------------------------------
+
+void* ServerDownloadFile(
+	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
+)
+{
+	return servers_cache(servers).download(file_size, fn, exp_crc);
 }
 
 int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)
@@ -371,7 +350,6 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 {
 	const char *files_fn = "files.js";
 
-	json_t *servers = NULL;
 	json_t *local_files = NULL;
 
 	DWORD remote_files_js_size;
@@ -409,8 +387,8 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		goto end_update;
 	}
 
-	servers = ServerInit(patch_info);
-	if(!json_is_array(servers)) {
+	auto &servers = servers_cache(json_object_get(patch_info, "servers"));
+	if(servers.size() == 0) {
 		// No servers for this patch
 		ret = 2;
 		goto end_update;
@@ -424,7 +402,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		log_printf("Checking for updates of %s...\n", patch_name);
 	}
 
-	remote_files_js_buffer = (char *)ServerDownloadFile(servers, files_fn, &remote_files_js_size, NULL);
+	remote_files_js_buffer = (char *)servers.download(&remote_files_js_size, files_fn, NULL);
 	if(!remote_files_js_buffer) {
 		// All servers offline...
 		ret = 3;
@@ -465,7 +443,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		DWORD file_size;
 		json_t *local_val;
 
-		if(!ServerGetNumActive(servers)) {
+		if(servers.num_active() == 0) {
 			ret = 3;
 			break;
 		}
@@ -491,9 +469,9 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 			SAFE_FREE(file_buffer);
 		} else if(json_is_integer(remote_val)) {
 			DWORD remote_crc = json_integer_value(remote_val);
-			file_buffer = ServerDownloadFile(servers, key, &file_size, &remote_crc);
+			file_buffer = servers.download(&file_size, key, &remote_crc);
 		} else {
-			file_buffer = ServerDownloadFile(servers, key, &file_size, NULL);
+			file_buffer = servers.download(&file_size, key, NULL);
 		}
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
