@@ -18,6 +18,7 @@ const char *ARC_FN = "thcrap_brliron.zip";
 const char *SIG_FN = "thcrap_brliron.zip.sig";
 const char *PREFIX_BACKUP = "thcrap_old_%s_";
 const char *PREFIX_NEW = "thcrap_new_";
+const char *EXT_NEW = ".zip";
 
 static void* self_download(DWORD *arc_len, const char *arc_fn)
 {
@@ -182,10 +183,12 @@ void self_window_create(smartdlg_state_t *state)
 }
 /// ----------------------------
 
-// A superior GetTempFileName.
-static int self_tempname(char *fn, size_t len, const char *prefix)
+// A superior GetTempFileName. Fills [fn] with [len] / 2 random bytes printed
+// as their hexadecimal representation. Returns a pointer to the final \0 at
+// the end of the file name.
+static char* self_tempname(char *fn, size_t len, const char *prefix)
 {
-	int ret = -1;
+	char* p = fn;
 	size_t prefix_len = prefix ? strlen(prefix) : 0;
 	if(fn && len > 8 && prefix && prefix_len < len - 1) {
 		HCRYPTPROV hCryptProv;
@@ -194,7 +197,7 @@ static int self_tempname(char *fn, size_t len, const char *prefix)
 		size_t i = 0;
 
 		ZeroMemory(fn, len);
-		ret = W32_ERR_WRAP(CryptAcquireContext(
+		auto ret = W32_ERR_WRAP(CryptAcquireContext(
 			&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
 		));
 		if(!ret) {
@@ -208,13 +211,13 @@ static int self_tempname(char *fn, size_t len, const char *prefix)
 			}
 		}
 		for(i = 0; i < rnd_num; i++) {
-			sprintf(fn + (i * 2), "%02x", rnd[i]);
+			p += sprintf(p, "%02x", rnd[i]);
 		}
 		memcpy(fn, prefix, prefix_len);
 		VLA_FREE(rnd);
 		CryptReleaseContext(hCryptProv, 0);
 	}
-	return ret;
+	return p;
 }
 
 static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
@@ -298,7 +301,39 @@ end:
 	return ret;
 }
 
+// Prints at most [len] characters of the value of [hHash] into [buf]. Returns
+// a pointer to the final \0 at the end of the printed hash, or [buf] in case
+// the hash couldn't be written.
+char* self_sprint_hash(char *buf, size_t len, HCRYPTHASH hHash)
+{
+	char *p = buf;
+	DWORD hash_len = 0;
+	DWORD hash_len_len = sizeof(hash_len);
+	auto crypt_get_hash_param = [&] (DWORD param, BYTE *buf, DWORD *len) {
+		return W32_ERR_WRAP(CryptGetHashParam(hHash, param, buf, len, 0));
+	};
+
+	if(crypt_get_hash_param(HP_HASHSIZE, (BYTE*)&hash_len, &hash_len_len)) {
+		return 0;
+	}
+
+	// Since we can't pass a nullptr as the length parameter of
+	// CryptGetHashParam(), we might as well get the whole hash upfront and
+	// merely truncate the string output.
+	VLA(BYTE, hash_val, hash_len);
+	if(!crypt_get_hash_param(HP_HASHVAL, hash_val, &hash_len)) {
+		size_t bytes_in_suffix = (len - 1) / 2;
+		size_t copy_len = min(bytes_in_suffix, hash_len) & ~1;
+		for(size_t i = 0; i < copy_len; i++) {
+			p += sprintf(p, "%02x", hash_val[i]);
+		}
+	}
+	VLA_FREE(hash_val);
+	return p;
+}
+
 static int self_verify_buffer(
+	HCRYPTHASH *hHash,
 	const void *file_buf,
 	const size_t file_len,
 	const json_t *sig,
@@ -313,8 +348,8 @@ static int self_verify_buffer(
 	DWORD i, j;
 	DWORD sig_len = 0;
 	BYTE *sig_buf = NULL;
-	HCRYPTHASH hHash = 0;
 
+	assert(hHash);
 	if(!file_buf || !file_len || !sig_base64 || !sig_base64_len) {
 		goto end;
 	}
@@ -338,22 +373,23 @@ static int self_verify_buffer(
 		sig_buf[i] = sig_buf[j];
 		sig_buf[j] = t;
 	}
-	ret = W32_ERR_WRAP(CryptCreateHash(hCryptProv, hash_alg, 0, 0, &hHash));
+	ret = W32_ERR_WRAP(CryptCreateHash(hCryptProv, hash_alg, 0, 0, hHash));
 	if(ret) {
 		log_printf("couldn't create hash object\n");
 		goto end;
 	}
-	ret = W32_ERR_WRAP(CryptHashData(hHash, (BYTE*)file_buf, file_len, 0));
+	ret = W32_ERR_WRAP(CryptHashData(*hHash, (BYTE*)file_buf, file_len, 0));
 	if(ret) {
 		log_printf("couldn't hash the file data?!?\n");
 		goto end;
 	}
+
 	ret = W32_ERR_WRAP(CryptVerifySignature(
-		hHash, sig_buf, sig_len, hPubKey, NULL, 0
+		*hHash, sig_buf, sig_len, hPubKey, NULL, 0
 	));
+
 	log_printf(ret ? "invalid\n" : "valid\n");
 end:
-	CryptDestroyHash(hHash);
 	SAFE_FREE(sig_buf);
 	return ret;
 }
@@ -370,47 +406,45 @@ static ALG_ID self_alg_from_str(const char *hash)
 	return 0;
 }
 
-static self_result_t self_verify(const void *zip_buf, size_t zip_len, json_t *sig, PCCERT_CONTEXT context)
+// We can't directly create and release the HCRYPTPROV in this function because
+// calling CryptReleaseContext() invalidates *all* objects that were created
+// from this CSP handle.
+static self_result_t self_verify(
+	HCRYPTPROV hCryptProv,
+	HCRYPTHASH *hHash,
+	const void *zip_buf,
+	size_t zip_len,
+	json_t *sig,
+	PCCERT_CONTEXT context
+)
 {
-	self_result_t ret = SELF_NO_SIG;
-	int local_ret;
+	assert(hCryptProv);
+
 	const json_t *sig_sig = json_object_get(sig, "sig");
 	const char *sig_alg = json_object_get_string(sig, "alg");
 	const char *key = NULL;
 	json_t *val = NULL;
 	ALG_ID hash_alg = self_alg_from_str(sig_alg);
-	HCRYPTPROV hCryptProv = 0;
 	HCRYPTKEY hPubKey = 0;
 
 	if(!zip_buf || !zip_len || !json_is_string(sig_sig) || !context || !sig_alg) {
-		return ret;
+		return SELF_NO_SIG;
 	}
 	log_printf("Verifying archive signature... ");
 	if(!hash_alg) {
 		log_func_printf("Unsupported hash algorithm ('%s')!\n", sig_alg);
-		goto end;
+		return SELF_NO_SIG;
 	}
-	ret = SELF_NO_PUBLIC_KEY;
-	local_ret = W32_ERR_WRAP(CryptAcquireContext(
-		&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
-	));
-	if(local_ret) {
-		goto end;
-	}
-	local_ret = W32_ERR_WRAP(CryptImportPublicKeyInfo(
+	if(W32_ERR_WRAP(CryptImportPublicKeyInfo(
 		hCryptProv, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
 		&context->pCertInfo->SubjectPublicKeyInfo, &hPubKey
-	));
-	if(local_ret) {
+	))) {
 		log_func_printf("Invalid public key!\n");
-		goto end;
+		return SELF_NO_PUBLIC_KEY;
 	}
-	ret = self_verify_buffer(
-		zip_buf, zip_len, sig_sig, hCryptProv, hPubKey, hash_alg
+	return self_verify_buffer(
+		hHash, zip_buf, zip_len, sig_sig, hCryptProv, hPubKey, hash_alg
 	) ? SELF_SIG_FAIL : SELF_OK;
-end:
-	CryptReleaseContext(hCryptProv, 0);
-	return ret;
 }
 
 static int self_move_to_dir(const char *dst_dir, const char *fn)
@@ -478,6 +512,8 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	char *sig_buf = NULL;
 	json_t *sig = NULL;
 	PCCERT_CONTEXT context = NULL;
+	HCRYPTPROV hCryptProv = 0;
+	HCRYPTHASH hHash = 0;
 	smartdlg_state_t window;
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
@@ -485,8 +521,13 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	GetCurrentDirectory(cur_dir_len, cur_dir);
 	SetCurrentDirectory(thcrap_dir);
 
+	ret = SELF_NO_PUBLIC_KEY;
+	if(W32_ERR_WRAP(CryptAcquireContext(
+		&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
+	))) {
+		goto end;
+	}
 	if(self_pubkey_from_signer(&context)) {
-		ret = SELF_NO_PUBLIC_KEY;
 		goto end;
 	}
 
@@ -503,12 +544,23 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		ret = SELF_NO_SIG;
 		goto end;
 	}
-	ret = self_verify(arc_buf, arc_len, sig, context);
+	ret = self_verify(hCryptProv, &hHash, arc_buf, arc_len, sig, context);
 	if(ret != SELF_OK) {
 		goto end;
 	}
-	self_tempname(arc_fn, sizeof(arc_fn), PREFIX_NEW);
-	strcpy(arc_fn + sizeof(arc_fn) - 1 - strlen(".zip"), ".zip");
+
+	auto prefix_new_len = strlen(PREFIX_NEW);
+	const auto ext_new_len = strlen(EXT_NEW) + 1;
+	char *suffix = arc_fn + prefix_new_len;
+	size_t suffix_len = TEMP_FN_LEN - prefix_new_len - ext_new_len;
+	memcpy(arc_fn, PREFIX_NEW, prefix_new_len);
+
+	char *ext = self_sprint_hash(suffix, suffix_len, hHash);
+	if(ext == suffix) {
+		ext = self_tempname(suffix, suffix_len, "");
+	}
+	memcpy(ext, EXT_NEW, ext_new_len);
+
 	if(file_write(arc_fn, arc_buf, arc_len)) {
 		ret = SELF_DISK_ERROR;
 		goto end;
@@ -516,6 +568,8 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	arc = zip_open(arc_fn);
 	ret = self_replace(arc);
 end:
+	CryptDestroyHash(hHash);
+	CryptReleaseContext(hCryptProv, 0);
 	sig = json_decref_safe(sig);
 	SAFE_FREE(sig_buf);
 	SAFE_FREE(arc_buf);
