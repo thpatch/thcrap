@@ -15,7 +15,7 @@
 #include "update.h"
 
 HINTERNET hHTTP = NULL;
-CRITICAL_SECTION cs_http;
+SRWLOCK inet_srwlock = {SRWLOCK_INIT};
 
 int http_init(void)
 {
@@ -28,8 +28,6 @@ int http_init(void)
 	sprintf(
 		agent, "%s (%s)", project_name, PROJECT_VERSION_STRING()
 	);
-
-	InitializeCriticalSection(&cs_http);
 
 	hHTTP = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	if(!hHTTP) {
@@ -59,12 +57,10 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 	DWORD file_size_local = 0;
 	HINTERNET hFile = NULL;
 
-	if(
-		!hHTTP || !file_buffer || !file_size || !url
-		|| !TryEnterCriticalSection(&cs_http)
-	) {
+	if(!hHTTP || !file_buffer || !file_size || !url) {
 		return GET_INVALID_PARAMETER;
 	}
+	AcquireSRWLockShared(&inet_srwlock);
 
 	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
 	if(!hFile) {
@@ -106,18 +102,17 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 	}
 end:
 	InternetCloseHandle(hFile);
-	LeaveCriticalSection(&cs_http);
+	ReleaseSRWLockShared(&inet_srwlock);
 	return get_ret;
 }
 
 void http_exit(void)
 {
 	if(hHTTP) {
-		EnterCriticalSection(&cs_http);
+		AcquireSRWLockExclusive(&inet_srwlock);
 		InternetCloseHandle(hHTTP);
 		hHTTP = NULL;
-		LeaveCriticalSection(&cs_http);
-		DeleteCriticalSection(&cs_http);
+		ReleaseSRWLockExclusive(&inet_srwlock);
 	}
 }
 
@@ -263,11 +258,19 @@ void servers_t::from(const json_t *servers)
 	}
 }
 
+// Needs to be a global rather than a function-local static variable to
+// guarantee that it's initialized correctly. Otherwise, operator[] would
+// throw a "vector subscript out of range" exception if more than one thread
+// called servers_cache() at roughly the same time.
+// And yes, that lock is necessary.
+SRWLOCK cache_srwlock = {SRWLOCK_INIT};
+std::unordered_map<const json_t *, servers_t> patch_servers;
+
 servers_t& servers_cache(const json_t *servers)
 {
-	static std::unordered_map<const json_t *, servers_t> patch_servers;
-
+	AcquireSRWLockExclusive(&cache_srwlock);
 	servers_t &srvs = patch_servers[servers];
+	ReleaseSRWLockExclusive(&cache_srwlock);
 	if(srvs.size() == 0) {
 		srvs.from(servers);
 	}
