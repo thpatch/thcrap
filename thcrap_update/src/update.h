@@ -18,7 +18,7 @@ typedef enum {
 	GET_INVALID_PARAMETER = -1,
 	GET_OK = 0,
 	GET_SERVER_ERROR,
-	GET_NOT_FOUND,
+	GET_NOT_AVAILABLE, // 404, 502, etc.
 } get_result_t;
 
 int http_init(void);

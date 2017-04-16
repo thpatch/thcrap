@@ -57,7 +57,9 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 	DWORD file_size_local = 0;
 	HINTERNET hFile = NULL;
 
-	if(!hHTTP || !file_buffer || !file_size || !url) {
+	assert(file_buffer);
+	assert(file_size);
+	if(!hHTTP || !url) {
 		return GET_INVALID_PARAMETER;
 	}
 	AcquireSRWLockShared(&inet_srwlock);
@@ -65,17 +67,22 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
 	if(!hFile) {
 		DWORD inet_ret = GetLastError();
-		log_printf("WinInet error %d\n", inet_ret);
+		switch(inet_ret) {
+		case ERROR_INTERNET_NAME_NOT_RESOLVED:
+			log_printf("Could not resolve hostname\n", inet_ret);
+			break;
+		default:
+			log_printf("WinInet error %d\n", inet_ret);
+			break;
+		}
 		get_ret = GET_SERVER_ERROR;
 		goto end;
 	}
 
 	HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &http_stat, &byte_ret, 0);
-	log_printf("%d", http_stat);
+	log_printf("%d ", http_stat);
 	if(http_stat != 200) {
-		// If the file is missing on one server, it's probably missing on all of them.
-		// No reason to disable any server.
-		get_ret = GET_NOT_FOUND;
+		get_ret = GET_NOT_AVAILABLE;
 		goto end;
 	}
 
@@ -91,7 +98,7 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 				p += byte_ret;
 			} else {
 				SAFE_FREE(*file_buffer);
-				log_printf("\nReading error #%d!", GetLastError());
+				log_printf("\nReading error #%d! ", GetLastError());
 				get_ret = GET_SERVER_ERROR;
 				goto end;
 			}
@@ -163,7 +170,7 @@ int servers_t::num_active() const
 
 void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc)
 {
-	BYTE *file_buffer = NULL;
+	assert(file_size);
 	int i;
 
 	int servers_first = this->get_first();
@@ -171,21 +178,22 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 	// gets decremented in the loop
 	auto servers_left = servers_total;
 
-	if(!fn || !file_size || servers_first < 0) {
+	if(!fn || servers_first < 0) {
 		return NULL;
 	}
 	*file_size = 0;
 	for(i = servers_first; servers_left; i = (i + 1) % servers_total) {
-		DWORD time_start;
-		DWORD time;
-		DWORD crc = 0;
+		BYTE *file_buffer = NULL;
+		DWORD time[2];
 		get_result_t get_ret;
 		server_t &server = (*this)[i];
 
+		servers_left--;
 		if(!server.active()) {
 			continue;
+		} else if(i != servers_first) {
+			log_printf("Retrying on next server...\n");
 		}
-		servers_left--;
 
 		{
 			URL_COMPONENTSA uc = {0};
@@ -205,44 +213,72 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 
 			log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
-			time_start = timeGetTime();
-
+			time[0] = timeGetTime();
 			get_ret = http_get(&file_buffer, file_size, url);
+			time[1] = timeGetTime();
 
 			VLA_FREE(url);
 			VLA_FREE(server_host);
 		}
 
-		switch(get_ret) {
-			case GET_OUT_OF_MEMORY:
-			case GET_INVALID_PARAMETER:
-				goto abort;
-
-			case GET_SERVER_ERROR:
-				server.disable();
-				continue;
-		}
-		if(*file_size == 0) {
-			log_printf(" 0-byte file! %s\n", servers_left ? "Trying next server..." : "");
-			server.disable();
-			continue;
-		}
-
-		time = timeGetTime() - time_start;
-		log_printf(" (%d b, %d ms)\n", *file_size, time);
-		server.time = time;
-
-		crc = crc32(crc, file_buffer, *file_size);
-		if(exp_crc && *exp_crc != crc) {
-			log_printf("CRC32 mismatch! %s\n", servers_left ? "Trying next server..." : "");
+		auto fail = [&server, &file_buffer] (const char *reason) {
+			if(reason) {
+				log_printf("%s\n", reason);
+			}
 			server.disable();
 			SAFE_FREE(file_buffer);
-		} else {
+		};
+
+		// Let's assume that all servers are sane, so rather than drawing some
+		// sort of line and saying "well, on *these* errors we'll give it
+		// another chance, and on *these* we don't", we'll just disable a
+		// server on any error.
+		switch(get_ret) {
+		case GET_INVALID_PARAMETER:
+			// Should never really happen, but if it does, we're probably
+			// offline anyway.
+			fail(NULL);
+			return NULL;
+		case GET_OUT_OF_MEMORY:
+			fail("Out of memory");
+			break;
+		case GET_SERVER_ERROR:
+			// A more detailed error was already printed by the get function.
+			fail(NULL);
+			break;
+		case GET_NOT_AVAILABLE:
+			// We used to not disable any server in this case, but think about
+			// a situation in which multiple, or even most of the files on a
+			// server can't be found. We'd just be wasting time waiting for
+			// each of those 404s. Maybe it might be worth it once downloads
+			// are faster, but for now, it certainly isn't.
+			fail("Not Available");
+			break;
+		case GET_OK:
+			if(*file_size == 0) {
+				// This might be a legit non-failure case one day, but until then...
+				fail("0-byte file!");
+				break;
+			}
+			// There's not much point in putting a mutex on the time field, but
+			// we should at least use a temporary variable here to ensure the
+			// correct time being printed.
+			auto time_diff = time[1] - time[0];
+			log_printf("(%d b, %d ms)\n", *file_size, time_diff);
+			server.time = time_diff;
+
+			if(exp_crc) {
+				auto crc = crc32(0, file_buffer, *file_size);
+				if(*exp_crc != crc) {
+					fail("CRC32 mismatch!");
+				}
+			}
+			break;
+		}
+		if(file_buffer) {
 			return file_buffer;
 		}
 	}
-abort:
-	SAFE_FREE(file_buffer);
 	return NULL;
 }
 
