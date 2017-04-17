@@ -25,10 +25,10 @@ static void* self_download(DWORD *arc_len, const char *arc_fn)
 	// Yup, hardcoded download URLs. After all, these should be a property
 	// of the engine, and now that it is capable of updating itself,
 	// there's no need to include these in any patch.
-	servers_t self_servers(
-		{"http://thcrap.thpatch.net/"}
+	static server_t self_server(
+		"http://thcrap.thpatch.net/"
 	);
-	return self_servers.download(arc_len, arc_fn, NULL);
+	return self_server.download(arc_len, NULL, arc_fn, NULL);
 }
 
 /// Download notification window

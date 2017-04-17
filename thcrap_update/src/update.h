@@ -78,6 +78,11 @@ struct server_t {
 		this->time = -1;
 	}
 
+	// Single-server part of servers_t::download().
+	void* download(
+		DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc
+	);
+
 	server_t() {
 	}
 

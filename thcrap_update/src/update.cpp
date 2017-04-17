@@ -125,6 +125,96 @@ void http_exit(void)
 
 /// Internal C++ server connection handling
 /// ---------------------------------------
+void* server_t::download(
+	DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc
+)
+{
+	assert(file_size);
+
+	get_result_t temp_ret;
+	BYTE *file_buffer = NULL;
+	DWORD time[2];
+	URL_COMPONENTSA uc = {0};
+	auto server_len = strlen(this->url) + 1;
+	// * 3 because characters may be URL-encoded
+	DWORD url_len = server_len + (strlen(fn) * 3) + 1;
+	VLA(char, server_host, server_len);
+	VLA(char, url, url_len);
+
+	if(!ret) {
+		ret = &temp_ret;
+	}
+
+	InternetCombineUrl(this->url, fn, url, &url_len, 0);
+
+	uc.dwStructSize = sizeof(uc);
+	uc.lpszHostName = server_host;
+	uc.dwHostNameLength = server_len;
+
+	InternetCrackUrl(this->url, 0, 0, &uc);
+
+	log_printf("%s (%s)... ", fn, uc.lpszHostName);
+
+	time[0] = timeGetTime();
+	*ret = http_get(&file_buffer, file_size, url);
+	time[1] = timeGetTime();
+
+	VLA_FREE(url);
+	VLA_FREE(server_host);
+
+	auto fail = [this, &file_buffer] (const char *reason) {
+		if(reason) {
+			log_printf("%s\n", reason);
+		}
+		this->disable();
+		SAFE_FREE(file_buffer);
+		return nullptr;
+	};
+
+	// Let's assume that all servers are sane, so rather than drawing some
+	// sort of line and saying "well, on *these* errors we'll give it
+	// another chance, and on *these* we don't", we'll just disable a
+	// server on any error.
+	switch(*ret) {
+	case GET_INVALID_PARAMETER:
+		// Should never really happen, but if it does, we're probably
+		// offline anyway.
+		return fail(NULL);
+	case GET_OUT_OF_MEMORY:
+		return fail("Out of memory");
+	case GET_SERVER_ERROR:
+		// A more detailed error was already printed by the get function.
+		return fail(NULL);
+	case GET_NOT_AVAILABLE:
+		// We used to not disable any server in this case, but think about
+		// a situation in which multiple, or even most of the files on a
+		// server can't be found. We'd just be wasting time waiting for
+		// each of those 404s. Maybe it might be worth it once downloads
+		// are faster, but for now, it certainly isn't.
+		return fail("Not Available");
+	}
+	assert(*ret == GET_OK);
+	if(*file_size == 0) {
+		// This might be a legit non-failure case one day, but until then...
+		return fail("0-byte file!");
+	}
+
+	// There's not much point in putting a mutex on the time field, but
+	// we should at least use a temporary variable here to ensure the
+	// correct time being printed.
+	auto time_diff = time[1] - time[0];
+	log_printf("(%d b, %d ms)\n", *file_size, time_diff);
+	this->time = time_diff;
+
+	if(exp_crc) {
+		auto crc = crc32(0, file_buffer, *file_size);
+		if(*exp_crc != crc) {
+			return fail("CRC32 mismatch!");
+		}
+	}
+	return file_buffer;
+}
+
 int servers_t::get_first() const
 {
 	int last_time = INT_MAX;
@@ -175,16 +265,12 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 
 	int servers_first = this->get_first();
 	auto servers_total = this->size();
-	// gets decremented in the loop
 	auto servers_left = servers_total;
 
 	if(!fn || servers_first < 0) {
 		return NULL;
 	}
-	*file_size = 0;
 	for(i = servers_first; servers_left; i = (i + 1) % servers_total) {
-		BYTE *file_buffer = NULL;
-		DWORD time[2];
 		get_result_t get_ret;
 		server_t &server = (*this)[i];
 
@@ -195,87 +281,11 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 			log_printf("Retrying on next server...\n");
 		}
 
-		{
-			URL_COMPONENTSA uc = {0};
-			auto server_len = strlen(server.url) + 1;
-			// * 3 because characters may be URL-encoded
-			DWORD url_len = server_len + (strlen(fn) * 3) + 1;
-			VLA(char, server_host, server_len);
-			VLA(char, url, url_len);
+		auto file_buffer = server.download(file_size, &get_ret, fn, exp_crc);
 
-			InternetCombineUrl(server.url, fn, url, &url_len, 0);
-
-			uc.dwStructSize = sizeof(uc);
-			uc.lpszHostName = server_host;
-			uc.dwHostNameLength = server_len;
-
-			InternetCrackUrl(server.url, 0, 0, &uc);
-
-			log_printf("%s (%s)... ", fn, uc.lpszHostName);
-
-			time[0] = timeGetTime();
-			get_ret = http_get(&file_buffer, file_size, url);
-			time[1] = timeGetTime();
-
-			VLA_FREE(url);
-			VLA_FREE(server_host);
-		}
-
-		auto fail = [&server, &file_buffer] (const char *reason) {
-			if(reason) {
-				log_printf("%s\n", reason);
-			}
-			server.disable();
-			SAFE_FREE(file_buffer);
-		};
-
-		// Let's assume that all servers are sane, so rather than drawing some
-		// sort of line and saying "well, on *these* errors we'll give it
-		// another chance, and on *these* we don't", we'll just disable a
-		// server on any error.
-		switch(get_ret) {
-		case GET_INVALID_PARAMETER:
-			// Should never really happen, but if it does, we're probably
-			// offline anyway.
-			fail(NULL);
+		if(get_ret <= GET_INVALID_PARAMETER) {
 			return NULL;
-		case GET_OUT_OF_MEMORY:
-			fail("Out of memory");
-			break;
-		case GET_SERVER_ERROR:
-			// A more detailed error was already printed by the get function.
-			fail(NULL);
-			break;
-		case GET_NOT_AVAILABLE:
-			// We used to not disable any server in this case, but think about
-			// a situation in which multiple, or even most of the files on a
-			// server can't be found. We'd just be wasting time waiting for
-			// each of those 404s. Maybe it might be worth it once downloads
-			// are faster, but for now, it certainly isn't.
-			fail("Not Available");
-			break;
-		case GET_OK:
-			if(*file_size == 0) {
-				// This might be a legit non-failure case one day, but until then...
-				fail("0-byte file!");
-				break;
-			}
-			// There's not much point in putting a mutex on the time field, but
-			// we should at least use a temporary variable here to ensure the
-			// correct time being printed.
-			auto time_diff = time[1] - time[0];
-			log_printf("(%d b, %d ms)\n", *file_size, time_diff);
-			server.time = time_diff;
-
-			if(exp_crc) {
-				auto crc = crc32(0, file_buffer, *file_size);
-				if(*exp_crc != crc) {
-					fail("CRC32 mismatch!");
-				}
-			}
-			break;
-		}
-		if(file_buffer) {
+		} else if(file_buffer) {
 			return file_buffer;
 		}
 	}
