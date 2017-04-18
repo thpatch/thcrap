@@ -16,9 +16,11 @@
 
 HINTERNET hHTTP = NULL;
 SRWLOCK inet_srwlock = {SRWLOCK_INIT};
+double perffreq;
 
 int http_init(void)
 {
+	LARGE_INTEGER pf;
 	DWORD ignore = 1;
 
 	// DWORD timeout = 500;
@@ -28,6 +30,9 @@ int http_init(void)
 	sprintf(
 		agent, "%s (%s)", project_name, PROJECT_VERSION_STRING()
 	);
+
+	QueryPerformanceFrequency(&pf);
+	perffreq = (double)pf.QuadPart;
 
 	hHTTP = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	if(!hHTTP) {
@@ -133,7 +138,7 @@ void* server_t::download(
 
 	get_result_t temp_ret;
 	BYTE *file_buffer = NULL;
-	DWORD time[2];
+	LARGE_INTEGER time[2];
 	URL_COMPONENTSA uc = {0};
 	auto server_len = strlen(this->url) + 1;
 	// * 3 because characters may be URL-encoded
@@ -155,9 +160,9 @@ void* server_t::download(
 
 	log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
-	time[0] = timeGetTime();
+	QueryPerformanceCounter(&time[0]);
 	*ret = http_get(&file_buffer, file_size, url);
-	time[1] = timeGetTime();
+	QueryPerformanceCounter(&time[1]);
 
 	VLA_FREE(url);
 	VLA_FREE(server_host);
@@ -202,8 +207,9 @@ void* server_t::download(
 	// There's not much point in putting a mutex on the time field, but
 	// we should at least use a temporary variable here to ensure the
 	// correct time being printed.
-	auto time_diff = time[1] - time[0];
-	log_printf("(%d b, %d ms)\n", *file_size, time_diff);
+	auto time_diff = time[1].QuadPart - time[0].QuadPart;
+	double time_diff_ms = (time_diff / perffreq) * 1000.0;
+	log_printf("(%d b, %.1f ms)\n", *file_size, time_diff_ms);
 	this->time = time_diff;
 
 	if(exp_crc) {
@@ -217,7 +223,7 @@ void* server_t::download(
 
 int servers_t::get_first() const
 {
-	int last_time = INT_MAX;
+	LONGLONG last_time = LLONG_MAX;
 	size_t i = 0;
 	int fastest = -1;
 	int tryout = -1;

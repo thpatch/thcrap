@@ -68,7 +68,9 @@ struct server_t {
 	// compiler.
 	const char *url = NULL;
 
-	int time = 0;
+	// The raw counter value is enough for our purposes, no need to lose
+	// precision by dividing through the frequency.
+	LONGLONG time = 0;
 
 	bool  active() const { return time >= 0; }
 	bool  unused() const { return time == 0; }
