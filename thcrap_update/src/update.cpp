@@ -21,6 +21,11 @@ double perffreq;
 typedef struct {
 	BYTE *file_buffer;
 	DWORD file_size;
+
+	// Absolute timestamps.
+	LONGLONG time_start;
+	LONGLONG time_ping;
+	LONGLONG time_end;
 } download_context_t;
 
 int http_init(void)
@@ -72,7 +77,9 @@ get_result_t http_get(download_context_t *ctx, const char *url)
 	}
 	AcquireSRWLockShared(&inet_srwlock);
 
+	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_start);
 	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_ping);
 	if(!hFile) {
 		DWORD inet_ret = GetLastError();
 		switch(inet_ret) {
@@ -119,6 +126,8 @@ get_result_t http_get(download_context_t *ctx, const char *url)
 		get_ret = GET_OUT_OF_MEMORY;
 	}
 end:
+	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_end);
+
 	InternetCloseHandle(hFile);
 	ReleaseSRWLockShared(&inet_srwlock);
 	return get_ret;
@@ -144,7 +153,6 @@ void* server_t::download(
 
 	get_result_t temp_ret;
 	download_context_t ctx;
-	LARGE_INTEGER time[2];
 	URL_COMPONENTSA uc = {0};
 	auto server_len = strlen(this->url) + 1;
 	// * 3 because characters may be URL-encoded
@@ -166,9 +174,7 @@ void* server_t::download(
 
 	log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
-	QueryPerformanceCounter(&time[0]);
 	*ret = http_get(&ctx, url);
-	QueryPerformanceCounter(&time[1]);
 	*file_size = ctx.file_size;
 
 	VLA_FREE(url);
@@ -214,10 +220,15 @@ void* server_t::download(
 	// There's not much point in putting a mutex on the time field, but
 	// we should at least use a temporary variable here to ensure the
 	// correct time being printed.
-	auto time_diff = time[1].QuadPart - time[0].QuadPart;
-	double time_diff_ms = (time_diff / perffreq) * 1000.0;
-	log_printf("(%d b, %.1f ms)\n", *file_size, time_diff_ms);
-	this->time = time_diff;
+	auto diff_ping = ctx.time_ping - ctx.time_start;
+	auto diff_transfer = ctx.time_end - ctx.time_ping;
+	double diff_ping_ms = (diff_ping / perffreq) * 1000.0;
+	double diff_transfer_ms = (diff_transfer / perffreq) * 1000.0;
+	log_printf(
+		"(%d b, %.1f + %.1f ms)\n",
+		*file_size, diff_ping_ms, diff_transfer_ms
+	);
+	this->ping = diff_ping;
 
 	if(exp_crc) {
 		auto crc = crc32(0, ctx.file_buffer, ctx.file_size);
@@ -243,8 +254,8 @@ int servers_t::get_first() const
 	// Get fastest server from previous data
 	for(i = 0; i < this->size(); i++) {
 		const auto &server = (*this)[i];
-		if(server.visited() && server.time < last_time) {
-			last_time = server.time;
+		if(server.visited() && server.ping < last_time) {
+			last_time = server.ping;
 			fastest = i;
 		} else if(server.unused()) {
 			tryout = i;
@@ -313,7 +324,7 @@ void servers_t::from(const json_t *servers)
 		json_t *val = json_array_get(servers, i);
 		assert(json_is_string(val));
 		(*this)[i].url = json_string_value(val);
-		(*this)[i].time = 0;
+		(*this)[i].ping = 0;
 	}
 }
 

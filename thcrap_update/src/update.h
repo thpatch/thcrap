@@ -70,14 +70,14 @@ struct server_t {
 
 	// The raw counter value is enough for our purposes, no need to lose
 	// precision by dividing through the frequency.
-	LONGLONG time = 0;
+	LONGLONG ping = 0;
 
-	bool  active() const { return time >= 0; }
-	bool  unused() const { return time == 0; }
-	bool visited() const { return time  > 0; }
+	bool  active() const { return ping >= 0; }
+	bool  unused() const { return ping == 0; }
+	bool visited() const { return ping  > 0; }
 
 	void disable() {
-		this->time = -1;
+		this->ping = -1;
 	}
 
 	// Single-server part of servers_t::download().
