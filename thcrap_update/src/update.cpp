@@ -18,6 +18,11 @@ HINTERNET hHTTP = NULL;
 SRWLOCK inet_srwlock = {SRWLOCK_INIT};
 double perffreq;
 
+typedef struct {
+	BYTE *file_buffer;
+	DWORD file_size;
+} download_context_t;
+
 int http_init(void)
 {
 	LARGE_INTEGER pf;
@@ -54,7 +59,7 @@ int http_init(void)
 	return 0;
 }
 
-get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
+get_result_t http_get(download_context_t *ctx, const char *url)
 {
 	get_result_t get_ret = GET_INVALID_PARAMETER;
 	DWORD byte_ret = sizeof(DWORD);
@@ -62,8 +67,6 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 	DWORD file_size_local = 0;
 	HINTERNET hFile = NULL;
 
-	assert(file_buffer);
-	assert(file_size);
 	if(!hHTTP || !url) {
 		return GET_INVALID_PARAMETER;
 	}
@@ -84,25 +87,28 @@ get_result_t http_get(BYTE **file_buffer, DWORD *file_size, const char *url)
 		goto end;
 	}
 
-	HttpQueryInfo(hFile, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, &http_stat, &byte_ret, 0);
+	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_STATUS_CODE,
+		&http_stat, &byte_ret, 0
+	);
 	log_printf("%d ", http_stat);
 	if(http_stat != 200) {
 		get_ret = GET_NOT_AVAILABLE;
 		goto end;
 	}
 
-	HttpQueryInfo(hFile, HTTP_QUERY_CONTENT_LENGTH | HTTP_QUERY_FLAG_NUMBER, file_size, &byte_ret, 0);
-	*file_buffer = (BYTE*)malloc(*file_size);
-	if(*file_buffer) {
-		BYTE *p = *file_buffer;
-		DWORD read_size = *file_size;
+	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_CONTENT_LENGTH,
+		&ctx->file_size, &byte_ret, 0
+	);
+	ctx->file_buffer = (BYTE*)malloc(ctx->file_size);
+	if(ctx->file_buffer) {
+		BYTE *p = ctx->file_buffer;
+		DWORD read_size = ctx->file_size;
 		while(read_size) {
-			BOOL ret = InternetReadFile(hFile, p, *file_size, &byte_ret);
-			if(ret) {
+			if(InternetReadFile(hFile, p, ctx->file_size, &byte_ret)) {
 				read_size -= byte_ret;
 				p += byte_ret;
 			} else {
-				SAFE_FREE(*file_buffer);
+				SAFE_FREE(ctx->file_buffer);
 				log_printf("\nReading error #%d! ", GetLastError());
 				get_ret = GET_SERVER_ERROR;
 				goto end;
@@ -137,7 +143,7 @@ void* server_t::download(
 	assert(file_size);
 
 	get_result_t temp_ret;
-	BYTE *file_buffer = NULL;
+	download_context_t ctx;
 	LARGE_INTEGER time[2];
 	URL_COMPONENTSA uc = {0};
 	auto server_len = strlen(this->url) + 1;
@@ -161,18 +167,19 @@ void* server_t::download(
 	log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
 	QueryPerformanceCounter(&time[0]);
-	*ret = http_get(&file_buffer, file_size, url);
+	*ret = http_get(&ctx, url);
 	QueryPerformanceCounter(&time[1]);
+	*file_size = ctx.file_size;
 
 	VLA_FREE(url);
 	VLA_FREE(server_host);
 
-	auto fail = [this, &file_buffer] (const char *reason) {
+	auto fail = [this, &ctx] (const char *reason) {
 		if(reason) {
 			log_printf("%s\n", reason);
 		}
 		this->disable();
-		SAFE_FREE(file_buffer);
+		SAFE_FREE(ctx.file_buffer);
 		return nullptr;
 	};
 
@@ -213,12 +220,12 @@ void* server_t::download(
 	this->time = time_diff;
 
 	if(exp_crc) {
-		auto crc = crc32(0, file_buffer, *file_size);
+		auto crc = crc32(0, ctx.file_buffer, ctx.file_size);
 		if(*exp_crc != crc) {
 			return fail("CRC32 mismatch!");
 		}
 	}
-	return file_buffer;
+	return ctx.file_buffer;
 }
 
 int servers_t::get_first() const
