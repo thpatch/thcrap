@@ -68,16 +68,28 @@ struct server_t {
 	// compiler.
 	const char *url = NULL;
 
+	// Last 5 ping times of this server.
 	// The raw counter value is enough for our purposes, no need to lose
 	// precision by dividing through the frequency.
-	LONGLONG ping = 0;
+	LONGLONG ping[5];
 
-	bool  active() const { return ping >= 0; }
-	bool  unused() const { return ping == 0; }
-	bool visited() const { return ping  > 0; }
+	LONGLONG ping_average() const;
+	void ping_push(LONGLONG newval);
+
+	bool  active() const { return this->ping_average() >= 0; }
+	bool  unused() const { return this->ping_average() == 0; }
+	bool visited() const { return this->ping_average()  > 0; }
 
 	void disable() {
-		this->ping = -1;
+		for(auto& i : this->ping) {
+			i = -1;
+		}
+	}
+
+	void new_session() {
+		for(auto& i : this->ping) {
+			i = 0;
+		}
 	}
 
 	// Single-server part of servers_t::download().
@@ -89,6 +101,9 @@ struct server_t {
 	}
 
 	server_t(const char *_url) : url(_url) {
+		// TODO: For consistency, ping should be initialized with {0},
+		// but Visual Studio 2013 doesn't implement this.
+		new_session();
  	}
 };
 

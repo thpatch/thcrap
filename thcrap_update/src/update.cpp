@@ -145,6 +145,30 @@ void http_exit(void)
 
 /// Internal C++ server connection handling
 /// ---------------------------------------
+LONGLONG server_t::ping_average() const
+{
+	LONGLONG ret = 0;
+	int divisor = 0;
+	for(auto i : this->ping) {
+		ret += i;
+		if(i != 0) {
+			divisor++;
+		}
+	}
+	if(divisor == 0) {
+		return 0;
+	}
+	return ret / divisor;
+}
+
+void server_t::ping_push(LONGLONG newval)
+{
+	auto type_size = sizeof(this->ping[0]);
+	auto elements = sizeof(this->ping) / type_size;
+	memmove(&this->ping[0], &this->ping[1], (elements - 1) * type_size);
+	ping[elements - 1] = newval;
+}
+
 void* server_t::download(
 	DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc
 )
@@ -228,7 +252,7 @@ void* server_t::download(
 		"(%d b, %.1f + %.1f ms)\n",
 		*file_size, diff_ping_ms, diff_transfer_ms
 	);
-	this->ping = diff_ping;
+	this->ping_push(diff_ping);
 
 	if(exp_crc) {
 		auto crc = crc32(0, ctx.file_buffer, ctx.file_size);
@@ -254,8 +278,9 @@ int servers_t::get_first() const
 	// Get fastest server from previous data
 	for(i = 0; i < this->size(); i++) {
 		const auto &server = (*this)[i];
-		if(server.visited() && server.ping < last_time) {
-			last_time = server.ping;
+		auto ping_average = server.ping_average();
+		if(server.visited() && ping_average < last_time) {
+			last_time = ping_average;
 			fastest = i;
 		} else if(server.unused()) {
 			tryout = i;
@@ -324,7 +349,7 @@ void servers_t::from(const json_t *servers)
 		json_t *val = json_array_get(servers, i);
 		assert(json_is_string(val));
 		(*this)[i].url = json_string_value(val);
-		(*this)[i].ping = 0;
+		(*this)[i].new_session();
 	}
 }
 
