@@ -60,11 +60,16 @@ static void* self_download(DWORD *arc_len, const char *arc_fn)
 
 #define RECT_EXPAND(rect) rect.left, rect.top, rect.right, rect.bottom
 
-typedef struct {
+struct smartdlg_state_t {
+	HANDLE event_created = CreateEvent(nullptr, true, false, nullptr);
 	DWORD thread_id;
 	HFONT hFont;
 	HWND hWnd;
-} smartdlg_state_t;
+
+	~smartdlg_state_t() {
+		CloseHandle(event_created);
+	}
+};
 
 LRESULT CALLBACK smartdlg_proc(
 	HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
@@ -88,36 +93,20 @@ void smartdlg_close(smartdlg_state_t *state)
 	}
 }
 
-DWORD WINAPI self_window_thread(smartdlg_state_t *state)
-{
-	MSG msg;
-	BOOL msg_ret;
-
-	assert(state);
-
-	while((msg_ret = GetMessage(&msg, NULL, 0, 0)) != 0) {
-		if(msg_ret != -1) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-	}
-
-	return msg.wParam;
-}
-
-void self_window_create(smartdlg_state_t *state)
+DWORD WINAPI self_window_create_and_run(void *param)
 {
 	const char *TEXT =
 		"A new build of the ${project} is being downloaded, please wait...";
 	const size_t TEXT_SLOT = (size_t)TEXT;
 	const char *text_final;
+	auto state = (smartdlg_state_t *)param;
 
 	assert(state);
 
 	HMODULE hMod = GetModuleHandle(NULL);
 	HDC hDC = GetDC(0);
 	HWND label = NULL;
-	DWORD wnd_style = WS_BORDER | WS_POPUP | WS_CAPTION | WS_DISABLED;
+	DWORD wnd_style = WS_BORDER | WS_POPUP | WS_CAPTION;
 	DWORD wnd_style_ex = WS_EX_TOPMOST | WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT | WS_EX_DLGMODALFRAME;
 	RECT screen_rect = {0};
 	RECT wnd_rect = {0};
@@ -176,10 +165,22 @@ void self_window_create(smartdlg_state_t *state)
 	}
 	ShowWindow(state->hWnd, SW_SHOW);
 	UpdateWindow(state->hWnd);
+	SetEvent(state->event_created);
 
-	CreateThread(
-		NULL, 0, (LPTHREAD_START_ROUTINE)self_window_thread, state, 0, &state->thread_id
-	);
+	// We must run this in the same thread anyway, so we might as well
+	// combine creation and the message loop into the same function.
+
+	MSG msg;
+	BOOL msg_ret;
+
+	while((msg_ret = GetMessage(&msg, nullptr, 0, 0)) != 0) {
+		if(msg_ret != -1) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+	}
+
+	return msg.wParam;
 }
 /// ----------------------------
 
@@ -531,7 +532,10 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		goto end;
 	}
 
-	self_window_create(&window);
+	CreateThread(
+		nullptr, 0, self_window_create_and_run, &window, 0, &window.thread_id
+	);
+	WaitForSingleObject(window.event_created, INFINITE);
 
 	arc_buf = self_download(&arc_len, ARC_FN);
 	if(!arc_buf) {
