@@ -76,8 +76,12 @@ LRESULT CALLBACK smartdlg_proc(
 )
 {
 	switch(uMsg) {
-	case WM_CLOSE: // Yes, this is not handled by DefDlgProc().
+	case WM_CLOSE: // Yes, these are not handled by DefDlgProc().
 		DestroyWindow(hWnd);
+		break;
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		break;
 	}
 	return DefDlgProcW(hWnd, uMsg, wParam, lParam);
 }
