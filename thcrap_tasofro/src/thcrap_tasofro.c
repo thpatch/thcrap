@@ -17,6 +17,10 @@ int __stdcall thcrap_plugin_init()
 {
 	BYTE* filenames_list;
 	size_t filenames_list_size;
+
+	if (stack_remove_if_unneeded("base_tasofro")) {
+		return 1;
+	}
 	
 	patchhook_register("*/stage*.pl", patch_pl);
 	patchhook_register("*/ed_*.pl", patch_pl);
