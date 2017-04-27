@@ -18,8 +18,20 @@ int __stdcall thcrap_plugin_init()
 	BYTE* filenames_list;
 	size_t filenames_list_size;
 
-	if (stack_remove_if_unneeded("base_tasofro")) {
+	int base_tasofro_removed = stack_remove_if_unneeded("base_tasofro");
+	if (base_tasofro_removed == 1) {
 		return 1;
+	} else if(base_tasofro_removed == -1) {
+		const char *game = json_object_get_string(runconfig_get(), "game");
+		if(!strcmp(game, "th145")) {
+			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
+				"Support for TH14.5 has been moved out of the sandbox.\n"
+				"\n"
+				"Please reconfigure your patch stack; otherwise, you might "
+				"encounter errors or missing functionality after further "
+				"updates.\n"
+			);
+		}
 	}
 	
 	patchhook_register("*/stage*.pl", patch_pl);
