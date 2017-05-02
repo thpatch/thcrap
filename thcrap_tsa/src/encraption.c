@@ -10,7 +10,7 @@
 #include <thcrap.h>
 
 void simple_xor(
-	BYTE *data, size_t data_len, const BYTE *params, size_t params_count
+	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
 )
 {
 	size_t i;
@@ -23,7 +23,7 @@ void simple_xor(
 }
 
 void util_xor(
-	BYTE *data, size_t data_len, const BYTE *params, size_t params_count
+	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
 )
 {
 	size_t i;

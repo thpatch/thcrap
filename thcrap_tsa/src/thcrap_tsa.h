@@ -14,23 +14,23 @@
   *
   * Parameters
   * ----------
-  *	BYTE* data
+  *	uint8_t* data
   *		Buffer to encrypt
   *
   *	size_t data_len
   *		Length of [data]
   *
-  *	const BYTE* params
+  *	const uint8_t* params
   *		Optional array of parameters required
   *
-  *	const BYTE* params_count
+  *	const uint8_t* params_count
   *		Number of parameters in [params].
   *
   * Returns nothing.
   */
 
 typedef void (*EncryptionFunc_t)(
-	BYTE *data, size_t data_len, const BYTE *params, size_t params_count
+	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
 );
 
 /// ------
@@ -203,10 +203,10 @@ void music_mod_exit(void);
 
 /// Format patchers
 /// ---------------
-int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
-int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
-int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
-int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
+int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
 /// ---------------
 
 /// Win32 wrappers
