@@ -47,31 +47,52 @@ typedef struct {
 
 /// Text encryption
 /// ---------------
-void simple_xor(
-	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
-)
+/**
+  * Encryption function type.
+  *
+  * Parameters
+  * ----------
+  *	uint8_t* data
+  *		Buffer to encrypt
+  *
+  *	size_t data_len
+  *		Length of [data]
+  *
+  * Returns nothing.
+  */
+typedef void(*EncryptionFunc_t)(uint8_t *data, size_t data_len);
+
+void simple_xor(uint8_t *data, size_t data_len, const uint8_t param)
 {
 	size_t i;
-	if(!params || params_count < 1) {
-		return;
-	}
 	for(i = 0; i < data_len; i++) {
-		data[i] ^= params[0];
+		data[i] ^= param;
 	}
 }
 
 void util_xor(
-	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
+	uint8_t *data,
+	size_t data_len,
+	unsigned char key,
+	unsigned char step,
+	unsigned char step2
 )
 {
 	size_t i;
-	if(!params || params_count < 3) {
-		return;
-	}
 	for(i = 0; i < data_len; i++) {
 		const int ip = i - 1;
-		data[i] ^= params[0] + i * params[1] + (ip * ip + ip) / 2 * params[2];
+		data[i] ^= key + i * step + (ip * ip + ip) / 2 * step2;
 	}
+}
+
+void msg_crypt_th08(uint8_t *data, size_t data_len)
+{
+	simple_xor(data, data_len, 0x77);
+}
+
+void msg_crypt_th09(uint8_t *data, size_t data_len)
+{
+	util_xor(data, data_len, 0x77, 0x7, 0x10);
 }
 /// --------------------
 
@@ -79,10 +100,6 @@ typedef struct {
 	// Format information
 	op_info_t* op_info;
 	size_t op_info_num;
-
-	// Encryption
-	uint8_t* enc_vars;
-	size_t enc_var_count;
 	EncryptionFunc_t enc_func;
 
 	// JSON objects in the diff file
@@ -185,20 +202,13 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 	// Prepare encryption vars
 	if(json_is_object(encryption)) {
 		const char *encryption_func = json_object_get_string(encryption, "func");
-		json_t *encryption_vars = json_object_get(encryption, "vars");
 
-		// Resolve function
+		// Resolve function. TODO: Complete the transition to hardcoded formats.
 		if(encryption_func) {
-			state->enc_func = (EncryptionFunc_t)func_get(encryption_func);
-		}
-		if(json_is_array(encryption_vars)) {
-			size_t i;
-
-			state->enc_var_count = json_array_size(encryption_vars);
-
-			state->enc_vars = (uint8_t*)malloc(sizeof(uint8_t) * state->enc_var_count);
-			for(i = 0; i < state->enc_var_count; i++) {
-				state->enc_vars[i] = (uint8_t)json_array_get_hex(encryption_vars, i);
+			if(!strcmp(encryption_func, "simple_xor")) {
+				state->enc_func = msg_crypt_th08;
+			} else if(!strcmp(encryption_func, "util_xor")) {
+				state->enc_func = msg_crypt_th09;
 			}
 		}
 	}
@@ -207,7 +217,6 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 
 void patch_msg_state_clear(patch_msg_state_t* state)
 {
-	SAFE_FREE(state->enc_vars);
 	SAFE_FREE(state->op_info);
 	ZeroMemory(state, sizeof(patch_msg_state_t));
 }
@@ -248,7 +257,7 @@ void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_sta
 	memcpy(dst, rep, len);
 	dst[len - 1] = '\0';
 	if(state->enc_func) {
-		state->enc_func(dst, len, state->enc_vars, state->enc_var_count);
+		state->enc_func(dst, len);
 	}
 }
 

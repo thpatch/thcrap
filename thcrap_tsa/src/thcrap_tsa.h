@@ -9,30 +9,6 @@
 
 #pragma once
 
-/**
-  * Encryption function type.
-  *
-  * Parameters
-  * ----------
-  *	uint8_t* data
-  *		Buffer to encrypt
-  *
-  *	size_t data_len
-  *		Length of [data]
-  *
-  *	const uint8_t* params
-  *		Optional array of parameters required
-  *
-  *	const uint8_t* params_count
-  *		Number of parameters in [params].
-  *
-  * Returns nothing.
-  */
-
-typedef void (*EncryptionFunc_t)(
-	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
-);
-
 /// ------
 /// Spells
 /// ------
