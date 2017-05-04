@@ -77,14 +77,26 @@ get_result_t http_get(download_context_t *ctx, const char *url)
 	}
 	AcquireSRWLockShared(&inet_srwlock);
 
+	ZeroMemory(ctx, sizeof(download_context_t));
+
 	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_start);
 	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
 	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_ping);
 	if(!hFile) {
+		// TODO: We should use FormatMessage() for both coverage and i18n
+		// reasons here, but its messages are way too verbose for my taste.
+		// So let's wait with that until this code is used in conjunction
+		// with a GUI, if at all.
 		DWORD inet_ret = GetLastError();
 		switch(inet_ret) {
 		case ERROR_INTERNET_NAME_NOT_RESOLVED:
 			log_printf("Could not resolve hostname\n", inet_ret);
+			break;
+		case ERROR_INTERNET_CANNOT_CONNECT:
+			log_printf("Connection refused\n", inet_ret);
+			break;
+		case ERROR_INTERNET_TIMEOUT:
+			log_printf("timed out\n", inet_ret);
 			break;
 		default:
 			log_printf("WinInet error %d\n", inet_ret);
