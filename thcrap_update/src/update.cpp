@@ -121,10 +121,19 @@ get_result_t http_get(download_context_t *ctx, const char *url)
 	ctx->file_buffer = (BYTE*)malloc(ctx->file_size);
 	if(ctx->file_buffer) {
 		BYTE *p = ctx->file_buffer;
-		DWORD read_size = ctx->file_size;
-		while(read_size) {
-			if(InternetReadFile(hFile, p, ctx->file_size, &byte_ret)) {
-				read_size -= byte_ret;
+		DWORD rem_size = ctx->file_size;
+		while(rem_size) {
+			DWORD read_size = 0;
+			if(!InternetQueryDataAvailable(hFile, &read_size, 0, 0)) {
+				read_size = rem_size;
+			}
+			if(read_size == 0) {
+				log_printf("disconnected\n");
+				get_ret = GET_SERVER_ERROR;
+				goto end;
+			}
+			if(InternetReadFile(hFile, p, read_size, &byte_ret)) {
+				rem_size -= byte_ret;
 				p += byte_ret;
 			} else {
 				SAFE_FREE(ctx->file_buffer);
