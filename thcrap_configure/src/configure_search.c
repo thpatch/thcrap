@@ -118,6 +118,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	}
 	bi.lpszTitle = "Root path for game search (cancel to search entire system):";
 	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
+	bi.hwndOwner = GetConsoleWindow();
 
 	do {
 		char search_path[MAX_PATH * 2] = {0};
