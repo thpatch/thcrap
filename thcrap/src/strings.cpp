@@ -189,6 +189,11 @@ const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
 	return format;
 }
 
+const char* strings_vsprintf_msvcrt14(const char *format, const size_t slot, va_list va)
+{
+	return strings_vsprintf(slot, format, va);
+}
+
 const char* strings_sprintf(const size_t slot, const char *format, ...)
 {
 	va_list va;

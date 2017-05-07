@@ -43,6 +43,8 @@ char* strings_storage_get(const size_t slot, size_t min_len);
 const char* strings_vsprintf(const size_t slot, const char *format, va_list va);
 const char* strings_sprintf(const size_t slot, const char *format, ...);
 
+const char* strings_vsprintf_msvcrt14(const char *format, const size_t slot, va_list va);
+
 // Clears the string in [slot].
 const char* strings_strclr(const size_t slot);
 

@@ -269,6 +269,7 @@ EXPORTS
 	strings_storage_get
 	strings_sprintf
 	strings_vsprintf
+	strings_vsprintf_msvcrt14
 	strings_strclr
 	strings_strcat
 	strings_replace
