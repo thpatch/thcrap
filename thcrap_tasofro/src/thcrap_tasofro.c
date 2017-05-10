@@ -47,10 +47,14 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	struct FileHeader **header = (struct FileHeader**)json_object_get_register(bp_info, regs, "struct");
+	BYTE **pHeader = (BYTE**)json_object_get_register(bp_info, regs, "struct");
 	DWORD **key = (DWORD**)json_object_get_register(bp_info, regs, "key");
 	// ----------
-	struct FileHeaderFull *full_header = register_file_header(*header, *key);
+	if (!pHeader || !*pHeader || !key || !*key)
+		return 1;
+
+	struct FileHeader *header = (struct FileHeader*)(*pHeader + json_integer_value(json_object_get(bp_info, "struct_offset")));
+	struct FileHeaderFull *full_header = register_file_header(header, *key);
 	file_rep_t *fr = &full_header->fr;
 
 	if (full_header->path[0]) {
@@ -68,7 +72,7 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 
 	if (fr->rep_buffer != NULL) {
 		full_header->size = fr->pre_json_size + fr->patch_size;
-		(*header)->size = full_header->size;
+		header->size = full_header->size;
 
 		fr->game_buffer = malloc(full_header->size);
 		memcpy(fr->game_buffer, fr->rep_buffer, fr->pre_json_size);
@@ -81,8 +85,8 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 
 	if (fr->rep_buffer == NULL && fr->patch != NULL) {
 		// If we have no rep buffer but we have a patch buffer, we will patch the file later, so we need to keep the file_rep.
-		(*header)->size += fr->patch_size;
-		full_header->size = (*header)->size;
+		header->size += fr->patch_size;
+		full_header->size = header->size;
 	}
 	else {
 		file_rep_clear(fr);
