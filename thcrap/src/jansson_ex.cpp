@@ -227,17 +227,41 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const char *source)
 {
 	const unsigned char utf8_bom[] = {0xef, 0xbb, 0xbf};
-	const size_t utf8_bom_len = sizeof(utf8_bom);
+	const unsigned char utf16le_bom[] = {0xff, 0xfe};
+	char *converted_buffer = nullptr;
 	json_error_t error;
 	json_t *ret;
 
 	if(!buffer || !buflen) {
 		return NULL;
 	}
-	// Skip UTF-8 byte order mark, if there
-	if(buflen > utf8_bom_len && !memcmp(buffer, utf8_bom, utf8_bom_len)) {
-		buffer += utf8_bom_len;
-		buflen -= utf8_bom_len;
+
+	auto skip_bom = [&buffer, &buflen] (const unsigned char *bom, size_t bom_len) {
+		if(buflen > bom_len && !memcmp(buffer, bom, bom_len)) {
+			buffer += bom_len;
+			buflen -= bom_len;
+			return true;
+		}
+		return false;
+	};
+
+	if(!skip_bom(utf8_bom, sizeof(utf8_bom))) {
+		// Convert UTF-16LE to UTF-8.
+		// NULL bytes do not count as significant whitespace in JSON, so
+		// they can indeed be used in the absence of a BOM. (In fact, the
+		// JSON RFC 4627 Chapter 3 explicitly mentions this possibility.)
+		if(
+			skip_bom(utf16le_bom, sizeof(utf16le_bom))
+			|| (buflen > 2 && buffer[1] == '\0')
+		) {
+			auto converted_len = buflen * UTF8_MUL;
+			converted_buffer = (char *)malloc(converted_len);
+			buflen = WideCharToMultiByte(
+				CP_UTF8, 0, (const wchar_t *)buffer, buflen / 2,
+				converted_buffer, converted_len, NULL, NULL
+			);
+			buffer = converted_buffer;
+		}
 	}
 	ret = json_loadb(buffer, buflen, JSON_DISABLE_EOF_CHECK, &error);
 	if(!ret) {
@@ -250,6 +274,7 @@ json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const
 			error.text, source ? source : "", source ? ", " : "", error.line, error.column
 		);
 	}
+	SAFE_FREE(converted_buffer);
 	return ret;
 }
 
