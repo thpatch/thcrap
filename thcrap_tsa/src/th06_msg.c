@@ -96,11 +96,15 @@ void msg_crypt_th09(uint8_t *data, size_t data_len)
 }
 /// --------------------
 
+// Format information for a specific game
 typedef struct {
-	// Format information
-	op_info_t* op_info;
-	size_t op_info_num;
+	uint32_t entry_offset_mul;
 	EncryptionFunc_t enc_func;
+	op_info_t opcodes[];
+} msg_format_t;
+
+typedef struct {
+	const msg_format_t *format;
 
 	// JSON objects in the diff file
 	const json_t *diff_entry;
@@ -137,88 +141,19 @@ typedef struct {
   */
 typedef void (*ReplaceFunc_t)(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *new_line);
 
-const op_info_t* get_op_info(patch_msg_state_t* state, uint8_t op)
+const op_info_t* get_op_info(const msg_format_t* format, uint8_t op)
 {
-	if(state && state->op_info && state->op_info_num) {
-		size_t i;
-		for(i = 0; i < state->op_info_num; i++) {
-			if(state->op_info[i].op == op) {
-				return &state->op_info[i];
-			}
+	const op_info_t *opcode = format->opcodes;
+	if(!opcode) {
+		return NULL;
+	}
+	while(opcode->op != 0) {
+		if(opcode->op == op) {
+			return opcode;
 		}
+		opcode++;
 	}
 	return NULL;
-}
-
-// Because string comparisons in the main loop are not nice
-op_cmd_t op_str_to_cmd(const char *str)
-{
-	if(!str) {
-		return OP_UNKNOWN;
-	}
-	if(!strcmp(str, "hard_line")) {
-		return OP_HARD_LINE;
-	}
-	if(!strcmp(str, "auto_line")) {
-		return OP_AUTO_LINE;
-	}
-	if(!strcmp(str, "auto_end")) {
-		return OP_AUTO_END;
-	}
-	if(!strcmp(str, "delete")) {
-		return OP_DELETE;
-	}
-	return OP_UNKNOWN;
-}
-
-int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
-{
-	json_t *encryption = json_object_get(format, "encryption");
-	json_t *opcodes = json_object_get(format, "opcodes");
-	json_t *op_obj;
-	const char *key;
-	int i = 0;
-
-	if(!json_is_object(opcodes)) {
-		// Nothing to do with no definitions...
-		return -1;
-	}
-
-	ZeroMemory(state, sizeof(patch_msg_state_t));
-
-	// Prepare opcode info
-	state->op_info_num = json_object_size(opcodes);
-	state->op_info = (op_info_t*)malloc(sizeof(op_info_t) * state->op_info_num);
-	json_object_foreach(opcodes, key, op_obj) {
-		const char *cmd_str;
-		state->op_info[i].op = atoi(key);
-		state->op_info[i].type = json_object_get_string(op_obj, "type");
-
-		cmd_str = json_object_get_string(op_obj, "cmd");
-		state->op_info[i].cmd = op_str_to_cmd(cmd_str);
-		i++;
-	}
-
-	// Prepare encryption vars
-	if(json_is_object(encryption)) {
-		const char *encryption_func = json_object_get_string(encryption, "func");
-
-		// Resolve function. TODO: Complete the transition to hardcoded formats.
-		if(encryption_func) {
-			if(!strcmp(encryption_func, "simple_xor")) {
-				state->enc_func = msg_crypt_th08;
-			} else if(!strcmp(encryption_func, "util_xor")) {
-				state->enc_func = msg_crypt_th09;
-			}
-		}
-	}
-	return 0;
-}
-
-void patch_msg_state_clear(patch_msg_state_t* state)
-{
-	SAFE_FREE(state->op_info);
-	ZeroMemory(state, sizeof(patch_msg_state_t));
 }
 
 size_t th06_msg_full_len(const th06_msg_t* msg)
@@ -256,8 +191,8 @@ void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_sta
 {
 	memcpy(dst, rep, len);
 	dst[len - 1] = '\0';
-	if(state->enc_func) {
-		state->enc_func(dst, len);
+	if(state->format->enc_func) {
+		state->format->enc_func(dst, len);
 	}
 }
 
@@ -305,7 +240,7 @@ int validate_line(const char *line)
 // Returns 1 if the output buffer should advance, 0 if it shouldn't.
 int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t rep_func)
 {
-	const op_info_t* cur_op = get_op_info(state, cmd_out->type);
+	const op_info_t* cur_op = get_op_info(state->format, cmd_out->type);
 
 	// If we don't have a diff_lines pointer, this is the first line of a new box.
 	if(cur_op && !json_is_array(state->diff_lines)) {
@@ -427,27 +362,24 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 	return 1;
 }
 
-int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format)
+int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, const msg_format_t *format)
 {
+	assert(format);
+	assert(format->entry_offset_mul);
+
 	uint32_t* msg_out = (uint32_t*)file_inout;
 	uint32_t* msg_in;
 	int entry_new = 1;
 
 	// Header data
-	uint32_t entry_offset_mul = json_object_get_hex(format, "entry_offset_mul");
 	size_t entry_count;
 	uint32_t *entry_offsets_out;
 	uint32_t *entry_offsets_in;
 	uint32_t entry_offset_size;
 
-	patch_msg_state_t state;
+	patch_msg_state_t state = {format};
 
-	if(!msg_out || !patch || !format || !entry_offset_mul) {
-		return 1;
-	}
-
-	// Read format info
-	if(patch_msg_state_init(&state, format)) {
+	if(!msg_out || !patch) {
 		return 1;
 	}
 
@@ -475,7 +407,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	entry_count = *msg_in;
 	entry_offsets_in = msg_in + 1;
 
-	entry_offset_size = entry_count * entry_offset_mul;
+	entry_offset_size = entry_count * format->entry_offset_mul;
 
 	state.cmd_in = (th06_msg_t*)(msg_in + 1 + entry_offset_size);
 
@@ -518,10 +450,10 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 			// and assign the correct offset to the output buffer.
 			size_t i;
 			for(i = 0; i < entry_count; ++i) {
-				if(offset_in == entry_offsets_in[i * entry_offset_mul]) {
+				if(offset_in == entry_offsets_in[i * format->entry_offset_mul]) {
 					state.entry = i;
 					state.diff_entry = json_object_numkey_get(patch, state.entry);
-					entry_offsets_out[i * entry_offset_mul] = offset_out;
+					entry_offsets_out[i * format->entry_offset_mul] = offset_out;
 					break;
 				}
 			}
@@ -540,7 +472,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 		memcpy(state.cmd_out, state.cmd_in, sizeof(th06_msg_t) + state.cmd_in->length);
 
 		// Look up what to do with the opcode...
-		cur_op = get_op_info(&state, state.cmd_in->type);
+		cur_op = get_op_info(state.format, state.cmd_in->type);
 
 		if(cur_op && json_is_object(state.diff_entry)) {
 			advance_out = process_op(cur_op, &state);
@@ -562,16 +494,107 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	}
 #endif
 	HeapFree(GetProcessHeap(), 0, msg_in);
-	patch_msg_state_clear(&state);
 	return 0;
 }
 
+/// Game formats
+/// ------------
+// In-game dialog
+const msg_format_t MSG_TH06 = {
+	.entry_offset_mul = 1,
+	.opcodes = {
+		{ 3, OP_HARD_LINE },
+		{ 8, OP_HARD_LINE, "h1" },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH08 = {
+	.entry_offset_mul = 1,
+	.enc_func = msg_crypt_th08,
+	.opcodes = {
+		{  3, OP_HARD_LINE },
+		{  4, OP_AUTO_END },
+		{ 15, OP_AUTO_END },
+		{ 16, OP_AUTO_LINE },
+		{ 19, OP_AUTO_LINE },
+		{ 20, OP_AUTO_LINE },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH09 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{  4, OP_AUTO_END },
+		{ 15, OP_AUTO_END },
+		{ 16, OP_AUTO_LINE },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH10 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{  7, OP_AUTO_END },
+		{  8, OP_AUTO_END },
+		{ 10, OP_AUTO_END },
+		{ 16, OP_AUTO_LINE },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH11 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{  7, OP_AUTO_END },
+		{  8, OP_AUTO_END },
+		{  9, OP_AUTO_END },
+		{ 11, OP_AUTO_END },
+		{ 17, OP_AUTO_LINE },
+		{ 25, OP_DELETE },
+		{ 0 }
+	}
+};
+
+// Endings (TH10 and later)
+const msg_format_t END_TH10 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{ 3, OP_AUTO_LINE },
+		{ 5, OP_AUTO_END },
+		{ 6, OP_AUTO_END },
+		{ 9, OP_AUTO_END },
+		{ 0 }
+	}
+};
+
+const msg_format_t* msg_format_for(tsa_game_t game)
+{
+	if(game >= TH11) {
+		return &MSG_TH11;
+	} else if(game >= TH10) {
+		return &MSG_TH10;
+	} else if(game >= TH09) {
+		return &MSG_TH09;
+	} else if(game >= TH08) {
+		return &MSG_TH08;
+	}
+	return &MSG_TH06;
+}
+/// ------------
+
 int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, specs_get("msg"));
+	const msg_format_t *format = msg_format_for(game_id);
+	return patch_msg(file_inout, size_out, size_in, patch, format);
 }
 
 int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, specs_get("end"));
+	return patch_msg(file_inout, size_out, size_in, patch, &END_TH10);
 }

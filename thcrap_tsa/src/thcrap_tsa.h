@@ -210,7 +210,6 @@ void music_mod_exit(void);
 
 /// Format patchers
 /// ---------------
-int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
 int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
 int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
 int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
