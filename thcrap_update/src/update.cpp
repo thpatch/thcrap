@@ -9,8 +9,7 @@
 
 #include <thcrap.h>
 #include <unordered_map>
-#include <MMSystem.h>
-#include <WinInet.h>
+#include <wininet.h>
 #include <zlib.h>
 #include "update.h"
 

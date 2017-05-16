@@ -8,7 +8,6 @@
   */
 
 #include <thcrap.h>
-#include <win32_detour.h>
 
 const char *EXE_HELP =
 	"The executable can either be a game ID which is then looked up in "

@@ -8,7 +8,7 @@
   */
 
 #include <thcrap.h>
-#include <WinCrypt.h>
+#include <wincrypt.h>
 #include "update.h"
 #include "self.h"
 

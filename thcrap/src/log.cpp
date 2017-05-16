@@ -8,8 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <io.h>
-#include <fcntl.h>
 
 // -------
 // Globals
