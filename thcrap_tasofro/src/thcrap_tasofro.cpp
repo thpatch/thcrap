@@ -23,7 +23,7 @@ int __stdcall thcrap_plugin_init()
 		return 1;
 	} else if(base_tasofro_removed == -1) {
 		const char *game = json_object_get_string(runconfig_get(), "game");
-		if(!strcmp(game, "th145")) {
+		if(game && !strcmp(game, "th145")) {
 			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 				"Support for TH14.5 has been moved out of the sandbox.\n"
 				"\n"

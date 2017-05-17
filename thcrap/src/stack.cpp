@@ -200,7 +200,7 @@ int stack_remove_if_unneeded(const char *patch_id)
 
 	json_array_foreach(patches, i, patch_info) {
 		const char *id = json_object_get_string(patch_info, "id");
-		if(strcmp(id, patch_id)) {
+		if(!id || strcmp(id, patch_id)) {
 			continue;
 		}
 		int game_found = 0;
