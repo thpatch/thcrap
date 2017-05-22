@@ -17,7 +17,7 @@
 #include "tfcs.h"
 #include <zlib.h>
 
-static int inflate_bytes(BYTE* file_in, DWORD size_in, BYTE* file_out, DWORD size_out)
+static int inflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t size_out)
 {
 	int ret;
 	z_stream strm;
@@ -43,7 +43,7 @@ static int inflate_bytes(BYTE* file_in, DWORD size_in, BYTE* file_out, DWORD siz
 	return ret == Z_STREAM_END ? Z_OK : ret;
 }
 
-static int deflate_bytes(BYTE* file_in, DWORD size_in, BYTE* file_out, DWORD* size_out)
+static int deflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t* size_out)
 {
 	int ret;
 	z_stream strm;
@@ -70,7 +70,7 @@ static int deflate_bytes(BYTE* file_in, DWORD size_in, BYTE* file_out, DWORD* si
 	return ret == Z_STREAM_END ? Z_OK : ret;
 }
 
-int patch_tfcs(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	tfcs_header_t *header;
 
@@ -78,15 +78,15 @@ int patch_tfcs(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	header = (tfcs_header_t*)file_inout;
 	if (size_in < sizeof(header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
 		// Invalid TFCS file (probably a regular CSV file)
-		return patch_csv(file_inout, size_out, size_in, patch);
+		return patch_csv((char*)file_inout, size_out, size_in, patch);
 	}
 
-	BYTE *file_in_uncomp = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, header->uncomp_size);
+	BYTE *file_in_uncomp = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, header->uncomp_size);
 	inflate_bytes(header->data, header->comp_size, file_in_uncomp, header->uncomp_size);
 
 	// We don't have patch_size here, but it is equal to size_out - size_in.
 	DWORD file_out_uncomp_size = header->uncomp_size + (size_out - size_in);
-	BYTE *file_out_uncomp = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, file_out_uncomp_size);
+	BYTE *file_out_uncomp = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, file_out_uncomp_size);
 
 	BYTE *ptr_in  = file_in_uncomp;
 	BYTE *ptr_out = file_out_uncomp;
@@ -117,8 +117,8 @@ int patch_tfcs(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 				field_out_size = field_in_size;
 			}
 			else {
-				field_out = json_string_value(patch_col);
-				field_out_size = strlen(field_out);
+				field_out = (BYTE*)json_string_value(patch_col);
+				field_out_size = strlen((char*)field_out);
 			}
 			ptr_in += field_in_size;
 

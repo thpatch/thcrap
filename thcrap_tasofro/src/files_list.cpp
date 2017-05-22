@@ -7,7 +7,7 @@
   * Files list handling.
   */
 
-#include <Windows.h>
+#include <thcrap.h>
 #include <unordered_map>
 #include "thcrap_tasofro.h"
 
@@ -33,7 +33,7 @@ DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C
 }
 
 std::unordered_map<DWORD, FileHeaderFull> fileHashToName;
-extern "C" int LoadFileNameList(const char* FileName)
+int LoadFileNameList(const char* FileName)
 {
 	FILE* fp = fopen(FileName, "rt");
 	if (!fp) return -1;
@@ -49,7 +49,7 @@ extern "C" int LoadFileNameList(const char* FileName)
 	return 0;
 }
 
-extern "C" int LoadFileNameListFromMemory(char* list, size_t size)
+int LoadFileNameListFromMemory(char* list, size_t size)
 {
 	while (size > 0)
 	{
@@ -69,12 +69,12 @@ extern "C" int LoadFileNameListFromMemory(char* list, size_t size)
 	return 0;
 }
 
-extern "C" DWORD filename_to_hash(const char* filename)
+DWORD filename_to_hash(const char* filename)
 {
 	return SpecialFNVHash(filename, filename + strlen(filename));
 }
 
-extern "C" struct FileHeaderFull* register_file_header(FileHeader* header, DWORD *key)
+struct FileHeaderFull* register_file_header(FileHeader* header, DWORD *key)
 {
 	FileHeaderFull& full_header = fileHashToName[header->filename_hash];
 
@@ -95,7 +95,7 @@ extern "C" struct FileHeaderFull* register_file_header(FileHeader* header, DWORD
 	return &full_header;
 }
 
-extern "C" struct FileHeaderFull* hash_to_file_header(DWORD hash)
+struct FileHeaderFull* hash_to_file_header(DWORD hash)
 {
 	std::unordered_map<DWORD, FileHeaderFull>::iterator it = fileHashToName.find(hash);
 

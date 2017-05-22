@@ -17,7 +17,7 @@
 
 static balloon_t balloon;
 
-void balloon_set_character(BYTE* line, size_t size)
+void balloon_set_character(char* line, size_t size)
 {
 	unsigned int i;
 
@@ -36,7 +36,7 @@ balloon_t *balloon_get()
 	return &balloon;
 }
 
-static void next_line(BYTE **file, size_t *size)
+static void next_line(char **file, size_t *size)
 {
 	while (*size > 0 && **file != '\n') {
 		MOVE_BUFF(*file, *size, 1);
@@ -46,7 +46,7 @@ static void next_line(BYTE **file, size_t *size)
 	}
 }
 
-static BOOL ignore_line(BYTE *file, size_t size)
+static BOOL ignore_line(char *file, size_t size)
 {
 	while (size > 0 && *file == ' ') {
 		MOVE_BUFF(file, size, 1);
@@ -67,7 +67,7 @@ static BOOL ignore_line(BYTE *file, size_t size)
 	return FALSE;
 }
 
-static void copy_line(BYTE *file_in, size_t size_in, BYTE *file_out, size_t size_out)
+static void copy_line(char *file_in, size_t size_in, char *file_out, size_t size_out)
 {
 	size_t i;
 
@@ -119,7 +119,7 @@ static int balloon_gen_name(balloon_t *balloon, int cur_line, json_t *lines)
 	return 1;
 }
 
-static void put_line(BYTE **file_out, size_t *size_out, const char *line)
+static void put_line(char **file_out, size_t *size_out, const char *line)
 {
 	int i;
 
@@ -150,7 +150,7 @@ static void put_line(BYTE **file_out, size_t *size_out, const char *line)
 	}
 }
 
-static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
+static void put_line_story(char *file_in, size_t size_in, char **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
 {
 	unsigned int cur_line = 0;
 	unsigned int nb_lines = json_array_size(lines);
@@ -199,7 +199,7 @@ static void put_line_story(BYTE *file_in, size_t size_in, BYTE **file_out, size_
 	}
 }
 
-static int put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
+static int put_line_ending(char *file_in, size_t size_in, char **file_out, size_t *size_out, json_t *lines, balloon_t *balloon)
 {
 	unsigned int cur_line = 0;
 	unsigned int balloon_cur_line = 1;
@@ -256,7 +256,7 @@ static int put_line_ending(BYTE *file_in, size_t size_in, BYTE **file_out, size_
   * If we are in an ending file and the caller needs to skip the story.BeginStaffroll call, this function returns 1.
   * Otherwise, it returns 0.
   */
-static int replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *size_out, unsigned int balloon_nb, json_t *lines)
+static int replace_line(char *file_in, size_t size_in, char **file_out, size_t *size_out, unsigned int balloon_nb, json_t *lines)
 {
 	balloon_t *balloon = balloon_get();
 	unsigned int i;
@@ -305,21 +305,22 @@ static int replace_line(BYTE *file_in, size_t size_in, BYTE **file_out, size_t *
 	}
 }
 
-int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_pl(void *_file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	BYTE* buffer_in;
-	BYTE* file_in;
+	char* file_inout = (char*)_file_inout;
+	char* buffer_in;
+	char* file_in;
 	size_t balloon;
 	json_t* line_data;
 	json_t* lines;
 	BOOL need_to_copy_line;
 
 #ifdef _DEBUG
-	BYTE *file_inout_b = file_inout;
+	char *file_inout_b = file_inout;
 #endif
 
 	// Make a copy of the input buffer
-	buffer_in = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
+	buffer_in = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
 	memcpy(buffer_in, file_inout, size_in);
 	file_in = buffer_in;
 

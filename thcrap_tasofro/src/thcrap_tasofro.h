@@ -44,6 +44,11 @@ struct FileHeaderFull
 extern "C" {
 #endif
 
+int __stdcall thcrap_plugin_init();
+
+int BP_file_header(x86_reg_t *regs, json_t *bp_info);
+int BP_replace_file(x86_reg_t *regs, json_t *bp_info);
+
 int LoadFileNameList(const char* FileName);
 int LoadFileNameListFromMemory(char* list, size_t size);
 DWORD filename_to_hash(const char* filename);

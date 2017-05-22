@@ -13,7 +13,7 @@
 #include "thcrap_tasofro.h"
 #include "tfcs.h"
 
-static int next_line(BYTE *in, size_t size_in, BYTE *out, int copy)
+static int next_line(char *in, size_t size_in, char *out, int copy)
 {
 	size_t i = 0;
 
@@ -36,9 +36,9 @@ static int next_line(BYTE *in, size_t size_in, BYTE *out, int copy)
 	return i;
 }
 
-int patch_csv(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_csv(char *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	BYTE* file_in = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
+	char* file_in = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
 	memcpy(file_in, file_inout, size_in);
 
 	json_t *patch_row = json_object_numkey_get(patch, 0);
@@ -54,7 +54,7 @@ int patch_csv(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 			j += n;
 		}
 		else {
-			const BYTE* field = json_string_value(patch_col);
+			const char* field = json_string_value(patch_col);
 			int k;
 			file_inout[j] = '"';
 			j++;

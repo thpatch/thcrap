@@ -28,7 +28,7 @@ typedef struct {
 extern "C" {
 #endif
 
-int patch_pl(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_pl(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
 
 #ifdef __cplusplus
 }

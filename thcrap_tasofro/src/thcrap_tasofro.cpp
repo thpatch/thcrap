@@ -15,7 +15,7 @@
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
 {
-	BYTE* filenames_list;
+	char* filenames_list;
 	size_t filenames_list_size;
 
 	int base_tasofro_removed = stack_remove_if_unneeded("base_tasofro");
@@ -37,7 +37,7 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("*/stage*.pl", patch_pl);
 	patchhook_register("*/ed_*.pl", patch_pl);
 	patchhook_register("*.csv", patch_tfcs);
-	filenames_list = stack_game_file_resolve("fileslist.txt", &filenames_list_size);
+	filenames_list = (char*)stack_game_file_resolve("fileslist.txt", &filenames_list_size);
 	LoadFileNameListFromMemory(filenames_list, filenames_list_size);
 	return 0;
 }
@@ -80,7 +80,7 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 			fr->hooks, fr->game_buffer, fr->pre_json_size + fr->patch_size, fr->pre_json_size, fr->patch
 			);
 
-		crypt_block(fr->game_buffer, full_header->size, full_header->key);
+		crypt_block((BYTE*)fr->game_buffer, full_header->size, full_header->key);
 	}
 
 	if (fr->rep_buffer == NULL && fr->patch != NULL) {
@@ -174,11 +174,11 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 			header->fr.game_buffer = malloc(header->size);
 			ReadFile(hFile, header->fr.game_buffer, header->orig_size, &nbOfBytesRead, NULL);
 
-			uncrypt_block(header->fr.game_buffer, header->orig_size, header->key);
+			uncrypt_block((BYTE*)header->fr.game_buffer, header->orig_size, header->key);
 			patchhooks_run(
 				header->fr.hooks, header->fr.game_buffer, header->size, header->orig_size, header->fr.patch
 				);
-			crypt_block(header->fr.game_buffer, header->size, header->key);
+			crypt_block((BYTE*)header->fr.game_buffer, header->size, header->key);
 
 			SetFilePointer(hFile, header->effective_offset + size, NULL, FILE_BEGIN);
 			file_rep_clear(&header->fr);
