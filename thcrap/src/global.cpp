@@ -20,7 +20,7 @@ const char* PROJECT_NAME_SHORT(void)
 {
 	return "thcrap";
 }
-const DWORD PROJECT_VERSION(void)
+DWORD PROJECT_VERSION(void)
 {
 	return 0x20170513;
 }
