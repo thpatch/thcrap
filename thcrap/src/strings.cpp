@@ -50,7 +50,7 @@ void stringlocs_reparse(void)
 		// more of these conversions.
 #define stringlocs_log_error(msg) \
 	log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION, \
-		"Error parsing stringlocs.js: \"%s\" "msg".", key, sizeof(size_t) * 8 \
+		"Error parsing stringlocs.js: \"%s\" " msg".", key, sizeof(size_t) * 8 \
 	)
 
 		if(!json_is_string(val)) {
