@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include "vfs.h"
 
 json_t* resolve_chain(const char *fn)
 {
@@ -58,6 +59,26 @@ json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size)
 	json_t *ret = NULL;
 	stack_chain_iterate_t sci = {0};
 	size_t json_size = 0;
+
+	json_t *obj;
+	size_t n;
+	json_array_foreach(chain, n, obj) {
+		const char *fn = json_string_value(obj);
+		size_t size = 0;
+		json_t *json_new = jsonvfs_get(fn, &size);
+		if (json_new) {
+			if (!ret) {
+				ret = json_new;
+			}
+			else {
+				json_object_merge(ret, json_new);
+				json_decref(json_new);
+			}
+			log_printf("\n+ vfs:%s", fn);
+			json_size += size;
+		}
+	}
+
 	while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
 		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
 	}

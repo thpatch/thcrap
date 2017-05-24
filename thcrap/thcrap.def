@@ -307,6 +307,12 @@ EXPORTS
 	RepoDiscoverFromLocal_wrapper
 	patch_bootstrap_wrapper
 
+	; Virtual file system
+	; -------------------
+	jsonvfs_add
+	jsonvfs_game_add
+	jsonvfs_get
+
 	; Win32 detours
 	; -------------
 	win32_detour
