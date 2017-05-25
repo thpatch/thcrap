@@ -21,7 +21,7 @@ typedef struct {
 	char str;
 } storage_string_t;
 
-static json_t *strings_storage = NULL;
+std::unordered_map<size_t, storage_string_t *> strings_storage;
 
 SRWLOCK stringlocs_srwlock = {SRWLOCK_INIT};
 std::unordered_map<const char *, const char *> stringlocs;
@@ -141,30 +141,29 @@ void strings_va_lookup(va_list va, const char *format)
 
 char* strings_storage_get(const size_t slot, size_t min_len)
 {
-	storage_string_t *ret = NULL;
-	char addr_key[addr_key_len];
-
-	itoa(slot, addr_key, 16);
-	ret = (storage_string_t*)json_object_get_hex(strings_storage, addr_key);
+	storage_string_t *ret = nullptr;
+	auto stored = strings_storage.find(slot);
 
 	// MSVCRT's realloc implementation moves the buffer every time, even if the
 	// new length is shorter...
-	if(!ret || (min_len && ret->len < min_len)) {
-		storage_string_t *ret_new = (storage_string_t*)realloc(ret, min_len + sizeof(storage_string_t));
+	if(stored == strings_storage.end() || (min_len && stored->second->len < min_len)) {
+		auto *ret_new = (storage_string_t*)realloc(ret, min_len + sizeof(storage_string_t));
 		// Yes, this correctly handles a realloc failure.
 		if(ret_new) {
 			ret_new->len = min_len;
 			if(!ret) {
 				ret_new->str = 0;
 			}
-			json_object_set_new(strings_storage, addr_key, json_integer((size_t)ret_new));
+			strings_storage[slot] = ret_new;
 			ret = ret_new;
 		}
+	} else {
+		ret = stored->second;
 	}
 	if(ret) {
 		return &ret->str;
 	}
-	return NULL;
+	return nullptr;
 }
 
 const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
@@ -280,7 +279,6 @@ void strings_mod_init(void)
 {
 	jsondata_add("stringdefs.js");
 	stringlocs_reparse();
-	strings_storage = json_object();
 }
 
 void strings_mod_detour(void)
@@ -304,12 +302,8 @@ void strings_mod_repatch(json_t *files_changed)
 
 void strings_mod_exit(void)
 {
-	const char *key;
-	json_t *val;
-
-	json_object_foreach(strings_storage, key, val) {
-		storage_string_t *p = (storage_string_t*)json_hex_value(val);
-		SAFE_FREE(p);
+	for(auto& i : strings_storage) {
+		SAFE_FREE(i.second);
 	}
-	strings_storage = json_decref_safe(strings_storage);
+	strings_storage.clear();
 }
