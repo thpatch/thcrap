@@ -211,11 +211,11 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	size_t injectError1_len = _scprintf(injectError1Format, dll_fn) + 1;
 	size_t injectError2_len = _scprintf(injectError2Format, func_name) + 1;
 
-	char *injectError0 = "Error";
+	const char *injectError0 = "Error";
 	VLA(char, injectError1, injectError1_len);
 	VLA(char, injectError2, injectError2_len);
-	char *user32Name = "user32.dll";
-	char *msgboxName = "MessageBoxW";
+	const char *user32Name = "user32.dll";
+	const char *msgboxName = "MessageBoxW";
 
 	// Placeholder addresses to use the strings
 	LPBYTE user32NameAddr = 0;
@@ -832,7 +832,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, const char *run_cfg_
 			exe_fn_local, args, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
 		));
 		if(ret) {
-			char *msg_str = "";
+			char *msg_str = NULL;
 
 			FormatMessage(
 				FORMAT_MESSAGE_FROM_SYSTEM |
@@ -844,7 +844,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, const char *run_cfg_
 
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"Failed to start %s: %s",
-				exe_fn, msg_str
+				exe_fn, msg_str ? msg_str : ""
 			);
 			LocalFree(msg_str);
 		}
