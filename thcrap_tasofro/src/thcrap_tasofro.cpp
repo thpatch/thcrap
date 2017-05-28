@@ -1,4 +1,4 @@
-/**
+﻿/**
   * Touhou Community Reliant Automatic Patcher
   * Tasogare Frontier support plugin
   *
@@ -8,9 +8,11 @@
   */
 
 #include <thcrap.h>
+#include <vfs.h>
 #include "thcrap_tasofro.h"
 #include "pl.h"
 #include "tfcs.h"
+#include "spellcards_generator.h"
 
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
@@ -37,6 +39,11 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("*/stage*.pl", patch_pl);
 	patchhook_register("*/ed_*.pl", patch_pl);
 	patchhook_register("*.csv", patch_tfcs);
+
+	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
+	jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
+	jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",	{ "spells.js" }, spell_char_select_generator);
+
 	filenames_list = (char*)stack_game_file_resolve("fileslist.txt", &filenames_list_size);
 	LoadFileNameListFromMemory(filenames_list, filenames_list_size);
 	return 0;
