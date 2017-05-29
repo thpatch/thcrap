@@ -264,7 +264,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"Touhou Community Reliant Automatic Patcher.\n"
 		"\n"
 		"\n"
-		"The configuration process has two steps:\n"
+		"The configuration process has four steps:\n"
 		"\n"
 		"\t\t1. Selecting patches\n"
 		"\t\t2. Download game-independent data\n"
