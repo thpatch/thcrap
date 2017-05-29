@@ -68,7 +68,7 @@ json_int_t inject_refcount_update(HMODULE hMod, int delta)
 	char key_str[addr_key_len];
 	json_int_t val;
 
-	snprintf(key_str, sizeof(key_str), "%x", hMod);
+	snprintf(key_str, sizeof(key_str), "%p", hMod);
 
 	val = json_integer_value(json_object_get(modules_detoured, key_str));
 	val += delta;

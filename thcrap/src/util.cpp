@@ -73,7 +73,7 @@ int str_num_base(const char *str)
 	return !strnicmp(str, "0x", 2) ? 16 : 10;
 }
 
-void str_hexdate_format(char format[11], DWORD date)
+void str_hexdate_format(char format[11], uint32_t date)
 {
 	sprintf(format, "%04x-%02x-%02x",
 		(date & 0xffff0000) >> 16,

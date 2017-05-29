@@ -49,7 +49,7 @@ unsigned int str_num_digits(int number);
 int str_num_base(const char *str);
 
 // Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [format]
-void str_hexdate_format(char format[11], DWORD date);
+void str_hexdate_format(char format[11], uint32_t date);
 
 // Creates a lowercase copy of [str].
 #define STRLWR_DEC(str) \
