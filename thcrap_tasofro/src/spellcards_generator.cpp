@@ -131,7 +131,7 @@ json_t* spell_player_generator(std::unordered_map<std::string, json_t*> in_data,
 		if (strncmp(key, "player-", strlen("player-")) != 0) {
 			continue;
 		}
-		const char *key_ptr = strchr(key, '(') + 1;
+		const char *key_ptr = key + strlen("player-");
 		if (strncmp(key_ptr, character_name, strlen(character_name)) != 0) {
 			continue;
 		}
@@ -174,7 +174,7 @@ json_t* spell_char_select_generator(std::unordered_map<std::string, json_t*> in_
 		return NULL;
 	}
 	out_fn_ptr += strlen("/data/system/char_select3/");
-	int character_id = atoi(out_fn_ptr) + 1;
+	int character_id = atoi(out_fn_ptr);
 	out_fn_ptr = strchr(out_fn_ptr, '/');
 	if (out_fn_ptr == NULL || strncmp(out_fn_ptr, "/equip/", strlen("/equip/")) != 0) {
 		return NULL;
@@ -198,12 +198,12 @@ json_t* spell_char_select_generator(std::unordered_map<std::string, json_t*> in_
 		if (strncmp(key, "player-", strlen("player-")) != 0) {
 			continue;
 		}
-		const char *key_ptr = key + strlen("player-");
-		if (atoi(key_ptr) != character_id) {
+		const char *key_ptr = strchr(key, '(');
+		if (key_ptr == nullptr || atoi(key_ptr + 1) != character_id) {
 			continue;
 		}
-		key_ptr = strchr(key_ptr, ')') + 2;
-		if (atoi(key_ptr) != spell_id) {
+		key_ptr = strchr(key_ptr, ')');
+		if (key_ptr == nullptr || atoi(key_ptr + 2) != spell_id) {
 			continue;
 		}
 		if (json_is_string(value) == false) {
