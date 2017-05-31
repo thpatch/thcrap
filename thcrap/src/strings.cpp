@@ -141,12 +141,12 @@ void strings_va_lookup(va_list va, const char *format)
 
 char* strings_storage_get(const size_t slot, size_t min_len)
 {
-	storage_string_t *ret = nullptr;
 	auto stored = strings_storage.find(slot);
+	auto *ret = stored != strings_storage.end() ? stored->second : nullptr;
 
 	// MSVCRT's realloc implementation moves the buffer every time, even if the
 	// new length is shorter...
-	if(stored == strings_storage.end() || (min_len && stored->second->len < min_len)) {
+	if(ret == nullptr || (min_len && ret->len < min_len)) {
 		auto *ret_new = (storage_string_t*)realloc(ret, min_len + sizeof(storage_string_t));
 		// Yes, this correctly handles a realloc failure.
 		if(ret_new) {
