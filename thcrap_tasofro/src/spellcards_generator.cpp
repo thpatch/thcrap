@@ -48,10 +48,10 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*> in_data, 
 	}
 	json_t *spells = spells_it->second;
 
-	// Build the json object from the spellcards list.
-	json_t *ret = json_object();
+	// Get the max stage id.
 	const char *key;
 	json_t *value;
+	int max_spell_id = -1;
 	json_object_foreach(spells, key, value) {
 		if (strncmp(key, "story-", strlen("story-")) != 0) {
 			continue;
@@ -73,24 +73,41 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*> in_data, 
 		}
 		key_ptr += 2;
 		int spell_id = atoi(key_ptr);
-		key_ptr += 2;
-		int difficulty_id = atoi(key_ptr);
+		if (spell_id > max_spell_id) {
+			max_spell_id = spell_id;
+		}
+	}
 
-		// A max spell id of 97 is more than enough, and the difficulty should be between 1 and 4.
-		char ret_key[3];
-		sprintf(ret_key, "%d", (spell_id + 2) % 100);
-		json_t *col = json_object_get_create(ret, ret_key, JSON_OBJECT);
-		sprintf(ret_key, "%d", (difficulty_id + 8) % 100);
-		json_object_set(col, ret_key, value);
-		*out_size += json_string_length(value);
+	json_t *ret = nullptr;
+	if (max_spell_id != -1) {
+		// Build the json object.
+		ret = json_object();
+		VLA(char, spell_name, 6 /* story- */ + strlen(character_name) + 8 /* -stageNN */ + 3 /* -NN */ + 2 /* -N */ + 1);
+		for (int spell_id = 1; spell_id <= max_spell_id; spell_id++) {
+			const char *last_spell_translation = nullptr;
+			for (int difficulty_id = 1; difficulty_id <= 4; difficulty_id++) {
+
+				sprintf(spell_name, "story-%s-stage%d-%d-%d", character_name, stage_num % 100, spell_id % 100, difficulty_id % 10);
+				const char *spell_translation = json_object_get_string(spells, spell_name);
+				if (!spell_translation) {
+					spell_translation = last_spell_translation;
+				}
+				if (spell_translation) {
+					char key[3];
+					sprintf(key, "%d", (spell_id + 1) % 100);
+					json_t *col = json_object_get_create(ret, key, JSON_OBJECT);
+					sprintf(key, "%d", (difficulty_id + 8) % 100);
+					json_object_set_new(col, key, json_string(spell_translation));
+					*out_size += strlen(spell_translation);
+					last_spell_translation = spell_translation;
+				}
+			}
+		}
+		VLA_FREE(spell_name);
 	}
 
 	*out_size += 512; // Because these files are zipped, guessing their exact output size is hard. We'll add a few more bytes.
 	VLA_FREE(character_name);
-	if (json_object_size(ret) == 0) {
-		json_decref(ret);
-		ret = NULL;
-	}
 	return ret;
 }
 
