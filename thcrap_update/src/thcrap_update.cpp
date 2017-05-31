@@ -12,6 +12,7 @@
 #include "update.h"
 
 static CRITICAL_SECTION cs_update;
+static HMODULE hModule = NULL;
 
 DWORD WINAPI UpdateThread(void *param)
 {
@@ -32,6 +33,17 @@ int BP_update_poll(x86_reg_t *regs, json_t *bp_info)
 
 int __stdcall thcrap_plugin_init()
 {
+	if (hModule != NULL) {
+		char filename[MAX_PATH];
+		GetModuleFileName(hModule, filename, MAX_PATH);
+#ifdef _DEBUG
+		if (strcmp(strrchr(filename, '\\'), "\\thcrap_update_d.dll") != 0) {
+#else
+		if (strcmp(strrchr(filename, '\\'), "\\thcrap_update.dll") != 0) {
+#endif
+			return 1;
+		}
+	}
 	update_notify_thcrap();
 	update_notify_game();
 
@@ -43,6 +55,7 @@ int InitDll(HMODULE hDll)
 {
 	http_init();
 	InitializeCriticalSection(&cs_update);
+	hModule = hDll;
 	return 0;
 }
 
