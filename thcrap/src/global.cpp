@@ -22,7 +22,7 @@ const char* PROJECT_NAME_SHORT(void)
 }
 DWORD PROJECT_VERSION(void)
 {
-	return 0x20170531;
+	return 0x20170602;
 }
 const char* PROJECT_VERSION_STRING(void)
 {
