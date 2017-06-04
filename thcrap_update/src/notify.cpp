@@ -170,7 +170,7 @@ int update_notify_game(void)
 		log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION,
 			"You are running an old version of %s (%s).\n"
 			"\n"
-			"While %s is confirmed to work with this version, we recommend updating "
+			"%s may or may not work with this version, so we recommend updating "
 			"your game to the latest official version (%s).%s%s%s%s",
 			json_string_value(title), json_string_value(build), PROJECT_NAME_SHORT(),
 			json_string_value(latest),
