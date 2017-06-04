@@ -157,8 +157,6 @@ char* strings_storage_get(const size_t slot, size_t min_len)
 			strings_storage[slot] = ret_new;
 			ret = ret_new;
 		}
-	} else {
-		ret = stored->second;
 	}
 	if(ret) {
 		return &ret->str;
