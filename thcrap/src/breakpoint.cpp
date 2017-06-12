@@ -236,6 +236,10 @@ int breakpoints_apply(json_t *breakpoints)
 	json_object_foreach(breakpoints, key, json_bp) {
 		size_t j;
 		json_t *addr_val;
+		auto ignore = json_object_get(json_bp, "ignore");
+		if(json_is_true(ignore)) {
+			continue;
+		}
 		json_flex_array_foreach(json_object_get(json_bp, "addr"), j, addr_val) {
 			size_t addr = json_hex_value(addr_val);
 			if(addr) {

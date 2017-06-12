@@ -132,7 +132,7 @@ int binhacks_apply(json_t *binhacks)
 	const char *key;
 	json_t *hack;
 	size_t binhack_count = hackpoints_count(binhacks);
-	size_t c = 0;	// gets incremented at the beginning of the write loop
+	size_t c = 0;
 
 	if(!binhack_count) {
 		log_printf("No binary hacks to apply.\n");
@@ -143,6 +143,10 @@ int binhacks_apply(json_t *binhacks)
 	log_printf("------------------------\n");
 
 	json_object_foreach(binhacks, key, hack) {
+		auto ignore = json_object_get(hack, "ignore");
+		if(json_is_true(ignore)) {
+			continue;
+		}
 		const char *title = json_object_get_string(hack, "title");
 		const char *code = json_object_get_string(hack, "code");
 		const char *expected = json_object_get_string(hack, "expected");
