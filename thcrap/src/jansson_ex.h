@@ -64,7 +64,7 @@ const char* json_flex_array_get_string_safe(json_t *flarr, size_t ind);
 // if the [key] doesn't exist.
 json_t* json_object_get_create(json_t *object, const char *key, json_type type);
 
-// json_object_get for numeric keys
+// json_object_get for numeric keys in decimal
 json_t* json_object_numkey_get(const json_t *object, const json_int_t key);
 
 // Get the integer value of [key] in [object], automatically
@@ -88,7 +88,7 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 // Wrapper around json_loadb and json_load_file with indirect UTF-8 filename
 // support and nice error reporting.
 // [source] can be specified to show the source of the JSON buffer in case of
-//  an error (since json_error_t::source would just say "<buffer>").
+// an error (since json_error_t::source would just say "<buffer>").
 json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const char *source);
 json_t* json_load_file_report(const char *json_fn);
 

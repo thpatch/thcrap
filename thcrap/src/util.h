@@ -28,8 +28,8 @@ void str_ascii_replace(char *str, const char from, const char to);
 void str_slash_normalize(char *str);
 
 /**
-  * Usually, the normal version with Unix-style forward slashes should be used, but there
-  * are some cases which require the Windows one:
+  * Usually, the normal version with Unix-style forward slashes should be
+  * used, but there are some cases which require the Windows one:
   *
   * - PathRemoveFileSpec is the only shlwapi function not to work with forward
   *   slashes, effectively chopping a path down to just the drive specifier

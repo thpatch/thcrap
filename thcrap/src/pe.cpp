@@ -26,7 +26,7 @@ PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 	) {
 		return 0;
 	}
-	// Find the NT Header by using the offset of e_lfanew value from hMod
+	// Find the NT Header by using the offset of e_lfanew from hMod
 	pNTH = (PIMAGE_NT_HEADERS)((DWORD)pDosH + (DWORD)pDosH->e_lfanew);
 
 	if(

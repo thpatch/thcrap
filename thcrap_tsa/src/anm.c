@@ -6,8 +6,8 @@
   *
   * On-the-fly ANM patcher.
   *
-  * Portions adapted from xarnonymous' Touhou Toolkit
-  * http://code.google.com/p/thtk/
+  * Portions adapted from Touhou Toolkit
+  * https://github.com/thpatch/thtk
   */
 
 #include <thcrap.h>
@@ -480,9 +480,9 @@ int patch_png_load_for_thtx(png_image_exp image, const json_t *patch_info, const
 	return !image->buf;
 }
 
-// Patches an [image] prepared by <png_load_for_thtx> into [entry].
-// Patching will be performed on sprite level if the <sprites> and
-// <sprite_num> members of [entry] are valid.
+// Patches an [image] prepared by png_load_for_thtx() into [entry].
+// Patching will be performed on sprite level if [entry->sprites] and
+// [entry->sprite_num] are valid.
 // [png] is assumed to have the same bit depth as the texture in [entry].
 int patch_thtx(anm_entry_t *entry, png_image_exp image)
 {

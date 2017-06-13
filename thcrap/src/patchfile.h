@@ -56,7 +56,7 @@ void patch_print_fn(const json_t *patch_info, const char *fn);
 /// -----------
 /// Directories
 /// -----------
-// Recursively creates directories until [fn] can be stored.
+// Recursively creates directories until [fn] can be stored. (`mkdir -p`)
 int dir_create_for_fn(const char *fn);
 /// -----------
 
@@ -66,7 +66,7 @@ int dir_create_for_fn(const char *fn);
 // Returns 1 if the file [fn] exists in [patch_info].
 int patch_file_exists(const json_t *patch_info, const char *fn);
 
-// Returns 1 is the file name [fn] is blacklisted by [patch_info].
+// Returns 1 if the file name [fn] is blacklisted by [patch_info].
 int patch_file_blacklisted(const json_t *patch_info, const char *fn);
 
 // Loads the file [fn] from [patch_info].

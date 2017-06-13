@@ -120,8 +120,6 @@ size_t breakpoint_process(x86_reg_t *regs)
 	}
 	if(cave_exec) {
 		// Point return address to codecave.
-		// We need to use RETN here to ensure stack consistency
-		// inside the codecave - it will jump back on its own
 		regs->retaddr = (size_t)bp->cave;
 	}
 	if(esp_prev != regs->esp) {

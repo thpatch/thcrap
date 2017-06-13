@@ -58,7 +58,7 @@
   * this font in favor of MS Gothic if it's available on the user's system.
   * However, the game also makes up for Meiryo's smaller character size by
   * increasing the height of each font by a third. The font rules establish
-  * compatibility to the MS Gothic rules by by undoing the increases for the
+  * compatibility to the MS Gothic rules by undoing the increases for the
   * height values of 36, 42, 48 and 60, and replicating the custom setting for
   * MS Gothic with height 32. In the end, all text will appear identical,
   * regardless of whether the game chooses MS Gothic or Meiryo.

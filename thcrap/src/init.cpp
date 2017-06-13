@@ -72,7 +72,7 @@ json_t* identify(const char *exe_fn)
 	const char *variety = NULL;
 	UINT codepage;
 
-	// Result of the EXE identification (array)
+	// Result of the EXE identification
 	json_t *id_array = NULL;
 	int size_cmp = 0;
 
@@ -112,8 +112,8 @@ json_t* identify(const char *exe_fn)
 		w32u8_set_fallback_codepage(codepage);
 	}
 
-	// Store build in the runconfig to be recalled later for
-	// version-dependent patch file resolving. Needs be directly written to
+	// Store build in the runconfig to be recalled later for version-
+	// dependent patch file resolving. Needs to be directly written to
 	// run_cfg because we already require it down below to resolve ver_fn.
 	json_object_set(run_cfg, "build", build_obj);
 

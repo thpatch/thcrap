@@ -62,7 +62,7 @@ void stack_update(update_filter_func_t filter_func, json_t *filter_data);
 
 struct server_t {
 	// This either comes from a JSON object with a lifetime longer than any
-	// instance of this strucuture, or a hardcoded string, so no need to use
+	// instance of this structure, or a hardcoded string, so no need to use
 	// std::string here.
 	// TODO: Turn this into a std::string_view once we've migrated to a C++17
 	// compiler.
@@ -102,7 +102,8 @@ struct server_t {
 
 	server_t(const char *_url) : url(_url) {
 		// TODO: For consistency, ping should be initialized with {0},
-		// but Visual Studio 2013 doesn't implement this.
+		// but Visual Studio 2013 doesn't implement explicit
+		// initializers for arrays.
 		new_session();
  	}
 };
@@ -118,7 +119,7 @@ struct servers_t : std::vector<server_t> {
 	// Internal version of ServerDownloadFile().
 	void* download(DWORD *file_size, const char *fn, const DWORD *exp_crc);
 
-	// Fills this instance with data from a JSON "servers" object as used
+	// Fills this instance with data from a JSON "servers" array as used
 	// in repo.js and patch.js.
 	void from(const json_t *servers);
 

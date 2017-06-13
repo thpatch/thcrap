@@ -12,8 +12,8 @@
 json_t* identify_by_hash(const char *fn, size_t *exe_size, json_t *versions);
 json_t* identify_by_size(size_t exe_size, json_t *versions);
 
-// Identifies the game, version and variety of [fn],
-// using hash and size lookup in versions.js.
+// Identifies the game, version and variety of [fn] by looking up its hash
+// and file size in versions.js.
 // Also shows a message box in case an unknown version was detected.
 // Returns a fully merged run configuration on successful identification,
 // NULL on failure or user cancellation.

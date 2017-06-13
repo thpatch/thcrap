@@ -372,7 +372,7 @@ static int self_verify_buffer(
 		goto end;
 	}
 	// Reverse the signature...
-	// (http://dev.unreliabledevice.net/windows-crypto-api-nightmares-rsa-signature-padding-and-byte-order-ramblings/)
+	// (http://www.ruiandrebatista.com/windows-crypto-api-nightmares-rsa-signature-padding-and-byte-order-ramblings)
 	for(i = 0, j = sig_len - 1; i < j; i++, j--) {
 		BYTE t = sig_buf[i];
 		sig_buf[i] = sig_buf[j];

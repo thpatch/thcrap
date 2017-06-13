@@ -6,8 +6,8 @@
   *
   * On-the-fly th06msg patcher (in-game dialog format *since* th06)
   *
-  * Portions adapted from xarnonymous' Touhou Toolkit
-  * http://code.google.com/p/thtk/
+  * Portions adapted from Touhou Toolkit
+  * https://github.com/thpatch/thtk
   */
 
 #include <thcrap.h>
@@ -416,11 +416,10 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	msg_in = (uint32_t*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
 	memcpy(msg_in, msg_out, size_in);
 
-	/**
-	  * Not only is this unnecessary because we don't read from the output buffer,
-	  * and the game stops reading at the last entry's 0 opcode anyway,
-	  * it also causes a delayed crash in th09.
-	  */
+	/*
+	 * Unnecessary, because we don't read from the output buffer and
+	 * the game stops reading at the last entry's 0 opcode anyway.
+	 */
 	// ZeroMemory(msg_out, size_out);
 
 #ifdef _DEBUG

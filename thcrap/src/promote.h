@@ -54,5 +54,6 @@ HFONT WINAPI promote_CreateFontIndirectA(
 );
 /// -------------------
 
-// Because we want these to be as low as possible... Nifty.
+// _mod_init instead of _mod_detour because we want these to be as low as
+// possible... Kinda ugly, actually.
 void promote_mod_init(void);

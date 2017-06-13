@@ -445,7 +445,8 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 		return NULL;
 	}
 
-	// MAKEINTRESOURCEA(5) == RT_DIALOG, which we can't use because <UNICODE>
+	// MAKEINTRESOURCE(5) == RT_DIALOG. (The regular
+	// RT_DIALOG macro is subject to UNICODE.)
 	hrsrc = FindResourceA(hInstance, lpTemplateName, MAKEINTRESOURCEA(5));
 	hDlg = LoadResource(hInstance, hrsrc);
 	hDlg_len = SizeofResource(hInstance, hrsrc);

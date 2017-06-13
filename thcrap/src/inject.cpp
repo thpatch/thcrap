@@ -358,7 +358,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, msgboxNameAddr);
 
-	// Push EAX, module to use in GetProcAddress
+	// PUSH EAX, module to use in GetProcAddress
 	*p++ = 0x50;
 
 	// MOV EAX, ADDRESS - Move the address of GetProcAddress into EAX
@@ -445,7 +445,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0xD6;
 
 		/// Calculate byte size of directory buffer.
-		/// Also do some poor man's DWORD boundary alignment
+		/// Also do some DWORD boundary alignment
 		/// in order to not fuck up the stack
 
 		// mov ecx, eax
@@ -464,7 +464,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0xc1;
 		*p++ = 0x04;
 
-		/// "Allocate" ecx bytes on stack and store buffer pointer to ebx
+		/// "Allocate" ecx bytes on stack and store buffer pointer in ebx
 
 		// sub esp, ecx
 		// mov ebx, esp
@@ -567,7 +567,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0x68;
 		p = ptrcpy_advance_dst(p, error1Addr);
 
-		// Push 0
+		// PUSH 0
 		*p++ = 0x6A;
 		*p++ = 0x00;
 
@@ -605,7 +605,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 	*p++ = 0x68;
 	p = ptrcpy_advance_dst(p, funcNameAddr);
 
-	// Push EDI - module to use in GetProcAddress
+	// PUSH EDI - module to use in GetProcAddress
 	*p++ = 0x57;
 
 	// MOV EAX, ADDRESS - Move the address of GetProcAddress into EAX
@@ -640,7 +640,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 		*p++ = 0x68;
 		p = ptrcpy_advance_dst(p, error2Addr);
 
-		// Push 0
+		// PUSH 0
 		*p++ = 0x6A;
 		*p++ = 0x00;
 
@@ -701,7 +701,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 
 // Call FreeLibraryAndExitThread to unload DLL
 #if 0
-	// Push 0 (exit code)
+	// PUSH 0 (exit code)
 	*p++ = 0x6A;
 	*p++ = 0x00;
 
@@ -779,7 +779,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 		PathRemoveFileSpec(inj_dir);
 		PathAddBackslashA(inj_dir);
 
-		// Allow for relative directory names
+		// Allow relative directory names
 		if(PathIsRelativeA(run_cfg_fn)) {
 			GetCurrentDirectory(cur_dir_len, abs_run_cfg_fn);
 			PathAppendA(abs_run_cfg_fn, run_cfg_fn);
