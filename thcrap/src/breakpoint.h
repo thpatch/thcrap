@@ -49,8 +49,28 @@ typedef int (*BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
 // Returns a pointer to the register [regname] in [regs]
 size_t* reg(x86_reg_t *regs, const char *regname);
 
-// Returns a pointer to the register in [regs] specified by [key] in [object]
+/// Register and memory values from JSON
+/// ====================================
+// Calls reg() on the JSON string [val].
+size_t* json_register_pointer(json_t *val, x86_reg_t *regs);
+
+// If [val] is a register name, returns a pointer to that register in [regs].
+// Otherwise, returns the hex value of [val] casted to a pointer.
+size_t* json_pointer_value(json_t *val, x86_reg_t *regs);
+
+// If [val] is a register name, returns the value of that register in [regs].
+// Otherwise, returns the hex value of [val].
+size_t json_immediate_value(json_t *val, x86_reg_t *regs);
+
+// Calls json_register_pointer() on the value of [key] in [object].
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
+
+// Calls json_pointer_value() on the value of [key] in [object].
+size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key);
+
+// Calls json_immediate_value() on the value of [key] in [object].
+size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key);
+/// =====================================
 
 // Returns 0 if "cave_exec" in [bp_info] is set to false, 1 otherwise.
 // Should be used as the return value for a breakpoint function after it made

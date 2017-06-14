@@ -18,13 +18,6 @@ typedef struct {
 
 __declspec(thread) gentext_cache_t gc_tls = {0};
 
-size_t json_register_value(json_t *val, x86_reg_t *regs)
-{
-	const char *str = json_string_value(val);
-	size_t *reg_ptr = reg(regs, str);
-	return reg_ptr ? *reg_ptr : json_hex_value(val);
-}
-
 int gentext_cache_key_set(gentext_cache_t *gc, const char *key, size_t key_len)
 {
 	if(gc->key && !strncmp(gc->key, key, gc->key_len)) {
@@ -56,7 +49,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 	const char **str = (const char**)json_object_get_register(bp_info, regs, "str");
 	const char *file = json_object_get_string(bp_info, "file");
 	json_t *ids = json_object_get(bp_info, "ids");
-	size_t line = json_register_value(json_object_get(bp_info, "line"), regs);
+	size_t line = json_immediate_value(json_object_get(bp_info, "line"), regs);
 	// ----------
 	if(file) {
 		gc->file = jsondata_game_get(file);
@@ -70,7 +63,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 		json_flex_array_foreach(ids, i, id) {
 			char id_str[sizeof(size_t) + 1];
 			const char *q = id_str;
-			size_t id_val = json_register_value(id, regs);
+			size_t id_val = json_immediate_value(id, regs);
 			snprintf(id_str, sizeof(id_str), "%u", id_val);
 			if(i > 0) {
 				*p++ = '_';

@@ -68,9 +68,36 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 	return NULL;
 }
 
+size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
+{
+	return reg(regs, json_string_value(val));
+}
+
+size_t* json_pointer_value(json_t *val, x86_reg_t *regs)
+{
+	size_t *ret = json_register_pointer(val, regs);
+	return ret ? ret : (size_t *)json_hex_value(val);
+}
+
+size_t json_immediate_value(json_t *val, x86_reg_t *regs)
+{
+	size_t *ret = json_register_pointer(val, regs);
+	return ret ? *ret : json_hex_value(val);
+}
+
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
 {
-	return reg(regs, json_object_get_string(object, key));
+	return json_register_pointer(json_object_get(object, key), regs);
+}
+
+size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key)
+{
+	return json_pointer_value(json_object_get(object, key), regs);
+}
+
+size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key)
+{
+	return json_immediate_value(json_object_get(object, key), regs);
 }
 
 int breakpoint_cave_exec_flag(json_t *bp_info)

@@ -28,7 +28,12 @@ EXPORTS
 	; Breakpoints
 	; -----------
 	reg
+	json_register_pointer
+	json_pointer_value
+	json_immediate_value
 	json_object_get_register
+	json_object_get_pointer
+	json_object_get_immediate
 	breakpoint_cave_exec_flag
 	breakpoint_func_get
 	breakpoint_process
