@@ -46,7 +46,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 
 	// Parameters
 	// ----------
-	const char **str = (const char**)json_object_get_register(bp_info, regs, "str");
+	json_t *strs = json_object_get(bp_info, "str");
 	const char *file = json_object_get_string(bp_info, "file");
 	json_t *ids = json_object_get(bp_info, "ids");
 	size_t line = json_immediate_value(json_object_get(bp_info, "line"), regs);
@@ -77,13 +77,23 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 	if(line) {
 		gc->line = line;
 	}
-	if(str) {
+	if(strs) {
 		json_t *id_val = json_object_get(gc->file, gc->key);
-		const char *line = json_flex_array_get_string_safe(id_val, gc->line++);
-		if(line) {
-			*str = line;
-			return breakpoint_cave_exec_flag(bp_info);
+		size_t i;
+		json_t *str;
+
+		// More straightforward if we ensure that everything below is valid.
+		if(json_flex_array_size(id_val) == 0) {
+			return 1;
 		}
+
+		json_flex_array_foreach(strs, i, str) {
+			const char **target = (const char **)json_pointer_value(str, regs);
+			const char *line = json_flex_array_get_string_safe(id_val, gc->line++);
+			assert(line);
+			*target = line;
+		}
+		return breakpoint_cave_exec_flag(bp_info);
 	}
 	return 1;
 }
