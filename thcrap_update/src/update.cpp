@@ -538,6 +538,17 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	remote_files_to_get = json_object();
 	json_object_foreach(remote_files_orig, key, remote_val) {
 		json_t *local_val = json_object_get(local_files, key);
+		// Did someone simply drop a full files.js into a standalone
+		// package that doesn't actually come with the files for
+		// every game?
+		// (Necessary in case this patch installation should later
+		// cover more games. If the remote files haven't changed by
+		// then, they wouldn't be downloaded if files.js pretends
+		// that these versions already exist locally.)
+		if(local_val && !patch_file_exists(patch_info, key)) {
+			json_object_del(local_files, key);
+			local_val = nullptr;
+		}
 		if(
 			(filter_func ? filter_func(key, filter_data) : 1)
 			&& PatchFileRequiresUpdate(patch_info, key, local_val, remote_val)
