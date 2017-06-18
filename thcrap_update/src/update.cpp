@@ -485,6 +485,13 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	const char *key;
 	const char *patch_name = json_object_get_string(patch_info, "id");
 
+	auto update_delete = [&patch_info, &local_files] (const char *fn) {
+		log_printf("Deleting %s...\n", fn);
+		if(!patch_file_delete(patch_info, fn)) {
+			json_object_del(local_files, fn);
+		}
+	};
+
 	if(!patch_info) {
 		return -1;
 	}
@@ -568,7 +575,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 
 	i = 0;
 	json_object_foreach(remote_files_to_get, key, remote_val) {
-		void *file_buffer;
+		void *file_buffer = nullptr;
 		DWORD file_size;
 		json_t *local_val;
 
@@ -587,15 +594,18 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 			if(file_buffer && file_size) {
 				DWORD local_crc = crc32(0, (Bytef*)file_buffer, file_size);
 				if(local_crc == json_integer_value(local_val)) {
-					log_printf("Deleting %s...\n", key);
-					if(!patch_file_delete(patch_info, key)) {
-						json_object_del(local_files, key);
-					}
+					update_delete(key);
 				} else {
 					log_printf("%s (locally changed, skipping deletion)\n", key);
 				}
 			}
 			SAFE_FREE(file_buffer);
+		} else if(json_is_null(local_val)) {
+			// Delete files that shouldn't exist, according to files.js.
+			// Mainly intended to work around broken third-party patch
+			// downloaders, since we don't even write JSON nulls to the
+			// local files.js ourselves.
+			update_delete(key);
 		} else if(json_is_integer(remote_val)) {
 			DWORD remote_crc = json_integer_value(remote_val);
 			file_buffer = servers.download(&file_size, key, &remote_crc);
