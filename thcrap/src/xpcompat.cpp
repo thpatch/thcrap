@@ -16,6 +16,44 @@ THCRAP_API srwlock_func_t *srwlock_funcs[4];
 
 #define SPIN_UNTIL(cond) while(!(cond)) { Sleep(1); }
 
+// XP approximations. We simply treat the SRW lock
+// value as an integer with the following values:
+// • -1: exclusive
+// •  0: released
+// • >0: shared
+
+void __stdcall XP_AcquireSRWLockExclusive(PSRWLOCK SRWLock)
+{
+	long *val = (long *)&SRWLock->Ptr;
+	SPIN_UNTIL(*val == 0);
+	while(*val != -1) {
+		InterlockedCompareExchange(val, -1, 0);
+	}
+};
+
+void __stdcall XP_ReleaseSRWLockExclusive(PSRWLOCK SRWLock)
+{
+	long *val = (long *)&SRWLock->Ptr;
+	assert(*val == -1);
+	while(*val != 0) {
+		InterlockedCompareExchange(val, 0, -1);
+	}
+};
+
+void __stdcall XP_AcquireSRWLockShared(PSRWLOCK SRWLock)
+{
+	long *val = (long *)&SRWLock->Ptr;
+	SPIN_UNTIL(*val >= 0);
+	InterlockedIncrement(val);
+};
+
+void __stdcall XP_ReleaseSRWLockShared(PSRWLOCK SRWLock)
+{
+	long *val = (long *)&SRWLock->Ptr;
+	assert(*val >= 1);
+	InterlockedDecrement(val);
+};
+
 static int swrlock_init = []
 {
 	auto kernel32 = GetModuleHandleA("kernel32.dll");
@@ -27,35 +65,10 @@ static int swrlock_init = []
 		srwlock_funcs[0] == nullptr || srwlock_funcs[1] == nullptr ||
 		srwlock_funcs[2] == nullptr || srwlock_funcs[3] == nullptr
 	) {
-		// XP approximations. We simply treat the SRW lock
-		// value as an integer with the following values:
-		// • -1: exclusive
-		// •  0: released
-		// • >0: shared
-		AcquireSRWLockExclusive = [] (PSRWLOCK SRWLock) {
-			long *val = (long *)&SRWLock->Ptr;
-			SPIN_UNTIL(*val == 0);
-			while(*val != -1) {
-				InterlockedCompareExchange(val, -1, 0);
-			}
-		};
-		ReleaseSRWLockExclusive = [] (PSRWLOCK SRWLock) {
-			long *val = (long *)&SRWLock->Ptr;
-			assert(*val == -1);
-			while(*val != 0) {
-				InterlockedCompareExchange(val, 0, -1);
-			}
-		};
-		AcquireSRWLockShared = [] (PSRWLOCK SRWLock) {
-			long *val = (long *)&SRWLock->Ptr;
-			SPIN_UNTIL(*val >= 0);
-			InterlockedIncrement(val);
-		};
-		ReleaseSRWLockShared = [] (PSRWLOCK SRWLock) {
-			long *val = (long *)&SRWLock->Ptr;
-			assert(*val >= 1);
-			InterlockedDecrement(val);
-		};
+	  AcquireSRWLockExclusive = XP_AcquireSRWLockExclusive;
+	  ReleaseSRWLockExclusive = XP_ReleaseSRWLockExclusive;
+	  AcquireSRWLockShared = XP_AcquireSRWLockShared;
+	  ReleaseSRWLockShared = XP_ReleaseSRWLockShared;
 	}
 	return 0;
 }();
