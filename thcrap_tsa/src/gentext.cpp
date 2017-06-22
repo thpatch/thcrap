@@ -24,7 +24,7 @@ int gentext_cache_key_set(gentext_cache_t *gc, const char *key, size_t key_len)
 		return 1;
 	}
 	if(key_len > gc->key_len) {
-		char *key_realloc = realloc(gc->key, key_len);
+		char *key_realloc = (char *)realloc(gc->key, key_len);
 		if(key_realloc) {
 			gc->key = key_realloc;
 			gc->key_len = key_len;
