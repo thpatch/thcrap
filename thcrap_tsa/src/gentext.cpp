@@ -16,7 +16,7 @@ typedef struct {
 	size_t line;
 } gentext_cache_t;
 
-__declspec(thread) gentext_cache_t gc_tls = {0};
+THREAD_LOCAL(gentext_cache_t, gc_tls, nullptr, nullptr);
 
 int gentext_cache_key_set(gentext_cache_t *gc, const char *key, size_t key_len)
 {
@@ -42,7 +42,7 @@ int gentext_cache_key_set(gentext_cache_t *gc, const char *key, size_t key_len)
 
 int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 {
-	gentext_cache_t *gc = &gc_tls;
+	gentext_cache_t *gc = gc_tls_get();
 
 	// Parameters
 	// ----------

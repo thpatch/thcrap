@@ -59,32 +59,7 @@ int file_rep_clear(file_rep_t *fr)
 
 /// Thread-local storage
 /// --------------------
-// TLS index of the global file_rep_t object.
-// (Yeah, we *could* use __declspec(thread)... if we didn't have to accommodate
-// for Windows XP users. See http://www.nynaeve.net/?p=187.)
-static DWORD fr_tls = 0xffffffff;
-
-file_rep_t* fr_tls_get(void)
-{
-	file_rep_t *fr = (file_rep_t*)TlsGetValue(fr_tls);
-	if(!fr) {
-		fr = (file_rep_t*)malloc(sizeof(file_rep_t));
-		if(fr) {
-			ZeroMemory(fr, sizeof(file_rep_t));
-		}
-		TlsSetValue(fr_tls, fr);
-	}
-	return fr;
-}
-
-void fr_tls_free(file_rep_t *fr)
-{
-	if(fr) {
-		file_rep_clear(fr);
-		SAFE_FREE(fr);
-		TlsSetValue(fr_tls, fr);
-	}
-}
+THREAD_LOCAL(file_rep_t, fr_tls, NULL, file_rep_clear);
 /// --------------------
 
 int BP_file_name(x86_reg_t *regs, json_t *bp_info)
@@ -233,20 +208,4 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	file_rep_hooks_run(fr);
 	file_rep_clear(fr);
 	return 1;
-}
-
-int bp_file_mod_init(void)
-{
-	fr_tls = TlsAlloc();
-	return 0;
-}
-
-void bp_file_mod_thread_exit(void)
-{
-	fr_tls_free((file_rep_t*)TlsGetValue(fr_tls));
-}
-
-int bp_file_mod_exit(void)
-{
-	return TlsFree(fr_tls);
 }

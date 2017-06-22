@@ -13,17 +13,12 @@ EXPORTS
 	file_rep_clear
 
 	fr_tls_get
-	fr_tls_free
 
 	BP_file_name
 	BP_file_size
 	BP_file_buffer
 	BP_file_load
 	BP_file_loaded
-
-	bp_file_mod_init
-	bp_file_mod_thread_exit
-	bp_file_mod_exit
 
 	; Breakpoints
 	; -----------

@@ -73,3 +73,39 @@ static int swrlock_init = []
 	return 0;
 }();
 /// ------------------------
+
+/// Thread-local structures
+/// -----------------------
+inline void tlsstruct_default_ctor(void *instance, size_t struct_size)
+{
+	ZeroMemory(instance, struct_size);
+}
+
+void* tlsstruct_get(DWORD slot, size_t struct_size, tlsstruct_ctor_t *ctor)
+{
+	void *ret = TlsGetValue(slot);
+	if(!ret) {
+		ret = malloc(struct_size);
+		if(ret) {
+			if(ctor == nullptr) {
+				ctor = tlsstruct_default_ctor;
+			}
+			ctor(ret, struct_size);
+		}
+		TlsSetValue(slot, ret);
+	}
+	return ret;
+}
+
+void tlsstruct_free(DWORD slot, tlsstruct_dtor_t *dtor)
+{
+	void *ret = TlsGetValue(slot);
+	if(ret) {
+		if(dtor != nullptr) {
+			dtor(ret);
+		}
+		free(ret);
+		TlsSetValue(slot, nullptr);
+	}
+}
+/// -----------------------
