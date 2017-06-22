@@ -55,7 +55,7 @@ THCRAP_API extern srwlock_func_t *srwlock_funcs[4];
 		return (type *)tlsstruct_get(name.slot, sizeof(type), (tlsstruct_ctor_t *)ctor); \
 	} \
 	\
-	__declspec(dllexport) void name##_mod_thread_exit(void) \
+	extern "C" __declspec(dllexport) void name##_mod_thread_exit(void) \
 	{ \
 		tlsstruct_free(name.slot, (tlsstruct_dtor_t *)dtor); \
 	}
