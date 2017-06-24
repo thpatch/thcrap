@@ -95,7 +95,6 @@ EXPORTS
 	inject_CreateProcessW
 
 	inject_mod_detour
-	inject_mod_exit
 	thcrap_inject_into_running
 	thcrap_inject_into_new
 

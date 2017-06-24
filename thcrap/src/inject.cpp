@@ -34,10 +34,6 @@ typedef HANDLE WINAPI CreateRemoteThread_type(
 	LPDWORD lpThreadId
 );
 
-typedef BOOL WINAPI FreeLibrary_type(
-	HMODULE hLibModule
-);
-
 typedef HMODULE WINAPI LoadLibraryW_type(
 	LPCWSTR lpLibFileName
 );
@@ -45,57 +41,9 @@ typedef HMODULE WINAPI LoadLibraryW_type(
 W32U8_DETOUR_CHAIN_DEF(CreateProcess);
 DETOUR_CHAIN_DEF(CreateProcessW);
 DETOUR_CHAIN_DEF(CreateRemoteThread);
-DETOUR_CHAIN_DEF(FreeLibrary);
 W32U8_DETOUR_CHAIN_DEF(LoadLibrary);
 DETOUR_CHAIN_DEF(LoadLibraryW);
 /// -------------
-
-/// DLL reference counting
-/// ----------------------
-// Ensures that thcrap_detour() is only called once for every DLL loaded.
-// Keeping our own reference count is certainly more stable in the long run
-// than relying on the values from the PEB structure.
-
-json_t *modules_detoured;
-
-#define addr_key_len 2 + (sizeof(void*) * 2) + 1
-
-// Both inject_incref() and inject_decref() return the new reference count
-// of the given module.
-
-json_int_t inject_refcount_update(HMODULE hMod, int delta)
-{
-	char key_str[addr_key_len];
-	json_int_t val;
-
-	snprintf(key_str, sizeof(key_str), "%p", hMod);
-
-	val = json_integer_value(json_object_get(modules_detoured, key_str));
-	val += delta;
-	if(val >= 1) {
-		json_object_set_new(modules_detoured, key_str, json_integer(val));
-	} else if(val == 0) {
-		json_object_del(modules_detoured, key_str);
-	}
-	return val;
-}
-
-json_int_t inject_refcount_inc(HMODULE hMod)
-{
-	if(!modules_detoured) {
-		modules_detoured = json_object();
-	}
-	return inject_refcount_update(hMod, +1);
-}
-
-json_int_t inject_refcount_dec(HMODULE hMod)
-{
-	if(!modules_detoured) {
-		return -1;
-	}
-	return inject_refcount_update(hMod, -1);
-}
-/// ----------------------
 
 /**
   * A more complete DLL injection solution.
@@ -1066,8 +1014,9 @@ HMODULE WINAPI inject_LoadLibraryU(
 	LPCSTR lpLibFileName
 )
 {
+	auto previous_mod = GetModuleHandleA(lpLibFileName);
 	HMODULE ret = chain_LoadLibraryU(lpLibFileName);
-	if(ret && inject_refcount_inc(ret) == 1) {
+	if(ret && previous_mod != ret) {
 		thcrap_detour(ret);
 	}
 	return ret;
@@ -1077,19 +1026,12 @@ HMODULE WINAPI inject_LoadLibraryW(
 	LPCWSTR lpLibFileName
 )
 {
+	auto previous_mod = GetModuleHandleW(lpLibFileName);
 	HMODULE ret = (HMODULE)chain_LoadLibraryW(lpLibFileName);
-	if(ret && inject_refcount_inc(ret) == 1) {
+	if(ret && previous_mod != ret) {
 		thcrap_detour(ret);
 	}
 	return ret;
-}
-
-BOOL WINAPI inject_FreeLibrary(
-	HMODULE hLibModule
-)
-{
-	inject_refcount_dec(hLibModule);
-	return (BOOL)chain_FreeLibrary(hLibModule);
 }
 
 void inject_mod_detour(void)
@@ -1098,14 +1040,8 @@ void inject_mod_detour(void)
 		"CreateProcessA", inject_CreateProcessU, &chain_CreateProcessU,
 		"CreateProcessW", inject_CreateProcessW, &chain_CreateProcessW,
 		"CreateRemoteThread", inject_CreateRemoteThread, &chain_CreateRemoteThread,
-		"FreeLibrary", inject_FreeLibrary, &chain_FreeLibrary,
 		"LoadLibraryA", inject_LoadLibraryU, &chain_LoadLibraryU,
 		"LoadLibraryW", inject_LoadLibraryW, &chain_LoadLibraryW,
 		NULL
 	);
-}
-
-void inject_mod_exit(void)
-{
-	modules_detoured = json_decref_safe(modules_detoured);
 }
