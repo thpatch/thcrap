@@ -49,7 +49,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 	json_t *strs = json_object_get(bp_info, "str");
 	const char *file = json_object_get_string(bp_info, "file");
 	json_t *ids = json_object_get(bp_info, "ids");
-	size_t line = json_immediate_value(json_object_get(bp_info, "line"), regs);
+	json_t *line_obj = json_object_get(bp_info, "line");
 	// ----------
 	if(file) {
 		gc->file = jsondata_game_get(file);
@@ -74,8 +74,8 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 		gentext_cache_key_set(gc, key_new, key_new_len);
 		VLA_FREE(key_new);
 	}
-	if(line) {
-		gc->line = line;
+	if(line_obj) {
+		gc->line = json_immediate_value(line_obj, regs);
 	}
 	if(strs) {
 		json_t *id_val = json_object_get(gc->file, gc->key);
