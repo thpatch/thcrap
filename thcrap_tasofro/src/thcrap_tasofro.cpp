@@ -203,3 +203,14 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	size = 0;
 	return 1;
 }
+
+int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	HMODULE *plugin = (HMODULE*)json_object_get_register(bp_info, regs, "plugin");
+	// ----------
+
+	iat_detour_apply(*plugin);
+	return 1;
+}
