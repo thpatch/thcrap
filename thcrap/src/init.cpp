@@ -260,7 +260,7 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 	*/
-	binhacks_apply(json_object_get(run_cfg, "binhacks"));
+	binhacks_apply(json_object_get(run_cfg, "binhacks"), NULL);
 	breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
 	thcrap_detour(hProc);
 	SetCurrentDirectory(game_dir);

@@ -70,11 +70,11 @@ void str_hexdate_format(char format[11], uint32_t date);
   * size. The following string prefixes are supported:
   *
   *	- "0x": Hexadecimal, as expected.
-  *	- "Rx": Hexadecimal value relative to the base address of the main module
-  *	        of the current process.
+  *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
+  *	        If hMod is NULL, the main module of the current process is used.
   *	- Everything else is parsed as a decimal number.
   *
   * If [error] is not NULL, it is filled with the STR_ADDRESS_ERROR_* values
   * to indicate potential parse errors.
   */
-size_t str_address_value(const char *str, uint8_t *error);
+size_t str_address_value(const char *str, HMODULE hMod, uint8_t *error);

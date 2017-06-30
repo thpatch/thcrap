@@ -127,7 +127,7 @@ size_t hackpoints_count(json_t *hackpoints)
 	return ret;
 }
 
-int binhacks_apply(json_t *binhacks)
+int binhacks_apply(json_t *binhacks, HMODULE hMod)
 {
 	const char *key;
 	json_t *hack;
@@ -165,7 +165,7 @@ int binhacks_apply(json_t *binhacks)
 			continue;
 		}
 		json_flex_array_foreach(json_addr, i, addr_val) {
-			DWORD addr = json_hex_value(addr_val);
+			DWORD addr = str_address_value(json_string_value(addr_val), hMod, NULL);
 			if(!addr) {
 				continue;
 			}
