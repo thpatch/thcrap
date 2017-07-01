@@ -61,7 +61,7 @@ int LoadFileNameListFromMemory(char* list, size_t size)
 		strncpy(fileHashToName[thash].path, list, len);
 		list += len;
 		size -= len;
-		while (len < size && (list[len] == '\r' || list[len] == '\n')) {
+		while (size > 0 && (list[0] == '\r' || list[0] == '\n')) {
 			list++;
 			size--;
 		}
