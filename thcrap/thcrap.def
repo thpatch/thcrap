@@ -9,10 +9,10 @@ EXPORTS
 
 	; File breakpoints
 	; ----------------
+	file_rep_init
 	file_rep_clear
 
 	fr_tls_get
-	fr_tls_free
 
 	BP_file_name
 	BP_file_size
@@ -20,14 +20,15 @@ EXPORTS
 	BP_file_load
 	BP_file_loaded
 
-	bp_file_mod_init
-	bp_file_mod_thread_exit
-	bp_file_mod_exit
-
 	; Breakpoints
 	; -----------
 	reg
+	json_register_pointer
+	json_pointer_value
+	json_immediate_value
 	json_object_get_register
+	json_object_get_pointer
+	json_object_get_immediate
 	breakpoint_cave_exec_flag
 	breakpoint_func_get
 	breakpoint_process
@@ -94,7 +95,6 @@ EXPORTS
 	inject_CreateProcessW
 
 	inject_mod_detour
-	inject_mod_exit
 	thcrap_inject_into_running
 	thcrap_inject_into_new
 
@@ -113,7 +113,6 @@ EXPORTS
 	json_flex_array_get_string_safe
 	json_object_get_create
 	json_object_numkey_get
-	json_object_hexkey_get
 	json_object_get_string
 	json_object_get_hex
 	json_object_merge
@@ -181,6 +180,7 @@ EXPORTS
 	patch_json_store
 	patch_file_delete
 
+	patch_build
 	patch_init
 	patch_rel_to_abs
 
@@ -218,11 +218,26 @@ EXPORTS
 	repatch_mod_init
 	repatch_mod_exit
 
+	; Repository handling
+	; -------------------
+	RepoLoad
+	RepoLocalNext
+	RepoGetLocalFN
+
+	; Search on disk
+	; --------------
+	SearchForGames
+
 	; SHA-256
 	; -------
 	sha256_init
 	sha256_update
 	sha256_final
+
+	; Shortcuts
+	; ---------
+	CreateLink
+	CreateShortcuts
 
 	; Specs
 	; -----
@@ -243,6 +258,8 @@ EXPORTS
 
 	stack_show_missing
 
+	stack_remove_if_unneeded
+
 	; Hardcoded string translation
 	; ----------------------------
 	strings_get
@@ -251,12 +268,14 @@ EXPORTS
 	strings_storage_get
 	strings_sprintf
 	strings_vsprintf
+	strings_vsprintf_msvcrt14
 	strings_strclr
 	strings_strcat
 	strings_replace
 
 	strings_mod_init
 	strings_mod_detour
+	strings_mod_repatch
 	strings_mod_exit
 
 	; Text display
@@ -274,6 +293,24 @@ EXPORTS
 	str_num_digits
 	str_num_base
 	str_hexdate_format
+	str_address_value
+
+	; thcrap_update wrapper functions
+	; -------------------------------
+	ServerDownloadFile_wrapper
+	update_filter_global_wrapper
+	update_filter_games_wrapper
+	patch_update_wrapper
+	stack_update_wrapper
+	RepoDiscoverAtURL_wrapper
+	RepoDiscoverFromLocal_wrapper
+	patch_bootstrap_wrapper
+
+	; Virtual file system
+	; -------------------
+	jsonvfs_add
+	jsonvfs_game_add
+	jsonvfs_get
 
 	; Win32 detours
 	; -------------

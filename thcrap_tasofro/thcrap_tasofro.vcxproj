@@ -33,13 +33,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\crypt_block.c" />
-    <ClCompile Include="src\thcrap_tasofro.c">
+    <ClCompile Include="src\crypt_block.cpp" />
+    <ClCompile Include="src\csv.cpp" />
+    <ClCompile Include="src\pl.cpp" />
+    <ClCompile Include="src\spellcards_generator.cpp" />
+    <ClCompile Include="src\tfcs.cpp" />
+    <ClCompile Include="src\thcrap_tasofro.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\files_list.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="src\files_list.cpp" />
+    <ClInclude Include="src\pl.h" />
+    <ClInclude Include="src\spellcards_generator.h" />
+    <ClInclude Include="src\tfcs.h" />
     <ClInclude Include="src\thcrap_tasofro.h" />
     <None Include="thcrap_tasofro.def" />
   </ItemGroup>

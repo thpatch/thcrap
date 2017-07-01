@@ -1,8 +1,7 @@
- [![Stories in Ready](https://badge.waffle.io/thpatch/thcrap.svg?label=ready&title=Ready)](http://waffle.io/thpatch/thcrap)
 Touhou Community Reliant Automatic Patcher
 ------------------------------------------
 
-[![Join the chat at https://gitter.im/thpatch/thcrap](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/thpatch/thcrap?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at http://discord.thpatch.net](https://discordapp.com/api/guilds/213769640852193282/widget.png)](http://discord.thpatch.net/)
 
 ### Description ###
 
@@ -96,3 +95,9 @@ All required third-party libraries for the C code are included as Git submodules
 The scripts in the `scripts` directory are written in [Python 3](http://python.org/). Some of them require further third-party libraries not included in this repository:
 
 * [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
+
+### License ###
+
+The Touhou Community Reliant Patcher and all accompanying modules are released to the Public Domain, unless stated otherwise. This means you can do whatever you want with this code without so much as crediting us.
+
+That said, we *do* appreciate attribution. ☺

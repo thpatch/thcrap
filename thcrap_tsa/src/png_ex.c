@@ -7,8 +7,6 @@
   * libpng extensions.
   */
 
-#pragma once
-
 #include <thcrap.h>
 #include <png.h>
 #include "png_ex.h"

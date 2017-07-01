@@ -14,14 +14,8 @@ json_t* json_decref_safe(json_t *json);
 
 /**
   * Unfortunately, JSON doesn't support native hexadecimal values.
-  * This function works with both string and integer values and returns the
-  * correct, positive number at the machine's word size.
-  * The following string prefixes are supported:
-  *
-  *	- "0x": Hexadecimal, as expected.
-  *	- "Rx": Hexadecimal value relative to the base address of the main module
-  *	        of the current process.
-  *	- Everything else is parsed as a decimal number.
+  * This function works with both JSON integers and strings, parsing the
+  * latter using str_address_value().
   */
 size_t json_hex_value(json_t *val);
 
@@ -70,13 +64,8 @@ const char* json_flex_array_get_string_safe(json_t *flarr, size_t ind);
 // if the [key] doesn't exist.
 json_t* json_object_get_create(json_t *object, const char *key, json_type type);
 
-// json_object_get for numeric keys
+// json_object_get for numeric keys in decimal
 json_t* json_object_numkey_get(const json_t *object, const json_int_t key);
-
-// json_object_get for hexadecimal keys.
-// These *must* have the format "0x%x" or "Rx%x" (for values relative to the
-// base address, see json_hex_value()). Padding %x with zeroes will *not* work.
-json_t* json_object_hexkey_get(const json_t *object, const size_t key);
 
 // Get the integer value of [key] in [object], automatically
 // converting the JSON value to an integer if necessary.
@@ -99,7 +88,7 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 // Wrapper around json_loadb and json_load_file with indirect UTF-8 filename
 // support and nice error reporting.
 // [source] can be specified to show the source of the JSON buffer in case of
-//  an error (since json_error_t::source would just say "<buffer>").
+// an error (since json_error_t::source would just say "<buffer>").
 json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const char *source);
 json_t* json_load_file_report(const char *json_fn);
 

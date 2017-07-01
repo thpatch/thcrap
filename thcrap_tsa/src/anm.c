@@ -6,8 +6,8 @@
   *
   * On-the-fly ANM patcher.
   *
-  * Portions adapted from xarnonymous' Touhou Toolkit
-  * http://code.google.com/p/thtk/
+  * Portions adapted from Touhou Toolkit
+  * https://github.com/thpatch/thtk
   */
 
 #include <thcrap.h>
@@ -135,12 +135,12 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 	// FORMAT_GRAY8 is fully handled by libpng
 }
 
-void format_copy(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
+void format_copy(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format)
 {
 	memcpy(dst, rep, pixels * format_Bpp(format));
 }
 
-void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format)
+void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format)
 {
 	// Alpha values are added and clamped to the format's maximum. This avoids a
 	// flaw in the blending algorithm, which may decrease the alpha value even if
@@ -219,8 +219,14 @@ int sprite_patch_set(
 	sp->rep_stride = image->img.width * sp->bpp;
 	sp->dst_stride = entry->thtx->w * sp->bpp;
 
-	sp->copy_w = min(sprite->w, (image->img.width - sp->rep_x));
-	sp->copy_h = min(sprite->h, (image->img.height - sp->rep_y));
+	// See th11's face/enemy5/face05lo.png (the dummy 8x8 one from
+	// stgenm06.anm, not stgenm05.anm) for an example where the sprite
+	// width and height actually exceed the dimensions of the THTX.
+	png_uint_32 sprite_clamped_w = min(sprite->w, (entry->thtx->w - sprite->x));
+	png_uint_32 sprite_clamped_h = min(sprite->h, (entry->thtx->h - sprite->y));
+
+	sp->copy_w = min(sprite_clamped_w, (image->img.width - sp->rep_x));
+	sp->copy_h = min(sprite_clamped_h, (image->img.height - sp->rep_y));
 
 	sp->dst_buf = entry->thtx->data + (sp->dst_y * sp->dst_stride) + (sp->dst_x * sp->bpp);
 	sp->rep_buf = image->buf + (sp->rep_y * sp->rep_stride) + (sp->rep_x * sp->bpp);
@@ -474,9 +480,9 @@ int patch_png_load_for_thtx(png_image_exp image, const json_t *patch_info, const
 	return !image->buf;
 }
 
-// Patches an [image] prepared by <png_load_for_thtx> into [entry].
-// Patching will be performed on sprite level if the <sprites> and
-// <sprite_num> members of [entry] are valid.
+// Patches an [image] prepared by png_load_for_thtx() into [entry].
+// Patching will be performed on sprite level if [entry->sprites] and
+// [entry->sprite_num] are valid.
 // [png] is assumed to have the same bit depth as the texture in [entry].
 int patch_thtx(anm_entry_t *entry, png_image_exp image)
 {

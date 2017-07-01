@@ -7,12 +7,12 @@
   * Files list handling.
   */
 
-#include <Windows.h>
+#include <thcrap.h>
 #include <unordered_map>
 #include "thcrap_tasofro.h"
 
 // Normalized Hash
-DWORD SpecialFNVHash(char *begin, char *end, DWORD initHash = 0x811C9DC5u)
+DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C9DC5u)
 {
 	DWORD hash; // eax@1
 	DWORD ch; // esi@2
@@ -33,7 +33,7 @@ DWORD SpecialFNVHash(char *begin, char *end, DWORD initHash = 0x811C9DC5u)
 }
 
 std::unordered_map<DWORD, FileHeaderFull> fileHashToName;
-extern "C" int LoadFileNameList(const char* FileName)
+int LoadFileNameList(const char* FileName)
 {
 	FILE* fp = fopen(FileName, "rt");
 	if (!fp) return -1;
@@ -49,7 +49,7 @@ extern "C" int LoadFileNameList(const char* FileName)
 	return 0;
 }
 
-extern "C" int LoadFileNameListFromMemory(char* list, size_t size)
+int LoadFileNameListFromMemory(char* list, size_t size)
 {
 	while (size > 0)
 	{
@@ -69,26 +69,33 @@ extern "C" int LoadFileNameListFromMemory(char* list, size_t size)
 	return 0;
 }
 
-extern "C" DWORD filename_to_hash(char* filename)
+DWORD filename_to_hash(const char* filename)
 {
 	return SpecialFNVHash(filename, filename + strlen(filename));
 }
 
-extern "C" struct FileHeaderFull* register_file_header(FileHeader* header, DWORD *key)
+struct FileHeaderFull* register_file_header(FileHeader* header, DWORD *key)
 {
 	FileHeaderFull& full_header = fileHashToName[header->filename_hash];
+
 	full_header.filename_hash = header->filename_hash;
 	full_header.unknown = header->unknown;
 	full_header.offset = header->offset;
 	full_header.size = header->size;
+
 	full_header.key[0] = key[0] * -1;
 	full_header.key[1] = key[1] * -1;
 	full_header.key[2] = key[2] * -1;
 	full_header.key[3] = key[3] * -1;
+	full_header.effective_offset = -1;
+	full_header.orig_size = header->size;
+
+	ZeroMemory(&full_header.fr, sizeof(file_rep_t));
+
 	return &full_header;
 }
 
-extern "C" struct FileHeaderFull* hash_to_file_header(DWORD hash)
+struct FileHeaderFull* hash_to_file_header(DWORD hash)
 {
 	std::unordered_map<DWORD, FileHeaderFull>::iterator it = fileHashToName.find(hash);
 

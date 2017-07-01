@@ -39,8 +39,11 @@ typedef struct {
 	void *object;
 } file_rep_t;
 
+// Initialize a file_rep_t object, and loads the replacement file and patch for file_name.
+int file_rep_init(file_rep_t *fr, const char *file_name);
+
 // Clears a file_rep_t object.
-int file_rep_clear(file_rep_t *pf);
+int file_rep_clear(file_rep_t *fr);
 
 /// Thread-local storage
 /// --------------------
@@ -65,8 +68,10 @@ void fr_tls_free(file_rep_t *fr);
 int BP_file_name(x86_reg_t *regs, json_t *bp_info);
 
 /**
-  * Reads the size of the original file, and sets the size of whatever we are
-  * replacing or patching the original file with.
+  * Reads the size of the original file (if not read before), and sets the
+  * size of whatever we are replacing or patching the original file with.
+  * Necessary for enlarging the size of the game's file buffer to fit the
+  * patched file.
   *
   * Own JSON parameters
   * -------------------

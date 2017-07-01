@@ -14,7 +14,7 @@
   *
   * Parameters
   * ----------
-  *	BYTE* file_inout
+  *	void* file_inout
   *		Buffer containing the original file.
   *		Should contain the patched result after this function.
   *
@@ -29,7 +29,7 @@
   *
   * Returns nothing.
   */
-typedef int (*func_patch_t)(BYTE* file_inout, size_t size_out, size_t size_in, json_t *patch);
+typedef int (*func_patch_t)(void* file_inout, size_t size_out, size_t size_in, json_t *patch);
 
 // Reads the file [fn] into a newly created buffer and returns its file size
 // in [file_size]. Return value has to be free()d by the caller!
@@ -56,7 +56,7 @@ void patch_print_fn(const json_t *patch_info, const char *fn);
 /// -----------
 /// Directories
 /// -----------
-// Recursively creates directories until [fn] can be stored.
+// Recursively creates directories until [fn] can be stored. (`mkdir -p`)
 int dir_create_for_fn(const char *fn);
 /// -----------
 
@@ -66,7 +66,7 @@ int dir_create_for_fn(const char *fn);
 // Returns 1 if the file [fn] exists in [patch_info].
 int patch_file_exists(const json_t *patch_info, const char *fn);
 
-// Returns 1 is the file name [fn] is blacklisted by [patch_info].
+// Returns 1 if the file name [fn] is blacklisted by [patch_info].
 int patch_file_blacklisted(const json_t *patch_info, const char *fn);
 
 // Loads the file [fn] from [patch_info].
@@ -96,6 +96,10 @@ json_t* patch_init(json_t *patch_info);
 // one, relative to [base_path].
 int patch_rel_to_abs(json_t *patch_info, const char *base_path);
 /// --------------
+
+// Patch selection format: ["repo_id", "patch_id"]
+// Builds a new patch object with an archive directory from a patch selection.
+json_t* patch_build(const json_t *sel);
 
 /// -----
 /// Hooks

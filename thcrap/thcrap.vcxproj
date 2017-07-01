@@ -27,6 +27,9 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>THCRAP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -34,36 +37,41 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\dialog.c" />
-    <ClCompile Include="src\exception.c" />
-    <ClCompile Include="src\jsondata.c" />
-    <ClCompile Include="src\mempatch.c" />
-    <ClCompile Include="src\binhack.c" />
-    <ClCompile Include="src\bp_file.c" />
-    <ClCompile Include="src\breakpoint.c" />
-    <ClCompile Include="src\init.c" />
-    <ClCompile Include="src\log.c" />
-    <ClCompile Include="src\global.c">
+    <ClCompile Include="src\dialog.cpp" />
+    <ClCompile Include="src\exception.cpp" />
+    <ClCompile Include="src\jsondata.cpp" />
+    <ClCompile Include="src\mempatch.cpp" />
+    <ClCompile Include="src\binhack.cpp" />
+    <ClCompile Include="src\bp_file.cpp" />
+    <ClCompile Include="src\breakpoint.cpp" />
+    <ClCompile Include="src\init.cpp" />
+    <ClCompile Include="src\log.cpp" />
+    <ClCompile Include="src\global.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\jansson_ex.c" />
-    <ClCompile Include="src\patchfile.c" />
-    <ClCompile Include="src\pe.c" />
-    <ClCompile Include="src\plugin.c" />
-    <ClCompile Include="src\promote.c" />
-    <ClCompile Include="src\repatch.c" />
-    <ClCompile Include="src\sha256.c">
+    <ClCompile Include="src\jansson_ex.cpp" />
+    <ClCompile Include="src\patchfile.cpp" />
+    <ClCompile Include="src\pe.cpp" />
+    <ClCompile Include="src\plugin.cpp" />
+    <ClCompile Include="src\promote.cpp" />
+    <ClCompile Include="src\repatch.cpp" />
+    <ClCompile Include="src\repo.cpp" />
+    <ClCompile Include="src\search.cpp" />
+    <ClCompile Include="src\sha256.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\inject.c" />
-    <ClCompile Include="src\specs.c" />
-    <ClCompile Include="src\stack.c" />
-    <ClCompile Include="src\strings.c" />
-    <ClCompile Include="src\util.c" />
-    <ClCompile Include="src\textdisp.c" />
-    <ClCompile Include="src\win32_detour.c" />
-    <ClCompile Include="src\zip.c" />
-    <ClInclude Include="config.h" />
+    <ClCompile Include="src\inject.cpp" />
+    <ClCompile Include="src\shelllink.cpp" />
+    <ClCompile Include="src\specs.cpp" />
+    <ClCompile Include="src\stack.cpp" />
+    <ClCompile Include="src\strings.cpp" />
+    <ClCompile Include="src\util.cpp" />
+    <ClCompile Include="src\textdisp.cpp" />
+    <ClCompile Include="src\thcrap_update_wrapper.cpp" />
+    <ClCompile Include="src\vfs.cpp" />
+    <ClCompile Include="src\win32_detour.cpp" />
+    <ClCompile Include="src\xpcompat.cpp" />
+    <ClCompile Include="src\zip.cpp" />
     <ClInclude Include="src\dialog.h" />
     <ClInclude Include="src\exception.h" />
     <ClInclude Include="src\jsondata.h" />
@@ -80,15 +88,21 @@
     <ClInclude Include="src\plugin.h" />
     <ClInclude Include="src\promote.h" />
     <ClInclude Include="src\repatch.h" />
+    <ClInclude Include="src\repo.h" />
+    <ClInclude Include="src\search.h" />
     <ClInclude Include="src\sha256.h" />
     <ClInclude Include="src\inject.h" />
+    <ClInclude Include="src\shelllink.h" />
     <ClInclude Include="src\specs.h" />
     <ClInclude Include="src\stack.h" />
     <ClInclude Include="src\strings.h" />
     <ClInclude Include="src\util.h" />
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
+    <ClInclude Include="src\thcrap_update_wrapper.h" />
+    <ClInclude Include="src\vfs.h" />
     <ClInclude Include="src\win32_detour.h" />
+    <ClInclude Include="src\xpcompat.h" />
     <ClInclude Include="src\zip.h" />
     <GAS Include="src\bp_entry.asm" />
     <None Include="thcrap.def" />

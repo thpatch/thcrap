@@ -5,20 +5,16 @@ EXPORTS
 	http_init
 	http_exit
 
-	ServerBuild
-	ServerInit
-
-	ServerNewSession
-	ServerGetFirst
-	ServerGetNumActive
-	ServerDisable
-
 	ServerDownloadFile
 
 	update_filter_global
 	update_filter_games
+	patch_bootstrap
 	patch_update
 	stack_update
 
 	UpdateThread
 	BP_update_poll
+
+	RepoDiscoverAtURL
+	RepoDiscoverFromLocal

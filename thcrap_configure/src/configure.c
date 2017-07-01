@@ -4,13 +4,11 @@
   */
 
 #include <thcrap.h>
-#include <thcrap_update/src/update.h>
+#include <thcrap/src/thcrap_update_wrapper.h>
 #include "configure.h"
 #include "repo.h"
 
 typedef enum {
-	LINK_FN,
-	LINK_ARGS,
 	RUN_CFG_FN,
 	RUN_CFG_FN_JS
 } configure_slot_t;
@@ -128,37 +126,6 @@ int file_write_text(const char *fn, const char *str)
 	return ret;
 }
 
-json_t* patch_build(const json_t *sel)
-{
-	const char *repo_id = json_array_get_string(sel, 0);
-	const char *patch_id = json_array_get_string(sel, 1);
-	return json_pack("{ss+++}",
-		"archive", repo_id, "/", patch_id, "/"
-	);
-}
-
-json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
-{
-	const char *main_fn = "patch.js";
-	char *patch_js_buffer;
-	DWORD patch_js_size;
-	json_t *patch_info = patch_build(sel);
-	const json_t *patch_id = json_array_get(sel, 1);
-	size_t patch_len = json_string_length(patch_id) + 1;
-
-	size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
-	VLA(char, remote_patch_fn, remote_patch_fn_len);
-	sprintf(remote_patch_fn, "%s/%s", json_string_value(patch_id), main_fn);
-
-	patch_js_buffer = (char*)ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
-	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
-	// TODO: Nice, friendly error
-
-	VLA_FREE(remote_patch_fn);
-	SAFE_FREE(patch_js_buffer);
-	return patch_info;
-}
-
 const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 {
 	const char *ret = NULL;
@@ -195,55 +162,6 @@ const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 			ret = strings_strcat(slot, patch_id);
 		}
 	}
-	return ret;
-}
-
-int CreateShortcuts(const char *run_cfg_fn, json_t *games)
-{
-#ifdef _DEBUG
-	const char *loader_exe = "thcrap_loader_d.exe";
-#else
-	const char *loader_exe = "thcrap_loader.exe";
-#endif
-	int ret = 0;
-	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	VLA(char, self_fn, self_fn_len);
-
-	GetModuleFileNameU(NULL, self_fn, self_fn_len);
-	PathRemoveFileSpec(self_fn);
-	PathAddBackslashA(self_fn);
-
-	// Yay, COM.
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	{
-		const char *key = NULL;
-		json_t *cur_game = NULL;
-		VLA(char, self_path, self_fn_len);
-		strcpy(self_path, self_fn);
-
-		strcat(self_fn, loader_exe);
-
-		log_printf("Creating shortcuts");
-
-		json_object_foreach(games, key, cur_game) {
-			const char *game_fn = json_string_value(cur_game);
-			const char *link_fn = strings_sprintf(LINK_FN, "%s (%s).lnk", key, run_cfg_fn);
-			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
-
-			log_printf(".");
-
-			if(
-				CreateLink(link_fn, self_fn, link_args, self_path, game_fn)
-				&& !file_write_error(link_fn)
-			) {
-				ret = 1;
-				break;
-			}
-		}
-		VLA_FREE(self_path);
-	}
-	VLA_FREE(self_fn);
-	CoUninitialize();
 	return ret;
 }
 
@@ -332,8 +250,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
 	}
 
-	http_init();
-
 	if(json_array_size(args) > 1) {
 		start_repo = json_array_get_string(args, 1);
 	}
@@ -348,7 +264,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"Touhou Community Reliant Automatic Patcher.\n"
 		"\n"
 		"\n"
-		"The configuration process has two steps:\n"
+		"The configuration process has four steps:\n"
 		"\n"
 		"\t\t1. Selecting patches\n"
 		"\t\t2. Download game-independent data\n"
@@ -370,10 +286,10 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	);
 	pause();
 
-	if(RepoDiscoverAtURL(start_repo, id_cache, url_cache)) {
+	if(RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache)) {
 		goto end;
 	}
-	if(RepoDiscoverFromLocal(id_cache, url_cache)) {
+	if(RepoDiscoverFromLocal_wrapper(id_cache, url_cache)) {
 		goto end;
 	}
 	repo_list = RepoLoad();
@@ -389,7 +305,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		json_t *sel;
 
 		log_printf("Downloading game-independent data...\n");
-		stack_update(update_filter_global, NULL);
+		stack_update_wrapper(update_filter_global_wrapper, NULL);
 
 		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {
@@ -421,7 +337,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
 		json_t *filter = json_object_get_keys_sorted(games);
 		log_printf("\nDownloading data specific to the located games...\n");
-		stack_update(update_filter_games, filter);
+		stack_update_wrapper(update_filter_games_wrapper, filter);
 		filter = json_decref_safe(filter);
 		log_printf(
 			"\n"

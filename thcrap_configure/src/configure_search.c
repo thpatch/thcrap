@@ -57,9 +57,36 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 	return NULL;
 }
 
+// Work around a bug in Windows 7 and later by sending
+// BFFM_SETSELECTION a second time.
+// https://connect.microsoft.com/VisualStudio/feedback/details/518103/bffm-setselection-does-not-work-with-shbrowseforfolder-on-windows-7
+typedef struct {
+	ITEMIDLIST *path;
+	int attempts;
+} initial_path_t;
+
+int CALLBACK SetInitialBrowsePathProc(HWND hWnd, UINT uMsg, LPARAM lp, LPARAM pData)
+{
+	initial_path_t *ip = (initial_path_t *)pData;
+	if(ip) {
+		switch(uMsg) {
+		case BFFM_INITIALIZED:
+			ip->attempts = 0;
+			// fallthrough
+		case BFFM_SELCHANGED:
+			if(ip->attempts < 2) {
+				SendMessageW(hWnd, BFFM_SETSELECTION, FALSE, (LPARAM)ip->path);
+				ip->attempts++;
+			}
+		}
+	}
+	return 0;
+}
+
 json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
+	initial_path_t ip = {0};
 	BROWSEINFO bi = {0};
 	int repeat = 0;
 
@@ -116,8 +143,17 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		);
 		pause();
 	}
+
+	// BFFM_SETSELECTION does this anyway if we pass a string, so we
+	// might as well do the slash conversion in win32_utf8's wrapper
+	// while we're at it.
+	SHParseDisplayNameU(games_js_path, NULL, &ip.path, 0, NULL);
+
 	bi.lpszTitle = "Root path for game search (cancel to search entire system):";
 	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
+	bi.hwndOwner = GetConsoleWindow();
+	bi.lpfn = SetInitialBrowsePathProc;
+	bi.lParam = (LPARAM)&ip;
 
 	do {
 		char search_path[MAX_PATH * 2] = {0};
@@ -175,5 +211,6 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		}
 		json_decref(found);
 	} while(repeat);
+	CoTaskMemFree(ip.path);
 	return games;
 }

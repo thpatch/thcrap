@@ -20,9 +20,18 @@ static HDC text_dc = NULL;
 
 /// Detour chains
 /// -------------
+typedef HDC WINAPI CreateCompatibleDC_type(
+	HDC hdc
+);
+
+typedef HGDIOBJ WINAPI SelectObject_type(
+	HDC hdc,
+	HGDIOBJ h
+);
+
 DETOUR_CHAIN_DEF(CreateCompatibleDC);
 DETOUR_CHAIN_DEF(SelectObject);
-DETOUR_CHAIN_DEF(TextOutU);
+W32U8_DETOUR_CHAIN_DEF(TextOut);
 /// -------------
 
 /// TSA font block
@@ -214,8 +223,9 @@ json_t* layout_tokenize(const char *str, size_t len)
 
 		json_t *match = layout_match(&cur_len, cur_str, cur_len);
 
-		// Requiring at least 2 parameters for a layout command still lets people
-		// write "<text>" without that being swallowed by the layout parser.
+		// Requiring at least 2 parameters (meaning, a single $)
+		// for a layout command still lets people write "<text>"
+		// without that being swallowed by the layout parser.
 		if(json_array_size(match) > 1) {
 			json_array_append(ret, match);
 		} else {
@@ -383,9 +393,9 @@ int layout_process(layout_state_t *lay, layout_func_t func, const char *str, siz
 	}
 
 	if(hBitmap) {
-		// TODO: This gets the full width of the rendering backbuffer.
-		// In-game text rendering mostly only uses a shorter width, though.
-		// Find a way to get this width here, too.
+		// TODO: This gets the full width of the text bitmap. The
+		// actual visible part of the final text sprites often is
+		// shorter, though. Find a way to get this width here, too.
 		DIBSECTION dibsect;
 		GetObject(hBitmap, sizeof(DIBSECTION), &dibsect);
 		lay->bitmap_width = dibsect.dsBm.bmWidth;

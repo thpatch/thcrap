@@ -55,7 +55,15 @@ void* func_get(const char *name);
 // Module function type.
 typedef void (*mod_call_type)(void *param);
 
-// Builds a JSON object all module hook functions in [funcs].
+// Builds a JSON object mapping the suffixes of all module hook functions
+// occurring in [funcs] to an array of pointers to all the functions in
+// [funcs] with that suffix:
+// {
+//	"suffix": [
+//		<function pointer>. <function pointer>. ...
+//	],
+//	...
+// }
 json_t* mod_func_build(json_t *funcs);
 
 // Runs every module hook function for [suffix] in [mod_funcs]. The execution

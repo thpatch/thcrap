@@ -6,37 +6,29 @@
   *
   * On-the-fly th06msg patcher (in-game dialog format *since* th06)
   *
-  * Portions adapted from xarnonymous' Touhou Toolkit
-  * http://code.google.com/p/thtk/
+  * Portions adapted from Touhou Toolkit
+  * https://github.com/thpatch/thtk
   */
 
 #include <thcrap.h>
 #include "thcrap_tsa.h"
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
-	WORD time;
-	BYTE type;
-	BYTE length;
-#ifdef PACK_PRAGMA
+	uint16_t time;
+	uint8_t type;
+	uint8_t length;
+	uint8_t data[];
+} th06_msg_t;
 #pragma pack(pop)
-#endif
-	BYTE data[];
-} PACK_ATTRIBUTE th06_msg_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
-	WORD side;
-	WORD linenum;
-#ifdef PACK_PRAGMA
+	uint16_t side;
+	uint16_t linenum;
+	uint8_t str[];
+} hard_line_data_t;
 #pragma pack(pop)
-#endif
-	BYTE str[];
-} PACK_ATTRIBUTE hard_line_data_t;
 
 // Supported opcode commands
 typedef enum {
@@ -48,7 +40,7 @@ typedef enum {
 } op_cmd_t;
 
 typedef struct {
-	BYTE op;
+	uint8_t op;
 	op_cmd_t cmd;
 	const char *type;
 } op_info_t;
@@ -59,7 +51,7 @@ typedef struct {
 	size_t op_info_num;
 
 	// Encryption
-	BYTE* enc_vars;
+	uint8_t* enc_vars;
 	size_t enc_var_count;
 	EncryptionFunc_t enc_func;
 
@@ -98,7 +90,7 @@ typedef struct {
   */
 typedef void (*ReplaceFunc_t)(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *new_line);
 
-const op_info_t* get_op_info(patch_msg_state_t* state, BYTE op)
+const op_info_t* get_op_info(patch_msg_state_t* state, uint8_t op)
 {
 	if(state && state->op_info && state->op_info_num) {
 		size_t i;
@@ -174,9 +166,9 @@ int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
 
 			state->enc_var_count = json_array_size(encryption_vars);
 
-			state->enc_vars = (BYTE*)malloc(sizeof(BYTE) * state->enc_var_count);
+			state->enc_vars = (uint8_t*)malloc(sizeof(uint8_t) * state->enc_var_count);
 			for(i = 0; i < state->enc_var_count; i++) {
-				state->enc_vars[i] = (BYTE)json_array_get_hex(encryption_vars, i);
+				state->enc_vars[i] = (uint8_t)json_array_get_hex(encryption_vars, i);
 			}
 		}
 	}
@@ -200,7 +192,7 @@ size_t th06_msg_full_len(const th06_msg_t* msg)
 
 th06_msg_t* th06_msg_advance(const th06_msg_t* msg)
 {
-	return (th06_msg_t*)((BYTE*)msg + th06_msg_full_len(msg));
+	return (th06_msg_t*)((uint8_t*)msg + th06_msg_full_len(msg));
 }
 
 size_t get_len_at_last_codepoint(const char *str, const size_t limit)
@@ -221,7 +213,7 @@ size_t get_len_at_last_codepoint(const char *str, const size_t limit)
 	return ret + 1;
 }
 
-void replace_line(BYTE *dst, const char *rep, const size_t len, patch_msg_state_t *state)
+void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_state_t *state)
 {
 	memcpy(dst, rep, len);
 	dst[len - 1] = '\0';
@@ -321,7 +313,7 @@ void box_end(patch_msg_state_t *state)
 			size_t line_offset;
 			size_t line_len_trimmed;
 
-			move_len = (BYTE*)th06_msg_advance(state->cmd_out) - (BYTE*)new_line_cmd;
+			move_len = (uint8_t*)th06_msg_advance(state->cmd_out) - (uint8_t*)new_line_cmd;
 
 			hard_line = (state->last_line_op->cmd == OP_HARD_LINE);
 			extra_param_len = hard_line ? 4 : 0;
@@ -330,14 +322,14 @@ void box_end(patch_msg_state_t *state)
 
 			// Make room for the new line
 			memmove(
-				(BYTE*)(new_line_cmd) + line_offset + line_len_trimmed,
+				(uint8_t*)(new_line_cmd) + line_offset + line_len_trimmed,
 				new_line_cmd,
 				move_len
 			);
 			memcpy(new_line_cmd, state->last_line_cmd, line_offset);
 			process_line(new_line_cmd, state, hard_line ? replace_hard_line : replace_auto_line);
 			// Meh, pointer arithmetic.
-			state->cmd_out = (th06_msg_t*)((BYTE*)state->cmd_out + th06_msg_full_len(new_line_cmd));
+			state->cmd_out = (th06_msg_t*)((uint8_t*)state->cmd_out + th06_msg_full_len(new_line_cmd));
 		} else {
 			state->cur_line++;
 		}
@@ -350,7 +342,7 @@ void box_end(patch_msg_state_t *state)
 int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 {
 	hard_line_data_t* line;
-	WORD linenum;
+	uint16_t linenum;
 
 	switch(cur_op->cmd) {
 		case OP_DELETE:
@@ -396,18 +388,18 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 	return 1;
 }
 
-int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format)
+int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format)
 {
-	DWORD* msg_out = (DWORD*)file_inout;
-	DWORD* msg_in;
+	uint32_t* msg_out = (uint32_t*)file_inout;
+	uint32_t* msg_in;
 	int entry_new = 1;
 
 	// Header data
-	DWORD entry_offset_mul = json_object_get_hex(format, "entry_offset_mul");
+	uint32_t entry_offset_mul = json_object_get_hex(format, "entry_offset_mul");
 	size_t entry_count;
-	DWORD *entry_offsets_out;
-	DWORD *entry_offsets_in;
-	DWORD entry_offset_size;
+	uint32_t *entry_offsets_out;
+	uint32_t *entry_offsets_in;
+	uint32_t entry_offset_size;
 
 	patch_msg_state_t state;
 
@@ -421,14 +413,13 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	}
 
 	// Make a copy of the input buffer
-	msg_in = (DWORD*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
+	msg_in = (uint32_t*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
 	memcpy(msg_in, msg_out, size_in);
 
-	/**
-	  * Not only is this unnecessary because we don't read from the output buffer,
-	  * and the game stops reading at the last entry's 0 opcode anyway,
-	  * it also causes a delayed crash in th09.
-	  */
+	/*
+	 * Unnecessary, because we don't read from the output buffer and
+	 * the game stops reading at the last entry's 0 opcode anyway.
+	 */
 	// ZeroMemory(msg_out, size_out);
 
 #ifdef _DEBUG
@@ -458,12 +449,12 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	state.cmd_out = (th06_msg_t*)(msg_out + 1 + entry_offset_size);
 
 	for(;;) {
-		const ptrdiff_t offset_in  = (BYTE*)state.cmd_in - (BYTE*)msg_in;
-		const ptrdiff_t offset_out = (BYTE*)state.cmd_out - (BYTE*)msg_out;
+		const ptrdiff_t offset_in  = (uint8_t*)state.cmd_in - (uint8_t*)msg_in;
+		const ptrdiff_t offset_out = (uint8_t*)state.cmd_out - (uint8_t*)msg_out;
 		int advance_out = 1;
 		const op_info_t* cur_op;
 
-		if((DWORD)offset_in >= size_in
+		if((uint32_t)offset_in >= size_in
 			/*|| (entry_new && state.entry == entry_count - 1)*/
 			// (sounds like a good idea, but breaks th09 Marisa)
 		) {
@@ -526,7 +517,7 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	{
 		FILE* out = fopen("out.msg", "wb");
 		if(out) {
-			fwrite(msg_out, (BYTE*)state.cmd_out - (BYTE*)msg_out, 1, out);
+			fwrite(msg_out, (uint8_t*)state.cmd_out - (uint8_t*)msg_out, 1, out);
 			fclose(out);
 		}
 	}
@@ -536,12 +527,12 @@ int patch_msg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	return 0;
 }
 
-int patch_msg_dlg(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	return patch_msg(file_inout, size_out, size_in, patch, specs_get("msg"));
 }
 
-int patch_msg_end(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	return patch_msg(file_inout, size_out, size_in, patch, specs_get("end"));
 }

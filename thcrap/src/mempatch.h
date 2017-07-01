@@ -9,7 +9,7 @@
 
 #pragma once
 
-// IsBadReadPointer without the flawed implementation.
+// IsBadReadPtr() without the flawed implementation.
 // Returns TRUE if [ptr] points to at least [len] bytes of valid memory in the
 // address space of the current process.
 BOOL VirtualCheckRegion(const void *ptr, const size_t len);
@@ -93,10 +93,15 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
   */
 
 // Defines a function pointer used to continue a detour chain. It is
-// initialized to [func], which should the default function to be called
-// if this is the last link in the chain.
+// initialized to [func], which should be the default function to be called
+// if this is the last link in the chain. The pointer will be of the type
+// "[func]_type", which must have been typedef'd before.
 #define DETOUR_CHAIN_DEF(func) \
-	static FARPROC chain_##func = (FARPROC)func;
+	static func##_type *chain_##func = func;
+
+// DETOUR_CHAIN_DEF for wrappers defined in win32_utf8.
+#define W32U8_DETOUR_CHAIN_DEF(func) \
+	static func##A_type *chain_##func##U = func##U;
 
 /**
   * Inserts a new hook for a number of functions in [dll_name] at the

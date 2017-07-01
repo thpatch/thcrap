@@ -17,7 +17,7 @@ extern json_t *run_cfg;
 // Project stats
 const char* PROJECT_NAME(void);
 const char* PROJECT_NAME_SHORT(void);
-const DWORD PROJECT_VERSION(void);
+DWORD PROJECT_VERSION(void);
 const char* PROJECT_VERSION_STRING(void);
 
 json_t* runconfig_get(void);

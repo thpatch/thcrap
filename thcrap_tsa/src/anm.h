@@ -19,32 +19,24 @@ typedef enum {
 	FORMAT_GRAY8 = 7
 } format_t;
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	char magic[4];
 	WORD zero;
 	WORD format;
 	// These may be different from the parent entry.
 	WORD w, h;
 	DWORD size;
-#ifdef PACK_PRAGMA
-#pragma pack(pop)
-#endif
 	unsigned char data[];
-} PACK_ATTRIBUTE thtx_header_t;
+} thtx_header_t;
+#pragma pack(pop)
 
+#pragma pack(push, 1)
 typedef struct {
-#ifdef PACK_PRAGMA
-#pragma pack(push,1)
-#endif
 	DWORD id;
 	float x, y, w, h;
-#ifdef PACK_PRAGMA
+} sprite_t;
 #pragma pack(pop)
-#endif
-} PACK_ATTRIBUTE sprite_t;
 /// ---------
 
 /// Patching types
@@ -124,12 +116,12 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
 // Blitting operations
 // -------------------
 // These blit a row with length [pixels] from [rep] to [dst], using [format].
-typedef void (*BlitFunc_t)(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format);
+typedef void (*BlitFunc_t)(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
 
 // Simply overwrites a number of [pixels] in [rep] with [dst].
-void format_copy(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format);
+void format_copy(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
 // Alpha-blends a number of [pixels] from [rep] on top of [dst].
-void format_blend(png_bytep dst, png_bytep rep, unsigned int pixels, format_t format);
+void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
 // -------------------
 /// -------
 

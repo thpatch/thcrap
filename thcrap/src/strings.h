@@ -34,14 +34,16 @@ void strings_va_lookup(va_list va, const char *format);
 char* strings_storage_get(const size_t slot, size_t min_len);
 
 // Safe and persistent sprintf handler.
-// This function should be inserted via binary hacks everywhere a game
-// calls sprintf, as it guarantees a sufficiently large buffer for the result.
-// [format] and [va] are the respective parameters of vsprintf, [addr] is the
-// storage slot. This can be any value, but calling this function again with
-// the same [addr] deletes the result from the previous call.
+// This function should be inserted via binary hacks everywhere the patched
+// program calls sprintf, as it guarantees a sufficiently large buffer for the
+// result. [format] and [va] are the respective parameters of vsprintf. The
+// storage [slot] can be any value, but calling this function again with the
+// same [slot] deletes the result from the previous call.
 // Returns a pointer to the resulting string.
 const char* strings_vsprintf(const size_t slot, const char *format, va_list va);
 const char* strings_sprintf(const size_t slot, const char *format, ...);
+
+const char* strings_vsprintf_msvcrt14(const char *format, const size_t slot, va_list va);
 
 // Clears the string in [slot].
 const char* strings_strclr(const size_t slot);
@@ -59,4 +61,5 @@ const char* strings_replace(const size_t slot, const char *src, const char *dst)
 void strings_mod_init(void);
 // Adds string lookup wrappers to functions that don't have them yet.
 void strings_mod_detour(void);
+void strings_mod_repatch(json_t *files_changed);
 void strings_mod_exit(void);
