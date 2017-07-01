@@ -33,6 +33,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\bp_mission.c" />
     <ClCompile Include="src\anm.c" />
     <ClCompile Include="src\anm_bounds.c" />
     <ClCompile Include="src\encraption.c" />

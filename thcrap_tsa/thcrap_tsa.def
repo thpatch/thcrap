@@ -105,6 +105,10 @@ EXPORTS
 	patch_msg_dlg
 	patch_msg_end
 
+	; Mission
+	BP_mission
+	missions_mod_init
+
 	; TSA-specific detours
 	; --------------------
 	tsa_mod_detour
