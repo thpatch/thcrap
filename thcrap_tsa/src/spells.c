@@ -101,6 +101,8 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 			*str = json_array_get_string_safe(json_cmt, line_num);
 			return breakpoint_cave_exec_flag(bp_info);
 		}
+
+		VLA_FREE(cmt_key_str);
 	}
 	return 1;
 }

@@ -34,6 +34,8 @@ int BP_mission(x86_reg_t *regs, json_t *bp_info)
 	VLA(char, mission_key_str, 16*3 + 2 + 1);
 	sprintf(mission_key_str, "%u_%u_%u", chara, stage, scene);
 	json_t *mission = json_object_get(missions, mission_key_str);
+	VLA_FREE(mission_key_str);
+
 	if (!mission) {
 		return 1;
 	}
