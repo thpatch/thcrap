@@ -39,7 +39,9 @@ int BP_devicelost(x86_reg_t *regs, json_t *bp_info) {
 		case D3DERR_DRIVERINTERNALERROR:
 			MessageBox(0, "Unable to recover from Device Lost error.", "Error", MB_ICONERROR);
 			// panic and return (will probably result in crash)
+			// [[fallthrough]]
 		case D3D_OK:
+			regs->esp += 8; // simulate RETN 8
 			return 0;
 		}
 	}
