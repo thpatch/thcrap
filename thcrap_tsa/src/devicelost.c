@@ -25,7 +25,6 @@ int BP_devicelost(x86_reg_t *regs, json_t *bp_info) {
 	// function no. 3 - TestCooperativeLevel
 	int(__stdcall*d3dd9_TestCooperativeLevel)(void***) = (*d3dd9)[3];
 
-	d3dd9_Reset(d3dd9, presParams); // not sure if needed
 	for(;;){	
 		switch (d3dd9_TestCooperativeLevel(d3dd9)) {
 		case D3DERR_DEVICELOST:
