@@ -16,8 +16,8 @@ void log_context_dump(PCONTEXT ctx)
 	}
 	log_printf(
 		"Registers:\n"
-		"EAX: 0x%08x ECX: 0x%08x EDX: 0x%08x EBX: 0x%08x\n"
-		"ESP: 0x%08x EBP: 0x%08x ESI: 0x%08x EDI: 0x%08x\n",
+		"EAX: 0x%p ECX: 0x%p EDX: 0x%p EBX: 0x%p\n"
+		"ESP: 0x%p EBP: 0x%p ESI: 0x%p EDI: 0x%p\n",
 		ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx,
 		ctx->Esp, ctx->Ebp, ctx->Esi, ctx->Edi
 	);
@@ -31,7 +31,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 	log_printf(
 		"\n"
 		"===\n"
-		"Exception %x at 0x%08x",
+		"Exception %x at 0x%p",
 		lpER->ExceptionCode, lpER->ExceptionAddress
 	);
 	if(crash_mod) {
@@ -40,7 +40,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		if(GetModuleFileNameU(crash_mod, crash_fn, crash_fn_len)) {
 			log_printf(
 				" (Rx%x) (%s)",
-				(DWORD)lpER->ExceptionAddress - (DWORD)crash_mod,
+				(uint8_t *)lpER->ExceptionAddress - (uint8_t *)crash_mod,
 				PathFindFileNameA(crash_fn)
 			);
 		}

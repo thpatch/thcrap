@@ -453,7 +453,7 @@ HDC WINAPI layout_CreateCompatibleDC(HDC hdc)
 	if(!text_dc) {
 		HDC ret = (HDC)chain_CreateCompatibleDC(hdc);
 		text_dc = ret;
-		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
+		log_printf("CreateCompatibleDC(0x%p) -> 0x%p\n", hdc, ret);
 	}
 	return text_dc;
 }
