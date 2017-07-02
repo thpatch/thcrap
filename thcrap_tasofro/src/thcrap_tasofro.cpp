@@ -13,6 +13,7 @@
 #include "pl.h"
 #include "tfcs.h"
 #include "spellcards_generator.h"
+#include "plugin.h"
 
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
