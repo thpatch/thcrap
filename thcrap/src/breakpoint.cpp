@@ -46,16 +46,15 @@ static const size_t BP_CodeCave_Limits[2] = {CALL_LEN, (BP_Offset - CALL_LEN)};
 
 size_t* reg(x86_reg_t *regs, const char *regname)
 {
-	char cmp[4];
+	uint32_t cmp;
 
-	if(!regs || !regname) {
+	if(!regs || !regname || !regname[0] || !regname[1] || !regname[2]) {
 		return NULL;
 	}
-	memcpy(cmp, regname, 3);
-	cmp[3] = 0;
-	strlwr(cmp);
+	memcpy(&cmp, regname, 4);
+	strlwr((char *)&cmp);
 
-	switch(*(DWORD*)(&cmp)) {
+	switch(cmp) {
 		case EAX: return &regs->eax;
 		case ECX: return &regs->ecx;
 		case EDX: return &regs->edx;
