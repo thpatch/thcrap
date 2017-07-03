@@ -17,8 +17,11 @@
 #define D3DERR_DEVICENOTRESET		(FACILITY_D3D|2153)
 
 int BP_devicelost(x86_reg_t *regs, json_t *bp_info) {
-	void ***d3dd9 = ((void****)regs->esp)[1];
-	void *presParams = ((void**)regs->esp)[2];
+	// Parameters
+	// ----------
+	void ***d3dd9 = *(void ****)json_object_get_register(bp_info, regs, "d3dd9");
+	void *presParams = (void *)json_object_get_immediate(bp_info, regs, "pres_params");
+	// ----------
 
 	// function no. 16 - Reset
 	int(__stdcall*d3dd9_Reset)(void***,void*) = (*d3dd9)[16];
@@ -40,7 +43,6 @@ int BP_devicelost(x86_reg_t *regs, json_t *bp_info) {
 			// panic and return (will probably result in crash)
 			// [[fallthrough]]
 		case D3D_OK:
-			regs->esp += 8; // simulate RETN 8
 			return 0;
 		}
 	}
