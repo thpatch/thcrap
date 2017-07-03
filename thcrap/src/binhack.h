@@ -24,4 +24,6 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 size_t hackpoints_count(json_t *hackpoints);
 
 // Applies every binary hack in [binhacks] irreversibly on the current process.
-int binhacks_apply(json_t *binhacks);
+// If HMODULE is not null, relative addresses are relative to this module.
+// Else, they are relative to the main module of the current process.
+int binhacks_apply(json_t *binhacks, HMODULE hMod);

@@ -36,6 +36,7 @@
     <ClCompile Include="src\crypt_block.cpp" />
     <ClCompile Include="src\csv.cpp" />
     <ClCompile Include="src\pl.cpp" />
+    <ClCompile Include="src\plugin.cpp" />
     <ClCompile Include="src\spellcards_generator.cpp" />
     <ClCompile Include="src\tfcs.cpp" />
     <ClCompile Include="src\thcrap_tasofro.cpp">
@@ -43,6 +44,7 @@
     </ClCompile>
     <ClCompile Include="src\files_list.cpp" />
     <ClInclude Include="src\pl.h" />
+    <ClInclude Include="src\plugin.h" />
     <ClInclude Include="src\spellcards_generator.h" />
     <ClInclude Include="src\tfcs.h" />
     <ClInclude Include="src\thcrap_tasofro.h" />

@@ -58,7 +58,7 @@ void stringlocs_reparse(void)
 			continue;
 		}
 		uint8_t error;
-		const char *addr = (const char *)str_address_value(key, &error);
+		const char *addr = (const char *)str_address_value(key, NULL, &error);
 		if(error == STR_ADDRESS_ERROR_NONE) {
 			stringlocs[addr] = json_string_value(val);
 		}

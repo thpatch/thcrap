@@ -13,6 +13,7 @@
 #include "pl.h"
 #include "tfcs.h"
 #include "spellcards_generator.h"
+#include "plugin.h"
 
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
@@ -39,6 +40,7 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("*/stage*.pl", patch_pl);
 	patchhook_register("*/ed_*.pl", patch_pl);
 	patchhook_register("*.csv", patch_tfcs);
+	patchhook_register("*.dll", patch_dll);
 
 	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
 	jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
@@ -201,16 +203,5 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 
 	buffer = NULL;
 	size = 0;
-	return 1;
-}
-
-int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
-{
-	// Parameters
-	// ----------
-	HMODULE *plugin = (HMODULE*)json_object_get_register(bp_info, regs, "plugin");
-	// ----------
-
-	iat_detour_apply(*plugin);
 	return 1;
 }

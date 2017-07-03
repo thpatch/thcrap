@@ -82,7 +82,7 @@ void str_hexdate_format(char format[11], uint32_t date)
 	);
 }
 
-size_t str_address_value(const char *str, uint8_t *error)
+size_t str_address_value(const char *str, HMODULE hMod, uint8_t *error)
 {
 	int base = 10;
 	size_t offset = 0;
@@ -92,7 +92,7 @@ size_t str_address_value(const char *str, uint8_t *error)
 	if(str[0] != '\0' && str[1] != '\0' && str[2] != '\0') {
 		// Module-relative hex values
 		if(!strnicmp(str, "Rx", 2)) {
-			ret += (size_t)GetModuleHandle(NULL);
+			ret += (size_t)(hMod ? hMod : GetModuleHandle(NULL));
 			base = 16;
 			offset = 2;
 		} else if(!strnicmp(str, "0x", 2)) {
