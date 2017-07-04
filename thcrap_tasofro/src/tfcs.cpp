@@ -136,6 +136,9 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	size_out -= sizeof(header);
 	int ret = deflate_bytes(file_out_uncomp, file_out_uncomp_size, header->data, &size_out);
 	header->comp_size = size_out;
+	if (ret != Z_OK) {
+		log_printf("WARNING: tasofro CSV patching: compression failed with zlib error %d\n", ret);
+	}
 
 	HeapFree(GetProcessHeap(), 0, file_in_uncomp);
 	HeapFree(GetProcessHeap(), 0, file_out_uncomp);

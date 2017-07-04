@@ -88,6 +88,9 @@ int patch_csv(char *file_inout, size_t size_out, size_t size_in, json_t *patch)
 			col = 0;
 		}
 	}
+	if (j > size_out) {
+		log_print("WARNING: buffer overflow in tasofro CSV patching (output buffer too small)!\n");
+	}
 
 #ifdef _DEBUG
 	FILE* fd = fopen("out.csv", "wb");

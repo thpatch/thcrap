@@ -234,7 +234,7 @@ json_t* spell_char_select_generator(std::unordered_map<std::string, json_t*> in_
 		return NULL;
 	}
 
-	*out_size = json_string_length(spell_translation);
+	*out_size = json_string_length(spell_translation) * 2; // Escaped characters take more place
 	json_t *ret = json_pack("{s{ss}}", "0", "5", json_string_value(spell_translation));
 	json_decref(spell_translation);
 	return ret;
