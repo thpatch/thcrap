@@ -28,8 +28,8 @@
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tasofro.def</ModuleDefinitionFile>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;act_nut_lib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;act_nut_lib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

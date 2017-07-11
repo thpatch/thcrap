@@ -48,6 +48,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_tasofro", "thcrap_ta
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win32_utf8", "win32_utf8/win32_utf8.vcxproj", "{A185D5A7-3E03-4C87-9774-65C014631F5B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "act-nut-lib", "act-nut-lib/act-nut-lib.vcxproj", "{21DF27A2-2AC5-4C09-9687-1D391237C01D}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib-ng", "libs/zlib-ng.vcxproj", "{EE4A787C-16D5-4192-870F-E1461AFFA469}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libpng", "libs/libpng.vcxproj", "{D6973076-9317-4EF2-A0B8-B7A18AC0713E}"
@@ -91,6 +93,10 @@ Global
 		{A185D5A7-3E03-4C87-9774-65C014631F5B}.Debug|Win32.Build.0 = Debug Dynamic|Win32
 		{A185D5A7-3E03-4C87-9774-65C014631F5B}.Release|Win32.ActiveCfg = Release Dynamic|Win32
 		{A185D5A7-3E03-4C87-9774-65C014631F5B}.Release|Win32.Build.0 = Release Dynamic|Win32
+		{21DF27A2-2AC5-4C09-9687-1D391237C01D}.Debug|Win32.ActiveCfg = Debug|Win32
+		{21DF27A2-2AC5-4C09-9687-1D391237C01D}.Debug|Win32.Build.0 = Debug|Win32
+		{21DF27A2-2AC5-4C09-9687-1D391237C01D}.Release|Win32.ActiveCfg = Release|Win32
+		{21DF27A2-2AC5-4C09-9687-1D391237C01D}.Release|Win32.Build.0 = Release|Win32
 		{EE4A787C-16D5-4192-870F-E1461AFFA469}.Debug|Win32.ActiveCfg = Debug Dynamic|Win32
 		{EE4A787C-16D5-4192-870F-E1461AFFA469}.Debug|Win32.Build.0 = Debug Dynamic|Win32
 		{EE4A787C-16D5-4192-870F-E1461AFFA469}.Release|Win32.ActiveCfg = Release Dynamic|Win32
