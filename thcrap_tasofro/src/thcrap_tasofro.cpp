@@ -12,6 +12,7 @@
 #include "thcrap_tasofro.h"
 #include "pl.h"
 #include "tfcs.h"
+#include "act-nut.h"
 #include "spellcards_generator.h"
 #include "plugin.h"
 
@@ -41,6 +42,8 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("*/ed_*.pl", patch_pl);
 	patchhook_register("*.csv", patch_tfcs);
 	patchhook_register("*.dll", patch_dll);
+	patchhook_register("*.act", patch_act);
+	patchhook_register("*.nut", patch_nut);
 
 	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
 	jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
