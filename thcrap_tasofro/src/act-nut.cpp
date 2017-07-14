@@ -12,29 +12,39 @@
 #include "thcrap_tasofro.h"
 #include "act-nut.h"
 
-int patch_act_nut(ActNut::Object *obj, void *file_out, size_t size_out, json_t *patch)
+int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, json_t *patch)
 {
 	if (patch == nullptr) {
 		return 0;
 	}
 
 	const char *key;
-	json_t *value;
-	json_object_foreach(patch, key, value) {
-		ActNut::Object *child = obj->getChild(key);
-		if (child && json_is_string(value)) {
-			*child = json_string_value(value);
+	json_t *flexarray;
+	json_object_foreach(patch, key, flexarray) {
+		std::string text;
+		size_t ind;
+		json_t *line;
+		json_flex_array_foreach(flexarray, ind, line) {
+			if (text.length() > 0) {
+				text += "\n";
+			}
+			text += json_string_value(line);
+		}
+
+		ActNut::Object *child = actnutobj->getChild(key);
+		if (child) {
+			*child = text;
 		}
 	}
 
 	ActNut::MemoryBuffer *buf = ActNut::new_MemoryBuffer(ActNut::MemoryBuffer::SHARE, (uint8_t *)file_out, size_out, false);
-	if (!obj->writeValue(*buf)) {
+	if (!actnutobj->writeValue(*buf)) {
 		ActNut::delete_buffer(buf);
-		ActNut::delete_object(obj);
+		ActNut::delete_object(actnutobj);
 		return 1;
 	}
 	ActNut::delete_buffer(buf);
-	ActNut::delete_object(obj);
+	ActNut::delete_object(actnutobj);
 	return 0;
 }
 
