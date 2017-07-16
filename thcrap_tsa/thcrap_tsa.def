@@ -36,8 +36,6 @@ EXPORTS
 	BP_th06_file_load
 	BP_th06_file_loaded
 
-	BP_devicelost
-
 	; Bounds
 	; ------
 	fn_for_bounds
@@ -110,3 +108,4 @@ EXPORTS
 	; TSA-specific detours
 	; --------------------
 	tsa_mod_detour
+	devicelost_mod_detour
