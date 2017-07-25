@@ -35,6 +35,8 @@ int __stdcall thcrap_plugin_init()
 				"encounter errors or missing functionality after further "
 				"updates.\n"
 			);
+		} else {
+			return 1;
 		}
 	}
 	
