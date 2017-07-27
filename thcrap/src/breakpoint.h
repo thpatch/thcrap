@@ -77,13 +77,10 @@ size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *ke
 // (since that code might overwrite the modified data otherwise).
 int breakpoint_cave_exec_flag(json_t *bp_info);
 
-// Breakpoint hook function, implemented in assembly. A CALL to this function
-// is written to every breakpoint's address.
-void bp_entry(void);
-
-// Performs breakpoint lookup, invocation and stack adjustments. Returns the
-// number of bytes the stack has to be moved downwards by breakpoint_entry().
-size_t breakpoint_process(x86_reg_t *regs);
+// Looks up the breakpoint function for [key] in the list of exported functions.
+// [key] is delimited by the first '#' character. This can be used to call a
+// single breakpoint function at any number of points in the original code.
+BreakpointFunc_t breakpoint_func_get(const char *key);
 
 // Sets up all breakpoints in [breakpoints].
 int breakpoints_apply(json_t *breakpoints);

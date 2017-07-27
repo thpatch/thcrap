@@ -14,7 +14,7 @@ typedef struct {
 	BYTE *addr;
 
 	// Size of the original code sliced out at [addr].
-	// Must be inside BP_CodeCave_Limits.
+	// Must be inside BP_SourceCave_Limits.
 	size_t cavesize;
 
 	BreakpointFunc_t func;
@@ -24,15 +24,30 @@ typedef struct {
 	BYTE *cave;
 } breakpoint_local_t;
 
+/// Functions
+/// ---------
+// Breakpoint hook function, implemented in assembly. A CALL to this function
+// is written to every breakpoint's address.
+extern "C" void bp_entry(void);
+
+// Performs breakpoint lookup, invocation and stack adjustments. Returns the
+// number of bytes the stack has to be moved downwards by breakpoint_entry().
+extern "C" size_t breakpoint_process(breakpoint_local_t *bp_local, x86_reg_t *regs);
+/// ---------
+
 // Static global variables
 // -----------------------
-static BYTE *BP_CodeCave = NULL;
-static int BP_Count = 0;
+// Cave for original code bytes
+static BYTE *BP_SourceCave = NULL;
+
+// Cave for breakpoint calls
+static BYTE *BP_CallCave = NULL;
+
 static breakpoint_local_t *BP_Local = NULL;
 
 #define BP_Offset 32
 #define CALL_LEN (sizeof(void*) + 1)
-static const size_t BP_CodeCave_Limits[2] = {CALL_LEN, (BP_Offset - CALL_LEN)};
+static const size_t BP_SourceCave_Limits[2] = {CALL_LEN, (BP_Offset - CALL_LEN)};
 // -----------------------
 
 #define EAX 0x00786165
@@ -209,26 +224,38 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 	return !json_is_false(json_object_get(bp_info, "cave_exec"));
 }
 
-size_t breakpoint_process(x86_reg_t *regs)
+BreakpointFunc_t breakpoint_func_get(const char *key)
 {
-	breakpoint_local_t *bp = NULL;
+	BreakpointFunc_t ret = NULL;
+	if(key) {
+		STRLEN_DEC(key);
+		VLA(char, bp_key, key_len + strlen("BP_") + 1);
+
+		// Multi-slot support
+		const char *slot = strchr(key, '#');
+		if(slot) {
+			key_len = slot - key;
+		}
+
+		strcpy(bp_key, "BP_");
+		strncat(bp_key, key, key_len);
+		ret = (BreakpointFunc_t)func_get(bp_key);
+		VLA_FREE(bp_key);
+	}
+	return ret;
+}
+
+size_t breakpoint_process(breakpoint_local_t *bp, x86_reg_t *regs)
+{
+	assert(bp);
+
 	size_t esp_diff = 0;
-	int i;
-	int cave_exec = 1;
 
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
 	// to be able to manipulate it.
 	size_t esp_prev = regs->esp;
 
-	for(i = 0; (i < BP_Count) && !bp; i++) {
-		if(BP_Local[i].addr == UlongToPtr(regs->retaddr - CALL_LEN)) {
-			bp = &BP_Local[i];
-		}
-	}
-	if(bp) {
-		assert(bp->func);
-		cave_exec = bp->func(regs, bp->json_obj);
-	}
+	int cave_exec = bp->func(regs, bp->json_obj);
 	if(cave_exec) {
 		// Point return address to codecave.
 		regs->retaddr = (size_t)bp->cave;
@@ -272,9 +299,9 @@ int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, size_t 
 		log_printf("ERROR: no cavesize specified!\n");
 		return 2;
 	}
-	if(cavesize < BP_CodeCave_Limits[0] || cavesize > BP_CodeCave_Limits[1]) {
+	if(cavesize < BP_SourceCave_Limits[0] || cavesize > BP_SourceCave_Limits[1]) {
 		log_printf("ERROR: cavesize exceeds limits! (given: %d, min: %d, max: %d)\n",
-			cavesize, BP_CodeCave_Limits[0], BP_CodeCave_Limits[1]);
+			cavesize, BP_SourceCave_Limits[0], BP_SourceCave_Limits[1]);
 		return 3;
 	}
 
@@ -297,17 +324,17 @@ int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, size_t 
 		ret = hackpoints_error_function_not_found(bp_key, 4);
 	}
 	bp_local->cavesize = cavesize;
-	bp_local->cave = BP_CodeCave + (index * BP_Offset);
+	bp_local->cave = BP_SourceCave + (index * BP_Offset);
 	bp_local->json_obj = bp_json;
 	VLA_FREE(bp_key);
 	return ret;
 }
 
-int breakpoint_apply(breakpoint_local_t *bp)
+int breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
 {
 	if(bp) {
 		size_t cave_dist = bp->addr - (bp->cave + CALL_LEN);
-		size_t bp_dist = (BYTE*)bp_entry - (bp->addr + CALL_LEN);
+		size_t bp_dist = (BYTE*)callcave - (bp->addr + CALL_LEN);
 		BYTE bp_asm[BP_Offset];
 
 		/// Cave assembly
@@ -321,7 +348,7 @@ int breakpoint_apply(breakpoint_local_t *bp)
 
 		/// Breakpoint assembly
 		memset(bp_asm, 0x90, bp->cavesize);
-		// CALL breakpoint_entry
+		// CALL bp_entry
 		bp_asm[0] = 0xe8;
 		memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
 
@@ -332,31 +359,39 @@ int breakpoint_apply(breakpoint_local_t *bp)
 	return -1;
 }
 
+extern "C" void *bp_entry_end;
+extern "C" void *bp_entry_localptr;
+
 int breakpoints_apply(json_t *breakpoints)
 {
 	const char *key;
 	json_t *json_bp;
-	size_t breakpoint_count = hackpoints_count(breakpoints);
+	size_t bp_count = hackpoints_count(breakpoints);
 	int i = -1;
 
 	if(!breakpoints) {
 		return -1;
 	}
-	if(!breakpoint_count) {
+	if(!bp_count) {
 		log_printf("No breakpoints to set up.\n");
 		return 0;
 	}
 	// Don't set up twice
-	if(BP_CodeCave || BP_Local) {
+	if(BP_SourceCave || BP_Local) {
 		log_printf("Breakpoints already set up.\n");
 		return 0;
 	}
-	BP_Count = breakpoint_count;
-	BP_Local = (breakpoint_local_t *)calloc(BP_Count, sizeof(breakpoint_local_t));
-	BP_CodeCave = (BYTE*)VirtualAlloc(0, breakpoint_count * BP_Offset, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	memset(BP_CodeCave, 0xcc, breakpoint_count * BP_Offset);
+	BP_Local = (breakpoint_local_t *)calloc(bp_count, sizeof(breakpoint_local_t));
+	BP_SourceCave = (BYTE*)VirtualAlloc(0, bp_count * BP_Offset, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	memset(BP_SourceCave, 0xcc, bp_count * BP_Offset);
 
-	log_printf("Setting up breakpoints... (code cave at 0x%p)\n", BP_CodeCave);
+	// Call cave construction
+	size_t call_size = (uint8_t*)&bp_entry_end - (uint8_t*)bp_entry;
+	size_t localptr_offset = (uint8_t*)&bp_entry_localptr + 1 - (uint8_t*)bp_entry;
+	BP_CallCave = (BYTE*)VirtualAlloc(0, bp_count * call_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	BYTE *callcave_p = BP_CallCave;
+
+	log_printf("Setting up breakpoints... (source cave at 0x%p, call cave at 0x%p)\n", BP_SourceCave, BP_CallCave);
 	log_printf("-------------------------\n");
 
 	json_object_foreach(breakpoints, key, json_bp) {
@@ -370,9 +405,15 @@ int breakpoints_apply(json_t *breakpoints)
 			size_t addr = json_hex_value(addr_val);
 			if(addr) {
 				breakpoint_local_t *bp = &BP_Local[++i];
-				log_printf("(%2d/%2d) 0x%p %s... ", i + 1, BP_Count, addr, key);
+				log_printf("(%2d/%2d) 0x%p %s... ", i + 1, bp_count, addr, key);
 				if(!breakpoint_local_init(bp, json_bp, addr, key, i)) {
-					breakpoint_apply(bp);
+					memcpy(callcave_p, bp_entry, call_size);
+					auto callcave_localptr = (breakpoint_local_t **)(callcave_p + localptr_offset);
+					*callcave_localptr = bp;
+
+					breakpoint_apply(callcave_p, bp);
+
+					callcave_p += call_size;
 				}
 			}
 		}
@@ -384,7 +425,7 @@ int breakpoints_apply(json_t *breakpoints)
 int breakpoints_remove(void)
 {
 
-	if(!BP_Count || !BP_Local) {
+	if(!!BP_Local) {
 		log_printf("No breakpoints to remove.\n");
 		return 0;
 	}
@@ -395,8 +436,8 @@ int breakpoints_remove(void)
 	);
 	// TODO: Implement!
 
-	VirtualFree(BP_CodeCave, 0, MEM_RELEASE);
+	VirtualFree(BP_SourceCave, 0, MEM_RELEASE);
+	VirtualFree(BP_CallCave, 0, MEM_RELEASE);
 	SAFE_FREE(BP_Local);
-	BP_Count = 0;
 	return 0;
 }
