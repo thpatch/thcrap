@@ -8,9 +8,9 @@
   */
 
 	.intel_syntax
-	.global	_breakpoint_entry
+	.global	_bp_entry
 
-_breakpoint_entry:
+_bp_entry:
 	pusha
 	pushf
 	push	%esp
@@ -20,6 +20,7 @@ _breakpoint_entry:
 	popf
 	popa
 	ret
+_bp_entry_end:
 
 // /SAFESEH compliance. Note that the @feat.00 symbol *must not* be global.
 	.set @feat.00, 1

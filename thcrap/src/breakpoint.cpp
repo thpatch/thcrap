@@ -307,7 +307,7 @@ int breakpoint_apply(breakpoint_local_t *bp)
 {
 	if(bp) {
 		size_t cave_dist = bp->addr - (bp->cave + CALL_LEN);
-		size_t bp_dist = (BYTE*)breakpoint_entry - (bp->addr + CALL_LEN);
+		size_t bp_dist = (BYTE*)bp_entry - (bp->addr + CALL_LEN);
 		BYTE bp_asm[BP_Offset];
 
 		/// Cave assembly

@@ -79,7 +79,7 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 
 // Breakpoint hook function, implemented in assembly. A CALL to this function
 // is written to every breakpoint's address.
-void breakpoint_entry(void);
+void bp_entry(void);
 
 // Performs breakpoint lookup, invocation and stack adjustments. Returns the
 // number of bytes the stack has to be moved downwards by breakpoint_entry().
