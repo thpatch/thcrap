@@ -19,8 +19,6 @@
 
 // vtable indeices
 #define D3DD9_TESTCOOPERATIVELEVEL 3
-#define D3DD9_RESET 16
-#define D3D9_CREATEDEVICE 16
 
 // original memeber function pointers
 static int(__stdcall*orig_d3dd9_Reset)(void***, void*) = NULL;
@@ -53,15 +51,10 @@ int __stdcall my_d3dd9_Reset(void*** that, void* pPresentationParameters) {
 int __stdcall my_d3d9_CreateDevice(void*** that, UINT Adapter, int DeviceType, void* hFocusWindow, DWORD BehaviourFlags, void* pPresentationParameters, void**** ppReturnedDeviceInterface) {
 	int rv = orig_d3d9_CreateDevice(that, Adapter, DeviceType, hFocusWindow, BehaviourFlags, pPresentationParameters, ppReturnedDeviceInterface);
 	if (rv == D3D_OK && ppReturnedDeviceInterface && *ppReturnedDeviceInterface) {
-		if (!orig_d3dd9_Reset) {
-			void **d3dd9_vtable = **ppReturnedDeviceInterface;
-			orig_d3dd9_Reset = d3dd9_vtable[D3DD9_RESET];
-
-			DWORD oldProt;
-			VirtualProtect(&d3dd9_vtable[D3DD9_RESET], sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProt);
-			d3dd9_vtable[D3DD9_RESET] = my_d3dd9_Reset;
-			VirtualProtect(&d3dd9_vtable[D3DD9_RESET], sizeof(void*), oldProt, &oldProt);
-		}
+		vtable_detour_t my[] = {
+			{ 16, my_d3dd9_Reset, (void**)&orig_d3dd9_Reset },
+		};
+		vtable_detour(**ppReturnedDeviceInterface, my, elementsof(my));
 	}
 	return rv;
 }
@@ -70,15 +63,10 @@ void*** __stdcall my_Direct3DCreate9(UINT SDKVersion) {
 	if (!orig_Direct3DCreate9) return NULL;
 	void*** rv = orig_Direct3DCreate9(SDKVersion);
 	if (rv) {
-		if (!orig_d3d9_CreateDevice) {
-			void **d3d9_vtable = *rv;
-			orig_d3d9_CreateDevice = d3d9_vtable[D3D9_CREATEDEVICE];
-			
-			DWORD oldProt;
-			VirtualProtect(&d3d9_vtable[D3D9_CREATEDEVICE], sizeof(void*), PAGE_EXECUTE_READWRITE, &oldProt);
-			d3d9_vtable[D3D9_CREATEDEVICE] = my_d3d9_CreateDevice;
-			VirtualProtect(&d3d9_vtable[D3D9_CREATEDEVICE], sizeof(void*), oldProt, &oldProt);
-		}
+		vtable_detour_t my[] = {
+			{ 16, my_d3d9_CreateDevice, (void**)&orig_d3d9_CreateDevice },
+		};
+		vtable_detour(*rv, my, elementsof(my));
 	}
 	return rv;
 }
