@@ -254,6 +254,49 @@ FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback
 	return ret ? ret : fallback;
 }
 
+int vtable_detour(void **vtable, vtable_detour_t *det, size_t det_count)
+{
+	assert(vtable);
+	assert(det);
+
+	if(det_count == 0) {
+		return 0;
+	}
+
+	DWORD old_prot;
+	int replaced = 0;
+	size_t i;
+
+	// VirtualProtect() is infamously slow, so...
+	size_t lowest = (size_t)-1;
+	size_t highest = 0;
+
+	for(i = 0; i < det_count; i++) {
+		lowest = min(lowest, det[i].index);
+		highest = max(highest, det[i].index);
+	}
+
+	size_t bytes_to_lock = ((highest + 1) - lowest) * sizeof(void*);
+
+	VirtualProtect(vtable + lowest, bytes_to_lock, PAGE_READWRITE, &old_prot);
+	for(i = 0; i < det_count; i++) {
+		auto& cur = det[i];
+
+		bool replace = (cur.old_func == nullptr) || (*cur.old_func == nullptr);
+		bool set_old = (cur.old_func != nullptr) && (*cur.old_func == nullptr);
+
+		if(set_old) {
+			*cur.old_func = vtable[cur.index];
+		}
+		if(replace) {
+			vtable[cur.index] = cur.new_func;
+			replaced++;
+		}
+	}
+	VirtualProtect(vtable + lowest, bytes_to_lock, old_prot, &old_prot);
+	return replaced;
+}
+
 void detour_exit(void)
 {
 	detours = json_decref_safe(detours);

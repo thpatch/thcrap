@@ -140,8 +140,8 @@ EXPORTS
 	VirtualCheckRegion
 	VirtualCheckCode
 
-	; IAT detouring
-	; -------------
+	; Detouring
+	; ---------
 	func_detour
 	func_detour_by_name
 	func_detour_by_ptr
@@ -150,6 +150,8 @@ EXPORTS
 	detour_chain_w32u8
 	detour_top
 	iat_detour_apply
+
+	vtable_detour
 
 	detour_exit
 
