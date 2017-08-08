@@ -141,10 +141,12 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	BYTE **file_struct = (BYTE**)json_object_get_register(bp_info, regs, "file_struct");
 	BYTE **pBuffer = (BYTE**)reg(regs, json_string_value(jBuffer));
 	DWORD *pSize = (DWORD*)reg(regs, json_string_value(jSize));
+	DWORD **ppNumberOfBytesRead = (DWORD**)json_object_get_register(bp_info, regs, "pNumberOfBytesRead");
 	// ----------
 
 	static DWORD size = 0;
 	static BYTE *buffer = NULL;
+	static DWORD *pNumberOfBytesRead = NULL;
 
 	if (pBuffer && *pBuffer) {
 		buffer = *pBuffer;
@@ -158,6 +160,9 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	else if (jSize) {
 		size = (DWORD)json_integer_value(jSize);
 	}
+	if (ppNumberOfBytesRead) {
+		pNumberOfBytesRead = *ppNumberOfBytesRead;
+	}
 
 	if (!file_struct) {
 		return 1;
@@ -170,20 +175,27 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	HANDLE hFile = *(HANDLE*)(*file_struct + 4);
+	DWORD numberOfBytesRead;
 	if (buffer == NULL) {
 		buffer = *file_struct + 8;
 	}
 	if (size == 0) {
 		size = 65536;
 	}
+	if (pNumberOfBytesRead) {
+		numberOfBytesRead = *pNumberOfBytesRead;
+	}
+	else {
+		numberOfBytesRead = size;
+	}
 
 	if (header->effective_offset == -1) {
-		header->effective_offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - size;
+		header->effective_offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead;
 
 		// We couldn't patch the file earlier, but now we have a hFile and an offset, so we should be able to.
 		if (header->fr.game_buffer == NULL && header->fr.patch != NULL) {
-			SetFilePointer(hFile, -(int)size, NULL, FILE_CURRENT);
-			
+			SetFilePointer(hFile, -(int)numberOfBytesRead, NULL, FILE_CURRENT);
+
 			DWORD nbOfBytesRead;
 			header->fr.game_buffer = malloc(header->size);
 			ReadFile(hFile, header->fr.game_buffer, header->orig_size, &nbOfBytesRead, NULL);
@@ -194,19 +206,20 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 				);
 			crypt_block((BYTE*)header->fr.game_buffer, header->size, header->key);
 
-			SetFilePointer(hFile, header->effective_offset + size, NULL, FILE_BEGIN);
+			SetFilePointer(hFile, header->effective_offset + numberOfBytesRead, NULL, FILE_BEGIN);
 			file_rep_clear(&header->fr);
 		}
 	}
 
-	size_t offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - size - header->effective_offset;
+	size_t offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead - header->effective_offset;
 	int copy_size = min(header->size - offset, size);
 
 	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %d, requested size %d, file_rep_size left: %d, chosen size: %d\n",
 		header->path, *(DWORD*)(*file_struct + 0x1001c), offset, size, header->size - offset, copy_size);
 	memcpy(buffer, (BYTE*)header->fr.game_buffer + offset, copy_size);
 
-	buffer = NULL;
+	pNumberOfBytesRead = nullptr;
+	buffer = nullptr;
 	size = 0;
 	return 1;
 }
