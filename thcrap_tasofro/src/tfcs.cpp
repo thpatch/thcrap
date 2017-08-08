@@ -15,7 +15,11 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 #include "tfcs.h"
+#include "pl.h"
 #include <zlib.h>
+#include <string>
+#include <vector>
+#include <list>
 
 static int inflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t size_out)
 {
@@ -70,6 +74,72 @@ static int deflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t* 
 	return ret == Z_STREAM_END ? Z_OK : ret;
 }
 
+void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
+{
+	// Read input
+	std::vector<std::string> line;
+	for (DWORD col = 0; col < nb_col; col++) {
+		DWORD field_size = *(DWORD*)in;
+		in += sizeof(DWORD);
+		line.push_back(std::string((const char*)in, field_size));
+		in += field_size;
+	}
+
+	// Patch as data/win/message/*.csv
+	json_t *patch_lines = json_object_get(patch_row, "lines");
+	if (patch_lines && line.size() <= 13 && line[4].empty() == false) {
+		std::list<TasofroPl::ALine*> texts;
+		// We want to overwrite all the balloons with the user-provided ones,
+		// so we only need to put the 1st one, we can ignore the others.
+		TasofroPl::Text *text = new TasofroPl::Text(std::vector<std::string>({
+			line[4],
+			line[3]
+		}), "", TasofroPl::Text::WIN);
+		texts.push_back(text);
+		text->patch(texts, texts.begin(), "", patch_lines);
+
+		size_t i = 0;
+		for (TasofroPl::ALine* it : texts) {
+			if (i == 3) {
+				log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
+				break;
+			}
+			line[1 + 4 * i + 3] = it->get(0);
+			line[1 + 4 * i + 2] = it->get(1);
+		}
+	}
+
+	// Patch each column independently
+	json_t *patch_col;
+	for (DWORD col = 0; col < nb_col; col++) {
+		patch_col = json_object_numkey_get(patch_row, col);
+		if (patch_col && json_is_string(patch_col)) {
+			line[col] = json_string_value(patch_col);
+		}
+	}
+
+	// Write output
+	for (const std::string& col : line) {
+		DWORD field_size = col.length();
+		*(DWORD*)out = field_size;
+		out += sizeof(DWORD);
+		memcpy(out, col.c_str(), field_size);
+		out += field_size;
+	}
+}
+
+void skip_line(BYTE *&in, BYTE *&out, DWORD nb_col)
+{
+	for (DWORD col = 0; col < nb_col; col++) {
+		DWORD field_size = *(DWORD*)in; in += sizeof(DWORD);
+		*(DWORD*)out = field_size;      out += sizeof(DWORD);
+
+		memcpy(out, in, field_size);
+		in  += field_size;
+		out += field_size;
+	}
+}
+
 int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
 	tfcs_header_t *header;
@@ -94,7 +164,6 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	DWORD nb_row;
 	DWORD nb_col;
 	DWORD row;
-	DWORD col;
 
 	nb_row = *(DWORD*)ptr_in;  ptr_in  += sizeof(DWORD);
 	*(DWORD*)ptr_out = nb_row; ptr_out += sizeof(DWORD);
@@ -104,31 +173,12 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 		*(DWORD*)ptr_out = nb_col; ptr_out += sizeof(DWORD);
 		json_t *patch_row = json_object_numkey_get(patch, row);
 
-		for (col = 0; col < nb_col; col++) {
-			json_t *patch_col = NULL;
-			DWORD field_in_size = *(DWORD*)ptr_in;
-			ptr_in += sizeof(DWORD);
-
-			const BYTE *field_out;
-			DWORD field_out_size;
-
-			if (!json_is_object(patch_row) || !json_is_string(patch_col = json_object_numkey_get(patch_row, col))) {
-				field_out = ptr_in;
-				field_out_size = field_in_size;
-			}
-			else {
-				field_out = (BYTE*)json_string_value(patch_col);
-				field_out_size = strlen((char*)field_out);
-			}
-			ptr_in += field_in_size;
-
-			*(DWORD*)ptr_out = field_out_size; ptr_out += sizeof(DWORD);
-			memcpy(ptr_out, field_out, field_out_size);
-			ptr_out += field_out_size;
-
-			json_decref_safe(patch_col);
+		if (patch_row) {
+			patch_line(ptr_in, ptr_out, nb_col, patch_row);
 		}
-		json_decref_safe(patch_row);
+		else {
+			skip_line(ptr_in, ptr_out, nb_col);
+		}
 	}
 
 	// Write result
