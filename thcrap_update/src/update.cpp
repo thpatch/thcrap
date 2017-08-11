@@ -277,7 +277,7 @@ void* server_t::download(
 	if(exp_crc) {
 		auto crc = crc32(0, ctx.file_buffer, ctx.file_size);
 		if(*exp_crc != crc) {
-			return fail("CRC32 mismatch!");
+			return fail("CRC32 mismatch! Please report this to server owner.");
 		}
 	}
 	return ctx.file_buffer;
