@@ -46,6 +46,7 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("*.dll", patch_dll);
 	patchhook_register("*.act", patch_act);
 	patchhook_register("*.nut", patch_nut);
+	patchhook_register("*.txt", patch_plaintext);
 
 	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
 	jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
