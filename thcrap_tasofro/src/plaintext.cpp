@@ -36,6 +36,9 @@ int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *p
 
 		json_t *lines = json_object_numkey_get(patch, line);
 		if (json_flex_array_size(lines) > 0) {
+			*file_out = '"';
+			file_out++;
+
 			size_t ind;
 			json_t *val;
 			json_flex_array_foreach(lines, ind, val) {
@@ -43,11 +46,22 @@ int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *p
 					memcpy(file_out, "\\n", 2);
 					file_out += 2;
 				}
-				memcpy(file_out, json_string_value(val), strlen(json_string_value(val)));
-				file_out += strlen(json_string_value(val));
+				const char* str = json_string_value(val);
+				for (size_t i = 0; i < strlen(str); i++) {
+					if (str[i] == '"') {
+						if (ind == 0 && i == 0) {
+							*file_out = ' ';
+							file_out++;
+						}
+						*file_out = '"';
+						file_out++;
+					}
+					*file_out = str[i];
+					file_out++;
+				}
 			}
-			memcpy(file_out, "\r\n", 2);
-			file_out += 2;
+			memcpy(file_out, "\"\r\n", 3);
+			file_out += 3;
 		}
 		else {
 			memcpy(file_out, file_in, end_line - file_in);
