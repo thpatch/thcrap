@@ -312,6 +312,14 @@ void box_end(patch_msg_state_t *state)
 	state->diff_lines = NULL;
 }
 
+int op_auto_end(patch_msg_state_t* state)
+{
+	if(!state->last_line_op || state->last_line_op->cmd == OP_AUTO_LINE) {
+		box_end(state);
+	}
+	return 1;
+}
+
 // Returns whether to advance the output buffer (1) or not (0)
 int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 {
@@ -354,10 +362,7 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 			return process_line(state->cmd_out, state, replace_hard_line);
 
 		case OP_AUTO_END:
-			if(!state->last_line_op || state->last_line_op->cmd == OP_AUTO_LINE) {
-				box_end(state);
-			}
-			return 1;
+			return op_auto_end(state);
 	}
 	return 1;
 }
