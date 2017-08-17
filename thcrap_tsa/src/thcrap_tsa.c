@@ -33,6 +33,16 @@ tsa_game_t game_id_from_string(const char *game)
 		return ALCOSTG;
 	} else if(!strcmp(game, "th11")) {
 		return TH11;
+	} else if(!strcmp(game, "th12")) {
+		return TH12;
+	} else if(!strcmp(game, "th125")) {
+		return TH125;
+	} else if(!strcmp(game, "th128")) {
+		return TH128;
+	} else if(!strcmp(game, "th13")) {
+		return TH13;
+	} else if(!strcmp(game, "th14")) {
+		return TH14;
 	}
 	return TH_FUTURE;
 }

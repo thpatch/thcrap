@@ -33,6 +33,19 @@ typedef enum {
 
 	// • anm: Header structure is changed
 	TH11,
+	TH12,
+
+	// • mission: Adds ruby support
+	TH125,
+
+	// • Changes the fixed-size text boxes to variable-size speech bubbles
+	TH128,
+
+	// • Changes the speech bubble shape
+	TH13,
+
+	// • Changes the speech bubble shape
+	TH14,
 
 	// Any future game without relevant changes
 	TH_FUTURE,
