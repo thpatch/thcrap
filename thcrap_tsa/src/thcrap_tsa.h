@@ -45,6 +45,8 @@ typedef enum {
 	TH13,
 
 	// • Changes the speech bubble shape
+	// • msg: Adds opcode 32 for overriding the speech bubble shape and
+	//        direction
 	TH14,
 
 	// Any future game without relevant changes

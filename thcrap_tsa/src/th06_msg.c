@@ -41,6 +41,8 @@ typedef struct {
 } hard_line_data_t;
 #pragma pack(pop)
 
+typedef uint32_t th14_bubble_shape_data_t;
+
 // Supported opcode commands
 typedef enum {
 	OP_UNKNOWN = 0,
@@ -51,6 +53,7 @@ typedef enum {
 	OP_SIDE_LEFT,
 	OP_SIDE_RIGHT,
 	OP_BUBBLE_POS,
+	OP_BUBBLE_SHAPE,
 } op_cmd_t;
 
 typedef struct {
@@ -415,6 +418,7 @@ int op_auto_end(patch_msg_state_t* state)
 int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 {
 	hard_line_data_t* line;
+	th14_bubble_shape_data_t *shape;
 	uint16_t linenum;
 
 	switch(cur_op->cmd) {
@@ -428,6 +432,16 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 
 		case OP_SIDE_RIGHT:
 			state->side = SIDE_RIGHT;
+			return op_auto_end(state);
+
+		case OP_BUBBLE_SHAPE:
+			shape = (th14_bubble_shape_data_t *)state->cmd_out->data;
+			assert(state->cmd_out->length >= 4);
+			// As of TH14, shape values from [0; 15] are valid, larger
+			// ones crash the game. Not our problem though, who knows,
+			// maybe they'll be added in a future game.
+
+			state->side = (*shape & 1) ? SIDE_RIGHT : SIDE_LEFT;
 			return op_auto_end(state);
 
 		case OP_BUBBLE_POS:
@@ -692,6 +706,22 @@ const msg_format_t MSG_TH128 = {
 	}
 };
 
+const msg_format_t MSG_TH14 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{ 7, OP_SIDE_LEFT },
+		{ 8, OP_SIDE_RIGHT },
+		{ 9, OP_AUTO_END },
+		{ 11, OP_AUTO_END },
+		{ 17, OP_AUTO_LINE },
+		{ 25, OP_DELETE },
+		{ 28, OP_BUBBLE_POS },
+		{ 32, OP_BUBBLE_SHAPE },
+		{ 0 }
+}
+};
+
 // Endings (TH10 and later)
 const msg_format_t END_TH10 = {
 	.entry_offset_mul = 2,
@@ -707,7 +737,9 @@ const msg_format_t END_TH10 = {
 
 const msg_format_t* msg_format_for(tsa_game_t game)
 {
-	if(game >= TH128) {
+	if(game >= TH14) {
+		return &MSG_TH14;
+	} else if(game >= TH128) {
 		return &MSG_TH128;
 	} else if(game >= TH11) {
 		return &MSG_TH11;
