@@ -15,6 +15,7 @@
 #include "act-nut.h"
 #include "spellcards_generator.h"
 #include "plugin.h"
+#include "crypt.h"
 
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
@@ -38,6 +39,19 @@ int __stdcall thcrap_plugin_init()
 		} else {
 			return 1;
 		}
+	}
+
+	const char *crypt = json_object_get_string(runconfig_get(), "crypt");
+	if (strcmp(crypt, "th135") == 0) {
+		ICrypt::instance = new CryptTh135();
+	}
+	else if (strcmp(crypt, "th145") == 0) {
+		ICrypt::instance = new CryptTh145();
+	}
+	else {
+		log_printf("thcrap_tasofro: unknown value for crypt in runconfig: \"%s\" (known values: th135, th145).\n"
+			"Defaulting to th145.\n", crypt);
+		ICrypt::instance = new CryptTh145();
 	}
 	
 	patchhook_register("*/stage*.pl", patch_pl);
@@ -63,13 +77,25 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	// Parameters
 	// ----------
 	BYTE **pHeader = (BYTE**)json_object_get_register(bp_info, regs, "struct");
-	DWORD **key = (DWORD**)json_object_get_register(bp_info, regs, "key");
+	DWORD **pKey = (DWORD**)json_object_get_register(bp_info, regs, "key");
+	DWORD key_offset = (DWORD)json_integer_value(json_object_get(bp_info, "key_offset"));
 	// ----------
-	if (!pHeader || !*pHeader || !key || !*key)
+
+	DWORD *key;
+	if (!pHeader || !*pHeader)
 		return 1;
+	if (pKey && *pKey) {
+		key = *pKey;
+	}
+	else if (key_offset) {
+		key = (DWORD*)(*pHeader + key_offset);
+	}
+	else {
+		return 1;
+	}
 
 	struct FileHeader *header = (struct FileHeader*)(*pHeader + json_integer_value(json_object_get(bp_info, "struct_offset")));
-	struct FileHeaderFull *full_header = register_file_header(header, *key);
+	struct FileHeaderFull *full_header = register_file_header(header, key);
 	file_rep_t *fr = &full_header->fr;
 
 	if (full_header->path[0]) {
@@ -95,7 +121,7 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 			fr->hooks, fr->game_buffer, fr->pre_json_size + fr->patch_size, fr->pre_json_size, fr->patch
 			);
 
-		crypt_block((BYTE*)fr->game_buffer, full_header->size, full_header->key);
+		ICrypt::instance->cryptBlock((BYTE*)fr->game_buffer, full_header->size, full_header->key);
 	}
 
 	if (fr->rep_buffer == NULL && fr->patch != NULL) {
@@ -143,6 +169,9 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	BYTE **pBuffer = (BYTE**)reg(regs, json_string_value(jBuffer));
 	DWORD *pSize = (DWORD*)reg(regs, json_string_value(jSize));
 	DWORD **ppNumberOfBytesRead = (DWORD**)json_object_get_register(bp_info, regs, "pNumberOfBytesRead");
+	DWORD hFile_offset = (DWORD)json_integer_value(json_object_get(bp_info, "hFile_offset"));
+	DWORD hash_offset = (DWORD)json_integer_value(json_object_get(bp_info, "hash_offset"));
+	DWORD buffer_offset = (DWORD)json_integer_value(json_object_get(bp_info, "buffer_offset"));
 	// ----------
 
 	static DWORD size = 0;
@@ -169,16 +198,16 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
-	struct FileHeaderFull *header = hash_to_file_header(*(DWORD*)(*file_struct + 0x1001c));
+	struct FileHeaderFull *header = hash_to_file_header(*(DWORD*)(*file_struct + hash_offset));
 	if (!header || !header->path[0] || (!header->fr.game_buffer && !header->fr.patch)) {
 		// Nothing to patch.
 		return 1;
 	}
 
-	HANDLE hFile = *(HANDLE*)(*file_struct + 4);
+	HANDLE hFile = *(HANDLE*)(*file_struct + hFile_offset);
 	DWORD numberOfBytesRead;
 	if (buffer == NULL) {
-		buffer = *file_struct + 8;
+		buffer = *file_struct + buffer_offset;
 	}
 	if (size == 0) {
 		size = 65536;
@@ -201,11 +230,11 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 			header->fr.game_buffer = malloc(header->size);
 			ReadFile(hFile, header->fr.game_buffer, header->orig_size, &nbOfBytesRead, NULL);
 
-			uncrypt_block((BYTE*)header->fr.game_buffer, header->orig_size, header->key);
+			ICrypt::instance->uncryptBlock((BYTE*)header->fr.game_buffer, header->orig_size, header->key);
 			patchhooks_run(
 				header->fr.hooks, header->fr.game_buffer, header->size, header->orig_size, header->fr.patch
 				);
-			crypt_block((BYTE*)header->fr.game_buffer, header->size, header->key);
+			ICrypt::instance->cryptBlock((BYTE*)header->fr.game_buffer, header->size, header->key);
 
 			SetFilePointer(hFile, header->effective_offset + numberOfBytesRead, NULL, FILE_BEGIN);
 			file_rep_clear(&header->fr);

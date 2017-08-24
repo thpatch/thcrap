@@ -54,8 +54,6 @@ int LoadFileNameListFromMemory(char* list, size_t size);
 DWORD filename_to_hash(const char* filename);
 struct FileHeaderFull* register_file_header(struct FileHeader* header, DWORD *key);
 struct FileHeaderFull* hash_to_file_header(DWORD hash);
-void uncrypt_block(BYTE* Data, DWORD FileSize, DWORD* Key);
-DWORD crypt_block(BYTE* Data, DWORD FileSize, DWORD* Key);
 
 int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
 
