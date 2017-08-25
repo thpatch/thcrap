@@ -17,6 +17,13 @@ BYTE* ptr_dword_align(const BYTE *in);
 size_t ptr_advance(const unsigned char **src, size_t num);
 // Copies [num] bytes from [src] to [dst] and advances [src].
 size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num);
+
+// Copies [num] bytes from [src] to [dst] and returns [dst] advanced by [num].
+__inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
+{
+	memcpy(dst, src, num);
+	return dst + num;
+}
 /// --------
 
 /// Strings
