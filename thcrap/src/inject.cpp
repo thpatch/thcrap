@@ -705,13 +705,8 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 {
 	int ret = -1;
-	HMODULE inj_mod = NULL;
-
-	if(GetModuleHandleEx(
-		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-		(LPTSTR)thcrap_inject_into_running,
-		&inj_mod
-	)) {
+	HMODULE inj_mod = GetModuleContaining(thcrap_inject_into_running);
+	if(inj_mod) {
 		size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 		size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
 		VLA(char, inj_dll, inj_dir_len);

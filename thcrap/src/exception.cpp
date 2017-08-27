@@ -25,8 +25,8 @@ void log_context_dump(PCONTEXT ctx)
 
 LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 {
-	HMODULE crash_mod;
 	LPEXCEPTION_RECORD lpER = lpEI->ExceptionRecord;
+	HMODULE crash_mod = GetModuleContaining(lpER->ExceptionAddress);
 
 	log_printf(
 		"\n"
@@ -34,11 +34,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		"Exception %x at 0x%08x",
 		lpER->ExceptionCode, lpER->ExceptionAddress
 	);
-	if(GetModuleHandleEx(
-		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-		(LPTSTR)lpER->ExceptionAddress,
-		&crash_mod
-	)) {
+	if(crash_mod) {
 		size_t crash_fn_len = GetModuleFileNameU(crash_mod, NULL, 0) + 1;
 		VLA(char, crash_fn, crash_fn_len);
 		if(GetModuleFileNameU(crash_mod, crash_fn, crash_fn_len)) {
