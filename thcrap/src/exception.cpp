@@ -9,7 +9,7 @@
 
 #include "thcrap.h"
 
-void log_context_dump(PCONTEXT ctx)
+void log_print_context(PCONTEXT ctx)
 {
 	if(!ctx) {
 		return;
@@ -23,6 +23,24 @@ void log_context_dump(PCONTEXT ctx)
 	);
 }
 
+void log_print_rva_and_module(HMODULE mod, void *addr)
+{
+	if(!mod) {
+		return;
+	}
+	size_t crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
+	VLA(char, crash_fn, crash_fn_len);
+	if(GetModuleFileNameU(mod, crash_fn, crash_fn_len)) {
+		log_printf(
+			" (Rx%x) (%s)",
+			(uint8_t *)addr - (uint8_t *)mod,
+			PathFindFileNameA(crash_fn)
+		);
+	}
+	VLA_FREE(crash_fn);
+	log_print("\n");
+}
+
 LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 {
 	LPEXCEPTION_RECORD lpER = lpEI->ExceptionRecord;
@@ -34,20 +52,8 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		"Exception %x at 0x%p",
 		lpER->ExceptionCode, lpER->ExceptionAddress
 	);
-	if(crash_mod) {
-		size_t crash_fn_len = GetModuleFileNameU(crash_mod, NULL, 0) + 1;
-		VLA(char, crash_fn, crash_fn_len);
-		if(GetModuleFileNameU(crash_mod, crash_fn, crash_fn_len)) {
-			log_printf(
-				" (Rx%x) (%s)",
-				(uint8_t *)lpER->ExceptionAddress - (uint8_t *)crash_mod,
-				PathFindFileNameA(crash_fn)
-			);
-		}
-		VLA_FREE(crash_fn);
-	}
-	log_printf("\n");
-	log_context_dump(lpEI->ContextRecord);
+	log_print_rva_and_module(crash_mod, lpER->ExceptionAddress);
+	log_print_context(lpEI->ContextRecord);
 	log_printf(
 		"===\n"
 		"\n"
