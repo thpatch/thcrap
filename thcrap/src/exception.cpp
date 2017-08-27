@@ -9,17 +9,6 @@
 
 #include "thcrap.h"
 
-/// Detour chains
-/// -------------
-typedef LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter_type(
-	LPTOP_LEVEL_EXCEPTION_FILTER
-);
-
-DETOUR_CHAIN_DEF(SetUnhandledExceptionFilter);
-/// -------------
-
-static LPTOP_LEVEL_EXCEPTION_FILTER lpOrigFilter = NULL;
-
 void log_context_dump(PCONTEXT ctx)
 {
 	if(!ctx) {
@@ -67,39 +56,10 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		"===\n"
 		"\n"
 	);
-	if(lpOrigFilter) {
-		lpOrigFilter(lpEI);
-	}
 	return EXCEPTION_CONTINUE_SEARCH;
-}
-
-LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
-	LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter
-)
-{
-	// Don't return our own filter, since this might cause an infinite loop if
-	// the game process caches it.
-	LPTOP_LEVEL_EXCEPTION_FILTER ret = chain_SetUnhandledExceptionFilter(
-		lpTopLevelExceptionFilter
-	);
-	lpOrigFilter = lpTopLevelExceptionFilter;
-	return ret == exception_filter ? NULL : ret;
 }
 
 void exception_init(void)
 {
-	SetUnhandledExceptionFilter(exception_filter);
-}
-
-void exception_mod_detour(void)
-{
-	detour_chain("kernel32.dll", 1,
-		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter, &chain_SetUnhandledExceptionFilter,
-		NULL
-	);
-}
-
-void exception_exit(void)
-{
-	SetUnhandledExceptionFilter(lpOrigFilter);
+	AddVectoredExceptionHandler(1, exception_filter);
 }
