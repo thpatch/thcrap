@@ -15,7 +15,7 @@ void log_print_context(PCONTEXT ctx)
 		return;
 	}
 	log_printf(
-		"Registers:\n"
+		"\nRegisters:\n"
 		"EAX: 0x%p ECX: 0x%p EDX: 0x%p EBX: 0x%p\n"
 		"ESP: 0x%p EBP: 0x%p ESI: 0x%p EDI: 0x%p\n",
 		ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx,
@@ -54,6 +54,37 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 	);
 	log_print_rva_and_module(crash_mod, lpER->ExceptionAddress);
 	log_print_context(lpEI->ContextRecord);
+
+	// "Windows Server 2003 and Windows XP: The sum of the FramesToSkip
+	// and FramesToCapture parameters must be less than 63."
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb204633(v=vs.85).aspx
+	const DWORD frames_to_skip = 1;
+	void *trace[62 - frames_to_skip];
+
+	USHORT captured = CaptureStackBackTrace(
+		frames_to_skip, elementsof(trace), trace, nullptr
+	);
+	if(captured) {
+		log_printf("\nStack trace:\n");
+
+		decltype(captured) skip = 0;
+		if(crash_mod) {
+			while(
+				GetModuleContaining(trace[skip]) != crash_mod
+				&& skip < captured
+				) {
+				skip++;
+			}
+		}
+		if(skip == captured) {
+			skip = 0;
+		}
+		for(decltype(captured) i = skip; i < captured; i++) {
+			HMODULE mod = GetModuleContaining(trace[i]);
+			log_printf("[%02u] 0x%p", captured - i, trace[i]);
+			log_print_rva_and_module(mod, trace[i]);
+		}
+	}
 	log_printf(
 		"===\n"
 		"\n"
