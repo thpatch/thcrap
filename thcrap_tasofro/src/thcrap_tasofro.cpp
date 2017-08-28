@@ -64,6 +64,7 @@ int __stdcall thcrap_plugin_init()
 
 	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
 	jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
+	jsonvfs_game_add("data/csv/Item*.csv.jdiff",								{ "spells.js" }, spell_player_generator);
 	jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",	{ "spells.js" }, spell_char_select_generator);
 
 	filenames_list = (char*)stack_game_file_resolve("fileslist.txt", &filenames_list_size);
