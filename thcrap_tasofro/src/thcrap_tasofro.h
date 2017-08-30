@@ -13,6 +13,24 @@
 #include <bp_file.h>
 #include <jansson.h>
 
+typedef enum {
+	// • filename hash: uses hash = ch ^ 0x1000193 * hash
+	// • spells: using data/csv/Item*.csv
+	// • spells: data/csv/story/*/*.csv has columns for popularity
+	TH135,
+
+	// • filename hash: uses hash = (hash ^ ch) * 0x1000193
+	// • XOR: uses an additional AUX parameter
+	// • XOR: key compunents are multiplied by -1
+	// • spells: using data/csv/spellcards/*.csv and data/system/char_select3/*/equip/*/000.png.csv
+	TH145,
+
+	// Any future game without relevant changes
+	TH_FUTURE,
+} tasofro_game_t;
+
+extern tasofro_game_t game_id;
+
 struct FileHeader
 {
 	DWORD filename_hash;

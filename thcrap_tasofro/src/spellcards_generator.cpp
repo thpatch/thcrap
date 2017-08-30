@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include "thcrap_tasofro.h"
 #include <vfs.h>
 #include "spellcards_generator.h"
 
@@ -80,9 +81,16 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*> in_data, 
 
 	json_t *ret = nullptr;
 	if (max_spell_id != -1) {
+		DWORD story_spell_col;
+		if (game_id >= TH145) {
+			story_spell_col = 8;
+		}
+		else {
+			story_spell_col = 10;
+		}
 		// Build the json object.
 		ret = json_object();
-		VLA(char, spell_name, 6 /* story- */ + strlen(character_name) + 8 /* -stageNN */ + 3 /* -NN */ + 2 /* -N */ + 1);
+		VLA(char, spell_name, 6 /* story- */ + strlen(character_name) + story_spell_col /* -stageNN */ + 3 /* -NN */ + 2 /* -N */ + 1);
 		for (int spell_id = 1; spell_id <= max_spell_id; spell_id++) {
 			const char *last_spell_translation = nullptr;
 			for (int difficulty_id = 1; difficulty_id <= 4; difficulty_id++) {

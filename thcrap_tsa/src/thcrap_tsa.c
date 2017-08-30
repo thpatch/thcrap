@@ -15,7 +15,7 @@
 tsa_game_t game_id;
 
 // Translate strings to IDs.
-tsa_game_t game_id_from_string(const char *game)
+static tsa_game_t game_id_from_string(const char *game)
 {
 	if(!strcmp(game, "th06")) {
 		return TH06;

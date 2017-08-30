@@ -17,18 +17,34 @@
 #include "plugin.h"
 #include "crypt.h"
 
+tasofro_game_t game_id;
+
+// Translate strings to IDs.
+static tasofro_game_t game_id_from_string(const char *game)
+{
+	if (!strcmp(game, "th135")) {
+		return TH135;
+	}
+	else if (!strcmp(game, "th145")) {
+		return TH145;
+	}
+	return TH_FUTURE;
+}
+
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
 {
 	char* filenames_list;
 	size_t filenames_list_size;
 
+	const char *game = json_object_get_string(runconfig_get(), "game");
+	game_id = game_id_from_string(game);
+
 	int base_tasofro_removed = stack_remove_if_unneeded("base_tasofro");
 	if (base_tasofro_removed == 1) {
 		return 1;
 	} else if(base_tasofro_removed == -1) {
-		const char *game = json_object_get_string(runconfig_get(), "game");
-		if(game && !strcmp(game, "th145")) {
+		if(game_id == TH145) {
 			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 				"Support for TH14.5 has been moved out of the sandbox.\n"
 				"\n"
@@ -42,16 +58,11 @@ int __stdcall thcrap_plugin_init()
 	}
 
 	const char *crypt = json_object_get_string(runconfig_get(), "crypt");
-	if (strcmp(crypt, "th135") == 0) {
-		ICrypt::instance = new CryptTh135();
-	}
-	else if (strcmp(crypt, "th145") == 0) {
+	if (game_id >= TH145) {
 		ICrypt::instance = new CryptTh145();
 	}
 	else {
-		log_printf("thcrap_tasofro: unknown value for crypt in runconfig: \"%s\" (known values: th135, th145).\n"
-			"Defaulting to th145.\n", crypt);
-		ICrypt::instance = new CryptTh145();
+		ICrypt::instance = new CryptTh135();
 	}
 	
 	patchhook_register("*/stage*.pl", patch_pl);
@@ -63,9 +74,13 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("*.txt", patch_plaintext);
 
 	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
-	jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
-	jsonvfs_game_add("data/csv/Item*.csv.jdiff",								{ "spells.js" }, spell_player_generator);
-	jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",	{ "spells.js" }, spell_char_select_generator);
+	if (game_id >= TH145) {
+		jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",						{ "spells.js" }, spell_player_generator);
+		jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",{ "spells.js" }, spell_char_select_generator);
+	}
+	else {
+		jsonvfs_game_add("data/csv/Item*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
+	}
 
 	filenames_list = (char*)stack_game_file_resolve("fileslist.txt", &filenames_list_size);
 	LoadFileNameListFromMemory(filenames_list, filenames_list_size);
