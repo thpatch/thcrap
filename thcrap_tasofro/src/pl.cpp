@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include "thcrap_tasofro.h"
 #include "pl.h"
 
 void TasofroPl::readField(const char *in, size_t& pos, size_t size, std::string& out)
@@ -54,7 +55,7 @@ TasofroPl::ALine* TasofroPl::readLine(const char*& file, size_t& size)
 
 	if (size > 0 && *file == '#') {
 		pos = 0;
-		while (file[pos] != '\n') {
+		while (pos < size && file[pos] != '\n') {
 			pos++;
 		}
 		if (pos > 0 && file[pos - 1] == '\r') {
@@ -384,19 +385,17 @@ bool TasofroPl::Text::parseCommand(json_t *patch, int json_line_num)
 		}
 		this->nb_lines = i - json_line_num;
 
-		// If this is the staffroll line, try to see if we are in the last balloon.
-		this->is_staffroll_last_balloon = false;
-		if (this->is_staffroll) {
-			unsigned int j;
-			for (j = i + 1; j < json_array_size(patch); j++) {
-				line = json_array_get_string(patch, j);
-				if (strncmp(line, "<balloon", 8) != 0) {
-					break;
-				}
+		// Try to see if we are in the last balloon.
+		this->is_last_balloon = false;
+		unsigned int j;
+		for (j = i + 1; j < json_array_size(patch); j++) {
+			line = json_array_get_string(patch, j);
+			if (strncmp(line, "<balloon", 8) != 0) {
+				break;
 			}
-			if (j >= json_array_size(patch)) {
-				this->is_staffroll_last_balloon = true;
-			}
+		}
+		if (j >= json_array_size(patch)) {
+			this->is_last_balloon = true;
 		}
 
 		// If the balloon is too small for our text to fit, expand it automatically.
@@ -441,7 +440,7 @@ void TasofroPl::Text::beginLine(std::list<ALine*> file, std::list<ALine*>::itera
 	this->ignore_clear_balloon = false;
 
 
-	if (this->is_staffroll_last_balloon) {
+	if (game_id >= TH145 && this->is_last_balloon) {
 		this->last_char = "";
 	}
 	else if (this->is_staffroll) {
@@ -453,7 +452,12 @@ void TasofroPl::Text::patchLine(const char *text, std::list<ALine*> file, std::l
 {
 	std::string formattedText = text;
 	if (this->cur_line == this->nb_lines) {
-		formattedText += this->last_char;
+		if (this->last_char.empty() == false) {
+			formattedText += this->last_char;
+		}
+		else if (this->is_last_balloon == false) {
+			formattedText += "\\";
+		}
 	}
 
 	if (this->syntax == STORY) {

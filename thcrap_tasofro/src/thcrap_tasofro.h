@@ -22,6 +22,7 @@ typedef enum {
 	// • filename hash: uses hash = (hash ^ ch) * 0x1000193
 	// • XOR: uses an additional AUX parameter
 	// • XOR: key compunents are multiplied by -1
+	// • endings: the last line in the text may be on another line in the pl file, and it doesn't wait for an input.
 	// • spells: using data/csv/spellcards/*.csv and data/system/char_select3/*/equip/*/000.png.csv
 	TH145,
 

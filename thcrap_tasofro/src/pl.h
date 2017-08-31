@@ -105,7 +105,7 @@ namespace TasofroPl
 		std::string last_char;
 		Syntax syntax;
 		bool is_staffroll;
-		bool is_staffroll_last_balloon;
+		bool is_last_balloon;
 
 		int cur_line;
 		int nb_lines;
