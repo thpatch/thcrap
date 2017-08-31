@@ -44,8 +44,20 @@ void log_print_rva_and_module(HMODULE mod, void *addr)
 LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 {
 	LPEXCEPTION_RECORD lpER = lpEI->ExceptionRecord;
-	HMODULE crash_mod = GetModuleContaining(lpER->ExceptionAddress);
 
+	// These should be all that matter. Unfortunately, we tend
+	// to get way more than we want, particularly with wininet.
+	switch(lpER->ExceptionCode) {
+	case STATUS_ACCESS_VIOLATION:
+	case STATUS_ILLEGAL_INSTRUCTION:
+	case STATUS_INTEGER_DIVIDE_BY_ZERO:
+	case 0xE06D7363: /* MSVCRT exceptions, doesn't seem to have a name */
+		break;
+	default:
+		return EXCEPTION_CONTINUE_SEARCH;
+	}
+
+	HMODULE crash_mod = GetModuleContaining(lpER->ExceptionAddress);
 	log_printf(
 		"\n"
 		"===\n"
@@ -72,7 +84,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 			while(
 				GetModuleContaining(trace[skip]) != crash_mod
 				&& skip < captured
-				) {
+			) {
 				skip++;
 			}
 		}
@@ -94,5 +106,5 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 
 void exception_init(void)
 {
-	AddVectoredExceptionHandler(1, exception_filter);
+	AddVectoredExceptionHandler(0, exception_filter);
 }
