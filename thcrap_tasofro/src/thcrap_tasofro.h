@@ -14,6 +14,8 @@
 #include <jansson.h>
 
 typedef enum {
+	TH_NONE,
+
 	// • filename hash: uses hash = ch ^ 0x1000193 * hash
 	// • spells: using data/csv/Item*.csv
 	// • spells: data/csv/story/*/*.csv has columns for popularity

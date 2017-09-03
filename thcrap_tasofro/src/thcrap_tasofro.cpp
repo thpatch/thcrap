@@ -22,7 +22,10 @@ tasofro_game_t game_id;
 // Translate strings to IDs.
 static tasofro_game_t game_id_from_string(const char *game)
 {
-	if (!strcmp(game, "th135")) {
+	if (game == NULL) {
+		return TH_NONE;
+	}
+	else if (!strcmp(game, "th135")) {
 		return TH135;
 	}
 	else if (!strcmp(game, "th145")) {
@@ -37,13 +40,15 @@ int __stdcall thcrap_plugin_init()
 	char* filenames_list;
 	size_t filenames_list_size;
 
-	const char *game = json_object_get_string(runconfig_get(), "game");
-	game_id = game_id_from_string(game);
-
 	int base_tasofro_removed = stack_remove_if_unneeded("base_tasofro");
 	if (base_tasofro_removed == 1) {
 		return 1;
-	} else if(base_tasofro_removed == -1) {
+	}
+
+	const char *game = json_object_get_string(runconfig_get(), "game");
+	game_id = game_id_from_string(game);
+
+	if(base_tasofro_removed == -1) {
 		if(game_id == TH145) {
 			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 				"Support for TH14.5 has been moved out of the sandbox.\n"

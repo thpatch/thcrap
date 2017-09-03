@@ -10,6 +10,8 @@
 #pragma once
 
 typedef enum {
+	TH_NONE,
+
 	// • msg: Hard lines only
 	TH06,
 	TH07,
