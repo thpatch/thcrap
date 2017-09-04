@@ -170,7 +170,7 @@ void cave_fix(BYTE *cave, BYTE *bp_addr)
 
 		memcpy(cave + 1, &dist_new, sizeof(dist_new));
 
-		log_printf("fixing rel.addr. 0x%08x to 0x%08x... ", dist_old, dist_new);
+		log_printf("fixing rel.addr. 0x%p to 0x%p... ", dist_old, dist_new);
 	}
 	/// ------------------
 }
@@ -255,7 +255,7 @@ int breakpoints_apply(json_t *breakpoints)
 	BP_CodeCave = (BYTE*)VirtualAlloc(0, breakpoint_count * BP_Offset, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 	memset(BP_CodeCave, 0xcc, breakpoint_count * BP_Offset);
 
-	log_printf("Setting up breakpoints... (code cave at 0x%08x)\n", BP_CodeCave);
+	log_printf("Setting up breakpoints... (code cave at 0x%p)\n", BP_CodeCave);
 	log_printf("-------------------------\n");
 
 	json_object_foreach(breakpoints, key, json_bp) {
@@ -269,7 +269,7 @@ int breakpoints_apply(json_t *breakpoints)
 			size_t addr = json_hex_value(addr_val);
 			if(addr) {
 				breakpoint_local_t *bp = &BP_Local[++i];
-				log_printf("(%2d/%2d) 0x%08x %s... ", i + 1, BP_Count, addr, key);
+				log_printf("(%2d/%2d) 0x%p %s... ", i + 1, BP_Count, addr, key);
 				if(!breakpoint_local_init(bp, json_bp, addr, key, i)) {
 					breakpoint_apply(bp);
 				}

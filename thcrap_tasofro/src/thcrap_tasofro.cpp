@@ -15,6 +15,24 @@
 #include "act-nut.h"
 #include "spellcards_generator.h"
 #include "plugin.h"
+#include "crypt.h"
+
+tasofro_game_t game_id;
+
+// Translate strings to IDs.
+static tasofro_game_t game_id_from_string(const char *game)
+{
+	if (game == NULL) {
+		return TH_NONE;
+	}
+	else if (!strcmp(game, "th135")) {
+		return TH135;
+	}
+	else if (!strcmp(game, "th145")) {
+		return TH145;
+	}
+	return TH_FUTURE;
+}
 
 // TODO: read the file names list in JSON format
 int __stdcall thcrap_plugin_init()
@@ -25,9 +43,13 @@ int __stdcall thcrap_plugin_init()
 	int base_tasofro_removed = stack_remove_if_unneeded("base_tasofro");
 	if (base_tasofro_removed == 1) {
 		return 1;
-	} else if(base_tasofro_removed == -1) {
-		const char *game = json_object_get_string(runconfig_get(), "game");
-		if(game && !strcmp(game, "th145")) {
+	}
+
+	const char *game = json_object_get_string(runconfig_get(), "game");
+	game_id = game_id_from_string(game);
+
+	if(base_tasofro_removed == -1) {
+		if(game_id == TH145) {
 			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 				"Support for TH14.5 has been moved out of the sandbox.\n"
 				"\n"
@@ -35,7 +57,17 @@ int __stdcall thcrap_plugin_init()
 				"encounter errors or missing functionality after further "
 				"updates.\n"
 			);
+		} else {
+			return 1;
 		}
+	}
+
+	const char *crypt = json_object_get_string(runconfig_get(), "crypt");
+	if (game_id >= TH145) {
+		ICrypt::instance = new CryptTh145();
+	}
+	else {
+		ICrypt::instance = new CryptTh135();
 	}
 	
 	patchhook_register("*/stage*.pl", patch_pl);
@@ -44,10 +76,16 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("*.dll", patch_dll);
 	patchhook_register("*.act", patch_act);
 	patchhook_register("*.nut", patch_nut);
+	patchhook_register("*.txt", patch_plaintext);
 
 	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
-	jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
-	jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",	{ "spells.js" }, spell_char_select_generator);
+	if (game_id >= TH145) {
+		jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",						{ "spells.js" }, spell_player_generator);
+		jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",{ "spells.js" }, spell_char_select_generator);
+	}
+	else {
+		jsonvfs_game_add("data/csv/Item*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
+	}
 
 	filenames_list = (char*)stack_game_file_resolve("fileslist.txt", &filenames_list_size);
 	LoadFileNameListFromMemory(filenames_list, filenames_list_size);
@@ -60,13 +98,25 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	// Parameters
 	// ----------
 	BYTE **pHeader = (BYTE**)json_object_get_register(bp_info, regs, "struct");
-	DWORD **key = (DWORD**)json_object_get_register(bp_info, regs, "key");
+	DWORD **pKey = (DWORD**)json_object_get_register(bp_info, regs, "key");
+	DWORD key_offset = (DWORD)json_integer_value(json_object_get(bp_info, "key_offset"));
 	// ----------
-	if (!pHeader || !*pHeader || !key || !*key)
+
+	DWORD *key;
+	if (!pHeader || !*pHeader)
 		return 1;
+	if (pKey && *pKey) {
+		key = *pKey;
+	}
+	else if (key_offset) {
+		key = (DWORD*)(*pHeader + key_offset);
+	}
+	else {
+		return 1;
+	}
 
 	struct FileHeader *header = (struct FileHeader*)(*pHeader + json_integer_value(json_object_get(bp_info, "struct_offset")));
-	struct FileHeaderFull *full_header = register_file_header(header, *key);
+	struct FileHeaderFull *full_header = register_file_header(header, key);
 	file_rep_t *fr = &full_header->fr;
 
 	if (full_header->path[0]) {
@@ -92,7 +142,7 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 			fr->hooks, fr->game_buffer, fr->pre_json_size + fr->patch_size, fr->pre_json_size, fr->patch
 			);
 
-		crypt_block((BYTE*)fr->game_buffer, full_header->size, full_header->key);
+		ICrypt::instance->cryptBlock((BYTE*)fr->game_buffer, full_header->size, full_header->key);
 	}
 
 	if (fr->rep_buffer == NULL && fr->patch != NULL) {
@@ -139,10 +189,15 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	BYTE **file_struct = (BYTE**)json_object_get_register(bp_info, regs, "file_struct");
 	BYTE **pBuffer = (BYTE**)reg(regs, json_string_value(jBuffer));
 	DWORD *pSize = (DWORD*)reg(regs, json_string_value(jSize));
+	DWORD **ppNumberOfBytesRead = (DWORD**)json_object_get_register(bp_info, regs, "pNumberOfBytesRead");
+	DWORD hFile_offset = (DWORD)json_integer_value(json_object_get(bp_info, "hFile_offset"));
+	DWORD hash_offset = (DWORD)json_integer_value(json_object_get(bp_info, "hash_offset"));
+	DWORD buffer_offset = (DWORD)json_integer_value(json_object_get(bp_info, "buffer_offset"));
 	// ----------
 
 	static DWORD size = 0;
 	static BYTE *buffer = NULL;
+	static DWORD *pNumberOfBytesRead = NULL;
 
 	if (pBuffer && *pBuffer) {
 		buffer = *pBuffer;
@@ -156,55 +211,66 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	else if (jSize) {
 		size = (DWORD)json_integer_value(jSize);
 	}
+	if (ppNumberOfBytesRead) {
+		pNumberOfBytesRead = *ppNumberOfBytesRead;
+	}
 
 	if (!file_struct) {
 		return 1;
 	}
 
-	struct FileHeaderFull *header = hash_to_file_header(*(DWORD*)(*file_struct + 0x1001c));
+	struct FileHeaderFull *header = hash_to_file_header(*(DWORD*)(*file_struct + hash_offset));
 	if (!header || !header->path[0] || (!header->fr.game_buffer && !header->fr.patch)) {
 		// Nothing to patch.
 		return 1;
 	}
 
-	HANDLE hFile = *(HANDLE*)(*file_struct + 4);
+	HANDLE hFile = *(HANDLE*)(*file_struct + hFile_offset);
+	DWORD numberOfBytesRead;
 	if (buffer == NULL) {
-		buffer = *file_struct + 8;
+		buffer = *file_struct + buffer_offset;
 	}
 	if (size == 0) {
 		size = 65536;
 	}
+	if (pNumberOfBytesRead) {
+		numberOfBytesRead = *pNumberOfBytesRead;
+	}
+	else {
+		numberOfBytesRead = size;
+	}
 
 	if (header->effective_offset == -1) {
-		header->effective_offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - size;
+		header->effective_offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead;
 
 		// We couldn't patch the file earlier, but now we have a hFile and an offset, so we should be able to.
 		if (header->fr.game_buffer == NULL && header->fr.patch != NULL) {
-			SetFilePointer(hFile, -(int)size, NULL, FILE_CURRENT);
-			
+			SetFilePointer(hFile, -(int)numberOfBytesRead, NULL, FILE_CURRENT);
+
 			DWORD nbOfBytesRead;
 			header->fr.game_buffer = malloc(header->size);
 			ReadFile(hFile, header->fr.game_buffer, header->orig_size, &nbOfBytesRead, NULL);
 
-			uncrypt_block((BYTE*)header->fr.game_buffer, header->orig_size, header->key);
+			ICrypt::instance->uncryptBlock((BYTE*)header->fr.game_buffer, header->orig_size, header->key);
 			patchhooks_run(
 				header->fr.hooks, header->fr.game_buffer, header->size, header->orig_size, header->fr.patch
 				);
-			crypt_block((BYTE*)header->fr.game_buffer, header->size, header->key);
+			ICrypt::instance->cryptBlock((BYTE*)header->fr.game_buffer, header->size, header->key);
 
-			SetFilePointer(hFile, header->effective_offset + size, NULL, FILE_BEGIN);
+			SetFilePointer(hFile, header->effective_offset + numberOfBytesRead, NULL, FILE_BEGIN);
 			file_rep_clear(&header->fr);
 		}
 	}
 
-	size_t offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - size - header->effective_offset;
+	size_t offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead - header->effective_offset;
 	int copy_size = min(header->size - offset, size);
 
 	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %d, requested size %d, file_rep_size left: %d, chosen size: %d\n",
 		header->path, *(DWORD*)(*file_struct + 0x1001c), offset, size, header->size - offset, copy_size);
 	memcpy(buffer, (BYTE*)header->fr.game_buffer + offset, copy_size);
 
-	buffer = NULL;
+	pNumberOfBytesRead = nullptr;
+	buffer = nullptr;
 	size = 0;
 	return 1;
 }

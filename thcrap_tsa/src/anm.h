@@ -64,8 +64,6 @@ typedef struct {
 	// Offset to the next entry in the ANM archive. 0 indicates the last one.
 	size_t nextoffset;
 
-	int hasbitmap;
-
 	// File name of the original PNG associated with the bitmap.
 	const char *name;
 

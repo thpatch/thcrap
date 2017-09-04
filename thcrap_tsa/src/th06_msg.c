@@ -12,6 +12,7 @@
 
 #include <thcrap.h>
 #include "thcrap_tsa.h"
+#include "layout.h"
 
 #pragma pack(push, 1)
 typedef struct {
@@ -24,11 +25,23 @@ typedef struct {
 
 #pragma pack(push, 1)
 typedef struct {
+	uint16_t time;
+	uint8_t type;
+	uint8_t length;
+	float x;
+	float y;
+} th128_bubble_pos_t;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct {
 	uint16_t side;
 	uint16_t linenum;
 	uint8_t str[];
 } hard_line_data_t;
 #pragma pack(pop)
+
+typedef uint32_t th14_bubble_shape_data_t;
 
 // Supported opcode commands
 typedef enum {
@@ -36,7 +49,11 @@ typedef enum {
 	OP_HARD_LINE,
 	OP_AUTO_LINE,
 	OP_AUTO_END,
-	OP_DELETE
+	OP_DELETE,
+	OP_SIDE_LEFT,
+	OP_SIDE_RIGHT,
+	OP_BUBBLE_POS,
+	OP_BUBBLE_SHAPE,
 } op_cmd_t;
 
 typedef struct {
@@ -45,15 +62,75 @@ typedef struct {
 	const char *type;
 } op_info_t;
 
-typedef struct {
-	// Format information
-	op_info_t* op_info;
-	size_t op_info_num;
+/// Text encryption
+/// ---------------
+/**
+  * Encryption function type.
+  *
+  * Parameters
+  * ----------
+  *	uint8_t* data
+  *		Buffer to encrypt
+  *
+  *	size_t data_len
+  *		Length of [data]
+  *
+  * Returns nothing.
+  */
+typedef void(*EncryptionFunc_t)(uint8_t *data, size_t data_len);
 
-	// Encryption
-	uint8_t* enc_vars;
-	size_t enc_var_count;
+void simple_xor(uint8_t *data, size_t data_len, const uint8_t param)
+{
+	size_t i;
+	for(i = 0; i < data_len; i++) {
+		data[i] ^= param;
+	}
+}
+
+void util_xor(
+	uint8_t *data,
+	size_t data_len,
+	unsigned char key,
+	unsigned char step,
+	unsigned char step2
+)
+{
+	size_t i;
+	for(i = 0; i < data_len; i++) {
+		const int ip = i - 1;
+		data[i] ^= key + i * step + (ip * ip + ip) / 2 * step2;
+	}
+}
+
+void msg_crypt_th08(uint8_t *data, size_t data_len)
+{
+	simple_xor(data, data_len, 0x77);
+}
+
+void msg_crypt_th09(uint8_t *data, size_t data_len)
+{
+	util_xor(data, data_len, 0x77, 0x7, 0x10);
+}
+/// --------------------
+
+// Format information for a specific game
+typedef struct {
+	uint32_t entry_offset_mul;
 	EncryptionFunc_t enc_func;
+	op_info_t opcodes[];
+} msg_format_t;
+
+typedef enum {
+	SIDE_LEFT = -1,
+	SIDE_NONE = 0,
+	SIDE_RIGHT = 1
+} side_t;
+
+typedef struct {
+	const msg_format_t *format;
+
+	// Can be any value, 0, negative, ... So, a pointer it is.
+	json_t *font_dialog_id;
 
 	// JSON objects in the diff file
 	const json_t *diff_entry;
@@ -63,8 +140,11 @@ typedef struct {
 	th06_msg_t* cmd_in;
 	th06_msg_t* cmd_out;
 	int entry, time, ind;
+	side_t side;
+	unsigned int line_widths[4];
 
 	// Last state
+	th128_bubble_pos_t *bubble_pos;
 	const th06_msg_t *last_line_cmd;
 	const op_info_t *last_line_op;
 
@@ -90,96 +170,19 @@ typedef struct {
   */
 typedef void (*ReplaceFunc_t)(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *new_line);
 
-const op_info_t* get_op_info(patch_msg_state_t* state, uint8_t op)
+const op_info_t* get_op_info(const msg_format_t* format, uint8_t op)
 {
-	if(state && state->op_info && state->op_info_num) {
-		size_t i;
-		for(i = 0; i < state->op_info_num; i++) {
-			if(state->op_info[i].op == op) {
-				return &state->op_info[i];
-			}
+	const op_info_t *opcode = format->opcodes;
+	if(!opcode) {
+		return NULL;
+	}
+	while(opcode->op != 0) {
+		if(opcode->op == op) {
+			return opcode;
 		}
+		opcode++;
 	}
 	return NULL;
-}
-
-// Because string comparisons in the main loop are not nice
-op_cmd_t op_str_to_cmd(const char *str)
-{
-	if(!str) {
-		return OP_UNKNOWN;
-	}
-	if(!strcmp(str, "hard_line")) {
-		return OP_HARD_LINE;
-	}
-	if(!strcmp(str, "auto_line")) {
-		return OP_AUTO_LINE;
-	}
-	if(!strcmp(str, "auto_end")) {
-		return OP_AUTO_END;
-	}
-	if(!strcmp(str, "delete")) {
-		return OP_DELETE;
-	}
-	return OP_UNKNOWN;
-}
-
-int patch_msg_state_init(patch_msg_state_t *state, json_t *format)
-{
-	json_t *encryption = json_object_get(format, "encryption");
-	json_t *opcodes = json_object_get(format, "opcodes");
-	json_t *op_obj;
-	const char *key;
-	int i = 0;
-
-	if(!json_is_object(opcodes)) {
-		// Nothing to do with no definitions...
-		return -1;
-	}
-
-	ZeroMemory(state, sizeof(patch_msg_state_t));
-
-	// Prepare opcode info
-	state->op_info_num = json_object_size(opcodes);
-	state->op_info = (op_info_t*)malloc(sizeof(op_info_t) * state->op_info_num);
-	json_object_foreach(opcodes, key, op_obj) {
-		const char *cmd_str;
-		state->op_info[i].op = atoi(key);
-		state->op_info[i].type = json_object_get_string(op_obj, "type");
-
-		cmd_str = json_object_get_string(op_obj, "cmd");
-		state->op_info[i].cmd = op_str_to_cmd(cmd_str);
-		i++;
-	}
-
-	// Prepare encryption vars
-	if(json_is_object(encryption)) {
-		const char *encryption_func = json_object_get_string(encryption, "func");
-		json_t *encryption_vars = json_object_get(encryption, "vars");
-
-		// Resolve function
-		if(encryption_func) {
-			state->enc_func = (EncryptionFunc_t)func_get(encryption_func);
-		}
-		if(json_is_array(encryption_vars)) {
-			size_t i;
-
-			state->enc_var_count = json_array_size(encryption_vars);
-
-			state->enc_vars = (uint8_t*)malloc(sizeof(uint8_t) * state->enc_var_count);
-			for(i = 0; i < state->enc_var_count; i++) {
-				state->enc_vars[i] = (uint8_t)json_array_get_hex(encryption_vars, i);
-			}
-		}
-	}
-	return 0;
-}
-
-void patch_msg_state_clear(patch_msg_state_t* state)
-{
-	SAFE_FREE(state->enc_vars);
-	SAFE_FREE(state->op_info);
-	ZeroMemory(state, sizeof(patch_msg_state_t));
 }
 
 size_t th06_msg_full_len(const th06_msg_t* msg)
@@ -217,8 +220,23 @@ void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_sta
 {
 	memcpy(dst, rep, len);
 	dst[len - 1] = '\0';
-	if(state->enc_func) {
-		state->enc_func(dst, len, state->enc_vars, state->enc_var_count);
+
+	// We might only cut the JSON line right now, but in view of everything
+	// else we could possibly do, calculating the line length right here,
+	// pre-encraption, seems to be the best choice after all.
+	if(
+		state->bubble_pos
+		&& dst[0] != '|' // Don't take Ruby into account
+		&& json_is_integer(state->font_dialog_id)
+		&& state->cur_line < elementsof(state->line_widths)
+	) {
+		size_t font_id = (size_t)json_integer_value(state->font_dialog_id);
+		size_t width = GetTextExtentForFontID(dst, font_id);
+		state->line_widths[state->cur_line] = width;
+	}
+
+	if(state->format->enc_func) {
+		state->format->enc_func(dst, len);
 	}
 }
 
@@ -266,7 +284,7 @@ int validate_line(const char *line)
 // Returns 1 if the output buffer should advance, 0 if it shouldn't.
 int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t rep_func)
 {
-	const op_info_t* cur_op = get_op_info(state, cmd_out->type);
+	const op_info_t* cur_op = get_op_info(state->format, cmd_out->type);
 
 	// If we don't have a diff_lines pointer, this is the first line of a new box.
 	if(cur_op && !json_is_array(state->diff_lines)) {
@@ -334,20 +352,102 @@ void box_end(patch_msg_state_t *state)
 			state->cur_line++;
 		}
 	}
+
+	if(state->bubble_pos) {
+		// Conveniently assuming that the lines from the .msg file
+		// don't need to be taken into account...
+		unsigned int box_len = 0;
+		size_t i;
+		size_t largest_line;
+		int do_shift = 0;
+		float overhang;
+
+		assert(state->side != SIDE_NONE);
+
+		for(i = 0; i < elementsof(state->line_widths); i++) {
+			if(state->line_widths[i] > box_len) {
+				box_len = state->line_widths[i];
+				largest_line = i;
+			}
+			state->line_widths[i] = 0;
+		}
+		// text.anm limit
+		box_len = min(box_len, 512);
+
+		// Padding. TODO: Derive from text.anm,
+		// once we have an ANM spec patcher?
+		if(game_id == TH13) {
+			box_len += 13;
+		} else if(game_id == TH128) {
+			box_len += 24;
+		} else {
+			box_len += 19;
+		};
+
+		if(state->side == SIDE_LEFT) {
+			overhang = (state->bubble_pos->x + box_len) - 640.0f;
+			do_shift = overhang > 0.0f;
+		} else if(state->side == SIDE_RIGHT) {
+			overhang = (state->bubble_pos->x - box_len);
+			do_shift = overhang < 0.0f;
+		}
+		if(do_shift) {
+			state->bubble_pos->x -= overhang;
+
+			const char *side_str = state->side == SIDE_LEFT ? "left" : "right";
+			log_printf(
+				"[MSG] Speech bubble is shifted %.0f pixels to the %s to fit these lines\n",
+				(overhang < 0.0f ? -overhang : overhang) , side_str
+			);
+		}
+		state->bubble_pos = NULL;
+	}
 	state->cur_line = 0;
 	state->diff_lines = NULL;
+}
+
+int op_auto_end(patch_msg_state_t* state)
+{
+	if(!state->last_line_op || state->last_line_op->cmd == OP_AUTO_LINE) {
+		box_end(state);
+	}
+	return 1;
 }
 
 // Returns whether to advance the output buffer (1) or not (0)
 int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 {
 	hard_line_data_t* line;
+	th14_bubble_shape_data_t *shape;
 	uint16_t linenum;
 
 	switch(cur_op->cmd) {
 		case OP_DELETE:
 			// Overwrite this command with the next one
 			return 0;
+
+		case OP_SIDE_LEFT:
+			state->side = SIDE_LEFT;
+			return op_auto_end(state);
+
+		case OP_SIDE_RIGHT:
+			state->side = SIDE_RIGHT;
+			return op_auto_end(state);
+
+		case OP_BUBBLE_SHAPE:
+			shape = (th14_bubble_shape_data_t *)state->cmd_out->data;
+			assert(state->cmd_out->length >= 4);
+			// As of TH14, shape values from [0; 15] are valid, larger
+			// ones crash the game. Not our problem though, who knows,
+			// maybe they'll be added in a future game.
+
+			state->side = (*shape & 1) ? SIDE_RIGHT : SIDE_LEFT;
+			return op_auto_end(state);
+
+		case OP_BUBBLE_POS:
+			state->bubble_pos = (th128_bubble_pos_t*)state->cmd_out;
+			assert(state->bubble_pos->length >= 8);
+			return 1;
 
 		case OP_AUTO_LINE:
 			if( (state->last_line_op) && (state->last_line_op->cmd == OP_HARD_LINE) ) {
@@ -380,35 +480,37 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 			return process_line(state->cmd_out, state, replace_hard_line);
 
 		case OP_AUTO_END:
-			if(!state->last_line_op || state->last_line_op->cmd == OP_AUTO_LINE) {
-				box_end(state);
-			}
-			return 1;
+			return op_auto_end(state);
 	}
 	return 1;
 }
 
-int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format)
+json_t* font_dialog_id(void)
 {
+	// Yeah, I know, kinda horrible.
+	json_t *breakpoints = json_object_get(runconfig_get(), "breakpoints");
+	json_t *ruby_offset_info = json_object_get(breakpoints, "ruby_offset");
+	return json_object_get(ruby_offset_info, "font_dialog");
+}
+
+int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, const msg_format_t *format)
+{
+	assert(format);
+	assert(format->entry_offset_mul);
+
 	uint32_t* msg_out = (uint32_t*)file_inout;
 	uint32_t* msg_in;
 	int entry_new = 1;
 
 	// Header data
-	uint32_t entry_offset_mul = json_object_get_hex(format, "entry_offset_mul");
 	size_t entry_count;
 	uint32_t *entry_offsets_out;
 	uint32_t *entry_offsets_in;
 	uint32_t entry_offset_size;
 
-	patch_msg_state_t state;
+	patch_msg_state_t state = {format, font_dialog_id()};
 
-	if(!msg_out || !patch || !format || !entry_offset_mul) {
-		return 1;
-	}
-
-	// Read format info
-	if(patch_msg_state_init(&state, format)) {
+	if(!msg_out || !patch) {
 		return 1;
 	}
 
@@ -436,7 +538,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	entry_count = *msg_in;
 	entry_offsets_in = msg_in + 1;
 
-	entry_offset_size = entry_count * entry_offset_mul;
+	entry_offset_size = entry_count * format->entry_offset_mul;
 
 	state.cmd_in = (th06_msg_t*)(msg_in + 1 + entry_offset_size);
 
@@ -479,10 +581,10 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 			// and assign the correct offset to the output buffer.
 			size_t i;
 			for(i = 0; i < entry_count; ++i) {
-				if(offset_in == entry_offsets_in[i * entry_offset_mul]) {
+				if(offset_in == entry_offsets_in[i * format->entry_offset_mul]) {
 					state.entry = i;
 					state.diff_entry = json_object_numkey_get(patch, state.entry);
-					entry_offsets_out[i * entry_offset_mul] = offset_out;
+					entry_offsets_out[i * format->entry_offset_mul] = offset_out;
 					break;
 				}
 			}
@@ -501,7 +603,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 		memcpy(state.cmd_out, state.cmd_in, sizeof(th06_msg_t) + state.cmd_in->length);
 
 		// Look up what to do with the opcode...
-		cur_op = get_op_info(&state, state.cmd_in->type);
+		cur_op = get_op_info(state.format, state.cmd_in->type);
 
 		if(cur_op && json_is_object(state.diff_entry)) {
 			advance_out = process_op(cur_op, &state);
@@ -523,16 +625,142 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	}
 #endif
 	HeapFree(GetProcessHeap(), 0, msg_in);
-	patch_msg_state_clear(&state);
 	return 0;
 }
 
+/// Game formats
+/// ------------
+// In-game dialog
+const msg_format_t MSG_TH06 = {
+	.entry_offset_mul = 1,
+	.opcodes = {
+		{ 3, OP_HARD_LINE },
+		{ 8, OP_HARD_LINE, "h1" },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH08 = {
+	.entry_offset_mul = 1,
+	.enc_func = msg_crypt_th08,
+	.opcodes = {
+		{  3, OP_HARD_LINE },
+		{  4, OP_AUTO_END },
+		{ 15, OP_AUTO_END },
+		{ 16, OP_AUTO_LINE },
+		{ 19, OP_AUTO_LINE },
+		{ 20, OP_AUTO_LINE },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH09 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{  4, OP_AUTO_END },
+		{ 15, OP_AUTO_END },
+		{ 16, OP_AUTO_LINE },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH10 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{  7, OP_AUTO_END },
+		{  8, OP_AUTO_END },
+		{ 10, OP_AUTO_END },
+		{ 16, OP_AUTO_LINE },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH11 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{  7, OP_AUTO_END },
+		{  8, OP_AUTO_END },
+		{  9, OP_AUTO_END },
+		{ 11, OP_AUTO_END },
+		{ 17, OP_AUTO_LINE },
+		{ 25, OP_DELETE },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH128 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{  7, OP_SIDE_LEFT },
+		{  8, OP_SIDE_RIGHT },
+		{  9, OP_AUTO_END },
+		{ 11, OP_AUTO_END },
+		{ 17, OP_AUTO_LINE },
+		{ 25, OP_DELETE },
+		{ 28, OP_BUBBLE_POS },
+		{ 0 }
+	}
+};
+
+const msg_format_t MSG_TH14 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{ 7, OP_SIDE_LEFT },
+		{ 8, OP_SIDE_RIGHT },
+		{ 9, OP_AUTO_END },
+		{ 11, OP_AUTO_END },
+		{ 17, OP_AUTO_LINE },
+		{ 25, OP_DELETE },
+		{ 28, OP_BUBBLE_POS },
+		{ 32, OP_BUBBLE_SHAPE },
+		{ 0 }
+}
+};
+
+// Endings (TH10 and later)
+const msg_format_t END_TH10 = {
+	.entry_offset_mul = 2,
+	.enc_func = msg_crypt_th09,
+	.opcodes = {
+		{ 3, OP_AUTO_LINE },
+		{ 5, OP_AUTO_END },
+		{ 6, OP_AUTO_END },
+		{ 9, OP_AUTO_END },
+		{ 0 }
+	}
+};
+
+const msg_format_t* msg_format_for(tsa_game_t game)
+{
+	if(game >= TH14) {
+		return &MSG_TH14;
+	} else if(game >= TH128) {
+		return &MSG_TH128;
+	} else if(game >= TH11) {
+		return &MSG_TH11;
+	} else if(game >= TH10) {
+		return &MSG_TH10;
+	} else if(game >= TH09) {
+		return &MSG_TH09;
+	} else if(game >= TH08) {
+		return &MSG_TH08;
+	}
+	return &MSG_TH06;
+}
+/// ------------
+
 int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, specs_get("msg"));
+	const msg_format_t *format = msg_format_for(game_id);
+	return patch_msg(file_inout, size_out, size_in, patch, format);
 }
 
 int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
 {
-	return patch_msg(file_inout, size_out, size_in, patch, specs_get("end"));
+	return patch_msg(file_inout, size_out, size_in, patch, &END_TH10);
 }

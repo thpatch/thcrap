@@ -10,27 +10,7 @@
 #include <thcrap.h>
 #include <unordered_map>
 #include "thcrap_tasofro.h"
-
-// Normalized Hash
-DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C9DC5u)
-{
-	DWORD hash; // eax@1
-	DWORD ch; // esi@2
-
-	int inMBCS = 0;
-	for (hash = initHash; begin != end; hash = (hash ^ ch) * 0x1000193)
-	{
-		ch = *begin++;
-		if (!inMBCS && ((unsigned char)ch >= 0x81u && (unsigned char)ch <= 0x9Fu || (unsigned char)ch + 32 <= 0x1Fu)) inMBCS = 2;
-		if (!inMBCS)
-		{
-			ch = tolower(ch);  // bad ass style but WORKS PERFECTLY!
-			if (ch == '/') ch = '\\';
-		}
-		else inMBCS--;
-	}
-	return hash * -1;
-}
+#include "crypt.h"
 
 std::unordered_map<DWORD, FileHeaderFull> fileHashToName;
 int LoadFileNameList(const char* FileName)
@@ -42,7 +22,7 @@ int LoadFileNameList(const char* FileName)
 	{
 		int tlen = strlen(FilePath);
 		while (tlen && FilePath[tlen - 1] == '\n') FilePath[--tlen] = 0;
-		DWORD thash = SpecialFNVHash(FilePath, FilePath + tlen);
+		DWORD thash = ICrypt::instance->SpecialFNVHash(FilePath, FilePath + tlen);
 		strcpy(fileHashToName[thash].path, FilePath);
 	}
 	fclose(fp);
@@ -57,7 +37,7 @@ int LoadFileNameListFromMemory(char* list, size_t size)
 		while (len < size && list[len] != '\r' && list[len] != '\n') {
 			len++;
 		}
-		DWORD thash = SpecialFNVHash(list, list + len);
+		DWORD thash = ICrypt::instance->SpecialFNVHash(list, list + len);
 		strncpy(fileHashToName[thash].path, list, len);
 		list += len;
 		size -= len;
@@ -71,7 +51,7 @@ int LoadFileNameListFromMemory(char* list, size_t size)
 
 DWORD filename_to_hash(const char* filename)
 {
-	return SpecialFNVHash(filename, filename + strlen(filename));
+	return ICrypt::instance->SpecialFNVHash(filename, filename + strlen(filename));
 }
 
 struct FileHeaderFull* register_file_header(FileHeader* header, DWORD *key)
@@ -83,10 +63,11 @@ struct FileHeaderFull* register_file_header(FileHeader* header, DWORD *key)
 	full_header.offset = header->offset;
 	full_header.size = header->size;
 
-	full_header.key[0] = key[0] * -1;
-	full_header.key[1] = key[1] * -1;
-	full_header.key[2] = key[2] * -1;
-	full_header.key[3] = key[3] * -1;
+	full_header.key[0] = key[0];
+	full_header.key[1] = key[1];
+	full_header.key[2] = key[2];
+	full_header.key[3] = key[3];
+	ICrypt::instance->convertKey(full_header.key);
 	full_header.effective_offset = -1;
 	full_header.orig_size = header->size;
 

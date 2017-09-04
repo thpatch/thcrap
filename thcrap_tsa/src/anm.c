@@ -399,17 +399,20 @@ int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format)
 	) {
 		return 1;
 	}
+
 	entry->x = x;
 	entry->y = y;
-	entry->hasbitmap = hasdata;
 	entry->nextoffset = nextoffset;
 	entry->sprite_num = sprites;
 	entry->name = (const char*)(nameoffset + (size_t)in);
-	entry->thtx = (thtx_header_t*)(thtxoffset + (size_t)in);
+
+	assert((hasdata == 0) == (thtxoffset == 0));
 
 	// Prepare sprite pointers if we have a header size.
 	// Otherwise, we fall back to basic patching later.
-	if(headersize) {
+	if(headersize && hasdata && thtxoffset) {
+		entry->thtx = (thtx_header_t*)(thtxoffset + (size_t)in);
+
 		// This will change with splits being appended...
 		size_t sprite_orig_num = entry->sprite_num;
 		size_t i;
@@ -530,7 +533,7 @@ int patch_png_apply(anm_entry_t *entry, const json_t *patch_info, const char *fn
 int stack_game_png_apply(anm_entry_t *entry)
 {
 	int ret = -1;
-	if(entry && entry->hasbitmap && entry->thtx && entry->name) {
+	if(entry && entry->thtx && entry->name) {
 		stack_chain_iterate_t sci = {0};
 		json_t *chain = resolve_chain_game(entry->name);
 		ret = 0;
@@ -578,7 +581,7 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 			log_printf("Corrupt ANM file or format definition, aborting ...\n");
 			break;
 		}
-		if(entry.hasbitmap && entry.thtx) {
+		if(entry.thtx) {
 			if(!name_prev || strcmp(entry.name, name_prev)) {
 				if(!json_is_false(dat_dump)) {
 					bounds_store(name_prev, &bounds);

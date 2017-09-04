@@ -9,29 +9,53 @@
 
 #pragma once
 
-/**
-  * Encryption function type.
-  *
-  * Parameters
-  * ----------
-  *	uint8_t* data
-  *		Buffer to encrypt
-  *
-  *	size_t data_len
-  *		Length of [data]
-  *
-  *	const uint8_t* params
-  *		Optional array of parameters required
-  *
-  *	const uint8_t* params_count
-  *		Number of parameters in [params].
-  *
-  * Returns nothing.
-  */
+typedef enum {
+	TH_NONE,
 
-typedef void (*EncryptionFunc_t)(
-	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
-);
+	// • msg: Hard lines only
+	TH06,
+	TH07,
+
+	// • msg: Text starts being encrypted with a simple XOR
+	// • msg: Automatic lines mostly, hard lines for effect
+	TH08,
+
+	// • msg: Hard lines stop being used
+	// • msg: Text starts being encrypted with a more complicated XOR using
+	//        two step variables
+	TH09,
+
+	// • Introduces a custom format for mission.msg
+	TH095,
+
+	// • msg: Different opcodes
+	// • end: Now uses the regular MSG format with a different set of opcodes
+	TH10,
+	ALCOSTG,
+
+	// • anm: Header structure is changed
+	TH11,
+	TH12,
+
+	// • mission: Adds ruby support
+	TH125,
+
+	// • Changes the fixed-size text boxes to variable-size speech bubbles
+	TH128,
+
+	// • Changes the speech bubble shape
+	TH13,
+
+	// • Changes the speech bubble shape
+	// • msg: Adds opcode 32 for overriding the speech bubble shape and
+	//        direction
+	TH14,
+
+	// Any future game without relevant changes
+	TH_FUTURE,
+} tsa_game_t;
+
+extern tsa_game_t game_id;
 
 /// ------
 /// Spells
@@ -203,7 +227,6 @@ void music_mod_exit(void);
 
 /// Format patchers
 /// ---------------
-int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
 int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
 int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
 int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);

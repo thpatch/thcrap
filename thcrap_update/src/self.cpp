@@ -228,7 +228,7 @@ static char* self_tempname(char *fn, size_t len, const char *prefix)
 static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 {
 	int ret = -1;
-	HMODULE self_mod = NULL;
+	HMODULE self_mod = GetModuleContaining(self_pubkey_from_signer);
 	HCERTSTORE hStore = NULL;
 	HCRYPTMSG hMsg = NULL;
 	DWORD msg_type = 0;
@@ -236,11 +236,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 	DWORD signer_num;
 	DWORD i;
 
-	if(!context || !GetModuleHandleEx(
-		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-		(LPTSTR)self_pubkey_from_signer,
-		&self_mod
-	)) {
+	if(!context || !self_mod) {
 		return -1;
 	}
 	{

@@ -16,6 +16,44 @@ W32U8_DETOUR_CHAIN_DEF(CreateFont);
 W32U8_DETOUR_CHAIN_DEF(CreateFontIndirectEx);
 /// -------------
 
+/// Quality enum
+/// ------------
+#define UNSPECIFIED_QUALITY 0xFF
+
+static const char *QUALITY_STRINGS[] = {
+	/* 0 */ "DEFAULT_QUALITY",
+	/* 1 */ "DRAFT_QUALITY",
+	/* 2 */ "PROOF_QUALITY",
+	/* 3 */ "NONANTIALIASED_QUALITY",
+	/* 4 */ "ANTIALIASED_QUALITY",
+	/* 5 */ "CLEARTYPE_QUALITY",
+	/* 6 */ "CLEARTYPE_NATURAL_QUALITY",
+};
+
+const char* quality_to_string(BYTE quality)
+{
+	if(quality >= 0 && quality < elementsof(QUALITY_STRINGS)) {
+		return QUALITY_STRINGS[quality];
+	}
+	return "(quality out of range)";
+}
+
+BYTE string_to_quality(const char *str)
+{
+	BYTE ret;
+	if(!str || str[0] == '\0') {
+		return UNSPECIFIED_QUALITY;
+	}
+	for(ret = 0; ret < elementsof(QUALITY_STRINGS); ret++) {
+		if(!strcmp(str, QUALITY_STRINGS[ret])) {
+			return ret;
+		}
+	}
+	log_printf("(Font) Invalid quality value, ignoring: %s\n", str);
+	return UNSPECIFIED_QUALITY;
+}
+/// ------------
+
 /// LOGFONT stringification
 /// -----------------------
 const char* logfont_stringify(const LOGFONTA *lf)
@@ -29,8 +67,9 @@ const char* logfont_stringify(const LOGFONTA *lf)
 	} else {
 		snprintf(face, sizeof(face), "%u", lf->lfPitchAndFamily);
 	}
-	return strings_sprintf((size_t)lf, "(%s %d %d %d)",
-		face, lf->lfHeight, lf->lfWidth, lf->lfWeight
+	return strings_sprintf((size_t)lf, "(%s %d %d %d %s)",
+		face, lf->lfHeight, lf->lfWidth, lf->lfWeight,
+		quality_to_string(lf->lfQuality)
 	);
 }
 /// -----------------------
@@ -80,6 +119,22 @@ int fontrule_arg_int(const char **str, int *score)
 	return ret;
 }
 
+BYTE fontrule_arg_quality(const char **str, int *score)
+{
+	BYTE ret;
+	char arg[LF_FACESIZE] = {0};
+	if(!str || !*str) {
+		return UNSPECIFIED_QUALITY;
+	}
+	*str = fontrule_arg(arg, sizeof(arg), *str);
+
+	ret = string_to_quality(arg);
+	if(score) {
+		*score += ret != UNSPECIFIED_QUALITY;
+	}
+	return ret;
+}
+
 // Returns the amount of LOGFONT parameters (the "score") contained in [str].
 int fontrule_parse(LOGFONTA *lf, const char *str)
 {
@@ -97,24 +152,26 @@ int fontrule_parse(LOGFONTA *lf, const char *str)
 	lf->lfHeight = fontrule_arg_int(&str, &score);
 	lf->lfWidth = fontrule_arg_int(&str, &score);
 	lf->lfWeight = fontrule_arg_int(&str, &score);
+	lf->lfQuality = fontrule_arg_quality(&str, &score);
 	return score;
 }
 
-#define FONTRULE_MATCH(rule, dst, val) \
-	if(rule->val && rule->val != dst->val) {\
+#define FONTRULE_MATCH(rule, dst, val, unspecified) \
+	if(rule->val != unspecified && rule->val != dst->val) {\
 		return 0; \
 	}
 
-#define FONTRULE_APPLY(dst, rep, val) \
-	if(rep->val && priority ? 1 : !dst->val) { \
+#define FONTRULE_APPLY(dst, rep, val, unspecified) \
+	if(rep->val != unspecified && priority ? 1 : !dst->val) { \
 		dst->val = rep->val; \
 	}
 
 #define FONTRULE_MACRO_EXPAND(macro, p1, p2) \
-	macro(p1, p2, lfPitchAndFamily); \
-	macro(p1, p2, lfHeight); \
-	macro(p1, p2, lfWidth); \
-	macro(p1, p2, lfWeight);
+	macro(p1, p2, lfPitchAndFamily, 0); \
+	macro(p1, p2, lfHeight, 0); \
+	macro(p1, p2, lfWidth, 0); \
+	macro(p1, p2, lfWeight, 0); \
+	macro(p1, p2, lfQuality, UNSPECIFIED_QUALITY);
 
 // Returns 1 if the relevant nonzero members in [rule] match those in [dst].
 int fontrule_match(const LOGFONTA *rule, const LOGFONTA *dst)

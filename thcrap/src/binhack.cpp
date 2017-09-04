@@ -165,11 +165,11 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 			continue;
 		}
 		json_flex_array_foreach(json_addr, i, addr_val) {
-			DWORD addr = str_address_value(json_string_value(addr_val), hMod, NULL);
+			auto addr = str_address_value(json_string_value(addr_val), hMod, NULL);
 			if(!addr) {
 				continue;
 			}
-			log_printf("(%2d/%2d) 0x%08x ", ++c, binhack_count, addr);
+			log_printf("(%2d/%2d) 0x%p ", ++c, binhack_count, addr);
 			if(title) {
 				log_printf("%s (%s)... ", title, key);
 			} else {

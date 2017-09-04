@@ -125,6 +125,29 @@ int detour_chain(const char *dll_name, int return_old_ptrs, ...);
   */
 int detour_chain_w32u8(const w32u8_dll_t *dll);
 
+// Using a double pointer for [old_func] because you want both vtable_detour()
+// to provide the pointer, and the correct function pointer type in your usage
+// code.
+typedef struct {
+	// # of this function in the vtable. *Not* the byte offset.
+	const size_t index;
+
+	void *new_func;
+
+	// Set this to the address of your own function pointer with the correct
+	// type. Filled out by vtable_detour(). Can also be a nullptr.
+	void **old_func;
+} vtable_detour_t;
+
+// Applies the detours to the [vtable] and fills in the original function
+// pointers, if necessary according to [det->old_func]:
+// •  old_func == NULL: Always write to [vtable]
+// • *old_func == NULL: Write new_func to [vtable] and set *old_func to its
+//                      previous value
+// • *old_func != NULL: Do nothing
+// Returns the number of functions detoured.
+int vtable_detour(void **vtable, vtable_detour_t *det, size_t det_count);
+
 // Returns a pointer to the first function in a specific detour chain, or
 // [fallback] if no hook has been registered so far.
 FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback);

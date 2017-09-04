@@ -150,6 +150,20 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	return 0;
 }
 
+HMODULE GetModuleContaining(void *addr)
+{
+	HMODULE ret = nullptr;
+	if(!GetModuleHandleEx(
+		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+		(LPTSTR)addr,
+		&ret
+	)) {
+		// Just to be sure...
+		return nullptr;
+	}
+	return ret;
+}
+
 char* ReadProcessString(HANDLE hProcess, LPCVOID lpBaseAddress)
 {
 	MEMORY_BASIC_INFORMATION mbi;

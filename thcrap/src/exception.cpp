@@ -9,97 +9,102 @@
 
 #include "thcrap.h"
 
-/// Detour chains
-/// -------------
-typedef LPTOP_LEVEL_EXCEPTION_FILTER WINAPI SetUnhandledExceptionFilter_type(
-	LPTOP_LEVEL_EXCEPTION_FILTER
-);
-
-DETOUR_CHAIN_DEF(SetUnhandledExceptionFilter);
-/// -------------
-
-static LPTOP_LEVEL_EXCEPTION_FILTER lpOrigFilter = NULL;
-
-void log_context_dump(PCONTEXT ctx)
+void log_print_context(PCONTEXT ctx)
 {
 	if(!ctx) {
 		return;
 	}
 	log_printf(
-		"Registers:\n"
-		"EAX: 0x%08x ECX: 0x%08x EDX: 0x%08x EBX: 0x%08x\n"
-		"ESP: 0x%08x EBP: 0x%08x ESI: 0x%08x EDI: 0x%08x\n",
+		"\nRegisters:\n"
+		"EAX: 0x%p ECX: 0x%p EDX: 0x%p EBX: 0x%p\n"
+		"ESP: 0x%p EBP: 0x%p ESI: 0x%p EDI: 0x%p\n",
 		ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx,
 		ctx->Esp, ctx->Ebp, ctx->Esi, ctx->Edi
 	);
 }
 
-LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
+void log_print_rva_and_module(HMODULE mod, void *addr)
 {
-	HMODULE crash_mod;
-	LPEXCEPTION_RECORD lpER = lpEI->ExceptionRecord;
-
-	log_printf(
-		"\n"
-		"===\n"
-		"Exception %x at 0x%08x",
-		lpER->ExceptionCode, lpER->ExceptionAddress
-	);
-	if(GetModuleHandleEx(
-		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-		(LPTSTR)lpER->ExceptionAddress,
-		&crash_mod
-	)) {
-		size_t crash_fn_len = GetModuleFileNameU(crash_mod, NULL, 0) + 1;
-		VLA(char, crash_fn, crash_fn_len);
-		if(GetModuleFileNameU(crash_mod, crash_fn, crash_fn_len)) {
-			log_printf(
-				" (Rx%x) (%s)",
-				(DWORD)lpER->ExceptionAddress - (DWORD)crash_mod,
-				PathFindFileNameA(crash_fn)
-			);
-		}
-		VLA_FREE(crash_fn);
+	if(!mod) {
+		return;
 	}
-	log_printf("\n");
-	log_context_dump(lpEI->ContextRecord);
-	log_printf(
-		"===\n"
-		"\n"
-	);
-	if(lpOrigFilter) {
-		lpOrigFilter(lpEI);
+	size_t crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
+	VLA(char, crash_fn, crash_fn_len);
+	if(GetModuleFileNameU(mod, crash_fn, crash_fn_len)) {
+		log_printf(
+			" (Rx%x) (%s)",
+			(uint8_t *)addr - (uint8_t *)mod,
+			PathFindFileNameA(crash_fn)
+		);
 	}
-	return EXCEPTION_CONTINUE_SEARCH;
+	VLA_FREE(crash_fn);
+	log_print("\n");
 }
 
-LPTOP_LEVEL_EXCEPTION_FILTER WINAPI exception_SetUnhandledExceptionFilter(
-	LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter
-)
+LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 {
-	// Don't return our own filter, since this might cause an infinite loop if
-	// the game process caches it.
-	LPTOP_LEVEL_EXCEPTION_FILTER ret = chain_SetUnhandledExceptionFilter(
-		lpTopLevelExceptionFilter
+	LPEXCEPTION_RECORD lpER = lpEI->ExceptionRecord;
+
+	// These should be all that matter. Unfortunately, we tend
+	// to get way more than we want, particularly with wininet.
+	switch(lpER->ExceptionCode) {
+	case STATUS_ACCESS_VIOLATION:
+	case STATUS_ILLEGAL_INSTRUCTION:
+	case STATUS_INTEGER_DIVIDE_BY_ZERO:
+	case 0xE06D7363: /* MSVCRT exceptions, doesn't seem to have a name */
+		break;
+	default:
+		return EXCEPTION_CONTINUE_SEARCH;
+	}
+
+	HMODULE crash_mod = GetModuleContaining(lpER->ExceptionAddress);
+	log_printf(
+		"\n"
+		"===\n"
+		"Exception %x at 0x%p",
+		lpER->ExceptionCode, lpER->ExceptionAddress
 	);
-	lpOrigFilter = lpTopLevelExceptionFilter;
-	return ret == exception_filter ? NULL : ret;
+	log_print_rva_and_module(crash_mod, lpER->ExceptionAddress);
+	log_print_context(lpEI->ContextRecord);
+
+	// "Windows Server 2003 and Windows XP: The sum of the FramesToSkip
+	// and FramesToCapture parameters must be less than 63."
+	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb204633(v=vs.85).aspx
+	const DWORD frames_to_skip = 1;
+	void *trace[62 - frames_to_skip];
+
+	USHORT captured = CaptureStackBackTrace(
+		frames_to_skip, elementsof(trace), trace, nullptr
+	);
+	if(captured) {
+		log_printf("\nStack trace:\n");
+
+		decltype(captured) skip = 0;
+		if(crash_mod) {
+			while(
+				GetModuleContaining(trace[skip]) != crash_mod
+				&& skip < captured
+			) {
+				skip++;
+			}
+		}
+		if(skip == captured) {
+			skip = 0;
+		}
+		for(decltype(captured) i = skip; i < captured; i++) {
+			HMODULE mod = GetModuleContaining(trace[i]);
+			log_printf("[%02u] 0x%p", captured - i, trace[i]);
+			log_print_rva_and_module(mod, trace[i]);
+		}
+	}
+	log_printf(
+		"===\n"
+		"\n"
+	);
+	return EXCEPTION_CONTINUE_SEARCH;
 }
 
 void exception_init(void)
 {
-	SetUnhandledExceptionFilter(exception_filter);
-}
-
-void exception_mod_detour(void)
-{
-	detour_chain("kernel32.dll", 1,
-		"SetUnhandledExceptionFilter", exception_SetUnhandledExceptionFilter, &chain_SetUnhandledExceptionFilter,
-		NULL
-	);
-}
-
-void exception_exit(void)
-{
-	SetUnhandledExceptionFilter(lpOrigFilter);
+	AddVectoredExceptionHandler(0, exception_filter);
 }

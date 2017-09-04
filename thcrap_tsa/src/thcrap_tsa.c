@@ -12,11 +12,52 @@
 #include "thcrap_tsa.h"
 #include "layout.h"
 
+tsa_game_t game_id;
+
+// Translate strings to IDs.
+static tsa_game_t game_id_from_string(const char *game)
+{
+	if(game == NULL) {
+		return TH_NONE;
+	} else if(!strcmp(game, "th06")) {
+		return TH06;
+	} else if(!strcmp(game, "th07")) {
+		return TH07;
+	} else if(!strcmp(game, "th08")) {
+		return TH08;
+	} else if(!strcmp(game, "th09")) {
+		return TH09;
+	} else if(!strcmp(game, "th095")) {
+		return TH095;
+	} else if(!strcmp(game, "th10")) {
+		return TH10;
+	} else if(!strcmp(game, "alcostg")) {
+		return ALCOSTG;
+	} else if(!strcmp(game, "th11")) {
+		return TH11;
+	} else if(!strcmp(game, "th12")) {
+		return TH12;
+	} else if(!strcmp(game, "th125")) {
+		return TH125;
+	} else if(!strcmp(game, "th128")) {
+		return TH128;
+	} else if(!strcmp(game, "th13")) {
+		return TH13;
+	} else if(!strcmp(game, "th14")) {
+		return TH14;
+	}
+	return TH_FUTURE;
+}
+
 int __stdcall thcrap_plugin_init()
 {
 	if(stack_remove_if_unneeded("base_tsa")) {
 		return 1;
 	}
+
+	const char *game = json_object_get_string(runconfig_get(), "game");
+	game_id = game_id_from_string(game);
+
 	// th06_msg
 	patchhook_register("msg*.dat", patch_msg_dlg); // th06-08
 	patchhook_register("p*.msg", patch_msg_dlg); // th09

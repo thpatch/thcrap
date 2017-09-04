@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include "thcrap_tasofro.h"
 #include <vfs.h>
 #include "spellcards_generator.h"
 
@@ -80,9 +81,16 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*> in_data, 
 
 	json_t *ret = nullptr;
 	if (max_spell_id != -1) {
+		DWORD story_spell_col;
+		if (game_id >= TH145) {
+			story_spell_col = 8;
+		}
+		else {
+			story_spell_col = 10;
+		}
 		// Build the json object.
 		ret = json_object();
-		VLA(char, spell_name, 6 /* story- */ + strlen(character_name) + 8 /* -stageNN */ + 3 /* -NN */ + 2 /* -N */ + 1);
+		VLA(char, spell_name, 6 /* story- */ + strlen(character_name) + story_spell_col /* -stageNN */ + 3 /* -NN */ + 2 /* -N */ + 1);
 		for (int spell_id = 1; spell_id <= max_spell_id; spell_id++) {
 			const char *last_spell_translation = nullptr;
 			for (int difficulty_id = 1; difficulty_id <= 4; difficulty_id++) {
@@ -119,15 +127,24 @@ json_t* spell_player_generator(std::unordered_map<std::string, json_t*> in_data,
 
 	// Extract the player and spell id from the file name
 	const char *out_fn_ptr = strchr(out_fn.c_str(), '/');
-	if (out_fn_ptr == NULL || strncmp(out_fn_ptr, "/data/csv/spellcard/", strlen("/data/csv/spellcard/")) != 0) {
+	if (out_fn_ptr == NULL) {
 		return NULL;
 	}
-	out_fn_ptr += strlen("/data/csv/spellcard/");
+	if (strncmp(out_fn_ptr, "/data/csv/spellcard/", strlen("/data/csv/spellcard/")) == 0) {
+		out_fn_ptr += strlen("/data/csv/spellcard/");
+	}
+	else if (strncmp(out_fn_ptr, "/data/csv/Item", strlen("/data/csv/Item")) == 0) {
+		out_fn_ptr += strlen("/data/csv/Item");
+	}
+	else {
+		return NULL;
+	}
 	if (strchr(out_fn_ptr, '.') == NULL || strcmp(strchr(out_fn_ptr, '.'), ".csv.jdiff") != 0) {
 		return NULL;
 	}
 	VLA(char, character_name, strlen(out_fn_ptr) + 1);
 	strcpy(character_name, out_fn_ptr);
+	character_name[0] = tolower(character_name[0]);
 	*strchr(character_name, '.') = '\0';
 
 	// Find spells.js in the input files list

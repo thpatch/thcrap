@@ -47,11 +47,6 @@ EXPORTS
 	bounds_draw_rect
 	bounds_store
 
-	; Encraption
-	; ----------
-	simple_xor
-	util_xor
-
 	; Generic text
 	; ------------
 	BP_gentext
