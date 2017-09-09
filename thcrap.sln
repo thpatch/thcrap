@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_loader", "thcrap_loader/thcrap_loader.vcxproj", "{2DB35726-8702-4CC8-9394-3D4FFF47F7DD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_loader", "thcrap_loader\thcrap_loader.vcxproj", "{2DB35726-8702-4CC8-9394-3D4FFF47F7DD}"
 	ProjectSection(ProjectDependencies) = postProject
 		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
 		{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942} = {8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}
@@ -11,28 +11,28 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_loader", "thcrap_loa
 		{C8DB0AF8-1441-4ECD-BD63-30922EF17701} = {C8DB0AF8-1441-4ECD-BD63-30922EF17701}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap", "thcrap/thcrap.vcxproj", "{8D7455CC-BE95-4F59-9047-D390454C7261}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap", "thcrap\thcrap.vcxproj", "{8D7455CC-BE95-4F59-9047-D390454C7261}"
 	ProjectSection(ProjectDependencies) = postProject
 		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
 		{EE4A787C-16D5-4192-870F-E1461AFFA469} = {EE4A787C-16D5-4192-870F-E1461AFFA469}
 		{A185D5A7-3E03-4C87-9774-65C014631F5B} = {A185D5A7-3E03-4C87-9774-65C014631F5B}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_tsa", "thcrap_tsa/thcrap_tsa.vcxproj", "{C8DB0AF8-1441-4ECD-BD63-30922EF17701}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_tsa", "thcrap_tsa\thcrap_tsa.vcxproj", "{C8DB0AF8-1441-4ECD-BD63-30922EF17701}"
 	ProjectSection(ProjectDependencies) = postProject
 		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
 		{D6973076-9317-4EF2-A0B8-B7A18AC0713E} = {D6973076-9317-4EF2-A0B8-B7A18AC0713E}
 		{8D7455CC-BE95-4F59-9047-D390454C7261} = {8D7455CC-BE95-4F59-9047-D390454C7261}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_update", "thcrap_update/thcrap_update.vcxproj", "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_update", "thcrap_update\thcrap_update.vcxproj", "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}"
 	ProjectSection(ProjectDependencies) = postProject
 		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
 		{EE4A787C-16D5-4192-870F-E1461AFFA469} = {EE4A787C-16D5-4192-870F-E1461AFFA469}
 		{8D7455CC-BE95-4F59-9047-D390454C7261} = {8D7455CC-BE95-4F59-9047-D390454C7261}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_configure", "thcrap_configure/thcrap_configure.vcxproj", "{F85D84FC-6CEA-44CD-8A55-015AE9EFD02A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_configure", "thcrap_configure\thcrap_configure.vcxproj", "{F85D84FC-6CEA-44CD-8A55-015AE9EFD02A}"
 	ProjectSection(ProjectDependencies) = postProject
 		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
 		{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942} = {8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}
@@ -47,18 +47,18 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_tasofro", "thcrap_ta
 		{21DF27A2-2AC5-4C09-9687-1D391237C01D} = {21DF27A2-2AC5-4C09-9687-1D391237C01D}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win32_utf8", "win32_utf8/win32_utf8.vcxproj", "{A185D5A7-3E03-4C87-9774-65C014631F5B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win32_utf8", "win32_utf8\win32_utf8.vcxproj", "{A185D5A7-3E03-4C87-9774-65C014631F5B}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "act-nut-lib", "act-nut-lib/act-nut-lib.vcxproj", "{21DF27A2-2AC5-4C09-9687-1D391237C01D}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "act_nut_lib", "act-nut-lib\act-nut-lib.vcxproj", "{21DF27A2-2AC5-4C09-9687-1D391237C01D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib-ng", "libs/zlib-ng.vcxproj", "{EE4A787C-16D5-4192-870F-E1461AFFA469}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zlib-ng", "libs\zlib-ng.vcxproj", "{EE4A787C-16D5-4192-870F-E1461AFFA469}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libpng", "libs/libpng.vcxproj", "{D6973076-9317-4EF2-A0B8-B7A18AC0713E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libpng", "libs\libpng.vcxproj", "{D6973076-9317-4EF2-A0B8-B7A18AC0713E}"
 	ProjectSection(ProjectDependencies) = postProject
 		{EE4A787C-16D5-4192-870F-E1461AFFA469} = {EE4A787C-16D5-4192-870F-E1461AFFA469}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jansson", "libs/jansson.vcxproj", "{91E1D907-56ED-493E-AF3B-35CC16E3E4F2}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jansson", "libs\jansson.vcxproj", "{91E1D907-56ED-493E-AF3B-35CC16E3E4F2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
