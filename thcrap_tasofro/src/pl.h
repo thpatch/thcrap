@@ -117,8 +117,8 @@ namespace TasofroPl
 
 		// Functions used by the patcher
 		bool parseCommand(json_t *patch, int json_line_num);
-		void beginLine(std::list<ALine*> file, std::list<ALine*>::iterator it);
-		void patchLine(const char *text, std::list<ALine*> file, std::list<ALine*>::iterator it);
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
 		void endLine();
 
 	public:
@@ -126,7 +126,7 @@ namespace TasofroPl
 		~Text() {}
 
 		LineType getType() const;
-		void patch(std::list<ALine*> file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch);
+		void patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch);
 	};
 
 	ALine* readLine(const char*& file, size_t& size);

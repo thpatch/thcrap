@@ -270,7 +270,7 @@ TasofroPl::Text::Text(const std::vector<std::string>& fields, const std::string&
 	: ALine(fields, comment), syntax(syntax)
 {}
 
-void TasofroPl::Text::patch(std::list<ALine*> file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch)
+void TasofroPl::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch)
 {
 	this->fields[0] = this->unquote(this->fields[0]);
 	this->owner = balloonOwner;
@@ -416,7 +416,7 @@ bool TasofroPl::Text::parseCommand(json_t *patch, int json_line_num)
 	return false;
 }
 
-void TasofroPl::Text::beginLine(std::list<ALine*> file, std::list<ALine*>::iterator it)
+void TasofroPl::Text::beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
 {
 	if (this->ignore_clear_balloon == false && this->cur_line == 1) {
 		if (this->syntax == STORY) {
@@ -448,7 +448,7 @@ void TasofroPl::Text::beginLine(std::list<ALine*> file, std::list<ALine*>::itera
 	}
 }
 
-void TasofroPl::Text::patchLine(const char *text, std::list<ALine*> file, std::list<ALine*>::iterator it)
+void TasofroPl::Text::patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
 {
 	std::string formattedText = text;
 	if (this->cur_line == this->nb_lines) {
