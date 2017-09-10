@@ -230,6 +230,9 @@ void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_sta
 		&& json_is_integer(state->font_dialog_id)
 		&& state->cur_line < elementsof(state->line_widths)
 	) {
+		if(state->cur_line == 0) {
+			log_printf("\xF0\x9F\x92\xAC\n"); // 💬
+		}
 		size_t font_id = (size_t)json_integer_value(state->font_dialog_id);
 		size_t width = GetTextExtentForFontID(dst, font_id);
 		state->line_widths[state->cur_line] = width;
@@ -400,6 +403,7 @@ void box_end(patch_msg_state_t *state)
 				(overhang < 0.0f ? -overhang : overhang) , side_str
 			);
 		}
+		log_printf("\n"); // for better log readability
 		state->bubble_pos = NULL;
 	}
 	state->cur_line = 0;
@@ -594,6 +598,9 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 					entry_offsets_out[i * format->entry_offset_mul] = offset_out;
 					break;
 				}
+			}
+			if(game_id >= TH128) {
+				log_printf("---- Entry #%d ----\n", state.entry);
 			}
 			entry_new = 0;
 			state.time = -1;
