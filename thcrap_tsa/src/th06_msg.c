@@ -417,6 +417,7 @@ int op_auto_end(patch_msg_state_t* state)
 // Returns whether to advance the output buffer (1) or not (0)
 int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 {
+	int ret = 0;
 	hard_line_data_t* line;
 	th14_bubble_shape_data_t *shape;
 	uint16_t linenum;
@@ -426,13 +427,19 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 			// Overwrite this command with the next one
 			return 0;
 
+		// Since these can be used to show a new box without a wait
+		// command before, we have to do the end-of-box processing
+		// *before* we change the side. See the TH16 Extra Stage
+		// mid-boss dialog for a case where this matters.
 		case OP_SIDE_LEFT:
+			ret = op_auto_end(state);
 			state->side = SIDE_LEFT;
-			return op_auto_end(state);
+			return ret;
 
 		case OP_SIDE_RIGHT:
+			ret = op_auto_end(state);
 			state->side = SIDE_RIGHT;
-			return op_auto_end(state);
+			return ret;
 
 		case OP_BUBBLE_SHAPE:
 			shape = (th14_bubble_shape_data_t *)state->cmd_out->data;
