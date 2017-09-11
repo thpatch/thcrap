@@ -31,14 +31,20 @@ int http_init(void)
 {
 	LARGE_INTEGER pf;
 	DWORD ignore = 1;
-
 	// DWORD timeout = 500;
-	const char *project_name = PROJECT_NAME();
-	size_t agent_len = strlen(project_name) + strlen(" (--) " ) + 16 + 1;
-	VLA(char, agent, agent_len);
-	sprintf(
-		agent, "%s (%s)", project_name, PROJECT_VERSION_STRING()
-	);
+
+	// Format according to RFC 7231, section 5.5.3
+	STRINGREF_FROM_LITERAL_DEC(AGENT_FORMAT, "%s/%s");
+	auto self_name = PROJECT_NAME_SHORT();
+	auto self_version = PROJECT_VERSION_STRING();
+
+	size_t agent_len = 0;
+	agent_len += AGENT_FORMAT.len;
+	agent_len += strlen(self_name);
+	agent_len += strlen(self_version);
+
+	VLA(char, agent, agent_len + 1);
+	sprintf(agent, AGENT_FORMAT.str, self_name, self_version);
 
 	QueryPerformanceFrequency(&pf);
 	perffreq = (double)pf.QuadPart;
