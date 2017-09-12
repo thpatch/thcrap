@@ -34,17 +34,19 @@ int http_init(void)
 	// DWORD timeout = 500;
 
 	// Format according to RFC 7231, section 5.5.3
-	STRINGREF_FROM_LITERAL_DEC(AGENT_FORMAT, "%s/%s");
+	STRINGREF_FROM_LITERAL_DEC(AGENT_FORMAT, "%s/%s (%s)");
 	auto self_name = PROJECT_NAME_SHORT();
 	auto self_version = PROJECT_VERSION_STRING();
+	auto os = windows_version();
 
 	size_t agent_len = 0;
 	agent_len += AGENT_FORMAT.len;
 	agent_len += strlen(self_name);
 	agent_len += strlen(self_version);
+	agent_len += strlen(os);
 
 	VLA(char, agent, agent_len + 1);
-	sprintf(agent, AGENT_FORMAT.str, self_name, self_version);
+	sprintf(agent, AGENT_FORMAT.str, self_name, self_version, os);
 
 	QueryPerformanceFrequency(&pf);
 	perffreq = (double)pf.QuadPart;
