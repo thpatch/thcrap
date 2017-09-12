@@ -262,12 +262,22 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 		}
 	}
 
-	size_t offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead - header->effective_offset;
-	int copy_size = min(header->size - offset, size);
+	DWORD offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead - header->effective_offset;
+	DWORD copy_size;
+	if (offset <= header->size) {
+		copy_size = min(header->size - offset, size);
+	}
+	else {
+		copy_size = 0;
+	}
 
-	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %d, requested size %d, file_rep_size left: %d, chosen size: %d\n",
+	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %u, requested size %u, file_rep_size left: %d, chosen size: %u\n",
 		header->path, *(DWORD*)(*file_struct + 0x1001c), offset, size, header->size - offset, copy_size);
 	memcpy(buffer, (BYTE*)header->fr.game_buffer + offset, copy_size);
+	if (pNumberOfBytesRead && *pNumberOfBytesRead != copy_size) {
+		SetFilePointer(hFile, copy_size - *pNumberOfBytesRead, NULL, FILE_CURRENT);
+		*pNumberOfBytesRead = copy_size;
+	}
 
 	pNumberOfBytesRead = nullptr;
 	buffer = nullptr;
