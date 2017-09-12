@@ -182,7 +182,8 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	}
 
 	// Write result
-	header->uncomp_size = ptr_out - file_out_uncomp;
+	file_out_uncomp_size = ptr_out - file_out_uncomp;
+	header->uncomp_size = file_out_uncomp_size;
 	size_out -= sizeof(header);
 	int ret = deflate_bytes(file_out_uncomp, file_out_uncomp_size, header->data, &size_out);
 	header->comp_size = size_out;
