@@ -370,12 +370,20 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 void servers_t::from(const json_t *servers)
 {
 	auto servers_len = json_array_size(servers);
-	this->resize(servers_len);
 	for(size_t i = 0; i < servers_len; i++) {
 		json_t *val = json_array_get(servers, i);
-		assert(json_is_string(val));
-		(*this)[i].url = json_string_value(val);
-		(*this)[i].new_session();
+		if(!json_is_string(val)) {
+			char *val_str = json_dumps(val, JSON_ENCODE_ANY);
+			log_printf(
+				"ERROR: Expected a server string at array position %u, got \"%s\"\n",
+				i + 1, val_str
+			);
+		} else {
+			server_t server_new;
+			server_new.url = json_string_value(val);
+			server_new.new_session();
+			this->push_back(server_new);
+		}
 	}
 }
 
