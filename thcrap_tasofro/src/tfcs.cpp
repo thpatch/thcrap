@@ -106,6 +106,7 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 			}
 			line[1 + 4 * i + 3] = it->get(0);
 			line[1 + 4 * i + 2] = it->get(1);
+			i++;
 		}
 	}
 
@@ -184,7 +185,7 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	// Write result
 	file_out_uncomp_size = ptr_out - file_out_uncomp;
 	header->uncomp_size = file_out_uncomp_size;
-	size_out -= sizeof(header);
+	size_out -= sizeof(header) - 1;
 	int ret = deflate_bytes(file_out_uncomp, file_out_uncomp_size, header->data, &size_out);
 	header->comp_size = size_out;
 	if (ret != Z_OK) {
