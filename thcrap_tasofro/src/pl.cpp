@@ -304,9 +304,10 @@ void TasofroPl::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator
 		this->delete_when_done = false;
 
 		std::list<ALine*>::iterator next_it = file_it;
-		do {
+		while (next_it != file.end() && (*next_it)->getType() == TEXT &&
+			!(this->fields[0].length() >= 1 && this->fields[0].back() == '\\')) {
 			++next_it;
-		} while (next_it != file.end() && (*next_it)->getType() == TEXT);
+		}
 		if (next_it != file.end() && (*next_it)->isStaffroll()) {
 			this->is_staffroll = true;
 		}
@@ -440,11 +441,13 @@ void TasofroPl::Text::beginLine(std::list<ALine*>& file, const std::list<ALine*>
 	this->ignore_clear_balloon = false;
 
 
-	if (game_id >= TH145 && this->is_last_balloon) {
-		this->last_char = "";
-	}
-	else if (this->is_staffroll) {
-		this->last_char = "\\";
+	if (this->is_staffroll) {
+		if (game_id >= TH145 && this->is_last_balloon) {
+			this->last_char = "";
+		}
+		else {
+			this->last_char = "\\";
+		}
 	}
 }
 
@@ -469,6 +472,12 @@ void TasofroPl::Text::patchLine(const char *text, std::list<ALine*>& file, const
 	else if (this->syntax == ENDINGS) {
 		if (this->cur_line != this->nb_lines) {
 			formattedText += "\\n";
+		}
+		if (this->is_staffroll) {
+			size_t break_pos;
+			while ((break_pos = formattedText.find("\\.")) != std::string::npos) {
+				formattedText.erase(break_pos, 2);
+			}
 		}
 		this->fields[0] += formattedText;
 	}
