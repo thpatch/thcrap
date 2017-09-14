@@ -34,7 +34,7 @@ int http_init(void)
 	// DWORD timeout = 500;
 
 	// Format according to RFC 7231, section 5.5.3
-	STRINGREF_FROM_LITERAL_DEC(AGENT_FORMAT, "%s/%s (%s)");
+	const stringref_t AGENT_FORMAT("%s/%s (%s)");
 	auto self_name = PROJECT_NAME_SHORT();
 	auto self_version = PROJECT_VERSION_STRING();
 	auto os = windows_version();

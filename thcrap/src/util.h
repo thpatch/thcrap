@@ -37,9 +37,17 @@ __inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 
 // Reference to a string somewhere else in memory with a given length.
 // TODO: Rip out and change to std::string_view once C++17 is more widespread.
-typedef struct {
+typedef struct stringref_t {
 	const char *str;
 	size_t len;
+
+#ifdef __cplusplus
+	// No default constructor = no potential uninitialized
+	// string pointer = good
+
+	stringref_t(const char *str) : str(str), len(strlen(str)) {}
+	stringref_t(const char *str, size_t len) : str(str), len(len) {}
+#endif
 } stringref_t;
 
 #define STRINGREF_FROM_LITERAL(str) \
