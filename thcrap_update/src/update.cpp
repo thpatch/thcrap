@@ -71,7 +71,7 @@ int http_init(void)
 	return 0;
 }
 
-get_result_t http_get(download_context_t *ctx, const char *url)
+get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t callback, void *callback_param)
 {
 	get_result_t get_ret = GET_INVALID_PARAMETER;
 	DWORD byte_ret = sizeof(DWORD);
@@ -129,6 +129,9 @@ get_result_t http_get(download_context_t *ctx, const char *url)
 	if(ctx->file_buffer) {
 		BYTE *p = ctx->file_buffer;
 		DWORD rem_size = ctx->file_size;
+		if (callback) {
+			callback(url, GET_OK, 0, ctx->file_size, callback_param);
+		}
 		while(rem_size) {
 			DWORD read_size = 0;
 			if(!InternetQueryDataAvailable(hFile, &read_size, 0, 0)) {
@@ -142,6 +145,9 @@ get_result_t http_get(download_context_t *ctx, const char *url)
 			if(InternetReadFile(hFile, p, read_size, &byte_ret)) {
 				rem_size -= byte_ret;
 				p += byte_ret;
+				if (callback) {
+					callback(url, GET_OK, ctx->file_size - rem_size, ctx->file_size, callback_param);
+				}
 			} else {
 				SAFE_FREE(ctx->file_buffer);
 				log_printf("\nReading error #%d! ", GetLastError());
@@ -155,6 +161,9 @@ get_result_t http_get(download_context_t *ctx, const char *url)
 	}
 end:
 	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_end);
+	if (get_ret != GET_OK && callback) {
+		callback(url, get_ret, 0, ctx->file_size, callback_param);
+	}
 
 	InternetCloseHandle(hFile);
 	ReleaseSRWLockShared(&inet_srwlock);
@@ -198,7 +207,7 @@ void server_t::ping_push(LONGLONG newval)
 }
 
 void* server_t::download(
-	DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc
+	DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc, file_callback_t callback, void *callback_param
 )
 {
 	assert(file_size);
@@ -226,7 +235,7 @@ void* server_t::download(
 
 	log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
-	*ret = http_get(&ctx, url);
+	*ret = http_get(&ctx, url, callback, callback_param);
 	*file_size = ctx.file_size;
 
 	VLA_FREE(url);
@@ -335,7 +344,7 @@ int servers_t::num_active() const
 	return ret;
 }
 
-void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc)
+void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc, file_callback_t callback, void *callback_param)
 {
 	assert(file_size);
 	int i;
@@ -358,7 +367,7 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 			log_printf("Retrying on next server...\n");
 		}
 
-		auto file_buffer = server.download(file_size, &get_ret, fn, exp_crc);
+		auto file_buffer = server.download(file_size, &get_ret, fn, exp_crc, callback, callback_param);
 
 		if(get_ret <= GET_INVALID_PARAMETER) {
 			return NULL;
@@ -410,10 +419,10 @@ servers_t& servers_cache(const json_t *servers)
 /// ---------------------------------------
 
 void* ServerDownloadFile(
-	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
+	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
 )
 {
-	return servers_cache(servers).download(file_size, fn, exp_crc);
+	return servers_cache(servers).download(file_size, fn, exp_crc, callback, callback_param);
 }
 
 int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)
@@ -471,7 +480,7 @@ json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 	VLA(char, remote_patch_fn, remote_patch_fn_len);
 	sprintf(remote_patch_fn, "%s/%s", json_string_value(patch_id), main_fn);
 
-	patch_js_buffer = ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL);
+	patch_js_buffer = ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL, NULL, NULL);
 	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
 	// TODO: Nice, friendly error
 
@@ -480,7 +489,23 @@ json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 	return patch_info;
 }
 
-int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data)
+typedef struct {
+	json_t *patch;
+	DWORD patch_progress;
+	DWORD patch_total;
+	patch_update_callback_t callback;
+	void *callback_param;
+} patch_update_callback_param_t;
+int patch_update_callback(const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param_)
+{
+	patch_update_callback_param_t *param = (patch_update_callback_param_t*)param_;
+	if (param->callback) {
+		return param->callback(param->patch, param->patch_progress, param->patch_total, fn, ret, file_progress, file_total, param->callback_param);
+	}
+	return 0;
+}
+
+int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param)
 {
 	const char *files_fn = "files.js";
 
@@ -497,6 +522,11 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	size_t i = 0;
 	size_t file_count = 0;
 	size_t file_digits = 0;
+
+	patch_update_callback_param_t patch_update_callback_param;
+	patch_update_callback_param.patch = patch_info;
+	patch_update_callback_param.callback = callback;
+	patch_update_callback_param.callback_param = callback_param;
 
 	const char *key;
 	const char *patch_name = json_object_get_string(patch_info, "id");
@@ -543,7 +573,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		log_printf("Checking for updates of %s...\n", patch_name);
 	}
 
-	remote_files_js_buffer = (char *)servers.download(&remote_files_js_size, files_fn, NULL);
+	remote_files_js_buffer = (char *)servers.download(&remote_files_js_size, files_fn, NULL, NULL, NULL);
 	if(!remote_files_js_buffer) {
 		// All servers offline...
 		ret = 3;
@@ -586,6 +616,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		ret = 0;
 		goto end_update;
 	}
+	patch_update_callback_param.patch_total = file_count;
 	file_digits = str_num_digits(file_count);
 	log_printf("Need to get %d files.\n", file_count);
 
@@ -601,6 +632,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		}
 
 		log_printf("(%*d/%*d) ", file_digits, ++i, file_digits, file_count);
+		patch_update_callback_param.patch_progress = i;
 		local_val = json_object_get(local_files, key);
 
 		// Delete locally unchanged files with a JSON null value in the remote list
@@ -623,10 +655,10 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 			// local files.js ourselves.
 			update_delete(key);
 		} else if(json_is_integer(remote_val)) {
-			DWORD remote_crc = json_integer_value(remote_val);
-			file_buffer = servers.download(&file_size, key, &remote_crc);
+			DWORD remote_crc = (DWORD)json_integer_value(remote_val);
+			file_buffer = servers.download(&file_size, key, &remote_crc, patch_update_callback, &patch_update_callback_param);
 		} else {
-			file_buffer = servers.download(&file_size, key, NULL);
+			file_buffer = servers.download(&file_size, key, NULL, patch_update_callback, &patch_update_callback_param);
 		}
 		if(file_buffer) {
 			patch_file_store(patch_info, key, file_buffer, file_size);
@@ -651,12 +683,32 @@ end_update:
 	return ret;
 }
 
-void stack_update(update_filter_func_t filter_func, json_t *filter_data)
+typedef struct {
+	DWORD stack_progress;
+	DWORD stack_total;
+	stack_update_callback_t callback;
+	void *callback_param;
+} stack_update_callback_param_t;
+int stack_update_callback(const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param_)
+{
+	stack_update_callback_param_t *param = (stack_update_callback_param_t*)param_;
+	if (param->callback) {
+		return param->callback(param->stack_progress, param->stack_total, patch, patch_progress, patch_total, fn, ret, file_progress, file_total, param->callback_param);
+	}
+	return 0;
+}
+
+void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param)
 {
 	json_t *patch_array = json_object_get(runconfig_get(), "patches");
+	stack_update_callback_param_t stack_update_param;
+	stack_update_param.callback = callback;
+	stack_update_param.callback_param = callback_param;
+	stack_update_param.stack_total = json_array_size(patch_array);
 	size_t i;
 	json_t *patch_info;
 	json_array_foreach(patch_array, i, patch_info) {
-		patch_update(patch_info, filter_func, filter_data);
+		stack_update_param.stack_progress = i;
+		patch_update(patch_info, filter_func, filter_data, stack_update_callback, &stack_update_param);
 	}
 }

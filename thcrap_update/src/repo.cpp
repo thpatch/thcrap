@@ -51,7 +51,7 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 			it++;
 		}
 	}
-	repo_buffer = (char *)servers.download(&repo_size, repo_fn, NULL);
+	repo_buffer = (char *)servers.download(&repo_size, repo_fn, NULL, NULL, NULL);
 	if(repo_buffer) {
 		repo_js = json_loadb_report(repo_buffer, repo_size, 0, repo_fn);
 	}
