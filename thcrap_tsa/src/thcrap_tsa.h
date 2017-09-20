@@ -165,10 +165,7 @@ void spells_mod_exit(void);
 // Returns the translated title for track #[track] of the current game.
 const char* music_title_get(size_t track);
 
-// Prints the translated title of track #[track] to [str], according to
-// [format_id] in the string definition table. This format string receives
-// the track number and its translated title, in this order.
-void music_title_print(const char **str, const char *format_id, size_t track);
+void music_title_print(const char **str, const char *format_id, size_t track_id_internal, int track_id_displayed);
 
 /**
   * Pseudo breakpoint taking parameters cached across the other
