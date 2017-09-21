@@ -65,6 +65,10 @@ void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data,
 {
 	CALL_WRAPPED_FUNCTION((void (*)(update_filter_func_t, json_t *, stack_update_callback_t, void *)), "stack_update", filter_func, filter_data, callback, callback_param)
 }
+void stack_update_with_UI_progress_wrapper(update_filter_func_t filter_func, json_t *filter_data)
+{
+	CALL_WRAPPED_FUNCTION((void(*)(update_filter_func_t, json_t *)), "stack_update_with_UI_progress", filter_func, filter_data)
+}
 
 int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache)
 {
