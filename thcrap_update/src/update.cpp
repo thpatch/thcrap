@@ -590,6 +590,13 @@ int patch_update_callback(const char *fn, get_result_t ret, DWORD file_progress,
 {
 	patch_update_callback_param_t *param = (patch_update_callback_param_t*)param_;
 	if (param->callback) {
+		auto &servers = servers_cache(json_object_get(param->patch, "servers"));
+		for (auto& server : servers) {
+			if (strncmp(server.url, fn, strlen(server.url)) == 0) {
+				fn += strlen(server.url);
+				break;
+			}
+		}
 		return param->callback(param->patch, param->patch_progress, param->patch_total, fn, ret, file_progress, file_total, param->callback_param);
 	}
 	return 0;
@@ -808,7 +815,7 @@ int stack_update_with_UI_progress_callback(DWORD stack_progress, DWORD stack_tot
 	HWND *hWnd = (HWND*)param;
 	const char *format1 = "Updating %s (%d/%d)...";
 	const char *format2 = "Updating file %d/%d...";
-	const char *format3 = "%s (%d o / %d o)...";
+	const char *format3 = "%s (%d o / %d o)";
 	const char *patch_name = json_object_get_string(patch, "id");
 	const unsigned int format1_len = strlen(format1) + strlen(patch_name) + 2 * 10 + 1;
 	const unsigned int format2_len = strlen(format2) + 2 * 10 + 1;
