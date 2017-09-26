@@ -28,8 +28,15 @@ static void***(__stdcall*orig_Direct3DCreate9)(UINT SDKVersion) = NULL;
 int __stdcall my_d3dd9_Reset(void*** that, void* pPresentationParameters) {
 	int(__stdcall*d3dd9_TestCooperativeLevel)(void***) = (*that)[D3DD9_TESTCOOPERATIVELEVEL];
 	int rv = D3D_OK;
-	for (;;) {
-		switch (d3dd9_TestCooperativeLevel(that)) {
+	int coop = d3dd9_TestCooperativeLevel(that);
+
+	if (coop == D3D_OK) {
+		// Device is OK, so we're reseting on purpose. (to change the fullscreen mode for example)
+		return orig_d3dd9_Reset(that, pPresentationParameters);
+	}
+
+	for (;;coop = d3dd9_TestCooperativeLevel(that)) {
+		switch (coop) {
 		case D3DERR_DEVICELOST:
 			// wait for a little
 			MsgWaitForMultipleObjects(0, NULL, FALSE, 10, QS_ALLINPUT);
