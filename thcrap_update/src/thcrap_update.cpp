@@ -19,7 +19,7 @@ DWORD WINAPI UpdateThread(void *param)
 	if(!TryEnterCriticalSection(&cs_update)) {
 		return 1;
 	}
-	stack_update(update_filter_games, json_object_get(runconfig_get(), "game"));
+	stack_update(update_filter_games, json_object_get(runconfig_get(), "game"), nullptr, nullptr);
 	LeaveCriticalSection(&cs_update);
 	return 0;
 }

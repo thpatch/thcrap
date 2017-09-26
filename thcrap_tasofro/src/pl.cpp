@@ -270,7 +270,7 @@ TasofroPl::Text::Text(const std::vector<std::string>& fields, const std::string&
 	: ALine(fields, comment), syntax(syntax)
 {}
 
-void TasofroPl::Text::patch(std::list<ALine*> file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch)
+void TasofroPl::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch)
 {
 	this->fields[0] = this->unquote(this->fields[0]);
 	this->owner = balloonOwner;
@@ -304,9 +304,10 @@ void TasofroPl::Text::patch(std::list<ALine*> file, std::list<ALine*>::iterator&
 		this->delete_when_done = false;
 
 		std::list<ALine*>::iterator next_it = file_it;
-		do {
+		while (next_it != file.end() && (*next_it)->getType() == TEXT &&
+			!(this->fields[0].length() >= 1 && this->fields[0].back() == '\\')) {
 			++next_it;
-		} while (next_it != file.end() && (*next_it)->getType() == TEXT);
+		}
 		if (next_it != file.end() && (*next_it)->isStaffroll()) {
 			this->is_staffroll = true;
 		}
@@ -416,7 +417,7 @@ bool TasofroPl::Text::parseCommand(json_t *patch, int json_line_num)
 	return false;
 }
 
-void TasofroPl::Text::beginLine(std::list<ALine*> file, std::list<ALine*>::iterator it)
+void TasofroPl::Text::beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
 {
 	if (this->ignore_clear_balloon == false && this->cur_line == 1) {
 		if (this->syntax == STORY) {
@@ -440,15 +441,17 @@ void TasofroPl::Text::beginLine(std::list<ALine*> file, std::list<ALine*>::itera
 	this->ignore_clear_balloon = false;
 
 
-	if (game_id >= TH145 && this->is_last_balloon) {
-		this->last_char = "";
-	}
-	else if (this->is_staffroll) {
-		this->last_char = "\\";
+	if (this->is_staffroll) {
+		if (game_id >= TH145 && this->is_last_balloon) {
+			this->last_char = "";
+		}
+		else {
+			this->last_char = "\\";
+		}
 	}
 }
 
-void TasofroPl::Text::patchLine(const char *text, std::list<ALine*> file, std::list<ALine*>::iterator it)
+void TasofroPl::Text::patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
 {
 	std::string formattedText = text;
 	if (this->cur_line == this->nb_lines) {
@@ -469,6 +472,12 @@ void TasofroPl::Text::patchLine(const char *text, std::list<ALine*> file, std::l
 	else if (this->syntax == ENDINGS) {
 		if (this->cur_line != this->nb_lines) {
 			formattedText += "\\n";
+		}
+		if (this->is_staffroll) {
+			size_t break_pos;
+			while ((break_pos = formattedText.find("\\.")) != std::string::npos) {
+				formattedText.erase(break_pos, 2);
+			}
 		}
 		this->fields[0] += formattedText;
 	}

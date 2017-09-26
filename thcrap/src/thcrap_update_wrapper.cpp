@@ -40,9 +40,9 @@ if (cached_func) { \
 	return (cast cached_func)(__VA_ARGS__); \
 }
 
-void* ServerDownloadFile_wrapper(json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc)
+void* ServerDownloadFile_wrapper(json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param)
 {
-	CALL_WRAPPED_FUNCTION((void *(*)(json_t *, const char *, DWORD *, const DWORD *)), "ServerDownloadFile", servers, fn, file_size, exp_crc)
+	CALL_WRAPPED_FUNCTION((void *(*)(json_t *, const char *, DWORD *, const DWORD *, file_callback_t, void *)), "ServerDownloadFile", servers, fn, file_size, exp_crc, callback, callback_param)
 	return NULL;
 }
 
@@ -56,14 +56,14 @@ int update_filter_games_wrapper(const char *fn, json_t *games)
 	CALL_WRAPPED_FUNCTION((int (*)(const char *, json_t *)), "update_filter_games", fn, games)
 	return 0;
 }
-int patch_update_wrapper(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data)
+int patch_update_wrapper(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param)
 {
-	CALL_WRAPPED_FUNCTION((int (*)(json_t *, update_filter_func_t, json_t *)), "patch_update", patch_info, filter_func, filter_data)
+	CALL_WRAPPED_FUNCTION((int (*)(json_t *, update_filter_func_t, json_t *, patch_update_callback_t, void *)), "patch_update", patch_info, filter_func, filter_data, callback, callback_param)
 	return 3;
 }
-void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data)
+void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param)
 {
-	CALL_WRAPPED_FUNCTION((void (*)(update_filter_func_t, json_t *)), "stack_update", filter_func, filter_data)
+	CALL_WRAPPED_FUNCTION((void (*)(update_filter_func_t, json_t *, stack_update_callback_t, void *)), "stack_update", filter_func, filter_data, callback, callback_param)
 }
 
 int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache)
