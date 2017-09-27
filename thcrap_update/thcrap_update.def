@@ -12,7 +12,6 @@ EXPORTS
 	patch_bootstrap
 	patch_update
 	stack_update
-	stack_update_with_UI_progress
 
 	UpdateThread
 	BP_update_poll

@@ -8,7 +8,6 @@
   */
 
 #pragma once
-#pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,8 +56,6 @@ int patch_update(
 	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param
 );
 void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param);
-// Like stack_update, but displays the progress in a new window.
-void stack_update_with_UI_progress(update_filter_func_t filter_func, json_t *filter_data);
 
 #ifdef __cplusplus
 }
