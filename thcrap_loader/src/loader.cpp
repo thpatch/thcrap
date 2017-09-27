@@ -63,7 +63,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		goto end;
 	}
 
-	args = json_array_from_wchar_array(__argc, __wargv);
+	args = json_array_from_wchar_array(__argc, const_cast<const wchar_t **>(__wargv));
 
 	/**
 	  * ---
