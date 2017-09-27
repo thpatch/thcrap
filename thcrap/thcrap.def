@@ -298,7 +298,6 @@ EXPORTS
 	update_filter_games_wrapper
 	patch_update_wrapper
 	stack_update_wrapper
-	stack_update_with_UI_progress_wrapper
 	RepoDiscoverAtURL_wrapper
 	RepoDiscoverFromLocal_wrapper
 	patch_bootstrap_wrapper
