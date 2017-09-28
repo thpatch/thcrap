@@ -187,10 +187,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	json_t *game;
 	BOOL ret = 0;
 
-	game = identify(exe_fn);
-	if (game == nullptr) {
-		return 1;
-	}
 	const char *run_cfg_fn = json_object_get_string(runconfig_get(), "run_cfg_fn");
 	// Allow relative directory names
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
@@ -202,6 +198,11 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	}
 	patches_init(run_cfg_fn);
 	stack_show_missing();
+
+	game = identify(exe_fn);
+	if(game == nullptr) {
+		return 1;
+	}
 
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);
