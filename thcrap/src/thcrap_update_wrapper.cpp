@@ -9,6 +9,7 @@
 
 #include "thcrap.h"
 #include "thcrap_update_wrapper.h"
+#include <thcrap_update\src\loader_update.h>
 #include <thcrap_update\src\repo.h>
 
 static FARPROC load_thcrap_update_function(const char* func_name)
@@ -72,6 +73,12 @@ void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data,
 	CALL_WRAPPED_FUNCTION(stack_update, filter_func, filter_data, callback, callback_param)
 }
 ASSERT_FUNCTION_PROTO(stack_update);
+BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args)
+{
+	CALL_WRAPPED_FUNCTION(loader_update_with_UI, exe_fn, args)
+	return 1;
+}
+ASSERT_FUNCTION_PROTO(loader_update_with_UI);
 
 int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache)
 {

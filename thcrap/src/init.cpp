@@ -212,17 +212,7 @@ int thcrap_init(const char *run_cfg_fn)
 	log_printf("Run configuration file: %s\n\n", run_cfg_fn);
 
 	log_printf("Initializing patches...\n");
-	{
-		json_t *patches = json_object_get(run_cfg, "patches");
-		size_t i;
-		json_t *patch_info;
-		json_array_foreach(patches, i, patch_info) {
-			patch_rel_to_abs(patch_info, run_cfg_fn);
-			patch_info = patch_init(patch_info);
-			json_array_set(patches, i, patch_info);
-			json_decref(patch_info);
-		}
-	}
+	patches_init(run_cfg_fn);
 	stack_show_missing();
 
 	log_printf("EXE file name: %s\n", exe_fn);

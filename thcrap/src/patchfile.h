@@ -92,6 +92,10 @@ int patch_file_delete(const json_t *patch_info, const char *fn);
 // file, and returns the resulting JSON object.
 json_t* patch_init(json_t *patch_info);
 
+// Initialize the patches in runconfig by calling patch_init
+// on each patch in its "patches" member.
+void patches_init(const char *run_cfg_fn);
+
 // Turns the possibly relative archive path of [patch_info] into an absolute
 // one, relative to [base_path].
 int patch_rel_to_abs(json_t *patch_info, const char *base_path);

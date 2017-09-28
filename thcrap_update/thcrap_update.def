@@ -18,3 +18,5 @@ EXPORTS
 
 	RepoDiscoverAtURL
 	RepoDiscoverFromLocal
+
+	loader_update_with_UI

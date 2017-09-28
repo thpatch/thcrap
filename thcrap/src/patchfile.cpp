@@ -296,6 +296,19 @@ json_t* patch_init(json_t *patch_info)
 	return json_object_merge(patch_js, patch_info);
 }
 
+void patches_init(const char *run_cfg_fn)
+{
+	json_t *patches = json_object_get(run_cfg, "patches");
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		patch_rel_to_abs(patch_info, run_cfg_fn);
+		patch_info = patch_init(patch_info);
+		json_array_set(patches, i, patch_info);
+		json_decref(patch_info);
+	}
+}
+
 int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 {
 	json_t *archive_obj = json_object_get(patch_info, "archive");

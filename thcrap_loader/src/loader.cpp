@@ -9,6 +9,7 @@
 
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <thcrap.h>
+#include <thcrap_update_wrapper.h>
 
 const char *EXE_HELP =
 	"The executable can either be a game ID which is then looked up in "
@@ -186,7 +187,11 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		ret = -3;
 		goto end;
 	}
-	ret = thcrap_inject_into_new(final_exe_fn, NULL, run_cfg_fn);
+
+	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
+	runconfig_set(run_cfg);
+
+	ret = loader_update_with_UI_wrapper(final_exe_fn, NULL);
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);
