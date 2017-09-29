@@ -146,7 +146,10 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 				rem_size -= byte_ret;
 				p += byte_ret;
 				if (callback) {
-					callback(url, GET_OK, ctx->file_size - rem_size, ctx->file_size, callback_param);
+					if (callback(url, GET_OK, ctx->file_size - rem_size, ctx->file_size, callback_param) == FALSE) {
+						get_ret = GET_CANCELLED;
+						goto end;
+					}
 				}
 			} else {
 				SAFE_FREE(ctx->file_buffer);
@@ -255,6 +258,8 @@ void* server_t::download(
 	// another chance, and on *these* we don't", we'll just disable a
 	// server on any error.
 	switch(*ret) {
+	case GET_CANCELLED:
+		return fail("Cancelled");
 	case GET_INVALID_PARAMETER:
 		// Should never really happen, but if it does, we're probably
 		// offline anyway.

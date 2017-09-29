@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 typedef enum {
+	GET_CANCELLED = -3,
 	GET_OUT_OF_MEMORY = -2,
 	GET_INVALID_PARAMETER = -1,
 	GET_OK = 0,
@@ -21,6 +22,7 @@ typedef enum {
 	GET_NOT_AVAILABLE, // 404, 502, etc.
 } get_result_t;
 
+// These callbacks should return TRUE if the download is allowed to continue and FALSE to cancel it.
 typedef int (*file_callback_t)(const char *fn, get_result_t ret, DWORD file_progress, DWORD file_size, void *param);
 typedef int (*patch_update_callback_t)(const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
 typedef int (*stack_update_callback_t)(DWORD stack_progress, DWORD stack_total, const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);

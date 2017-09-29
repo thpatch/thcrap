@@ -44,11 +44,39 @@ typedef struct {
 	bool game_started;
 	bool background_updates;
 	int time_between_updates;
+	bool cancel_update;
+
+	const char *exe_fn;
+	char *args;
 } loader_update_state_t;
 
 static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	static loader_update_state_t *state = nullptr;
+
 	switch (uMsg) {
+	case WM_CREATE: {
+		CREATESTRUCTW *param = (CREATESTRUCTW*)lParam;
+		state = (loader_update_state_t*)param->lpCreateParams;
+		break;
+	}
+
+	case WM_COMMAND:
+		switch LOWORD(wParam) {
+		case HWND_BUTTON:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				if (state->background_updates == false) {
+					state->cancel_update = true;
+				}
+				EnterCriticalSection(&state->cs);
+				state->game_started = true;
+				LeaveCriticalSection(&state->cs);
+				thcrap_inject_into_new(state->exe_fn, state->args);
+			}
+			break;
+		}
+		break;
+
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;
@@ -85,35 +113,35 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	}
 
 	state->hwnd[HWND_MAIN] = CreateWindowW(L"LoaderUpdateWindow", L"Touhou Community Reliant Automatic Patcher", WS_OVERLAPPED,
-		CW_USEDEFAULT, 0, 500, 285, NULL, NULL, hMod, NULL);
+		CW_USEDEFAULT, 0, 500, 285, NULL, NULL, hMod, state);
 	state->hwnd[HWND_LABEL_STATUS] = CreateWindowW(L"Static", L"Checking for updates...", WS_CHILD | WS_VISIBLE,
-		5, 5, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 5, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL_STATUS, hMod, NULL);
 	state->hwnd[HWND_LABEL1] = CreateWindowW(L"Static", L"", WS_CHILD | WS_VISIBLE,
-		5, 30, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 30, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL1, hMod, NULL);
 	state->hwnd[HWND_PROGRESS1] = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE,
-		5, 55, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 55, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS1, hMod, NULL);
 	state->hwnd[HWND_LABEL2] = CreateWindowW(L"Static", L"", WS_CHILD | WS_VISIBLE,
-		5, 80, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 80, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL2, hMod, NULL);
 	state->hwnd[HWND_PROGRESS2] = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE,
-		5, 105, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 105, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS2, hMod, NULL);
 	state->hwnd[HWND_LABEL3] = CreateWindowW(L"Static", L"", WS_CHILD | WS_VISIBLE,
-		5, 130, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 130, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL3, hMod, NULL);
 	state->hwnd[HWND_PROGRESS3] = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE,
-		5, 155, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 155, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS3, hMod, NULL);
 	state->hwnd[HWND_CHECKBOX] = CreateWindowW(L"Button", L"Keep the updater running in background", WS_CHILD | WS_VISIBLE | BS_CHECKBOX,
-		5, 180, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 180, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX, hMod, NULL);
 	// @Nmlgc It will be nice if your smartdlg is *that* flexible
 	state->hwnd[HWND_LABEL4] = CreateWindowW(L"Static", L"Check for updates every                    minutes", WS_CHILD | WS_VISIBLE | (state->background_updates ? 0 : WS_DISABLED),
-		5, 205, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 205, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL4, hMod, NULL);
 	state->hwnd[HWND_EDIT] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | ES_NUMBER | (state->background_updates ? 0 : WS_DISABLED),
-		155, 205, 35, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		155, 205, 35, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT, hMod, NULL);
 	state->hwnd[HWND_UPDOWN] = CreateWindowW(UPDOWN_CLASSW, NULL, WS_CHILD | WS_VISIBLE | UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_NOTHOUSANDS | UDS_ARROWKEYS | (state->background_updates ? 0 : WS_DISABLED),
-		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, state->hwnd[HWND_MAIN], (HMENU)HWND_UPDOWN, hMod, NULL);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETBUDDY, (WPARAM)state->hwnd[HWND_EDIT], 0);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETRANGE, 0, MAKELPARAM(UD_MAXVAL, 0));
 	state->hwnd[HWND_BUTTON] = CreateWindowW(L"Button", L"Run the game", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
-		5, 230, 480, 18, state->hwnd[HWND_MAIN], NULL, hMod, NULL);
+		5, 230, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON, hMod, NULL);
 
 	if (hFont) {
 		SendMessageW(state->hwnd[HWND_MAIN], WM_SETFONT, (WPARAM)hFont, 0);
@@ -178,7 +206,10 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 	SendMessage(state->hwnd[HWND_PROGRESS2], PBM_SETPOS, patch_progress * 100 / patch_total, 0);
 	SendMessage(state->hwnd[HWND_PROGRESS3], PBM_SETPOS, file_progress * 100 / file_total, 0);
 
-	return 0;
+	if (state->cancel_update) {
+		return FALSE;
+	}
+	return TRUE;
 }
 
 BOOL loader_update_with_UI(const char *exe_fn, char *args)
@@ -207,6 +238,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);
 	state.game_started = false;
+	state.exe_fn = exe_fn;
+	state.args = args;
 	// TODO: pull these values from a config file
 	state.background_updates = false;
 	state.time_between_updates = 5;
