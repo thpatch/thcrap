@@ -74,10 +74,38 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 				thcrap_inject_into_new(state->exe_fn, state->args);
 			}
 			break;
+
+		case HWND_CHECKBOX:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				BOOL enable_state;
+				if (SendMessage(state->hwnd[HWND_CHECKBOX], BM_GETCHECK, 0, 0) == BST_CHECKED) {
+					state->background_updates = true;
+					enable_state = TRUE;
+				}
+				else {
+					state->background_updates = false;
+					enable_state = FALSE;
+				}
+				EnableWindow(state->hwnd[HWND_LABEL4], enable_state);
+				EnableWindow(state->hwnd[HWND_EDIT], enable_state);
+				EnableWindow(state->hwnd[HWND_UPDOWN], enable_state);
+			}
+			break;
+
+		case HWND_EDIT:
+			if (HIWORD(wParam) == EN_CHANGE) {
+				BOOL success;
+				UINT n = GetDlgItemInt(state->hwnd[HWND_MAIN], HWND_EDIT, &success, FALSE);
+				if (success) {
+					state->time_between_updates = n;
+				}
+			}
+			break;
 		}
 		break;
 
 	case WM_DESTROY:
+		state->cancel_update = true;
 		PostQuitMessage(0);
 		break;
 	}
@@ -128,7 +156,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		5, 130, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL3, hMod, NULL);
 	state->hwnd[HWND_PROGRESS3] = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE,
 		5, 155, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS3, hMod, NULL);
-	state->hwnd[HWND_CHECKBOX] = CreateWindowW(L"Button", L"Keep the updater running in background", WS_CHILD | WS_VISIBLE | BS_CHECKBOX,
+	state->hwnd[HWND_CHECKBOX] = CreateWindowW(L"Button", L"Keep the updater running in background", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
 		5, 180, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX, hMod, NULL);
 	// @Nmlgc It will be nice if your smartdlg is *that* flexible
 	state->hwnd[HWND_LABEL4] = CreateWindowW(L"Static", L"Check for updates every                    minutes", WS_CHILD | WS_VISIBLE | (state->background_updates ? 0 : WS_DISABLED),
