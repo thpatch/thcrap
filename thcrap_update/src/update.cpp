@@ -724,3 +724,63 @@ void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_u
 		patch_update(patch_info, filter_func, filter_data, stack_update_callback, &stack_update_param);
 	}
 }
+
+void global_update(stack_update_callback_t callback, void *callback_param)
+{
+	json_t *patches = json_object();
+
+	size_t i;
+	json_t *patch;
+	json_array_foreach(json_object_get(runconfig_get(), "patches"), i, patch) {
+		const char *archive = json_object_get_string(patch, "archive");
+		if (archive) {
+			json_object_set(patches, archive, patch);
+		}
+	}
+
+	WIN32_FIND_DATAA data;
+	HANDLE hFind = FindFirstFile("*.js", &data);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		return;
+	}
+	do {
+		json_t *config = json_load_file(data.cFileName, 0, nullptr);
+		if (!config) {
+			continue;
+		}
+		json_array_foreach(json_object_get(config, "patches"), i, patch) {
+			patch_rel_to_abs(patch, data.cFileName);
+			patch = patch_init(patch);
+			const char *archive = json_object_get_string(patch, "archive");
+			if (archive && json_object_get(patches, archive) == nullptr) {
+				json_object_set(patches, archive, patch);
+			}
+		}
+		json_decref(config);
+	} while (FindNextFile(hFind, &data));
+
+	stack_update_callback_param_t stack_update_param;
+	stack_update_param.callback = callback;
+	stack_update_param.callback_param = callback_param;
+	stack_update_param.stack_total = json_object_size(patches);
+
+	json_t *games = json_load_file("games.js", 0, nullptr);
+	if (!games) {
+		json_decref(patches);
+		return;
+	}
+	json_t *filter = json_object_get_keys_sorted(games);
+	json_decref(games);
+
+	i = 0;
+	const char *key;
+	json_t *patch_info;
+	json_object_foreach(patches, key, patch_info) {
+		stack_update_param.stack_progress = i;
+		patch_update(patch_info, update_filter_games, filter, stack_update_callback, &stack_update_param);
+		i++;
+	}
+
+	json_decref(filter);
+	json_decref(patches);
+}

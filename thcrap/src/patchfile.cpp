@@ -326,24 +326,36 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 	// PathCanonicalize(), a "proper" reimplementation is not exactly trivial.
 	// So we play along for now.
 	if(PathIsRelativeA(archive)) {
-		STRLEN_DEC(base_path);
+		size_t base_path_len;
+		char *base_dir;
+
+		if (!PathIsRelativeA(base_path)) {
+			base_path_len = strlen(base_path) + 1;
+			base_dir = (char*)malloc(base_path_len);
+			strncpy(base_dir, base_path, base_path_len);
+		}
+		else {
+			base_path_len = GetCurrentDirectory(0, NULL) + strlen(base_path) + 1;
+			base_dir = (char*)malloc(base_path_len);
+			GetCurrentDirectory(base_path_len, base_dir);
+			PathAppendA(base_dir, base_path);
+		}
+		str_slash_normalize_win(base_dir);
+		PathRemoveFileSpec(base_dir);
+
 		size_t archive_len = json_string_length(archive_obj) + 1;
 		size_t abs_archive_len = base_path_len + archive_len;
 		VLA(char, abs_archive, abs_archive_len);
-		VLA(char, base_dir, base_path_len);
 		VLA(char, archive_win, archive_len);
 
 		strncpy(archive_win, archive, archive_len);
 		str_slash_normalize_win(archive_win);
 
-		strncpy(base_dir, base_path, base_path_len);
-		PathRemoveFileSpec(base_dir);
-
 		PathCombineA(abs_archive, base_dir, archive_win);
 		json_string_set(archive_obj, abs_archive);
 
+		free(base_dir);
 		VLA_FREE(archive_win);
-		VLA_FREE(base_dir);
 		VLA_FREE(abs_archive);
 		return 0;
 	}

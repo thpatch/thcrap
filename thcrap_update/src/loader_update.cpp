@@ -97,7 +97,9 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 				BOOL success;
 				UINT n = GetDlgItemInt(state->hwnd[HWND_MAIN], HWND_EDIT, &success, FALSE);
 				if (success) {
+					EnterCriticalSection(&state->cs);
 					state->time_between_updates = n;
+					LeaveCriticalSection(&state->cs);
 				}
 			}
 			break;
@@ -158,6 +160,9 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		5, 155, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS3, hMod, NULL);
 	state->hwnd[HWND_CHECKBOX] = CreateWindowW(L"Button", L"Keep the updater running in background", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
 		5, 180, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX, hMod, NULL);
+	if (state->background_updates) {
+		CheckDlgButton(state->hwnd[HWND_MAIN], HWND_CHECKBOX, BST_CHECKED);
+	}
 	// @Nmlgc It will be nice if your smartdlg is *that* flexible
 	state->hwnd[HWND_LABEL4] = CreateWindowW(L"Static", L"Check for updates every                    minutes", WS_CHILD | WS_VISIBLE | (state->background_updates ? 0 : WS_DISABLED),
 		5, 205, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL4, hMod, NULL);
@@ -200,6 +205,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		}
 	}
 
+	state->cancel_update = true;
 	CloseHandle(state->hThread);
 	return TRUE;
 }
@@ -246,16 +252,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	json_t *game;
 	BOOL ret = 0;
 
-	const char *run_cfg_fn = json_object_get_string(runconfig_get(), "run_cfg_fn");
-	// Allow relative directory names
-	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
-	VLA(char, abs_run_cfg_fn, cur_dir_len + strlen(run_cfg_fn));
-	if (PathIsRelativeA(run_cfg_fn)) {
-		GetCurrentDirectory(cur_dir_len, abs_run_cfg_fn);
-		PathAppendA(abs_run_cfg_fn, run_cfg_fn);
-		run_cfg_fn = abs_run_cfg_fn;
-	}
-	patches_init(run_cfg_fn);
+	patches_init(json_object_get_string(runconfig_get(), "run_cfg_fn"));
 	stack_show_missing();
 
 	game = identify(exe_fn);
@@ -266,8 +263,10 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);
 	state.game_started = false;
+	state.cancel_update = false;
 	state.exe_fn = exe_fn;
 	state.args = args;
+	state.state = STATE_INIT;
 	// TODO: pull these values from a config file
 	state.background_updates = false;
 	state.time_between_updates = 5;
@@ -275,12 +274,10 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	state.hThread = CreateThread(nullptr, 0, loader_update_window_create_and_run, &state, 0, nullptr);
 	WaitForSingleObject(state.event_created, INFINITE);
 
-	state.state = STATE_INIT;
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 
 	// TODO: check for thcrap updates here
 
-	// Updating other patches and games...
 	SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
 	EnableWindow(state.hwnd[HWND_BUTTON], TRUE);
 	state.state = STATE_PATCHES_UPDATE;
@@ -294,14 +291,15 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		ret = thcrap_inject_into_new(exe_fn, args);
 	}
 	if (state.background_updates) {
-		while (1) { // TODO: use another condition for this loop
-			// TODO: implemente this function
-			// global_update(loader_update_progress_callback, &state);
+		int time_between_updates;
+		do {
+			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating other patches and games...");
+			global_update(loader_update_progress_callback, &state);
 			EnterCriticalSection(&state.cs);
-			int time_between_updates = state.time_between_updates;
+			time_between_updates = state.time_between_updates;
 			LeaveCriticalSection(&state.cs);
-			Sleep(time_between_updates * 60 * 1000);
-		}
+			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
+		} while (WaitForSingleObject(state.hThread, time_between_updates * 60 * 1000) == WAIT_TIMEOUT);
 	}
 	else {
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
