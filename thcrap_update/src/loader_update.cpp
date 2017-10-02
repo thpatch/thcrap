@@ -267,9 +267,22 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	state.exe_fn = exe_fn;
 	state.args = args;
 	state.state = STATE_INIT;
-	// TODO: pull these values from a config file
-	state.background_updates = false;
-	state.time_between_updates = 5;
+
+	json_t *config = json_load_file_report("config.js");
+	if (!config) {
+		config = json_object();
+	}
+	json_t *background_updates_object = json_object_get(config, "background_updates");
+	if (background_updates_object) {
+		state.background_updates = json_boolean_value(background_updates_object);
+	}
+	else {
+		state.background_updates = true;
+	}
+	state.time_between_updates = (int)json_integer_value(json_object_get(config, "time_between_updates"));
+	if (state.time_between_updates == 0) {
+		state.time_between_updates = 5;
+	}
 
 	state.hThread = CreateThread(nullptr, 0, loader_update_window_create_and_run, &state, 0, nullptr);
 	WaitForSingleObject(state.event_created, INFINITE);
@@ -304,6 +317,11 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	else {
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
+
+	json_object_set_new(config, "background_updates", json_boolean(state.background_updates));
+	json_object_set_new(config, "time_between_updates", json_integer(state.time_between_updates));
+	json_dump_file(config, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+	json_decref(config);
 
 	DeleteCriticalSection(&state.cs);
 	json_decref(game);
