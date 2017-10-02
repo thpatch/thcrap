@@ -16,7 +16,7 @@
 
 const char *ARC_FN = "thcrap_brliron.zip";
 const char *SIG_FN = "thcrap_brliron.zip.sig";
-const char *PREFIX_BACKUP = "thcrap_old_%s_";
+const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
 
@@ -465,7 +465,8 @@ static self_result_t self_replace(zip_t *zip)
 {
 	self_result_t ret = SELF_REPLACE_ERROR;
 	if(zip) {
-		size_t prefix_backup_len = _scprintf(PREFIX_BACKUP, PROJECT_VERSION_STRING()) + 1;
+		// + 1 for the underscore
+		size_t prefix_backup_len = _scprintf(PREFIX_BACKUP, PROJECT_VERSION_STRING()) + 1 + 1;
 		VLA(char, prefix_backup, prefix_backup_len);
 		char backup_dir[TEMP_FN_LEN];
 		const char *fn;
@@ -473,7 +474,12 @@ static self_result_t self_replace(zip_t *zip)
 		size_t i;
 
 		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING());
-		self_tempname(backup_dir, sizeof(backup_dir), prefix_backup);
+		if(!PathFileExistsU(prefix_backup)) {
+			strncpy(backup_dir, prefix_backup, sizeof(backup_dir));
+		} else {
+			strcat(prefix_backup, "_");
+			self_tempname(backup_dir, sizeof(backup_dir), prefix_backup);
+		}
 		VLA_FREE(prefix_backup);
 
 		// We don't error-check CreateDirectory(), as that might return
