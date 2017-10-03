@@ -306,7 +306,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	bool mapExists = GetLastError() == ERROR_ALREADY_EXISTS;
 	HWND *globalHwnd;
 	if (hMap != nullptr) {
-		HWND *globalHwnd = (HWND*)MapViewOfFile(hMap, FILE_MAP_WRITE, 0, 0, sizeof(HWND));
+		globalHwnd = (HWND*)MapViewOfFile(hMap, FILE_MAP_WRITE, 0, 0, sizeof(HWND));
 		if (mapExists) {
 			DWORD otherPid;
 			GetWindowThreadProcessId(*globalHwnd, &otherPid);
