@@ -76,7 +76,7 @@ ASSERT_FUNCTION_PROTO(stack_update);
 BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args)
 {
 	CALL_WRAPPED_FUNCTION(loader_update_with_UI, exe_fn, args)
-	return 1;
+	return thcrap_inject_into_new(exe_fn, args);
 }
 ASSERT_FUNCTION_PROTO(loader_update_with_UI);
 
