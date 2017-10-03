@@ -122,7 +122,7 @@ int IsLatestBuild(json_t *build, json_t **latest)
 int update_notify_thcrap(void)
 {
 	const size_t SELF_MSG_SLOT = (size_t)self_body;
-	self_result_t ret = SELF_OK;
+	self_result_t ret = SELF_NO_UPDATE;
 	json_t *run_cfg = runconfig_get();
 
 	json_t *patches = json_object_get(run_cfg, "patches");
@@ -134,6 +134,7 @@ int update_notify_thcrap(void)
 		min_build = max(min_build, cur_min_build);
 	}
 	if(min_build > PROJECT_VERSION()) {
+		ret = SELF_OK;
 		const char *thcrap_dir = json_object_get_string(run_cfg, "thcrap_dir");
 		const char *thcrap_url = json_object_get_string(run_cfg, "thcrap_url");
 		char *arc_fn = NULL;

@@ -9,6 +9,8 @@
 
 #include <thcrap.h>
 #include "update.h"
+#include "notify.h"
+#include "self.h"
 
 enum {
 	HWND_MAIN,
@@ -269,6 +271,10 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	if(game == nullptr) {
 		return 1;
 	}
+	json_t *old_cfg = runconfig_get();
+	json_object_merge(game, old_cfg);
+	runconfig_set(game);
+	json_decref(old_cfg);
 
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);
@@ -322,7 +328,24 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 
-	// TODO: check for thcrap updates here
+	// Update the thcrap engine
+	size_t cur_dir_len = GetCurrentDirectory(0, nullptr);
+	VLA(char, cur_dir, cur_dir_len);
+	GetCurrentDirectory(cur_dir_len, cur_dir);
+	json_object_set_new(runconfig_get(), "thcrap_dir", json_string(cur_dir));
+	if (update_notify_thcrap() == SELF_OK) {
+		// Re-run the loader
+		LPSTR commandLine = GetCommandLine();
+		STARTUPINFOA sa;
+		PROCESS_INFORMATION pi;
+		memset(&sa, 0, sizeof(sa));
+		memset(&pi, 0, sizeof(pi));
+		sa.cb = sizeof(sa);
+		CreateProcess(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+		goto end;
+	}
 
 	SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
 	EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
@@ -358,6 +381,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
 
+	end:
 	json_object_set_new(config, "background_updates", json_boolean(state.background_updates));
 	json_object_set_new(config, "time_between_updates", json_integer(state.time_between_updates));
 	json_dump_file(config, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
