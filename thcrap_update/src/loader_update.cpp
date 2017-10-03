@@ -284,8 +284,30 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		state.time_between_updates = 5;
 	}
 
+	SetLastError(0);
+	HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), L"thcrap update UI");
+	bool mapExists = GetLastError() == ERROR_ALREADY_EXISTS;
+	HWND *globalHwnd;
+	if (hMap != nullptr) {
+		HWND *globalHwnd = (HWND*)MapViewOfFile(hMap, FILE_MAP_WRITE, 0, 0, sizeof(HWND));
+		if (mapExists) {
+			DWORD otherPid;
+			GetWindowThreadProcessId(*globalHwnd, &otherPid);
+			HANDLE otherProcess = OpenProcess(SYNCHRONIZE, FALSE, otherPid);
+			PostMessageW(*globalHwnd, WM_CLOSE, 0, 0);
+			WaitForSingleObject(otherProcess, 3000);
+			CloseHandle(otherProcess);
+		}
+	}
+	else {
+		globalHwnd = nullptr;
+	}
+
 	state.hThread = CreateThread(nullptr, 0, loader_update_window_create_and_run, &state, 0, nullptr);
 	WaitForSingleObject(state.event_created, INFINITE);
+	if (globalHwnd) {
+		*globalHwnd = state.hwnd[HWND_MAIN];
+	}
 
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 
