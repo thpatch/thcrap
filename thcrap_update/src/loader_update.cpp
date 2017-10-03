@@ -23,7 +23,8 @@ enum {
 	HWND_CHECKBOX,
 	HWND_EDIT,
 	HWND_UPDOWN,
-	HWND_BUTTON,
+	HWND_BUTTON_UPDATE,
+	HWND_BUTTON_RUN,
 	HWND_END
 };
 
@@ -39,6 +40,7 @@ typedef struct {
 	HWND hwnd[HWND_END];
 	CRITICAL_SECTION cs;
 	HANDLE event_created;
+	HANDLE event_require_update;
 	HANDLE hThread;
 	update_state_t state;
 	bool game_started;
@@ -63,7 +65,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
 	case WM_COMMAND:
 		switch LOWORD(wParam) {
-		case HWND_BUTTON:
+		case HWND_BUTTON_RUN:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				if (state->background_updates == false) {
 					state->cancel_update = true;
@@ -72,6 +74,12 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 				state->game_started = true;
 				LeaveCriticalSection(&state->cs);
 				thcrap_inject_into_new(state->exe_fn, state->args);
+			}
+			break;
+
+		case HWND_BUTTON_UPDATE:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				SetEvent(state->event_require_update);
 			}
 			break;
 
@@ -173,8 +181,10 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETBUDDY, (WPARAM)state->hwnd[HWND_EDIT], 0);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETRANGE, 0, MAKELPARAM(UD_MAXVAL, 0));
-	state->hwnd[HWND_BUTTON] = CreateWindowW(L"Button", L"Run the game", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
-		5, 230, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON, hMod, NULL);
+	state->hwnd[HWND_BUTTON_UPDATE] = CreateWindowW(L"Button", L"Check for updates", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
+		5, 230, 235, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_UPDATE, hMod, NULL);
+	state->hwnd[HWND_BUTTON_RUN] = CreateWindowW(L"Button", L"Run the game", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
+		250, 230, 235, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_RUN, hMod, NULL);
 
 	if (hFont) {
 		SendMessageW(state->hwnd[HWND_MAIN], WM_SETFONT, (WPARAM)hFont, 0);
@@ -185,7 +195,8 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		SendMessageW(state->hwnd[HWND_LABEL4], WM_SETFONT, (WPARAM)hFont, 0);
 		SendMessageW(state->hwnd[HWND_CHECKBOX], WM_SETFONT, (WPARAM)hFont, 0);
 		SendMessageW(state->hwnd[HWND_EDIT], WM_SETFONT, (WPARAM)hFont, 0);
-		SendMessageW(state->hwnd[HWND_BUTTON], WM_SETFONT, (WPARAM)hFont, 0);
+		SendMessageW(state->hwnd[HWND_BUTTON_UPDATE], WM_SETFONT, (WPARAM)hFont, 0);
+		SendMessageW(state->hwnd[HWND_BUTTON_RUN], WM_SETFONT, (WPARAM)hFont, 0);
 	}
 
 	ShowWindow(state->hwnd[HWND_MAIN], SW_SHOW);
@@ -206,7 +217,6 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	}
 
 	state->cancel_update = true;
-	CloseHandle(state->hThread);
 	return TRUE;
 }
 /// ---------------------------------------
@@ -262,6 +272,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);
+	state.event_require_update = CreateEvent(nullptr, false, false, nullptr);
 	state.game_started = false;
 	state.cancel_update = false;
 	state.exe_fn = exe_fn;
@@ -314,7 +325,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	// TODO: check for thcrap updates here
 
 	SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
-	EnableWindow(state.hwnd[HWND_BUTTON], TRUE);
+	EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
 	state.state = STATE_PATCHES_UPDATE;
 	stack_update(update_filter_games, json_object_get(game, "game"), loader_update_progress_callback, &state);
 
@@ -327,14 +338,21 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	}
 	if (state.background_updates) {
 		int time_between_updates;
+		HANDLE handles[2];
+		handles[0] = state.hThread;
+		handles[1] = state.event_require_update;
+		DWORD wait_ret;
 		do {
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating other patches and games...");
+			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], FALSE);
 			global_update(loader_update_progress_callback, &state);
 			EnterCriticalSection(&state.cs);
 			time_between_updates = state.time_between_updates;
 			LeaveCriticalSection(&state.cs);
+			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], TRUE);
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
-		} while (WaitForSingleObject(state.hThread, time_between_updates * 60 * 1000) == WAIT_TIMEOUT);
+			wait_ret = WaitForMultipleObjects(2, handles, FALSE, time_between_updates * 60 * 1000);
+		} while (wait_ret == WAIT_OBJECT_0 + 1 || wait_ret == WAIT_TIMEOUT);
 	}
 	else {
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
@@ -346,6 +364,9 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	json_decref(config);
 
 	DeleteCriticalSection(&state.cs);
+	CloseHandle(state.hThread);
+	CloseHandle(state.event_created);
+	CloseHandle(state.event_require_update);
 	json_decref(game);
 	return ret;
 }
