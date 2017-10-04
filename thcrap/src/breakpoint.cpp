@@ -142,7 +142,8 @@ size_t breakpoint_process(x86_reg_t *regs)
 			bp = &BP_Local[i];
 		}
 	}
-	if(bp && bp->func) {
+	if(bp) {
+		assert(bp->func);
 		cave_exec = bp->func(regs, bp->json_obj);
 	}
 	if(cave_exec) {
@@ -196,6 +197,9 @@ int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, size_t 
 
 	bp_local->addr = (BYTE*)addr;
 	bp_local->func = (BreakpointFunc_t)breakpoint_func_get(key);
+	if(!bp_local->func) {
+		return 4;
+	}
 	bp_local->cavesize = cavesize;
 	bp_local->cave = BP_CodeCave + (index * BP_Offset);
 	bp_local->json_obj = bp_json;
