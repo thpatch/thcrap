@@ -14,6 +14,7 @@
 #include "tfcs.h"
 #include "act-nut.h"
 #include "spellcards_generator.h"
+#include "bgm.h"
 #include "plugin.h"
 #include "crypt.h"
 
@@ -86,6 +87,12 @@ int __stdcall thcrap_plugin_init()
 	else {
 		jsonvfs_game_add("data/csv/Item*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
 	}
+
+	char *bgm_pattern_fn = fn_for_game("data/bgm/bgm.csv.jdiff");
+	char *musiccmt_fn = fn_for_game("musiccmt.js");
+	jsonvfs_add(bgm_pattern_fn, { "themes.js", musiccmt_fn }, bgm_generator);
+	SAFE_FREE(musiccmt_fn);
+	SAFE_FREE(bgm_pattern_fn);
 
 	filenames_list = (char*)stack_game_file_resolve("fileslist.txt", &filenames_list_size);
 	LoadFileNameListFromMemory(filenames_list, filenames_list_size);

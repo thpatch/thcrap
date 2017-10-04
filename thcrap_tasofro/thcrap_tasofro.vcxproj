@@ -34,6 +34,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\act-nut.cpp" />
+    <ClCompile Include="src\bgm.cpp" />
     <ClCompile Include="src\crypt.cpp" />
     <ClCompile Include="src\csv.cpp" />
     <ClCompile Include="src\pl.cpp" />
@@ -46,6 +47,7 @@
     </ClCompile>
     <ClCompile Include="src\files_list.cpp" />
     <ClInclude Include="src\act-nut.h" />
+    <ClInclude Include="src\bgm.h" />
     <ClInclude Include="src\crypt.h" />
     <ClInclude Include="src\pl.h" />
     <ClInclude Include="src\plugin.h" />
