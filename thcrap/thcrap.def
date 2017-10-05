@@ -30,7 +30,6 @@ EXPORTS
 	json_object_get_pointer
 	json_object_get_immediate
 	breakpoint_cave_exec_flag
-	breakpoint_func_get
 	breakpoint_process
 	breakpoints_apply
 	breakpoints_remove

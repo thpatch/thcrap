@@ -105,27 +105,6 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 	return !json_is_false(json_object_get(bp_info, "cave_exec"));
 }
 
-BreakpointFunc_t breakpoint_func_get(const char *key)
-{
-	BreakpointFunc_t ret = NULL;
-	if(key) {
-		STRLEN_DEC(key);
-		VLA(char, bp_key, key_len + strlen("BP_") + 1);
-
-		// Multi-slot support
-		const char *slot = strchr(key, '#');
-		if(slot) {
-			key_len = slot - key;
-		}
-
-		strcpy(bp_key, "BP_");
-		strncat(bp_key, key, key_len);
-		ret = (BreakpointFunc_t)func_get(bp_key);
-		VLA_FREE(bp_key);
-	}
-	return ret;
-}
-
 size_t breakpoint_process(x86_reg_t *regs)
 {
 	breakpoint_local_t *bp = NULL;
@@ -180,7 +159,7 @@ int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, size_t 
 {
 	size_t cavesize = json_object_get_hex(bp_json, "cavesize");
 
-	if(!bp_local || !bp_json || !addr) {
+	if(!bp_local || !bp_json || !addr || !key) {
 		return -1;
 	}
 	ZeroMemory(bp_local, sizeof(*bp_local));
@@ -195,15 +174,29 @@ int breakpoint_local_init(breakpoint_local_t *bp_local, json_t *bp_json, size_t 
 		return 3;
 	}
 
+	STRLEN_DEC(key);
+	VLA(char, bp_key, key_len + strlen("BP_") + 1);
+	int ret = 0;
+
+	// Multi-slot support
+	const char *slot = strchr(key, '#');
+	if(slot) {
+		key_len = slot - key;
+	}
+
+	strcpy(bp_key, "BP_");
+	strncat(bp_key, key, key_len);
+	bp_local->func = (BreakpointFunc_t)func_get(bp_key);
+
 	bp_local->addr = (BYTE*)addr;
-	bp_local->func = (BreakpointFunc_t)breakpoint_func_get(key);
 	if(!bp_local->func) {
-		return 4;
+		ret = hackpoints_error_function_not_found(bp_key, 4);
 	}
 	bp_local->cavesize = cavesize;
 	bp_local->cave = BP_CodeCave + (index * BP_Offset);
 	bp_local->json_obj = bp_json;
-	return 0;
+	VLA_FREE(bp_key);
+	return ret;
 }
 
 int breakpoint_apply(breakpoint_local_t *bp)
