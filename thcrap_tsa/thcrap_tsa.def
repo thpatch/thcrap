@@ -4,7 +4,6 @@ EXPORTS
 
 	; Images
 	; ------
-	struct_get
 	format_Bpp
 	format_png_equiv
 	format_alpha_max

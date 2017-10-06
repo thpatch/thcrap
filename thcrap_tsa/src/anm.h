@@ -37,6 +37,56 @@ typedef struct {
 	float x, y, w, h;
 } sprite_t;
 #pragma pack(pop)
+
+// The next two are copy-pasted from thtk's thanm.h.
+#pragma pack(push, 1)
+typedef struct {
+	uint32_t sprites;
+	uint32_t scripts;
+	uint32_t zero1;
+	uint32_t w, h;
+	uint32_t format;
+	uint32_t zero2; /* XXX: A few are 0xff000000. */
+	uint32_t nameoffset;
+	/* XXX: X is unused here. */
+	/* XXX: Y stores the secondary name offset for TH06.
+	*      There is no secondary name when it is zero. */
+	uint32_t x, y;
+	/* 0: TH06
+	* 2: TH07
+	* 3: TH08, TH09
+	* 4: TH95, TH10
+	* 7: TH11, TH12, TH125 */
+	uint32_t version;
+	/* 0  - Random things, everything in TH06. */
+	/* 1  - data/ascii/loading.png for TH08 and TH09. */
+	/* 10 - Mostly sprites? */
+	/* 11 - Used mainly for backgrounds and ascii.png. */
+	uint32_t unknown1;
+	uint32_t thtxoffset;
+	uint32_t hasdata;
+	uint32_t nextoffset;
+	uint32_t zero3;
+} anm_header06_t;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+typedef struct {
+	uint32_t version;
+	uint16_t sprites;
+	uint16_t scripts;
+	uint16_t zero1;
+	uint16_t w, h;
+	uint16_t format;
+	uint32_t nameoffset;
+	uint16_t x, y;
+	uint32_t unknown1;
+	uint32_t thtxoffset;
+	uint32_t hasdata;
+	uint32_t nextoffset;
+	uint32_t zero2[6];
+} anm_header11_t;
+#pragma pack(pop)
 /// ---------
 
 /// Patching types
@@ -125,9 +175,9 @@ void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, forma
 
 /// ANM structure
 /// -------------
-// Fills [entry] with the data of an ANM entry starting at [in], using the
-// format specification from [format].
-int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format);
+// Fills [entry] with the data of an ANM entry starting at [in], automatically
+// detecting the correct source format.
+int anm_entry_init(anm_entry_t *entry, BYTE *in);
 
 void anm_entry_clear(anm_entry_t *entry);
 /// -------------
