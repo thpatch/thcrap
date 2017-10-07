@@ -62,7 +62,6 @@
     </ClCompile>
     <ClCompile Include="src\inject.cpp" />
     <ClCompile Include="src\shelllink.cpp" />
-    <ClCompile Include="src\specs.cpp" />
     <ClCompile Include="src\stack.cpp" />
     <ClCompile Include="src\strings.cpp" />
     <ClCompile Include="src\util.cpp" />
@@ -93,7 +92,6 @@
     <ClInclude Include="src\sha256.h" />
     <ClInclude Include="src\inject.h" />
     <ClInclude Include="src\shelllink.h" />
-    <ClInclude Include="src\specs.h" />
     <ClInclude Include="src\stack.h" />
     <ClInclude Include="src\strings.h" />
     <ClInclude Include="src\util.h" />

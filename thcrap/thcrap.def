@@ -234,11 +234,6 @@ EXPORTS
 	CreateLink
 	CreateShortcuts
 
-	; Specs
-	; -----
-	specs_mod_init
-	specs_get
-
 	; Stack
 	; -----
 	resolve_chain

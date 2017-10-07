@@ -40,7 +40,6 @@ extern "C" {
 #include "inject.h"
 #include "init.h"
 #include "jsondata.h"
-#include "specs.h"
 #include "zip.h"
 #include "bp_file.h"
 #include "xpcompat.h"
