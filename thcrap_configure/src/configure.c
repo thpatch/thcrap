@@ -201,7 +201,7 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 	(void)patch; (void)patch_progress; (void)patch_total;
 	(void)fn; (void)ret; (void)param;
 	printf("%3d%%\b\b\b\b", (int)file_progress * 100 / file_total);
-	return 0;
+	return TRUE;
 }
 
 int __cdecl wmain(int argc, wchar_t *wargv[])
