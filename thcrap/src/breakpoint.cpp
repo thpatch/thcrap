@@ -144,7 +144,7 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 	return value;
 }
 
-size_t json_expression_value(json_t *val, x86_reg_t *regs)
+size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 {
 	if (!val || json_is_null(val)) {
 		return 0;
@@ -153,14 +153,14 @@ size_t json_expression_value(json_t *val, x86_reg_t *regs)
 		return (size_t)json_integer_value(val);
 	}
 	else if (!json_is_string(val)) {
-		log_printf("json_expression_value: the expression must be either an integer or a string.\n");
+		log_func_printf("the expression must be either an integer or a string.\n");
 		return 0;
 	}
 	const char *expr = json_string_value(val);
 	return eval_expr(&expr, regs, '\0');
 }
 
-size_t *json_expression_pointer(json_t *val, x86_reg_t *regs)
+size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 {
 	const char *expr = json_string_value(val);
 	if (!expr) {
@@ -182,11 +182,11 @@ size_t *json_expression_pointer(json_t *val, x86_reg_t *regs)
 		expr++;
 		ptr = (size_t*)eval_expr(&expr, regs, ']');
 		if (*expr != '\0') {
-			log_printf("Warning: leftover bytes after dereferencing in json_expression_pointer: '%s'\n", expr);
+			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr);
 		}
 		return ptr;
 	}
-	log_print("Error: calling json_expression_pointer with something other than a register or a dereferencing.\n");
+	log_func_printf("Error: called with something other than a register or a dereferencing.\n");
 	return NULL;
 }
 
@@ -195,31 +195,9 @@ size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 	return reg(regs, json_string_value(val), nullptr);
 }
 
-size_t* json_pointer_value(json_t *val, x86_reg_t *regs)
-{
-	size_t *ret = json_register_pointer(val, regs);
-	return ret ? ret : (size_t *)json_hex_value(val);
-}
-
-size_t json_immediate_value(json_t *val, x86_reg_t *regs)
-{
-	size_t *ret = json_register_pointer(val, regs);
-	return ret ? *ret : json_hex_value(val);
-}
-
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
 {
 	return json_register_pointer(json_object_get(object, key), regs);
-}
-
-size_t json_object_get_expression(json_t *object, x86_reg_t *regs, const char *key)
-{
-	return json_expression_value(json_object_get(object, key), regs);
-}
-
-size_t* json_object_get_expression_pointer(json_t *object, x86_reg_t *regs, const char *key)
-{
-	return json_expression_pointer(json_object_get(object, key), regs);
 }
 
 size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key)

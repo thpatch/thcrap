@@ -104,8 +104,8 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	struct FileHeader *header = (struct FileHeader*)json_object_get_expression(bp_info, regs, "struct");
-	DWORD *key = (DWORD*)json_object_get_expression(bp_info, regs, "key");
+	struct FileHeader *header = (struct FileHeader*)json_object_get_immediate(bp_info, regs, "struct");
+	DWORD *key = (DWORD*)json_object_get_immediate(bp_info, regs, "key");
 	// ----------
 
 	if (!header || !key)
@@ -179,11 +179,11 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	BYTE *newBuffer = (BYTE*)json_object_get_expression(bp_info, regs, "buffer");
-	DWORD newSize = json_object_get_expression(bp_info, regs, "size");
+	BYTE *newBuffer = (BYTE*)json_object_get_immediate(bp_info, regs, "buffer");
+	DWORD newSize = json_object_get_immediate(bp_info, regs, "size");
 	DWORD **ppNumberOfBytesRead = (DWORD**)json_object_get_register(bp_info, regs, "pNumberOfBytesRead");
-	HANDLE hFile = (HANDLE)json_object_get_expression(bp_info, regs, "hFile");
-	DWORD hash = json_object_get_expression(bp_info, regs, "hash");
+	HANDLE hFile = (HANDLE)json_object_get_immediate(bp_info, regs, "hFile");
+	DWORD hash = json_object_get_immediate(bp_info, regs, "hash");
 	// ----------
 
 	static DWORD size = 0;
