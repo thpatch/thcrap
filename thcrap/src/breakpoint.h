@@ -46,8 +46,9 @@ typedef struct {
   */
 typedef int (*BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
 
-// Returns a pointer to the register [regname] in [regs]
-size_t* reg(x86_reg_t *regs, const char *regname);
+// Returns a pointer to the register [regname] in [regs]. [endptr] behaves
+// like the endptr parameter of strtol(), and can be a nullptr if not needed.
+size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
 /// Register and memory values from JSON
 /// ====================================

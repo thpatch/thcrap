@@ -44,7 +44,7 @@ static const size_t BP_CodeCave_Limits[2] = {CALL_LEN, (BP_Offset - CALL_LEN)};
 #define ESI 0x00697365
 #define EDI 0x00696465
 
-size_t* reg(x86_reg_t *regs, const char *regname)
+size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr)
 {
 	uint32_t cmp;
 
@@ -54,6 +54,9 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 	memcpy(&cmp, regname, 4);
 	strlwr((char *)&cmp);
 
+	if(endptr) {
+		*endptr = regname + 3;
+	}
 	switch(cmp) {
 		case EAX: return &regs->eax;
 		case ECX: return &regs->ecx;
@@ -63,6 +66,9 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 		case EBP: return &regs->ebp;
 		case ESI: return &regs->esi;
 		case EDI: return &regs->edi;
+	}
+	if(endptr) {
+		*endptr = regname;
 	}
 	return NULL;
 }
@@ -92,10 +98,9 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 				cur_value = *(size_t*)cur_value;
 			}
 		}
-		else if ((cur_value = (size_t)reg(regs, expr)) != 0) {
+		else if ((cur_value = (size_t)reg(regs, expr, &expr)) != 0) {
 			cur_value = *(size_t*)cur_value;
 			log_printf("register is %x\n", cur_value);
-			expr += 3;
 		}
 		else if ('0' <= *expr && *expr <= '9') {
 			// Using default strtol conversion: base determined by the prefix
@@ -169,9 +174,10 @@ size_t *json_expression_pointer(json_t *val, x86_reg_t *regs)
 	// - A dereferencing (for example "[ebp-8]"), where we'll skip the top-level dereferencing. After all, ebp-8 points to [ebp-8].
 	// - A register name, without anything else. In that case, we can return a pointer to the register in the x86_reg_t structure.
 	size_t *ptr;
+	const char *reg_end;
 
-	ptr = reg(regs, expr);
-	if (ptr && expr[4] == '\0') {
+	ptr = reg(regs, expr, &reg_end);
+	if (ptr && reg_end[0] == '\0') {
 		return ptr;
 	}
 	else if (expr[0] == '[') {
@@ -188,7 +194,7 @@ size_t *json_expression_pointer(json_t *val, x86_reg_t *regs)
 
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
-	return reg(regs, json_string_value(val));
+	return reg(regs, json_string_value(val), nullptr);
 }
 
 size_t* json_pointer_value(json_t *val, x86_reg_t *regs)
