@@ -68,6 +68,125 @@ size_t* reg(x86_reg_t *regs, const char *regname)
 	return NULL;
 }
 
+static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
+{
+	const char *expr = *expr_ptr;
+	size_t value = NULL;
+	char op = '+';
+
+	log_printf("entering eval_expr: '%s'\n", expr);
+	while (*expr && *expr != end) {
+		//log_printf("while: '%s'\n", expr);
+		if (strchr("+-*/%", *expr)) {
+			//log_printf("op: '%s'\n", expr);
+			op = *expr;
+			expr++;
+			continue;
+		}
+
+		size_t cur_value;
+		if (*expr == '[') {
+			//log_printf("[: '%s'\n", expr);
+			expr++;
+			cur_value = eval_expr(&expr, regs, ']');
+			if (cur_value) {
+				cur_value = *(size_t*)cur_value;
+			}
+		}
+		else if ((cur_value = (size_t)reg(regs, expr)) != 0) {
+			cur_value = *(size_t*)cur_value;
+			log_printf("register is %x\n", cur_value);
+			expr += 3;
+		}
+		else if ('0' <= *expr && *expr <= '9') {
+			// Using default strtol conversion: base determined by the prefix
+			cur_value = strtol(expr, (char **)&expr, 0);
+		}
+		else if ('a' <= tolower(*expr) && tolower(*expr) <= 'f') {
+			// Using base 16 explicitely
+			cur_value = strtol(expr, (char **)&expr, 16);
+		}
+		else {
+			log_printf("Error while evaluating expression around '%s': unknown character.\n", expr);
+			return 0;
+		}
+
+		switch (op) {
+		case '+':
+			value += cur_value;
+			break;
+		case '-':
+			value -= cur_value;
+			break;
+		case '*':
+			value *= cur_value;
+			break;
+		case '/':
+			value /= cur_value;
+			break;
+		case '%':
+			value %= cur_value;
+			break;
+		}
+		log_printf("sum is %x\n", value);
+	}
+
+	if (end == ']' && *expr != end) {
+		log_printf("Error while evaluating expression around '%s': '[' without matching ']'.\n", expr);
+		return 0;
+	}
+
+	expr++;
+	*expr_ptr = expr;
+	log_printf("exiting with value %x\n", value);
+	return value;
+}
+
+size_t json_expression_value(json_t *val, x86_reg_t *regs)
+{
+	if (!val || json_is_null(val)) {
+		return 0;
+	}
+	if (json_is_integer(val)) {
+		return (size_t)json_integer_value(val);
+	}
+	else if (!json_is_string(val)) {
+		log_printf("json_expression_value: the expression must be either an integer or a string.\n");
+		return 0;
+	}
+	const char *expr = json_string_value(val);
+	return eval_expr(&expr, regs, '\0');
+}
+
+size_t *json_expression_pointer(json_t *val, x86_reg_t *regs)
+{
+	const char *expr = json_string_value(val);
+	if (!expr) {
+		return NULL;
+	}
+
+	// This function returns a pointer to an expression - that means the expression must resolve to something that can be pointed to.
+	// We'll accept only 2 kind of expressions:
+	// - A dereferencing (for example "[ebp-8]"), where we'll skip the top-level dereferencing. After all, ebp-8 points to [ebp-8].
+	// - A register name, without anything else. In that case, we can return a pointer to the register in the x86_reg_t structure.
+	size_t *ptr;
+
+	ptr = reg(regs, expr);
+	if (ptr && expr[4] == '\0') {
+		return ptr;
+	}
+	else if (expr[0] == '[') {
+		expr++;
+		ptr = (size_t*)eval_expr(&expr, regs, ']');
+		if (*expr != '\0') {
+			log_printf("Warning: leftover bytes after dereferencing in json_expression_pointer: '%s'\n", expr);
+		}
+		return ptr;
+	}
+	log_print("Error: calling json_expression_pointer with something other than a register or a dereferencing.\n");
+	return NULL;
+}
+
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
 	return reg(regs, json_string_value(val));
@@ -88,6 +207,16 @@ size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
 {
 	return json_register_pointer(json_object_get(object, key), regs);
+}
+
+size_t json_object_get_expression(json_t *object, x86_reg_t *regs, const char *key)
+{
+	return json_expression_value(json_object_get(object, key), regs);
+}
+
+size_t* json_object_get_expression_pointer(json_t *object, x86_reg_t *regs, const char *key)
+{
+	return json_expression_pointer(json_object_get(object, key), regs);
 }
 
 size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key)

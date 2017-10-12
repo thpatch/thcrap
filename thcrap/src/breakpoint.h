@@ -51,6 +51,12 @@ size_t* reg(x86_reg_t *regs, const char *regname);
 
 /// Register and memory values from JSON
 /// ====================================
+// Evaluate the JSON string [val] as an expression.
+size_t json_expression_value(json_t *val, x86_reg_t *reg);
+
+// Evaluate the JSON string [val] as an expression, and returns a pointer to the result.
+size_t* json_expression_pointer(json_t *val, x86_reg_t *reg);
+
 // Calls reg() on the JSON string [val].
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs);
 
@@ -61,6 +67,12 @@ size_t* json_pointer_value(json_t *val, x86_reg_t *regs);
 // If [val] is a register name, returns the value of that register in [regs].
 // Otherwise, returns the hex value of [val].
 size_t json_immediate_value(json_t *val, x86_reg_t *regs);
+
+// Calls json_expression_value() on the value of [key] in [object].
+size_t json_object_get_expression(json_t *object, x86_reg_t *regs, const char *key);
+
+// Calls json_expression_pointer() on the value of [key] in [object].
+size_t* json_object_get_expression_pointer(json_t *object, x86_reg_t *regs, const char *key);
 
 // Calls json_register_pointer() on the value of [key] in [object].
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
