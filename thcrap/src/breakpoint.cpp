@@ -102,17 +102,15 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 			cur_value = *(size_t*)cur_value;
 			log_printf("register is %x\n", cur_value);
 		}
-		else if ('0' <= *expr && *expr <= '9') {
-			// Using default strtol conversion: base determined by the prefix
-			cur_value = strtol(expr, (char **)&expr, 0);
-		}
-		else if ('a' <= tolower(*expr) && tolower(*expr) <= 'f') {
-			// Using base 16 explicitely
-			cur_value = strtol(expr, (char **)&expr, 16);
-		}
 		else {
-			log_printf("Error while evaluating expression around '%s': unknown character.\n", expr);
-			return 0;
+			str_address_ret_t addr_ret;
+			cur_value = str_address_value(expr, nullptr, &addr_ret);
+			if(addr_ret.error) {
+				// TODO: Print a message specific to the error code.
+				log_printf("Error while evaluating expression around '%s': unknown character.\n", expr);
+				return 0;
+			}
+			expr = addr_ret.endptr;
 		}
 
 		switch (op) {

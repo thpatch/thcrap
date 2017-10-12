@@ -90,15 +90,17 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 	char *endptr_temp;
 	char **endptr = ret ? (char **)&ret->endptr : &endptr_temp;
 
-	if(str[0] != '\0' && str[1] != '\0' && str[2] != '\0') {
+	if(str[0] != '\0') {
 		// Module-relative hex values
 		if(!strnicmp(str, "Rx", 2)) {
 			val += (size_t)(hMod ? hMod : GetModuleHandle(NULL));
 			base = 16;
 			offset = 2;
-		} else if(!strnicmp(str, "0x", 2)) {
+		}
+		// TODO: This should really scan all characters of the string,
+		// not just the first one.
+		else if('a' <= tolower(str[0]) && tolower(str[0]) <= 'f') {
 			base = 16;
-			offset = 2;
 		}
 	}
 	errno = 0;
