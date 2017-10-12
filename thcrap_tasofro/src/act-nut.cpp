@@ -15,7 +15,13 @@
 int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, json_t *patch)
 {
 	if (patch == nullptr) {
+		// Nothing to do
 		return 0;
+	}
+
+	if (actnutobj == nullptr) {
+		log_print("Act/Nut: parsing failed\n");
+		return 1;
 	}
 
 	const char *key;
@@ -39,6 +45,7 @@ int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, js
 
 	ActNut::MemoryBuffer *buf = ActNut::new_MemoryBuffer(ActNut::MemoryBuffer::SHARE, (uint8_t *)file_out, size_out, false);
 	if (!actnutobj->writeValue(*buf)) {
+		log_print("Act/Nut: writing failed\n");
 		ActNut::delete_buffer(buf);
 		ActNut::delete_object(actnutobj);
 		return 1;
