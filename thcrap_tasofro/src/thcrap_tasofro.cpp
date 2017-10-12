@@ -104,25 +104,13 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	BYTE **pHeader = (BYTE**)json_object_get_register(bp_info, regs, "struct");
-	DWORD **pKey = (DWORD**)json_object_get_register(bp_info, regs, "key");
-	DWORD key_offset = (DWORD)json_integer_value(json_object_get(bp_info, "key_offset"));
+	struct FileHeader *header = (struct FileHeader*)json_object_get_expression(bp_info, regs, "struct");
+	DWORD *key = (DWORD*)json_object_get_expression(bp_info, regs, "key");
 	// ----------
 
-	DWORD *key;
-	if (!pHeader || !*pHeader)
+	if (!header || !key)
 		return 1;
-	if (pKey && *pKey) {
-		key = *pKey;
-	}
-	else if (key_offset) {
-		key = (DWORD*)(*pHeader + key_offset);
-	}
-	else {
-		return 1;
-	}
 
-	struct FileHeader *header = (struct FileHeader*)(*pHeader + json_integer_value(json_object_get(bp_info, "struct_offset")));
 	struct FileHeaderFull *full_header = register_file_header(header, key);
 	file_rep_t *fr = &full_header->fr;
 
@@ -170,17 +158,17 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
   * It takes place in the game's file reader, right after it calls its ReadFile caller.
   * At this point, we have the game's file structure in ESI, and so the filename's hash - we can't
   * read the wrong file.
-  * The game's file structure have the following fields:
-  * DWORD unknown1;
+  * In th145, the game's file structure have the following fields:
+  * void* vtable;
   * HANDLE hFile;
   * BYTE buffer[0x10000];
   * DWORD LastReadFileSize; // Last value returned in lpNumberOfBytesRead in ReadFile
   * DWORD Offset; // Offset for the reader. I don't know what happens to it when it's bigger than 0x10000
   * DWORD LastReadSize; // Last read size asked to the reader
-  * DWORD unknown2;
+  * DWORD unknown1;
   * DWORD FileSize;
   * DWORD FileNameHash;
-  * DWORD unknown3;
+  * DWORD unknown2;
   * DWORD XorOffset; // Offset used by the XOR function
   * DWORD Key[5]; // 32-bytes encryption key used for XORing. The 5th DWORD is a copy of the 1st DWORD.
   * DWORD Aux; // Contains the last DWORD read from the file. Used during XORing.
@@ -191,52 +179,38 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	json_t *jBuffer = json_object_get(bp_info, "buffer");
-	json_t *jSize = json_object_get(bp_info, "size");
-	BYTE **file_struct = (BYTE**)json_object_get_register(bp_info, regs, "file_struct");
-	BYTE **pBuffer = (BYTE**)reg(regs, json_string_value(jBuffer));
-	DWORD *pSize = (DWORD*)reg(regs, json_string_value(jSize));
+	BYTE *newBuffer = (BYTE*)json_object_get_expression(bp_info, regs, "buffer");
+	DWORD newSize = json_object_get_expression(bp_info, regs, "size");
 	DWORD **ppNumberOfBytesRead = (DWORD**)json_object_get_register(bp_info, regs, "pNumberOfBytesRead");
-	DWORD hFile_offset = (DWORD)json_integer_value(json_object_get(bp_info, "hFile_offset"));
-	DWORD hash_offset = (DWORD)json_integer_value(json_object_get(bp_info, "hash_offset"));
-	DWORD buffer_offset = (DWORD)json_integer_value(json_object_get(bp_info, "buffer_offset"));
+	HANDLE hFile = (HANDLE)json_object_get_expression(bp_info, regs, "hFile");
+	DWORD hash = json_object_get_expression(bp_info, regs, "hash");
 	// ----------
 
 	static DWORD size = 0;
 	static BYTE *buffer = NULL;
 	static DWORD *pNumberOfBytesRead = NULL;
 
-	if (pBuffer && *pBuffer) {
-		buffer = *pBuffer;
+	if (newBuffer) {
+		buffer = newBuffer;
 	}
-	else if (jBuffer) {
-		buffer = (BYTE*)json_integer_value(jBuffer);
-	}
-	if (pSize) {
-		size = *pSize;
-	}
-	else if (jSize) {
-		size = (DWORD)json_integer_value(jSize);
+	if (newSize) {
+		size = newSize;
 	}
 	if (ppNumberOfBytesRead) {
 		pNumberOfBytesRead = *ppNumberOfBytesRead;
 	}
 
-	if (!file_struct) {
+	if (!hFile || !hash) {
 		return 1;
 	}
 
-	struct FileHeaderFull *header = hash_to_file_header(*(DWORD*)(*file_struct + hash_offset));
+	struct FileHeaderFull *header = hash_to_file_header(hash);
 	if (!header || !header->path[0] || (!header->fr.game_buffer && !header->fr.patch)) {
 		// Nothing to patch.
 		return 1;
 	}
 
-	HANDLE hFile = *(HANDLE*)(*file_struct + hFile_offset);
 	DWORD numberOfBytesRead;
-	if (buffer == NULL) {
-		buffer = *file_struct + buffer_offset;
-	}
 	if (size == 0) {
 		size = 65536;
 	}
@@ -279,7 +253,7 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %u, requested size %u, file_rep_size left: %d, chosen size: %u\n",
-		header->path, *(DWORD*)(*file_struct + 0x1001c), offset, size, header->size - offset, copy_size);
+		header->path, hash, offset, size, header->size - offset, copy_size);
 	memcpy(buffer, (BYTE*)header->fr.game_buffer + offset, copy_size);
 	if (pNumberOfBytesRead && *pNumberOfBytesRead != copy_size) {
 		SetFilePointer(hFile, copy_size - *pNumberOfBytesRead, NULL, FILE_CURRENT);
