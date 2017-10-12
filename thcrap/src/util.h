@@ -106,6 +106,14 @@ void str_hexdate_format(char format[11], uint32_t date);
 #define STR_ADDRESS_ERROR_OVERFLOW 0x1
 #define STR_ADDRESS_ERROR_GARBAGE 0x2
 
+typedef struct {
+	// Points to the first character after the number
+	const char *endptr;
+
+	// Bitfield of the flags #defined above
+	uint8_t error;
+} str_address_ret_t;
+
 /**
   * Returns the numeric value of a stringified address at the machine's word
   * size. The following string prefixes are supported:
@@ -115,7 +123,7 @@ void str_hexdate_format(char format[11], uint32_t date);
   *	        If hMod is NULL, the main module of the current process is used.
   *	- Everything else is parsed as a decimal number.
   *
-  * If [error] is not NULL, it is filled with the STR_ADDRESS_ERROR_* values
-  * to indicate potential parse errors.
+  * [ret] can be a nullptr if a potential parse error and/or a pointer to the
+  * end of the parsed address are not needed.
   */
-size_t str_address_value(const char *str, HMODULE hMod, uint8_t *error);
+size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);

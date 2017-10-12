@@ -57,15 +57,15 @@ void stringlocs_reparse(void)
 			stringlocs_log_error("must be a JSON string");
 			continue;
 		}
-		uint8_t error;
-		const char *addr = (const char *)str_address_value(key, NULL, &error);
-		if(error == STR_ADDRESS_ERROR_NONE) {
+		str_address_ret_t addr_ret;
+		auto *addr = (const char *)str_address_value(key, NULL, &addr_ret);
+		if(addr_ret.error == STR_ADDRESS_ERROR_NONE) {
 			stringlocs[addr] = json_string_value(val);
 		}
-		if(error & STR_ADDRESS_ERROR_OVERFLOW) {
+		if(addr_ret.error & STR_ADDRESS_ERROR_OVERFLOW) {
 			stringlocs_log_error("exceeds %d bits");
 		}
-		if(error & STR_ADDRESS_ERROR_GARBAGE) {
+		if(addr_ret.error & STR_ADDRESS_ERROR_GARBAGE) {
 			stringlocs_log_error("has garbage at the end");
 		}
 #undef stringlocs_log_error
