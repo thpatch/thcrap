@@ -10,15 +10,6 @@
 #include <thcrap.h>
 #include "self.h"
 
-static const char *update_url_message =
-	"The new version can be found at\n"
-	"\n"
-	"\t";
-static const char *mbox_copy_message =
-	"\n"
-	"\n"
-	"(Press Ctrl+C to copy the text of this message box and the URL)";
-
 /// Self-updating messages
 /// ----------------------
 static UINT self_msg_type[] = {
@@ -104,6 +95,27 @@ const char *self_sig_error =
 	"this problem has been resolved.";
 /// ----------------------
 
+/// Game build messages
+/// -------------------
+const char *oldbuild_title = "Old version detected";
+
+const char *oldbuild_header =
+	"You are running an old version of ${game_title} (${build_running}).\n"
+	"\n";
+
+const char *oldbuild_maybe_supported =
+	"${project_short} may or may not work with this version, so we recommend updating to the latest official version (${build_latest}).";
+
+const char *oldbuild_url =
+	"\n"
+	"\n"
+	"You can download the update at\n"
+	"\n"
+	"\t${url_update}\n"
+	"\n"
+	"(Press Ctrl+C to copy the text of this message box and the URL)";
+/// -------------------
+
 int IsLatestBuild(json_t *build, json_t **latest)
 {
 	json_t *json_latest = json_object_get(runconfig_get(), "latest");
@@ -174,19 +186,24 @@ int update_notify_game(void)
 	}
 	ret = IsLatestBuild(build, &latest) == 0 && json_is_string(latest);
 	if(ret) {
-		const char *url_update = json_object_get_string(run_cfg, "url_update");
-		log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION,
-			"You are running an old version of %s (%s).\n"
-			"\n"
-			"%s may or may not work with this version, so we recommend updating "
-			"your game to the latest official version (%s).%s%s%s%s",
-			json_string_value(title), json_string_value(build), PROJECT_NAME_SHORT(),
-			json_string_value(latest),
-			url_update ? "\n\n": "",
-			url_update ? update_url_message : "",
-			url_update ? url_update : "",
-			url_update ? mbox_copy_message : ""
-		);
+		const size_t MSG_SLOT = (size_t)oldbuild_header;
+		unsigned int msg_type = MB_ICONINFORMATION;
+		auto *url_update = json_object_get_string(run_cfg, "url_update");
+
+		strings_strclr(MSG_SLOT);
+		strings_strcat(MSG_SLOT, oldbuild_header);
+		strings_strcat(MSG_SLOT, oldbuild_maybe_supported);
+		if(url_update) {
+			strings_strcat(MSG_SLOT, oldbuild_url);
+		}
+
+		strings_replace(MSG_SLOT, "${game_title}", json_string_value(title));
+		strings_replace(MSG_SLOT, "${build_running}", json_string_value(build));
+		strings_replace(MSG_SLOT, "${build_latest}", json_string_value(latest));
+		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
+		auto *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
+
+		log_mbox(oldbuild_title, MB_OK | msg_type, msg);
 	}
 	return ret;
 }
