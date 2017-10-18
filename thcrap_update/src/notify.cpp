@@ -106,6 +106,9 @@ const char *oldbuild_header =
 const char *oldbuild_maybe_supported =
 	"${project_short} may or may not work with this version, so we recommend updating to the latest official version (${build_latest}).";
 
+const char *oldbuild_not_supported =
+	"${project_short} will *not* work with this version. Please update to the latest official version, ${build_latest}.";
+
 const char *oldbuild_url =
 	"\n"
 	"\n"
@@ -190,9 +193,35 @@ int update_notify_game(void)
 		unsigned int msg_type = MB_ICONINFORMATION;
 		auto *url_update = json_object_get_string(run_cfg, "url_update");
 
+		// Try to find out whether this version actually is supported or
+		// not, by looking for a <game>.<version>.js file in the stack.
+		// There are a number of drawbacks to this approach, though:
+		// • It can't tell the *amount* of work that actually was done
+		//   for this specific version.
+		// • What if one patch in the stack *does* provide support for
+		//   this older version, but others don't?
+		// • Stringlocs are also part of support. -.-
+		const auto *BUILD_JS_FORMAT = "%s.%s.js";
+		auto *game_str = json_object_get_string(run_cfg, "game");
+		auto *build_str = json_string_value(build);
+		auto build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
+		VLA(char, build_js_fn, build_js_fn_len);
+		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
+		auto *build_js_chain = json_pack("[s]", build_js_fn);
+		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
+		auto supported = build_js != nullptr;
+		json_decref_safe(build_js);
+		json_decref_safe(build_js_chain);
+		VLA_FREE(build_js_fn);
+
 		strings_strclr(MSG_SLOT);
 		strings_strcat(MSG_SLOT, oldbuild_header);
-		strings_strcat(MSG_SLOT, oldbuild_maybe_supported);
+		if(supported) {
+			strings_strcat(MSG_SLOT, oldbuild_maybe_supported);
+		} else {
+			msg_type = MB_ICONEXCLAMATION;
+			strings_strcat(MSG_SLOT, oldbuild_not_supported);
+		}
 		if(url_update) {
 			strings_strcat(MSG_SLOT, oldbuild_url);
 		}
