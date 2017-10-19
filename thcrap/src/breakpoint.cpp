@@ -57,7 +57,7 @@ size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr)
 	if(endptr) {
 		*endptr = regname + 3;
 	}
-	switch(cmp) {
+	switch(cmp & 0x00FFFFFF) {
 		case EAX: return &regs->eax;
 		case ECX: return &regs->ecx;
 		case EDX: return &regs->edx;
@@ -79,11 +79,8 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 	size_t value = NULL;
 	char op = '+';
 
-	log_printf("entering eval_expr: '%s'\n", expr);
 	while (*expr && *expr != end) {
-		//log_printf("while: '%s'\n", expr);
 		if (strchr("+-*/%", *expr)) {
-			//log_printf("op: '%s'\n", expr);
 			op = *expr;
 			expr++;
 			continue;
@@ -91,7 +88,6 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 
 		size_t cur_value;
 		if (*expr == '[') {
-			//log_printf("[: '%s'\n", expr);
 			expr++;
 			cur_value = eval_expr(&expr, regs, ']');
 			if (cur_value) {
@@ -100,12 +96,11 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 		}
 		else if ((cur_value = (size_t)reg(regs, expr, &expr)) != 0) {
 			cur_value = *(size_t*)cur_value;
-			log_printf("register is %x\n", cur_value);
 		}
 		else {
 			str_address_ret_t addr_ret;
 			cur_value = str_address_value(expr, nullptr, &addr_ret);
-			if(addr_ret.error) {
+			if (expr == addr_ret.endptr || (addr_ret.error && addr_ret.error != STR_ADDRESS_ERROR_GARBAGE)) {
 				// TODO: Print a message specific to the error code.
 				log_printf("Error while evaluating expression around '%s': unknown character.\n", expr);
 				return 0;
@@ -130,7 +125,6 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 			value %= cur_value;
 			break;
 		}
-		log_printf("sum is %x\n", value);
 	}
 
 	if (end == ']' && *expr != end) {
@@ -140,7 +134,6 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 
 	expr++;
 	*expr_ptr = expr;
-	log_printf("exiting with value %x\n", value);
 	return value;
 }
 
