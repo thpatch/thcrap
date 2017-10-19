@@ -11,6 +11,7 @@ EXPORTS
 	; ----------------
 	file_rep_init
 	file_rep_clear
+	file_rep_get
 
 	fr_tls_get
 
@@ -19,6 +20,8 @@ EXPORTS
 	BP_file_buffer
 	BP_file_load
 	BP_file_loaded
+	BP_file_header
+	BP_fragmented_read_file
 
 	; Breakpoints
 	; -----------

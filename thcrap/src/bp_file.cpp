@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <map>
 
 #define POST_JSON_SIZE(fr) (fr)->pre_json_size + (fr)->patch_size
 
@@ -21,6 +22,7 @@ int file_rep_init(file_rep_t *fr, const char *file_name)
 	fn_len = strlen(file_name) + 1;
 	fr->name = EnsureUTF8(file_name, fn_len);
 	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->pre_json_size);
+	fr->offset = -1;
 	fr->hooks = patchhooks_build(fr->name);
 	if (fr->hooks) {
 		size_t diff_fn_len = fn_len + strlen(".jdiff") + 1;
@@ -52,6 +54,8 @@ int file_rep_clear(file_rep_t *fr)
 	fr->hooks = json_decref_safe(fr->hooks);
 	fr->patch_size = 0;
 	fr->pre_json_size = 0;
+	fr->offset = -1;
+	fr->orig_size = 0;
 	fr->object = NULL;
 	SAFE_FREE(fr->name);
 	return 0;
@@ -60,8 +64,11 @@ int file_rep_clear(file_rep_t *fr)
 /// Thread-local storage
 /// --------------------
 THREAD_LOCAL(file_rep_t, fr_tls, NULL, file_rep_clear);
+THREAD_LOCAL(file_rep_t*, fr_ptr_tls, NULL, NULL);
 /// --------------------
 
+/// Replace a file loaded entirely in memory
+/// ----------------------------------------
 int BP_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
@@ -208,4 +215,124 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	file_rep_hooks_run(fr);
 	file_rep_clear(fr);
 	return 1;
+}
+
+/// Replace a file loaded by fragments
+/// ----------------------------------
+
+// For these files, we need to know the full file size beforehand.
+// So we need a breakpoint in the file header.
+std::map<std::string, file_rep_t> files_list;
+
+int BP_file_header(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
+	size_t *size = json_object_get_pointer(bp_info, regs, "file_size");
+	// ----------
+
+	if (!filename || !size)
+		return 1;
+
+	file_rep_t *fr = &files_list[filename];
+	memset(fr, 0, sizeof(fr));
+	file_rep_init(fr, filename);
+
+	if (fr->rep_buffer != NULL || fr->patch != NULL) {
+		fr->orig_size = *size;
+		*size = max(*size, fr->pre_json_size) + fr->patch_size;
+	}
+	else {
+		file_rep_clear(fr);
+	}
+
+	return 1;
+}
+
+file_rep_t *file_rep_get(const char *filename)
+{
+	auto it = files_list.find(filename);
+	if (it != files_list.end()) {
+		return &it->second;
+	}
+	else {
+		return nullptr;
+	}
+}
+
+int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
+{
+	file_rep_t *fr = *fr_ptr_tls_get();
+
+	// Parameters
+	// ----------
+	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
+	int apply = json_boolean_value(json_object_get(bp_info, "apply"));
+	// Stack
+	// ----------
+	HANDLE       hFile                = ((HANDLE*)      regs->esp)[1];
+	LPBYTE       lpBuffer             = ((LPBYTE*)      regs->esp)[2];
+	DWORD        nNumberOfBytesToRead = ((DWORD*)       regs->esp)[3];
+	LPDWORD      lpNumberOfBytesRead  = ((LPDWORD*)     regs->esp)[4];
+	LPOVERLAPPED lpOverlapped         = ((LPOVERLAPPED*)regs->esp)[5];
+	// ----------
+
+	if (filename) {
+		fr = file_rep_get(filename);
+		*fr_ptr_tls_get() = fr;
+	}
+
+	if (!apply || !fr || (!fr->rep_buffer && !fr->patch)) {
+		return 1;
+	}
+	if (lpOverlapped) {
+		// Overlapped operations are not supported.
+		// We'd better leave that file alone rather than ignoring that.
+		return 1;
+	}
+
+	if (fr->offset == -1) {
+		fr->offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT);
+
+		// Read the original file if we don't have a replacement one
+		if (!fr->rep_buffer) {
+			DWORD nbOfBytesRead;
+			fr->rep_buffer = malloc(fr->orig_size + fr->patch_size);
+			fr->pre_json_size = fr->orig_size;
+			ReadFile(hFile, fr->rep_buffer, fr->orig_size, &nbOfBytesRead, NULL);
+			SetFilePointer(hFile, fr->offset, NULL, FILE_BEGIN);
+
+			fragmented_read_file_hook_t post_read = (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_read");
+			if (post_read) {
+				post_read(fr, (BYTE*)fr->rep_buffer, fr->orig_size);
+			}
+		}
+		if (fr->patch) {
+			// Patch the game
+			patchhooks_run(
+				fr->hooks, fr->rep_buffer, fr->pre_json_size + fr->patch_size, fr->orig_size, fr->patch
+				);
+		}
+		fragmented_read_file_hook_t post_patch = (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_patch");
+		if (post_patch) {
+			post_patch(fr, (BYTE*)fr->rep_buffer, fr->pre_json_size + fr->patch_size);
+		}
+	}
+
+	log_printf("Patching %s\n", filename);
+	DWORD offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - fr->offset;
+	if (offset <= fr->pre_json_size + fr->patch_size) {
+		*lpNumberOfBytesRead = min(fr->pre_json_size + fr->patch_size - offset, nNumberOfBytesToRead);
+	}
+	else {
+		*lpNumberOfBytesRead = 0;
+	}
+
+	memcpy(lpBuffer, (BYTE*)fr->rep_buffer + offset, *lpNumberOfBytesRead);
+	SetFilePointer(hFile, *lpNumberOfBytesRead, NULL, FILE_CURRENT);
+
+	regs->eax = 1;
+	regs->esp += 5 * sizeof(DWORD);
+	return 0;
 }

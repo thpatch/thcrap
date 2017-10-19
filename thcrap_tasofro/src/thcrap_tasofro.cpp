@@ -100,56 +100,85 @@ int __stdcall thcrap_plugin_init()
 }
 
 
-int BP_file_header(x86_reg_t *regs, json_t *bp_info)
+file_rep_t *call_file_header(x86_reg_t *regs, json_t *bp_info, const char *filename)
+{
+	json_t *new_bp_info = json_copy(bp_info);
+	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)filename));
+	BP_file_header(regs, new_bp_info);
+	json_decref(new_bp_info);
+
+	file_rep_t *fr = file_rep_get(filename);
+	if (fr && (fr->rep_buffer || fr->patch)) {
+		return fr;
+	}
+	return nullptr;
+}
+
+int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	struct FileHeader *header = (struct FileHeader*)json_object_get_immediate(bp_info, regs, "struct");
-	DWORD *key = (DWORD*)json_object_get_immediate(bp_info, regs, "key");
+	DWORD hash = json_object_get_immediate(bp_info, regs, "file_hash");
+	DWORD *key = (DWORD*)json_object_get_immediate(bp_info, regs, "file_key");
 	// ----------
 
-	if (!header || !key)
+	if (!hash || !key)
 		return 1;
 
-	struct FileHeaderFull *full_header = register_file_header(header, key);
-	file_rep_t *fr = &full_header->fr;
-
-	if (full_header->path[0]) {
-		file_rep_init(fr, full_header->path);
+	struct FileHeader *header = hash_to_file_header(hash);
+	if (!header) {
+		return 1;
 	}
+
+	file_rep_t *fr = call_file_header(regs, bp_info, header->path);
 
 	// If the game loads a DDS file and we have no corresponding DDS file, try to replace it with a PNG file (the game will deal with it)
-	if (fr->rep_buffer == NULL && strlen(fr->name) > 4 && strcmp(fr->name + strlen(fr->name) - 4, ".dds") == 0) {
+	if (!fr && strcmp(PathFindExtensionA(header->path), ".dds") == 0) {
 		char png_path[MAX_PATH];
-		strcpy(png_path, full_header->path);
-		strcpy(png_path + strlen(full_header->path) - 3, "png");
-		file_rep_clear(fr);
-		file_rep_init(fr, png_path);
+		strcpy(png_path, header->path);
+		strcpy(PathFindExtensionA(png_path), ".png");
+		register_filename(png_path);
+		file_rep_t *fr_png = call_file_header(regs, bp_info, png_path);
+
+		if (fr_png) {
+			fr = file_rep_get(header->path);
+			file_rep_clear(fr);
+			memcpy(fr, fr_png, sizeof(*fr));
+			memset(fr_png, 0, sizeof(*fr_png));
+			file_rep_clear(fr_png);
+			SAFE_FREE(fr->name);
+			fr->name = EnsureUTF8(header->path, strlen(header->path) + 1);
+		}
+		else {
+			fr = nullptr;
+		}
 	}
 
-	if (fr->rep_buffer != NULL) {
-		full_header->size = fr->pre_json_size + fr->patch_size;
-		header->size = full_header->size;
-
-		fr->game_buffer = malloc(full_header->size);
-		memcpy(fr->game_buffer, fr->rep_buffer, fr->pre_json_size);
-		patchhooks_run( // TODO: replace with file_rep_hooks_run
-			fr->hooks, fr->game_buffer, fr->pre_json_size + fr->patch_size, fr->pre_json_size, fr->patch
-			);
-
-		ICrypt::instance->cryptBlock((BYTE*)fr->game_buffer, full_header->size, full_header->key);
+	if (fr) {
+		header->hash = hash;
+		memcpy(header->key, key, 4 * sizeof(DWORD));
+		ICrypt::instance->convertKey(header->key);
+		fr->object = header;
 	}
-
-	if (fr->rep_buffer == NULL && fr->patch != NULL) {
-		// If we have no rep buffer but we have a patch buffer, we will patch the file later, so we need to keep the file_rep.
-		header->size += fr->patch_size;
-		full_header->size = header->size;
-	}
-	else {
-		file_rep_clear(fr);
-	}
+	header->fr = fr;
 
 	return 1;
+}
+
+static void post_read(file_rep_t *fr, BYTE *buffer, size_t size)
+{
+	FileHeader *header = (FileHeader*)fr->object;
+	if (header) {
+		ICrypt::instance->uncryptBlock(buffer, size, header->key);
+	}
+}
+
+static void post_patch(file_rep_t *fr, BYTE *buffer, size_t size)
+{
+	FileHeader *header = (FileHeader*)fr->object;
+	if (header) {
+		ICrypt::instance->cryptBlock(buffer, size, header->key);
+	}
 }
 
 /**
@@ -175,93 +204,33 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
   * We use hFile (file_struct + 4), buffer (file_struct + 8) and FileNameHash (file_struct + 0x1001c).
   * All the other fields are listed for documentation.
   */
-int BP_replace_file(x86_reg_t *regs, json_t *bp_info)
+int BP_th135_read_file(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	BYTE *newBuffer = (BYTE*)json_object_get_immediate(bp_info, regs, "buffer");
-	DWORD newSize = json_object_get_immediate(bp_info, regs, "size");
-	DWORD **ppNumberOfBytesRead = (DWORD**)json_object_get_register(bp_info, regs, "pNumberOfBytesRead");
-	HANDLE hFile = (HANDLE)json_object_get_immediate(bp_info, regs, "hFile");
-	DWORD hash = json_object_get_immediate(bp_info, regs, "hash");
+	DWORD newHash = json_object_get_immediate(bp_info, regs, "hash");
 	// ----------
 
-	static DWORD size = 0;
-	static BYTE *buffer = NULL;
-	static DWORD *pNumberOfBytesRead = NULL;
+	static DWORD hash = 0;
 
-	if (newBuffer) {
-		buffer = newBuffer;
+	if (newHash) {
+		hash = newHash;
 	}
-	if (newSize) {
-		size = newSize;
-	}
-	if (ppNumberOfBytesRead) {
-		pNumberOfBytesRead = *ppNumberOfBytesRead;
-	}
-
-	if (!hFile || !hash) {
+	if (!hash) {
 		return 1;
 	}
 
-	struct FileHeaderFull *header = hash_to_file_header(hash);
-	if (!header || !header->path[0] || (!header->fr.game_buffer && !header->fr.patch)) {
+	struct FileHeader *header = hash_to_file_header(hash);
+	if (!header || !header->fr || (!header->fr->rep_buffer && !header->fr->patch)) {
 		// Nothing to patch.
 		return 1;
 	}
 
-	DWORD numberOfBytesRead;
-	if (size == 0) {
-		size = 65536;
-	}
-	if (pNumberOfBytesRead) {
-		numberOfBytesRead = *pNumberOfBytesRead;
-	}
-	else {
-		numberOfBytesRead = size;
-	}
-
-	if (header->effective_offset == -1) {
-		header->effective_offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead;
-
-		// We couldn't patch the file earlier, but now we have a hFile and an offset, so we should be able to.
-		if (header->fr.game_buffer == NULL && header->fr.patch != NULL) {
-			SetFilePointer(hFile, -(int)numberOfBytesRead, NULL, FILE_CURRENT);
-
-			DWORD nbOfBytesRead;
-			header->fr.game_buffer = malloc(header->size);
-			ReadFile(hFile, header->fr.game_buffer, header->orig_size, &nbOfBytesRead, NULL);
-
-			ICrypt::instance->uncryptBlock((BYTE*)header->fr.game_buffer, header->orig_size, header->key);
-			patchhooks_run(
-				header->fr.hooks, header->fr.game_buffer, header->size, header->orig_size, header->fr.patch
-				);
-			ICrypt::instance->cryptBlock((BYTE*)header->fr.game_buffer, header->size, header->key);
-
-			SetFilePointer(hFile, header->effective_offset + numberOfBytesRead, NULL, FILE_BEGIN);
-			file_rep_clear(&header->fr);
-		}
-	}
-
-	DWORD offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - numberOfBytesRead - header->effective_offset;
-	DWORD copy_size;
-	if (offset <= header->size) {
-		copy_size = min(header->size - offset, size);
-	}
-	else {
-		copy_size = 0;
-	}
-
-	log_printf("[replace_file]  known path: %s, hash %.8x, offset: %u, requested size %u, file_rep_size left: %d, chosen size: %u\n",
-		header->path, hash, offset, size, header->size - offset, copy_size);
-	memcpy(buffer, (BYTE*)header->fr.game_buffer + offset, copy_size);
-	if (pNumberOfBytesRead && *pNumberOfBytesRead != copy_size) {
-		SetFilePointer(hFile, copy_size - *pNumberOfBytesRead, NULL, FILE_CURRENT);
-		*pNumberOfBytesRead = copy_size;
-	}
-
-	pNumberOfBytesRead = nullptr;
-	buffer = nullptr;
-	size = 0;
-	return 1;
+	json_t *new_bp_info = json_copy(bp_info);
+	json_object_set_new(new_bp_info, "file_name",  json_integer((json_int_t)header->fr->name));
+	json_object_set_new(new_bp_info, "post_read",  json_integer((json_int_t)post_read));
+	json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)post_patch));
+	int ret = BP_fragmented_read_file(regs, new_bp_info);
+	json_decref(new_bp_info);
+	return ret;
 }

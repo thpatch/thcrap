@@ -37,6 +37,13 @@ typedef struct {
 	// Pointer to an object of the game's file class. Used as another
 	// method of linking load calls to files, if file names aren't enough.
 	void *object;
+
+	// For fragmented loading:
+	// Original file size.
+	size_t orig_size;
+
+	// Offset of the file in the archive.
+	size_t offset;
 } file_rep_t;
 
 // Initialize a file_rep_t object, and loads the replacement file and patch for file_name.
@@ -44,6 +51,9 @@ int file_rep_init(file_rep_t *fr, const char *file_name);
 
 // Clears a file_rep_t object.
 int file_rep_clear(file_rep_t *fr);
+
+// Retrieves a file_rep_t object cached by BP_file_header
+file_rep_t *file_rep_get(const char *filename);
 
 /// Thread-local storage
 /// --------------------
@@ -144,6 +154,57 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info);
   *	BP_file_buffer
   */
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
+
+/**
+  * Placed when the game parses its archive header. It will update
+  * the file size and save the file informations.
+  *
+  * Own JSON parameters
+  * -------------------
+  *	[file_name]
+  *		File name
+  *		Type: immediate
+  *
+  *	[file_size]
+  *		File size
+  *		Type: pointer
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_file_header(x86_reg_t *regs, json_t *bp_info);
+
+/**
+  * Overwrites a ReadFile call and writes patched data into the buffer.
+  * When apply is not true, this breakpoint just stores the filename for the next call.
+  * When apply is true, this breakpoint must be exactly over a ReadFile call.
+  * Parameters will be taken directly on the stack.
+  *
+  * Own JSON parameters
+  * -------------------
+  *	[file_name]
+  *		File name
+  *		Type: immediate
+  *
+  *	[apply]
+  *		Set it to true when you're on the ReadFile call
+  *		Type: boolean
+  *
+  *	[post_read]
+  *		Optional function called right after reading the original file (fragmented_read_file_hook_t).
+  *		Type: immediate
+  *
+  *	[post_patch]
+  *		Optional function called after the file is patched, or if is it doesn't need patching (fragmented_read_file_hook_t).
+  *		Type: immediate
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info);
+typedef void (*fragmented_read_file_hook_t)(file_rep_t *fr, BYTE *buffer, size_t size);
 
 int bp_file_init(void);
 void bp_file_mod_thread_exit(void);

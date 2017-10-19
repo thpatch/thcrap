@@ -36,28 +36,13 @@ extern tasofro_game_t game_id;
 
 struct FileHeader
 {
-	DWORD filename_hash;
-	DWORD unknown;
-	DWORD offset;
-	DWORD size;
-};
-
-struct FileHeaderFull
-{
 	// Copy of FileHeader
-	DWORD filename_hash;
-	DWORD unknown;
-	DWORD offset;
-	DWORD size;
-
+	DWORD hash;
 	// XOR key
 	DWORD key[4];
-	file_rep_t fr;
-	// Offset to the file in its pak file
-	DWORD effective_offset;
-	// Size of the original game file
-	DWORD orig_size;
-
+	// file rep
+	file_rep_t *fr;
+	// File path
 	char path[MAX_PATH];
 };
 
@@ -72,9 +57,9 @@ int BP_replace_file(x86_reg_t *regs, json_t *bp_info);
 
 int LoadFileNameList(const char* FileName);
 int LoadFileNameListFromMemory(char* list, size_t size);
+void register_filename(const char *path);
 DWORD filename_to_hash(const char* filename);
-struct FileHeaderFull* register_file_header(struct FileHeader* header, DWORD *key);
-struct FileHeaderFull* hash_to_file_header(DWORD hash);
+struct FileHeader* hash_to_file_header(DWORD hash);
 
 int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
 
