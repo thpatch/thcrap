@@ -51,13 +51,14 @@ size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr)
 	if(!regs || !regname || !regname[0] || !regname[1] || !regname[2]) {
 		return NULL;
 	}
-	memcpy(&cmp, regname, 4);
+	memcpy(&cmp, regname, 3);
+	cmp &= 0x00FFFFFF;
 	strlwr((char *)&cmp);
 
 	if(endptr) {
 		*endptr = regname + 3;
 	}
-	switch(cmp & 0x00FFFFFF) {
+	switch(cmp) {
 		case EAX: return &regs->eax;
 		case ECX: return &regs->ecx;
 		case EDX: return &regs->edx;
