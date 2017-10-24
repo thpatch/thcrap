@@ -37,6 +37,7 @@
     <ClCompile Include="src\bgm.cpp" />
     <ClCompile Include="src\crypt.cpp" />
     <ClCompile Include="src\csv.cpp" />
+    <ClCompile Include="src\nsml.cpp" />
     <ClCompile Include="src\pl.cpp" />
     <ClCompile Include="src\plaintext.cpp" />
     <ClCompile Include="src\plugin.cpp" />
