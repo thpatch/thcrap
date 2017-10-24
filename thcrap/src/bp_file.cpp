@@ -194,6 +194,40 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 	return 0;
 }
 
+// DumpDatFile, fragmented loading style.
+int DumpDatFragmentedFile(const char *dir, file_rep_t *fr, HANDLE hFile, fragmented_read_file_hook_t post_read)
+{
+	if (!fr || !hFile || hFile == INVALID_HANDLE_VALUE || !fr->name || fr->offset != -1) {
+		return -1;
+	}
+	if (!dir) {
+		dir = "dat";
+	}
+	{
+		size_t fn_len = strlen(dir) + 1 + strlen(fr->name) + 1;
+		VLA(char, fn, fn_len);
+
+		sprintf(fn, "%s/%s", dir, fr->name);
+
+		if (!PathFileExists(fn)) {
+			// Read the file
+			DWORD nbOfBytesRead;
+			BYTE* buffer = (BYTE*)malloc(fr->orig_size);
+			ReadFile(hFile, buffer, fr->orig_size, &nbOfBytesRead, NULL);
+			SetFilePointer(hFile, -(LONG)nbOfBytesRead, NULL, FILE_CURRENT);
+
+			if (post_read) {
+				fr->offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT); // Needed by nsml
+				post_read(fr, buffer, fr->orig_size);
+				fr->offset = -1;
+			}
+			file_write(fn, buffer, fr->orig_size);
+		}
+		VLA_FREE(fn);
+	}
+	return 0;
+}
+
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
@@ -224,6 +258,17 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 // So we need a breakpoint in the file header.
 std::map<std::string, file_rep_t> files_list;
 
+file_rep_t *file_rep_get(const char *filename)
+{
+	auto it = files_list.find(filename);
+	if (it != files_list.end()) {
+		return &it->second;
+	}
+	else {
+		return nullptr;
+	}
+}
+
 int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
@@ -235,11 +280,16 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	if (!filename || !size)
 		return 1;
 
-	file_rep_t *fr = &files_list[filename];
-	memset(fr, 0, sizeof(fr));
+	file_rep_t *fr = file_rep_get(filename);
+	if (fr == nullptr) {
+		fr = &files_list[filename];
+		memset(fr, 0, sizeof(file_rep_t));
+		file_rep_clear(fr);
+	}
 	file_rep_init(fr, filename);
 
-	if (fr->rep_buffer != NULL || fr->patch != NULL) {
+	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
+	if (fr->rep_buffer != NULL || fr->patch != NULL || !json_is_false(dat_dump)) {
 		fr->orig_size = *size;
 		*size = max(*size, fr->pre_json_size) + fr->patch_size;
 	}
@@ -248,17 +298,6 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	return 1;
-}
-
-file_rep_t *file_rep_get(const char *filename)
-{
-	auto it = files_list.find(filename);
-	if (it != files_list.end()) {
-		return &it->second;
-	}
-	else {
-		return nullptr;
-	}
 }
 
 int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
@@ -283,7 +322,16 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		*fr_ptr_tls_get() = fr;
 	}
 
-	if (!apply || !fr || (!fr->rep_buffer && !fr->patch)) {
+	if (!apply || !fr || !fr->name) {
+		return 1;
+	}
+
+	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
+	if (!json_is_false(dat_dump)) {
+		DumpDatFragmentedFile(json_string_value(dat_dump), fr, hFile, (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_read"));
+	}
+
+	if (!fr->rep_buffer && !fr->patch) {
 		return 1;
 	}
 	if (lpOverlapped) {
@@ -320,7 +368,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		}
 	}
 
-	log_printf("Patching %s\n", filename);
+	log_printf("Patching %s\n", fr->name);
 	DWORD offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - fr->offset;
 	if (offset <= fr->pre_json_size + fr->patch_size) {
 		*lpNumberOfBytesRead = min(fr->pre_json_size + fr->patch_size - offset, nNumberOfBytesToRead);
@@ -331,6 +379,10 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 
 	memcpy(lpBuffer, (BYTE*)fr->rep_buffer + offset, *lpNumberOfBytesRead);
 	SetFilePointer(hFile, *lpNumberOfBytesRead, NULL, FILE_CURRENT);
+
+	if (offset + *lpNumberOfBytesRead == fr->pre_json_size + fr->patch_size) {
+		*fr_ptr_tls_get() = nullptr;
+	}
 
 	regs->eax = 1;
 	regs->esp += 5 * sizeof(DWORD);

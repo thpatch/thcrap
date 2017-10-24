@@ -165,17 +165,17 @@ int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-static void post_read(file_rep_t *fr, BYTE *buffer, size_t size)
+static void post_read(const file_rep_t *fr, BYTE *buffer, size_t size)
 {
-	FileHeader *header = (FileHeader*)fr->object;
+	const FileHeader *header = (const FileHeader*)fr->object;
 	if (header) {
 		ICrypt::instance->uncryptBlock(buffer, size, header->key);
 	}
 }
 
-static void post_patch(file_rep_t *fr, BYTE *buffer, size_t size)
+static void post_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
 {
-	FileHeader *header = (FileHeader*)fr->object;
+	const FileHeader *header = (const FileHeader*)fr->object;
 	if (header) {
 		ICrypt::instance->cryptBlock(buffer, size, header->key);
 	}

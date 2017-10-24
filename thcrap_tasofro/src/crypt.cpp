@@ -13,7 +13,7 @@
 
 ICrypt* ICrypt::instance = nullptr;
 
-DWORD CryptTh135::cryptBlock(BYTE* Data, DWORD FileSize, DWORD* Key)
+DWORD CryptTh135::cryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key)
 {
 	for (DWORD j = 0; j < FileSize / 4; j++)
 	{
@@ -33,7 +33,7 @@ DWORD CryptTh135::cryptBlock(BYTE* Data, DWORD FileSize, DWORD* Key)
 	return 0;
 }
 
-void CryptTh135::uncryptBlock(BYTE* Data, DWORD FileSize, DWORD* Key)
+void CryptTh135::uncryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key)
 {
 	this->cryptBlock(Data, FileSize, Key);
 }
@@ -75,7 +75,7 @@ CryptTh145::~CryptTh145()
 	}
 }
 
-DWORD CryptTh145::cryptBlockInternal(BYTE* Data, DWORD FileSize, DWORD* Key, DWORD Aux)
+DWORD CryptTh145::cryptBlockInternal(BYTE* Data, DWORD FileSize, const DWORD* Key, DWORD Aux)
 {
 	BYTE *key = (BYTE*)Key;
 	BYTE *aux = (BYTE*)&Aux;
@@ -90,7 +90,7 @@ DWORD CryptTh145::cryptBlockInternal(BYTE* Data, DWORD FileSize, DWORD* Key, DWO
 	return Aux;
 }
 
-DWORD CryptTh145::cryptBlock(BYTE* Data, DWORD FileSize, DWORD* Key)
+DWORD CryptTh145::cryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key)
 {
 	if (FileSize > this->tempCopySize) {
 		if (this->tempCopy) {
@@ -107,7 +107,7 @@ DWORD CryptTh145::cryptBlock(BYTE* Data, DWORD FileSize, DWORD* Key)
 	return this->cryptBlockInternal(Data, FileSize, Key, Aux);
 }
 
-void CryptTh145::uncryptBlock(BYTE* Data, DWORD FileSize, DWORD* Key)
+void CryptTh145::uncryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key)
 {
 	BYTE *key = (BYTE*)Key;
 	BYTE aux[4];

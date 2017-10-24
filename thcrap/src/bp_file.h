@@ -204,7 +204,7 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info);
   *	None
   */
 int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info);
-typedef void (*fragmented_read_file_hook_t)(file_rep_t *fr, BYTE *buffer, size_t size);
+typedef void (*fragmented_read_file_hook_t)(const file_rep_t *fr, BYTE *buffer, size_t size);
 
 int bp_file_init(void);
 void bp_file_mod_thread_exit(void);
