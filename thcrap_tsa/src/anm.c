@@ -520,8 +520,9 @@ int stack_game_png_apply(anm_entry_t *entry)
 	return ret;
 }
 
-int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
+	(void)fn;
 	json_t *dat_dump = json_object_get(runconfig_get(), "dat_dump");
 
 	// Some ANMs reference the same file name multiple times in a row

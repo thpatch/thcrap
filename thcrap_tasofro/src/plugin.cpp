@@ -35,7 +35,7 @@ int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int patch_dll(void*, size_t, size_t, json_t *patch)
+int patch_dll(void*, size_t, size_t, const char*, json_t *patch)
 {
 	// We only want to make thcrap load the jdiff file, we'll patch the DLL file after its sections are mapped in memory.
 	if (cur_patch) {

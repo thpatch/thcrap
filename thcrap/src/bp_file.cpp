@@ -40,7 +40,7 @@ int file_rep_init(file_rep_t *fr, const char *file_name)
 static int file_rep_hooks_run(file_rep_t *fr)
 {
 	return patchhooks_run(
-		fr->hooks, fr->game_buffer, POST_JSON_SIZE(fr), fr->pre_json_size, fr->patch
+		fr->hooks, fr->game_buffer, POST_JSON_SIZE(fr), fr->pre_json_size, fr->name, fr->patch
 	);
 }
 
@@ -359,19 +359,19 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		if (fr->patch) {
 			// Patch the game
 			patchhooks_run(
-				fr->hooks, fr->rep_buffer, fr->pre_json_size + fr->patch_size, fr->orig_size, fr->patch
+				fr->hooks, fr->rep_buffer, POST_JSON_SIZE(fr), fr->orig_size, fr->name, fr->patch
 				);
 		}
 		fragmented_read_file_hook_t post_patch = (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_patch");
 		if (post_patch) {
-			post_patch(fr, (BYTE*)fr->rep_buffer, fr->pre_json_size + fr->patch_size);
+			post_patch(fr, (BYTE*)fr->rep_buffer, POST_JSON_SIZE(fr));
 		}
 	}
 
 	log_printf("Patching %s\n", fr->name);
 	DWORD offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - fr->offset;
-	if (offset <= fr->pre_json_size + fr->patch_size) {
-		*lpNumberOfBytesRead = min(fr->pre_json_size + fr->patch_size - offset, nNumberOfBytesToRead);
+	if (offset <= POST_JSON_SIZE(fr)) {
+		*lpNumberOfBytesRead = min(POST_JSON_SIZE(fr) - offset, nNumberOfBytesToRead);
 	}
 	else {
 		*lpNumberOfBytesRead = 0;
@@ -380,7 +380,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 	memcpy(lpBuffer, (BYTE*)fr->rep_buffer + offset, *lpNumberOfBytesRead);
 	SetFilePointer(hFile, *lpNumberOfBytesRead, NULL, FILE_CURRENT);
 
-	if (offset + *lpNumberOfBytesRead == fr->pre_json_size + fr->patch_size) {
+	if (offset + *lpNumberOfBytesRead == POST_JSON_SIZE(fr)) {
 		*fr_ptr_tls_get() = nullptr;
 	}
 

@@ -768,13 +768,13 @@ const msg_format_t* msg_format_for(tsa_game_t game)
 }
 /// ------------
 
-int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	const msg_format_t *format = msg_format_for(game_id);
 	return patch_msg(file_inout, size_out, size_in, patch, format);
 }
 
-int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	return patch_msg(file_inout, size_out, size_in, patch, &END_TH10);
 }

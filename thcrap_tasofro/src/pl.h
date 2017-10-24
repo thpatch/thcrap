@@ -134,4 +134,4 @@ namespace TasofroPl
 	json_t *balloonNumberToLines(json_t *patch, size_t balloon_number);
 }
 
-int patch_pl(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);

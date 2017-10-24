@@ -55,13 +55,13 @@ int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, js
 	return 0;
 }
 
-int patch_act(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_act(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	Act::File *file = Act::read_act_from_bytes((uint8_t *)file_inout, size_in);
 	return patch_act_nut(file, file_inout, size_out, patch);
 }
 
-int patch_nut(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_nut(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	Nut::Stream *stream = Nut::read_nut_from_bytes((uint8_t *)file_inout, size_in);
 	return patch_act_nut(stream, file_inout, size_out, patch);

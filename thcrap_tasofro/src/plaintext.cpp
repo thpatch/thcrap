@@ -10,7 +10,7 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 
-int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	char* file_out = (char*)file_inout;
 	char* file_in;

@@ -61,7 +61,7 @@ void register_filename(const char *path);
 DWORD filename_to_hash(const char* filename);
 struct FileHeader* hash_to_file_header(DWORD hash);
 
-int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
 
 #ifdef __cplusplus
 }

@@ -141,7 +141,7 @@ void skip_line(BYTE *&in, BYTE *&out, DWORD nb_col)
 	}
 }
 
-int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	tfcs_header_t *header;
 
@@ -149,7 +149,7 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	header = (tfcs_header_t*)file_inout;
 	if (size_in < sizeof(header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
 		// Invalid TFCS file (probably a regular CSV file)
-		return patch_csv((char*)file_inout, size_out, size_in, patch);
+		return patch_csv((char*)file_inout, size_out, size_in, fn, patch);
 	}
 
 	BYTE *file_in_uncomp = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, header->uncomp_size);

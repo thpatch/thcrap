@@ -36,7 +36,7 @@ static int next_line(char *in, size_t size_in, char *out, int copy)
 	return i;
 }
 
-int patch_csv(char *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_csv(char *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	char* file_in = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
 	memcpy(file_in, file_inout, size_in);

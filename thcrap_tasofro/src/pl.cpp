@@ -520,7 +520,7 @@ json_t *TasofroPl::balloonNumberToLines(json_t *patch, size_t balloon_number)
 	return json_lines;
 }
 
-int patch_pl(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	std::list<TasofroPl::ALine*> lines;
 	const char *file_in = (const char*)file_inout;
