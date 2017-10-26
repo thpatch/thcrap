@@ -28,8 +28,8 @@
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tasofro.def</ModuleDefinitionFile>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;thcrap_d.lib;act_nut_lib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;thcrap.lib;act_nut_lib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;thcrap_d.lib;libpng16_d.lib;act_nut_lib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;thcrap.lib;libpng16.lib;act_nut_lib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -43,6 +43,7 @@
     <ClCompile Include="src\plugin.cpp" />
     <ClCompile Include="src\spellcards_generator.cpp" />
     <ClCompile Include="src\tfcs.cpp" />
+    <ClCompile Include="src\th135.cpp" />
     <ClCompile Include="src\thcrap_tasofro.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -54,6 +55,7 @@
     <ClInclude Include="src\plugin.h" />
     <ClInclude Include="src\spellcards_generator.h" />
     <ClInclude Include="src\tfcs.h" />
+    <ClInclude Include="src\th135.h" />
     <ClInclude Include="src\thcrap_tasofro.h" />
     <None Include="thcrap_tasofro.def" />
   </ItemGroup>
