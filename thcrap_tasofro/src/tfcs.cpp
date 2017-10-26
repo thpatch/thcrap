@@ -143,6 +143,10 @@ void skip_line(BYTE *&in, BYTE *&out, DWORD nb_col)
 
 int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
+	if (!patch) {
+		return 0;
+	}
+
 	tfcs_header_t *header;
 
 	// Read TFCS header
@@ -195,5 +199,5 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 	HeapFree(GetProcessHeap(), 0, file_in_uncomp);
 	HeapFree(GetProcessHeap(), 0, file_out_uncomp);
 
-	return 0;
+	return 1;
 }

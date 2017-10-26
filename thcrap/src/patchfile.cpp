@@ -370,17 +370,21 @@ int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, 
 {
 	json_t *val;
 	size_t i;
+	int ret;
 
 	// We don't check [patch] here - hooks should be run even if there is no
 	// dedicated patch file.
 	if(!file_inout) {
 		return -1;
 	}
+	ret = 0;
 	json_array_foreach(hook_array, i, val) {
 		func_patch_t func = (func_patch_t)json_integer_value(val);
 		if(func) {
-			func(file_inout, size_out, size_in, fn, patch);
+			if (func(file_inout, size_out, size_in, fn, patch) > 0) {
+				ret = 1;
+			}
 		}
 	}
-	return 0;
+	return ret;
 }

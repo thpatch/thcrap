@@ -38,6 +38,10 @@ static int next_line(char *in, size_t size_in, char *out, int copy)
 
 int patch_csv(char *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
+	if (!patch) {
+		return 0;
+	}
+
 	char* file_in = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
 	memcpy(file_in, file_inout, size_in);
 
@@ -101,5 +105,5 @@ int patch_csv(char *file_inout, size_t size_out, size_t size_in, const char*, js
 #endif
 
 	HeapFree(GetProcessHeap(), 0, file_in);
-	return 0;
+	return 1;
 }

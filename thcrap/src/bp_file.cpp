@@ -331,7 +331,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		DumpDatFragmentedFile(json_string_value(dat_dump), fr, hFile, (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_read"));
 	}
 
-	if (!fr->rep_buffer && !fr->patch) {
+	if (!fr->rep_buffer && !fr->patch && !fr->hooks) {
 		return 1;
 	}
 	if (lpOverlapped) {
@@ -340,6 +340,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
+	bool has_rep = fr->rep_buffer != nullptr;
 	if (fr->offset == -1) {
 		fr->offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT);
 
@@ -356,16 +357,22 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 				post_read(fr, (BYTE*)fr->rep_buffer, fr->orig_size);
 			}
 		}
-		if (fr->patch) {
-			// Patch the game
-			patchhooks_run(
-				fr->hooks, fr->rep_buffer, POST_JSON_SIZE(fr), fr->orig_size, fr->name, fr->patch
-				);
+		// Patch the game
+		if (patchhooks_run(fr->hooks, fr->rep_buffer, POST_JSON_SIZE(fr), fr->orig_size, fr->name, fr->patch)) {
+			has_rep = 1;
 		}
 		fragmented_read_file_hook_t post_patch = (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_patch");
 		if (post_patch) {
 			post_patch(fr, (BYTE*)fr->rep_buffer, POST_JSON_SIZE(fr));
 		}
+
+		// If we didn't change the file in any way, we can free the rep buffer.
+		if (!has_rep) {
+			SAFE_FREE(fr->rep_buffer);
+		}
+	}
+	if (!fr->rep_buffer) {
+		return 1;
 	}
 
 	log_printf("Patching %s\n", fr->name);

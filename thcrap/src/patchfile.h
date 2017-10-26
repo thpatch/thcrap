@@ -30,7 +30,7 @@
   *	json_t *patch
   *		Patch data to be applied.
   *
-  * Returns nothing.
+  * Returns a value >0 if the hook changed the file in file_inout, and a value <=0 otherwise.
   */
 typedef int (*func_patch_t)(void* file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 
@@ -115,5 +115,6 @@ int patchhook_register(const char *ext, func_patch_t patch_func);
 json_t* patchhooks_build(const char *fn);
 
 // Runs all hook functions in [hook_array] on the given data.
+// Returns 1 if one of the hook changed the file in file_inout, and 0 otherwise.
 int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 /// -----

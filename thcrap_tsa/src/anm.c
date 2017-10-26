@@ -569,5 +569,5 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, const char *fn,
 	png_image_clear(&bounds);
 	png_image_clear(&png);
 	log_printf("-------------\n");
-	return 0;
+	return 1;
 }

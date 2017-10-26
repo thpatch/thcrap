@@ -522,7 +522,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	patch_msg_state_t state = {format, font_dialog_id()};
 
 	if(!msg_out || !patch) {
-		return 1;
+		return 0;
 	}
 
 	// Make a copy of the input buffer
@@ -639,7 +639,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	}
 #endif
 	HeapFree(GetProcessHeap(), 0, msg_in);
-	return 0;
+	return 1;
 }
 
 /// Game formats
