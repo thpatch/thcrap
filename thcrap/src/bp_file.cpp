@@ -50,6 +50,7 @@ int file_rep_clear(file_rep_t *fr)
 		return -1;
 	}
 	SAFE_FREE(fr->rep_buffer);
+	fr->game_buffer = nullptr;
 	fr->patch = json_decref_safe(fr->patch);
 	fr->hooks = json_decref_safe(fr->hooks);
 	fr->patch_size = 0;
