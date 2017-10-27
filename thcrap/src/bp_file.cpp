@@ -289,7 +289,7 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	file_rep_init(fr, filename);
 
 	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
-	if (fr->rep_buffer != NULL || fr->patch != NULL || !json_is_false(dat_dump)) {
+	if (fr->rep_buffer != NULL || fr->patch != NULL || fr->hooks != NULL || !json_is_false(dat_dump)) {
 		fr->orig_size = *size;
 		*size = max(*size, fr->pre_json_size) + fr->patch_size;
 	}
