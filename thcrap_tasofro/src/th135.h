@@ -33,6 +33,7 @@ int th135_init();
 	
 int LoadFileNameList(const char* FileName);
 int LoadFileNameListFromMemory(char* list, size_t size);
+int LoadFileNameListFromJson(json_t *fileslist);
 void register_filename(const char *path);
 DWORD filename_to_hash(const char* filename);
 struct FileHeader* hash_to_file_header(DWORD hash);

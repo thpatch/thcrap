@@ -58,6 +58,29 @@ int LoadFileNameListFromMemory(char* list, size_t size)
 	return 0;
 }
 
+void register_utf8_filename(const char* file)
+{
+	WCHAR_T_DEC(file);
+	WCHAR_T_CONV(file);
+	VLA(char, file_sjis, file_len);
+	WideCharToMultiByte(932, 0, file_w, wcslen(file_w) + 1, file_sjis, file_len, nullptr, nullptr);
+	register_filename(file_sjis);
+	VLA_FREE(file_sjis);
+	WCHAR_T_FREE(file);
+}
+
+// Convert fileslist.txt to fileslist.js:
+// iconv -f sjis fileslist.txt | sed -e 'y|¥/|\\\\|' | jq -Rs '. | split("\n") | sort' > fileslist.js
+int LoadFileNameListFromJson(json_t *fileslist)
+{
+	size_t i;
+	json_t *file;
+	json_array_foreach(fileslist, i, file) {
+		register_utf8_filename(json_string_value(file));
+	}
+	return 0;
+}
+
 DWORD filename_to_hash(const char* filename)
 {
 	return ICrypt::instance->SpecialFNVHash(filename, filename + strlen(filename));

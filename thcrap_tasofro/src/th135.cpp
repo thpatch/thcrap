@@ -22,9 +22,6 @@
 // TODO: read the file names list in JSON format
 int th135_init()
 {
-	char* filenames_list;
-	size_t filenames_list_size;
-
 	const char *crypt = json_object_get_string(runconfig_get(), "crypt");
 	if (game_id >= TH145) {
 		ICrypt::instance = new CryptTh145();
@@ -56,8 +53,9 @@ int th135_init()
 	SAFE_FREE(musiccmt_fn);
 	SAFE_FREE(bgm_pattern_fn);
 
-	filenames_list = (char*)stack_game_file_resolve("fileslist.txt", &filenames_list_size);
-	LoadFileNameListFromMemory(filenames_list, filenames_list_size);
+	json_t *fileslist = stack_game_json_resolve("fileslist.js", nullptr);
+	LoadFileNameListFromJson(fileslist);
+	json_decref(fileslist);
 	return 0;
 }
 
