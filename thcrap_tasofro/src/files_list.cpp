@@ -15,10 +15,43 @@
 
 std::unordered_map<DWORD, FileHeader> fileHashToName;
 
+// Used if dat_dump != false.
+// Contains fileslist.js plus all the files found while the game was running.
+static json_t *full_files_list = nullptr;
+
 void register_filename(const char *path)
 {
 	DWORD hash = ICrypt::instance->SpecialFNVHash(path, path + strlen(path));
 	strcpy(fileHashToName[hash].path, path);
+
+	json_t *dat_dump = json_object_get(runconfig_get(), "dat_dump");
+	if (!json_is_false(dat_dump)) {
+		if (!full_files_list) {
+			full_files_list = json_array();
+		}
+		char *path_u = EnsureUTF8(path, strlen(path));
+		size_t i;
+		json_t *val;
+		json_array_foreach(full_files_list, i, val) {
+			if (strcmp(path_u, json_string_value(val)) == 0) {
+				free(path_u);
+				return;
+			}
+		}
+		json_array_append_new(full_files_list, json_string(path_u));
+		SAFE_FREE(path_u);
+
+		const char *dir = json_string_value(dat_dump);
+		if (!dir) {
+			dir = "dat";
+		}
+		size_t fn_len = strlen(dir) + 1 + strlen("fileslist.js") + 1;
+		VLA(char, fn, fn_len);
+		sprintf(fn, "%s/fileslist.js", dir);
+		json_dump_file(full_files_list, fn, JSON_INDENT(2));
+		VLA_FREE(fn);
+	}
+
 }
 
 int LoadFileNameList(const char* FileName)

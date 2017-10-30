@@ -124,6 +124,15 @@ int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
 
 	return 1;
 }
+int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "filename");
+	// ----------
+
+	register_filename(filename);
+}
 
 static void post_read(const file_rep_t *fr, BYTE *buffer, size_t size)
 {
