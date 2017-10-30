@@ -8,9 +8,6 @@
   *
   * These breakpoint can be used for replacing data files in any game that
   * loads complete data files into a single block of memory.
-  *
-  * Note that parameters are always passed through to other breakpoint
-  * functions called by a function.
   */
 
 #pragma once
@@ -62,40 +59,6 @@ void fr_tls_free(file_rep_t *fr);
 /// --------------------
 
 /**
-  * Takes a file name and resolves a complete local replacement
-  * or JSON patch file.
-  *
-  * Own JSON parameters
-  * -------------------
-  *	[file_name]
-  *		File name register
-  *		Type: register
-  *
-  * Other breakpoints called
-  * ------------------------
-  *	None
-  */
-int BP_file_name(x86_reg_t *regs, json_t *bp_info);
-
-/**
-  * Reads the size of the original file (if not read before), and sets the
-  * size of whatever we are replacing or patching the original file with.
-  * Necessary for enlarging the size of the game's file buffer to fit the
-  * patched file.
-  *
-  * Own JSON parameters
-  * -------------------
-  *	[file_size]
-  *		Register that contains the size of the file to load.
-  *		Type: register
-  *
-  * Other breakpoints called
-  * ------------------------
-  *	BP_file_name
-  */
-int BP_file_size(x86_reg_t *regs, json_t *bp_info);
-
-/**
   * Reads the file buffer address and stores it in the local file_rep_t object.
   *
   * Own JSON parameters
@@ -111,26 +74,54 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info);
 int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
 
 /**
-  * Writes a local replacement file to the game's file buffer, and also
-  * applies a JSON patch on top of it if available.
+  * Collects all necessary file replacement parameters, then writes a
+  * potential replacement file to the game's file buffer, and also
+  * applies a potential JSON patch on top of it.
   * This breakpoint is mostly placed at the game's own "load-file-into-buffer"
-  * function call, after the final buffer has been allocated. Thus, it allows
-  * manipulation of ESP and EIP, if necessary.
-  * Returns 0 if anything was replaced (to skip execution of the original
-  * function in the breakpoint's code cave).
+  * function call, after the final buffer has been allocated.
+  *
+  * Returns:
+  * • 0 if the file was fully replaced, skipping execution of the
+  *   breakpoint's code cave. Since we're done with the file at
+  *   this point, the file replacement state is cleared in that case.
+  * • 1 if either some of the mandatory parameters are missing, or if
+  *   there is no full replacement file in the stack. A later call to
+  *   BP_file_loaded() should then apply a potential JSON patch on top
+  *   of the original file.
   *
   * Own JSON parameters
   * -------------------
+  * Mandatory:
+  *
+  *	[file_name]
+  *		If given, initializes the file replacement state with the
+  *		given file name, resolving a corresponding complete
+  *		replacement file and/or a JSON patch from the stack.
+  *		Type: register
+  *
+  *	[file_size]
+  *		If given, reads the size of the original file (if not
+  *		read before), and (always) sets the final size of whatever
+  *		we are replacing or patching the original file with.
+  *		Necessary for enlarging the size of the game's file
+  *		buffer to fit the patched file.
+  *		Type: register
+  *
+  *	[file_buffer]
+  *		See BP_file_buffer().
+  *
+  *	Optional, applied after a successful file replacement:
+  *
   *	[file_buffer_addr_copy]
-  *		Additional register to copy the file buffer to (optional)
+  *		Additional register to copy the file buffer to
   *		Type: register
   *
   *	[stack_clear_size]
-  *		Stack size to clean up (optional)
+  *		Value to add to ESP
   *		Type: integer
   *
   *	[eip_jump_dist]
-  *		Value to add to EIP after this breakpoint (optional)
+  *		Value to add to EIP
   *		Type: integer
   *
   * Other breakpoints called
@@ -138,6 +129,11 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   *	BP_file_buffer
   */
 int BP_file_load(x86_reg_t *regs, json_t *bp_info);
+
+// These have been merged into BP_file_load() and are only kept for backwards
+// compatibility.
+int BP_file_name(x86_reg_t *regs, json_t *bp_info);
+int BP_file_size(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Placed at a position where a complete file is loaded into a single block

@@ -70,34 +70,35 @@ THREAD_LOCAL(file_rep_t*, fr_ptr_tls, NULL, NULL);
 
 /// Replace a file loaded entirely in memory
 /// ----------------------------------------
-int BP_file_name(x86_reg_t *regs, json_t *bp_info)
+int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
 
 	// Parameters
 	// ----------
-	char **file_name = (char**)json_object_get_register(bp_info, regs, "file_name");
+	BYTE **file_buffer = (BYTE**)json_object_get_register(bp_info, regs, "file_buffer");
 	// ----------
-
-	if(!file_name) {
-		return 1;
+	if(file_buffer) {
+		fr->game_buffer = *file_buffer;
 	}
-	file_rep_init(fr, *file_name);
 	return 1;
 }
 
-int BP_file_size(x86_reg_t *regs, json_t *bp_info)
+int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
 
-	// Parameters
-	// ----------
+	// Mandatory parameters
+	// --------------------
+	char **file_name = (char**)json_object_get_register(bp_info, regs, "file_name");
 	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
-	// ----------
-	// Other breakpoints
+	BP_file_buffer(regs, bp_info);
 	// -----------------
-	BP_file_name(regs, bp_info);
-	// -----------------
+
+	if(file_name) {
+		file_rep_init(fr, *file_name);
+	}
+
 	// th08 and th09 use their file size variable as the loop counter for LZSS
 	// decompression. Putting anything other than the original file size from
 	// the archive there (by writing to that variable) will result in a few
@@ -117,42 +118,18 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 		}
 		*file_size = POST_JSON_SIZE(fr);
 	}
-	return 1;
-}
 
-int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
-{
-	file_rep_t *fr = fr_tls_get();
-
-	// Parameters
-	// ----------
-	BYTE **file_buffer = (BYTE**)json_object_get_register(bp_info, regs, "file_buffer");
-	// ----------
-	if(file_buffer) {
-		fr->game_buffer = *file_buffer;
-	}
-	return 1;
-}
-
-int BP_file_load(x86_reg_t *regs, json_t *bp_info)
-{
-	file_rep_t *fr = fr_tls_get();
-
-	// Parameters
-	// ----------
-	size_t *file_buffer_addr_copy = json_object_get_register(bp_info, regs, "file_buffer_addr_copy");
-	size_t stack_clear_size = json_object_get_hex(bp_info, "stack_clear_size");
-	size_t eip_jump_dist = json_object_get_hex(bp_info, "eip_jump_dist");
-	// ----------
-
-	// Other breakpoints
-	// -----------------
-	BP_file_buffer(regs, bp_info);
-	// -----------------
-
+	// Got everything for a full file replacement?
 	if(!fr->game_buffer || !fr->rep_buffer || !fr->pre_json_size) {
 		return 1;
 	}
+
+	// Load-specific parameters
+	// ------------------------
+	size_t *file_buffer_addr_copy = json_object_get_register(bp_info, regs, "file_buffer_addr_copy");
+	size_t stack_clear_size = json_object_get_hex(bp_info, "stack_clear_size");
+	size_t eip_jump_dist = json_object_get_hex(bp_info, "eip_jump_dist");
+	// ------------------------
 
 	// Let's do it
 	memcpy(fr->game_buffer, fr->rep_buffer, fr->pre_json_size);
@@ -170,6 +147,16 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	}
 	file_rep_clear(fr);
 	return 0;
+}
+
+int BP_file_name(x86_reg_t *regs, json_t *bp_info)
+{
+	return BP_file_load(regs, bp_info);
+}
+
+int BP_file_size(x86_reg_t *regs, json_t *bp_info)
+{
+	return BP_file_load(regs, bp_info);
 }
 
 // Cool function name.
