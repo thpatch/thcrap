@@ -131,7 +131,10 @@ int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "filename");
 	// ----------
 
-	register_filename(filename);
+	if (filename) {
+		register_filename(filename);
+	}
+	return 1;
 }
 
 static void post_read(const file_rep_t *fr, BYTE *buffer, size_t size)

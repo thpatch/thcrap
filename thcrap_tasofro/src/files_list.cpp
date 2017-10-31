@@ -21,6 +21,10 @@ static json_t *full_files_list = nullptr;
 
 void register_filename(const char *path)
 {
+	if (!path) {
+		return;
+	}
+
 	DWORD hash = ICrypt::instance->SpecialFNVHash(path, path + strlen(path));
 	strcpy(fileHashToName[hash].path, path);
 
