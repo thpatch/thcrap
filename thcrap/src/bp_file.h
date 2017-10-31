@@ -65,7 +65,7 @@ void fr_tls_free(file_rep_t *fr);
   * -------------------
   *	[file_buffer]
   *		Register containing the address of the file buffer
-  *		Type: register
+  *		Type: pointer
   *
   * Other breakpoints called
   * ------------------------
@@ -97,7 +97,7 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   *		If given, initializes the file replacement state with the
   *		given file name, resolving a corresponding complete
   *		replacement file and/or a JSON patch from the stack.
-  *		Type: register
+  *		Type: pointer
   *
   *	[file_size]
   *		If given, reads the size of the original file (if not
@@ -105,7 +105,7 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   *		we are replacing or patching the original file with.
   *		Necessary for enlarging the size of the game's file
   *		buffer to fit the patched file.
-  *		Type: register
+  *		Type: pointer
   *
   *	[file_buffer]
   *		See BP_file_buffer().
@@ -114,15 +114,15 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   *
   *	[file_buffer_addr_copy]
   *		Additional register to copy the file buffer to
-  *		Type: register
+  *		Type: pointer
   *
   *	[stack_clear_size]
   *		Value to add to ESP
-  *		Type: integer
+  *		Type: hex
   *
   *	[eip_jump_dist]
   *		Value to add to EIP
-  *		Type: integer
+  *		Type: hex
   *
   * Other breakpoints called
   * ------------------------

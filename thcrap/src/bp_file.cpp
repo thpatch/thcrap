@@ -76,7 +76,7 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 
 	// Parameters
 	// ----------
-	BYTE **file_buffer = (BYTE**)json_object_get_register(bp_info, regs, "file_buffer");
+	auto file_buffer = (BYTE**)json_object_get_pointer(bp_info, regs, "file_buffer");
 	// ----------
 	if(file_buffer) {
 		fr->game_buffer = *file_buffer;
@@ -90,8 +90,8 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 
 	// Mandatory parameters
 	// --------------------
-	char **file_name = (char**)json_object_get_register(bp_info, regs, "file_name");
-	size_t *file_size = json_object_get_register(bp_info, regs, "file_size");
+	auto file_name = (char**)json_object_get_pointer(bp_info, regs, "file_name");
+	auto file_size = json_object_get_pointer(bp_info, regs, "file_size");
 	BP_file_buffer(regs, bp_info);
 	// -----------------
 
@@ -126,7 +126,7 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 
 	// Load-specific parameters
 	// ------------------------
-	size_t *file_buffer_addr_copy = json_object_get_register(bp_info, regs, "file_buffer_addr_copy");
+	auto file_buffer_addr_copy = json_object_get_pointer(bp_info, regs, "file_buffer_addr_copy");
 	size_t stack_clear_size = json_object_get_hex(bp_info, "stack_clear_size");
 	size_t eip_jump_dist = json_object_get_hex(bp_info, "eip_jump_dist");
 	// ------------------------
