@@ -66,6 +66,9 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 // Displays a message box showing missing archives in the current patch stack,
 // if there are any.
 void stack_show_missing(void);
+
+// Shows the MOTD of each individual patch.
+void stack_show_motds(void);
 /// -----------
 
 /// Manipulation
