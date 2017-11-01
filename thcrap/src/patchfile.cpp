@@ -339,8 +339,12 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 
 int patchhook_register(const char *wildcard, func_patch_t patch_func)
 {
+	VLA(char, wildcard_normalized, strlen(wildcard) + 1);
+	strcpy(wildcard_normalized, wildcard);
+	str_slash_normalize(wildcard_normalized);
 	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, JSON_OBJECT);
-	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, JSON_ARRAY);
+	json_t *hook_array = json_object_get_create(patch_hooks, wildcard_normalized, JSON_ARRAY);
+	VLA_FREE(wildcard_normalized);
 	if(!patch_func) {
 		return -1;
 	}
@@ -355,14 +359,18 @@ json_t* patchhooks_build(const char *fn)
 	if(!fn) {
 		return NULL;
 	}
+	VLA(char, fn_normalized, strlen(fn) + 1);
+	strcpy(fn_normalized, fn);
+	str_slash_normalize(fn_normalized);
 	json_object_foreach(json_object_get(run_cfg, PATCH_HOOKS), key, val) {
-		if(PathMatchSpec(fn, key)) {
+		if(PathMatchSpec(fn_normalized, key)) {
 			if(!ret) {
 				ret = json_array();
 			}
 			json_array_extend(ret, val);
 		}
 	}
+	VLA_FREE(fn_normalized);
 	return ret;
 }
 
