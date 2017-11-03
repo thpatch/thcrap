@@ -200,7 +200,8 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 	(void)stack_progress; (void)stack_total;
 	(void)patch; (void)patch_progress; (void)patch_total;
 	(void)fn; (void)ret; (void)param;
-	printf("%3d%%\b\b\b\b", (int)file_progress * 100 / file_total);
+	if (file_total)
+		printf("%3d%%\b\b\b\b", (int)file_progress * 100 / file_total);
 	return TRUE;
 }
 
