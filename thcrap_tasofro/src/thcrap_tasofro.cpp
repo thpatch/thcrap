@@ -19,6 +19,9 @@ static tasofro_game_t game_id_from_string(const char *game)
 	if (game == NULL) {
 		return TH_NONE;
 	}
+	else if (!strcmp(game, "megamari")) {
+		return TH_MEGAMARI;
+	}
 	else if (!strcmp(game, "nsml")) {
 		return TH_NSML;
 	}
@@ -55,7 +58,7 @@ int __stdcall thcrap_plugin_init()
 		}
 	}
 
-	if (game_id == TH_NSML) {
+	if (game_id == TH_MEGAMARI || game_id == TH_NSML) {
 		return nsml_init();
 	}
 	else if (game_id >= TH135) {

@@ -41,6 +41,7 @@
     <ClCompile Include="src\pl.cpp" />
     <ClCompile Include="src\plaintext.cpp" />
     <ClCompile Include="src\plugin.cpp" />
+    <ClCompile Include="src\png.cpp" />
     <ClCompile Include="src\spellcards_generator.cpp" />
     <ClCompile Include="src\tfcs.cpp" />
     <ClCompile Include="src\th135.cpp" />
@@ -53,6 +54,7 @@
     <ClInclude Include="src\crypt.h" />
     <ClInclude Include="src\pl.h" />
     <ClInclude Include="src\plugin.h" />
+    <ClInclude Include="src\png.h" />
     <ClInclude Include="src\spellcards_generator.h" />
     <ClInclude Include="src\tfcs.h" />
     <ClInclude Include="src\th135.h" />

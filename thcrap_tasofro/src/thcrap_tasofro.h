@@ -15,6 +15,7 @@ typedef enum {
 	TH_NONE,
 
 	// • Doesn't share any code with the other formats
+	TH_MEGAMARI,
 	TH_NSML,
 
 	// • filename hash: uses hash = ch ^ 0x1000193 * hash
