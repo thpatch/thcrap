@@ -14,10 +14,13 @@
 typedef enum {
 	TH_NONE,
 
-	// • Doesn't share any code with the other formats
+	// • nsml engine
 	TH_MEGAMARI,
+
+	// • Use a slightly different XORing
 	TH_NSML,
 
+	// • th135 engine
 	// • filename hash: uses hash = ch ^ 0x1000193 * hash
 	// • spells: using data/csv/Item*.csv
 	// • spells: data/csv/story/*/*.csv has columns for popularity
