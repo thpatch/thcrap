@@ -21,7 +21,7 @@ static json_t *full_files_list = nullptr;
 
 void register_filename(const char *path)
 {
-	if (!path) {
+	if (!path || path[1] == ':') {
 		return;
 	}
 
@@ -34,6 +34,7 @@ void register_filename(const char *path)
 			full_files_list = json_array();
 		}
 		char *path_u = EnsureUTF8(path, strlen(path));
+		str_slash_normalize_win(path_u);
 		size_t i;
 		json_t *val;
 		json_array_foreach(full_files_list, i, val) {

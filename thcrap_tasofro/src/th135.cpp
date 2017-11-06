@@ -128,7 +128,7 @@ int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "filename");
+	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
 	// ----------
 
 	if (filename) {
