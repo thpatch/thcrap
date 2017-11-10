@@ -47,10 +47,10 @@ const char** BP_music_params(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	size_t *track = (size_t*)json_object_get_register(bp_info, regs, "track");
+	json_t *track = json_object_get(bp_info, "track");
 	// ----------
 	if(track) {
-		track_id_internal = (*track) + 1;
+		track_id_internal = json_immediate_value(track, regs) + 1;
 		track_id_displayed = track_id_internal;
 
 		// Work around TH10's Game Over theme being #8 in the Music
@@ -64,7 +64,7 @@ const char** BP_music_params(x86_reg_t *regs, json_t *bp_info)
 			}
 		}
 	}
-	return (const char**)json_object_get_register(bp_info, regs, "str");
+	return (const char**)json_object_get_pointer(bp_info, regs, "str");
 }
 
 int BP_music_title(x86_reg_t *regs, json_t *bp_info)
@@ -83,10 +83,10 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	const char **str = BP_music_params(regs, bp_info);
 	const char *format_id = json_object_get_string(bp_info, "format_id");
-	size_t *line_num = json_object_get_register(bp_info, regs, "line_num");
+	json_t *line_num = json_object_get(bp_info, "line_num");
 	// ----------
 	if(line_num) {
-		cache_cmt_line = *line_num;
+		cache_cmt_line = json_immediate_value(line_num, regs);
 	}
 	if(str && *str) {
 		json_t *musiccmt = jsondata_game_get("musiccmt.js");

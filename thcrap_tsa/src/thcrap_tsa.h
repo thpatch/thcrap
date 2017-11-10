@@ -68,18 +68,18 @@ extern tsa_game_t game_id;
   *	[spell_id]
   *		The ID as given in the ECL file.
   *		Used as the minimum value for the name search.
-  *		Type: register
+  *		Type: immediate
   *
   *	[spell_id_real]
   *		The ID with the difficulty offset added to it.
   *		Used as the maximum value for the name search.
-  *		Type: register
+  *		Type: immediate
   *
   *	[spell_rank]
   *		The difficulty level ID offset.
   *		Used to calculate [spell_id] from [spell_id_real]
   *		if that parameter not available.
-  *		Type: register
+  *		Type: immediate
   *
   * Other breakpoints called
   * ------------------------
@@ -93,8 +93,8 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info);
   * Own JSON parameters
   * -------------------
   *	[spell_name]
-  *		Register to write to.
-  *		Type: register
+  *		Address to write to.
+  *		Type: pointer
   *
   *	[cave_exec]
   *		Set to false to disable the execution of the code cave
@@ -175,12 +175,12 @@ void music_title_print(const char **str, const char *format_id, size_t track_id_
   * -------------------
   *	[track]
   *		Music Room track number, 0-based. Gets cached 1-based.
-  *		Type: register
+  *		Type: immediate
   *
   *	[str]
-  *		Register containing the address of the target string.
+  *		Address of the target string.
   *		Also the return value of this function.
-  *		Type: register
+  *		Type: pointer
   */
 const char** BP_music_params(x86_reg_t *regs, json_t *bp_info);
 
@@ -210,7 +210,7 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
   *
   *	[line_num]
   *		Line number of the comment.
-  *		Type: register
+  *		Type: immediate
   *
   * Other breakpoints called
   * ------------------------
