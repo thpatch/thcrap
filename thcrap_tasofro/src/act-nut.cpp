@@ -41,6 +41,9 @@ int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, js
 		if (child) {
 			*child = text;
 		}
+		else {
+			log_printf("Act/Nut: key %s not found\n", key);
+		}
 	}
 
 	ActNut::MemoryBuffer *buf = ActNut::new_MemoryBuffer(ActNut::MemoryBuffer::SHARE, (uint8_t *)file_out, size_out, false);
