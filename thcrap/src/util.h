@@ -35,13 +35,13 @@ __inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 	return memcpy_advance_dst(dst, src, len);
 }
 
+#ifdef __cplusplus
 // Reference to a string somewhere else in memory with a given length.
 // TODO: Rip out and change to std::string_view once C++17 is more widespread.
 typedef struct stringref_t {
 	const char *str;
 	size_t len;
 
-#ifdef __cplusplus
 	// No default constructor = no potential uninitialized
 	// string pointer = good
 
@@ -51,20 +51,13 @@ typedef struct stringref_t {
 	stringref_t(const json_t *json)
 		: str(json_string_value(json)), len(json_string_length(json)) {
 	}
-#endif
 } stringref_t;
 
-#define STRINGREF_FROM_LITERAL(str) \
-	{str, sizeof(str) - 1}
-
-#define STRINGREF_FROM_LITERAL_DEC(name, str) \
-	static const stringref_t name = STRINGREF_FROM_LITERAL(str);
-
-__inline char* stringref_copy_advance_dst(char *dst, const stringref_t *strref)
+__inline char* stringref_copy_advance_dst(char *dst, const stringref_t &strref)
  {
-	assert(strref);
-	return strncpy_advance_dst(dst, strref->str, strref->len);
+	return strncpy_advance_dst(dst, strref.str, strref.len);
 }
+#endif
 
 // Replaces every occurence of the ASCII character [from] in [str] with [to].
 void str_ascii_replace(char *str, const char from, const char to);
