@@ -47,6 +47,10 @@ typedef struct stringref_t {
 
 	stringref_t(const char *str) : str(str), len(strlen(str)) {}
 	stringref_t(const char *str, size_t len) : str(str), len(len) {}
+
+	stringref_t(const json_t *json)
+		: str(json_string_value(json)), len(json_string_length(json)) {
+	}
 #endif
 } stringref_t;
 
