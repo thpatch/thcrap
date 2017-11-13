@@ -31,6 +31,8 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * Wildcard-based **file format patching hooks** called on file replacements - can apply patches to data files according to a (stackable!) JSON description.
 
+* Optional **Steam integration** for games that are available through Steam, but don't come with Steam integration themselves. Can be disabled by deleting `steam_api.dll`.
+
 * ... and all that without any significant impact on performance. ☺
 
 ### Modules included ###

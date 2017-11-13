@@ -63,6 +63,7 @@
     <ClCompile Include="src\inject.cpp" />
     <ClCompile Include="src\shelllink.cpp" />
     <ClCompile Include="src\stack.cpp" />
+    <ClCompile Include="src\steam.cpp" />
     <ClCompile Include="src\strings.cpp" />
     <ClCompile Include="src\util.cpp" />
     <ClCompile Include="src\textdisp.cpp" />
