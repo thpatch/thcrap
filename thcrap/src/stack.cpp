@@ -186,6 +186,8 @@ void stack_show_missing(void)
 	json_decref(rem_arcs);
 }
 
+/// Customizable per-patch message on startup
+/// -----------------------------------------
 void patch_show_motd(json_t *patch_info)
 {
 	auto msg = json_object_get_string(patch_info, "motd");
@@ -218,6 +220,12 @@ void stack_show_motds(void)
 		patch_show_motd(patch_info);
 	}
 }
+
+extern "C" __declspec(dllexport) void motd_mod_post_init(void)
+{
+	stack_show_motds();
+}
+/// -----------------------------------------
 
 int stack_remove_if_unneeded(const char *patch_id)
 {

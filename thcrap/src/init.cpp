@@ -273,7 +273,7 @@ int thcrap_init(const char *run_cfg_fn)
 	log_printf("---------------------------\n");
 	json_dump_log(run_cfg, JSON_INDENT(2));
 	log_printf("---------------------------\n");
-	stack_show_motds();
+	mod_func_run_all("post_init", NULL);
 	return 0;
 }
 
