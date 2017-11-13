@@ -50,6 +50,10 @@ typedef enum {
 	// • msg: Adds opcode 32 for overriding the speech bubble shape and
 	//        direction
 	TH14,
+	TH15,
+
+	// • First game released on Steam
+	TH16,
 
 	// Any future game without relevant changes
 	TH_FUTURE,
