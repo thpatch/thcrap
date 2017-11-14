@@ -201,6 +201,7 @@ int fontrules_apply(LOGFONTA *lf)
 {
 	json_t *fontrules = json_object_get(runconfig_get(), "fontrules");
 	LOGFONTA rep_full = {0};
+	rep_full.lfQuality = UNSPECIFIED_QUALITY;
 	int rep_score = 0;
 	int log_header = 0;
 	const char *key;
