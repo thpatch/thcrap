@@ -711,7 +711,11 @@ const msg_format_t MSG_TH128 = {
 	.opcodes = {
 		{  7, OP_SIDE_LEFT },
 		{  8, OP_SIDE_RIGHT },
-		{  9, OP_AUTO_END },
+
+		// Only used for the Parallel Ending explanation
+		// at the end of TH13's Extra Stage.
+		{  9, OP_SIDE_LEFT },
+
 		{ 11, OP_AUTO_END },
 		{ 17, OP_AUTO_LINE },
 		{ 25, OP_DELETE },
@@ -726,7 +730,7 @@ const msg_format_t MSG_TH14 = {
 	.opcodes = {
 		{ 7, OP_SIDE_LEFT },
 		{ 8, OP_SIDE_RIGHT },
-		{ 9, OP_AUTO_END },
+		{ 9, OP_SIDE_LEFT }, // unused
 		{ 11, OP_AUTO_END },
 		{ 17, OP_AUTO_LINE },
 		{ 25, OP_DELETE },
