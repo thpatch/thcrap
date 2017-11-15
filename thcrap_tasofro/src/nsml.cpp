@@ -144,9 +144,16 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 	// Parameters
 	// ----------
 	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
+	size_t fn_size = json_object_get_immediate(bp_info, regs, "fn_size");
 	// ----------
 
-	char *uFilename = EnsureUTF8(filename, strlen(filename));
+	char *uFilename;
+	if (fn_size) {
+		uFilename = EnsureUTF8(filename, fn_size);
+	}
+	else {
+		uFilename = EnsureUTF8(filename, strlen(filename));
+	}
 	CharLowerA(uFilename);
 
 	json_t *new_bp_info = json_copy(bp_info);
