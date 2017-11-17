@@ -260,13 +260,23 @@ int thcrap_init(const char *run_cfg_fn)
 		}
 	}
 	*/
-	binhacks_apply(json_object_get(run_cfg, "binhacks"), NULL);
-	breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
+
+	// We might want to move this to thcrap_init_binary() too to accommodate
+	// DRM that scrambles the original import table, but since we're not
+	// having any test cases right now...
 	thcrap_detour(hProc);
+
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	json_decref(user_cfg);
+	return thcrap_init_binary();
+}
+
+int thcrap_init_binary()
+{
+	binhacks_apply(json_object_get(run_cfg, "binhacks"), NULL);
+	breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
 
 	log_printf("---------------------------\n");
 	log_printf("Complete run configuration:\n");

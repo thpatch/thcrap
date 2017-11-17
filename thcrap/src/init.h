@@ -22,8 +22,13 @@ json_t* identify(const char *fn);
 // Applies the detour cache to the module at [hProc].
 void thcrap_detour(HMODULE hProc);
 
-// Sets up the engine with the given configuration for the current process.
+// Sets up the engine with the given configuration and the correct game-
+// specific files for the current process.
 int thcrap_init(const char *setup_fn);
+
+// Second part of thcrap_init(), applies any sort of binary change to the
+// current process.
+int thcrap_init_binary(void);
 
 // If the target process terminates using ExitProcess(), any active threads
 // will have most likely already been terminated before DLL_PROCESS_DETACH is
