@@ -309,7 +309,6 @@ void ExitDll(HMODULE hDll)
 	mod_func_run_all("thread_exit", NULL);
 	mod_func_run_all("exit", NULL);
 	plugins_close();
-	breakpoints_remove();
 	run_cfg = json_decref_safe(run_cfg);
 	DeleteCriticalSection(&cs_file_access);
 

@@ -421,23 +421,3 @@ int breakpoints_apply(json_t *breakpoints)
 	log_printf("-------------------------\n");
 	return 0;
 }
-
-int breakpoints_remove(void)
-{
-
-	if(!!BP_Local) {
-		log_printf("No breakpoints to remove.\n");
-		return 0;
-	}
-
-	log_printf(
-		"Removing breakpoints...\n"
-		"-----------------------\n"
-	);
-	// TODO: Implement!
-
-	VirtualFree(BP_SourceCave, 0, MEM_RELEASE);
-	VirtualFree(BP_CallCave, 0, MEM_RELEASE);
-	SAFE_FREE(BP_Local);
-	return 0;
-}
