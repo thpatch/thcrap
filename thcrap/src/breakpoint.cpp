@@ -392,7 +392,7 @@ int breakpoints_apply(breakpoint_set_t *set, json_t *breakpoints)
 		}
 		json_flex_array_foreach(json_object_get(json_bp, "addr"), j, addr_val) {
 			size_t addr = json_hex_value(addr_val);
-			if(addr) {
+			if(addr && VirtualCheckRegion((const void*)addr, CALL_LEN)) {
 				auto *bp = &set->bp_local[++i];
 				log_printf("(%2d/%2d) 0x%p %s... ", i + 1, bp_count, addr, key);
 				if(!breakpoint_local_init(
