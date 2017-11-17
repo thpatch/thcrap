@@ -9,21 +9,6 @@
 
 #include "thcrap.h"
 
-typedef struct {
-	// Address where the breakpoint is written
-	BYTE *addr;
-
-	// Size of the original code sliced out at [addr].
-	// Must be inside BP_SourceCave_Limits.
-	size_t cavesize;
-
-	BreakpointFunc_t func;
-	json_t *json_obj;
-
-	// First byte of the code cave for this breakpoint.
-	BYTE *cave;
-} breakpoint_local_t;
-
 /// Functions
 /// ---------
 // Breakpoint hook function, implemented in assembly. A CALL to this function

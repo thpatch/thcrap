@@ -46,6 +46,21 @@ typedef struct {
   */
 typedef int (*BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
 
+typedef struct {
+	// Address where the breakpoint is written
+	uint8_t *addr;
+
+	// Size of the original code sliced out at [addr].
+	// Must be inside BP_SourceCave_Limits.
+	size_t cavesize;
+
+	BreakpointFunc_t func;
+	json_t *json_obj;
+
+	// First byte of the code cave for this breakpoint.
+	uint8_t *cave;
+} breakpoint_local_t;
+
 // Returns a pointer to the register [regname] in [regs]. [endptr] behaves
 // like the endptr parameter of strtol(), and can be a nullptr if not needed.
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
