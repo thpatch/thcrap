@@ -61,6 +61,18 @@ typedef struct {
 	uint8_t *cave;
 } breakpoint_local_t;
 
+typedef struct {
+	breakpoint_local_t *bp_local;
+	size_t bp_count;
+
+	// Contains the original code bytes we overwrote
+	uint8_t *cave_source;
+
+	// Contains the calls with the correct breakpoint_local_t* for each
+	// breakpoint.
+	uint8_t *cave_call;
+} breakpoint_set_t;
+
 // Returns a pointer to the register [regname] in [regs]. [endptr] behaves
 // like the endptr parameter of strtol(), and can be a nullptr if not needed.
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
@@ -99,7 +111,7 @@ BreakpointFunc_t breakpoint_func_get(const char *key);
 
 // Sets up all breakpoints in [breakpoints] and returns the number of
 // breakpoints that could not be applied.
-int breakpoints_apply(json_t *breakpoints);
+int breakpoints_apply(breakpoint_set_t *set, json_t *breakpoints);
 
 // Removes all breakpoints in the given set.
 // TODO: Implement!

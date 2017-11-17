@@ -16,6 +16,7 @@
 // Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
+breakpoint_set_t bp_set_game; // Breakpoints for the game itself
 /// -----------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
@@ -276,7 +277,7 @@ int thcrap_init(const char *run_cfg_fn)
 int thcrap_init_binary()
 {
 	binhacks_apply(json_object_get(run_cfg, "binhacks"), NULL);
-	breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
+	breakpoints_apply(&bp_set_game, json_object_get(run_cfg, "breakpoints"));
 
 	log_printf("---------------------------\n");
 	log_printf("Complete run configuration:\n");
