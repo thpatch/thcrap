@@ -17,6 +17,7 @@ BOOL VirtualCheckCode(const void *ptr);
 
 // Writes [len] bytes from [new] to [ptr] in the address space of the current
 // or another process if the current value in [ptr] equals [prev].
+// Returns TRUE on success, FALSE on failure.
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
 int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
 
