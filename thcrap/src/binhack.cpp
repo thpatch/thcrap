@@ -145,6 +145,7 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 	json_t *hack;
 	size_t binhack_count = hackpoints_count(binhacks);
 	size_t c = 0;
+	int failed = binhack_count;
 
 	if(!binhack_count) {
 		log_printf("No binary hacks to apply.\n");
@@ -196,15 +197,16 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 			} else if(binhack_render(exp_buf, addr, expected)) {
 				exp_size = 0;
 			}
-			log_printf(
-				PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)
-				? "OK\n"
-				: "expected bytes not matched, skipping...\n"
-			);
+			if(PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
+				log_printf("OK\n");
+				failed--;
+			} else {
+				log_printf("expected bytes not matched, skipping...\n");
+			}
 		}
 		VLA_FREE(asm_buf);
 		VLA_FREE(exp_buf);
 	}
 	log_printf("------------------------\n");
-	return 0;
+	return failed;
 }

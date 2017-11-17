@@ -353,9 +353,10 @@ int breakpoints_apply(json_t *breakpoints)
 	json_t *json_bp;
 	size_t bp_count = hackpoints_count(breakpoints);
 	int i = -1;
+	int failed = bp_count;
 
 	if(!breakpoints) {
-		return -1;
+		return 0;
 	}
 	if(!bp_count) {
 		log_printf("No breakpoints to set up.\n");
@@ -399,10 +400,11 @@ int breakpoints_apply(json_t *breakpoints)
 					breakpoint_apply(callcave_p, bp);
 
 					callcave_p += call_size;
+					failed--;
 				}
 			}
 		}
 	}
 	log_printf("-------------------------\n");
-	return 0;
+	return failed;
 }

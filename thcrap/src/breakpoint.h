@@ -97,7 +97,8 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 // single breakpoint function at any number of points in the original code.
 BreakpointFunc_t breakpoint_func_get(const char *key);
 
-// Sets up all breakpoints in [breakpoints].
+// Sets up all breakpoints in [breakpoints] and returns the number of
+// breakpoints that could not be applied.
 int breakpoints_apply(json_t *breakpoints);
 
 // Removes all breakpoints in the given set.
