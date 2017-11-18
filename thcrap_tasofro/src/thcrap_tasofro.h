@@ -20,6 +20,9 @@ typedef enum {
 	// • Use a slightly different XORing
 	TH_NSML,
 
+	// • Support for more file formats
+	TH105,
+
 	// • th135 engine
 	// • filename hash: uses hash = ch ^ 0x1000193 * hash
 	// • spells: using data/csv/Item*.csv
