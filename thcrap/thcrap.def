@@ -12,6 +12,7 @@ EXPORTS
 	file_rep_init
 	file_rep_clear
 	file_rep_get
+	file_rep_get_by_object
 
 	fr_tls_get
 

@@ -9,6 +9,7 @@
 
 #include "thcrap.h"
 #include <map>
+#include <algorithm>
 
 #define POST_JSON_SIZE(fr) (fr)->pre_json_size + (fr)->patch_size
 
@@ -257,6 +258,25 @@ file_rep_t *file_rep_get(const char *filename)
 	}
 }
 
+file_rep_t *file_rep_get_by_object(const void *object)
+{
+	if (!object) {
+		return nullptr;
+	}
+
+	auto it = std::find_if(
+		files_list.begin(),
+		files_list.end(),
+		[object](std::map<std::string, file_rep_t>::reference value) -> bool { return value.second.object == object; }
+	);
+	if (it != files_list.end()) {
+		return &it->second;
+	}
+	else {
+		return nullptr;
+	}
+}
+
 int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
@@ -294,7 +314,8 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 
 	// Parameters
 	// ----------
-	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
+	const char *file_name   = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
+	const void *file_object = (const void*)json_object_get_immediate(bp_info, regs, "file_object");
 	int apply = json_boolean_value(json_object_get(bp_info, "apply"));
 	// Stack
 	// ----------
@@ -305,8 +326,12 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 	LPOVERLAPPED lpOverlapped         = ((LPOVERLAPPED*)regs->esp)[5];
 	// ----------
 
-	if (filename) {
-		fr = file_rep_get(filename);
+	if (file_name) {
+		fr = file_rep_get(file_name);
+		*fr_ptr_tls_get() = fr;
+	}
+	else if (file_object) {
+		fr = file_rep_get_by_object(file_object);
 		*fr_ptr_tls_get() = fr;
 	}
 

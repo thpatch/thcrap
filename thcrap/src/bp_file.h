@@ -52,6 +52,9 @@ int file_rep_clear(file_rep_t *fr);
 // Retrieves a file_rep_t object cached by BP_file_header
 file_rep_t *file_rep_get(const char *filename);
 
+// Retrieves a file_rep_t object cached by BP_file_header, using its object member
+file_rep_t *file_rep_get_by_object(const void *object);
+
 /// Thread-local storage
 /// --------------------
 file_rep_t* fr_tls_get(void);
@@ -181,6 +184,10 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info);
   * -------------------
   *	[file_name]
   *		File name
+  *		Type: immediate
+  *
+  *	[file_object]
+  *		File object, used instead of the file name if it isn't provided
   *		Type: immediate
   *
   *	[apply]
