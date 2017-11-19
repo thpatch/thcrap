@@ -16,7 +16,9 @@
 // Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
-breakpoint_set_t bp_set_game; // Breakpoints for the game itself
+breakpoint_set_t *bp_set = nullptr; // One per stage
+size_t stage_cur = 0;
+size_t stages_total = 0; // Including the run configuration, therefore >= 1
 /// -----------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
@@ -267,25 +269,80 @@ int thcrap_init(const char *run_cfg_fn)
 	// having any test cases right now...
 	thcrap_detour(hProc);
 
+	// Init stages
+	// -----------
+	auto init_stages = json_object_get(run_cfg, "init_stages");
+	stages_total = json_array_size(init_stages) + 1;
+	*(void **)(&bp_set) = calloc(stages_total, sizeof(breakpoint_set_t));
+	// -----------
+
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	json_decref(user_cfg);
-	return thcrap_init_binary();
+	return thcrap_init_binary(0);
 }
 
-int thcrap_init_binary()
+int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
 {
-	binhacks_apply(json_object_get(run_cfg, "binhacks"), NULL);
-	breakpoints_apply(&bp_set_game, json_object_get(run_cfg, "breakpoints"));
+	thcrap_init_binary(++stage_cur);
+	return 1;
+}
 
-	log_printf("---------------------------\n");
-	log_printf("Complete run configuration:\n");
-	log_printf("---------------------------\n");
-	json_dump_log(run_cfg, JSON_INDENT(2));
-	log_printf("---------------------------\n");
-	mod_func_run_all("post_init", NULL);
+int thcrap_init_binary(size_t stage_num)
+{
+	assert(bp_set);
+	assert(stage_num < stages_total);
+
+	if(stages_total >= 2) {
+		log_printf(
+			"Initialization stage %d...\n"
+			"-------------------------\n",
+			stage_num
+		);
+	}
+
+	int ret = 0;
+	auto *run_cfg = runconfig_get();
+	auto stage = thcrap_init_stage_data(stage_num);
+
+	auto *binhacks = json_object_get(stage, "binhacks");
+	auto *breakpoints = json_object_get(stage, "breakpoints");
+
+	ret += binhacks_apply(binhacks, NULL);
+	ret += breakpoints_apply(&bp_set[stage_num], breakpoints);
+
+	if(stages_total >= 2) {
+		if(ret != 0 && stage_num == 0 && stages_total >= 2) {
+			log_printf(
+				"Failed. Jumping to last stage...\n"
+				"-------------------------\n"
+			);
+			return thcrap_init_binary(stages_total - 1);
+		} else {
+			log_printf("-----------------------\n");
+		}
+	}
+
+	if(stage == run_cfg) {
+		log_printf("---------------------------\n");
+		log_printf("Complete run configuration:\n");
+		log_printf("---------------------------\n");
+		json_dump_log(run_cfg, JSON_INDENT(2));
+		log_printf("---------------------------\n");
+		mod_func_run_all("post_init", NULL);
+	}
 	return 0;
+}
+
+json_t* thcrap_init_stage_data(size_t stage_num)
+{
+	auto run_cfg = runconfig_get();
+	auto init_stages = json_object_get(run_cfg, "init_stages");
+	if(stage_num < json_array_size(init_stages)) {
+		return json_array_get(init_stages, stage_num);
+	}
+	return run_cfg;
 }
 
 int InitDll(HMODULE hDll)
@@ -320,6 +377,7 @@ void ExitDll(HMODULE hDll)
 	mod_func_run_all("thread_exit", NULL);
 	mod_func_run_all("exit", NULL);
 	plugins_close();
+	SAFE_FREE(bp_set);
 	run_cfg = json_decref_safe(run_cfg);
 	DeleteCriticalSection(&cs_file_access);
 

@@ -27,8 +27,25 @@ void thcrap_detour(HMODULE hProc);
 int thcrap_init(const char *setup_fn);
 
 // Second part of thcrap_init(), applies any sort of binary change to the
-// current process.
-int thcrap_init_binary(void);
+// current process, using the binary hacks and breakpoints from the stage
+// with the given number.
+int thcrap_init_binary(size_t stage_num);
+
+// Returns the configuration for the given stage.
+json_t* thcrap_init_stage_data(size_t stage_num);
+
+/**
+  * Sets up the binary hacks and breakpoints of the next stage.
+  *
+  * Own JSON parameters
+  * -------------------
+  *	None
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info);
 
 // If the target process terminates using ExitProcess(), any active threads
 // will have most likely already been terminated before DLL_PROCESS_DETACH is

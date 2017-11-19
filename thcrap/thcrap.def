@@ -75,6 +75,8 @@ EXPORTS
 	thcrap_detour
 	thcrap_init
 
+	BP_init_next_stage
+
 	; Injection
 	; ---------
 	entry_from_context
