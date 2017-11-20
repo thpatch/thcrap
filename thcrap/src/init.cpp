@@ -280,16 +280,20 @@ int thcrap_init(const char *run_cfg_fn)
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	json_decref(user_cfg);
-	return thcrap_init_binary(0);
+	return thcrap_init_binary(0, nullptr);
 }
 
 int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
 {
-	thcrap_init_binary(++stage_cur);
+	// Parameters
+	// ----------
+	auto module = (HMODULE)json_object_get_immediate(bp_info, regs, "module");
+	// ----------
+	thcrap_init_binary(++stage_cur, &module);
 	return 1;
 }
 
-int thcrap_init_binary(size_t stage_num)
+int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr)
 {
 	assert(bp_set);
 	assert(stage_num < stages_total);
@@ -309,8 +313,13 @@ int thcrap_init_binary(size_t stage_num)
 	auto *binhacks = json_object_get(stage, "binhacks");
 	auto *breakpoints = json_object_get(stage, "breakpoints");
 
-	ret += binhacks_apply(binhacks, NULL);
-	ret += breakpoints_apply(&bp_set[stage_num], breakpoints, nullptr);
+	auto hModFromStage = (HMODULE)json_object_get_immediate(
+		stage, nullptr, "module"
+	);
+	auto hMod = hModPtr ? *hModPtr : hModFromStage;
+
+	ret += binhacks_apply(binhacks, hMod);
+	ret += breakpoints_apply(&bp_set[stage_num], breakpoints, hMod);
 
 	if(stages_total >= 2) {
 		if(ret != 0 && stage_num == 0 && stages_total >= 2) {
@@ -318,7 +327,7 @@ int thcrap_init_binary(size_t stage_num)
 				"Failed. Jumping to last stage...\n"
 				"-------------------------\n"
 			);
-			return thcrap_init_binary(stages_total - 1);
+			return thcrap_init_binary(stages_total - 1, nullptr);
 		} else {
 			log_printf("-----------------------\n");
 		}
