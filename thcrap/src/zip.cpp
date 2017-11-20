@@ -258,7 +258,7 @@ static int zip_file_seek(zip_t *zip, const char *fn)
 		if(json_is_integer(offset_json)) {
 			json_int_t pos = json_integer_value(offset_json);
 			ret = SetFilePointer(
-				zip->hArc, pos, NULL, FILE_BEGIN
+				zip->hArc, (LONG)pos, NULL, FILE_BEGIN
 			) == INVALID_SET_FILE_POINTER ? GetLastError() : 0;
 		}
 	}

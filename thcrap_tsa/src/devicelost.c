@@ -82,7 +82,7 @@ void devicelost_mod_detour(void)
 {
 	HMODULE hModule = GetModuleHandle(L"d3d9.dll");
 	if (hModule) {
-		orig_Direct3DCreate9 = GetProcAddress(hModule, "Direct3DCreate9");
+		orig_Direct3DCreate9 = (void***(__stdcall*)(UINT))GetProcAddress(hModule, "Direct3DCreate9");
 		detour_chain("d3d9.dll", 1,
 			"Direct3DCreate9", my_Direct3DCreate9, &orig_Direct3DCreate9,
 			NULL

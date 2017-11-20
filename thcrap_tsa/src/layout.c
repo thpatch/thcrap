@@ -96,7 +96,7 @@ static HFONT* json_object_get_tsa_font(json_t *object, const char *key)
 	json_t *val = json_object_get(object, key);
 	return
 		json_is_string(val) ? (HFONT*)json_hex_value(val)
-		: json_is_integer(val) ? font_block_get(json_integer_value(val))
+		: json_is_integer(val) ? font_block_get((int)json_integer_value(val))
 		: NULL
 	;
 }
