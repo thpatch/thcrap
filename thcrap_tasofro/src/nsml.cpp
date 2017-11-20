@@ -223,6 +223,7 @@ int BP_th105_file_new(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 	char *uFilename = EnsureUTF8(file_name, strlen(file_name));
+	CharLowerA(uFilename);
 	file_rep_t *fr = file_rep_get(uFilename);
 	if (fr) {
 		file_rep_set_object(fr, file_object);
