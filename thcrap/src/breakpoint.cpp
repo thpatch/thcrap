@@ -345,7 +345,7 @@ int breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
 extern "C" void *bp_entry_end;
 extern "C" void *bp_entry_localptr;
 
-int breakpoints_apply(breakpoint_set_t *set, json_t *breakpoints)
+int breakpoints_apply(breakpoint_set_t *set, json_t *breakpoints, HMODULE hMod)
 {
 	assert(set);
 
@@ -391,7 +391,9 @@ int breakpoints_apply(breakpoint_set_t *set, json_t *breakpoints)
 			continue;
 		}
 		json_flex_array_foreach(json_object_get(json_bp, "addr"), j, addr_val) {
-			size_t addr = json_hex_value(addr_val);
+			auto *addr_str = json_string_value(addr_val);
+			auto addr = str_address_value(addr_str, hMod, nullptr);
+
 			if(addr && VirtualCheckRegion((const void*)addr, CALL_LEN)) {
 				auto *bp = &set->bp_local[++i];
 				log_printf("(%2d/%2d) 0x%p %s... ", i + 1, bp_count, addr, key);

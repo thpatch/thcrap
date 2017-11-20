@@ -310,7 +310,7 @@ int thcrap_init_binary(size_t stage_num)
 	auto *breakpoints = json_object_get(stage, "breakpoints");
 
 	ret += binhacks_apply(binhacks, NULL);
-	ret += breakpoints_apply(&bp_set[stage_num], breakpoints);
+	ret += breakpoints_apply(&bp_set[stage_num], breakpoints, nullptr);
 
 	if(stages_total >= 2) {
 		if(ret != 0 && stage_num == 0 && stages_total >= 2) {
