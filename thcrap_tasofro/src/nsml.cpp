@@ -225,7 +225,7 @@ int BP_th105_file_new(x86_reg_t *regs, json_t *bp_info)
 	char *uFilename = EnsureUTF8(file_name, strlen(file_name));
 	file_rep_t *fr = file_rep_get(uFilename);
 	if (fr) {
-		fr->object = file_object;
+		file_rep_set_object(fr, file_object);
 	}
 	free(uFilename);
 	return 1;
@@ -243,7 +243,7 @@ int BP_th105_file_delete(x86_reg_t *regs, json_t *bp_info)
 	}
 	file_rep_t *fr = file_rep_get_by_object(file_object);
 	if (fr) {
-		fr->object = nullptr;
+		file_rep_set_object(fr, nullptr);
 	}
 	return 1;
 }

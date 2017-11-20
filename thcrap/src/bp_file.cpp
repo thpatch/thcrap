@@ -246,6 +246,7 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 // For these files, we need to know the full file size beforehand.
 // So we need a breakpoint in the file header.
 std::map<std::string, file_rep_t> files_list;
+std::map<const void*, file_rep_t*> file_object_to_rep_list;
 
 file_rep_t *file_rep_get(const char *filename)
 {
@@ -258,19 +259,26 @@ file_rep_t *file_rep_get(const char *filename)
 	}
 }
 
+void file_rep_set_object(file_rep_t *fr, void *object)
+{
+	if (fr->object) {
+		file_object_to_rep_list.erase(fr->object);
+	}
+	fr->object = object;
+	if (object) {
+		file_object_to_rep_list[object] = fr;
+	}
+}
+
 file_rep_t *file_rep_get_by_object(const void *object)
 {
 	if (!object) {
 		return nullptr;
 	}
 
-	auto it = std::find_if(
-		files_list.begin(),
-		files_list.end(),
-		[object](std::map<std::string, file_rep_t>::reference value) -> bool { return value.second.object == object; }
-	);
-	if (it != files_list.end()) {
-		return &it->second;
+	auto it = file_object_to_rep_list.find(object);
+	if (it != file_object_to_rep_list.end()) {
+		return it->second;
 	}
 	else {
 		return nullptr;

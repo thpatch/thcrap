@@ -54,6 +54,10 @@ file_rep_t *file_rep_get(const char *filename);
 
 // Retrieves a file_rep_t object cached by BP_file_header, using its object member
 file_rep_t *file_rep_get_by_object(const void *object);
+// Set the object member of a file_rep.
+// If you want to use file_rep_get_by_object, you *must* set the object member with this function.
+void file_rep_set_object(file_rep_t *fr, void *object);
+
 
 /// Thread-local storage
 /// --------------------
