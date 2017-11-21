@@ -87,13 +87,13 @@ int __stdcall thcrap_plugin_init()
 	game_id = game_id_from_string(game);
 
 	// th06_msg
-	patchhook_register("msg*.dat", patch_msg_dlg); // th06-08
-	patchhook_register("p*.msg", patch_msg_dlg); // th09
-	patchhook_register("s*.msg", patch_msg_dlg); // lowest common denominator for th10+
-	patchhook_register("msg*.msg", patch_msg_dlg); // th143
-	patchhook_register("e*.msg", patch_msg_end); // th10+ endings
+	patchhook_register("msg*.dat", patch_msg_dlg, NULL); // th06-08
+	patchhook_register("p*.msg", patch_msg_dlg, NULL); // th09
+	patchhook_register("s*.msg", patch_msg_dlg, NULL); // lowest common denominator for th10+
+	patchhook_register("msg*.msg", patch_msg_dlg, NULL); // th143
+	patchhook_register("e*.msg", patch_msg_end, NULL); // th10+ endings
 
-	patchhook_register("*.anm", patch_anm);
+	patchhook_register("*.anm", patch_anm, NULL);
 	return 0;
 }
 

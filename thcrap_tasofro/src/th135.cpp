@@ -30,13 +30,13 @@ int th135_init()
 		ICrypt::instance = new CryptTh135();
 	}
 	
-	patchhook_register("*/stage*.pl", patch_pl);
-	patchhook_register("*/ed_*.pl", patch_pl);
-	patchhook_register("*.csv", patch_tfcs);
-	patchhook_register("*.dll", patch_dll);
-	patchhook_register("*.act", patch_act);
-	patchhook_register("*.nut", patch_nut);
-	patchhook_register("*.txt", patch_plaintext);
+	patchhook_register("*/stage*.pl", patch_pl, nullptr);
+	patchhook_register("*/ed_*.pl", patch_pl, nullptr);
+	patchhook_register("*.csv", patch_tfcs, get_tfcs_size);
+	patchhook_register("*.dll", patch_dll, [](const char*, json_t*, size_t) -> size_t { return 0; });
+	patchhook_register("*.act", patch_act, nullptr);
+	patchhook_register("*.nut", patch_nut, nullptr);
+	patchhook_register("*.txt", patch_plaintext, nullptr);
 
 	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
 	if (game_id >= TH145) {

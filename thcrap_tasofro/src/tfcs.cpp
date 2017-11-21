@@ -201,3 +201,14 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 
 	return 1;
 }
+
+size_t get_tfcs_size(const char*, json_t*, size_t patch_size)
+{
+	// Because a lot of these files are zipped, guessing their exact patched size is hard. We'll add a few more bytes.
+	if (patch_size) {
+		return (size_t)(patch_size * 1.2) + 1;
+	}
+	else {
+		return 0;
+	}
+}

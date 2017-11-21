@@ -34,6 +34,25 @@
   */
 typedef int (*func_patch_t)(void* file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 
+/**
+  * Patch file guessing function type.
+  *
+  * Parameters
+  * ----------
+  *	const char *fn
+  *		Filename of the file.
+  *
+  *	json_t *patch
+  *		Patch data to be applied.
+  *
+  *	size_t patch_size
+  *		Size of the patfh file.
+  *
+  * If the patch function may need to increase the file size, return the number of bytes it will need.
+  * Else, return 0.
+  */
+typedef size_t (*func_patch_size_t)(const char *fn, json_t *patch, size_t patch_size);
+
 // Reads the file [fn] into a newly created buffer and returns its file size
 // in [file_size]. Return value has to be free()d by the caller!
 void* file_read(const char *fn, size_t *file_size);
@@ -108,7 +127,8 @@ json_t* patch_build(const json_t *sel);
 /// Hooks
 /// -----
 // Register a hook function for a certain file extension.
-int patchhook_register(const char *ext, func_patch_t patch_func);
+// If patch_size_func is null, a default implementation returning the size of the jdiff file is used instead.
+int patchhook_register(const char *ext, func_patch_t patch_func, func_patch_size_t patch_size_func);
 
 // Builds an array of patch hook functions for [fn].
 // Has to be json_decref()'d by the caller!

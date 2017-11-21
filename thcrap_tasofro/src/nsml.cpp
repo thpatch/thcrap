@@ -11,18 +11,56 @@
 #include "./png.h"
 #include "thcrap_tasofro.h"
 
-int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
-int patch_bmp(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+size_t get_cv2_size(const char *fn, json_t*, size_t);
+int    patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+size_t get_bmp_size(const char *fn, json_t*, size_t);
+int    patch_bmp(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
 
 int nsml_init()
 {
 	if (game_id == TH_MEGAMARI) {
-		patchhook_register("*.bmp", patch_bmp);
+		patchhook_register("*.bmp", patch_bmp, get_bmp_size);
 	}
-	if (game_id == TH_NSML || game_id == TH105) {
-		patchhook_register("*.cv2", patch_cv2);
+	else if (game_id == TH_NSML) {
+		// Increasing the file size makes the game crash.
+		patchhook_register("*.cv2", patch_cv2, nullptr);
+	}
+	else if (game_id == TH105) {
+		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
 	}
 	return 0;
+}
+
+size_t get_image_data_size(const char *fn, bool fill_alpha_for_24bpp)
+{
+	VLA(char, fn_png, strlen(fn) + 1);
+	strcpy(fn_png, fn);
+	strcpy(PathFindExtensionA(fn_png), ".png");
+
+	uint32_t width, height, rowbytes;
+	uint8_t bpp;
+	bool IHDR_read = png_image_get_IHDR(fn_png, &width, &height, &bpp);
+	VLA_FREE(fn_png);
+
+	if (!IHDR_read) {
+		return 0;
+	}
+
+	if (fill_alpha_for_24bpp) {
+		rowbytes = width * 4;
+	}
+	else {
+		rowbytes = width * bpp / 8;
+		if (rowbytes % 4 != 0) {
+			rowbytes += 4 - (rowbytes % 4);
+		}
+	}
+	return rowbytes * height;
+}
+
+size_t get_cv2_size(const char *fn, json_t*, size_t)
+{
+	return 17 + get_image_data_size(fn, true);
 }
 
 int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*)
@@ -69,6 +107,11 @@ int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 
 	free(row_pointers);
 	return 1;
+}
+
+size_t get_bmp_size(const char *fn, json_t*, size_t)
+{
+	return sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + get_image_data_size(fn, false);
 }
 
 int patch_bmp(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*)

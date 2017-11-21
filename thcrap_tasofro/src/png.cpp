@@ -110,3 +110,56 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 	free(file_buffer);
 	return row_pointers;
 }
+
+bool png_image_get_IHDR(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp)
+{
+	stack_chain_iterate_t sci = { 0 };
+	BYTE *file_buffer = nullptr;
+	file_buffer_t file = { 0 };
+
+	json_t *chain = resolve_chain_game(fn);
+
+	if (json_array_size(chain)) {
+		log_printf("(PNG) Resolving %s...", json_array_get_string(chain, 0));
+		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS) != 0) {
+			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
+		}
+	}
+	json_decref(chain);
+	if (!file_buffer) {
+		log_print("not found\n");
+		return false;
+	}
+	patch_print_fn(sci.patch_info, fn);
+	log_print("\n");
+	file.buffer = file_buffer;
+
+	if (!png_check_sig(file.buffer, 8)) {
+		log_print("Bad PNG signature!\n");
+		free(file_buffer);
+		return false;
+	}
+	file.buffer += 8;
+	file.size -= 8;
+
+	png_structp png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, png_error_callback, png_warning_callback);
+	png_infop info_ptr = png_create_info_struct(png_ptr);
+	if (setjmp(png_jmpbuf(png_ptr))) {
+		png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+		free(file_buffer);
+		return false;
+	}
+	png_set_read_fn(png_ptr, &file, read_bytes);
+	png_set_sig_bytes(png_ptr, 8);
+	png_read_info(png_ptr, info_ptr);
+
+	int color_type;
+	png_get_IHDR(png_ptr, info_ptr, width, height, NULL, &color_type, NULL, NULL, NULL);
+	if (bpp) {
+		*bpp = (color_type & PNG_COLOR_MASK_ALPHA) ? 32 : 24;
+	}
+
+	png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
+	free(file_buffer);
+	return true;
+}
