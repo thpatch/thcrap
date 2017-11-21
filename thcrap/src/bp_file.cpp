@@ -26,14 +26,7 @@ int file_rep_init(file_rep_t *fr, const char *file_name)
 	fr->offset = -1;
 	fr->hooks = patchhooks_build(fr->name);
 	if (fr->hooks) {
-		size_t diff_fn_len = strlen(fr->name) + strlen(".jdiff") + 1;
-		size_t diff_size = 0;
-		VLA(char, diff_fn, diff_fn_len);
-		strcpy(diff_fn, fr->name);
-		strcat(diff_fn, ".jdiff");
-		fr->patch = stack_game_json_resolve(diff_fn, &diff_size);
-		VLA_FREE(diff_fn);
-		fr->patch_size += diff_size;
+		fr->patch = patchhooks_load_diff(fr->hooks, fr->name, &fr->patch_size);
 	}
 	return 1;
 }

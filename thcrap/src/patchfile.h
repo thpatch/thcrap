@@ -114,6 +114,9 @@ int patchhook_register(const char *ext, func_patch_t patch_func);
 // Has to be json_decref()'d by the caller!
 json_t* patchhooks_build(const char *fn);
 
+// Loads the jdiff file for a hook, and guess the patched file size.
+json_t* patchhooks_load_diff(const json_t *hook_array, const char *fn, size_t *size);
+
 // Runs all hook functions in [hook_array] on the given data.
 // Returns 1 if one of the hook changed the file in file_inout, and 0 otherwise.
 int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);

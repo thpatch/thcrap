@@ -374,6 +374,28 @@ json_t* patchhooks_build(const char *fn)
 	return ret;
 }
 
+json_t *patchhooks_load_diff(const json_t *hook_array, const char *fn, size_t *size)
+{
+	if (!hook_array || !fn) {
+		return nullptr;
+	}
+	json_t *patch;
+
+	size_t diff_fn_len = strlen(fn) + strlen(".jdiff") + 1;
+	size_t diff_size = 0;
+	VLA(char, diff_fn, diff_fn_len);
+	strcpy(diff_fn, fn);
+	strcat(diff_fn, ".jdiff");
+	patch = stack_game_json_resolve(diff_fn, &diff_size);
+	VLA_FREE(diff_fn);
+
+	if (size) {
+		*size = diff_size;
+	}
+
+	return patch;
+}
+
 int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	json_t *val;
