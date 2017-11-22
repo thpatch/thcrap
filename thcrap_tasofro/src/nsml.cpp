@@ -12,9 +12,11 @@
 #include "thcrap_tasofro.h"
 
 size_t get_cv2_size(const char *fn, json_t*, size_t);
-int    patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t);
 size_t get_bmp_size(const char *fn, json_t*, size_t);
-int    patch_bmp(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+int patch_bmp(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
 
 int nsml_init()
 {
@@ -28,7 +30,42 @@ int nsml_init()
 	else if (game_id == TH105) {
 		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
 	}
+	else if (game_id == TH123) {
+		patchhook_register("*.cv2", patch_cv2_for_th123, get_cv2_size_for_th123);
+	}
 	return 0;
+}
+
+/**
+  * Replace the game_id and build with fake ones.
+  * To remove the game_id or the build, pass a pointer to NULL.
+  * When the function returns, game_id and build contains the old game_id and build.
+  * To restore the values, call the function again with the same parameters.
+  */
+static void change_game_id(json_t **game_id, json_t **build)
+{
+	json_t *old_game_id = json_object_get(runconfig_get(), "game");
+	json_t *old_build = json_object_get(runconfig_get(), "build");
+	json_incref(old_game_id);
+	json_incref(old_build);
+
+	if (*game_id) {
+		json_object_set(runconfig_get(), "game", *game_id);
+		json_decref(*game_id);
+	}
+	else {
+		json_object_del(runconfig_get(), "game");
+	}
+	if (*build) {
+		json_object_set(runconfig_get(), "build", *build);
+		json_decref(*build);
+	}
+	else {
+		json_object_del(runconfig_get(), "build");
+	}
+
+	*game_id = old_game_id;
+	*build = old_build;
 }
 
 size_t get_image_data_size(const char *fn, bool fill_alpha_for_24bpp)
@@ -107,6 +144,32 @@ int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 
 	free(row_pointers);
 	return 1;
+}
+
+size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t)
+{
+	size_t size = get_image_data_size(fn, true);
+	if (size == 0) {
+		json_t *game_id = json_string("th105");
+		json_t *build = nullptr;
+		change_game_id(&game_id, &build);
+		size = get_image_data_size(fn, true);
+		change_game_id(&game_id, &build);
+	}
+	return 17 + size;
+}
+
+int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+{
+	int ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
+	if (ret <= 0) {
+		json_t *game_id = json_string("th105");
+		json_t *build = nullptr;
+		change_game_id(&game_id, &build);
+		ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
+		change_game_id(&game_id, &build);
+	}
+	return ret;
 }
 
 size_t get_bmp_size(const char *fn, json_t*, size_t)
@@ -188,6 +251,7 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
 	size_t fn_size = json_object_get_immediate(bp_info, regs, "fn_size");
+	json_t *game_fallback = json_object_get(bp_info, "game_fallback");
 	// ----------
 
 	char *uFilename;
@@ -202,6 +266,20 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 	json_t *new_bp_info = json_copy(bp_info);
 	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)uFilename));
 	int ret = BP_file_header(regs, new_bp_info);
+
+	if (game_fallback) {
+		// If no file was found, try again with the files from another game.
+		// Used for th123, that loads the file from th105.
+		file_rep_t *fr = file_rep_get(filename);
+		if (!fr || (!fr->rep_buffer && !fr->patch)) {
+			json_t *game_id = game_fallback;
+			json_t *build = nullptr;
+			change_game_id(&game_id, &build);
+			ret = BP_file_header(regs, new_bp_info);
+			change_game_id(&game_id, &build);
+		}
+	}
+
 	json_decref(new_bp_info);
 	free(uFilename);
 	return ret;

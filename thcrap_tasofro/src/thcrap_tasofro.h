@@ -18,10 +18,14 @@ typedef enum {
 	TH_MEGAMARI,
 
 	// • Use a slightly different XORing
+	// • Use cv2 instead of bmp
 	TH_NSML,
 
 	// • Support for more file formats
 	TH105,
+
+	// • Loads files from both th123 and th105
+	TH123,
 
 	// • th135 engine
 	// • filename hash: uses hash = ch ^ 0x1000193 * hash
