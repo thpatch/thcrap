@@ -240,20 +240,25 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 // So we need a breakpoint in the file header.
 std::map<std::string, file_rep_t> files_list;
 std::map<const void*, file_rep_t*> file_object_to_rep_list;
+static CRITICAL_SECTION cs;
 
 file_rep_t *file_rep_get(const char *filename)
 {
+	EnterCriticalSection(&cs);
 	auto it = files_list.find(filename);
 	if (it != files_list.end()) {
+		LeaveCriticalSection(&cs);
 		return &it->second;
 	}
 	else {
+		LeaveCriticalSection(&cs);
 		return nullptr;
 	}
 }
 
 void file_rep_set_object(file_rep_t *fr, void *object)
 {
+	EnterCriticalSection(&cs);
 	if (fr->object) {
 		file_object_to_rep_list.erase(fr->object);
 	}
@@ -261,6 +266,7 @@ void file_rep_set_object(file_rep_t *fr, void *object)
 	if (object) {
 		file_object_to_rep_list[object] = fr;
 	}
+	LeaveCriticalSection(&cs);
 }
 
 file_rep_t *file_rep_get_by_object(const void *object)
@@ -269,11 +275,14 @@ file_rep_t *file_rep_get_by_object(const void *object)
 		return nullptr;
 	}
 
+	EnterCriticalSection(&cs);
 	auto it = file_object_to_rep_list.find(object);
 	if (it != file_object_to_rep_list.end()) {
+		LeaveCriticalSection(&cs);
 		return it->second;
 	}
 	else {
+		LeaveCriticalSection(&cs);
 		return nullptr;
 	}
 }
@@ -408,4 +417,15 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 	regs->eax = 1;
 	regs->esp += 5 * sizeof(DWORD);
 	return 0;
+}
+
+int file_mod_init()
+{
+	InitializeCriticalSection(&cs);
+	return 0;
+}
+
+void file_mod_exit()
+{
+	DeleteCriticalSection(&cs);
 }

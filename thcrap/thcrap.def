@@ -9,6 +9,8 @@ EXPORTS
 
 	; File breakpoints
 	; ----------------
+	file_mod_init
+	file_mod_exit
 	file_rep_init
 	file_rep_clear
 	file_rep_get
