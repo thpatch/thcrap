@@ -72,6 +72,29 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 	size_t value = NULL;
 	char op = '+';
 
+	/// Parser functions
+	/// ----------------
+	auto consume = [&expr] (const stringref_t token) {
+		if(!strnicmp(expr, token.str, token.len)) {
+			expr += token.len;
+			return true;
+		}
+		return false;
+	};
+
+	auto consume_whitespace = [&expr] () {
+		while(expr[0] == ' ' || expr[0] == '\t') {
+			expr++;
+		}
+	};
+
+	auto dereference = [] (size_t addr, size_t len) {
+		size_t ret = 0;
+		memcpy(&ret, reinterpret_cast<void *>(addr), len);
+		return ret;
+	};
+	/// ----------------
+
 	while (*expr && *expr != end) {
 		if (strchr("+-*/%", *expr)) {
 			op = *expr;
@@ -79,16 +102,26 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 			continue;
 		}
 
+		auto ptr_size = sizeof(size_t);
+		if(consume("byte ptr")) {
+			ptr_size = 1;
+		} else if(consume("word ptr")) {
+			ptr_size = 2;
+		} else if(consume("dword ptr")) {
+			ptr_size = 4;
+		}
+		consume_whitespace();
+
 		size_t cur_value;
 		if (*expr == '[') {
 			expr++;
 			cur_value = eval_expr(&expr, regs, ']');
 			if (cur_value) {
-				cur_value = *(size_t*)cur_value;
+				cur_value = dereference(cur_value, ptr_size);
 			}
 		}
 		else if ((cur_value = (size_t)reg(regs, expr, &expr)) != 0) {
-			cur_value = *(size_t*)cur_value;
+			cur_value = dereference(cur_value, ptr_size);
 		}
 		else {
 			str_address_ret_t addr_ret;
