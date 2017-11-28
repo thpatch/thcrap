@@ -10,10 +10,12 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 #include "nsml_images.h"
+#include <set>
 
 size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t);
 int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
 static CRITICAL_SECTION cs;
+static std::set<const char*, bool(*)(const char*, const char*)> game_fallback_ignore_list([](const char *a, const char *b){ return strcmp(a, b) < 0; });
 
 int nsml_init()
 {
@@ -29,6 +31,12 @@ int nsml_init()
 	}
 	else if (game_id == TH123) {
 		patchhook_register("*.cv2", patch_cv2_for_th123, get_cv2_size_for_th123);
+		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
+		size_t i;
+		json_t *value;
+		json_array_foreach(list, i, value) {
+			game_fallback_ignore_list.insert(json_string_value(value));
+		}
 	}
 	return 0;
 }
@@ -66,8 +74,11 @@ static void change_game_id(json_t **game_id, json_t **build)
 }
 
 template<typename T>
-static void run_with_game_fallback(const char *game_id, const char *build, T func)
+static void run_with_game_fallback(const char *game_id, const char *build, const char *fn, T func)
 {
+	if (game_fallback_ignore_list.find(fn) != game_fallback_ignore_list.end()) {
+		return;
+	}
 	json_t *j_game_id = nullptr;
 	json_t *j_build = nullptr;
 	if (game_id) {
@@ -87,7 +98,7 @@ size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t)
 {
 	size_t size = get_image_data_size(fn, true);
 	if (size == 0) {
-		run_with_game_fallback("th105", nullptr, [fn, &size]() {
+		run_with_game_fallback("th105", nullptr, fn, [fn, &size]() {
 			size = get_image_data_size(fn, true);
 		});
 	}
@@ -98,7 +109,7 @@ int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const
 {
 	int ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
 	if (ret <= 0) {
-		run_with_game_fallback("th105", nullptr, [file_inout, size_out, size_in, fn, patch, &ret]() {
+		run_with_game_fallback("th105", nullptr, fn, [file_inout, size_out, size_in, fn, patch, &ret]() {
 			ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
 		});
 	}
@@ -130,9 +141,9 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 	if (game_fallback) {
 		// If no file was found, try again with the files from another game.
 		// Used for th123, that loads the file from th105.
-		file_rep_t *fr = file_rep_get(filename);
+		file_rep_t *fr = file_rep_get(uFilename);
 		if (!fr || (!fr->rep_buffer && !fr->patch)) {
-			run_with_game_fallback(json_string_value(game_fallback), nullptr, [regs, new_bp_info, &ret]() {
+			run_with_game_fallback(json_string_value(game_fallback), nullptr, uFilename, [regs, new_bp_info, &ret]() {
 				ret = BP_file_header(regs, new_bp_info);
 			});
 		}
