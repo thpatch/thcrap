@@ -90,6 +90,57 @@ int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	return 1;
 }
 
+int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, json_t*)
+{
+	if (size_in < 8) {
+		return 0;
+	}
+
+	BYTE* file_in = (BYTE*)file_inout;
+	DWORD magic = *(DWORD*)file_in;
+	if (magic != 4) {
+		return 0;
+	}
+
+	char path[MAX_PATH];
+	strcpy(path, fn);
+	char *path_fn = strrchr(path, '/') + 1;
+
+	DWORD nb_files = *(DWORD*)(file_in + 4);
+	file_in += 8; size_in -= 8;
+
+	for (DWORD i = 0; i < nb_files; i++) {
+		if (size_in < 4) {
+			return 0;
+		}
+		DWORD fn_size = *(DWORD*)file_in;
+		file_in += 4; size_in -= 4;
+		if (size_in < fn_size + 16) {
+			return 0;
+		}
+
+		memcpy(path_fn, file_in, fn_size);
+		path_fn[fn_size] = '\0';
+		file_in += fn_size; size_in -= fn_size;
+
+		// Retrieve the PNG width/height
+		strcpy(PathFindExtensionA(path_fn), ".png");
+		uint32_t width, height;
+		bool IHDR_read = png_image_get_IHDR(path, &width, &height, nullptr);
+		if (!IHDR_read) {
+			file_in += 16; size_in -= 16;
+			continue;
+		}
+
+		DWORD x = *(DWORD*)file_in;
+		DWORD y = *(DWORD*)(file_in + 4);
+		*(DWORD*)(file_in + 8) = width;
+		*(DWORD*)(file_in + 12) = height;
+		file_in += 16; size_in -= 16;
+	}
+	return 1;
+}
+
 size_t get_bmp_size(const char *fn, json_t*, size_t)
 {
 	return sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + get_image_data_size(fn, false);

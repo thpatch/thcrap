@@ -18,3 +18,5 @@ size_t get_bmp_size(const char *fn, json_t*, size_t);
 
 int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
 int patch_bmp(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+
+int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, json_t*);

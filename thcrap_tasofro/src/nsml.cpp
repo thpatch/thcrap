@@ -14,6 +14,7 @@
 
 size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t);
 int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
+int patch_dat_for_png_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 static CRITICAL_SECTION cs;
 static std::set<const char*, bool(*)(const char*, const char*)> game_fallback_ignore_list([](const char *a, const char *b){ return strcmp(a, b) < 0; });
 
@@ -28,9 +29,11 @@ int nsml_init()
 	}
 	else if (game_id == TH105) {
 		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
+		patchhook_register("*.dat", patch_dat_for_png, [](const char*, json_t*, size_t) -> size_t { return 0; });
 	}
 	else if (game_id == TH123) {
 		patchhook_register("*.cv2", patch_cv2_for_th123, get_cv2_size_for_th123);
+		patchhook_register("*.dat", patch_dat_for_png_for_th123, [](const char*, json_t*, size_t) -> size_t { return 0; });
 		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
 		size_t i;
 		json_t *value;
@@ -114,6 +117,16 @@ int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const
 		});
 	}
 	return ret;
+}
+
+int patch_dat_for_png_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+{
+	int ret = 0;
+	run_with_game_fallback("th105", nullptr, fn, [file_inout, size_out, size_in, fn, patch, &ret]() {
+		ret = patch_dat_for_png(file_inout, size_out, size_in, fn, patch);
+	});
+	int ret2 = patch_dat_for_png(file_inout, size_out, size_in, fn, patch);
+	return max(ret, ret2);
 }
 
 int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
