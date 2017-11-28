@@ -113,7 +113,11 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 		consume_whitespace();
 
 		size_t cur_value;
-		if (*expr == '[') {
+		if (*expr == '(') {
+			expr++;
+			cur_value = eval_expr(&expr, regs, ')');
+		}
+		else if (*expr == '[') {
 			expr++;
 			cur_value = eval_expr(&expr, regs, ']');
 			if (cur_value) {
