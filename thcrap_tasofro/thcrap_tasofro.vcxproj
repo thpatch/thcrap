@@ -38,6 +38,7 @@
     <ClCompile Include="src\crypt.cpp" />
     <ClCompile Include="src\csv.cpp" />
     <ClCompile Include="src\nsml.cpp" />
+    <ClCompile Include="src\nsml_images.cpp" />
     <ClCompile Include="src\pl.cpp" />
     <ClCompile Include="src\plaintext.cpp" />
     <ClCompile Include="src\plugin.cpp" />
@@ -52,6 +53,7 @@
     <ClInclude Include="src\act-nut.h" />
     <ClInclude Include="src\bgm.h" />
     <ClInclude Include="src\crypt.h" />
+    <ClInclude Include="src\nsml_images.h" />
     <ClInclude Include="src\pl.h" />
     <ClInclude Include="src\plugin.h" />
     <ClInclude Include="src\png.h" />
