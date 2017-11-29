@@ -376,6 +376,19 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 			}
 			dst += len;
 
+			/*
+			 * From Windows 2000 on, this is done behind the scenes inside
+			 * DialogBox() / CreateDialog(), but *not* in CreateFont().
+			 * So we need to do it ourselves to get the correct text lengths.
+			 */
+			auto src_font = reinterpret_cast<const wchar_t*>(*src);
+			if(
+				(trans_font.str && !stricmp(trans_font.str, "MS Shell Dlg"))
+				|| (src_font && !wcsicmp(src_font, L"MS Shell Dlg"))
+			) {
+				trans_font = "MS Shell Dlg 2";
+			}
+
 			dst += sz_or_ord_build(dst, src, &trans_font); // typeface
 			dialog_adjust_init(adj, dst_header, dst_font);
 		}
