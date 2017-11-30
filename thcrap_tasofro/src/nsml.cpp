@@ -10,6 +10,7 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 #include "tfcs.h"
+#include "bgm.h"
 #include "nsml_images.h"
 #include <set>
 
@@ -32,6 +33,10 @@ int nsml_init()
 		patchhook_register("*.cv1", patch_csv, nullptr);
 		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
 		patchhook_register("*.dat", patch_dat_for_png, [](const char*, json_t*, size_t) -> size_t { return 0; });
+
+		char *bgm_fn = fn_for_game("data/csv/system/music.cv1.jdiff");
+		jsonvfs_add(bgm_fn, { "themes.js" }, bgm_generator);
+		SAFE_FREE(bgm_fn);
 	}
 	else if (game_id == TH123) {
 		patchhook_register("*.cv1", patch_csv, nullptr);
