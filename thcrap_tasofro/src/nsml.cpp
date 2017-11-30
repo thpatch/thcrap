@@ -183,6 +183,22 @@ static void nsml_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
 	}
 }
 
+static void th105_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
+{
+	nsml_patch(fr, buffer, size);
+	const char *ext = PathFindExtensionA(fr->name);
+	if (!strcmp(ext, ".cv0") || !strcmp(ext, ".cv1")) {
+		unsigned char xorval = 0x8b;
+		unsigned char xoradd = 0x71;
+		unsigned char xoraddadd = 0x95;
+		for (unsigned int i = 0; i < size; i++) {
+			buffer[i] ^= xorval;
+			xorval += xoradd;
+			xoradd += xoraddadd;
+		}
+	}
+}
+
 int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
@@ -202,6 +218,10 @@ int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 	if (game_id == TH_MEGAMARI) {
 		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)megamari_patch));
 		json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)megamari_patch));
+	}
+	else if (game_id == TH105 || game_id == TH123) {
+		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)th105_patch));
+		json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)th105_patch));
 	}
 	else {
 		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)nsml_patch));
