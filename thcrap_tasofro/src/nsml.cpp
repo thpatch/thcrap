@@ -9,6 +9,7 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
+#include "tfcs.h"
 #include "nsml_images.h"
 #include <set>
 
@@ -28,10 +29,12 @@ int nsml_init()
 		patchhook_register("*.cv2", patch_cv2, nullptr);
 	}
 	else if (game_id == TH105) {
+		patchhook_register("*.cv1", patch_csv, nullptr);
 		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
 		patchhook_register("*.dat", patch_dat_for_png, [](const char*, json_t*, size_t) -> size_t { return 0; });
 	}
 	else if (game_id == TH123) {
+		patchhook_register("*.cv1", patch_csv, nullptr);
 		patchhook_register("*.cv2", patch_cv2_for_th123, get_cv2_size_for_th123);
 		patchhook_register("*.dat", patch_dat_for_png_for_th123, [](const char*, json_t*, size_t) -> size_t { return 0; });
 		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
