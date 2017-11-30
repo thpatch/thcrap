@@ -107,3 +107,48 @@ int patch_csv(char *file_inout, size_t size_out, size_t size_in, const char*, js
 	HeapFree(GetProcessHeap(), 0, file_in);
 	return 1;
 }
+
+/**
+  * Tweaks the th105 csv parser, adding a way to escape quotes.
+  *
+  * Own JSON parameters
+  * -------------------
+  * Mandatory:
+  *
+  *	[character]
+  *		Character currently being parsed.
+  *		Type: pointer
+  *
+  *	[special_character]
+  *		Copy of character, used to test if it is a special character.
+  *		Type: pointer
+  *
+  *	[string]
+  *		Current position of the parser in the CSV file.
+  *		Type: pointer
+  *
+  *	[is_in_quote]
+  *		Boolean: true if the parser is in a quote, false otherwise.
+  *		Type: immediate
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	size_t *character = json_object_get_pointer(bp_info, regs, "character");
+	size_t *special_character = json_object_get_pointer(bp_info, regs, "special_character");
+	const char **string = (const char**)json_object_get_pointer(bp_info, regs, "string");
+	BYTE is_in_quote = json_object_get_immediate(bp_info, regs, "is_in_quote");
+	// ----------
+
+	// We'll keep the th135 parser behavior of escaping quotes only inside quotes, to avoid adding more differences to patch_csv.
+	if (is_in_quote == 1 && *character == '"' && (*string)[1] == '"') {
+		*special_character = 'a'; // Just a plain, non-special character.
+		(*string)++; // Skip one of the 2 quotes
+	}
+	return 1;
+}
