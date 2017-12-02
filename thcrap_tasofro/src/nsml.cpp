@@ -226,7 +226,8 @@ int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 	const char *file_name = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
 	// ----------
 
-	json_t *new_bp_info = json_copy(bp_info);
+	// bp_info may be used by several threads at the same time, so we can't change its values.
+	json_t *new_bp_info = json_deep_copy(bp_info);
 	char *uFilename = nullptr;
 
 	if (file_name) {
