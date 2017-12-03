@@ -17,8 +17,8 @@ const json_t* strings_get(const char *id);
 
 // Returns the translated string for [in] from the string definition table,
 // or [in] itself if no translation is available.
-// Optionally returns the length of the returned string in [out_len],
-// if not NULL.
+// Optionally returns the length of the returned string in [out_len], without
+// the terminating \0, if [out_len] is not a nullptr.
 const char* strings_lookup(const char *in, size_t *out_len);
 
 // String lookup for variable argument lists. Parses [format] and calls

@@ -101,7 +101,7 @@ const char* strings_lookup(const char *in, size_t *out_len)
 	ReleaseSRWLockShared(&stringlocs_srwlock);
 
 	if(out_len) {
-		*out_len = strlen(ret) + 1;
+		*out_len = strlen(ret);
 	}
 	return ret;
 }
@@ -217,9 +217,9 @@ const char* strings_strcat(const size_t slot, const char *src)
 
 	src = strings_lookup(src, &src_len);
 
-	ret = strings_storage_get(slot, ret_len + src_len);
+	ret = strings_storage_get(slot, ret_len + src_len + 1);
 	if(ret) {
-		strncpy(ret + ret_len, src, src_len);
+		strncpy(ret + ret_len, src, src_len + 1);
 		return ret;
 	}
 	// Try to save the situation at least somewhat...
