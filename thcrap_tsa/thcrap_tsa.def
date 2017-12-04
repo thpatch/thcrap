@@ -4,7 +4,6 @@ EXPORTS
 
 	; Images
 	; ------
-	struct_get
 	format_Bpp
 	format_png_equiv
 	format_alpha_max
@@ -35,8 +34,6 @@ EXPORTS
 	BP_th06_file_size
 	BP_th06_file_load
 	BP_th06_file_loaded
-
-	BP_devicelost
 
 	; Bounds
 	; ------
@@ -105,3 +102,4 @@ EXPORTS
 	; TSA-specific detours
 	; --------------------
 	tsa_mod_detour
+	devicelost_mod_detour

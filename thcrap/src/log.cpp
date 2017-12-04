@@ -105,7 +105,7 @@ int log_mbox(const char *caption, const UINT type, const char *text)
 	log_print("---------------------------\n");
 	log_printf("%s\n", text);
 	log_print("---------------------------\n");
-	return MessageBox(NULL, text, caption, type);
+	return MessageBox(GetForegroundWindow(), text, caption, type);
 }
 
 int log_vmboxf(const char *caption, const UINT type, const char *text, va_list va)

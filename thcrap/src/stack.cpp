@@ -186,6 +186,47 @@ void stack_show_missing(void)
 	json_decref(rem_arcs);
 }
 
+/// Customizable per-patch message on startup
+/// -----------------------------------------
+void patch_show_motd(json_t *patch_info)
+{
+	auto msg = json_object_get_string(patch_info, "motd");
+	auto title = json_object_get_string(patch_info, "motd_title");
+	auto type = json_object_get_hex(patch_info, "motd_type");
+	if(!msg) {
+		return;
+	}
+	if(!title) {
+		const auto TITLE_FMT = "Message from %s";
+		const auto patch_id = json_object_get_string(patch_info, "id");
+
+		auto motd_title_size = _scprintf(TITLE_FMT, patch_id) + 1;
+		VLA(char, title_auto, motd_title_size);
+		sprintf(title_auto, TITLE_FMT, patch_id);
+
+		log_mboxf(title_auto, type, msg);
+		VLA_FREE(title_auto);
+	} else {
+		log_mboxf(title, type, msg);
+	}
+}
+
+void stack_show_motds(void)
+{
+	json_t *patches = json_object_get(run_cfg, "patches");
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		patch_show_motd(patch_info);
+	}
+}
+
+extern "C" __declspec(dllexport) void motd_mod_post_init(void)
+{
+	stack_show_motds();
+}
+/// -----------------------------------------
+
 int stack_remove_if_unneeded(const char *patch_id)
 {
 	auto runconfig = runconfig_get();

@@ -34,7 +34,7 @@ int http_init(void)
 	// DWORD timeout = 500;
 
 	// Format according to RFC 7231, section 5.5.3
-	STRINGREF_FROM_LITERAL_DEC(AGENT_FORMAT, "%s/%s (%s)");
+	const stringref_t AGENT_FORMAT("%s/%s (%s)");
 	auto self_name = PROJECT_NAME_SHORT();
 	auto self_version = PROJECT_VERSION_STRING();
 	auto os = windows_version();
@@ -530,7 +530,6 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	json_t *remote_files_to_get = NULL;
 	json_t *remote_val;
 
-	int ret = 0;
 	size_t i = 0;
 	size_t file_count = 0;
 	size_t file_digits = 0;
@@ -542,6 +541,17 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 
 	const char *key;
 	const char *patch_name = json_object_get_string(patch_info, "id");
+
+	auto finish = [&] (int ret) {
+		if(ret == 3) {
+			log_printf("Can't reach any valid server at the moment.\nCancelling update...\n");
+		}
+		SAFE_FREE(remote_files_js_buffer);
+		json_decref(remote_files_to_get);
+		json_decref(remote_files_orig);
+		json_decref(local_files);
+		return ret;
+	};
 
 	auto update_delete = [&patch_info, &local_files] (const char *fn) {
 		log_printf("Deleting %s...\n", fn);
@@ -561,20 +571,17 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		if(patch_name) {
 			log_printf("(%s is under revision control, not updating.)\n", patch_name);
 		}
-		ret = 1;
-		goto end_update;
+		return finish(1);
 	}
 	if(json_is_false(json_object_get(patch_info, "update"))) {
 		// Updating manually deactivated on this patch
-		ret = 1;
-		goto end_update;
+		return finish(1);
 	}
 
 	auto &servers = servers_cache(json_object_get(patch_info, "servers"));
 	if(servers.size() == 0) {
 		// No servers for this patch
-		ret = 2;
-		goto end_update;
+		return finish(2);
 	}
 
 	local_files = patch_json_load(patch_info, files_fn, NULL);
@@ -588,15 +595,13 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	remote_files_js_buffer = (char *)servers.download(&remote_files_js_size, files_fn, NULL, NULL, NULL);
 	if(!remote_files_js_buffer) {
 		// All servers offline...
-		ret = 3;
-		goto end_update;
+		return finish(3);
 	}
 
 	remote_files_orig = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
 	if(!json_is_object(remote_files_orig)) {
 		// Remote files.js is invalid!
-		ret = 4;
-		goto end_update;
+		return finish(4);
 	}
 
 	// Determine files to download
@@ -625,8 +630,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	file_count = json_object_size(remote_files_to_get);
 	if(!file_count) {
 		log_printf("Everything up-to-date.\n");
-		ret = 0;
-		goto end_update;
+		return finish(0);
 	}
 	patch_update_callback_param.patch_total = file_count;
 	file_digits = str_num_digits(file_count);
@@ -639,8 +643,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		json_t *local_val;
 
 		if(servers.num_active() == 0) {
-			ret = 3;
-			break;
+			return finish(3);
 		}
 
 		log_printf("(%*d/%*d) ", file_digits, ++i, file_digits, file_count);
@@ -682,17 +685,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	if(i == file_count) {
 		log_printf("Update completed.\n");
 	}
-
-	// I thought 15 minutes about this, and considered it appropriate
-end_update:
-	if(ret == 3) {
-		log_printf("Can't reach any valid server at the moment.\nCancelling update...\n");
-	}
-	SAFE_FREE(remote_files_js_buffer);
-	json_decref(remote_files_to_get);
-	json_decref(remote_files_orig);
-	json_decref(local_files);
-	return ret;
+	return finish(0);
 }
 
 typedef struct {

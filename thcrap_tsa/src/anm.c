@@ -16,33 +16,6 @@
 #include "thcrap_tsa.h"
 #include "anm.h"
 
-/// JSON-based structure data access
-/// --------------------------------
-int struct_get(void *dest, size_t dest_size, void *src, json_t *spec)
-{
-	if(!dest || !dest_size || !src || !spec) {
-		return -1;
-	}
-	{
-		size_t offset = json_object_get_hex(spec, "offset");
-		size_t size = json_object_get_hex(spec, "size");
-		// Default to architecture word size
-		if(!size) {
-			size = sizeof(size_t);
-		};
-		if(size > dest_size) {
-			return -2;
-		}
-		ZeroMemory(dest, dest_size);
-		memcpy(dest, (char*)src + offset, size);
-	}
-	return 0;
-}
-
-#define STRUCT_GET(val, src, spec_obj) \
-	struct_get(&(val), sizeof(val), src, json_object_get(spec_obj, #val))
-/// --------------------------------
-
 /// Formats
 /// -------
 unsigned int format_Bpp(format_t format)
@@ -370,41 +343,35 @@ int sprite_split_y(anm_entry_t *entry, sprite_local_t *sprite)
 	return -1;
 }
 
-int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format)
-{
-	size_t x;
-	size_t y;
-	size_t nameoffset;
-	size_t thtxoffset;
-	size_t hasdata;
-	size_t nextoffset;
-	size_t sprites;
-	size_t headersize;
+// These filter functions copy all the necessary data from [in] to [entry] and
+// return the header size if this ANM entry is of interest to us.
+#define ANM_ENTRY_FILTER(in, type) \
+	type *header = (type *)in; \
+	entry->x = header->x; \
+	entry->y = header->y; \
+	entry->nextoffset = header->nextoffset; \
+	entry->sprite_num = header->sprites; \
+	entry->name = (const char*)(header->nameoffset + (size_t)header); \
+	thtxoffset = header->thtxoffset; \
+	hasdata = header->hasdata; \
+	headersize = sizeof(type);
 
-	if(!entry || !in || !json_is_object(format)) {
+int anm_entry_init(anm_entry_t *entry, BYTE *in)
+{
+	if(!entry || !in) {
 		return -1;
 	}
 
+	size_t thtxoffset = 0;
+	size_t hasdata = 0;
+	size_t headersize = 0;
+
 	anm_entry_clear(entry);
-	headersize = json_object_get_hex(format, "headersize");
-
-	if(
-		STRUCT_GET(x, in, format) ||
-		STRUCT_GET(y, in, format) ||
-		STRUCT_GET(nameoffset, in, format) ||
-		STRUCT_GET(thtxoffset, in, format) ||
-		STRUCT_GET(hasdata, in, format) ||
-		STRUCT_GET(nextoffset, in, format) ||
-		STRUCT_GET(sprites, in, format)
-	) {
-		return 1;
+	if(game_id >= TH11) {
+		ANM_ENTRY_FILTER(in, anm_header11_t);
+	} else {
+		ANM_ENTRY_FILTER(in, anm_header06_t);
 	}
-
-	entry->x = x;
-	entry->y = y;
-	entry->nextoffset = nextoffset;
-	entry->sprite_num = sprites;
-	entry->name = (const char*)(nameoffset + (size_t)in);
 
 	assert((hasdata == 0) == (thtxoffset == 0));
 
@@ -432,6 +399,8 @@ int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format)
 	}
 	return 0;
 }
+
+#undef ANM_ENTRY_FILTER
 
 void anm_entry_clear(anm_entry_t *entry)
 {
@@ -551,11 +520,10 @@ int stack_game_png_apply(anm_entry_t *entry)
 	return ret;
 }
 
-int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
-	json_t *format = specs_get("anm");
+	(void)fn;
 	json_t *dat_dump = json_object_get(runconfig_get(), "dat_dump");
-	size_t headersize = json_object_get_hex(format, "headersize");
 
 	// Some ANMs reference the same file name multiple times in a row
 	const char *name_prev = NULL;
@@ -565,19 +533,11 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 
 	BYTE *anm_entry_out = file_inout;
 
-	if(!format) {
-		return 1;
-	}
-
 	log_printf("---- ANM ----\n");
-
-	if(!headersize) {
-		log_printf("(no ANM header size given, sprite-local patching disabled)\n");
-	}
 
 	while(anm_entry_out && anm_entry_out < file_inout + size_in) {
 		anm_entry_t entry = {0};
-		if(anm_entry_init(&entry, anm_entry_out, format)) {
+		if(anm_entry_init(&entry, anm_entry_out)) {
 			log_printf("Corrupt ANM file or format definition, aborting ...\n");
 			break;
 		}
@@ -609,5 +569,5 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	png_image_clear(&bounds);
 	png_image_clear(&png);
 	log_printf("-------------\n");
-	return 0;
+	return 1;
 }

@@ -522,7 +522,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	patch_msg_state_t state = {format, font_dialog_id()};
 
 	if(!msg_out || !patch) {
-		return 1;
+		return 0;
 	}
 
 	// Make a copy of the input buffer
@@ -639,7 +639,7 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 	}
 #endif
 	HeapFree(GetProcessHeap(), 0, msg_in);
-	return 0;
+	return 1;
 }
 
 /// Game formats
@@ -711,7 +711,11 @@ const msg_format_t MSG_TH128 = {
 	.opcodes = {
 		{  7, OP_SIDE_LEFT },
 		{  8, OP_SIDE_RIGHT },
-		{  9, OP_AUTO_END },
+
+		// Only used for the Parallel Ending explanation
+		// at the end of TH13's Extra Stage.
+		{  9, OP_SIDE_LEFT },
+
 		{ 11, OP_AUTO_END },
 		{ 17, OP_AUTO_LINE },
 		{ 25, OP_DELETE },
@@ -726,7 +730,7 @@ const msg_format_t MSG_TH14 = {
 	.opcodes = {
 		{ 7, OP_SIDE_LEFT },
 		{ 8, OP_SIDE_RIGHT },
-		{ 9, OP_AUTO_END },
+		{ 9, OP_SIDE_LEFT }, // unused
 		{ 11, OP_AUTO_END },
 		{ 17, OP_AUTO_LINE },
 		{ 25, OP_DELETE },
@@ -768,13 +772,13 @@ const msg_format_t* msg_format_for(tsa_game_t game)
 }
 /// ------------
 
-int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	const msg_format_t *format = msg_format_for(game_id);
 	return patch_msg(file_inout, size_out, size_in, patch, format);
 }
 
-int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	return patch_msg(file_inout, size_out, size_in, patch, &END_TH10);
 }

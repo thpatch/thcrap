@@ -192,6 +192,19 @@ const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 	return run_cfg_fn;
 }
 
+int progress_callback(DWORD stack_progress, DWORD stack_total,
+	const json_t *patch, DWORD patch_progress, DWORD patch_total,
+	const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total,
+	void *param)
+{
+	(void)stack_progress; (void)stack_total;
+	(void)patch; (void)patch_progress; (void)patch_total;
+	(void)fn; (void)ret; (void)param;
+	if (file_total)
+		printf("%3d%%\b\b\b\b", (int)file_progress * 100 / file_total);
+	return TRUE;
+}
+
 int __cdecl wmain(int argc, wchar_t *wargv[])
 {
 	int ret = 0;
@@ -305,7 +318,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		json_t *sel;
 
 		log_printf("Downloading game-independent data...\n");
-		stack_update_wrapper(update_filter_global_wrapper, NULL, NULL, NULL);
+		stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, NULL);
 
 		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {
@@ -337,7 +350,7 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
 		json_t *filter = json_object_get_keys_sorted(games);
 		log_printf("\nDownloading data specific to the located games...\n");
-		stack_update_wrapper(update_filter_games_wrapper, filter, NULL, NULL);
+		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
 		filter = json_decref_safe(filter);
 		log_printf(
 			"\n"

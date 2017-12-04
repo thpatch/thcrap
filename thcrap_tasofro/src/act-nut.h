@@ -16,8 +16,8 @@
 extern "C" {
 #endif
 
-	int patch_act(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
-	int patch_nut(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
+	int patch_act(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
+	int patch_nut(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
 
 #ifdef __cplusplus
 }

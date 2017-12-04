@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-int patch_dll(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_dll(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
 
 #ifdef __cplusplus
 }

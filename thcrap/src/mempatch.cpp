@@ -15,7 +15,10 @@ BOOL VirtualCheckRegion(const void *ptr, const size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	if(VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
-		return ((size_t)mbi.BaseAddress + mbi.RegionSize) >= ((size_t)ptr + len);
+		auto page_end = (size_t)mbi.BaseAddress + mbi.RegionSize;
+		return
+			(~mbi.Protect & PAGE_NOACCESS)
+			&& (page_end >= ((size_t)ptr + len));
 	}
 	return FALSE;
 }
@@ -27,17 +30,18 @@ BOOL VirtualCheckCode(const void *ptr)
 
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len)
 {
-	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
 	int ret = 0;
 
-	VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
+	if(!VirtualCheckRegion(ptr, len)) {
+		return ret;
+	}
+	VirtualProtect(ptr, len, PAGE_READWRITE, &oldProt);
 	if(Prev ? !memcmp(ptr, Prev, len) : 1) {
 		memcpy(ptr, New, len);
 		ret = 1;
 	}
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);
+	VirtualProtect(ptr, len, oldProt, &oldProt);
 	return ret;
 }
 

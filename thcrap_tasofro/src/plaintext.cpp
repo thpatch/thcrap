@@ -9,9 +9,15 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
+#include "th135.h"
 
-int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const char*fn, json_t *patch)
 {
+	if (!patch) {
+		log_printf("In patch_plaintext for %s\n", fn);
+		return 0;
+	}
+
 	char* file_out = (char*)file_inout;
 	char* file_in;
 	char* buffer_in;
@@ -73,5 +79,5 @@ int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *p
 
 	HeapFree(GetProcessHeap(), 0, buffer_in);
 
-	return 0;
+	return 1;
 }

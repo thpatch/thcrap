@@ -45,8 +45,36 @@ static tsa_game_t game_id_from_string(const char *game)
 		return TH13;
 	} else if(!strcmp(game, "th14")) {
 		return TH14;
+	} else if(!strcmp(game, "th15")) {
+		return TH15;
+	} else if(!strcmp(game, "th16")) {
+		return TH16;
 	}
 	return TH_FUTURE;
+}
+
+__declspec(dllexport) const char* steam_appid(void)
+{
+	json_t *build = json_object_get(runconfig_get(), "build");
+	const char *build_str = json_string_value(build);
+	size_t build_len = json_string_length(build);
+
+	if(!build_str || build_len < 2) {
+		return NULL;
+	}
+	assert(
+		(build_str[0] == 'v' && (build_str[1] == '0' || build_str[1] == '1'))
+		|| !"invalid build format?"
+	);
+
+	int trial = build_str[1] == '0';
+
+	switch(game_id) {
+	case TH16:
+		return trial ? "752490" : "745880";
+	default: // -Wswitch...
+		return NULL;
+	}
 }
 
 int __stdcall thcrap_plugin_init()
@@ -59,13 +87,13 @@ int __stdcall thcrap_plugin_init()
 	game_id = game_id_from_string(game);
 
 	// th06_msg
-	patchhook_register("msg*.dat", patch_msg_dlg); // th06-08
-	patchhook_register("p*.msg", patch_msg_dlg); // th09
-	patchhook_register("s*.msg", patch_msg_dlg); // lowest common denominator for th10+
-	patchhook_register("msg*.msg", patch_msg_dlg); // th143
-	patchhook_register("e*.msg", patch_msg_end); // th10+ endings
+	patchhook_register("msg*.dat", patch_msg_dlg, NULL); // th06-08
+	patchhook_register("p*.msg", patch_msg_dlg, NULL); // th09
+	patchhook_register("s*.msg", patch_msg_dlg, NULL); // lowest common denominator for th10+
+	patchhook_register("msg*.msg", patch_msg_dlg, NULL); // th143
+	patchhook_register("e*.msg", patch_msg_end, NULL); // th10+ endings
 
-	patchhook_register("*.anm", patch_anm);
+	patchhook_register("*.anm", patch_anm, NULL);
 	return 0;
 }
 

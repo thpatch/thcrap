@@ -50,6 +50,10 @@ typedef enum {
 	// • msg: Adds opcode 32 for overriding the speech bubble shape and
 	//        direction
 	TH14,
+	TH15,
+
+	// • First game released on Steam
+	TH16,
 
 	// Any future game without relevant changes
 	TH_FUTURE,
@@ -68,18 +72,18 @@ extern tsa_game_t game_id;
   *	[spell_id]
   *		The ID as given in the ECL file.
   *		Used as the minimum value for the name search.
-  *		Type: register
+  *		Type: immediate
   *
   *	[spell_id_real]
   *		The ID with the difficulty offset added to it.
   *		Used as the maximum value for the name search.
-  *		Type: register
+  *		Type: immediate
   *
   *	[spell_rank]
   *		The difficulty level ID offset.
   *		Used to calculate [spell_id] from [spell_id_real]
   *		if that parameter not available.
-  *		Type: register
+  *		Type: immediate
   *
   * Other breakpoints called
   * ------------------------
@@ -93,8 +97,8 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info);
   * Own JSON parameters
   * -------------------
   *	[spell_name]
-  *		Register to write to.
-  *		Type: register
+  *		Address to write to.
+  *		Type: pointer
   *
   *	[cave_exec]
   *		Set to false to disable the execution of the code cave
@@ -165,10 +169,7 @@ void spells_mod_exit(void);
 // Returns the translated title for track #[track] of the current game.
 const char* music_title_get(size_t track);
 
-// Prints the translated title of track #[track] to [str], according to
-// [format_id] in the string definition table. This format string receives
-// the track number and its translated title, in this order.
-void music_title_print(const char **str, const char *format_id, size_t track);
+void music_title_print(const char **str, const char *format_id, size_t track_id_internal, int track_id_displayed);
 
 /**
   * Pseudo breakpoint taking parameters cached across the other
@@ -178,12 +179,12 @@ void music_title_print(const char **str, const char *format_id, size_t track);
   * -------------------
   *	[track]
   *		Music Room track number, 0-based. Gets cached 1-based.
-  *		Type: register
+  *		Type: immediate
   *
   *	[str]
-  *		Register containing the address of the target string.
+  *		Address of the target string.
   *		Also the return value of this function.
-  *		Type: register
+  *		Type: pointer
   */
 const char** BP_music_params(x86_reg_t *regs, json_t *bp_info);
 
@@ -213,7 +214,7 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
   *
   *	[line_num]
   *		Line number of the comment.
-  *		Type: register
+  *		Type: immediate
   *
   * Other breakpoints called
   * ------------------------
@@ -227,9 +228,9 @@ void music_mod_exit(void);
 
 /// Format patchers
 /// ---------------
-int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
-int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
-int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 /// ---------------
 
 /// Win32 wrappers

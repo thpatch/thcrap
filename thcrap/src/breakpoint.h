@@ -46,21 +46,47 @@ typedef struct {
   */
 typedef int (*BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
 
-// Returns a pointer to the register [regname] in [regs]
-size_t* reg(x86_reg_t *regs, const char *regname);
+typedef struct {
+	// Address where the breakpoint is written
+	uint8_t *addr;
+
+	// Size of the original code sliced out at [addr].
+	// Must be inside BP_SourceCave_Limits.
+	size_t cavesize;
+
+	BreakpointFunc_t func;
+	json_t *json_obj;
+
+	// First byte of the code cave for this breakpoint.
+	uint8_t *cave;
+} breakpoint_local_t;
+
+typedef struct {
+	breakpoint_local_t *bp_local;
+	size_t bp_count;
+
+	// Contains the original code bytes we overwrote
+	uint8_t *cave_source;
+
+	// Contains the calls with the correct breakpoint_local_t* for each
+	// breakpoint.
+	uint8_t *cave_call;
+} breakpoint_set_t;
+
+// Returns a pointer to the register [regname] in [regs]. [endptr] behaves
+// like the endptr parameter of strtol(), and can be a nullptr if not needed.
+size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
 /// Register and memory values from JSON
 /// ====================================
 // Calls reg() on the JSON string [val].
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs);
 
-// If [val] is a register name, returns a pointer to that register in [regs].
-// Otherwise, returns the hex value of [val] casted to a pointer.
-size_t* json_pointer_value(json_t *val, x86_reg_t *regs);
-
-// If [val] is a register name, returns the value of that register in [regs].
-// Otherwise, returns the hex value of [val].
+// Evaluate the JSON string [val] as an expression.
 size_t json_immediate_value(json_t *val, x86_reg_t *regs);
+
+// Evaluate the JSON string [val] as an expression, and returns a pointer to the result.
+size_t* json_pointer_value(json_t *val, x86_reg_t *regs);
 
 // Calls json_register_pointer() on the value of [key] in [object].
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
@@ -83,16 +109,11 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 // single breakpoint function at any number of points in the original code.
 BreakpointFunc_t breakpoint_func_get(const char *key);
 
-// Breakpoint hook function, implemented in assembly. A CALL to this function
-// is written to every breakpoint's address.
-void breakpoint_entry(void);
+// Sets up all breakpoints in [breakpoints], and returns the number of
+// breakpoints that could not be applied. [hMod] is used as the base
+// for relative addresses.
+int breakpoints_apply(breakpoint_set_t *set, json_t *breakpoints, HMODULE hMod);
 
-// Performs breakpoint lookup, invocation and stack adjustments. Returns the
-// number of bytes the stack has to be moved downwards by breakpoint_entry().
-size_t breakpoint_process(x86_reg_t *regs);
-
-// Sets up all breakpoints in [breakpoints].
-int breakpoints_apply(json_t *breakpoints);
-
-// Removes all breakpoints
-int breakpoints_remove(void);
+// Removes all breakpoints in the given set.
+// TODO: Implement!
+// int breakpoints_remove();

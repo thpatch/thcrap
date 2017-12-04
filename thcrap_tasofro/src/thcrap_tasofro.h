@@ -10,12 +10,24 @@
 #pragma once
 
 #include <thcrap.h>
-#include <bp_file.h>
-#include <jansson.h>
 
 typedef enum {
 	TH_NONE,
 
+	// • nsml engine
+	TH_MEGAMARI,
+
+	// • Use a slightly different XORing
+	// • Use cv2 instead of bmp
+	TH_NSML,
+
+	// • Support for more file formats
+	TH105,
+
+	// • Loads files from both th123 and th105
+	TH123,
+
+	// • th135 engine
 	// • filename hash: uses hash = ch ^ 0x1000193 * hash
 	// • spells: using data/csv/Item*.csv
 	// • spells: data/csv/story/*/*.csv has columns for popularity
@@ -34,49 +46,12 @@ typedef enum {
 
 extern tasofro_game_t game_id;
 
-struct FileHeader
-{
-	DWORD filename_hash;
-	DWORD unknown;
-	DWORD offset;
-	DWORD size;
-};
-
-struct FileHeaderFull
-{
-	// Copy of FileHeader
-	DWORD filename_hash;
-	DWORD unknown;
-	DWORD offset;
-	DWORD size;
-
-	// XOR key
-	DWORD key[4];
-	file_rep_t fr;
-	// Offset to the file in its pak file
-	DWORD effective_offset;
-	// Size of the original game file
-	DWORD orig_size;
-
-	char path[MAX_PATH];
-};
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 int __stdcall thcrap_plugin_init();
-
-int BP_file_header(x86_reg_t *regs, json_t *bp_info);
-int BP_replace_file(x86_reg_t *regs, json_t *bp_info);
-
-int LoadFileNameList(const char* FileName);
-int LoadFileNameListFromMemory(char* list, size_t size);
-DWORD filename_to_hash(const char* filename);
-struct FileHeaderFull* register_file_header(struct FileHeader* header, DWORD *key);
-struct FileHeaderFull* hash_to_file_header(DWORD hash);
-
-int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int nsml_init();
 
 #ifdef __cplusplus
 }

@@ -114,7 +114,6 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*> in_data, 
 		VLA_FREE(spell_name);
 	}
 
-	*out_size += 512; // Because these files are zipped, guessing their exact output size is hard. We'll add a few more bytes.
 	VLA_FREE(character_name);
 	return ret;
 }
@@ -187,7 +186,6 @@ json_t* spell_player_generator(std::unordered_map<std::string, json_t*> in_data,
 		*out_size += json_string_length(value);
 	}
 
-	*out_size += 512; // Because these files are zipped, guessing their exact output size is hard. We'll add a few more bytes.
 	VLA_FREE(character_name);
 	if (json_object_size(ret) == 0) {
 		json_decref(ret);

@@ -27,6 +27,11 @@ void jsonvfs_add(const std::string out_pattern, std::unordered_set<std::string> 
 		in_fns,
 		gen
 	};
+	size_t i = handler.out_pattern.find('\\');
+	while (i != std::string::npos) {
+		handler.out_pattern[i] = '/';
+		size_t i = out_pattern.find('\\');
+	}
 	for (auto& s : in_fns) {
 		jsondata_add(s.c_str());
 	}
@@ -39,6 +44,7 @@ void jsonvfs_game_add(const std::string out_pattern, std::unordered_set<std::str
 	char *str;
 
 	str = fn_for_game(out_pattern.c_str());
+	str_slash_normalize(str);
 	handler.out_pattern = str;
 	SAFE_FREE(str);
 
@@ -60,15 +66,18 @@ json_t *jsonvfs_get(const std::string fn, size_t* size)
 		*size = 0;
 	}
 
+	VLA(char, fn_normalized, fn.length() + 1);
+	strcpy(fn_normalized, fn.c_str());
+	str_slash_normalize(fn_normalized);
 	for (auto& handler : vfs_handlers) {
-		if (PathMatchSpec(fn.c_str(), handler.out_pattern.c_str())) {
+		if (PathMatchSpec(fn_normalized, handler.out_pattern.c_str())) {
 			std::unordered_map<std::string, json_t *> in_data;
 			for (auto& s : handler.in_fns) {
 				in_data[s] = jsondata_get(s.c_str());
 			}
 
 			size_t cur_size = 0;
-			json_t *new_obj = handler.gen(in_data, fn, &cur_size);
+			json_t *new_obj = handler.gen(in_data, fn_normalized, &cur_size);
 			if (!obj) {
 				obj = new_obj;
 			}
@@ -82,5 +91,6 @@ json_t *jsonvfs_get(const std::string fn, size_t* size)
 		}
 	}
 
+	VLA_FREE(fn_normalized);
 	return obj;
 }

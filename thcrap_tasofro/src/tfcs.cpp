@@ -141,15 +141,19 @@ void skip_line(BYTE *&in, BYTE *&out, DWORD nb_col)
 	}
 }
 
-int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
+	if (!patch) {
+		return 0;
+	}
+
 	tfcs_header_t *header;
 
 	// Read TFCS header
 	header = (tfcs_header_t*)file_inout;
 	if (size_in < sizeof(header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
 		// Invalid TFCS file (probably a regular CSV file)
-		return patch_csv((char*)file_inout, size_out, size_in, patch);
+		return patch_csv(file_inout, size_out, size_in, fn, patch);
 	}
 
 	BYTE *file_in_uncomp = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, header->uncomp_size);
@@ -195,5 +199,16 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	HeapFree(GetProcessHeap(), 0, file_in_uncomp);
 	HeapFree(GetProcessHeap(), 0, file_out_uncomp);
 
-	return 0;
+	return 1;
+}
+
+size_t get_tfcs_size(const char*, json_t*, size_t patch_size)
+{
+	// Because a lot of these files are zipped, guessing their exact patched size is hard. We'll add a few more bytes.
+	if (patch_size) {
+		return (size_t)(patch_size * 1.2) + 1;
+	}
+	else {
+		return 0;
+	}
 }

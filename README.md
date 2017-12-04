@@ -27,9 +27,13 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * **Breakpoints** to call custom DLL functions at any instruction of the original code. These functions can read and modify the current CPU register state.
 
+* **Multiple sets** of sequentially applied binary hacks and breakpoints, for working around EXE packers and DRM schemes.
+
  * **File breakpoints** to replace data files in memory with replacements from patches.
 
 * Wildcard-based **file format patching hooks** called on file replacements - can apply patches to data files according to a (stackable!) JSON description.
+
+* Optional **Steam integration** for games that are available through Steam, but don't come with Steam integration themselves. Can be disabled by deleting `steam_api.dll`.
 
 * ... and all that without any significant impact on performance. ☺
 

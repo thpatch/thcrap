@@ -18,20 +18,21 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	int *spell_id = (int*)json_object_get_register(bp_info, regs, "spell_id");
-	int *spell_id_real = (int*)json_object_get_register(bp_info, regs, "spell_id_real");
-	int *spell_rank = (int*)json_object_get_register(bp_info, regs, "spell_rank");
+	json_t *spell_id = json_object_get(bp_info, "spell_id");
+	json_t *spell_id_real = json_object_get(bp_info, "spell_id_real");
+	json_t *spell_rank = json_object_get(bp_info, "spell_rank");
 	// ----------
 
 	if(spell_id) {
-		cache_spell_id = *spell_id;
+		cache_spell_id = json_immediate_value(spell_id, regs);
 		cache_spell_id_real = cache_spell_id;
 	}
 	if(spell_id_real) {
-		cache_spell_id_real = *spell_id_real;
+		cache_spell_id_real = json_immediate_value(spell_id_real, regs);
 	}
 	if(spell_rank) {
-		cache_spell_id = cache_spell_id_real - *spell_rank;
+		int rank = json_immediate_value(spell_rank, regs);
+		cache_spell_id = cache_spell_id_real - rank;
 	}
 	return 1;
 }
@@ -40,7 +41,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	const char **spell_name = (const char**)json_object_get_register(bp_info, regs, "spell_name");
+	const char **spell_name = (const char**)json_object_get_pointer(bp_info, regs, "spell_name");
 	// ----------
 
 	// Other breakpoints

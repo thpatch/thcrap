@@ -9,8 +9,13 @@ EXPORTS
 
 	; File breakpoints
 	; ----------------
+	file_mod_init
+	file_mod_exit
 	file_rep_init
 	file_rep_clear
+	file_rep_get
+	file_rep_get_by_object
+	file_rep_set_object
 
 	fr_tls_get
 
@@ -19,6 +24,8 @@ EXPORTS
 	BP_file_buffer
 	BP_file_load
 	BP_file_loaded
+	BP_file_header
+	BP_fragmented_read_file
 
 	; Breakpoints
 	; -----------
@@ -30,10 +37,8 @@ EXPORTS
 	json_object_get_pointer
 	json_object_get_immediate
 	breakpoint_cave_exec_flag
-	breakpoint_func_get
 	breakpoint_process
 	breakpoints_apply
-	breakpoints_remove
 
 	; Win32 dialogs
 	; -------------
@@ -72,6 +77,8 @@ EXPORTS
 
 	thcrap_detour
 	thcrap_init
+
+	BP_init_next_stage
 
 	; Injection
 	; ---------
@@ -235,11 +242,6 @@ EXPORTS
 	; ---------
 	CreateLink
 	CreateShortcuts
-
-	; Specs
-	; -----
-	specs_mod_init
-	specs_get
 
 	; Stack
 	; -----

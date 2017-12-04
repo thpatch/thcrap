@@ -39,6 +39,9 @@ void* func_get(const char *name);
   *   detours, it should implement this hook, using one or more calls to
   *   detour_cache_add().
   *
+  * • "post_init" (NULL)
+  *   Called after the initialization of thcrap and all modules is complete.
+  *
   * • "repatch" (json_t *files_changed)
   *   Called when the given files have been changed outside the game and need
   *   to be reloaded. [files_changed] is a JSON object with the respective file

@@ -362,14 +362,21 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 	return 1;
 }
 
-int patchhook_register(const char *wildcard, func_patch_t patch_func)
+int patchhook_register(const char *wildcard, func_patch_t patch_func, func_patch_size_t patch_size_func)
 {
+	VLA(char, wildcard_normalized, strlen(wildcard) + 1);
+	strcpy(wildcard_normalized, wildcard);
+	str_slash_normalize(wildcard_normalized);
 	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, JSON_OBJECT);
-	json_t *hook_array = json_object_get_create(patch_hooks, wildcard, JSON_ARRAY);
+	json_t *hook_array = json_object_get_create(patch_hooks, wildcard_normalized, JSON_ARRAY);
+	VLA_FREE(wildcard_normalized);
 	if(!patch_func) {
 		return -1;
 	}
-	return json_array_append_new(hook_array, json_integer((size_t)patch_func));
+	json_t *hook = json_object();
+	json_object_set_new(hook, "patch_func",      json_integer((size_t)patch_func));
+	json_object_set_new(hook, "patch_size_func", json_integer((size_t)patch_size_func));
+	return json_array_append_new(hook_array, hook);
 }
 
 json_t* patchhooks_build(const char *fn)
@@ -380,32 +387,73 @@ json_t* patchhooks_build(const char *fn)
 	if(!fn) {
 		return NULL;
 	}
+	VLA(char, fn_normalized, strlen(fn) + 1);
+	strcpy(fn_normalized, fn);
+	str_slash_normalize(fn_normalized);
 	json_object_foreach(json_object_get(run_cfg, PATCH_HOOKS), key, val) {
-		if(PathMatchSpec(fn, key)) {
+		if(PathMatchSpec(fn_normalized, key)) {
 			if(!ret) {
 				ret = json_array();
 			}
 			json_array_extend(ret, val);
 		}
 	}
+	VLA_FREE(fn_normalized);
 	return ret;
 }
 
-int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+json_t *patchhooks_load_diff(const json_t *hook_array, const char *fn, size_t *size)
+{
+	if (!hook_array || !fn) {
+		return nullptr;
+	}
+	json_t *patch;
+
+	size_t diff_fn_len = strlen(fn) + strlen(".jdiff") + 1;
+	size_t diff_size = 0;
+	VLA(char, diff_fn, diff_fn_len);
+	strcpy(diff_fn, fn);
+	strcat(diff_fn, ".jdiff");
+	patch = stack_game_json_resolve(diff_fn, &diff_size);
+	VLA_FREE(diff_fn);
+
+	if (size) {
+		*size = 0;
+		json_t *val;
+		size_t i;
+		json_array_foreach(hook_array, i, val) {
+			func_patch_size_t func = (func_patch_size_t)json_integer_value(json_object_get(val, "patch_size_func"));
+			if (func) {
+				*size += func(fn, patch, diff_size);
+			}
+			else {
+				*size += diff_size;
+			}
+		}
+	}
+
+	return patch;
+}
+
+int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	json_t *val;
 	size_t i;
+	int ret;
 
 	// We don't check [patch] here - hooks should be run even if there is no
 	// dedicated patch file.
 	if(!file_inout) {
 		return -1;
 	}
+	ret = 0;
 	json_array_foreach(hook_array, i, val) {
-		func_patch_t func = (func_patch_t)json_integer_value(val);
+		func_patch_t func = (func_patch_t)json_integer_value(json_object_get(val, "patch_func"));
 		if(func) {
-			func(file_inout, size_out, size_in, patch);
+			if (func(file_inout, size_out, size_in, fn, patch) > 0) {
+				ret = 1;
+			}
 		}
 	}
-	return 0;
+	return ret;
 }

@@ -244,21 +244,19 @@ void dialog_adjust_init(
 void dialog_adjust(
 	dialog_adjust_t *adj,
 	DLGITEMTEMPLATEEX_START *item,
-	const json_t *rep
+	const stringref_t rep
 )
 {
 	RECT rect = {0};
 	UINT draw_flags;
 	BYTE button_style;
-	const char *rep_str = json_string_value(rep);
-	const size_t rep_len = json_string_length(rep);
 
-	if(!adj || !adj->hDC || !item || !rep_str) {
+	if(!adj || !adj->hDC || !item || !rep.str) {
 		return;
 	}
 	rect.right = item->cx;
-	draw_flags = DT_CALCRECT | (strchr(rep_str, '\n') ? DT_WORDBREAK : 0);
-	DrawText(adj->hDC, rep_str, rep_len, &rect, draw_flags);
+	draw_flags = DT_CALCRECT | (strchr(rep.str, '\n') ? DT_WORDBREAK : 0);
+	DrawText(adj->hDC, rep.str, rep.len, &rect, draw_flags | DT_CALCRECT);
 
 	// Convert pixels back to dialog units
 	// (see http://msdn.microsoft.com/library/windows/desktop/ms645475%28v=vs.85%29.aspx)
@@ -317,16 +315,14 @@ size_t sz_or_ord_size(const BYTE **src)
 	}
 }
 
-size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const json_t *rep)
+size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const stringref_t *rep)
 {
 	if(dst && src) {
 		const sz_Or_Ord *src_sz = (sz_Or_Ord*)*src;
 		size_t dst_len = sz_or_ord_size(src);
-		const char *rep_str = json_string_value(rep);
-		size_t rep_len = json_string_length(rep) + 1;
 
-		if(rep_str) {
-			dst_len = StringToUTF16((wchar_t*)dst, rep_str, rep_len) * sizeof(wchar_t);
+		if(rep && rep->str) {
+			dst_len = StringToUTF16((wchar_t*)dst, rep->str, rep->len + 1) * sizeof(wchar_t);
 		} else if(src_sz->ord_flag == 0 || src_sz->ord_flag == 0xffff) {
 			memcpy(dst, src_sz, dst_len);
 		} else {
@@ -361,14 +357,14 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 	if(dst && src && *src) {
 		BYTE *dst_start = dst;
 		DLGTEMPLATEEX_START *dst_header = (DLGTEMPLATEEX_START*)dst_start;
-		const json_t *trans_title = strings_get(json_object_get_string(trans, "title"));
-		const json_t *trans_font = strings_get(json_object_get_string(trans, "font"));
+		stringref_t trans_title = strings_get(json_object_get_string(trans, "title"));
+		stringref_t trans_font = strings_get(json_object_get_string(trans, "font"));
 		WORD trans_font_size = json_object_get_hex(trans, "font_size");
 
 		dst += memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_START));
 		dst += sz_or_ord_build(dst, src, NULL); // menu
 		dst += sz_or_ord_build(dst, src, NULL); // windowClass
-		dst += sz_or_ord_build(dst, src, trans_title);
+		dst += sz_or_ord_build(dst, src, &trans_title);
 
 		if(dst_header->style & DS_SETFONT) {
 			DLGTEMPLATEEX_FONT *dst_font = (DLGTEMPLATEEX_FONT*)dst;
@@ -380,7 +376,20 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 			}
 			dst += len;
 
-			dst += sz_or_ord_build(dst, src, trans_font); // typeface
+			/*
+			 * From Windows 2000 on, this is done behind the scenes inside
+			 * DialogBox() / CreateDialog(), but *not* in CreateFont().
+			 * So we need to do it ourselves to get the correct text lengths.
+			 */
+			auto src_font = reinterpret_cast<const wchar_t*>(*src);
+			if(
+				(trans_font.str && !stricmp(trans_font.str, "MS Shell Dlg"))
+				|| (src_font && !wcsicmp(src_font, L"MS Shell Dlg"))
+			) {
+				trans_font = "MS Shell Dlg 2";
+			}
+
+			dst += sz_or_ord_build(dst, src, &trans_font); // typeface
 			dialog_adjust_init(adj, dst_header, dst_font);
 		}
 		*src = ptr_dword_align(*src);
@@ -411,14 +420,14 @@ size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_
 	if(dst && src && *src) {
 		BYTE *dst_start = dst;
 		WORD extraCount;
-		const json_t *trans_title = strings_get(json_string_value(trans));
+		stringref_t trans_title = strings_get(json_string_value(trans));
 
 		dst += memcpy_advance_src(dst, src, sizeof(DLGITEMTEMPLATEEX_START));
 		dst += sz_or_ord_build(dst, src, NULL); // windowClass
 
 		dialog_adjust(adj, (DLGITEMTEMPLATEEX_START*)dst_start, trans_title);
 
-		dst += sz_or_ord_build(dst, src, trans_title);
+		dst += sz_or_ord_build(dst, src, &trans_title);
 		extraCount = *((WORD*)*src);
 		dst += memcpy_advance_src(dst, src, extraCount + sizeof(WORD));
 
