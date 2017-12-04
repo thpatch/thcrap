@@ -36,11 +36,8 @@ int __stdcall thcrap_plugin_init()
 	if (hModule != NULL) {
 		char filename[MAX_PATH];
 		GetModuleFileName(hModule, filename, MAX_PATH);
-#ifdef _DEBUG
-		if (strcmp(strrchr(filename, '\\'), "\\thcrap_update_d.dll") != 0) {
-#else
-		if (strcmp(strrchr(filename, '\\'), "\\thcrap_update.dll") != 0) {
-#endif
+		auto *intended_fn = "\\thcrap_update" DEBUG_OR_RELEASE ".dll";
+		if (strcmp(strrchr(filename, '\\'), intended_fn) != 0) {
 			return 1;
 		}
 	}

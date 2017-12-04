@@ -18,11 +18,7 @@ static FARPROC load_thcrap_update_function(const char* func_name)
 	static HMODULE hMod = (HMODULE)-1;
 
 	if (hMod == (HMODULE)-1) {
-#ifdef _DEBUG
-		hMod = LoadLibrary("thcrap_update_d.dll");
-#else
-		hMod = LoadLibrary("thcrap_update.dll");
-#endif
+		hMod = LoadLibrary("thcrap_update" DEBUG_OR_RELEASE ".dll");
 	}
 
 	if (hMod) {

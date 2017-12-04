@@ -69,11 +69,7 @@ HRESULT CreateLink(
 
 int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 {
-#ifdef _DEBUG
-	const stringref_t loader_exe = "thcrap_loader_d.exe";
-#else
-	const stringref_t loader_exe = "thcrap_loader.exe";
-#endif
+	const stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
 	int ret = 0;
 	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
