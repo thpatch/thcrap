@@ -59,7 +59,7 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 		log_print("not found\n");
 		return nullptr;
 	}
-	patch_print_fn(sci.patch_info, fn);
+	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
 	file.buffer = file_buffer;
 	
