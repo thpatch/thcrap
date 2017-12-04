@@ -110,42 +110,46 @@ static void run_with_game_fallback(const char *game_id, const char *build, const
 	if (build) {
 		j_build = json_string(build);
 	}
-	EnterCriticalSection(&cs);
 	change_game_id(&j_game_id, &j_build);
 	func();
 	change_game_id(&j_game_id, &j_build);
-	LeaveCriticalSection(&cs);
 }
 
 size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t)
 {
+	EnterCriticalSection(&cs);
 	size_t size = get_image_data_size(fn, true);
 	if (size == 0) {
 		run_with_game_fallback("th105", nullptr, fn, [fn, &size]() {
 			size = get_image_data_size(fn, true);
 		});
 	}
+	LeaveCriticalSection(&cs);
 	return 17 + size;
 }
 
 int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
+	EnterCriticalSection(&cs);
 	int ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
 	if (ret <= 0) {
 		run_with_game_fallback("th105", nullptr, fn, [file_inout, size_out, size_in, fn, patch, &ret]() {
 			ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
 		});
 	}
+	LeaveCriticalSection(&cs);
 	return ret;
 }
 
 int patch_dat_for_png_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
+	EnterCriticalSection(&cs);
 	int ret = 0;
 	run_with_game_fallback("th105", nullptr, fn, [file_inout, size_out, size_in, fn, patch, &ret]() {
 		ret = patch_dat_for_png(file_inout, size_out, size_in, fn, patch);
 	});
 	int ret2 = patch_dat_for_png(file_inout, size_out, size_in, fn, patch);
+	LeaveCriticalSection(&cs);
 	return max(ret, ret2);
 }
 
@@ -169,6 +173,7 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 
 	json_t *new_bp_info = json_copy(bp_info);
 	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)uFilename));
+	EnterCriticalSection(&cs);
 	int ret = BP_file_header(regs, new_bp_info);
 
 	if (game_fallback) {
@@ -182,6 +187,7 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 		}
 	}
 
+	LeaveCriticalSection(&cs);
 	json_decref(new_bp_info);
 	free(uFilename);
 	return ret;
