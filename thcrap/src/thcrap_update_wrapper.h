@@ -15,6 +15,9 @@
 extern "C" {
 #endif
 
+// Can be used to check if thcrap_update is available.
+HMODULE thcrap_update_module(void);
+
 void* ServerDownloadFile_wrapper(json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param);
 
 int update_filter_global_wrapper(const char *fn, json_t *null);

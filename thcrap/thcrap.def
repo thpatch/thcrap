@@ -295,6 +295,8 @@ EXPORTS
 
 	; thcrap_update wrapper functions
 	; -------------------------------
+	thcrap_update_module
+
 	ServerDownloadFile_wrapper
 	update_filter_global_wrapper
 	update_filter_games_wrapper

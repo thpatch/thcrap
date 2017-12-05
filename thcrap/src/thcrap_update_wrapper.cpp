@@ -13,14 +13,19 @@
 #define LOAD_ORIGINAL_FUNCTION(ret, name, ...) \
 static ;
 
-static FARPROC load_thcrap_update_function(const char* func_name)
+HMODULE thcrap_update_module(void)
 {
 	static HMODULE hMod = (HMODULE)-1;
 
 	if (hMod == (HMODULE)-1) {
 		hMod = LoadLibrary("thcrap_update" DEBUG_OR_RELEASE ".dll");
 	}
+	return hMod;
+}
 
+static FARPROC load_thcrap_update_function(const char* func_name)
+{
+	auto hMod = thcrap_update_module();
 	if (hMod) {
 		return GetProcAddress(hMod, func_name);
 	}
