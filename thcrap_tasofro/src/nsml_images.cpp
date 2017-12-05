@@ -109,6 +109,7 @@ int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, 
 	DWORD nb_files = *(DWORD*)(file_in + 4);
 	file_in += 8; size_in -= 8;
 
+	int file_changed = 0;
 	for (DWORD i = 0; i < nb_files; i++) {
 		if (size_in < 4) {
 			return 0;
@@ -134,11 +135,16 @@ int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, 
 
 		DWORD x = *(DWORD*)file_in;
 		DWORD y = *(DWORD*)(file_in + 4);
-		*(DWORD*)(file_in + 8) = width;
-		*(DWORD*)(file_in + 12) = height;
+		DWORD w = *(DWORD*)(file_in + 8);
+		DWORD h = *(DWORD*)(file_in + 12);
+		if (w != width && h != height) {
+			*(DWORD*)(file_in + 8) = width;
+			*(DWORD*)(file_in + 12) = height;
+			file_changed = 1;
+		}
 		file_in += 16; size_in -= 16;
 	}
-	return 1;
+	return file_changed;
 }
 
 size_t get_bmp_size(const char *fn, json_t*, size_t)
