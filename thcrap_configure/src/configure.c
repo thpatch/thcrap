@@ -277,25 +277,43 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		"Touhou Community Reliant Automatic Patcher.\n"
 		"\n"
 		"\n"
-		"The configuration process has four steps:\n"
+	);
+	if(thcrap_update_module()) {
+		log_printf(
+			"The configuration process has four steps:\n"
+			"\n"
+			"\t\t1. Selecting patches\n"
+			"\t\t2. Downloading game-independent data\n"
+			"\t\t3. Locating game installations\n"
+			"\t\t4. Downloading game-specific data\n"
+			"\n"
+			"\n"
+			"\n"
+			"Patch repository discovery will start at\n"
+			"\n"
+			"\t%s\n"
+			"\n"
+			"You can specify a different URL as a command-line parameter.\n"
+			"Additionally, all patches from previously discovered repositories, stored in\n"
+			"subdirectories of the current directory, will be available for selection.\n",
+			start_repo
+		);
+	} else {
+		log_printf(
+			"The configuration process has two steps:\n"
+			"\n"
+			"\t\t1. Selecting patches\n"
+			"\t\t2. Locating game installations\n"
+			"\n"
+			"\n"
+			"\n"
+			"Updates are disabled. Therefore, patch selection is limited to the\n"
+			"repositories that are locally available.\n"
+		);
+	}
+	log_print(
 		"\n"
-		"\t\t1. Selecting patches\n"
-		"\t\t2. Download game-independent data\n"
-		"\t\t3. Locating game installations\n"
-		"\t\t4. Download game-specific data\n"
 		"\n"
-		"\n"
-		"\n"
-		"Patch repository discovery will start at\n"
-		"\n"
-		"\t%s\n"
-		"\n"
-		"You can specify a different URL as a command-line parameter.\n"
-		"Additionally, all patches from previously discovered repositories, stored in\n"
-		"subdirectories of the current directory, will be available for selection.\n"
-		"\n"
-		"\n",
-		start_repo
 	);
 	pause();
 
