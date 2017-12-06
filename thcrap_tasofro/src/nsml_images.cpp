@@ -138,6 +138,8 @@ int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, 
 		DWORD w = *(DWORD*)(file_in + 8);
 		DWORD h = *(DWORD*)(file_in + 12);
 		if (w != width && h != height) {
+			*(DWORD*)(file_in + 0) = 0;
+			*(DWORD*)(file_in + 4) = 0;
 			*(DWORD*)(file_in + 8) = width;
 			*(DWORD*)(file_in + 12) = height;
 			file_changed = 1;
