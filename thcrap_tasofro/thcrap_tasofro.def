@@ -13,5 +13,6 @@ EXPORTS
 	BP_th105_file_new
 	BP_th105_file_delete
 	BP_th105_fix_csv_parser
+	BP_th105_cv0_escape_comma
 
 	tasofro_CharNextA

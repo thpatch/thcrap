@@ -289,7 +289,7 @@ json_t *TasofroCv0::balloonNumberToLines(json_t *patch, size_t balloon_number)
 	return json_lines;
 }
 
-int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*fn, json_t *patch)
+int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	if (!patch) {
 		return 0;
@@ -333,6 +333,59 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*fn, 
 		size_out -= 2;
 	}
 	*file_out = '\0';
+
+	return 1;
+}
+
+/**
+  * Add a way to escape commas in the th105 cv0 parser.
+  *
+  * Returns:
+  * • 0 if the the current character is a backslash followed by a quote.
+  *   We overwrite the backslash and skip the code checking for the comma.
+  * • 1 otherwise, just let the game do its thing.
+  *
+  * Own JSON parameters
+  * -------------------
+  * Mandatory:
+  *
+  *	[string]
+  *		Current position of the parser in the cv0 file.
+  *		Type: immediate
+  *
+  *	[delim]
+  *		Character the game is looking for.
+  *     If the game doesn't try to kill our comma, no need to hide it.
+  *		Type: immediate
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	char *string = (char*)json_object_get_immediate(bp_info, regs, "string");
+	char delim = (char)json_object_get_immediate(bp_info, regs, "delim");
+	// ----------
+
+	if (delim != ',') {
+		return 1;
+	}
+
+	if (string[0] == '\\' && string[1] == ',') {
+		// Erase the backslash
+		int i;
+		for (i = 0; string[i + 1] && string[i + 1] != '\n'; i++) {
+			string[i] = string[i + 1];
+		}
+		string[i] = string[i + 1];
+		// Ensure the test will fail
+		regs->eax = 0;
+		regs->ecx = 0;
+		return 0;
+	}
 
 	return 1;
 }
