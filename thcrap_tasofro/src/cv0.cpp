@@ -179,6 +179,13 @@ TasofroCv0::Text* TasofroCv0::Text::read(const char*& file, size_t& size)
 	line->content = ALine::readLine(file, size);
 	while (guessLineType(file, size) == TEXT) {
 		line->content += "\r\n" + ALine::readLine(file, size);
+		size_t i = line->content.length() - 1;
+		while (i > 0 && line->content[i] == '\r' || line->content[i] == '\n') {
+			i--;
+		}
+		if (line->content[i] == '\\') {
+			break;
+		}
 	}
 	return line;
 }
