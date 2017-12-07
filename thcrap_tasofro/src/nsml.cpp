@@ -46,16 +46,9 @@ int nsml_init()
 		patchhook_register("*.cv2", patch_cv2_for_th123, get_cv2_size_for_th123);
 		patchhook_register("*.dat", patch_dat_for_png_for_th123, [](const char*, json_t*, size_t) -> size_t { return 0; });
 
-		char *bgm_fn           = fn_for_game("data/csv/system/music.cv1.jdiff");
-		char *bgm_map_fn       = fn_for_game("data/csv/system/music.cv1.map.jdiff");
-		char *bgm_limit_fn     = fn_for_game("data/csv/system/music_limit.cv1.jdiff");
-		char *bgm_limit_map_fn = fn_for_game("data/csv/system/music_limit.cv1.map.jdiff");
-		jsonvfs_add(bgm_fn, { "themes.js", bgm_map_fn }, bgm_generate_from_map);
-		jsonvfs_add(bgm_limit_fn, { "themes.js", bgm_limit_map_fn }, bgm_generate_from_map);
+		char *bgm_fn = fn_for_game("data/csv/system/music*.cv1.jdiff");
+		jsonvfs_add_map(bgm_fn, "themes.js");
 		SAFE_FREE(bgm_fn);
-		SAFE_FREE(bgm_map_fn);
-		SAFE_FREE(bgm_limit_fn);
-		SAFE_FREE(bgm_limit_map_fn);
 
 		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
 		size_t i;

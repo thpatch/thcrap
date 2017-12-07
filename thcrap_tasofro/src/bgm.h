@@ -14,4 +14,3 @@
 #include <vfs.h>
 
 json_t* bgm_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size);
-json_t* bgm_generate_from_map(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size);
