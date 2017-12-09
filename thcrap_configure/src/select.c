@@ -219,12 +219,26 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 	size_t list_count = json_array_size(list_order);
 	size_t i;
 	json_t *sel;
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+
+	VLA(char, hr, csbi.dwSize.X + 1);
+	memset(hr, '=', csbi.dwSize.X);
+	hr[csbi.dwSize.X] = '\0';
+
+	// After filling the entire width, the cursor will have already moved to
+	// the next line, so we don't need to add a separate \n after the string.
+	fputs(hr, stdout);
 
 	if(!json_array_size(sel_stack)) {
-		return list_count;
+		goto end;
 	}
-	printf("Selected patches (in ascending order of priority):\n\n");
-
+	fputs(
+		"\n"
+		"Selected patches (in ascending order of priority):\n"
+		"\n", stdout
+	);
 	json_array_foreach(sel_stack, i, sel) {
 		const char *repo_id = json_array_get_string(sel, 0);
 		const char *patch_id = json_array_get_string(sel, 1);
@@ -239,7 +253,11 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 		json_array_append(list_order, sel);
 		json_decref(full_id);
 	}
-	printf("\n");
+	fputs("\n", stdout);
+	fputs(hr, stdout);
+
+end:
+	VLA_FREE(hr);
 	return list_count;
 }
 
@@ -273,8 +291,8 @@ json_t* SelectPatchStack(json_t *repo_list)
 	runconfig_set(internal_cfg);
 	if(wine_flag) {
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		// Header (5) + sel_stack (3) + prompt (2)
-		COORD buffer = {80, buffer_lines + 5 + 3 + 2};
+		// Header (5) + separator (3) + sel_stack (2) + separator (3) + prompt (1)
+		COORD buffer = {80, buffer_lines + 5 + 3 + 2 + 3 + 1};
 		SetConsoleScreenBufferSize(hConsole, buffer);
 	}
 	while(1) {
