@@ -259,7 +259,7 @@ void TasofroCv0::Text::patchLine(const char *text, std::list<ALine*>& file, cons
 	if (this->cur_line != this->nb_lines) {
 		formattedText += "\r\n";
 	}
-	else {
+	else if (formattedText.length() > 0 && formattedText[formattedText.length() - 1] != '@') {
 		formattedText += "\\";
 	}
 
