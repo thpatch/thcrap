@@ -130,6 +130,11 @@ EXPORTS
 	jsondata_mod_repatch
 	jsondata_mod_exit
 
+	; Fonts and charsets
+	; ------------------
+	font_has_character
+	font_create_for_character
+
 	; Logging
 	; -------
 	log_print

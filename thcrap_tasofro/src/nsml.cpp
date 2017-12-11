@@ -15,6 +15,11 @@
 #include "nsml_images.h"
 #include <set>
 
+/// Detour chains
+/// -------------
+W32U8_DETOUR_CHAIN_DEF(GetGlyphOutline);
+/// -------------
+
 size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t);
 int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
 int patch_dat_for_png_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
@@ -295,10 +300,44 @@ int BP_th105_file_delete(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
+DWORD WINAPI th105_GetGlyphOutlineU(HDC hdc, UINT uChar, UINT uFormat, LPGLYPHMETRICS lpgm, DWORD cbBuffer, LPVOID lpvBuffer, const MAT2 *lpmat2)
+{
+	uChar = CharToUTF16(uChar);
+
+	if (uChar & 0xFFFF0000 ||
+		font_has_character(hdc, uChar)) {
+		// is_character_in_font won't work if the character doesn't fit into a WCHAR.
+		// When it happens, we'll be optimistic and hope our font have that character.
+		return GetGlyphOutlineW(hdc, uChar, uFormat, lpgm, cbBuffer, lpvBuffer, lpmat2);
+	}
+
+	HFONT origFont = (HFONT)GetCurrentObject(hdc, OBJ_FONT);
+	LOGFONTW lf;
+	GetObjectW(origFont, sizeof(lf), &lf);
+	HFONT newFont = font_create_for_character(&lf, uChar);
+	if (newFont) {
+		origFont = (HFONT)SelectObject(hdc, newFont);
+	}
+	int ret = GetGlyphOutlineW(hdc, uChar, uFormat, lpgm, cbBuffer, lpvBuffer, lpmat2);
+	if (newFont) {
+		SelectObject(hdc, origFont);
+		DeleteObject(newFont);
+	}
+	return ret;
+}
+
 extern "C" int nsml_mod_init()
 {
 	InitializeCriticalSection(&cs);
 	return 0;
+}
+
+extern "C" void nsml_mod_detour(void)
+{
+	detour_chain("gdi32.dll", 0,
+		"GetGlyphOutlineA", th105_GetGlyphOutlineU,
+		NULL
+		);
 }
 
 extern "C" void nsml_mod_exit()

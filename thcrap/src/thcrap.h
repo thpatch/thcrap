@@ -46,6 +46,7 @@ extern "C" {
 #include "repo.h"
 #include "search.h"
 #include "shelllink.h"
+#include "fonts_charset.h"
 
 #ifdef __cplusplus
 }

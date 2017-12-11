@@ -39,6 +39,7 @@
   <ItemGroup>
     <ClCompile Include="src\dialog.cpp" />
     <ClCompile Include="src\exception.cpp" />
+    <ClCompile Include="src\fonts_charset.cpp" />
     <ClCompile Include="src\jsondata.cpp" />
     <ClCompile Include="src\mempatch.cpp" />
     <ClCompile Include="src\binhack.cpp" />
@@ -74,6 +75,7 @@
     <ClCompile Include="src\zip.cpp" />
     <ClInclude Include="src\dialog.h" />
     <ClInclude Include="src\exception.h" />
+    <ClInclude Include="src\fonts_charset.h" />
     <ClInclude Include="src\jsondata.h" />
     <ClInclude Include="src\mempatch.h" />
     <ClInclude Include="src\binhack.h" />
