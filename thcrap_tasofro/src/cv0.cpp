@@ -228,7 +228,7 @@ bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num)
 	const char *line;
 
 	line = json_array_get_string(patch, json_line_num);
-	if (strncmp(line, "<balloon>", 9) == 0) {
+	if (strcmp(line, "<balloon>") == 0) {
 		this->cur_line = 1;
 		this->nb_lines = 0;
 		return true;
@@ -238,11 +238,18 @@ bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num)
 		unsigned int i;
 		for (i = json_line_num + 1; i < json_array_size(patch); i++) {
 			line = json_array_get_string(patch, i);
-			if (strncmp(line, "<balloon>", 9) == 0) {
+			if (strcmp(line, "<balloon>") == 0) {
+				break;
+			}
+			else if (line[0] != '\0' && (line[strlen(line) - 1] == '@' || line[strlen(line) - 1] == '\\')) {
+				i++;
 				break;
 			}
 		}
 		this->nb_lines = i - json_line_num;
+		if (this->nb_lines > 4) {
+			this->nb_lines = 4;
+		}
 	}
 
 	return false;
@@ -263,8 +270,8 @@ void TasofroCv0::Text::patchLine(const char *text, std::list<ALine*>& file, cons
 	if (this->cur_line != this->nb_lines) {
 		formattedText += "\r\n";
 	}
-	else if (formattedText.length() > 0 && formattedText[formattedText.length() - 1] != '@') {
-		formattedText += "\\";
+	else if (formattedText.length() == 0 || (formattedText[formattedText.length() - 1] != '@' && formattedText[formattedText.length() - 1] != '\\')) {
+		formattedText += "\\\r\n";
 	}
 
 	this->content += formattedText;
@@ -272,11 +279,12 @@ void TasofroCv0::Text::patchLine(const char *text, std::list<ALine*>& file, cons
 
 void TasofroCv0::Text::endLine()
 {
-	if (this->cur_line != 3) {
+	if (this->cur_line != this->nb_lines) {
 		this->cur_line++;
 	}
 	else {
 		this->cur_line = 1;
+		this->nb_lines = 0;
 	}
 }
 
