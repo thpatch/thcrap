@@ -200,7 +200,7 @@ std::string TasofroCv0::Text::toString() const
 	return content;
 }
 
-void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, json_t *patch)
+void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, int textbox_size, json_t *patch)
 {
 	this->cur_line = 1;
 	this->nb_lines = 0;
@@ -209,7 +209,7 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 	size_t json_line_num;
 	json_t *json_line;
 	json_array_foreach(patch, json_line_num, json_line) {
-		if (this->parseCommand(patch, json_line_num) == true) {
+		if (this->parseCommand(patch, json_line_num, textbox_size) == true) {
 			continue;
 		}
 
@@ -223,7 +223,7 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 
 
 
-bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num)
+bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num, int textbox_size)
 {
 	const char *line;
 
@@ -247,8 +247,8 @@ bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num)
 			}
 		}
 		this->nb_lines = i - json_line_num;
-		if (this->nb_lines > 4) {
-			this->nb_lines = 4;
+		if (this->nb_lines > textbox_size) {
+			this->nb_lines = textbox_size;
 		}
 	}
 
@@ -323,9 +323,14 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, js
 	}
 
 	size_t balloon_number = 1;
+	int textbox_size = 3;
 	for (std::list<TasofroCv0::ALine*>::iterator it = lines.begin(); it != lines.end(); ++it) {
 		TasofroCv0::ALine *line = *it;
-		if (line->getType() != TasofroCv0::TEXT) {
+		if (line->getType() == TasofroCv0::COMMAND && textbox_size != 4 && line->toString().compare(0, 3, "CG:") == 0) {
+			textbox_size = 4;
+			continue;
+		}
+		else if (line->getType() != TasofroCv0::TEXT) {
 			continue;
 		}
 
@@ -334,7 +339,7 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, js
 		if (json_lines == nullptr) {
 			continue;
 		}
-		dynamic_cast<TasofroCv0::Text*>(line)->patch(lines, it, json_lines);
+		dynamic_cast<TasofroCv0::Text*>(line)->patch(lines, it, textbox_size, json_lines);
 	}
 
 	std::string str;
