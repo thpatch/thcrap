@@ -300,6 +300,31 @@ int BP_th105_file_delete(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
+int BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	size_t font_size     = json_object_get_immediate(bp_info, regs, "font_size");
+	size_t *y_offset     = json_object_get_pointer(bp_info, regs, "y_offset");
+	size_t *font_spacing = json_object_get_pointer(bp_info, regs, "font_spacing");
+	// ----------
+
+	if (!font_size) {
+		return 1;
+	}
+
+	json_t *entry = json_object_numkey_get(json_object_get(bp_info, "new_y_offset"), font_size);
+	if (entry && json_is_integer(entry) && y_offset) {
+		*y_offset  = (size_t)json_integer_value(entry);
+	}
+
+	entry = json_object_numkey_get(json_object_get(bp_info, "new_spacing"), font_size);
+	if (entry && json_is_integer(entry) && font_spacing) {
+		*font_spacing = (size_t)json_integer_value(entry);
+	}
+	return 1;
+}
+
 DWORD WINAPI th105_GetGlyphOutlineU(HDC hdc, UINT uChar, UINT uFormat, LPGLYPHMETRICS lpgm, DWORD cbBuffer, LPVOID lpvBuffer, const MAT2 *lpmat2)
 {
 	uChar = CharToUTF16(uChar);
