@@ -316,6 +316,7 @@ EXPORTS
 	jsonvfs_add
 	jsonvfs_game_add
 	jsonvfs_add_map
+	jsonvfs_game_add_map
 	jsonvfs_get
 
 	; Win32 detours

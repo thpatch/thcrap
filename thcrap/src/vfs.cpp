@@ -180,3 +180,8 @@ void jsonvfs_add_map(const std::string out_pattern, std::string in_fn)
 {
 	jsonvfs_add(out_pattern, { in_fn }, map_generator);
 }
+
+void jsonvfs_game_add_map(const std::string out_pattern, std::string in_fn)
+{
+	jsonvfs_game_add(out_pattern, { in_fn }, map_generator);
+}

@@ -44,6 +44,8 @@ int nsml_init()
 		char *bgm_fn = fn_for_game("data/csv/system/music.cv1.jdiff");
 		jsonvfs_add(bgm_fn, { "themes.js" }, bgm_generator);
 		SAFE_FREE(bgm_fn);
+		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", "spells.js");
+		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", "spells.js");
 	}
 	else if (game_id == TH123) {
 		patchhook_register("*.cv0", patch_cv0, nullptr);
@@ -54,6 +56,8 @@ int nsml_init()
 		char *bgm_fn = fn_for_game("data/csv/system/music*.cv1.jdiff");
 		jsonvfs_add_map(bgm_fn, "themes.js");
 		SAFE_FREE(bgm_fn);
+		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", "spells.js");
+		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", "spells.js");
 
 		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
 		size_t i;

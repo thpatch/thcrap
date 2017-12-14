@@ -43,6 +43,9 @@ extern "C" {
 	  */
 	void jsonvfs_add_map(const std::string out_pattern, std::string in_fn);
 
+	// Same as jsonvfs_add_map, but all file names are game-relative.
+	void jsonvfs_game_add_map(const std::string out_pattern, std::string in_fn);
+
 
 	// Return a file from the vfs if it exists.
 	json_t *jsonvfs_get(const std::string fn, size_t* size);
