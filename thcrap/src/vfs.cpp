@@ -135,6 +135,9 @@ static void json_map_patch(json_t *obj, json_t *in)
 				if (rep) {
 					json_object_set(obj, key, rep);
 				}
+				else {
+					json_object_del(obj, key);
+				}
 			}
 		}
 	}
