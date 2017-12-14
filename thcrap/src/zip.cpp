@@ -518,7 +518,7 @@ int zip_file_unzip(zip_t *zip, const char *fn)
 		);
 		ret = (handle == INVALID_HANDLE_VALUE);
 		if(!ret) {
-			SetFileTime(handle, &file.ctime, &file.mtime, &file.atime);
+			SetFileTime(handle, &file.ctime, &file.atime, &file.mtime);
 			ret = W32_ERR_WRAP(WriteFile(
 				handle, file_buffer, file.size_uncompressed, &byte_ret, NULL
 			));
