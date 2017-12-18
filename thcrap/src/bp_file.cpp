@@ -381,7 +381,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 			}
 		}
 		// Patch the game
-		if (patchhooks_run(fr->hooks, fr->rep_buffer, POST_JSON_SIZE(fr), fr->orig_size, fr->name, fr->patch)) {
+		if (patchhooks_run(fr->hooks, fr->rep_buffer, POST_JSON_SIZE(fr), fr->pre_json_size, fr->name, fr->patch)) {
 			has_rep = 1;
 		}
 		fragmented_read_file_hook_t post_patch = (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_patch");

@@ -182,7 +182,7 @@ TasofroCv0::Text* TasofroCv0::Text::read(const char*& file, size_t& size)
 	Text* line = new Text();
 	line->content = ALine::readLine(file, size);
 	while (guessLineType(file, size) == TEXT) {
-		line->content += "\r\n" + ALine::readLine(file, size);
+		line->content += "\n" + ALine::readLine(file, size);
 		size_t i = line->content.length() - 1;
 		while (i > 0 && line->content[i] == '\r' || line->content[i] == '\n') {
 			i--;
@@ -268,10 +268,10 @@ void TasofroCv0::Text::patchLine(const char *text, std::list<ALine*>& file, cons
 {
 	std::string formattedText = text;
 	if (this->cur_line != this->nb_lines) {
-		formattedText += "\r\n";
+		formattedText += "\n";
 	}
 	else if (formattedText.length() == 0 || (formattedText[formattedText.length() - 1] != '@' && formattedText[formattedText.length() - 1] != '\\')) {
-		formattedText += "\\\r\n";
+		formattedText += "\\\n";
 	}
 
 	this->content += formattedText;
@@ -352,9 +352,9 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, js
 		memcpy(file_out, str.c_str(), str.size());
 		file_out += str.size();
 		size_out -= str.size();
-		memcpy(file_out, "\r\n", 2);
-		file_out += 2;
-		size_out -= 2;
+		*file_out = '\n';
+		file_out++;
+		size_out--;
 	}
 	*file_out = '\0';
 

@@ -54,13 +54,14 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
 		}
 	}
-	json_decref(chain);
 	if (!file_buffer) {
 		log_print("not found\n");
+		json_decref(chain);
 		return nullptr;
 	}
 	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
+	json_decref(chain);
 	file.buffer = file_buffer;
 	
 	if (!png_check_sig(file.buffer, 8)) {
