@@ -305,6 +305,9 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 		file_rep_clear(fr);
 	}
 	file_rep_init(fr, filename);
+	if (fr->rep_buffer && fr->patch_size) {
+		fr->rep_buffer = realloc(fr->rep_buffer, POST_JSON_SIZE(fr));
+	}
 
 	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
 	if (fr->rep_buffer != NULL || fr->patch != NULL || fr->hooks != NULL || !json_is_false(dat_dump)) {
