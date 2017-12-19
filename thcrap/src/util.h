@@ -40,13 +40,13 @@ __inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 // TODO: Rip out and change to std::string_view once C++17 is more widespread.
 typedef struct stringref_t {
 	const char *str;
-	size_t len;
+	int len;
 
 	// No default constructor = no potential uninitialized
 	// string pointer = good
 
 	stringref_t(const char *str) : str(str), len(strlen(str)) {}
-	stringref_t(const char *str, size_t len) : str(str), len(len) {}
+	stringref_t(const char *str, int len) : str(str), len(len) {}
 
 	stringref_t(const json_t *json)
 		: str(json_string_value(json)), len(json_string_length(json)) {
