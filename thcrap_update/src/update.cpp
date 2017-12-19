@@ -380,16 +380,35 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 
 void servers_t::from(const json_t *servers)
 {
+	auto validate = [] (size_t pos, json_t *server) {
+		if(!json_is_string(server)) {
+			char *val_str = json_dumps(server, JSON_ENCODE_ANY);
+			log_printf(
+				"ERROR: Expected a server string at array position %u, got \"%s\"\n",
+				pos + 1, val_str
+			);
+			return false;
+		}
+		const stringref_t url = server;
+		const stringref_t PROTOCOL = "://";
+		int check_len = url.len - PROTOCOL.len;
+		bool valid = false;
+		for(decltype(check_len) i = 1; i <= check_len && !valid; i++) {
+			if(!memcmp(url.str + i, PROTOCOL.str, PROTOCOL.len)) {
+				valid = true;
+			}
+		}
+		if(!valid) {
+			log_printf("ERROR: not an URI: \"%s\"\n", url);
+			return false;
+		}
+		return true;
+	};
+
 	auto servers_len = json_array_size(servers);
 	for(size_t i = 0; i < servers_len; i++) {
 		json_t *val = json_array_get(servers, i);
-		if(!json_is_string(val)) {
-			char *val_str = json_dumps(val, JSON_ENCODE_ANY);
-			log_printf(
-				"ERROR: Expected a server string at array position %u, got \"%s\"\n",
-				i + 1, val_str
-			);
-		} else {
+		if(validate(i, val)) {
 			server_t server_new;
 			server_new.url = json_string_value(val);
 			server_new.new_session();
