@@ -105,6 +105,9 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 		case ERROR_INTERNET_TIMEOUT:
 			log_printf("timed out\n", inet_ret);
 			break;
+		case ERROR_INTERNET_UNRECOGNIZED_SCHEME:
+			log_print("Unknown protocol\n");
+			break;
 		default:
 			log_printf("WinInet error %d\n", inet_ret);
 			break;
