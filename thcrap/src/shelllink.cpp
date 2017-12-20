@@ -41,7 +41,7 @@ HRESULT CreateLink(
 		IPersistFile* ppf;
 
 		LINK_MACRO_EXPAND(WCHAR_T_DEC);
-		LINK_MACRO_EXPAND(WCHAR_T_CONV_VLA);
+		LINK_MACRO_EXPAND(WCHAR_T_CONV);
 
 		// Set the path to the shortcut target and add the description.
 		psl->SetPath(target_cmd_w);
