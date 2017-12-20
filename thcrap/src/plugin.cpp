@@ -46,9 +46,16 @@ int plugin_init(HMODULE hMod)
 	return ret;
 }
 
-void plugin_load(const char *fn)
+void plugin_load(const char *dir, const char *fn)
 {
-	HINSTANCE plugin = LoadLibrary(fn);
+	STRLEN_DEC(dir);
+	STRLEN_DEC(fn);
+	VLA(char, fn_abs, dir_len + fn_len);
+	defer(VLA_FREE(fn_abs));
+
+	sprintf(fn_abs, "%s/%s", dir, fn);
+
+	HINSTANCE plugin = LoadLibrary(fn_abs);
 	if(!plugin) {
 		return;
 	}
@@ -62,7 +69,7 @@ void plugin_load(const char *fn)
 	}
 }
 
-int plugins_load(void)
+int plugins_load(const char *dir)
 {
 	BOOL ret = 0;
 	WIN32_FIND_DATAA w32fd;
@@ -89,7 +96,7 @@ int plugins_load(void)
 		ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));
 	}
 	for(auto dll : dlls) {
-		plugin_load(dll.c_str());
+		plugin_load(dir, dll.c_str());
 	}
 	FindClose(hFind);
 	return 0;

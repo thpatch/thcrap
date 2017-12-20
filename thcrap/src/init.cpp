@@ -243,7 +243,7 @@ int thcrap_init(const char *run_cfg_fn)
 
 	log_printf("\nInitializing plug-ins...\n");
 	plugin_init(hThcrap);
-	plugins_load();
+	plugins_load(dll_dir);
 
 	/**
 	  * Potentially dangerous stuff. Do not want!
@@ -257,8 +257,7 @@ int thcrap_init(const char *run_cfg_fn)
 		json_array_foreach(patches, i, patch_info) {
 			const char *archive = json_object_get_string(patch_info, "archive");
 			if(archive) {
-				SetCurrentDirectory(archive);
-				plugins_load();
+				plugins_load(archive);
 			}
 		}
 	}
