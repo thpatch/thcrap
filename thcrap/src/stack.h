@@ -24,6 +24,8 @@ typedef struct {
 	const char *fn;
 } stack_chain_iterate_t;
 
+typedef json_t* (*resolve_chain_t)(const char *fn);
+
 /// File resolution
 /// ---------------
 // Creates a JSON array containing the the default resolving chain for [fn].
@@ -33,8 +35,14 @@ typedef struct {
 // name) should use the chain created by this function.
 json_t* resolve_chain(const char *fn);
 
+// Set a user-defined function used to create the chain returned by resolve_chain.
+void set_resolve_chain(resolve_chain_t function);
+
 // Builds a chain for a game-local file name.
 json_t* resolve_chain_game(const char *fn);
+
+// Set a user-defined function used to create the chain returned by resolve_chain_game.
+void set_resolve_chain_game(resolve_chain_t function);
 
 // Repeatedly iterate through the stack using the given resolving [chain].
 // [sci] keeps the iteration state.

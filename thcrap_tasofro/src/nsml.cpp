@@ -20,11 +20,54 @@
 W32U8_DETOUR_CHAIN_DEF(GetGlyphOutline);
 /// -------------
 
-size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t);
-int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*);
-int patch_dat_for_png_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 static CRITICAL_SECTION cs;
 static std::set<const char*, bool(*)(const char*, const char*)> game_fallback_ignore_list([](const char *a, const char *b){ return strcmp(a, b) < 0; });
+
+// Copy-paste of fn_for_game from patchfile.cpp
+static char* fn_for_th105(const char *fn)
+{
+	const char *game_id = "th105";
+	size_t game_id_len = strlen(game_id) + 1;
+	char *full_fn;
+
+	if (!fn) {
+		return NULL;
+	}
+	full_fn = (char*)malloc(game_id_len + strlen(fn) + 1);
+
+	full_fn[0] = 0; // Because strcat
+	if (game_id) {
+		strncpy(full_fn, game_id, game_id_len);
+		strcat(full_fn, "/");
+	}
+	strcat(full_fn, fn);
+	return full_fn;
+}
+
+json_t *th123_resolve_chain_game(const char *fn)
+{
+	json_t *ret = nullptr;
+
+	// First, th105
+	if (game_fallback_ignore_list.find(fn) == game_fallback_ignore_list.end()) {
+		char *fn_game = fn_for_th105(fn);
+		ret = resolve_chain(fn_game);
+		SAFE_FREE(fn_game);
+	}
+
+	char *fn_common = fn_for_game(fn);
+	const char *fn_common_ptr = fn_common ? fn_common : fn;
+	json_t *th123_ret = resolve_chain(fn_common_ptr);
+	if (ret && th123_ret) {
+		json_array_extend(ret, th123_ret);
+		json_decref(th123_ret);
+	}
+	else if (!ret && th123_ret) {
+		ret = th123_ret;
+	}
+	SAFE_FREE(fn_common);
+	return ret;
+}
 
 int nsml_init()
 {
@@ -35,30 +78,26 @@ int nsml_init()
 		// Increasing the file size makes the game crash.
 		patchhook_register("*.cv2", patch_cv2, nullptr);
 	}
-	else if (game_id == TH105) {
+	else if (game_id == TH105 || game_id == TH123) {
 		patchhook_register("*.cv0", patch_cv0, nullptr);
 		patchhook_register("*.cv1", patch_csv, nullptr);
 		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
 		patchhook_register("*.dat", patch_dat_for_png, [](const char*, json_t*, size_t) -> size_t { return 0; });
-
-		char *bgm_fn = fn_for_game("data/csv/system/music.cv1.jdiff");
-		jsonvfs_add(bgm_fn, { "themes.js" }, bgm_generator);
-		SAFE_FREE(bgm_fn);
 		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", "spells.js");
 		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", "spells.js");
 	}
-	else if (game_id == TH123) {
-		patchhook_register("*.cv0", patch_cv0, nullptr);
-		patchhook_register("*.cv1", patch_csv, nullptr);
-		patchhook_register("*.cv2", patch_cv2_for_th123, get_cv2_size_for_th123);
-		patchhook_register("*.dat", patch_dat_for_png_for_th123, [](const char*, json_t*, size_t) -> size_t { return 0; });
 
+	if (game_id == TH105) {
+		char *bgm_fn = fn_for_game("data/csv/system/music.cv1.jdiff");
+		jsonvfs_add(bgm_fn, { "themes.js" }, bgm_generator);
+		SAFE_FREE(bgm_fn);
+	}
+	else if (game_id == TH123) {
 		char *bgm_fn = fn_for_game("data/csv/system/music*.cv1.jdiff");
 		jsonvfs_add_map(bgm_fn, "themes.js");
 		SAFE_FREE(bgm_fn);
-		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", "spells.js");
-		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", "spells.js");
 
+		set_resolve_chain_game(th123_resolve_chain_game);
 		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
 		size_t i;
 		json_t *value;
@@ -69,102 +108,12 @@ int nsml_init()
 	return 0;
 }
 
-/**
-  * Replace the game_id and build with fake ones.
-  * To remove the game_id or the build, pass a pointer to NULL.
-  * When the function returns, game_id and build contains the old game_id and build.
-  * To restore the values, call the function again with the same parameters.
-  */
-static void change_game_id(json_t **game_id, json_t **build)
-{
-	json_t *old_game_id = json_object_get(runconfig_get(), "game");
-	json_t *old_build = json_object_get(runconfig_get(), "build");
-	json_incref(old_game_id);
-	json_incref(old_build);
-
-	if (*game_id) {
-		json_object_set(runconfig_get(), "game", *game_id);
-		json_decref(*game_id);
-	}
-	else {
-		json_object_del(runconfig_get(), "game");
-	}
-	if (*build) {
-		json_object_set(runconfig_get(), "build", *build);
-		json_decref(*build);
-	}
-	else {
-		json_object_del(runconfig_get(), "build");
-	}
-
-	*game_id = old_game_id;
-	*build = old_build;
-}
-
-template<typename T>
-static void run_with_game_fallback(const char *game_id, const char *build, const char *fn, T func)
-{
-	if (game_fallback_ignore_list.find(fn) != game_fallback_ignore_list.end()) {
-		return;
-	}
-	json_t *j_game_id = nullptr;
-	json_t *j_build = nullptr;
-	if (game_id) {
-		j_game_id = json_string(game_id);
-	}
-	if (build) {
-		j_build = json_string(build);
-	}
-	change_game_id(&j_game_id, &j_build);
-	func();
-	change_game_id(&j_game_id, &j_build);
-}
-
-size_t get_cv2_size_for_th123(const char *fn, json_t*, size_t)
-{
-	EnterCriticalSection(&cs);
-	size_t size = get_image_data_size(fn, true);
-	if (size == 0) {
-		run_with_game_fallback("th105", nullptr, fn, [fn, &size]() {
-			size = get_image_data_size(fn, true);
-		});
-	}
-	LeaveCriticalSection(&cs);
-	return 17 + size;
-}
-
-int patch_cv2_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
-{
-	EnterCriticalSection(&cs);
-	int ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
-	if (ret <= 0) {
-		run_with_game_fallback("th105", nullptr, fn, [file_inout, size_out, size_in, fn, patch, &ret]() {
-			ret = patch_cv2(file_inout, size_out, size_in, fn, patch);
-		});
-	}
-	LeaveCriticalSection(&cs);
-	return ret;
-}
-
-int patch_dat_for_png_for_th123(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
-{
-	EnterCriticalSection(&cs);
-	int ret = 0;
-	run_with_game_fallback("th105", nullptr, fn, [file_inout, size_out, size_in, fn, patch, &ret]() {
-		ret = patch_dat_for_png(file_inout, size_out, size_in, fn, patch);
-	});
-	int ret2 = patch_dat_for_png(file_inout, size_out, size_in, fn, patch);
-	LeaveCriticalSection(&cs);
-	return max(ret, ret2);
-}
-
 int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
 	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
 	size_t fn_size = json_object_get_immediate(bp_info, regs, "fn_size");
-	json_t *game_fallback = json_object_get(bp_info, "game_fallback");
 	// ----------
 
 	char *uFilename;
@@ -180,19 +129,8 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)uFilename));
 	EnterCriticalSection(&cs);
 	int ret = BP_file_header(regs, new_bp_info);
-
-	if (game_fallback) {
-		// If no file was found, try again with the files from another game.
-		// Used for th123, that loads the file from th105.
-		file_rep_t *fr = file_rep_get(uFilename);
-		if (!fr || (!fr->rep_buffer && !fr->patch)) {
-			run_with_game_fallback(json_string_value(game_fallback), nullptr, uFilename, [regs, new_bp_info, &ret]() {
-				ret = BP_file_header(regs, new_bp_info);
-			});
-		}
-	}
-
 	LeaveCriticalSection(&cs);
+
 	json_decref(new_bp_info);
 	free(uFilename);
 	return ret;

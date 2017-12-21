@@ -10,7 +10,7 @@
 #include "thcrap.h"
 #include "vfs.h"
 
-json_t* resolve_chain(const char *fn)
+static json_t* resolve_chain_default(const char *fn)
 {
 	json_t *ret = fn ? json_array() : NULL;
 	char *fn_build = fn_for_build(fn);
@@ -20,13 +20,36 @@ json_t* resolve_chain(const char *fn)
 	return ret;
 }
 
-json_t* resolve_chain_game(const char *fn)
+static json_t* resolve_chain_game_default(const char *fn)
 {
 	char *fn_common = fn_for_game(fn);
 	const char *fn_common_ptr = fn_common ? fn_common : fn;
 	json_t *ret = resolve_chain(fn_common_ptr);
 	SAFE_FREE(fn_common);
 	return ret;
+}
+
+static resolve_chain_t resolve_chain_function      = resolve_chain_default;
+static resolve_chain_t resolve_chain_game_function = resolve_chain_game_default;
+
+json_t* resolve_chain(const char *fn)
+{
+	return resolve_chain_function(fn);
+}
+
+void set_resolve_chain(resolve_chain_t function)
+{
+	resolve_chain_function = function;
+}
+
+json_t* resolve_chain_game(const char *fn)
+{
+	return resolve_chain_game_function(fn);
+}
+
+void set_resolve_chain_game(resolve_chain_t function)
+{
+	resolve_chain_game_function = function;
 }
 
 int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction)
