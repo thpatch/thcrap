@@ -83,20 +83,17 @@ int nsml_init()
 		patchhook_register("*.cv1", patch_csv, nullptr);
 		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
 		patchhook_register("*.dat", patch_dat_for_png, [](const char*, json_t*, size_t) -> size_t { return 0; });
-		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", "spells.js");
-		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", "spells.js");
 	}
 
 	if (game_id == TH105) {
 		char *bgm_fn = fn_for_game("data/csv/system/music.cv1.jdiff");
 		jsonvfs_add(bgm_fn, { "themes.js" }, bgm_generator);
 		SAFE_FREE(bgm_fn);
+
+		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", "spells.js");
+		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", "spells.js");
 	}
 	else if (game_id == TH123) {
-		char *bgm_fn = fn_for_game("data/csv/system/music*.cv1.jdiff");
-		jsonvfs_add_map(bgm_fn, "themes.js");
-		SAFE_FREE(bgm_fn);
-
 		set_resolve_chain_game(th123_resolve_chain_game);
 		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
 		size_t i;
@@ -104,6 +101,23 @@ int nsml_init()
 		json_array_foreach(list, i, value) {
 			game_fallback_ignore_list.insert(json_string_value(value));
 		}
+
+		char *bgm_fn = fn_for_game("data/csv/system/music*.cv1.jdiff");
+		jsonvfs_add_map(bgm_fn, "themes.js");
+		SAFE_FREE(bgm_fn);
+
+		char *pattern_spell = fn_for_game("data/csv/*/spellcard.cv1.jdiff");
+		char *pattern_story = fn_for_game("data/csv/*/storyspell.cv1.jdiff");
+		char *spells_th105 = fn_for_th105("spells.js");
+		char *spells_th123 = fn_for_game("spells.js");
+		jsonvfs_add_map(pattern_spell, spells_th105);
+		jsonvfs_add_map(pattern_spell, spells_th123);
+		jsonvfs_add_map(pattern_story, spells_th105);
+		jsonvfs_add_map(pattern_story, spells_th123);
+		SAFE_FREE(pattern_spell);
+		SAFE_FREE(pattern_story);
+		SAFE_FREE(spells_th105);
+		SAFE_FREE(spells_th123);
 	}
 	return 0;
 }
