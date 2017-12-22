@@ -23,7 +23,6 @@ extern "C" {
 
 #include <win32_utf8.h>
 #include <jansson.h>
-#include "macros.h"
 #include "exception.h"
 #include "jansson_ex.h"
 #include "global.h"
