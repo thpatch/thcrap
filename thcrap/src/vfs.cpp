@@ -121,40 +121,41 @@ static json_t *json_map_resolve(json_t *obj, const char *path)
 	return obj;
 }
 
-static void json_map_patch(json_t *obj, json_t *in)
+static json_t *json_map_patch(json_t *map, json_t *in)
 {
+	json_t *ret;
 	json_t *it;
-	if (json_is_object(obj)) {
+	if (json_is_object(map)) {
+		ret = json_object();
 		const char *key;
-		json_object_foreach(obj, key, it) {
+		json_object_foreach(map, key, it) {
 			if (json_is_object(it) || json_is_array(it)) {
-				json_map_patch(it, in);
+				json_object_set_new(ret, key, json_map_patch(it, in));
 			}
 			else if (json_is_string(it)) {
 				json_t *rep = json_map_resolve(in, json_string_value(it));
 				if (rep) {
-					json_object_set(obj, key, rep);
-				}
-				else {
-					json_object_del(obj, key);
+					json_object_set(ret, key, rep);
 				}
 			}
 		}
 	}
-	else if (json_is_array(obj)) {
+	else if (json_is_array(map)) {
+		ret = json_array();
 		size_t i;
-		json_array_foreach(obj, i, it) {
+		json_array_foreach(map, i, it) {
 			if (json_is_object(it) || json_is_array(it)) {
-				json_map_patch(it, in);
+				json_array_append_new(ret, json_map_patch(it, in));
 			}
 			else if (json_is_string(it)) {
 				json_t *rep = json_map_resolve(in, json_string_value(it));
 				if (rep) {
-					json_array_set(obj, i, rep);
+					json_array_append(ret, rep);
 				}
 			}
 		}
 	}
+	return ret;
 }
 
 static json_t *map_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
@@ -174,9 +175,7 @@ static json_t *map_generator(std::unordered_map<std::string, json_t*> in_data, c
 		return NULL;
 	}
 
-	json_t *ret = json_deep_copy(map);
-	json_map_patch(ret, in);
-	return ret;
+	return json_map_patch(map, in);
 }
 
 void jsonvfs_add_map(const std::string out_pattern, std::string in_fn)
