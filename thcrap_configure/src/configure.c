@@ -205,7 +205,9 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 	return TRUE;
 }
 
-int __cdecl wmain(int argc, wchar_t *wargv[])
+#include <win32_utf8/entry_main.c>
+
+int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
 	int ret = 0;
 
@@ -229,8 +231,6 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 	const char *run_cfg_fn = NULL;
 	const char *run_cfg_fn_js = NULL;
 	char *run_cfg_str = NULL;
-
-	json_t *args = json_array_from_wchar_array(argc, wargv);
 
 	wine_flag = GetProcAddress(
 		GetModuleHandleA("kernel32.dll"), "wine_get_unix_file_name"
@@ -263,8 +263,8 @@ int __cdecl wmain(int argc, wchar_t *wargv[])
 		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
 	}
 
-	if(json_array_size(args) > 1) {
-		start_repo = json_array_get_string(args, 1);
+	if(argc > 1) {
+		start_repo = argv[1];
 	}
 
 	log_printf(
@@ -389,8 +389,6 @@ end:
 	json_decref(new_cfg);
 	json_decref(sel_stack);
 	json_decref(games);
-
-	json_decref(args);
 
 	VLA_FREE(cur_dir);
 	json_decref(repo_list);

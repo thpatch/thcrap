@@ -28,10 +28,11 @@ const char* game_lookup(const json_t *games_js, const char *game)
 	return json_string_value(ret);
 }
 
-int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
+#include <win32_utf8/entry_winmain.c>
+
+int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
 	int ret;
-	json_t *args = NULL;
 	json_t *games_js = NULL;
 
 	int run_cfg_seen = 0;
@@ -42,9 +43,7 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	const char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
 
-	size_t i;
-
-	if(__argc < 2) {
+	if(argc < 2) {
 		log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 			"This is the command-line loader component of the %s.\n"
 			"\n"
@@ -62,8 +61,6 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 		ret = -1;
 		goto end;
 	}
-
-	args = json_array_from_wchar_array(__argc, const_cast<const wchar_t **>(__wargv));
 
 	/**
 	  * ---
@@ -94,8 +91,8 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	}
 
 	// Parse command line
-	for(i = 1; i < json_array_size(args); i++) {
-		const char *arg = json_array_get_string(args, i);
+	for(int i = 1; i < argc; i++) {
+		const char *arg = argv[i];
 		const char *param_ext = PathFindExtensionA(arg);
 
 		if(!stricmp(param_ext, ".js")) {
@@ -189,6 +186,5 @@ int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);
-	json_decref(args);
 	return ret;
 }
