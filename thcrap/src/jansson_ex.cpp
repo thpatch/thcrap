@@ -74,26 +74,6 @@ const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
 	return ret;
 }
 
-json_t* json_array_from_wchar_array(int argc, const wchar_t *wargv[])
-{
-	json_t *ret = NULL;
-	int i;
-
-	if(!argc || !wargv) {
-		return ret;
-	}
-
-	ret = json_array();
-	for(i = 0; i < argc; i++) {
-		const wchar_t *arg = wargv[i];
-		UTF8_DEC(arg);
-		UTF8_CONV(arg);
-		json_array_append_new(ret, json_string(arg_utf8));
-		UTF8_FREE(arg);
-	}
-	return ret;
-}
-
 size_t json_flex_array_size(const json_t *json)
 {
 	return json ? (json_is_array(json) ? json_array_size(json) : 1) : 0;

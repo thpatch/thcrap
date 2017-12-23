@@ -107,7 +107,6 @@ EXPORTS
 	json_array_get_hex
 	json_array_get_string
 	json_array_get_string_safe
-	json_array_from_wchar_array
 	json_flex_array_size
 	json_flex_array_get
 	json_flex_array_get_string_safe
