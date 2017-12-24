@@ -122,7 +122,15 @@ int nsml_init()
 	return 0;
 }
 
-int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
+/**
+  * Convert the file_name member of bp_info to a lowercase UTF-8 string.
+  * If bp_info contains a fn_size member, this member must contains the size
+  * of file_name (in bytes). Otherwise, file_name must be null-terminated.
+  *
+  * After the call, uFilename will contain a pointer to the utf-8 file name.
+  * The caller have to free() it.
+  */
+json_t *convert_file_name_in_bp(x86_reg_t *regs, json_t *bp_info, char **uFilename)
 {
 	// Parameters
 	// ----------
@@ -130,17 +138,25 @@ int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 	size_t fn_size = json_object_get_immediate(bp_info, regs, "fn_size");
 	// ----------
 
-	char *uFilename;
 	if (fn_size) {
-		uFilename = EnsureUTF8(filename, fn_size);
+		*uFilename = EnsureUTF8(filename, fn_size);
 	}
 	else {
-		uFilename = EnsureUTF8(filename, strlen(filename));
+		*uFilename = EnsureUTF8(filename, strlen(filename));
 	}
-	CharLowerA(uFilename);
+	CharLowerA(*uFilename);
 
 	json_t *new_bp_info = json_copy(bp_info);
-	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)uFilename));
+	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)*uFilename));
+
+	return new_bp_info;
+}
+
+int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
+{
+	char *uFilename;
+	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
+
 	EnterCriticalSection(&cs);
 	int ret = BP_file_header(regs, new_bp_info);
 	LeaveCriticalSection(&cs);
@@ -184,20 +200,11 @@ static void th105_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
 
 int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 {
-	// Parameters
-	// ----------
-	const char *file_name = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
-	// ----------
-
+	EnterCriticalSection(&cs);
 	// bp_info may be used by several threads at the same time, so we can't change its values.
-	json_t *new_bp_info = json_deep_copy(bp_info);
 	char *uFilename = nullptr;
-
-	if (file_name) {
-		uFilename = EnsureUTF8(file_name, strlen(file_name));
-		CharLowerA(uFilename);
-		json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)uFilename));
-	}
+	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
+	LeaveCriticalSection(&cs);
 
 	if (game_id == TH_MEGAMARI) {
 		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)megamari_patch));
@@ -212,48 +219,25 @@ int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 		json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)nsml_patch));
 	}
 	int ret = BP_fragmented_read_file(regs, new_bp_info);
+
 	json_decref(new_bp_info);
 	free(uFilename);
 	return ret;
 }
 
 // In th105, relying on the last open file doesn't work. So we'll use the file object instead.
-int BP_th105_file_new(x86_reg_t *regs, json_t *bp_info)
+int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 {
-	// Parameters
-	// ----------
-	const char *file_name = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
-	void *file_object = (void*)json_object_get_immediate(bp_info, regs, "file_object");
-	// ----------
+	EnterCriticalSection(&cs);
+	char *uFilename;
+	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
+	LeaveCriticalSection(&cs);
 
-	if (!file_name || !file_object) {
-		return 1;
-	}
-	char *uFilename = EnsureUTF8(file_name, strlen(file_name));
-	CharLowerA(uFilename);
-	file_rep_t *fr = file_rep_get(uFilename);
-	if (fr) {
-		file_rep_set_object(fr, file_object);
-	}
+	int ret = BP_fragmented_open_file(regs, new_bp_info);
+
+	json_decref(new_bp_info);
 	free(uFilename);
-	return 1;
-}
-
-int BP_th105_file_delete(x86_reg_t *regs, json_t *bp_info)
-{
-	// Parameters
-	// ----------
-	void *file_object = (void*)json_object_get_immediate(bp_info, regs, "file_object");
-	// ----------
-
-	if (!file_object) {
-		return 1;
-	}
-	file_rep_t *fr = file_rep_get_by_object(file_object);
-	if (fr) {
-		file_rep_set_object(fr, nullptr);
-	}
-	return 1;
+	return ret;
 }
 
 int BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)

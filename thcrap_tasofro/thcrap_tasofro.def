@@ -8,12 +8,14 @@ EXPORTS
 	BP_th135_file_header
 	BP_th135_file_name
 	BP_th135_read_file
+
 	BP_detour_plugin
+
 	BP_nsml_file_header
 	BP_nsml_read_file
-	BP_th105_file_new
-	BP_th105_file_delete
+	BP_th105_open_file
 	BP_th105_font_spacing
+
 	BP_th105_fix_csv_parser
 	BP_th105_cv0_escape_comma
 

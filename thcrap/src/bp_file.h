@@ -179,6 +179,29 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 int BP_file_header(x86_reg_t *regs, json_t *bp_info);
 
 /**
+  * Used when the a fragmented file reader loads its file.
+  *
+  * Own JSON parameters
+  * -------------------
+  *	[file_name]
+  *		File name
+  *		Type: immediate
+  *
+  *	[file_object]
+  *		File object. Can be used to help fragmented_read_file to retrieve the file_rep
+  *		Type: immediate
+  *
+  *	[file_size]
+  *		File size. Optionnal if we didn't use BP_file_header, mandatory otherwise.
+  *		Type: pointer
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_fragmented_open_file(x86_reg_t *regs, json_t *bp_info);
+
+/**
   * Overwrites a ReadFile call and writes patched data into the buffer.
   * When apply is not true, this breakpoint just stores the filename for the next call.
   * When apply is true, this breakpoint must be exactly over a ReadFile call.
@@ -212,6 +235,21 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info);
 typedef void (*fragmented_read_file_hook_t)(const file_rep_t *fr, BYTE *buffer, size_t size);
+
+/**
+  * Used when the a fragmented file reader closes its file.
+  *
+  * Own JSON parameters
+  * -------------------
+  *	[file_object]
+  *		File object, used instead of the last file used by the thread.
+  *		Type: immediate
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_fragmented_close_file(x86_reg_t *regs, json_t *bp_info);
 
 int bp_file_init(void);
 void bp_file_mod_thread_exit(void);

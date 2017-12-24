@@ -25,7 +25,9 @@ EXPORTS
 	BP_file_load
 	BP_file_loaded
 	BP_file_header
+	BP_fragmented_open_file
 	BP_fragmented_read_file
+	BP_fragmented_close_file
 
 	; Breakpoints
 	; -----------
