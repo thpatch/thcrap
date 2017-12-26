@@ -57,14 +57,18 @@ void plugin_load(const char *dir, const char *fn)
 
 	HINSTANCE plugin = LoadLibrary(fn_abs);
 	if(!plugin) {
+		log_printf("[Plugin] Error loading %s: %d\n", fn_abs, GetLastError());
 		return;
 	}
 	FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
 	if(func && !func()) {
-		log_printf("\t%s\n", fn);
+		log_printf("[Plugin] %s: initialized and active\n", fn);
 		plugin_init(plugin);
 		json_object_set_new(plugins, fn, json_integer((size_t)plugin));
 	} else {
+		if(func) {
+			log_printf("[Plugin] %s: not used for this game\n", fn);
+		}
 		FreeLibrary(plugin);
 	}
 }
