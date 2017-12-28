@@ -48,6 +48,8 @@ int plugin_init(HMODULE hMod)
 
 void plugin_load(const char *dir, const char *fn)
 {
+	// LoadLibraryEx() with LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
+	// requires an absolute path to not fail with GetLastError() == 87.
 	STRLEN_DEC(dir);
 	STRLEN_DEC(fn);
 	VLA(char, fn_abs, dir_len + fn_len);
@@ -55,7 +57,9 @@ void plugin_load(const char *dir, const char *fn)
 
 	sprintf(fn_abs, "%s/%s", dir, fn);
 
-	HINSTANCE plugin = LoadLibrary(fn_abs);
+	auto plugin = LoadLibraryExU(fn_abs, nullptr,
+		LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
+	);
 	if(!plugin) {
 		log_printf("[Plugin] Error loading %s: %d\n", fn_abs, GetLastError());
 		return;
