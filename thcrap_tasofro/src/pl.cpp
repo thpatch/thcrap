@@ -26,8 +26,20 @@ void TasofroPl::readField(const char *in, size_t& pos, size_t size, std::string&
 			}
 		}
 
-		if (!is_in_quote && (in[pos] == ',' || in[pos] == '#' || in[pos] == '\n' || (in[pos] == '\r' && pos + 1 < size && in[pos + 1] == '\n'))) {
-			return;
+		if (!is_in_quote) {
+			if (in[pos] == ',' || in[pos] == '#') {
+				return;
+			}
+			if (game_id >= TH155) {
+				// Keep the old behavior for older games because I don't want to break things
+				if ((pos >= 1 && in[pos - 1] == '@') ||
+					(pos >= 2 && in[pos - 1] == '\r') && in[pos - 2] == '@') {
+					continue;
+				}
+			}
+			if (in[pos] == '\n' || (in[pos] == '\r' && pos + 1 < size && in[pos + 1] == '\n')) {
+				return;
+			}
 		}
 
 		out += in[pos];
@@ -74,9 +86,15 @@ TasofroPl::ALine* TasofroPl::readLine(const char*& file, size_t& size)
 	size--;
 
 	char first_char = '\0';
-	for (char c : fields[0]) {
-		if (c != ' ') {
-			first_char = c;
+	for (size_t i = 0; i < fields[0].length(); ) {
+		if (fields[0][i] == ' ' || fields[0][i] == '\t') {
+			i++;
+		}
+		else if (i + 1 < fields[0].length() && fields[0][i] == '\\' && fields[0][i + 1] == 'n') {
+			i += 2;
+		}
+		else {
+			first_char = fields[0][i];
 			break;
 		}
 	}
@@ -294,7 +312,12 @@ void TasofroPl::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator
 	}
 	if (this->syntax == STORY) {
 		this->balloonName = this->fields[1];
-		this->balloon_add_suffix = true;
+		if (game_id < TH155) {
+			this->balloon_add_suffix = true;
+		}
+		else {
+			this->balloon_add_suffix = false;
+		}
 		this->quote_when_done = false;
 		this->delete_when_done = true;
 	}
@@ -360,8 +383,9 @@ bool TasofroPl::Text::parseCommand(json_t *patch, int json_line_num)
 
 	line = json_array_get_string(patch, json_line_num);
 	if (strncmp(line, "<balloon", 8) == 0) {
-		if (line[8] == '$') {
-			this->balloonName.assign(line + 9, 5);
+		const char *balloon_end = strchr(line + 9, '>');
+		if (line[8] == '$' && balloon_end && *balloon_end) {
+			this->balloonName.assign(line + 9, balloon_end - (line + 9));
 		}
 		this->cur_line = 1;
 		this->nb_lines = 0;
