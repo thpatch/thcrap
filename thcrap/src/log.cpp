@@ -14,6 +14,9 @@
 // -------
 static FILE *log_file = NULL;
 static int console_open = 0;
+// For checking nested thcrap instances that access the same log file.
+// We only want to print an error message for the first instance.
+static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
 static const char LOG[] = "thcrap_log.txt";
 static const char LOG_ROTATED[] = "thcrap_log.%d.txt";
 static const int ROTATIONS = 1; // Number of backups to keep
@@ -194,6 +197,36 @@ void log_init(int console)
 		VLA_FREE(line);
 	}
 #endif
+	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
+	size_t full_fn_len = cur_dir_len + sizeof(LOG);
+	VLA(char, full_fn, full_fn_len);
+	defer(VLA_FREE(full_fn));
+	GetCurrentDirectoryU(cur_dir_len, full_fn);
+	full_fn[cur_dir_len - 1] = '/';
+	str_slash_normalize(full_fn); // Necessary!
+	memcpy(full_fn + cur_dir_len, LOG, sizeof(LOG));
+
+	log_filemapping = CreateFileMappingU(
+		INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 1, full_fn
+	);
+	if(!log_file && GetLastError() != ERROR_ALREADY_EXISTS) {
+		auto ret = log_mboxf(nullptr, MB_OKCANCEL | MB_ICONHAND,
+			"Error creating %s: %s\n"
+			"\n"
+			"Logging will be unavailable. "
+			"Further writes to this directory are likely to fail as well. "
+			"Moving %s to a different directory will probably fix this.\n"
+			"\n"
+			"Continue?",
+			full_fn, strerror(errno), PROJECT_NAME_SHORT()
+		);
+		if(ret == IDCANCEL) {
+			auto pExitProcess = ((void (__stdcall*)(UINT))detour_top(
+				"kernel32.dll", "ExitProcess", (FARPROC)thcrap_ExitProcess
+			));
+			pExitProcess(-1);
+		}
+	}
 }
 
 void log_exit(void)
@@ -202,6 +235,7 @@ void log_exit(void)
 		FreeConsole();
 	}
 	if(log_file) {
+		CloseHandle(log_filemapping);
 		fclose(log_file);
 		log_file = NULL;
 	}
