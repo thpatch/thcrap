@@ -204,7 +204,6 @@ int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 	// bp_info may be used by several threads at the same time, so we can't change its values.
 	char *uFilename = nullptr;
 	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
-	LeaveCriticalSection(&cs);
 
 	if (game_id == TH_MEGAMARI) {
 		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)megamari_patch));
@@ -219,6 +218,7 @@ int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 		json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)nsml_patch));
 	}
 	int ret = BP_fragmented_read_file(regs, new_bp_info);
+	LeaveCriticalSection(&cs);
 
 	json_decref(new_bp_info);
 	free(uFilename);
@@ -231,9 +231,9 @@ int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 	EnterCriticalSection(&cs);
 	char *uFilename;
 	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
-	LeaveCriticalSection(&cs);
 
 	int ret = BP_fragmented_open_file(regs, new_bp_info);
+	LeaveCriticalSection(&cs);
 
 	json_decref(new_bp_info);
 	free(uFilename);
