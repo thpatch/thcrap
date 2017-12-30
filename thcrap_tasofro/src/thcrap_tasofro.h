@@ -40,6 +40,9 @@ typedef enum {
 	// • spells: using data/csv/spellcards/*.csv and data/system/char_select3/*/equip/*/000.png.csv
 	TH145,
 
+	// • bgm: add a 1 offset to the IDs
+	TH155,
+
 	// Any future game without relevant changes
 	TH_FUTURE,
 } tasofro_game_t;

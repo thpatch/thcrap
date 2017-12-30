@@ -54,7 +54,13 @@ json_t* bgm_generator(std::unordered_map<std::string, json_t*> in_data, const st
 			continue;
 		}
 		json_t *line = json_object();
-		size_t track = atoi(key + strlen(game) + 1);
+		size_t track;
+		if (game_id != TH155) {
+			track = atoi(key + strlen(game) + 1);
+		}
+		else {
+			track = atoi(key + strlen(game) + 1) + 1;
+		}
 
 		json_object_set(line, spell_col, value);
 		*out_size += json_string_length(value);
