@@ -146,6 +146,8 @@ namespace TasofroPl
 	{
 	protected:
 		bool parseCommand(json_t *patch, int json_line_num);
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
 
 	public:
 		Th155StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
@@ -161,6 +163,7 @@ namespace TasofroPl
 		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
 		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
 		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void endLine();
 		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
 
 	public:
