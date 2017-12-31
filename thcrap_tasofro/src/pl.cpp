@@ -108,7 +108,7 @@ TasofroPl::ALine* TasofroPl::readLine(const char*& file, size_t& size)
 	case ':':
 		return new Label(fields, comment);
 	default:
-		return new Text(fields, comment);
+		return AText::createText(fields, comment);
 	}
 }
 
@@ -126,7 +126,7 @@ TasofroPl::LineType TasofroPl::Command::getType() const
 {
 	return COMMAND;
 }
-TasofroPl::LineType TasofroPl::Text::getType() const
+TasofroPl::LineType TasofroPl::AText::getType() const
 {
 	return TEXT;
 }
@@ -284,63 +284,72 @@ bool TasofroPl::Command::isStaffroll() const
 
 
 
-TasofroPl::Text::Text(const std::vector<std::string>& fields, const std::string& comment, Syntax syntax)
-	: ALine(fields, comment), syntax(syntax)
-{}
+TasofroPl::AText *TasofroPl::AText::createText(const std::vector<std::string>& fields, const std::string& comment, Syntax syntax)
+{
+	if (syntax == UNKNOWN) {
+		if (fields.size() > 1) {
+			syntax = STORY;
+		}
+		else {
+			syntax = ENDINGS;
+		}
+	}
 
-void TasofroPl::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch)
+	switch (syntax) {
+	case STORY:
+		if (game_id < TH155) {
+			return new StoryText(fields, comment);
+		}
+		else {
+			return new Th155StoryText(fields, comment);
+		}
+	case ENDINGS:
+		return new EndingText(fields, comment);
+	case WIN:
+		return new WinText(fields, comment);
+	}
+	return nullptr;
+}
+
+TasofroPl::AText::AText(const std::vector<std::string>& fields, const std::string& comment)
+	: ALine(fields, comment)
+{
+}
+
+TasofroPl::StoryText::StoryText(const std::vector<std::string>& fields, const std::string& comment)
+	: AText(fields, comment)
+{
+}
+
+TasofroPl::Th155StoryText::Th155StoryText(const std::vector<std::string>& fields, const std::string& comment)
+	: StoryText(fields, comment)
+{
+}
+
+TasofroPl::EndingText::EndingText(const std::vector<std::string>& fields, const std::string& comment)
+	: AText(fields, comment)
+{
+}
+
+TasofroPl::WinText::WinText(const std::vector<std::string>& fields, const std::string& comment)
+	: AText(fields, comment)
+{
+}
+
+void TasofroPl::AText::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch)
 {
 	this->fields[0] = this->unquote(this->fields[0]);
 	this->owner = balloonOwner;
 	this->cur_line = 1;
 	this->nb_lines = 0;
-	this->ignore_clear_balloon = true;
-	this->is_staffroll = false;
+	this->is_first_balloon = true;
 
 	if (this->fields[0].length() >= 2 && this->fields[0].compare(this->fields[0].length() - 2, 2, "\\.") == 0)
 		this->last_char = "\\.";
 	else if (this->fields[0].length() >= 1 && (this->fields[0].back() == '\\' || this->fields[0].back() == '@'))
 		this->last_char = this->fields[0].back();
 
-	if (this->syntax == UNKNOWN) {
-		if (this->fields.size() > 1) {
-			this->syntax = STORY;
-		}
-		else {
-			this->syntax = ENDINGS;
-		}
-	}
-	if (this->syntax == STORY) {
-		this->balloonName = this->fields[1];
-		if (game_id < TH155) {
-			this->balloon_add_suffix = true;
-		}
-		else {
-			this->balloon_add_suffix = false;
-		}
-		this->quote_when_done = false;
-		this->delete_when_done = true;
-	}
-	else if (this->syntax == ENDINGS) {
-		this->balloon_add_suffix = false;
-		this->quote_when_done = true;
-		this->delete_when_done = false;
-
-		std::list<ALine*>::iterator next_it = file_it;
-		while (next_it != file.end() && (*next_it)->getType() == TEXT &&
-			!(this->fields[0].length() >= 1 && this->fields[0].back() == '\\')) {
-			++next_it;
-		}
-		if (next_it != file.end() && (*next_it)->isStaffroll()) {
-			this->is_staffroll = true;
-		}
-	}
-	else if (this->syntax == WIN) {
-		this->balloonName = this->fields[1];
-		this->balloon_add_suffix = false;
-		this->quote_when_done = false;
-		this->delete_when_done = false;
-	}
+	this->_patchInit(file, file_it);
 
 	this->fields[0] = "";
 	size_t json_line_num;
@@ -355,6 +364,46 @@ void TasofroPl::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator
 		this->endLine();
 	}
 
+	this->_patchExit(file, file_it);
+}
+
+void TasofroPl::StoryText::_patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it)
+{
+	this->balloonName = this->fields[1];
+}
+
+void TasofroPl::EndingText::_patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it)
+{
+	this->is_staffroll = false;
+
+	std::list<ALine*>::iterator next_it = file_it;
+	while (next_it != file.end() && (*next_it)->getType() == TEXT &&
+		!(this->fields[0].length() >= 1 && this->fields[0].back() == '\\')) {
+		++next_it;
+	}
+	if (next_it != file.end() && (*next_it)->isStaffroll()) {
+		this->is_staffroll = true;
+	}
+}
+
+void TasofroPl::WinText::_patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it)
+{
+	this->balloonName = this->fields[1];
+}
+
+void TasofroPl::AText::_patchExit(std::list<ALine*>&, std::list<ALine*>::iterator&)
+{
+}
+
+void TasofroPl::StoryText::_patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it)
+{
+	file_it = file.erase(file_it);
+	--file_it;
+	delete this;
+}
+
+void TasofroPl::EndingText::_patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it)
+{
 	if (this->is_staffroll) {
 		++file_it;
 		while ((*file_it)->getType() == TEXT) {
@@ -365,19 +414,12 @@ void TasofroPl::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator
 		--file_it;
 		--file_it;
 	}
-	if (this->quote_when_done) {
-		this->fields[0] = this->quote(this->fields[0]);
-	}
-	if (this->delete_when_done) {
-		file_it = file.erase(file_it);
-		--file_it;
-		delete this;
-	}
+	this->fields[0] = this->quote(this->fields[0]);
 }
 
 
 
-bool TasofroPl::Text::parseCommand(json_t *patch, int json_line_num)
+bool TasofroPl::AText::parseCommand(json_t *patch, int json_line_num)
 {
 	const char *line;
 
@@ -389,6 +431,7 @@ bool TasofroPl::Text::parseCommand(json_t *patch, int json_line_num)
 		}
 		this->cur_line = 1;
 		this->nb_lines = 0;
+		this->is_first_balloon = false;
 		return true;
 	}
 
@@ -432,38 +475,44 @@ bool TasofroPl::Text::parseCommand(json_t *patch, int json_line_num)
 		}
 	}
 
-	if (this->balloon_add_suffix) {
+	return false;
+}
+
+bool TasofroPl::StoryText::parseCommand(json_t *patch, int json_line_num)
+{
+	bool ret = this->AText::parseCommand(patch, json_line_num);
+	if (ret == false) {
 		this->balloonName += "_1_1";
 		this->balloonName[6] = this->cur_line + '0';
 		this->balloonName[8] = this->nb_lines + '0';
 	}
-
-	return false;
+	return ret;
 }
 
-void TasofroPl::Text::beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+bool TasofroPl::Th155StoryText::parseCommand(json_t *patch, int json_line_num)
 {
-	if (this->ignore_clear_balloon == false && this->cur_line == 1) {
-		if (this->syntax == STORY) {
-			file.insert(it, new Command(std::vector<std::string>({
-				"",
-				"ClearBalloon",
-				this->owner
+	// Overwrite the StoryText overwrite and go back to the standard behavior
+	return this->AText::parseCommand(patch, json_line_num);
+}
+
+void TasofroPl::StoryText::beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+{
+	if (this->is_first_balloon == false && this->cur_line == 1) {
+		file.insert(it, new Command(std::vector<std::string>({
+			"",
+			"ClearBalloon",
+			this->owner
 			})));
-		}
-		else {
-			if (this->quote_when_done) {
-				this->fields[0] = this->quote(this->fields[0]);
-			}
-			file.insert(it, new Text(this->fields));
-			this->fields[0] = "";
-		}
 	}
+}
 
-	// ignore_clear_balloon is used to avoid adding a ClearBalloon during the first call.
-	// For other calls, it should be set to false.
-	this->ignore_clear_balloon = false;
-
+void TasofroPl::EndingText::beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+{
+	if (this->is_first_balloon == false && this->cur_line == 1) {
+		this->fields[0] = this->quote(this->fields[0]);
+		file.insert(it, new EndingText(this->fields));
+		this->fields[0] = "";
+	}
 
 	if (this->is_staffroll) {
 		if (game_id >= TH145 && this->is_last_balloon) {
@@ -475,7 +524,15 @@ void TasofroPl::Text::beginLine(std::list<ALine*>& file, const std::list<ALine*>
 	}
 }
 
-void TasofroPl::Text::patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+void TasofroPl::WinText::beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+{
+	if (this->is_first_balloon == false && this->cur_line == 1) {
+		file.insert(it, new WinText(this->fields));
+		this->fields[0] = "";
+	}
+}
+
+void TasofroPl::AText::patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
 {
 	std::string formattedText = text;
 	if (this->cur_line == this->nb_lines) {
@@ -487,40 +544,48 @@ void TasofroPl::Text::patchLine(const char *text, std::list<ALine*>& file, const
 		}
 	}
 
-	if (this->syntax == STORY) {
-		std::vector<std::string> new_fields = this->fields;
-		new_fields[0] = this->quote(formattedText);
-		new_fields[1] = this->balloonName;
-		file.insert(it, new Text(new_fields));
-	}
-	else if (this->syntax == ENDINGS) {
-		if (this->cur_line != this->nb_lines) {
-			formattedText += "\\n";
-		}
-		if (this->is_staffroll) {
-			size_t break_pos;
-			while ((break_pos = formattedText.find("\\.")) != std::string::npos) {
-				formattedText.erase(break_pos, 2);
-			}
-		}
-		this->fields[0] += formattedText;
-	}
-	else if (this->syntax == WIN) {
-		if (this->cur_line != this->nb_lines) {
-			formattedText += "\\n";
-		}
-		this->fields[0] += formattedText;
-		this->fields[1] = this->balloonName;
-	}
+	this->_patchLine(formattedText, file, it);
 }
 
-void TasofroPl::Text::endLine()
+void TasofroPl::StoryText::_patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+{
+	std::vector<std::string> new_fields = this->fields;
+	new_fields[0] = this->quote(text);
+	new_fields[1] = this->balloonName;
+	file.insert(it, new StoryText(new_fields));
+}
+
+void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+{
+	if (this->cur_line != this->nb_lines) {
+		text += "\\n";
+	}
+	if (this->is_staffroll) {
+		size_t break_pos;
+		while ((break_pos = text.find("\\.")) != std::string::npos) {
+			text.erase(break_pos, 2);
+		}
+	}
+	this->fields[0] += text;
+}
+
+void TasofroPl::WinText::_patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+{
+	if (this->cur_line != this->nb_lines) {
+		text += "\\n";
+	}
+	this->fields[0] += text;
+	this->fields[1] = this->balloonName;
+}
+
+void TasofroPl::AText::endLine()
 {
 	if (this->cur_line != 3) {
 		this->cur_line++;
 	}
 	else {
 		this->cur_line = 1;
+		this->is_first_balloon = false;
 	}
 }
 
@@ -577,7 +642,7 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, jso
 		if (json_lines == nullptr) {
 			continue;
 		}
-		dynamic_cast<TasofroPl::Text*>(line)->patch(lines, it, balloonOwner, json_lines);
+		dynamic_cast<TasofroPl::AText*>(line)->patch(lines, it, balloonOwner, json_lines);
 	}
 
 	std::string str;

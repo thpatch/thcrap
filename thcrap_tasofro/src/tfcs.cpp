@@ -91,10 +91,10 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 		std::list<TasofroPl::ALine*> texts;
 		// We want to overwrite all the balloons with the user-provided ones,
 		// so we only need to put the 1st one, we can ignore the others.
-		TasofroPl::Text *text = new TasofroPl::Text(std::vector<std::string>({
+		TasofroPl::AText *text = new TasofroPl::WinText(std::vector<std::string>({
 			line[4],
 			line[3]
-		}), "", TasofroPl::Text::WIN);
+		}));
 		texts.push_back(text);
 		text->patch(texts, texts.begin(), "", patch_lines);
 

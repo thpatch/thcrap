@@ -87,7 +87,7 @@ namespace TasofroPl
 		size_t size() const;
 	};
 
-	class Text : public ALine
+	class AText : public ALine
 	{
 	public:
 		enum Syntax {
@@ -97,36 +97,87 @@ namespace TasofroPl
 			WIN
 		};
 
-	private:
+	protected:
 		// Patcher state
 		std::string owner;
 		std::string balloonName;
 
 		std::string last_char;
-		Syntax syntax;
-		bool is_staffroll;
+		bool is_first_balloon;
 		bool is_last_balloon;
 
 		int cur_line;
 		int nb_lines;
 
-		bool ignore_clear_balloon;
-		bool balloon_add_suffix;
-		bool quote_when_done;
-		bool delete_when_done;
-
+		virtual void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) = 0;
 		// Functions used by the patcher
-		bool parseCommand(json_t *patch, int json_line_num);
-		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		virtual bool parseCommand(json_t *patch, int json_line_num);
+		virtual void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it) = 0;
 		void patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
-		void endLine();
+		virtual void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it) = 0;
+		virtual void endLine();
+		virtual void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
 
 	public:
-		Text(const std::vector<std::string>& fields, const std::string& comment = "", Syntax syntax = UNKNOWN);
-		~Text() {}
+		static AText *createText(const std::vector<std::string>& fields, const std::string& comment = "", Syntax syntax = UNKNOWN);
+
+		AText(const std::vector<std::string>& fields, const std::string& comment = "");
+		~AText() {}
 
 		LineType getType() const;
 		void patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, const std::string& balloonOwner, json_t *patch);
+	};
+
+	class StoryText : public AText
+	{
+	protected:
+		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+		bool parseCommand(json_t *patch, int json_line_num);
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+
+	public:
+		StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
+		~StoryText() {}
+	};
+
+	class Th155StoryText : public StoryText
+	{
+	protected:
+		bool parseCommand(json_t *patch, int json_line_num);
+
+	public:
+		Th155StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
+		~Th155StoryText() {}
+	};
+
+	class EndingText : public AText
+	{
+	private:
+		bool is_staffroll;
+
+	protected:
+		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+
+	public:
+		EndingText(const std::vector<std::string>& fields, const std::string& comment = "");
+		~EndingText() {}
+	};
+
+	class WinText : public AText
+	{
+	protected:
+		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+
+	public:
+		WinText(const std::vector<std::string>& fields, const std::string& comment = "");
+		~WinText() {}
 	};
 
 	ALine* readLine(const char*& file, size_t& size);
