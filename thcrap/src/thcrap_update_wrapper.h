@@ -30,6 +30,8 @@ int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache);
 
 json_t* patch_bootstrap_wrapper(const json_t *sel, json_t *repo_servers);
 
+void thcrap_update_exit_wrapper(void);
+
 #ifdef __cplusplus
 }
 #endif

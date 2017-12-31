@@ -13,7 +13,6 @@
 #include <zlib.h>
 #include "update.h"
 
-HINTERNET hHTTP = NULL;
 SRWLOCK inet_srwlock = {SRWLOCK_INIT};
 double perffreq;
 
@@ -27,8 +26,9 @@ typedef struct {
 	LONGLONG time_end;
 } download_context_t;
 
-int http_init(void)
+HINTERNET http_init(void)
 {
+	HINTERNET ret;
 	LARGE_INTEGER pf;
 	DWORD ignore = 1;
 	// DWORD timeout = 500;
@@ -51,24 +51,30 @@ int http_init(void)
 	QueryPerformanceFrequency(&pf);
 	perffreq = (double)pf.QuadPart;
 
-	hHTTP = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	if(!hHTTP) {
+	ret = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	if(!ret) {
 		// No internet access...?
-		return 1;
+		return nullptr;
 	}
 	/*
-	InternetSetOption(hHTTP, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hHTTP, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hHTTP, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
 	*/
 
 	// This is necessary when Internet Explorer is set to "work offline"... which
 	// will essentially block all wininet HTTP accesses on handles that do not
 	// explicitly ignore this setting.
-	InternetSetOption(hHTTP, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
 
 	VLA_FREE(agent);
-	return 0;
+	return ret;
+}
+
+HINTERNET* http_handle(void)
+{
+	static HINTERNET hInternet = http_init();
+	return &hInternet;
 }
 
 get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t callback, void *callback_param)
@@ -77,6 +83,7 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;
 	DWORD file_size_local = 0;
+	auto hHTTP = *http_handle();
 	HINTERNET hFile = NULL;
 
 	if(!hHTTP || !url) {
@@ -173,12 +180,13 @@ end:
 	return get_ret;
 }
 
-void http_exit(void)
+void http_mod_exit(void)
 {
-	if(hHTTP) {
+	auto phHTTP = http_handle();
+	if(*phHTTP) {
 		AcquireSRWLockExclusive(&inet_srwlock);
-		InternetCloseHandle(hHTTP);
-		hHTTP = NULL;
+		InternetCloseHandle(*phHTTP);
+		*phHTTP = nullptr;
 		ReleaseSRWLockExclusive(&inet_srwlock);
 	}
 }

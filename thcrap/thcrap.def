@@ -313,6 +313,7 @@ EXPORTS
 	RepoDiscoverAtURL_wrapper
 	RepoDiscoverFromLocal_wrapper
 	patch_bootstrap_wrapper
+	thcrap_update_exit_wrapper
 
 	; Virtual file system
 	; -------------------

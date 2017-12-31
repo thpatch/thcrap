@@ -84,3 +84,8 @@ json_t *patch_bootstrap_wrapper(const json_t *sel, json_t *repo_servers)
 	CALL_WRAPPED_FUNCTION((json_t *(*)(const json_t *, json_t *)), "patch_bootstrap", sel, repo_servers)
 	return patch_build(sel);
 }
+
+void thcrap_update_exit_wrapper(void)
+{
+	CALL_WRAPPED_FUNCTION((void(*)(void)), "thcrap_update_exit")
+}

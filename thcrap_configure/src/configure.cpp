@@ -394,5 +394,7 @@ end:
 	json_decref(repo_list);
 	json_decref(url_cache);
 	json_decref(id_cache);
+
+	thcrap_update_exit_wrapper();
 	return 0;
 }
