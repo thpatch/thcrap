@@ -31,7 +31,7 @@ int th135_init()
 	}
 	
 	patchhook_register("*/stage*.pl", patch_pl, nullptr);
-	patchhook_register("*/ed_*.pl", patch_pl, nullptr);
+	patchhook_register("*/ed*.pl", patch_pl, nullptr);
 	patchhook_register("*.csv", patch_tfcs, get_tfcs_size);
 	patchhook_register("*.dll", patch_dll, [](const char*, json_t*, size_t) -> size_t { return 0; });
 	patchhook_register("*.act", patch_act, nullptr);
