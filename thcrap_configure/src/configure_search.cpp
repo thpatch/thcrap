@@ -105,9 +105,9 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		log_printf("You already have a %s with the following contents:\n\n", games_js_fn);
 		json_dump_log(games, JSON_INDENT(2) | JSON_SORT_KEYS);
 		log_printf("\n\nPatch data will be downloaded or updated for all the games listed.\n\n");
-		if(Ask("Should the paths of these games be re-scanned?")) {
+		if(Ask("Should the paths of these games be re-scanned?") == 'y') {
 			json_object_clear(games);
-		} else if(!Ask("Should new games be added to this list?")) {
+		} else if(Ask("Should new games be added to this list?") == 'n') {
 			return games;
 		}
 	} else {
@@ -198,7 +198,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		} else {
 			log_printf("No game locations found.\n");
 			if(search_path[0]) {
-				repeat = Ask("Search in a different directory?");
+				repeat = Ask("Search in a different directory?") == 'y';
 			}
 			if(!repeat) {
 				log_printf(

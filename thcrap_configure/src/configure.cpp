@@ -29,23 +29,7 @@ int file_write_error(const char *fn)
 		log_printf("Writing is likely to fail for all further files as well.\n");
 		error_nag = 1;
 	}
-	return Ask("Continue configuration anyway?");
-}
-
-int Ask(const char *question)
-{
-	int ret = 0;
-	while(ret != 'y' && ret != 'n') {
-		char buf[2];
-		if(question) {
-			log_printf(question);
-		}
-		log_printf(" (y/n) ");
-
-		console_read(buf, sizeof(buf));
-		ret = tolower(buf[0]);
-	}
-	return ret == 'y';
+	return Ask("Continue configuration anyway?") == 'y';
 }
 
 char* console_read(char *str, int n)
@@ -184,7 +168,7 @@ const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 		run_cfg_fn_js = strings_sprintf(slot_js, "%s.js", run_cfg_fn);
 		if(PathFileExists(run_cfg_fn_js)) {
 			log_printf("\"%s\" already exists. ", run_cfg_fn_js);
-			ret = !Ask("Overwrite?");
+			ret = Ask("Overwrite?") == 'n';
 		} else {
 			ret = 0;
 		}
