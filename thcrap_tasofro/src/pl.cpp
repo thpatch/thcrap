@@ -33,7 +33,7 @@ void TasofroPl::readField(const char *in, size_t& pos, size_t size, std::string&
 			if (game_id >= TH155) {
 				// Keep the old behavior for older games because I don't want to break things
 				if ((pos >= 1 && in[pos - 1] == '@') ||
-					(pos >= 2 && in[pos - 1] == '\r') && in[pos - 2] == '@') {
+					(pos >= 2 && in[pos - 1] == '\r' && in[pos - 2] == '@')) {
 					continue;
 				}
 			}
