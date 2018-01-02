@@ -104,11 +104,21 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	if(json_object_size(games) != 0) {
 		log_printf("You already have a %s with the following contents:\n\n", games_js_fn);
 		json_dump_log(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-		log_printf("\n\nPatch data will be downloaded or updated for all the games listed.\n\n");
-		if(Ask("Should the paths of these games be re-scanned?") == 'y') {
-			json_object_clear(games);
-		} else if(Ask("Should new games be added to this list?") == 'n') {
+		log_printf(
+			"\n"
+			"\n"
+			"Patch data will be downloaded or updated for all the games listed.\n"
+			"\n"
+			"\t* (A)dd new games to this list and keep existing ones?\n"
+			"\t* Clear this list and (r)escan?\n"
+			"\t* (K)eep this list and continue?\n"
+			"\n"
+		);
+		char ret = Ask<3>(nullptr, { 'a', 'r', 'k' | DEFAULT_ANSWER });
+		if(ret == 'k') {
 			return games;
+		} else if(ret == 'r') {
+			json_object_clear(games);
 		}
 	} else {
 		games = json_object();
