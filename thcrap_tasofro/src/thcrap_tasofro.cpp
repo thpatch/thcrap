@@ -43,6 +43,16 @@ static tasofro_game_t game_id_from_string(const char *game)
 	return TH_FUTURE;
 }
 
+extern "C" __declspec(dllexport) const char* steam_appid(void)
+{
+	switch(game_id) {
+	case TH155:
+		return "716710";
+	default: // -Wswitch...
+		return nullptr;
+	}
+}
+
 int __stdcall thcrap_plugin_init()
 {
 	int base_tasofro_removed = stack_remove_if_unneeded("base_tasofro");
