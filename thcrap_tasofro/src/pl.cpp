@@ -82,8 +82,10 @@ TasofroPl::ALine* TasofroPl::readLine(const char*& file, size_t& size)
 		file++;
 		size--;
 	}
-	file++;
-	size--;
+	if (size > 0) {
+		file++;
+		size--;
+	}
 
 	char first_char = '\0';
 	for (size_t i = 0; i < fields[0].length(); ) {
