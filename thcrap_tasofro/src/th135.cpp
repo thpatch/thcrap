@@ -38,12 +38,17 @@ int th135_init()
 	patchhook_register("*.nut", patch_nut, nullptr);
 	patchhook_register("*.txt", patch_plaintext, nullptr);
 
-	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
-	if (game_id >= TH145) {
+	if (game_id >= TH155) {
+		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							  "spells.js");
+		jsonvfs_game_add_map("data/story/spell_list/*.csv.jdiff",				  "spells.js");
+	}
+	else if (game_id >= TH145) {
+		jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",					{ "spells.js" }, spell_story_generator);
 		jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",						{ "spells.js" }, spell_player_generator);
 		jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",{ "spells.js" }, spell_char_select_generator);
 	}
 	else {
+		jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",					{ "spells.js" }, spell_story_generator);
 		jsonvfs_game_add("data/csv/Item*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
 	}
 
