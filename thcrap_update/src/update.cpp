@@ -51,7 +51,7 @@ HINTERNET http_init(void)
 	QueryPerformanceFrequency(&pf);
 	perffreq = (double)pf.QuadPart;
 
-	ret = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	ret = InternetOpenU(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
 	if(!ret) {
 		// No internet access...?
 		return nullptr;
