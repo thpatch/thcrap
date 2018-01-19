@@ -12,8 +12,18 @@ import shutil
 import os
 import argparse
 import zlib
+import sys
 import utils
-from pathspec import PathSpec
+try:
+    from pathspec import PathSpec
+except ModuleNotFoundError:
+    print("""Please install pathspec from pip:
+
+    $ pip install pathspec
+
+(You might need to change `pip` to `pip3` if Python 2 is the default on your
+system.)""", file=sys.stderr)
+    sys.exit(1)
 
 IGNORED_BY_DEFAULT = {'files.js', 'Thumbs.db', 'thcrap_ignore.txt'}
 
