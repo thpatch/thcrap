@@ -57,6 +57,10 @@ int th135_init()
 	jsonvfs_add(bgm_pattern_fn, { "themes.js", musiccmt_fn }, bgm_generator);
 	SAFE_FREE(musiccmt_fn);
 	SAFE_FREE(bgm_pattern_fn);
+	if (game_id >= TH155) {
+		char *staffroll_fn = fn_for_game("data/system/ed/staffroll.csv.jdiff");
+		jsonvfs_game_add_map(staffroll_fn, "themes.js");
+	}
 
 	json_t *fileslist = stack_game_json_resolve("fileslist.js", nullptr);
 	LoadFileNameListFromJson(fileslist);
