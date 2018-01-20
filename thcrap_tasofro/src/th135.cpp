@@ -59,7 +59,8 @@ int th135_init()
 	SAFE_FREE(bgm_pattern_fn);
 	if (game_id >= TH155) {
 		char *staffroll_fn = fn_for_game("data/system/ed/staffroll.csv.jdiff");
-		jsonvfs_game_add_map(staffroll_fn, "themes.js");
+		jsonvfs_add_map(staffroll_fn, "themes.js");
+		SAFE_FREE(staffroll_fn);
 	}
 
 	json_t *fileslist = stack_game_json_resolve("fileslist.js", nullptr);
