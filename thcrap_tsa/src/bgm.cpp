@@ -85,10 +85,29 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	return loopmod_fmt(patch, fn);
 }
 
+int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+{
+	auto *pos = (bgm_pos_t*)file_inout;
+	auto *loop_start = json_object_get(patch, "loop_start");
+	auto *loop_end = json_object_get(patch, "loop_end");
+
+	if(loop_start || loop_end) {
+		log_printf("[BGM] [Loopmod] Changing %s\n", fn);
+	}
+	if(loop_start) {
+		pos->loop_start = (uint32_t)json_integer_value(loop_start);
+	}
+	if(loop_end) {
+		pos->loop_end = (uint32_t)json_integer_value(loop_end);
+	}
+	return true;
+}
+
 extern "C" __declspec(dllexport) void bgm_mod_init(void)
 {
 	// Kioh Gyoku is a thing...
 	if(game_id < TH07) {
+		patchhook_register("*.pos", patch_pos, keep_original_size);
 	} else {
 		// albgm.fmt and trial versions are also a thing...
 		patchhook_register("*bgm*.fmt", patch_fmt, keep_original_size);
@@ -97,6 +116,9 @@ extern "C" __declspec(dllexport) void bgm_mod_init(void)
 
 extern "C" __declspec(dllexport) void bgm_mod_repatch(json_t *files_changed)
 {
+	if(!bgm_fmt) {
+		return;
+	}
 	const char *fn;
 	json_t *val;
 	json_object_foreach(files_changed, fn, val) {
