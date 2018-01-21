@@ -35,6 +35,9 @@
   <ItemGroup>
     <ClCompile Include="src\anm.c" />
     <ClCompile Include="src\anm_bounds.c" />
+    <ClCompile Include="src\bgm.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\devicelost.c" />
     <ClCompile Include="src\gentext.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
