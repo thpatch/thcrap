@@ -55,13 +55,8 @@ const char** BP_music_params(x86_reg_t *regs, json_t *bp_info)
 
 		// Work around TH10's Game Over theme being #8 in the Music
 		// Room of trial versions, but #18 in the full version.
-		if(game_id == TH10 && track_id_internal == 8) {
-			const json_t *build = json_object_get(runconfig_get(), "build");
-			size_t build_len = json_string_length(build);
-			const char *build_str = json_string_value(build);
-			if(build_str && build_len >= 1 && build_str[1] == '0') {
-				track_id_internal = 18;
-			}
+		if(game_id == TH10 && track_id_internal == 8 && game_is_trial()) {
+			track_id_internal = 18;
 		}
 	}
 	return (const char**)json_object_get_pointer(bp_info, regs, "str");

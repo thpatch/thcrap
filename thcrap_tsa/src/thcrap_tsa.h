@@ -61,6 +61,10 @@ typedef enum {
 
 extern tsa_game_t game_id;
 
+// Returns 0 if the currently running game is a full version, 1 if it is a
+// trial, or -1 if this can't be determined.
+int game_is_trial(void);
+
 /// ------
 /// Spells
 /// ------
