@@ -13,8 +13,9 @@ import os
 import argparse
 import zlib
 import utils
+from pathspec import PathSpec
 
-IGNORED_BY_DEFAULT = {'files.js', 'Thumbs.db'}
+IGNORED_BY_DEFAULT = {'files.js', 'Thumbs.db', 'thcrap_ignore.txt'}
 
 parser = argparse.ArgumentParser(
     description=__doc__
@@ -57,14 +58,32 @@ def sizeof_fmt(num):
     return "%3.1f %s" % (num, 'TB')
 
 
-def patch_files_walk(path, ignored={}):
+def thcrap_ignore_get(path):
+    try:
+        with open(os.path.join(path, 'thcrap_ignore.txt'), 'r') as f:
+            return set(f.read().splitlines())
+    except FileNotFoundError:
+        return {}
+
+
+def patch_files_walk(repo_top, path, ignored):
     """Yields a os.DirEntry object for every valid patch file in [path] whose
-    file name does not appear in [ignored]."""
+    file name does not match the wildmatch patterns in [ignored], treated
+    relative to [repo_top]. If another `thcrap_ignore.txt` is found along the
+    directory hierarchy, its contents are added to a copy of [ignored], which
+    is then used for this directory and its subdirectories."""
+
+    local_ignore = thcrap_ignore_get(path)
+    if len(local_ignore) >= 1:
+        ignored = set(ignored).union(local_ignore)
+
+    spec = PathSpec.from_lines('gitwildmatch', ignored)
     for i in os.scandir(path):
-        if i.is_dir():
-            yield from patch_files_walk(i, ignored)
-        elif i.name not in ignored:
-            yield i
+        if spec.match_file(os.path.relpath(i, repo_top)) == False:
+            if i.is_dir():
+                yield from patch_files_walk(repo_top, i, ignored)
+            else:
+                yield i
 
 
 def patch_build(patch_id, servers, f, t, ignored):
@@ -107,7 +126,7 @@ def patch_build(patch_id, servers, f, t, ignored):
 
     patch_size = 0
     print(patch_id, end='')
-    for f_fn in patch_files_walk(f_path, ignored):
+    for f_fn in patch_files_walk(f, f_path, ignored):
         print('.', end='')
         patch_fn = f_fn.path[len(f_path) + 1:]
         t_fn = os.path.join(t_path, patch_fn)
@@ -162,12 +181,14 @@ def repo_build(f, t):
             '(the path that contains repo.js): '
         )]
     repo_js['patches'] = {}
+
+    ignored = set(IGNORED_BY_DEFAULT).union(thcrap_ignore_get(f))
     for root, dirs, files in os.walk(f):
         del(dirs)
         if 'patch.js' in files:
             patch_id = os.path.basename(root)
             repo_js['patches'][patch_id] = patch_build(
-                patch_id, repo_js['servers'], f, t, IGNORED_BY_DEFAULT
+                patch_id, repo_js['servers'], f, t, ignored
             )
     print('Done.')
     utils.json_store('repo.js', repo_js, dirs=[f, t])
