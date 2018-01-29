@@ -20,6 +20,9 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
   </ImportGroup>
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(ProjectDir)\gas.props" />
+  </ImportGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
@@ -47,6 +50,7 @@
     <ClCompile Include="src\spellcards_generator.cpp" />
     <ClCompile Include="src\tfcs.cpp" />
     <ClCompile Include="src\th135.cpp" />
+    <ClCompile Include="src\th155_bmp_font.cpp" />
     <ClCompile Include="src\thcrap_tasofro.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -62,7 +66,12 @@
     <ClInclude Include="src\spellcards_generator.h" />
     <ClInclude Include="src\tfcs.h" />
     <ClInclude Include="src\th135.h" />
+    <ClInclude Include="src\th155_bmp_font.h" />
     <ClInclude Include="src\thcrap_tasofro.h" />
+    <GAS Include="src\bp_bmpfont.asm" />
     <None Include="thcrap_tasofro.def" />
   </ItemGroup>
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="gas.targets" />
+  </ImportGroup>
 </Project>

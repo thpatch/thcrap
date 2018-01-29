@@ -10,6 +10,7 @@ EXPORTS
 	BP_th135_read_file
 
 	BP_detour_plugin
+	BP_bmpfont_fix_parameters
 
 	BP_nsml_file_header
 	BP_nsml_read_file
