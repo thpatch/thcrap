@@ -17,6 +17,7 @@
 #include "spellcards_generator.h"
 #include "bgm.h"
 #include "plugin.h"
+#include "nhtex.h"
 #include "th155_bmp_font.h"
 #include "crypt.h"
 
@@ -38,6 +39,7 @@ int th135_init()
 	patchhook_register("*.act", patch_act, nullptr);
 	patchhook_register("*.nut", patch_nut, nullptr);
 	patchhook_register("*.txt", patch_plaintext, nullptr);
+	patchhook_register("*.nhtex", patch_nhtex, get_nhtex_size);
 
 	if (game_id >= TH155) {
 		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							  "spells.js");

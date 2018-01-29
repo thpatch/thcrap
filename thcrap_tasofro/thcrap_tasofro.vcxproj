@@ -41,6 +41,7 @@
     <ClCompile Include="src\crypt.cpp" />
     <ClCompile Include="src\csv.cpp" />
     <ClCompile Include="src\cv0.cpp" />
+    <ClCompile Include="src\nhtex.cpp" />
     <ClCompile Include="src\nsml.cpp" />
     <ClCompile Include="src\nsml_images.cpp" />
     <ClCompile Include="src\pl.cpp" />
@@ -59,6 +60,7 @@
     <ClInclude Include="src\bgm.h" />
     <ClInclude Include="src\crypt.h" />
     <ClInclude Include="src\cv0.h" />
+    <ClInclude Include="src\nhtex.h" />
     <ClInclude Include="src\nsml_images.h" />
     <ClInclude Include="src\pl.h" />
     <ClInclude Include="src\plugin.h" />
