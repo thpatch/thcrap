@@ -127,7 +127,7 @@ extern "C" int BP_c_bmpfont_fix_parameters(DWORD xmm0, DWORD xmm1, DWORD xmm2, x
 	}
 	string += *offset;
 
-	size_t wc_len = StringToUTF16(nullptr, string, -1);
+	size_t wc_len = strlen(string) * 4;
 	VLA(WCHAR, wc, wc_len);
 	StringToUTF16(wc, string, -1);
 	*c1 = wc[0] >> 8;
