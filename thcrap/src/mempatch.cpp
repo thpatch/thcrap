@@ -81,11 +81,11 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 	auto pOT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->OriginalFirstThunk);
 	auto pIT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->FirstThunk);
 
-	// We generally detour by comparing exported names. This has the
-	// advantage that we can override any existing patches, and that
-	// it works on Win9x too (as if that matters). However, in case we lack
-	// a pointer to the OriginalFirstThunk, this is not possible, so we have
-	// to detour by comparing pointers then.
+	// We generally detour by comparing exported names. This has the advantage
+	// that we can override any existing patches, and that it works on Win9x
+	// too (as if that matters). However, in case we lack a pointer to the
+	// OriginalFirstThunk, or the function is only exported by ordinal, this
+	// is not possible, so we have to detour by comparing pointers then.
 
 	if(pImpDesc->OriginalFirstThunk) {
 		for(; pOT->u1.Function; pOT++, pIT++) {
@@ -98,11 +98,15 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 				if(!stricmp(detour->old_func, (char*)pByName->Name)) {
 					return func_detour(pIT, detour->new_ptr);
 				}
+			} else {
+				if((void*)pIT->u1.Function == detour->old_ptr) {
+					return func_detour(pIT, detour->new_ptr);
+				}
 			}
 		}
 	} else {
 		for(; pIT->u1.Function; pIT++) {
-			if((DWORD*)pIT->u1.Function == (DWORD*)detour->old_ptr) {
+			if((void*)pIT->u1.Function == detour->old_ptr) {
 				return func_detour(pIT, detour->new_ptr);
 			}
 		}
