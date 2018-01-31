@@ -155,10 +155,6 @@ EXPORTS
 
 	; Detouring
 	; ---------
-	func_detour
-	func_detour_by_name
-	func_detour_by_ptr
-
 	detour_chain
 	detour_chain_w32u8
 	detour_top

@@ -65,22 +65,29 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 
 /// Import Address Table detouring
 /// ==============================
-
-/// Low-level
-/// ---------
-int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
+inline int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 {
 	return PatchRegion(&pThunk->u1.Function, NULL, &new_ptr, sizeof(new_ptr));
 }
 
-int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
+int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour)
 {
-	if(
-		detour && detour->old_func && detour->new_ptr
-		&& VirtualCheckCode(detour->new_ptr)
-	) {
-		PIMAGE_THUNK_DATA pOT = pOrigFirstThunk;
-		PIMAGE_THUNK_DATA pIT = pImpFirstThunk;
+	if(!hMod || !pImpDesc || !detour || !detour->new_ptr || !detour->old_func) {
+		return -1;
+	}
+	if(!VirtualCheckCode(detour->new_ptr)) {
+		return -2;
+	}
+	auto pOT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->OriginalFirstThunk);
+	auto pIT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->FirstThunk);
+
+	// We generally detour by comparing exported names. This has the
+	// advantage that we can override any existing patches, and that
+	// it works on Win9x too (as if that matters). However, in case we lack
+	// a pointer to the OriginalFirstThunk, this is not possible, so we have
+	// to detour by comparing pointers then.
+
+	if(pImpDesc->OriginalFirstThunk) {
 		for(; pOT->u1.Function; pOT++, pIT++) {
 			PIMAGE_IMPORT_BY_NAME pByName;
 			if(!(pOT->u1.Ordinal & IMAGE_ORDINAL_FLAG)) {
@@ -93,49 +100,15 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 				}
 			}
 		}
-	}
-	// Function not found
-	return 0;
-}
-
-int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
-{
-	if(detour && detour->new_ptr && VirtualCheckCode(detour->new_ptr)) {
-		PIMAGE_THUNK_DATA Thunk;
-		for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {
-			if((DWORD*)Thunk->u1.Function == (DWORD*)detour->old_ptr) {
-				return func_detour(Thunk, detour->new_ptr);
+	} else {
+		for(; pIT->u1.Function; pIT++) {
+			if((DWORD*)pIT->u1.Function == (DWORD*)detour->old_ptr) {
+				return func_detour(pIT, detour->new_ptr);
 			}
 		}
 	}
 	// Function not found
 	return 0;
-}
-/// ---------
-
-/// High-level
-/// ----------
-int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour)
-{
-	PIMAGE_THUNK_DATA pOT = NULL;
-	PIMAGE_THUNK_DATA pIT = NULL;
-	if(hMod && pImpDesc && detour) {
-		pIT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->FirstThunk);
-
-		// We generally detour by comparing exported names. This has the
-		// advantage that we can override any existing patches, and that
-		// it works on Win9x too (as if that matters). However, in case we lack
-		// a pointer to the OriginalFirstThunk, this is not possible, so we have
-		// to detour by comparing pointers then.
-
-		if(pImpDesc->OriginalFirstThunk) {
-			pOT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->OriginalFirstThunk);
-			return func_detour_by_name(hMod, pOT, pIT, detour);
-		} else {
-			return func_detour_by_ptr(pIT, detour);
-		}
-	}
-	return -1;
 }
 /// ----------
 
