@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * BGM patching.
+  * BGM patching and related bugfixes.
   */
 
 #include <thcrap.h>
@@ -126,7 +126,280 @@ int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	}
 	return true;
 }
+/// =====
 
+/// DirectSound stub
+/// ================
+/**
+  * Calling DirectSoundCreate8(), with no sound devices installed, fails and
+  * returns DSERR_NODRIVER. TH09.5+ then immediately stops initializing its
+  * sound system... but still waits for some sound-related variable being
+  * changed while loading a stage, which never happens. As a result, the game
+  * deadlocks, meaning that you can't play TH09.5+ without a sound device.
+  * Working around this bug without binary hacks means that we have to hook...
+  * most of DirectSound to fool the game into thinking that everything is
+  * fine. In particular, these functions *must* succeed to eliminate any
+  * crashes or deadlocks:
+  *
+  * • DirectSoundCreate8()
+  * • IDirectSound8::SetCooperativeLevel()
+  * • IDirectSound8::CreateSoundBuffer()
+  * • IDirectSound8::DuplicateSoundBuffer()
+  * • IDirectSoundBuffer8::QueryInterface() with IID_IDirectSoundNotify;
+  * • IDirectSoundNotify::SetNotificationPositions()
+  *
+  * So, here we go...
+  */
+
+#define FAIL_IF_NULL(func, ...) \
+	!pOrig ? DSERR_UNINITIALIZED : pOrig->func(__VA_ARGS__)
+
+const GUID IID_IDirectSoundBuffer  = { 0x279afa85, 0x4981, 0x11ce, 0xa5, 0x21, 0x00, 0x20, 0xaf, 0x0b, 0xe5, 0x60 };
+const GUID IID_IDirectSoundBuffer8 = { 0x6825a449, 0x7524, 0x4d82, 0x92, 0x0f, 0x50, 0xe3, 0x6a, 0xb3, 0xab, 0x1e };
+const GUID IID_IDirectSoundNotify  = { 0xb0210783, 0x89cd, 0x11d0, 0xaf, 0x08, 0x00, 0xa0, 0xc9, 0x25, 0xcd, 0x16 };
+
+HRESULT (WINAPI *chain_DirectSoundCreate8)(const GUID *, IDirectSound8 **, IUnknown*) = nullptr;
+
+// IDirectSoundNotify
+// ------------------
+class bgm_fake_IDirectSoundNotify : public IDirectSoundNotify
+{
+protected:
+	// Sneakily bypassing the need to pre-declare bgm_IDirectSoundBuffer8
+	IUnknown *parent;
+
+public:
+	bgm_fake_IDirectSoundNotify(IUnknown *parent) : parent(parent) {}
+
+	HRESULT __stdcall QueryInterface(REFIID riid, LPVOID * ppvObj) {
+		return parent->QueryInterface(riid, ppvObj);
+	}
+	ULONG __stdcall AddRef() {
+		return parent->AddRef();
+	}
+	ULONG __stdcall Release() {
+		return parent->Release();
+	}
+
+	STDMETHOD(SetNotificationPositions)(
+		DWORD dwPositionNotifies,
+		LPCDSBPOSITIONNOTIFY pcPositionNotifies
+	) {
+		return DS_OK;
+	}
+};
+// ------------------
+
+// IDirectSoundBuffer8
+// -------------------
+class bgm_IDirectSoundBuffer8 : public IDirectSoundBuffer8
+{
+protected:
+	// Wine also simply includes this one as part of this class.
+	bgm_fake_IDirectSoundNotify DSNotify;
+
+	IDirectSoundBuffer8 *pOrig;
+	ULONG fallback_ref = 1;
+
+public:
+	bgm_IDirectSoundBuffer8(IDirectSoundBuffer8 *pOrig)
+		: pOrig(pOrig), DSNotify(this) {
+	}
+
+	HRESULT __stdcall QueryInterface(REFIID riid, LPVOID * ppvObj);
+	ULONG __stdcall AddRef();
+	ULONG __stdcall Release();
+
+	// IDirectSoundBuffer methods
+	STDMETHOD(GetCaps)(LPDSBCAPS pDSBufferCaps) {
+		return FAIL_IF_NULL(GetCaps, pDSBufferCaps);
+	}
+	STDMETHOD(GetCurrentPosition)(LPDWORD pdwCurrentPlayCursor, LPDWORD pdwCurrentWriteCursor) {
+		return FAIL_IF_NULL(GetCurrentPosition, pdwCurrentPlayCursor, pdwCurrentWriteCursor);
+	}
+	STDMETHOD(GetFormat)(LPWAVEFORMATEX pwfxFormat, DWORD dwSizeAllocated, LPDWORD pdwSizeWritten) {
+		return FAIL_IF_NULL(GetFormat, pwfxFormat, dwSizeAllocated, pdwSizeWritten);
+	}
+	STDMETHOD(GetVolume)(LPLONG plVolume) {
+		return FAIL_IF_NULL(GetVolume, plVolume);
+	}
+	STDMETHOD(GetPan)(LPLONG plPan) {
+		return FAIL_IF_NULL(GetPan, plPan);
+	}
+	STDMETHOD(GetFrequency)(LPDWORD pdwFrequency) {
+		return FAIL_IF_NULL(GetFrequency, pdwFrequency);
+	}
+	STDMETHOD(GetStatus)(LPDWORD pdwStatus) {
+		return FAIL_IF_NULL(GetStatus, pdwStatus);
+	}
+	STDMETHOD(Initialize)(LPDIRECTSOUND pDirectSound, LPCDSBUFFERDESC pcDSBufferDesc) {
+		return FAIL_IF_NULL(Initialize, pDirectSound, pcDSBufferDesc);
+	}
+	STDMETHOD(Lock)(DWORD dwOffset, DWORD dwBytes, LPVOID *ppvAudioPtr1, LPDWORD pdwAudioBytes1, LPVOID *ppvAudioPtr2, LPDWORD pdwAudioBytes2, DWORD dwFlags) {
+		return FAIL_IF_NULL(Lock, dwOffset, dwBytes, ppvAudioPtr1, pdwAudioBytes1, ppvAudioPtr2, pdwAudioBytes2, dwFlags);
+	}
+	STDMETHOD(Play)(DWORD dwReserved1, DWORD dwPriority, DWORD dwFlags) {
+		return FAIL_IF_NULL(Play, dwReserved1, dwPriority, dwFlags);
+	}
+	STDMETHOD(SetCurrentPosition)(DWORD dwNewPosition) {
+		return FAIL_IF_NULL(SetCurrentPosition, dwNewPosition);
+	}
+	STDMETHOD(SetFormat)(LPCWAVEFORMATEX pcfxFormat) {
+		return FAIL_IF_NULL(SetFormat, pcfxFormat);
+	}
+	STDMETHOD(SetVolume)(LONG lVolume) {
+		return FAIL_IF_NULL(SetVolume, lVolume);
+	}
+	STDMETHOD(SetPan)(LONG lPan) {
+		return FAIL_IF_NULL(SetPan, lPan);
+	}
+	STDMETHOD(SetFrequency)(DWORD dwFrequency) {
+		return FAIL_IF_NULL(SetFrequency, dwFrequency);
+	}
+	STDMETHOD(Stop)() {
+		return FAIL_IF_NULL(Stop);
+	}
+	STDMETHOD(Unlock)(LPVOID pvAudioPtr1, DWORD dwAudioBytes1, LPVOID pvAudioPtr2, DWORD dwAudioBytes2) {
+		return FAIL_IF_NULL(Unlock, pvAudioPtr1, dwAudioBytes1, pvAudioPtr2, dwAudioBytes2);
+	}
+	STDMETHOD(Restore)() {
+		return FAIL_IF_NULL(Restore);
+	}
+
+	// IDirectSoundBuffer8 methods
+	STDMETHOD(SetFX)(DWORD dwEffectsCount, LPDSEFFECTDESC pDSFXDesc, LPDWORD pdwResultCodes) {
+		return FAIL_IF_NULL(SetFX, dwEffectsCount, pDSFXDesc, pdwResultCodes);
+	}
+	STDMETHOD(AcquireResources)(DWORD dwFlags, DWORD dwEffectsCount, LPDWORD pdwResultCodes) {
+		return FAIL_IF_NULL(AcquireResources, dwFlags, dwEffectsCount, pdwResultCodes);
+	}
+	STDMETHOD(GetObjectInPath)(REFGUID rguidObject, DWORD dwIndex, REFGUID rguidInterface, LPVOID *ppObject) {
+		return FAIL_IF_NULL(GetObjectInPath, rguidObject, dwIndex, rguidInterface, ppObject);
+	}
+};
+
+HRESULT bgm_IDirectSoundBuffer8::QueryInterface(REFIID riid, void** ppvObj)
+{
+	if(!ppvObj) {
+		return E_POINTER;
+	}
+	if(!pOrig) {
+		if(riid == IID_IDirectSoundNotify) {
+			AddRef(); // IMPORTANT
+			*ppvObj = &DSNotify;
+			return S_OK;
+		}
+		return E_NOINTERFACE;
+	}
+	*ppvObj = NULL;
+	HRESULT hRes = pOrig->QueryInterface(riid, ppvObj);
+	if(hRes == NOERROR) {
+		*ppvObj = this;
+	}
+	return hRes;
+}
+
+ULONG bgm_IDirectSoundBuffer8::AddRef()
+{
+	return !pOrig ? ++fallback_ref : pOrig->AddRef();
+}
+
+ULONG bgm_IDirectSoundBuffer8::Release()
+{
+	ULONG count = !pOrig ? --fallback_ref : pOrig->Release();
+	if(count == 0) {
+		delete this;
+	}
+	return count;
+}
+// -------------------
+
+// IDirectSound8
+// -------------
+class bgm_IDirectSound8 : public IDirectSound8
+{
+	IUNKNOWN_DEC(bgm, IDirectSound8);
+
+	// IDirectSound methods
+	STDMETHOD(CreateSoundBuffer)(LPCDSBUFFERDESC, LPDIRECTSOUNDBUFFER *, LPUNKNOWN);
+	STDMETHOD(GetCaps)(LPDSCAPS pDSCaps) {
+		return FAIL_IF_NULL(GetCaps, pDSCaps);
+	}
+	STDMETHOD(DuplicateSoundBuffer)(LPDIRECTSOUNDBUFFER, LPDIRECTSOUNDBUFFER *);
+	STDMETHOD(SetCooperativeLevel)(HWND, DWORD);
+	STDMETHOD(Compact)() {
+		return FAIL_IF_NULL(Compact);
+	}
+	STDMETHOD(GetSpeakerConfig)(LPDWORD pdwSpeakerConfig) {
+		return FAIL_IF_NULL(GetSpeakerConfig, pdwSpeakerConfig);
+	}
+	STDMETHOD(SetSpeakerConfig)(DWORD dwSpeakerConfig) {
+		return FAIL_IF_NULL(SetSpeakerConfig, dwSpeakerConfig);
+	}
+	STDMETHOD(Initialize)(LPCGUID pcGuidDevice) {
+		return FAIL_IF_NULL(Initialize, pcGuidDevice);
+	}
+
+	// IDirectSound8 methods
+	STDMETHOD(VerifyCertification)(LPDWORD pdwCertified) {
+		return FAIL_IF_NULL(VerifyCertification, pdwCertified);
+	}
+};
+
+IUNKNOWN_DEF(bgm_IDirectSound8, true);
+
+HRESULT bgm_IDirectSound8::CreateSoundBuffer(
+	LPCDSBUFFERDESC pcDSBufferDesc,
+	LPDIRECTSOUNDBUFFER *ppDSBuffer,
+	LPUNKNOWN pUnkOuter
+)
+{
+	if(!pOrig) {
+		*ppDSBuffer = new bgm_IDirectSoundBuffer8(nullptr);
+		return DS_OK;
+	}
+	return pOrig->CreateSoundBuffer(pcDSBufferDesc, ppDSBuffer, pUnkOuter);
+}
+
+HRESULT bgm_IDirectSound8::DuplicateSoundBuffer(
+	LPDIRECTSOUNDBUFFER pDSBufferOriginal,
+	LPDIRECTSOUNDBUFFER *ppDSBufferDuplicate
+)
+{
+	if(!pOrig) {
+		*ppDSBufferDuplicate = new bgm_IDirectSoundBuffer8(nullptr);
+		return DS_OK;
+	}
+	return FAIL_IF_NULL(DuplicateSoundBuffer, pDSBufferOriginal, ppDSBufferDuplicate);
+}
+
+HRESULT bgm_IDirectSound8::SetCooperativeLevel(
+	HWND hwnd,
+	DWORD dwLevel
+)
+{
+	if(!pOrig) {
+		return DS_OK;
+	}
+	return pOrig->SetCooperativeLevel(hwnd, dwLevel);
+}
+
+HRESULT WINAPI bgm_DirectSoundCreate8(
+	const GUID *pcGuidDevice, IDirectSound8 **ppDS8, IUnknown* pUnkOuter
+)
+{
+	auto ret = chain_DirectSoundCreate8(pcGuidDevice, ppDS8, pUnkOuter);
+	if(FAILED(ret)) {
+		*ppDS8 = new bgm_IDirectSound8(*ppDS8);
+		return DS_OK;
+	}
+	return ret;
+}
+// -------------
+/// ================
+
+/// Module functions
+/// ================
 extern "C" __declspec(dllexport) void bgm_mod_init(void)
 {
 	jsondata_game_add(LOOPMOD_FN.str);
@@ -136,6 +409,18 @@ extern "C" __declspec(dllexport) void bgm_mod_init(void)
 	} else {
 		// albgm.fmt and trial versions are also a thing...
 		patchhook_register("*bgm*.fmt", patch_fmt, keep_original_size);
+	}
+}
+
+extern "C" __declspec(dllexport) void bgm_mod_detour(void)
+{
+	HMODULE hModule = GetModuleHandleA("dsound.dll");
+	if(hModule) {
+		*(void**)&chain_DirectSoundCreate8 = GetProcAddress(hModule, "DirectSoundCreate8");
+		detour_chain("dsound.dll", 1,
+			"DirectSoundCreate8", bgm_DirectSoundCreate8, &chain_DirectSoundCreate8,
+			nullptr
+		);
 	}
 }
 
@@ -152,4 +437,4 @@ extern "C" __declspec(dllexport) void bgm_mod_repatch(json_t *files_changed)
 		}
 	}
 }
-/// =====
+/// ================
