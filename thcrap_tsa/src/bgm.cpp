@@ -145,6 +145,10 @@ int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn,
   * • IDirectSound8::SetCooperativeLevel()
   * • IDirectSound8::CreateSoundBuffer()
   * • IDirectSound8::DuplicateSoundBuffer()
+  * • IDirectSoundBuffer8::Lock(), apparently only needed for TH12.8?
+  *   (And yes, the game then fills the returned buffer with zeros, of course
+  *   without verifying the returned buffer lock size. Which means that we
+  *   also have to actually allocate the required amount of bytes. -.-)
   * • IDirectSoundBuffer8::QueryInterface() with IID_IDirectSoundNotify;
   * • IDirectSoundNotify::SetNotificationPositions()
   *
@@ -194,16 +198,28 @@ public:
 // -------------------
 class bgm_IDirectSoundBuffer8 : public IDirectSoundBuffer8
 {
+	friend class bgm_IDirectSound8;
+
 protected:
 	// Wine also simply includes this one as part of this class.
 	bgm_fake_IDirectSoundNotify DSNotify;
+	uint8_t *fake_buffer = nullptr;
+	size_t fake_buffer_size = 0;
 
 	IDirectSoundBuffer8 *pOrig;
 	ULONG fallback_ref = 1;
 
 public:
-	bgm_IDirectSoundBuffer8(IDirectSoundBuffer8 *pOrig)
-		: pOrig(pOrig), DSNotify(this) {
+	bgm_IDirectSoundBuffer8(IDirectSoundBuffer8 *pOrig, size_t buffer_size)
+		: pOrig(pOrig), DSNotify(this)
+	{
+		if(!pOrig) {
+			fake_buffer = new uint8_t[buffer_size];
+			fake_buffer_size = buffer_size;
+		}
+	}
+	~bgm_IDirectSoundBuffer8() {
+		delete[] fake_buffer;
 	}
 
 	HRESULT __stdcall QueryInterface(REFIID riid, LPVOID * ppvObj);
@@ -235,10 +251,8 @@ public:
 	STDMETHOD(Initialize)(LPDIRECTSOUND pDirectSound, LPCDSBUFFERDESC pcDSBufferDesc) {
 		return FAIL_IF_NULL(Initialize, pDirectSound, pcDSBufferDesc);
 	}
-	STDMETHOD(Lock)(DWORD dwOffset, DWORD dwBytes, LPVOID *ppvAudioPtr1, LPDWORD pdwAudioBytes1, LPVOID *ppvAudioPtr2, LPDWORD pdwAudioBytes2, DWORD dwFlags) {
-		return FAIL_IF_NULL(Lock, dwOffset, dwBytes, ppvAudioPtr1, pdwAudioBytes1, ppvAudioPtr2, pdwAudioBytes2, dwFlags);
-	}
-	STDMETHOD(Play)(DWORD dwReserved1, DWORD dwPriority, DWORD dwFlags) {
+	STDMETHOD(Lock)(DWORD, DWORD, LPVOID *, LPDWORD, LPVOID *, LPDWORD, DWORD);
+		STDMETHOD(Play)(DWORD dwReserved1, DWORD dwPriority, DWORD dwFlags) {
 		return FAIL_IF_NULL(Play, dwReserved1, dwPriority, dwFlags);
 	}
 	STDMETHOD(SetCurrentPosition)(DWORD dwNewPosition) {
@@ -312,6 +326,25 @@ ULONG bgm_IDirectSoundBuffer8::Release()
 	}
 	return count;
 }
+
+HRESULT bgm_IDirectSoundBuffer8::Lock(
+	DWORD dwOffset,
+	DWORD dwBytes,
+	LPVOID *ppvAudioPtr1,
+	LPDWORD pdwAudioBytes1,
+	LPVOID *ppvAudioPtr2,
+	LPDWORD pdwAudioBytes2,
+	DWORD dwFlags
+) {
+	if(!pOrig) {
+		*ppvAudioPtr1 = fake_buffer;
+		*ppvAudioPtr2 = nullptr;
+		*pdwAudioBytes1 = 0;
+		*pdwAudioBytes2 = 0;
+		return DS_OK;
+	}
+	return Lock(dwOffset, dwBytes, ppvAudioPtr1, pdwAudioBytes1, ppvAudioPtr2, pdwAudioBytes2, dwFlags);
+}
 // -------------------
 
 // IDirectSound8
@@ -355,7 +388,10 @@ HRESULT bgm_IDirectSound8::CreateSoundBuffer(
 )
 {
 	if(!pOrig) {
-		*ppDSBuffer = new bgm_IDirectSoundBuffer8(nullptr);
+		if(!pcDSBufferDesc) {
+			return DSERR_INVALIDPARAM;
+		}
+		*ppDSBuffer = new bgm_IDirectSoundBuffer8(nullptr, pcDSBufferDesc->dwBufferBytes);
 		return DS_OK;
 	}
 	return pOrig->CreateSoundBuffer(pcDSBufferDesc, ppDSBuffer, pUnkOuter);
@@ -367,7 +403,11 @@ HRESULT bgm_IDirectSound8::DuplicateSoundBuffer(
 )
 {
 	if(!pOrig) {
-		*ppDSBufferDuplicate = new bgm_IDirectSoundBuffer8(nullptr);
+		if(!pDSBufferOriginal) {
+			return DSERR_INVALIDPARAM;
+		}
+		auto size = ((bgm_IDirectSoundBuffer8*)pDSBufferOriginal)->fake_buffer_size;
+		*ppDSBufferDuplicate = new bgm_IDirectSoundBuffer8(nullptr, size);
 		return DS_OK;
 	}
 	return FAIL_IF_NULL(DuplicateSoundBuffer, pDSBufferOriginal, ppDSBufferDuplicate);
