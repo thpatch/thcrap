@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <vector>
 
 static json_t *funcs = NULL;
 static json_t *mod_funcs = NULL;
@@ -69,6 +70,9 @@ int plugins_load(void)
 	if(hFind == INVALID_HANDLE_VALUE) {
 		return 1;
 	}
+	// Apparently, succesfull self-updates can cause infinite loops?
+	// This is safer anyway.
+	std::vector<std::string> dlls;
 	if(!json_is_object(plugins)) {
 		plugins = json_object();
 	}
@@ -79,10 +83,13 @@ int plugins_load(void)
 			// Yes, "*.dll" means "*.dll*" in FindFirstFile.
 			// https://blogs.msdn.microsoft.com/oldnewthing/20050720-16/?p=34883
 			if(!stricmp(PathFindExtensionA(w32fd.cFileName), ".dll")) {
-				plugin_load(w32fd.cFileName);
+				dlls.push_back(w32fd.cFileName);
 			}
 		}
 		ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));
+	}
+	for(auto dll : dlls) {
+		plugin_load(dir, dll.c_str());
 	}
 	FindClose(hFind);
 	return 0;
