@@ -70,7 +70,7 @@ int plugins_load(void)
 	if(hFind == INVALID_HANDLE_VALUE) {
 		return 1;
 	}
-	// Apparently, succesfull self-updates can cause infinite loops?
+	// Apparently, successful self-updates can cause infinite loops?
 	// This is safer anyway.
 	std::vector<std::string> dlls;
 	if(!json_is_object(plugins)) {
@@ -89,7 +89,7 @@ int plugins_load(void)
 		ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));
 	}
 	for(auto dll : dlls) {
-		plugin_load(dir, dll.c_str());
+		plugin_load(dll.c_str());
 	}
 	FindClose(hFind);
 	return 0;
