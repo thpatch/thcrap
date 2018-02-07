@@ -53,7 +53,8 @@ int th135_init()
 	}
 	else {
 		jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",					{ "spells.js" }, spell_story_generator);
-		jsonvfs_game_add("data/csv/Item*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
+		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						"spellcomments.js");
+		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						"spells.js");
 	}
 
 	char *bgm_pattern_fn = fn_for_game("data/bgm/bgm.csv.jdiff");

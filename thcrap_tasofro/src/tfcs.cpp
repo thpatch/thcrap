@@ -121,8 +121,25 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 	json_t *patch_col;
 	for (DWORD col = 0; col < nb_col; col++) {
 		patch_col = json_object_numkey_get(patch_row, col);
-		if (patch_col && json_is_string(patch_col)) {
-			line[col] = json_string_value(patch_col);
+		if (patch_col) {
+			if (json_is_string(patch_col)) {
+				line[col] = json_string_value(patch_col);
+			}
+			else if (json_is_array(patch_col)) {
+				line[col].clear();
+				bool add_eol = false;
+				size_t i;
+				json_t *it;
+				json_array_foreach(patch_col, i, it) {
+					if (add_eol) {
+						line[col] += "\n";
+					}
+					if (json_is_string(it)) {
+						line[col] += json_string_value(it);
+						add_eol = true;
+					}
+				}
+			}
 		}
 	}
 
