@@ -884,7 +884,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 			"Couldn't determine the entry point of %s!\n"
 			"\n"
 			"Seems as if %s won't work with this game on your system.\n",
-			PathFindFileNameA(module), PROJECT_NAME_SHORT()
+			PathFindFileNameU(module), PROJECT_NAME_SHORT()
 		);
 		return 1;
 	}

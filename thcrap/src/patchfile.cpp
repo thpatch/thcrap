@@ -140,7 +140,7 @@ int dir_create_for_fn(const char *fn)
 	int ret = -1;
 	if(fn) {
 		STRLEN_DEC(fn);
-		char *fn_dir = PathFindFileNameA(fn);
+		char *fn_dir = PathFindFileNameU(fn);
 		if(fn_dir && (fn_dir != fn)) {
 			VLA(char, fn_copy, fn_len);
 			int fn_pos = fn_dir - fn;
