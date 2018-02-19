@@ -77,11 +77,11 @@ def thcrap_ignore_get(path):
 
 
 def patch_files_walk(repo_top, path, ignored):
-    """Yields a os.DirEntry object for every valid patch file in [path] whose
-    file name does not match the wildmatch patterns in [ignored], treated
-    relative to [repo_top]. If another `thcrap_ignore.txt` is found along the
-    directory hierarchy, its contents are added to a copy of [ignored], which
-    is then used for this directory and its subdirectories."""
+    """Yields string for every valid patch file in [path] whose file name does
+    not match the wildmatch patterns in [ignored], treated relative to
+    [repo_top]. If another `thcrap_ignore.txt` is found along the directory
+    hierarchy, its contents are added to a copy of [ignored], which is then
+    used for this directory and its subdirectories."""
 
     local_ignore = thcrap_ignore_get(path)
     if len(local_ignore) >= 1:
@@ -89,11 +89,11 @@ def patch_files_walk(repo_top, path, ignored):
 
     spec = PathSpec.from_lines('gitwildmatch', ignored)
     for i in os.scandir(path):
-        if spec.match_file(os.path.relpath(i, repo_top)) == False:
+        if spec.match_file(os.path.relpath(i.path, repo_top)) == False:
             if i.is_dir():
-                yield from patch_files_walk(repo_top, i, ignored)
+                yield from patch_files_walk(repo_top, i.path, ignored)
             else:
-                yield i
+                yield i.path
 
 
 def patch_build(patch_id, servers, f, t, ignored):
@@ -138,14 +138,14 @@ def patch_build(patch_id, servers, f, t, ignored):
     print(patch_id, end='')
     for f_fn in patch_files_walk(f, f_path, ignored):
         print('.', end='')
-        patch_fn = f_fn.path[len(f_path) + 1:]
+        patch_fn = f_fn[len(f_path) + 1:]
         t_fn = os.path.join(t_path, patch_fn)
 
         with open(f_fn, 'rb') as f_file:
             f_file_data = f_file.read()
 
         # Ensure Unix line endings for JSON input
-        if f_fn.name.endswith(('.js', '.jdiff')) and b'\r\n' in f_file_data:
+        if f_fn.endswith(('.js', '.jdiff')) and b'\r\n' in f_file_data:
             f_file_data = f_file_data.replace(b'\r\n', b'\n')
             with open(f_fn, 'wb') as f_file:
                 f_file.write(f_file_data)
