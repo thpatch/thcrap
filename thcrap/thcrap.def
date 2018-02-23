@@ -138,6 +138,7 @@ EXPORTS
 
 	; Logging
 	; -------
+	log_set_hook
 	log_print
 	log_nprint
 	log_vprintf

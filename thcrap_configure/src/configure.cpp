@@ -7,6 +7,7 @@
 #include <thcrap/src/thcrap_update_wrapper.h>
 #include "configure.h"
 #include "repo.h"
+#include "console.h"
 
 typedef enum {
 	RUN_CFG_FN,
@@ -30,72 +31,6 @@ int file_write_error(const char *fn)
 		error_nag = 1;
 	}
 	return Ask("Continue configuration anyway?") == 'y';
-}
-
-char* console_read(char *str, int n)
-{
-	int ret;
-	int i;
-	fgets(str, n, stdin);
-	{
-		// Ensure UTF-8
-		VLA(wchar_t, str_w, n);
-		StringToUTF16(str_w, str, n);
-		StringToUTF8(str, str_w, n);
-		VLA_FREE(str_w);
-	}
-	// Get rid of the \n
-	for(i = 0; i < n; i++) {
-		if(str[i] == '\n') {
-			str[i] = 0;
-			return str;
-		}
-	}
-	while((ret = getchar()) != '\n' && ret != EOF);
-	return str;
-}
-
-// http://support.microsoft.com/kb/99261
-void cls(SHORT top)
-{
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	// here's where we'll home the cursor
-	COORD coordScreen = {0, top};
-
-	DWORD cCharsWritten;
-	// to get buffer info
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	// number of character cells in the current buffer
-	DWORD dwConSize;
-
-	// get the number of character cells in the current buffer
-	GetConsoleScreenBufferInfo(hConsole, &csbi);
-	dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
-
-	// fill the entire screen with blanks
-	FillConsoleOutputCharacter(
-		hConsole, TEXT(' '), dwConSize, coordScreen, &cCharsWritten
-	);
-	// get the current text attribute
-	GetConsoleScreenBufferInfo(hConsole, &csbi);
-
-	// now set the buffer's attributes accordingly
-	FillConsoleOutputAttribute(
-		hConsole, csbi.wAttributes, dwConSize, coordScreen, &cCharsWritten
-	);
-
-	// put the cursor at (0, 0)
-	SetConsoleCursorPosition(hConsole, coordScreen);
-	return;
-}
-
-// Because I've now learned how bad system("pause") can be
-void pause(void)
-{
-	int ret;
-	printf("Press ENTER to continue . . . ");
-	while((ret = getchar()) != '\n' && ret != EOF);
 }
 
 int file_write_text(const char *fn, const char *str)
@@ -185,7 +120,7 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 	(void)patch; (void)patch_progress; (void)patch_total;
 	(void)fn; (void)ret; (void)param;
 	if (file_total)
-		printf("%3d%%\b\b\b\b", (int)file_progress * 100 / file_total);
+		console_print_percent((int)file_progress * 100 / file_total);
 	return TRUE;
 }
 
@@ -216,41 +151,19 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	const char *run_cfg_fn_js = NULL;
 	char *run_cfg_str = NULL;
 
-	wine_flag = GetProcAddress(
-		GetModuleHandleA("kernel32.dll"), "wine_get_unix_file_name"
-	) != 0;
-
 	strings_mod_init();
 	log_init(1);
-
-	// Necessary to correctly process *any* input of non-ASCII characters
-	// in the console subsystem
-	w32u8_set_fallback_codepage(GetOEMCP());
+	console_init();
 
 	GetCurrentDirectory(cur_dir_len, cur_dir);
 	PathAddBackslashA(cur_dir);
 	str_slash_normalize(cur_dir);
 
-	// Maximize the height of the console window... unless we're running under
-	// Wine, where this 1) doesn't work and 2) messes up the console buffer
-	if(!wine_flag) {
-		CONSOLE_SCREEN_BUFFER_INFO sbi = {0};
-		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-		COORD largest = GetLargestConsoleWindowSize(console);
-		HWND console_wnd = GetConsoleWindow();
-		RECT console_rect;
-
-		GetWindowRect(console_wnd, &console_rect);
-		SetWindowPos(console_wnd, NULL, console_rect.left, 0, 0, 0, SWP_NOSIZE);
-		GetConsoleScreenBufferInfo(console, &sbi);
-		sbi.srWindow.Bottom = largest.Y - 4;
-		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
-	}
-
 	if(argc > 1) {
 		start_repo = argv[1];
 	}
 
+    console_prepare_prompt();
 	log_printf(
 		"==========================================\n"
 		"Touhou Community Reliant Automatic Patcher - Patch configuration tool\n"

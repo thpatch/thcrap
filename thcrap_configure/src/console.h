@@ -1,0 +1,8 @@
+#include <windows.h>
+void console_init();
+void con_printf(const char *str, ...);
+char* console_read(char *str, int n);
+void cls(SHORT top);
+void pause(void);
+void console_prepare_prompt(void);
+void console_print_percent(int pc);

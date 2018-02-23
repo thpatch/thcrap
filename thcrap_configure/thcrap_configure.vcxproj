@@ -38,6 +38,9 @@
     <ClCompile Include="src\configure_search.cpp" />
     <ClCompile Include="src\select.cpp" />
     <ClInclude Include="src\configure.h" />
+    <ClCompile Include="src\winconsole.cpp" />
+    <ClInclude Include="src\console.h" />
     <ResourceCompile Include="thcrap_configure.rc" />
+    <ClInclude Include="src\resource.h" />
   </ItemGroup>
 </Project>
