@@ -94,7 +94,10 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 	ZeroMemory(ctx, sizeof(download_context_t));
 
 	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_start);
-	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+	hFile = InternetOpenUrl(
+		hHTTP, url, NULL, 0,
+		INTERNET_FLAG_RELOAD | INTERNET_FLAG_KEEP_CONNECTION, 0
+	);
 	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_ping);
 	if(!hFile) {
 		// TODO: We should use FormatMessage() for both coverage and i18n
