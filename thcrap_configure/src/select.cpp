@@ -203,7 +203,9 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 				);
 				print_header = 0;
 			}
-            con_printf(" [%2d] ", ++list_count);
+			++list_count;
+			con_clickable(list_count);
+            con_printf(" [%2d] ", list_count);
 			PrettyPrintPatch(patch_id_str, patch_title);
 		}
 		json_decref(sel);
@@ -247,7 +249,9 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 		const char *patch_title = json_object_get_string(patches, patch_id);
 		json_t *full_id = json_pack("s++", repo_id, "/", patch_id);
 
-        con_printf("  %2d. ", ++list_count);
+		++list_count;
+		con_clickable(list_count);
+        con_printf("  %2d. ", list_count);
 		PrettyPrintPatch(json_string_value(full_id), patch_title);
 
 		json_array_append(list_order, sel);

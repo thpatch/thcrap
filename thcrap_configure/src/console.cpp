@@ -27,6 +27,17 @@ void console_init()
 		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
 	}
 }
+void con_printf(const char *str, ...) {
+	if (str) {
+		va_list va;
+		va_start(va, str);
+		vprintf(str, va);
+		VLA_FREE(str_full);
+		va_end(va);
+	}
+}
+void con_clickable(const char *response) {}
+void con_clickable(int response) {}
 char* console_read(char *str, int n)
 {
 	int ret;

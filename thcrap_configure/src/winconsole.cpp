@@ -5,6 +5,8 @@
 #include "resource.h"
 #include <string.h>
 #include <CommCtrl.h>
+#include <queue>
+#include <string>
 
 // TODO: preferrably do a separate manifest file
 #pragma comment(lib,"Comctl32.lib")
@@ -12,41 +14,61 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
-/* lparam = pointer to wide string to add to log (no newlines)*/
-#define APP_ADDLOG (WM_APP+0)
-#define APP_CLS (WM_APP+1)
+#define APP_READQUEUE (WM_APP+0)
 /* wparam = length of output string */
 #define APP_GETINPUT (WM_APP+2)
-/* lparam = pointer to wide string to append */
-#define APP_APPENDLOG (WM_APP+3)
 #define APP_UPDATE (WM_APP+4)
 #define APP_PREUPDATE (WM_APP+5)
 #define APP_PAUSE (WM_APP+6)
 /* wparam = percent */
 #define APP_PROGRESS (WM_APP+7)
 
-/* Adds a line to log*/
-#define Thcrap_AddLog(hwndDlg,str) ((void)::SendMessage((hwndDlg), APP_ADDLOG, 0, (LPARAM)(LPCWSTR)(str)))
-/* Clears log*/
-#define Thcrap_Cls(hwndDlg) ((void)::SendMessage((hwndDlg), APP_CLS, 0, 0L))
+/* Reads line queue */
+#define Thcrap_ReadQueue(hwndDlg) ((void)::PostMessage((hwndDlg), APP_READQUEUE, 0, 0L))
 /* Request input */
 /* UI thread will signal g_event when user confirms input */
-#define Thcrap_GetInput(hwndDlg,len) ((void)::SendMessage((hwndDlg), APP_GETINPUT, (WPARAM)(DWORD)(len), 0L))
-/* Same as ADDLOG, but appends to the last line */
-#define Thcrap_AppendLog(hwndDlg,str) ((void)::SendMessage((hwndDlg), APP_APPENDLOG, 0, (LPARAM)(LPCWSTR)(str)))
+#define Thcrap_GetInput(hwndDlg,len) ((void)::PostMessage((hwndDlg), APP_GETINPUT, (WPARAM)(DWORD)(len), 0L))
 /* Should be called after adding/appending bunch of lines */
-#define Thcrap_Update(hwndDlg) ((void)::SendMessage((hwndDlg), APP_UPDATE, 0, 0L))
+#define Thcrap_Update(hwndDlg) ((void)::PostMessage((hwndDlg), APP_UPDATE, 0, 0L))
 /* Should be called before adding lines*/
-#define Thcrap_Preupdate(hwndDlg) ((void)::SendMessage((hwndDlg), APP_PREUPDATE, 0, 0L))
+#define Thcrap_Preupdate(hwndDlg) ((void)::PostMessage((hwndDlg), APP_PREUPDATE, 0, 0L))
 /* Pause */
-#define Thcrap_Pause(hwndDlg) ((void)::SendMessage((hwndDlg), APP_PAUSE, 0, 0L))
+#define Thcrap_Pause(hwndDlg) ((void)::PostMessage((hwndDlg), APP_PAUSE, 0, 0L))
 /* Updates progress bar */
-#define Thcrap_Progres(hwndDlg, pc) ((void)::SendMessage((hwndDlg), APP_PROGRESS, (WPARAM)(DWORD)(pc), 0L))
+#define Thcrap_Progres(hwndDlg, pc) ((void)::PostMessage((hwndDlg), APP_PROGRESS, (WPARAM)(DWORD)(pc), 0L))
+
+enum LineType {
+	LINE_ADD,
+	LINE_APPEND,
+	LINE_CLS,
+	LINE_PENDING
+};
+struct LineEntry {
+	LineType type;
+	std::wstring content;
+};
+struct mutex_lock {
+	mutex_lock(HANDLE mutex) {
+		m_mutex = mutex;
+		WaitForSingleObject(mutex, INFINITE);
+	}
+	mutex_lock& operator=(const mutex_lock&) = delete;
+	mutex_lock(const mutex_lock&) = delete;
+	~mutex_lock() {
+		if(m_mutex) ReleaseMutex(m_mutex);
+		m_mutex = nullptr;
+	}
+
+private:
+	HANDLE m_mutex;
+};
 
 static HWND g_hwnd = NULL;
 static HANDLE g_event = NULL; // used for communicating when the input is done
 static wchar_t *g_input = NULL;
-
+static HANDLE g_mutex = NULL; // used for synchronizing the queue
+static std::queue<LineEntry> g_queue;
+static std::vector<std::wstring> q_responses;
 static void InputMode(HWND hwndDlg) {
 	ShowWindow(GetDlgItem(hwndDlg, IDC_BUTTON1), SW_SHOW);
 	ShowWindow(GetDlgItem(hwndDlg, IDC_EDIT1), SW_SHOW);
@@ -61,7 +83,8 @@ static void ProgressBarMode(HWND hwndDlg) {
 INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static int input_len = 0;
 	static int last_index = 0;
-	static bool pause = false;
+	static bool input = false, pause = false;
+	static std::wstring pending = L"";
 	switch (uMsg) {
 	case WM_INITDIALOG: {
 		g_hwnd = hwndDlg;
@@ -82,38 +105,75 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		switch (LOWORD(wParam)) {
 		case IDC_BUTTON1:
 			if (!pause) {
-				g_input = (wchar_t*)malloc(input_len * sizeof(wchar_t));
+				g_input = new wchar_t[input_len];
 				GetDlgItemTextW(hwndDlg, IDC_EDIT1, g_input, input_len);
 				SetDlgItemTextW(hwndDlg, IDC_EDIT1, L"");
 				Edit_Enable(GetDlgItem(hwndDlg, IDC_EDIT1), FALSE);
 			}
-			pause = false;
+			input = pause = false;
+
 			Button_Enable(GetDlgItem(hwndDlg, IDC_BUTTON1), FALSE);
 			SetEvent(g_event);
 			return TRUE;
+		case IDC_LIST1:
+			switch (HIWORD(wParam)) {
+			case LBN_DBLCLK:
+				int cur = ListBox_GetCurSel((HWND) lParam);
+				if (input && cur != LB_ERR && !q_responses[cur].empty() ) {
+					g_input = new wchar_t[q_responses[cur].length() + 1];
+					wcscpy(g_input, q_responses[cur].c_str());
+					SetDlgItemTextW(hwndDlg, IDC_EDIT1, L"");
+					Edit_Enable(GetDlgItem(hwndDlg, IDC_EDIT1), FALSE);
+					Button_Enable(GetDlgItem(hwndDlg, IDC_BUTTON1), FALSE);
+					input = false;
+					SetEvent(g_event);
+				}
+				return TRUE;
+			}
 		}
 		return FALSE;
-	case APP_ADDLOG:
-		last_index = ListBox_AddString(GetDlgItem(hwndDlg, IDC_LIST1), lParam);
-		return TRUE;
-	case APP_APPENDLOG: {
+	case APP_READQUEUE: {
 		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
-		int origlen = ListBox_GetTextLen(list, last_index);
-		int len = origlen + wcslen((wchar_t*)lParam) + 1;
-		VLA(wchar_t, wstr, len);
-		ListBox_GetText(list, last_index, wstr);
-		wcscat_s(wstr, len, (wchar_t*)lParam);
-		ListBox_DeleteString(list, last_index);
-		last_index = ListBox_AddString(list, wstr);
-		VLA_FREE(wstr);
-		return TRUE;
+		mutex_lock lock(g_mutex);
+		while (!g_queue.empty()) {
+			LineEntry& ent = g_queue.front();
+			switch (ent.type) {
+			case LINE_ADD:
+				last_index = ListBox_AddString(list, ent.content.c_str());
+				q_responses.push_back(pending);
+				pending = L"";
+				break;
+			case LINE_APPEND: {
+				int origlen = ListBox_GetTextLen(list, last_index);
+				int len = origlen + ent.content.length() + 1;
+				VLA(wchar_t, wstr, len);
+				ListBox_GetText(list, last_index, wstr);
+				wcscat_s(wstr, len, ent.content.c_str());
+				ListBox_DeleteString(list, last_index);
+				ListBox_InsertString(list, last_index, wstr);
+				VLA_FREE(wstr);
+				if (!pending.empty()) {
+					q_responses[last_index] = pending;
+					pending = L"";
+				}
+				break;
+			}
+			case LINE_CLS:
+				ListBox_ResetContent(list);
+				q_responses.clear();
+				pending = L"";
+				break;
+			case LINE_PENDING:
+				pending = ent.content;
+				break;
+			}
+			g_queue.pop();
+		}
 	}
-	case APP_CLS:
-		ListBox_ResetContent(GetDlgItem(hwndDlg, IDC_LIST1));
-		return TRUE;
 	case APP_GETINPUT:
 		InputMode(hwndDlg);
 		input_len = wParam;
+		input = true;
 		Edit_Enable(GetDlgItem(hwndDlg, IDC_EDIT1), TRUE);
 		Button_Enable(GetDlgItem(hwndDlg, IDC_BUTTON1), TRUE);
 		return TRUE;
@@ -182,6 +242,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 	case WM_CLOSE:
 		EndDialog(hwndDlg, 0);
+		return TRUE;
 	}
 	return FALSE;
 }
@@ -199,32 +260,40 @@ void log_windows(const char* text) {
 	VLA(wchar_t, wtext, len);
 	StringToUTF16(wtext, text, len);
 	wchar_t *start = wtext, *end = wtext;
-	while (end) {
-		wchar_t c = *end++;
-		if (c == '\n') {
-			end[-1] = '\0'; // Replace newline with null
-		}
-		else if (c == '\0') {
-			if (end != wtext && end == start) {
-				break; // '\0' right after '\n'
+	{
+		mutex_lock lock(g_mutex);
+		while (end) {
+			wchar_t c = *end++;
+			if (c == '\n') {
+				end[-1] = '\0'; // Replace newline with null
 			}
-			end = NULL;
-		}
-		else continue;
-		if (needAppend == true) {
-			Thcrap_AppendLog(g_hwnd, start);
-			needAppend = false;
-		}
-		else {
-			Thcrap_AddLog(g_hwnd, start);
-		}
+			else if (c == '\0') {
+				if (end != wtext && end == start) {
+					break; // '\0' right after '\n'
+				}
+				end = NULL;
+			}
+			else continue;
+			if (needAppend == true) {
+				LineEntry le = { LINE_APPEND, start };
+				g_queue.push(le);
+				needAppend = false;
+			}
+			else {
+				LineEntry le = { LINE_ADD, start };
+				g_queue.push(le);
+			}
 
-		start = end;
+			start = end;
+		}
 	}
 	VLA_FREE(wtext);
 	if (!end) needAppend = true;
 
-	if (!dontUpdate) Thcrap_Update(g_hwnd);
+	if (!dontUpdate) {
+		Thcrap_ReadQueue(g_hwnd);
+		Thcrap_Update(g_hwnd);
+	}
 }
 /* --- code proudly stolen from thcrap/log.cpp --- */
 #define VLA_VSPRINTF(str, va) \
@@ -253,6 +322,24 @@ void con_printf(const char *str, ...)
 	}
 }
 /* ------------------- */
+void con_clickable(const char* response) {
+	int len = strlen(response) + 1;
+	VLA(wchar_t, wresponse, len);
+	StringToUTF16(wresponse, response, len);
+	{
+		mutex_lock lock(g_mutex);
+		LineEntry le = { LINE_PENDING,  wresponse };
+		g_queue.push(le);
+	}
+	VLA_FREE(wresponse);
+}
+
+void con_clickable(int response) {
+	size_t response_full_len = _scprintf("%d", response) + 1;
+	VLA(char, response_full, response_full_len);
+	sprintf(response_full, "%d", response);
+	con_clickable(response_full);
+}
 void console_init() {
 	INITCOMMONCONTROLSEX iccex;
 	iccex.dwSize = sizeof(iccex);
@@ -266,23 +353,26 @@ void console_init() {
 	WaitForSingleObject(g_event, INFINITE);
 }
 char* console_read(char *str, int n) {
-	Thcrap_Update(g_hwnd);
 	dontUpdate = false;
+	Thcrap_ReadQueue(g_hwnd);
+	Thcrap_Update(g_hwnd);
 	Thcrap_GetInput(g_hwnd, n);
 	WaitForSingleObject(g_event, INFINITE);
 	StringToUTF8(str, g_input, n);
-	free(g_input);
+	delete[] g_input;
 	g_input = NULL;
 	return str;
 }
 void cls(SHORT top) {
-	Thcrap_Cls(g_hwnd);
+	mutex_lock lock(g_mutex);
+	LineEntry le = { LINE_CLS, L"" };
+	g_queue.push(le);
+	Thcrap_ReadQueue(g_hwnd);
 	needAppend = false;
 }
 void pause(void) {
-	con_printf("Press ENTER to continue . . . \n");
-	Thcrap_Update(g_hwnd);
 	dontUpdate = false;
+	con_printf("Press ENTER to continue . . . \n"); // this will ReadQueue and Update for us
 	Thcrap_Pause(g_hwnd);
 	WaitForSingleObject(g_event, INFINITE);
 }

@@ -1,6 +1,8 @@
 #include <windows.h>
 void console_init();
 void con_printf(const char *str, ...);
+void con_clickable(const char *response);
+void con_clickable(int response);
 char* console_read(char *str, int n);
 void cls(SHORT top);
 void pause(void);
