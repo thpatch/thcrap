@@ -50,7 +50,8 @@ struct LineEntry {
 struct mutex_lock {
 	mutex_lock(HANDLE mutex) {
 		m_mutex = mutex;
-		WaitForSingleObject(mutex, INFINITE);
+		if(mutex)
+			WaitForSingleObject(mutex, INFINITE);
 	}
 	mutex_lock& operator=(const mutex_lock&) = delete;
 	mutex_lock(const mutex_lock&) = delete;
@@ -169,6 +170,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			}
 			g_queue.pop();
 		}
+		return TRUE;
 	}
 	case APP_GETINPUT:
 		InputMode(hwndDlg);
@@ -184,7 +186,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 	case APP_UPDATE: {
 		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
-		SendMessage(list, WM_VSCROLL, SB_BOTTOM, 0L);
+		//SendMessage(list, WM_VSCROLL, SB_BOTTOM, 0L);
 		ListBox_SetCurSel(list, last_index);// Just scrolling doesn't work well
 		SetWindowRedraw(list, TRUE);
 		// this causes unnescessary flickering
@@ -260,9 +262,12 @@ void log_windows(const char* text) {
 	VLA(wchar_t, wtext, len);
 	StringToUTF16(wtext, text, len);
 	wchar_t *start = wtext, *end = wtext;
-	{
-		mutex_lock lock(g_mutex);
-		while (end) {
+	while (end) {
+		int mutexcond = 0;
+		{
+			mutex_lock lock(g_mutex);
+			end = wcschr(end, '\n');
+			if (!end) end = wcschr(start, '\0');
 			wchar_t c = *end++;
 			if (c == '\n') {
 				end[-1] = '\0'; // Replace newline with null
@@ -283,9 +288,16 @@ void log_windows(const char* text) {
 				LineEntry le = { LINE_ADD, start };
 				g_queue.push(le);
 			}
-
-			start = end;
+			mutexcond = g_queue.size() > 10;
 		}
+		if (mutexcond) {
+			Thcrap_ReadQueue(g_hwnd);
+			if (dontUpdate) {
+				Thcrap_Update(g_hwnd);
+				Thcrap_Preupdate(g_hwnd);
+			}
+		}
+		start = end;
 	}
 	VLA_FREE(wtext);
 	if (!end) needAppend = true;
@@ -307,7 +319,7 @@ void con_vprintf(const char *str, va_list va)
 	if (str) {
 		VLA_VSPRINTF(str, va);
 		log_windows(str_full);
-		printf("%s", str_full);
+		//printf("%s", str_full);
 		VLA_FREE(str_full);
 	}
 }
@@ -348,6 +360,7 @@ void console_init() {
 
 	log_set_hook(log_windows);
 	g_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+	g_mutex = CreateMutex(NULL, FALSE, NULL);
 	HANDLE hThread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
 	CloseHandle(hThread);
 	WaitForSingleObject(g_event, INFINITE);
@@ -364,11 +377,17 @@ char* console_read(char *str, int n) {
 	return str;
 }
 void cls(SHORT top) {
-	mutex_lock lock(g_mutex);
-	LineEntry le = { LINE_CLS, L"" };
-	g_queue.push(le);
-	Thcrap_ReadQueue(g_hwnd);
-	needAppend = false;
+	{
+		mutex_lock lock(g_mutex);
+		LineEntry le = { LINE_CLS, L"" };
+		g_queue.push(le);
+		Thcrap_ReadQueue(g_hwnd);
+		needAppend = false;
+	}
+	if (dontUpdate) {
+		Thcrap_Update(g_hwnd);
+		Thcrap_Preupdate(g_hwnd);
+	}
 }
 void pause(void) {
 	dontUpdate = false;
