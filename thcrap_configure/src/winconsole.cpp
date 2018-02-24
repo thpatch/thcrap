@@ -7,6 +7,10 @@
 #include <CommCtrl.h>
 #include <queue>
 #include <string>
+#include <mutex>
+#include <future>
+#include <memory>
+#include <thread>
 
 // TODO: preferrably do a separate manifest file
 #pragma comment(lib,"Comctl32.lib")
@@ -14,11 +18,16 @@
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
+template<typename T>
+using EventPtr = const std::shared_ptr<std::promise<T>>*;
+
 #define APP_READQUEUE (WM_APP+0)
 /* wparam = length of output string */
+/* lparam = const std::shared_ptr<std::promise<wchar_t*>>* */
 #define APP_GETINPUT (WM_APP+2)
 #define APP_UPDATE (WM_APP+4)
 #define APP_PREUPDATE (WM_APP+5)
+/* lparam = const std::shared_ptr<std::promise<void>>* */
 #define APP_PAUSE (WM_APP+6)
 /* wparam = percent */
 #define APP_PROGRESS (WM_APP+7)
@@ -27,13 +36,13 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define Thcrap_ReadQueue(hwndDlg) ((void)::PostMessage((hwndDlg), APP_READQUEUE, 0, 0L))
 /* Request input */
 /* UI thread will signal g_event when user confirms input */
-#define Thcrap_GetInput(hwndDlg,len) ((void)::PostMessage((hwndDlg), APP_GETINPUT, (WPARAM)(DWORD)(len), 0L))
+#define Thcrap_GetInput(hwndDlg,len,a_promise) ((void)::PostMessage((hwndDlg), APP_GETINPUT, (WPARAM)(DWORD)(len), (LPARAM)(EventPtr<wchar_t*>)(a_promise)))
 /* Should be called after adding/appending bunch of lines */
 #define Thcrap_Update(hwndDlg) ((void)::PostMessage((hwndDlg), APP_UPDATE, 0, 0L))
 /* Should be called before adding lines*/
 #define Thcrap_Preupdate(hwndDlg) ((void)::PostMessage((hwndDlg), APP_PREUPDATE, 0, 0L))
 /* Pause */
-#define Thcrap_Pause(hwndDlg) ((void)::PostMessage((hwndDlg), APP_PAUSE, 0, 0L))
+#define Thcrap_Pause(hwndDlg,a_promise) ((void)::PostMessage((hwndDlg), APP_PAUSE, 0, (LPARAM)(EventPtr<void>)(a_promise)))
 /* Updates progress bar */
 #define Thcrap_Progres(hwndDlg, pc) ((void)::PostMessage((hwndDlg), APP_PROGRESS, (WPARAM)(DWORD)(pc), 0L))
 
@@ -47,27 +56,38 @@ struct LineEntry {
 	LineType type;
 	std::wstring content;
 };
-struct mutex_lock {
-	mutex_lock(HANDLE mutex) {
-		m_mutex = mutex;
-		if(mutex)
-			WaitForSingleObject(mutex, INFINITE);
+template<typename T>
+class WaitForEvent {
+	std::shared_ptr<std::promise<T>> promise;
+	std::future<T> future;
+public:
+	WaitForEvent() {
+		promise = std::make_shared<std::promise<T>>();
+		future = promise->get_future();
 	}
-	mutex_lock& operator=(const mutex_lock&) = delete;
-	mutex_lock(const mutex_lock&) = delete;
-	~mutex_lock() {
-		if(m_mutex) ReleaseMutex(m_mutex);
-		m_mutex = nullptr;
+	EventPtr<T> getEvent() {
+		return &promise;
 	}
-
-private:
-	HANDLE m_mutex;
+	T getResponse() {
+		return future.get();
+	}
 };
+template<typename T>
+void SignalEvent(std::shared_ptr<std::promise<T>>& ptr, T val) {
+	if (ptr) {
+		ptr->set_value(val);
+		ptr.reset();
+	}
+}
+void SignalEvent(std::shared_ptr<std::promise<void>>& ptr) {
+	if (ptr) {
+		ptr->set_value();
+		ptr.reset();
+	}
+}
 
 static HWND g_hwnd = NULL;
-static HANDLE g_event = NULL; // used for communicating when the input is done
-static wchar_t *g_input = NULL;
-static HANDLE g_mutex = NULL; // used for synchronizing the queue
+static std::mutex g_mutex; // used for synchronizing the queue
 static std::queue<LineEntry> g_queue;
 static std::vector<std::wstring> q_responses;
 static void InputMode(HWND hwndDlg) {
@@ -86,6 +106,9 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	static int last_index = 0;
 	static bool input = false, pause = false;
 	static std::wstring pending = L"";
+	static std::shared_ptr<std::promise<wchar_t*>> promise; // APP_GETINPUT event
+	static std::shared_ptr<std::promise<void>> promisev; // APP_PAUSE event
+
 	switch (uMsg) {
 	case WM_INITDIALOG: {
 		g_hwnd = hwndDlg;
@@ -99,43 +122,48 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 		}
 
-		SetEvent(g_event);
+		(*(EventPtr<void>)lParam)->set_value();
 		return TRUE;
 	}
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
-		case IDC_BUTTON1:
+		case IDC_BUTTON1: {
+			wchar_t* input_str;
 			if (!pause) {
-				g_input = new wchar_t[input_len];
-				GetDlgItemTextW(hwndDlg, IDC_EDIT1, g_input, input_len);
+				input_str = new wchar_t[input_len];
+				GetDlgItemTextW(hwndDlg, IDC_EDIT1, input_str, input_len);
 				SetDlgItemTextW(hwndDlg, IDC_EDIT1, L"");
 				Edit_Enable(GetDlgItem(hwndDlg, IDC_EDIT1), FALSE);
 			}
-			input = pause = false;
-
 			Button_Enable(GetDlgItem(hwndDlg, IDC_BUTTON1), FALSE);
-			SetEvent(g_event);
+			if (!pause) SignalEvent(promise, input_str);
+			input = pause = false;
+			SignalEvent(promisev);
 			return TRUE;
+		}
 		case IDC_LIST1:
 			switch (HIWORD(wParam)) {
-			case LBN_DBLCLK:
-				int cur = ListBox_GetCurSel((HWND) lParam);
-				if (input && cur != LB_ERR && !q_responses[cur].empty() ) {
-					g_input = new wchar_t[q_responses[cur].length() + 1];
-					wcscpy(g_input, q_responses[cur].c_str());
+			case LBN_DBLCLK: {
+				wchar_t* input_str;
+				int cur = ListBox_GetCurSel((HWND)lParam);
+				if (input && cur != LB_ERR && !q_responses[cur].empty()) {
+					input_str = new wchar_t[q_responses[cur].length() + 1];
+					wcscpy(input_str, q_responses[cur].c_str());
 					SetDlgItemTextW(hwndDlg, IDC_EDIT1, L"");
 					Edit_Enable(GetDlgItem(hwndDlg, IDC_EDIT1), FALSE);
 					Button_Enable(GetDlgItem(hwndDlg, IDC_BUTTON1), FALSE);
 					input = false;
-					SetEvent(g_event);
+					SignalEvent(promise, input_str);
 				}
+				SignalEvent(promisev);
 				return TRUE;
+			}
 			}
 		}
 		return FALSE;
 	case APP_READQUEUE: {
 		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
-		mutex_lock lock(g_mutex);
+		std::lock_guard<std::mutex> lock(g_mutex);
 		while (!g_queue.empty()) {
 			LineEntry& ent = g_queue.front();
 			switch (ent.type) {
@@ -178,6 +206,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		input = true;
 		Edit_Enable(GetDlgItem(hwndDlg, IDC_EDIT1), TRUE);
 		Button_Enable(GetDlgItem(hwndDlg, IDC_BUTTON1), TRUE);
+		promise = *(EventPtr<wchar_t*>)lParam;
 		return TRUE;
 	case APP_PREUPDATE: {
 		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
@@ -197,6 +226,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		InputMode(hwndDlg);
 		pause = true;
 		Button_Enable(GetDlgItem(hwndDlg, IDC_BUTTON1), TRUE);
+		promisev = *(EventPtr<void>)lParam;
 		return TRUE;
 	case APP_PROGRESS:
 		ProgressBarMode(hwndDlg);
@@ -248,11 +278,6 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 	return FALSE;
 }
-DWORD WINAPI ThreadProc(LPVOID lpParameter) {
-	DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG1), NULL, DlgProc);
-	exit(0); // Exit the entire process when exiting this thread
-	return 0;
-}
 static bool needAppend = false;
 static bool dontUpdate = false;
 void log_windows(const char* text) {
@@ -265,7 +290,7 @@ void log_windows(const char* text) {
 	while (end) {
 		int mutexcond = 0;
 		{
-			mutex_lock lock(g_mutex);
+			std::lock_guard<std::mutex> lock(g_mutex);
 			end = wcschr(end, '\n');
 			if (!end) end = wcschr(start, '\0');
 			wchar_t c = *end++;
@@ -339,7 +364,7 @@ void con_clickable(const char* response) {
 	VLA(wchar_t, wresponse, len);
 	StringToUTF16(wresponse, response, len);
 	{
-		mutex_lock lock(g_mutex);
+		std::lock_guard<std::mutex> lock(g_mutex);
 		LineEntry le = { LINE_PENDING,  wresponse };
 		g_queue.push(le);
 	}
@@ -359,26 +384,29 @@ void console_init() {
 	InitCommonControlsEx(&iccex);
 
 	log_set_hook(log_windows);
-	g_event = CreateEvent(NULL, FALSE, FALSE, NULL);
-	g_mutex = CreateMutex(NULL, FALSE, NULL);
-	HANDLE hThread = CreateThread(NULL, 0, ThreadProc, NULL, 0, NULL);
-	CloseHandle(hThread);
-	WaitForSingleObject(g_event, INFINITE);
+
+	WaitForEvent<void> e;
+	std::thread([](LPARAM lParam) {
+		DialogBoxParamW(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG1), NULL, DlgProc, lParam);
+		exit(0); // Exit the entire process when exiting this thread
+	}, (LPARAM)e.getEvent()).detach();
+	e.getResponse();
 }
 char* console_read(char *str, int n) {
 	dontUpdate = false;
 	Thcrap_ReadQueue(g_hwnd);
 	Thcrap_Update(g_hwnd);
-	Thcrap_GetInput(g_hwnd, n);
-	WaitForSingleObject(g_event, INFINITE);
-	StringToUTF8(str, g_input, n);
-	delete[] g_input;
-	g_input = NULL;
+	WaitForEvent<wchar_t*> e;
+	Thcrap_GetInput(g_hwnd, n, e.getEvent());
+	wchar_t* input = e.getResponse();
+	StringToUTF8(str, input, n);
+	delete[] input;
+	needAppend = false; // gotta insert that newline
 	return str;
 }
 void cls(SHORT top) {
 	{
-		mutex_lock lock(g_mutex);
+		std::lock_guard<std::mutex> lock(g_mutex);
 		LineEntry le = { LINE_CLS, L"" };
 		g_queue.push(le);
 		Thcrap_ReadQueue(g_hwnd);
@@ -392,8 +420,9 @@ void cls(SHORT top) {
 void pause(void) {
 	dontUpdate = false;
 	con_printf("Press ENTER to continue . . . \n"); // this will ReadQueue and Update for us
-	Thcrap_Pause(g_hwnd);
-	WaitForSingleObject(g_event, INFINITE);
+	WaitForEvent<void> e;
+	Thcrap_Pause(g_hwnd, e.getEvent());
+	e.getResponse();
 }
 void console_prepare_prompt(void) {
 	Thcrap_Preupdate(g_hwnd);
