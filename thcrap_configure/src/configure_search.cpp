@@ -109,11 +109,11 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			"\n"
 			"Patch data will be downloaded or updated for all the games listed.\n"
 			"\n"
-			"\t* (A)dd new games to this list and keep existing ones?\n"
-			"\t* Clear this list and (r)escan?\n"
-			"\t* (K)eep this list and continue?\n"
-			"\n"
 		);
+		con_clickable("a"); log_printf("\t* (A)dd new games to this list and keep existing ones?\n");
+		con_clickable("r"); log_printf("\t* Clear this list and (r)escan?\n");
+		con_clickable("k"); log_printf("\t* (K)eep this list and continue?\n");
+		log_printf("\n");
 		char ret = Ask<3>(nullptr, { 'a', 'r', 'k' | DEFAULT_ANSWER });
 		if(ret == 'k') {
 			return games;
@@ -208,7 +208,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		} else {
 			log_printf("No game locations found.\n");
 			if(search_path[0]) {
-				repeat = Ask("Search in a different directory?") == 'y';
+				repeat = console_ask_yn("Search in a different directory?") == 'y';
 			}
 			if(!repeat) {
 				log_printf(

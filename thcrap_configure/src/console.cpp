@@ -1,5 +1,6 @@
 #include <thcrap.h>
 #include <windows.h>
+#include "configure.h"
 #include "console.h"
 void console_init()
 {
@@ -109,3 +110,7 @@ void console_prepare_prompt(void) {
 void console_print_percent(int pc) {
 	con_printf("%3d%%\b\b\b\b", pc);
 }
+char console_ask_yn(const char* what) {
+	return Ask(what);
+}
+void con_end(void) {}

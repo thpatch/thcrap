@@ -21,10 +21,12 @@ static const char LOG[] = "thcrap_log.txt";
 static const char LOG_ROTATED[] = "thcrap_log.%d.txt";
 static const int ROTATIONS = 1; // Number of backups to keep
 static void (*log_print_hook)(const char*) = NULL;
+static void(*log_nprint_hook)(const char*, size_t) = NULL;
 // -----------------------
 
-void log_set_hook(void(*hookproc)(const char*)){
+void log_set_hook(void(*hookproc)(const char*), void(*hookproc2)(const char*,size_t)){
 	log_print_hook = hookproc;
+	log_nprint_hook = hookproc2;
 }
 
 // Rotation
@@ -82,6 +84,9 @@ void log_nprint(const char *str, size_t n)
 	}
 	if(log_file) {
 		fwrite(str, n, 1, log_file);
+	}
+	if (log_nprint_hook) {
+		log_nprint_hook(str, n);
 	}
 }
 

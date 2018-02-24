@@ -30,7 +30,7 @@ int file_write_error(const char *fn)
 		log_printf("Writing is likely to fail for all further files as well.\n");
 		error_nag = 1;
 	}
-	return Ask("Continue configuration anyway?") == 'y';
+	return console_ask_yn("Continue configuration anyway?") == 'y';
 }
 
 int file_write_text(const char *fn, const char *str)
@@ -103,7 +103,7 @@ const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 		run_cfg_fn_js = strings_sprintf(slot_js, "%s.js", run_cfg_fn);
 		if (PathFileExists(run_cfg_fn_js)) {
 			log_printf("\"%s\" already exists. ", run_cfg_fn_js);
-			ret = Ask("Overwrite?") == 'n';
+			ret = console_ask_yn("Overwrite?") == 'n';
 		}
 		else {
 			ret = 0;
@@ -296,5 +296,6 @@ end:
 	json_decref(id_cache);
 
 	thcrap_update_exit_wrapper();
+	con_end();
 	return 0;
 }
