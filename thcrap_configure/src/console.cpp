@@ -114,3 +114,6 @@ char console_ask_yn(const char* what) {
 	return Ask(what);
 }
 void con_end(void) {}
+HWND con_hwnd(void) {
+	return GetConsoleWindow();
+}

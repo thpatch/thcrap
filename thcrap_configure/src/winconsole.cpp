@@ -556,3 +556,6 @@ void con_end(void) {
 	SendMessage(g_hwnd, WM_CLOSE, 0, 0L);
 	e.getResponse();
 }
+HWND con_hwnd(void) {
+	return g_hwnd;
+}

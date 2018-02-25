@@ -83,11 +83,68 @@ int CALLBACK SetInitialBrowsePathProc(HWND hWnd, UINT uMsg, LPARAM lp, LPARAM pD
 	return 0;
 }
 
+#define UnkRelease(p) do { IUnknown** __p = (IUnknown**)(p); (*__p)->Release(); (*__p) = NULL; } while(0)
+
+static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
+	IFileDialog *pfd = NULL;
+	CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd));
+	if (!pfd) return -1;
+
+	IShellItem* psi = NULL;
+	SHCreateItemFromIDList(initial_path, IID_PPV_ARGS(&psi));
+	if (!psi) {
+		UnkRelease(&pfd);
+		return -1;
+	}
+	pfd->SetDefaultFolder(psi);
+	UnkRelease(&psi);
+
+	pfd->SetOptions(
+		FOS_NOCHANGEDIR | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM
+		| FOS_PATHMUSTEXIST | FOS_FILEMUSTEXIST | FOS_DONTADDTORECENT);
+	pfd->SetTitle(window_title);
+	HRESULT hr = pfd->Show(con_hwnd());
+	if (SUCCEEDED(hr)) {
+		if (SUCCEEDED(pfd->GetResult(&psi))) {
+			PIDLIST_ABSOLUTE pidl = NULL;
+			SHGetIDListFromObject(psi, &pidl);
+			UnkRelease(&psi);
+			UnkRelease(&pfd);
+			return 0;
+		}
+	}
+
+	UnkRelease(&pfd);
+	if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+		return 0;
+	}
+	return -1;
+}
+
+static int SelectFolderXP(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
+	BROWSEINFOW bi = { 0 };
+	initial_path_t ip = { 0 };
+	ip.path = initial_path;
+
+	bi.lpszTitle = window_title;
+	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
+	bi.hwndOwner = con_hwnd();
+	bi.lpfn = SetInitialBrowsePathProc;
+	bi.lParam = (LPARAM)&ip;
+	pidl = SHBrowseForFolderW(&bi);
+	return 0;
+}
+PIDLIST_ABSOLUTE SelectFolder(PIDLIST_ABSOLUTE initial_path, const wchar_t* window_title) {
+	PIDLIST_ABSOLUTE pidl = NULL;
+	if (-1 == SelectFolderVista(initial_path, pidl, window_title)) {
+		SelectFolderXP(initial_path, pidl, window_title);
+	}
+	return pidl;
+}
+
 json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
-	initial_path_t ip = {0};
-	BROWSEINFO bi = {0};
 	int repeat = 0;
 
 	cls(0);
@@ -154,27 +211,23 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		pause();
 	}
 
+	PIDLIST_ABSOLUTE initial_path = NULL;
 	// BFFM_SETSELECTION does this anyway if we pass a string, so we
 	// might as well do the slash conversion in win32_utf8's wrapper
 	// while we're at it.
-	SHParseDisplayNameU(games_js_path, NULL, &ip.path, 0, NULL);
-
-	bi.lpszTitle = "Root path for game search (cancel to search entire system):";
-	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
-	bi.hwndOwner = GetConsoleWindow();
-	bi.lpfn = SetInitialBrowsePathProc;
-	bi.lParam = (LPARAM)&ip;
-
+	SHParseDisplayNameU(games_js_path, NULL, &initial_path, 0, NULL);
+	CoInitialize(NULL);
 	do {
 		char search_path[MAX_PATH * 2] = {0};
 		json_t *found = NULL;
 
-		PIDLIST_ABSOLUTE pidl = SHBrowseForFolder(&bi);
-		repeat = 0;
-		if(pidl && SHGetPathFromIDList(pidl, search_path)) {
+		PIDLIST_ABSOLUTE pidl = SelectFolder(initial_path, L"Root path for game search (cancel to search entire system):");
+		if (pidl && SHGetPathFromIDList(pidl, search_path)) {
 			PathAddBackslashA(search_path);
 			CoTaskMemFree(pidl);
 		}
+
+		repeat = 0;
 		log_printf(
 			"Searching games%s%s... this may take a while...\n\n",
 			search_path[0] ? " in " : " on the entire system",
@@ -221,6 +274,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		}
 		json_decref(found);
 	} while(repeat);
-	CoTaskMemFree(ip.path);
+	CoUninitialize();
+	CoTaskMemFree(initial_path);
 	return games;
 }
