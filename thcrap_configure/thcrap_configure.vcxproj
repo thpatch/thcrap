@@ -26,7 +26,7 @@
   <ItemDefinitionGroup>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>wininet.lib;winmm.lib;shlwapi.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>wininet.lib;winmm.lib;shlwapi.lib;ole32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -42,5 +42,8 @@
     <ClInclude Include="src\console.h" />
     <ResourceCompile Include="thcrap_configure.rc" />
     <ClInclude Include="src\resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="thcrap_configure.manifest" />
   </ItemGroup>
 </Project>
