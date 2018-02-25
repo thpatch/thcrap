@@ -221,13 +221,11 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 	size_t list_count = json_array_size(list_order);
 	size_t i;
 	json_t *sel;
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
 
-	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
-
-	VLA(char, hr, csbi.dwSize.X + 1);
-	memset(hr, '=', csbi.dwSize.X);
-	hr[csbi.dwSize.X] = '\0';
+	int width = console_width();
+	VLA(char, hr, width + 1);
+	memset(hr, '=', width);
+	hr[width] = '\0';
 
 	// After filling the entire width, the cursor will have already moved to
 	// the next line, so we don't need to add a separate \n after the string.

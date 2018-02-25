@@ -106,7 +106,6 @@ static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pi
 	HRESULT hr = pfd->Show(con_hwnd());
 	if (SUCCEEDED(hr)) {
 		if (SUCCEEDED(pfd->GetResult(&psi))) {
-			PIDLIST_ABSOLUTE pidl = NULL;
 			SHGetIDListFromObject(psi, &pidl);
 			UnkRelease(&psi);
 			UnkRelease(&pfd);

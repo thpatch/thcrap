@@ -12,3 +12,4 @@ void console_print_percent(int pc);
 char console_ask_yn(const char* what);
 void con_end(void);
 HWND con_hwnd(void);
+int console_width(void);

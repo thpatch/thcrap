@@ -125,7 +125,7 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 	return TRUE;
 }
 
-#include <win32_utf8/entry_main.c>
+#include <win32_utf8/entry_winmain.c>
 
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
@@ -153,7 +153,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	char *run_cfg_str = NULL;
 
 	strings_mod_init();
-	log_init(1);
+	log_init(0);
 	console_init();
 
 	GetCurrentDirectory(cur_dir_len, cur_dir);

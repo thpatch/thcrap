@@ -597,3 +597,6 @@ void con_end(void) {
 HWND con_hwnd(void) {
 	return g_hwnd;
 }
+int console_width(void) {
+	return 80;
+}

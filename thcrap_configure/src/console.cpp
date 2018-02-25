@@ -117,3 +117,8 @@ void con_end(void) {}
 HWND con_hwnd(void) {
 	return GetConsoleWindow();
 }
+int console_width(void) {
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+	return csbi.dwSize.X;
+}
