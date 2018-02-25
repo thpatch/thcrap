@@ -31,14 +31,15 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		log_printf("Found %d versions of %s:\n\n", num_versions, id);
 
 		json_object_foreach(locs, loc, val) {
-			log_printf(" [%2d] %s: %s\n", ++i, loc, json_string_value(val));
+			++i;
+			con_clickable(i); log_printf(" [%2d] %s: %s\n", i, loc, json_string_value(val));
 		}
 		printf("\n");
 		while(1) {
 			char buf[16];
-			printf("Pick a version to run the patch on: (1 - %u): ", num_versions);
+			con_printf("Pick a version to run the patch on: (1 - %u): ", num_versions);
 
-			fgets(buf, sizeof(buf), stdin);
+			console_read(buf, sizeof (buf));
 			if(
 				(sscanf(buf, "%u", &loc_num) == 1) &&
 				(loc_num <= num_versions) &&
