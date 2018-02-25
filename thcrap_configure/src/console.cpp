@@ -108,7 +108,8 @@ void console_prepare_prompt(void) {
 	/* do nothing */
 }
 void console_print_percent(int pc) {
-	con_printf("%3d%%\b\b\b\b", pc);
+	if(pc>=0)
+		con_printf("%3d%%\b\b\b\b", pc);
 }
 char console_ask_yn(const char* what) {
 	return Ask(what);

@@ -328,10 +328,21 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		return TRUE;
 	}
 	
-	case APP_PROGRESS:
+	case APP_PROGRESS: {
+		HWND progress = GetDlgItem(hwndDlg, IDC_PROGRESS1);
+		if (wParam == -1) {
+			SetWindowLong(progress, GWL_STYLE, GetWindowLong(progress, GWL_STYLE) | PBS_MARQUEE);
+			SendMessage(progress, PBM_SETMARQUEE, 1, 0L);
+		}
+		else {
+			SendMessage(progress, PBM_SETMARQUEE, 0, 0L);
+			SetWindowLong(progress, GWL_STYLE, GetWindowLong(progress, GWL_STYLE) & ~PBS_MARQUEE);
+			SendMessage(progress, PBM_SETPOS, wParam, 0L);
+		}
+
 		SetMode(hwndDlg, ProgressBarMode);
-		SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS1), PBM_SETPOS, wParam, 0L);
 		return TRUE;
+	}
 	case WM_SIZE: {
 		RECT baseunits;
 		baseunits.left = baseunits.right = 100;
