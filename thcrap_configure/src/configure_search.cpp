@@ -218,15 +218,18 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	SHParseDisplayNameU(games_js_path, NULL, &initial_path, 0, NULL);
 	CoInitialize(NULL);
 	do {
-		char search_path[MAX_PATH * 2] = {0};
+		wchar_t search_path_w[MAX_PATH] = {0};
 		json_t *found = NULL;
 
 		PIDLIST_ABSOLUTE pidl = SelectFolder(initial_path, L"Root path for game search (cancel to search entire system):");
-		if (pidl && SHGetPathFromIDList(pidl, search_path)) {
-			PathAddBackslashA(search_path);
+		if (pidl && SHGetPathFromIDListW(pidl, search_path_w)) {
+			PathAddBackslashW(search_path_w);
 			CoTaskMemFree(pidl);
 		}
 
+		int search_path_len = wcslen(search_path_w) + 1;
+		VLA(char, search_path, search_path_len);
+		StringToUTF8(search_path, search_path_w, search_path_len);
 		repeat = 0;
 		log_printf(
 			"Searching games%s%s... this may take a while...\n\n",
@@ -234,6 +237,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			search_path[0] ? search_path: ""
 		);
 		found = SearchForGames(search_path, games);
+		VLA_FREE(search_path);
 		if(json_object_size(found)) {
 			char *games_js_str = NULL;
 			const char *id;
