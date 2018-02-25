@@ -27,6 +27,8 @@ using EventPtr = const std::shared_ptr<std::promise<T>>*;
 /* wparam = length of output string */
 /* lparam = const std::shared_ptr<std::promise<wchar_t*>>* */
 #define APP_GETINPUT (WM_APP+2)
+/* wparam = WM_CHAR */
+#define APP_LISTCHAR (WM_APP+3)
 #define APP_UPDATE (WM_APP+4)
 #define APP_PREUPDATE (WM_APP+5)
 /* lparam = const std::shared_ptr<std::promise<void>>* */
@@ -118,7 +120,20 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		return 0;
 	}
 	else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
+		// nescessary for control to recieve VK_RETURN
 		return origEditProc(hwnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
+	}
+	else if (uMsg == WM_KEYDOWN && (wParam == VK_UP || wParam == VK_DOWN)) {
+		// Switch focus to list on up/down arrows
+		HWND list = GetDlgItem(GetParent(hwnd), IDC_LIST1);
+		SetFocus(list);
+		return 0;
+	}
+	else if ((uMsg == WM_KEYDOWN || uMsg == WM_KEYUP) && (wParam == VK_PRIOR || wParam == VK_NEXT)) {
+		// Switch focus to list on up/down arrows
+		HWND list = GetDlgItem(GetParent(hwnd), IDC_LIST1);
+		SendMessage(list, uMsg, wParam, lParam);
+		return 0;
 	}
 	return origEditProc(hwnd,uMsg,wParam,lParam);
 }
@@ -126,11 +141,20 @@ LRESULT CALLBACK EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 WNDPROC origListProc = NULL;
 LRESULT CALLBACK ListProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	if (uMsg == WM_KEYDOWN && wParam == VK_RETURN) {
-		SendMessage(GetParent(hwnd), WM_COMMAND, MAKELONG(IDC_LIST1, LBN_DBLCLK), (LPARAM)hwnd);
+		// if edit already has something in it, clicking on the button
+		// otherwise doubleclick the list
+		int len = GetWindowTextLength(GetDlgItem(GetParent(hwnd), IDC_EDIT1));
+		SendMessage(GetParent(hwnd), WM_COMMAND, len ? MAKELONG(IDC_BUTTON1, BN_CLICKED) : MAKELONG(IDC_LIST1, LBN_DBLCLK), (LPARAM)hwnd);
 		return 0;
 	}
 	else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
+		// nescessary for control to recieve VK_RETURN
 		return origListProc(hwnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
+	}
+	else if (uMsg == WM_CHAR) {
+		// let parent dialog process the keypresses from list
+		SendMessage(GetParent(hwnd), APP_LISTCHAR, wParam, lParam);
+		return 0;
 	}
 	return origListProc(hwnd, uMsg, wParam, lParam);
 }
@@ -150,7 +174,6 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS1), PBM_SETRANGE, 0, MAKELONG(0, 100));
 		origEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_EDIT1), GWLP_WNDPROC, (LONG)EditProc);
 		origListProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_LIST1), GWLP_WNDPROC, (LONG)ListProc);
-
 
 		// set icon
 		hIconSm = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
@@ -223,6 +246,21 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			}
 		}
 		return FALSE;
+	case APP_LISTCHAR: {
+		HWND edit = GetDlgItem(hwndDlg, IDC_EDIT1);
+		if (CurrentMode == InputMode) {
+			SetFocus(edit);
+			SendMessage(edit, WM_CHAR, wParam, lParam);
+		}
+		else if (CurrentMode == AskYnMode) {
+			char c = wctob(towlower(wParam));
+			if (c == 'y' || c == 'n') {
+				SetMode(hwndDlg, NoMode);
+				SignalEvent(promiseyn, c);
+			}
+		}
+		return TRUE;
+	}
 	case APP_READQUEUE: {
 		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
 		std::lock_guard<std::mutex> lock(g_mutex);
