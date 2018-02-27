@@ -265,7 +265,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if (json_object_size(games) > 0 && (console_ask_yn("Create shortcuts?") == 'n' || !CreateShortcuts(run_cfg_fn, games))) {
+	if (json_object_size(games) > 0 && (console_ask_yn("Create shortcuts? (required for first run)") == 'n' || !CreateShortcuts(run_cfg_fn, games))) {
 		json_t *filter = json_object_get_keys_sorted(games);
 		log_printf("\nDownloading data specific to the located games...\n");
 		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
