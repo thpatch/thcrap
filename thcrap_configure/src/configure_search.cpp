@@ -235,7 +235,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			CoTaskMemFree(pidl);
 		}
 
-		int search_path_len = wcslen(search_path_w) + 1;
+		int search_path_len = wcslen(search_path_w)*UTF8_MUL + 1;
 		VLA(char, search_path, search_path_len);
 		StringToUTF8(search_path, search_path_w, search_path_len);
 		repeat = 0;
