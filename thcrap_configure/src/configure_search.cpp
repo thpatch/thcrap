@@ -87,12 +87,20 @@ int CALLBACK SetInitialBrowsePathProc(HWND hWnd, UINT uMsg, LPARAM lp, LPARAM pD
 #define UnkRelease(p) do { IUnknown** __p = (IUnknown**)(p); (*__p)->Release(); (*__p) = NULL; } while(0)
 
 static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
+	// Those two functions are absent in XP, so we have to load them dynamically
+	HMODULE shell32 = GetModuleHandle(L"Shell32.dll");
+	auto pSHCreateItemFromIDList = (HRESULT(WINAPI *)(PCIDLIST_ABSOLUTE, REFIID, void**))GetProcAddress(shell32, "SHCreateItemFromIDList");
+	auto pSHGetIDListFromObject = (HRESULT(WINAPI *)(IUnknown*, PIDLIST_ABSOLUTE*))GetProcAddress(shell32, "SHGetIDListFromObject");
+	if (!pSHCreateItemFromIDList || !pSHGetIDListFromObject) {
+		return -1;
+	}
+
 	IFileDialog *pfd = NULL;
 	CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd));
 	if (!pfd) return -1;
 
 	IShellItem* psi = NULL;
-	SHCreateItemFromIDList(initial_path, IID_PPV_ARGS(&psi));
+	pSHCreateItemFromIDList(initial_path, IID_PPV_ARGS(&psi));
 	if (!psi) {
 		UnkRelease(&pfd);
 		return -1;
@@ -107,7 +115,7 @@ static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pi
 	HRESULT hr = pfd->Show(con_hwnd());
 	if (SUCCEEDED(hr)) {
 		if (SUCCEEDED(pfd->GetResult(&psi))) {
-			SHGetIDListFromObject(psi, &pidl);
+			pSHGetIDListFromObject(psi, &pidl);
 			UnkRelease(&psi);
 			UnkRelease(&pfd);
 			return 0;
