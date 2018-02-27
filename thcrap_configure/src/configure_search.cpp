@@ -273,7 +273,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			log_printf("No new game locations found.\n");
 		} else {
 			log_printf("No game locations found.\n");
-			if(search_path[0]) {
+			if(search_path_w[0]) {
 				repeat = console_ask_yn("Search in a different directory?") == 'y';
 			}
 			if(!repeat) {
