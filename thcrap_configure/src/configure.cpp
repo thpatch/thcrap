@@ -7,6 +7,7 @@
 #include <thcrap/src/thcrap_update_wrapper.h>
 #include "configure.h"
 #include "repo.h"
+#include "console.h"
 
 typedef enum {
 	RUN_CFG_FN,
@@ -25,84 +26,18 @@ int file_write_error(const char *fn)
 		"or the file itself is write-protected.\n",
 		fn
 	);
-	if(!error_nag) {
+	if (!error_nag) {
 		log_printf("Writing is likely to fail for all further files as well.\n");
 		error_nag = 1;
 	}
-	return Ask("Continue configuration anyway?") == 'y';
-}
-
-char* console_read(char *str, int n)
-{
-	int ret;
-	int i;
-	fgets(str, n, stdin);
-	{
-		// Ensure UTF-8
-		VLA(wchar_t, str_w, n);
-		StringToUTF16(str_w, str, n);
-		StringToUTF8(str, str_w, n);
-		VLA_FREE(str_w);
-	}
-	// Get rid of the \n
-	for(i = 0; i < n; i++) {
-		if(str[i] == '\n') {
-			str[i] = 0;
-			return str;
-		}
-	}
-	while((ret = getchar()) != '\n' && ret != EOF);
-	return str;
-}
-
-// http://support.microsoft.com/kb/99261
-void cls(SHORT top)
-{
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	// here's where we'll home the cursor
-	COORD coordScreen = {0, top};
-
-	DWORD cCharsWritten;
-	// to get buffer info
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	// number of character cells in the current buffer
-	DWORD dwConSize;
-
-	// get the number of character cells in the current buffer
-	GetConsoleScreenBufferInfo(hConsole, &csbi);
-	dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
-
-	// fill the entire screen with blanks
-	FillConsoleOutputCharacter(
-		hConsole, TEXT(' '), dwConSize, coordScreen, &cCharsWritten
-	);
-	// get the current text attribute
-	GetConsoleScreenBufferInfo(hConsole, &csbi);
-
-	// now set the buffer's attributes accordingly
-	FillConsoleOutputAttribute(
-		hConsole, csbi.wAttributes, dwConSize, coordScreen, &cCharsWritten
-	);
-
-	// put the cursor at (0, 0)
-	SetConsoleCursorPosition(hConsole, coordScreen);
-	return;
-}
-
-// Because I've now learned how bad system("pause") can be
-void pause(void)
-{
-	int ret;
-	printf("Press ENTER to continue . . . ");
-	while((ret = getchar()) != '\n' && ret != EOF);
+	return console_ask_yn("Continue configuration anyway?") == 'y';
 }
 
 int file_write_text(const char *fn, const char *str)
 {
 	int ret;
 	FILE *file = fopen_u(fn, "wt");
-	if(!file) {
+	if (!file) {
 		return -1;
 	}
 	ret = fputs(str, file);
@@ -122,7 +57,7 @@ const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 	// If we have any translation patch, skip everything below that
 	json_array_foreach(sel_stack, i, sel) {
 		const char *patch_id = json_array_get_string(sel, 1);
-		if(!strnicmp(patch_id, "lang_", 5)) {
+		if (!strnicmp(patch_id, "lang_", 5)) {
 			skip = 1;
 			break;
 		}
@@ -130,19 +65,19 @@ const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
 
 	json_array_foreach(sel_stack, i, sel) {
 		const char *patch_id = json_array_get_string(sel, 1);
-		if(!patch_id) {
+		if (!patch_id) {
 			continue;
 		}
 
-		if(ret && ret[0]) {
+		if (ret && ret[0]) {
 			ret = strings_strcat(slot, "-");
 		}
 
-		if(!strnicmp(patch_id, "lang_", 5)) {
+		if (!strnicmp(patch_id, "lang_", 5)) {
 			patch_id += 5;
 			skip = 0;
 		}
-		if(!skip) {
+		if (!skip) {
 			ret = strings_strcat(slot, patch_id);
 		}
 	}
@@ -162,17 +97,18 @@ const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 			" (%s): ", run_cfg_fn
 		);
 		console_read(run_cfg_fn_new, sizeof(run_cfg_fn_new));
-		if(run_cfg_fn_new[0]) {
+		if (run_cfg_fn_new[0]) {
 			run_cfg_fn = strings_sprintf(slot_fn, "%s", run_cfg_fn_new);
 		}
 		run_cfg_fn_js = strings_sprintf(slot_js, "%s.js", run_cfg_fn);
-		if(PathFileExists(run_cfg_fn_js)) {
+		if (PathFileExists(run_cfg_fn_js)) {
 			log_printf("\"%s\" already exists. ", run_cfg_fn_js);
-			ret = Ask("Overwrite?") == 'n';
-		} else {
+			ret = console_ask_yn("Overwrite?") == 'n';
+		}
+		else {
 			ret = 0;
 		}
-	} while(ret);
+	} while (ret);
 	return run_cfg_fn;
 }
 
@@ -185,11 +121,11 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 	(void)patch; (void)patch_progress; (void)patch_total;
 	(void)fn; (void)ret; (void)param;
 	if (file_total)
-		printf("%3d%%\b\b\b\b", (int)file_progress * 100 / file_total);
+		console_print_percent((int)file_progress * 100 / file_total);
 	return TRUE;
 }
 
-#include <win32_utf8/entry_main.c>
+#include <win32_utf8/entry_winmain.c>
 
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
@@ -216,41 +152,19 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	const char *run_cfg_fn_js = NULL;
 	char *run_cfg_str = NULL;
 
-	wine_flag = GetProcAddress(
-		GetModuleHandleA("kernel32.dll"), "wine_get_unix_file_name"
-	) != 0;
-
 	strings_mod_init();
-	log_init(1);
-
-	// Necessary to correctly process *any* input of non-ASCII characters
-	// in the console subsystem
-	w32u8_set_fallback_codepage(GetOEMCP());
+	log_init(0);
+	console_init();
 
 	GetCurrentDirectory(cur_dir_len, cur_dir);
 	PathAddBackslashA(cur_dir);
 	str_slash_normalize(cur_dir);
 
-	// Maximize the height of the console window... unless we're running under
-	// Wine, where this 1) doesn't work and 2) messes up the console buffer
-	if(!wine_flag) {
-		CONSOLE_SCREEN_BUFFER_INFO sbi = {0};
-		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-		COORD largest = GetLargestConsoleWindowSize(console);
-		HWND console_wnd = GetConsoleWindow();
-		RECT console_rect;
-
-		GetWindowRect(console_wnd, &console_rect);
-		SetWindowPos(console_wnd, NULL, console_rect.left, 0, 0, 0, SWP_NOSIZE);
-		GetConsoleScreenBufferInfo(console, &sbi);
-		sbi.srWindow.Bottom = largest.Y - 4;
-		SetConsoleWindowInfo(console, TRUE, &sbi.srWindow);
-	}
-
-	if(argc > 1) {
+	if (argc > 1) {
 		start_repo = argv[1];
 	}
 
+	console_prepare_prompt();
 	log_printf(
 		"==========================================\n"
 		"Touhou Community Reliant Automatic Patcher - Patch configuration tool\n"
@@ -262,7 +176,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		"\n"
 		"\n"
 	);
-	if(thcrap_update_module()) {
+	if (thcrap_update_module()) {
 		log_printf(
 			"The configuration process has four steps:\n"
 			"\n"
@@ -282,7 +196,8 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			"subdirectories of the current directory, will be available for selection.\n",
 			start_repo
 		);
-	} else {
+	}
+	else {
 		log_printf(
 			"The configuration process has two steps:\n"
 			"\n"
@@ -301,20 +216,20 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	);
 	pause();
 
-	if(RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache)) {
+	if (RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache)) {
 		goto end;
 	}
-	if(RepoDiscoverFromLocal_wrapper(id_cache, url_cache)) {
+	if (RepoDiscoverFromLocal_wrapper(id_cache, url_cache)) {
 		goto end;
 	}
 	repo_list = RepoLoad();
-	if(!json_object_size(repo_list)) {
+	if (!json_object_size(repo_list)) {
 		log_printf("No patch repositories available...\n");
 		pause();
 		goto end;
 	}
 	sel_stack = SelectPatchStack(repo_list);
-	if(json_array_size(sel_stack)) {
+	if (json_array_size(sel_stack)) {
 		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
 		size_t i;
 		json_t *sel;
@@ -337,19 +252,20 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	run_cfg_fn_js = strings_storage_get(RUN_CFG_FN_JS, 0);
 
 	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
-	if(!file_write_text(run_cfg_fn_js, run_cfg_str)) {
+	if (!file_write_text(run_cfg_fn_js, run_cfg_str)) {
 		log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
 		log_printf(run_cfg_str);
 		log_printf("\n\n");
 		pause();
-	} else if(!file_write_error(run_cfg_fn_js)) {
+	}
+	else if (!file_write_error(run_cfg_fn_js)) {
 		goto end;
 	}
 
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if(json_object_size(games) > 0 && !CreateShortcuts(run_cfg_fn, games)) {
+	if (json_object_size(games) > 0 && (console_ask_yn("Create shortcuts? (required for first run)") == 'n' || !CreateShortcuts(run_cfg_fn, games))) {
 		json_t *filter = json_object_get_keys_sorted(games);
 		log_printf("\nDownloading data specific to the located games...\n");
 		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
@@ -380,5 +296,6 @@ end:
 	json_decref(id_cache);
 
 	thcrap_update_exit_wrapper();
+	con_end();
 	return 0;
 }

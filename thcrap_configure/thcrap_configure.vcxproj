@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -25,8 +25,8 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>wininet.lib;winmm.lib;shlwapi.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>wininet.lib;winmm.lib;shlwapi.lib;ole32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -38,6 +38,12 @@
     <ClCompile Include="src\configure_search.cpp" />
     <ClCompile Include="src\select.cpp" />
     <ClInclude Include="src\configure.h" />
+    <ClCompile Include="src\winconsole.cpp" />
+    <ClInclude Include="src\console.h" />
     <ResourceCompile Include="thcrap_configure.rc" />
+    <ClInclude Include="src\resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="thcrap_configure.manifest" />
   </ItemGroup>
 </Project>

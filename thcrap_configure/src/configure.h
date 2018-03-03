@@ -6,6 +6,7 @@
 #pragma once
 
 #include <array>
+#include "console.h"
 
 // Yes, I know this is the wrong way, but wineconsole...
 extern int wine_flag;
@@ -75,9 +76,5 @@ template <size_t N = 2> char Ask(
 	}
 	return '\0';
 }
-
-char* console_read(char *str, int n);
-void cls(SHORT y);
-void pause(void);
 
 json_t* ConfigureLocateGames(const char *games_js_path);

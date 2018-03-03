@@ -12,6 +12,8 @@
 
 #pragma once
 
+void log_set_hook(void(*hookproc)(const char*), void(*hookproc2)(const char*, size_t));
+
 /// ---------------
 /// Standard output
 /// ---------------

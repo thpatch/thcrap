@@ -20,7 +20,14 @@ static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
 static const char LOG[] = "thcrap_log.txt";
 static const char LOG_ROTATED[] = "thcrap_log.%d.txt";
 static const int ROTATIONS = 1; // Number of backups to keep
+static void (*log_print_hook)(const char*) = NULL;
+static void(*log_nprint_hook)(const char*, size_t) = NULL;
 // -----------------------
+
+void log_set_hook(void(*hookproc)(const char*), void(*hookproc2)(const char*,size_t)){
+	log_print_hook = hookproc;
+	log_nprint_hook = hookproc2;
+}
 
 // Rotation
 // --------
@@ -65,6 +72,9 @@ void log_print(const char *str)
 		fprintf(log_file, "%s", str);
 		fflush(log_file);
 	}
+	if(log_print_hook) {
+		log_print_hook(str);
+	}
 }
 
 void log_nprint(const char *str, size_t n)
@@ -74,6 +84,9 @@ void log_nprint(const char *str, size_t n)
 	}
 	if(log_file) {
 		fwrite(str, n, 1, log_file);
+	}
+	if (log_nprint_hook) {
+		log_nprint_hook(str, n);
 	}
 }
 
