@@ -150,24 +150,7 @@ int RemovePatch(json_t *sel_stack, size_t rem_id)
 
 int PrettyPrintPatch(const char *patch, const char *title)
 {
-#define LEFT_LEN 20
-
-	char left[LEFT_LEN + 1];
-	size_t patch_len = strlen(patch);
-
-	if(!patch || !title) {
-		return -1;
-	}
-	memset(left, ' ', LEFT_LEN);
-	if(patch_len < LEFT_LEN) {
-		memcpy(left, patch, patch_len);
-	} else {
-		memcpy(left, patch, LEFT_LEN);
-		strcpy(left + LEFT_LEN - strlen("... "), "... ");
-	}
-	left[LEFT_LEN] = 0;
-
-    con_printf("%s%s\n", left, title);
+    con_printf("%-20s %s\n", patch, title);
 	return 0;
 }
 
