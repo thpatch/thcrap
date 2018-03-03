@@ -14,8 +14,6 @@ typedef enum {
 	RUN_CFG_FN_JS
 } configure_slot_t;
 
-int wine_flag = 0;
-
 int file_write_error(const char *fn)
 {
 	static int error_nag = 0;

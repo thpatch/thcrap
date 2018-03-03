@@ -273,12 +273,6 @@ json_t* SelectPatchStack(json_t *repo_list)
 	}
 
 	runconfig_set(internal_cfg);
-	if(wine_flag) {
-		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		// Header (5) + separator (3) + sel_stack (2) + separator (3) + prompt (1)
-		COORD buffer = {80, buffer_lines + 5 + 3 + 2 + 3 + 1};
-		SetConsoleScreenBufferSize(hConsole, buffer);
-	}
 	while(1) {
 		char buf[16];
 		size_t list_pick;

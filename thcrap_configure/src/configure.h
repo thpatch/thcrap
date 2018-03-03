@@ -8,9 +8,6 @@
 #include <array>
 #include "console.h"
 
-// Yes, I know this is the wrong way, but wineconsole...
-extern int wine_flag;
-
 // Writes [str] to a new file name [fn] in text mode.
 int file_write_text(const char *fn, const char *str);
 
