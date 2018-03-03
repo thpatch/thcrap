@@ -92,7 +92,7 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 
 		json_object_foreach(games, key, cur_game) {
 			const char *game_fn = json_string_value(cur_game);
-			const char *link_fn = strings_sprintf(LINK_FN, "%s (%s).lnk", key, run_cfg_fn);
+			const char *link_fn = strings_sprintf(LINK_FN, "%s%s (%s).lnk", self_path, key, run_cfg_fn);
 			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
 
 			log_printf(".");
