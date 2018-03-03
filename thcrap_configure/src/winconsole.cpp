@@ -364,14 +364,14 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		MapDialogRect(hwndDlg, &rbutton1);
 		// Progress/staic size
 		rwide = {
-			PADDING ,
+			MARGIN,
 			origbottom - MARGIN - BTN_HEIGHT,
 			origright - MARGIN,
 			origbottom - MARGIN };
 		MapDialogRect(hwndDlg, &rwide);
 		// Edit size
 		redit = {
-			PADDING ,
+			MARGIN,
 			origbottom - MARGIN - BTN_HEIGHT,
 			origright - MARGIN - BTN_WIDTH - PADDING,
 			origbottom - MARGIN };
