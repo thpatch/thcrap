@@ -146,6 +146,7 @@ EXPORTS
 	log_mbox
 	log_vmboxf
 	log_mboxf
+	log_mbox_set_owner
 	log_init
 	log_exit
 

@@ -43,6 +43,8 @@ int log_mbox(const char *caption, const UINT type, const char *text);
 // Formatted
 int log_vmboxf(const char *caption, const UINT type, const char *text, va_list va);
 int log_mboxf(const char *caption, const UINT type, const char *text, ...);
+// Set the owner hwnd for the log_mbox* functions
+void log_mbox_set_owner(HWND hwnd);
 /// -------------
 
 void log_init(int console);

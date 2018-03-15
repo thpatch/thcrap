@@ -136,6 +136,7 @@ HWND WINAPI tsa_CreateWindowExA(
 		dwExStyle, lpClassName, window_title, dwStyle, X, Y,
 		nWidth, nHeight, hWndParent, hMenu, hInstance, lpParam
 	);
+	log_mbox_set_owner(ret);
 	VLA_FREE(custom_title);
 	return ret;
 }
