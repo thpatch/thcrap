@@ -305,6 +305,9 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 		file_rep_clear(fr);
 	}
 	file_rep_init(fr, filename);
+	if (fr->rep_buffer && fr->patch_size) {
+		fr->rep_buffer = realloc(fr->rep_buffer, POST_JSON_SIZE(fr));
+	}
 
 	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
 	if (fr->rep_buffer != NULL || fr->patch != NULL || fr->hooks != NULL || !json_is_false(dat_dump)) {
@@ -318,6 +321,48 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
+int BP_fragmented_open_file(x86_reg_t *regs, json_t *bp_info)
+{
+	file_rep_t *fr = *fr_ptr_tls_get();
+
+	// Parameters
+	// ----------
+	const char *file_name = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
+	void *file_object = (void*)json_object_get_immediate(bp_info, regs, "file_object");
+	size_t *file_size = json_object_get_pointer(bp_info, regs, "file_size");
+	// ----------
+
+	if (file_name) {
+		if (files_list.empty() == false) {
+			// We got a files list in the file header
+			fr = file_rep_get(file_name);
+			*fr_ptr_tls_get() = fr;
+		}
+		else {
+			// We didn't have a header, load the file now.
+			fr = (file_rep_t*)malloc(sizeof(*fr));
+			memset(fr, 0, sizeof(file_rep_t));
+			file_rep_clear(fr);
+			file_rep_init(fr, file_name);
+			if (fr->rep_buffer && fr->patch_size) {
+				fr->rep_buffer = realloc(fr->rep_buffer, POST_JSON_SIZE(fr));
+			}
+			*fr_ptr_tls_get() = fr;
+		}
+	}
+
+	if (fr && file_object) {
+		file_rep_set_object(fr, file_object);
+	}
+
+	if (fr && file_size) {
+		fr->orig_size = *file_size;
+		*file_size = max(*file_size, fr->pre_json_size) + fr->patch_size;
+	}
+
+	return 1;
+}
+
 int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = *fr_ptr_tls_get();
@@ -326,7 +371,6 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	const char *file_name   = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
 	const void *file_object = (const void*)json_object_get_immediate(bp_info, regs, "file_object");
-	int apply = json_boolean_value(json_object_get(bp_info, "apply"));
 	// Stack
 	// ----------
 	HANDLE       hFile                = ((HANDLE*)      regs->esp)[1];
@@ -344,8 +388,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		fr = file_rep_get_by_object(file_object);
 		*fr_ptr_tls_get() = fr;
 	}
-
-	if (!apply || !fr || !fr->name) {
+	if (!fr || !fr->name || !fr->orig_size) {
 		return 1;
 	}
 
@@ -381,7 +424,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 			}
 		}
 		// Patch the game
-		if (patchhooks_run(fr->hooks, fr->rep_buffer, POST_JSON_SIZE(fr), fr->orig_size, fr->name, fr->patch)) {
+		if (patchhooks_run(fr->hooks, fr->rep_buffer, POST_JSON_SIZE(fr), fr->pre_json_size, fr->name, fr->patch)) {
 			has_rep = 1;
 		}
 		fragmented_read_file_hook_t post_patch = (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_patch");
@@ -417,6 +460,31 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 	regs->eax = 1;
 	regs->esp += 5 * sizeof(DWORD);
 	return 0;
+}
+
+int BP_fragmented_close_file(x86_reg_t *regs, json_t *bp_info)
+{
+	file_rep_t *fr = *fr_ptr_tls_get();
+
+	// Parameters
+	// ----------
+	const void *file_object = (const void*)json_object_get_immediate(bp_info, regs, "file_object");
+	// ----------
+
+	if (file_object) {
+		file_rep_t *fr = file_rep_get_by_object(file_object);
+		if (fr) {
+			file_rep_set_object(fr, nullptr);
+		}
+	}
+
+	if (fr && files_list.empty() == false) {
+		// If we didn't use a header, we need to free the file_rep we allocated.
+		free(fr);
+	}
+
+	*fr_ptr_tls_get() = nullptr;
+	return 1;
 }
 
 int file_mod_init()

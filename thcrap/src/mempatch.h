@@ -31,19 +31,6 @@ typedef struct {
 	const void *new_ptr;
 } iat_detour_t;
 
-/// Low-level
-/// ---------
-// Replaces the function pointer of [pThunk] with [new_ptr]
-int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr);
-
-// Sets up [detour] by name or pointer.
-// Returns 1 if the function was found and detoured, 0 if it wasn't.
-int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour);
-int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour);
-/// ---------
-
-/// High-level
-/// ----------
 // Sets up [detour] using the most appropriate low-level detouring function.
 int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour);
 /// ----------

@@ -17,6 +17,8 @@
 #include "spellcards_generator.h"
 #include "bgm.h"
 #include "plugin.h"
+#include "nhtex.h"
+#include "th155_bmp_font.h"
 #include "crypt.h"
 
 // TODO: read the file names list in JSON format
@@ -31,20 +33,28 @@ int th135_init()
 	}
 	
 	patchhook_register("*/stage*.pl", patch_pl, nullptr);
-	patchhook_register("*/ed_*.pl", patch_pl, nullptr);
+	patchhook_register("*/ed*.pl", patch_pl, nullptr);
 	patchhook_register("*.csv", patch_tfcs, get_tfcs_size);
 	patchhook_register("*.dll", patch_dll, [](const char*, json_t*, size_t) -> size_t { return 0; });
 	patchhook_register("*.act", patch_act, nullptr);
 	patchhook_register("*.nut", patch_nut, nullptr);
 	patchhook_register("*.txt", patch_plaintext, nullptr);
+	patchhook_register("*.nhtex", patch_nhtex, get_nhtex_size);
 
-	jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",						{ "spells.js" }, spell_story_generator);
-	if (game_id >= TH145) {
+	if (game_id >= TH155) {
+		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							  "spells.js");
+		jsonvfs_game_add_map("data/story/spell_list/*.csv.jdiff",				  "spells.js");
+		patchhook_register("data/font/*.bmp", patch_bmp_font, get_bmp_font_size);
+	}
+	else if (game_id >= TH145) {
+		jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",					{ "spells.js" }, spell_story_generator);
 		jsonvfs_game_add("data/csv/spellcard/*.csv.jdiff",						{ "spells.js" }, spell_player_generator);
 		jsonvfs_game_add("data/system/char_select3/*/equip/*/000.png.csv.jdiff",{ "spells.js" }, spell_char_select_generator);
 	}
 	else {
-		jsonvfs_game_add("data/csv/Item*.csv.jdiff",							{ "spells.js" }, spell_player_generator);
+		jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",					{ "spells.js" }, spell_story_generator);
+		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						"spellcomments.js");
+		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						"spells.js");
 	}
 
 	char *bgm_pattern_fn = fn_for_game("data/bgm/bgm.csv.jdiff");
@@ -52,6 +62,11 @@ int th135_init()
 	jsonvfs_add(bgm_pattern_fn, { "themes.js", musiccmt_fn }, bgm_generator);
 	SAFE_FREE(musiccmt_fn);
 	SAFE_FREE(bgm_pattern_fn);
+	if (game_id >= TH155) {
+		char *staffroll_fn = fn_for_game("data/system/ed/staffroll.csv.jdiff");
+		jsonvfs_add_map(staffroll_fn, "themes.js");
+		SAFE_FREE(staffroll_fn);
+	}
 
 	json_t *fileslist = stack_game_json_resolve("fileslist.js", nullptr);
 	LoadFileNameListFromJson(fileslist);
@@ -68,7 +83,7 @@ file_rep_t *call_file_header(x86_reg_t *regs, json_t *bp_info, const char *filen
 	json_decref(new_bp_info);
 
 	file_rep_t *fr = file_rep_get(filename);
-	if (fr && (fr->rep_buffer || fr->patch)) {
+	if (fr && (fr->rep_buffer || fr->patch || fr->hooks)) {
 		return fr;
 	}
 	return nullptr;
@@ -193,7 +208,7 @@ int BP_th135_read_file(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	struct FileHeader *header = hash_to_file_header(hash);
-	if (!header || !header->fr || (!header->fr->rep_buffer && !header->fr->patch)) {
+	if (!header || !header->fr || (!header->fr->rep_buffer && !header->fr->patch && !header->fr->hooks)) {
 		// Nothing to patch.
 		return 1;
 	}

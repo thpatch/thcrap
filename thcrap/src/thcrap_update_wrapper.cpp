@@ -12,18 +12,19 @@
 #include <thcrap_update\src\loader_update.h>
 #include <thcrap_update\src\repo.h>
 
-static FARPROC load_thcrap_update_function(const char* func_name)
+HMODULE thcrap_update_module(void)
 {
 	static HMODULE hMod = (HMODULE)-1;
 
 	if (hMod == (HMODULE)-1) {
-#ifdef _DEBUG
-		hMod = LoadLibrary("thcrap_update_d.dll");
-#else
-		hMod = LoadLibrary("thcrap_update.dll");
-#endif
+		hMod = LoadLibrary("thcrap_update" DEBUG_OR_RELEASE ".dll");
 	}
+	return hMod;
+}
 
+static FARPROC load_thcrap_update_function(const char* func_name)
+{
+	auto hMod = thcrap_update_module();
 	if (hMod) {
 		return GetProcAddress(hMod, func_name);
 	}
@@ -100,3 +101,8 @@ json_t *patch_bootstrap_wrapper(const json_t *sel, json_t *repo_servers)
 	return patch_build(sel);
 }
 ASSERT_FUNCTION_PROTO(patch_bootstrap);
+
+void thcrap_update_exit_wrapper(void)
+{
+	CALL_WRAPPED_FUNCTION(thcrap_update_exit)
+}

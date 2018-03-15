@@ -16,13 +16,6 @@ json_load_params = {
 }
 
 
-def patch_files_filter(files):
-    """Filters all file names that can not be among the content of a patch."""
-    for i in files:
-        if i not in ['files.js', 'Thumbs.db']:
-            yield i
-
-
 json_dump_params = {
     'ensure_ascii': False,
     'indent': '\t',

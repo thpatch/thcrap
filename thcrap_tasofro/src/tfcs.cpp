@@ -86,15 +86,22 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 	}
 
 	// Patch as data/win/message/*.csv
+	unsigned int start;
+	if (game_id <= TH145) {
+		start = 1;
+	}
+	else {
+		start = 9;
+	}
 	json_t *patch_lines = json_object_get(patch_row, "lines");
-	if (patch_lines && line.size() <= 13 && line[4].empty() == false) {
+	if (patch_lines && line.size() <= start + 12 && line[start + 3].empty() == false) {
 		std::list<TasofroPl::ALine*> texts;
 		// We want to overwrite all the balloons with the user-provided ones,
 		// so we only need to put the 1st one, we can ignore the others.
-		TasofroPl::Text *text = new TasofroPl::Text(std::vector<std::string>({
-			line[4],
-			line[3]
-		}), "", TasofroPl::Text::WIN);
+		TasofroPl::AText *text = new TasofroPl::WinText(std::vector<std::string>({
+			line[start + 3],
+			line[start + 2]
+		}));
 		texts.push_back(text);
 		text->patch(texts, texts.begin(), "", patch_lines);
 
@@ -104,8 +111,8 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 				log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
 				break;
 			}
-			line[1 + 4 * i + 3] = it->get(0);
-			line[1 + 4 * i + 2] = it->get(1);
+			line[start + 4 * i + 3] = it->get(0);
+			line[start + 4 * i + 2] = it->get(1);
 			i++;
 		}
 	}
@@ -114,8 +121,25 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 	json_t *patch_col;
 	for (DWORD col = 0; col < nb_col; col++) {
 		patch_col = json_object_numkey_get(patch_row, col);
-		if (patch_col && json_is_string(patch_col)) {
-			line[col] = json_string_value(patch_col);
+		if (patch_col) {
+			if (json_is_string(patch_col)) {
+				line[col] = json_string_value(patch_col);
+			}
+			else if (json_is_array(patch_col)) {
+				line[col].clear();
+				bool add_eol = false;
+				size_t i;
+				json_t *it;
+				json_array_foreach(patch_col, i, it) {
+					if (add_eol) {
+						line[col] += "\n";
+					}
+					if (json_is_string(it)) {
+						line[col] += json_string_value(it);
+						add_eol = true;
+					}
+				}
+			}
 		}
 	}
 

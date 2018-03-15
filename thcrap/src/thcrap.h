@@ -23,7 +23,6 @@ extern "C" {
 
 #include <win32_utf8.h>
 #include <jansson.h>
-#include "macros.h"
 #include "exception.h"
 #include "jansson_ex.h"
 #include "global.h"
@@ -46,6 +45,7 @@ extern "C" {
 #include "repo.h"
 #include "search.h"
 #include "shelllink.h"
+#include "fonts_charset.h"
 
 #ifdef __cplusplus
 }

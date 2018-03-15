@@ -37,7 +37,20 @@ static tasofro_game_t game_id_from_string(const char *game)
 	else if (!strcmp(game, "th145")) {
 		return TH145;
 	}
+	else if (!strcmp(game, "th155")) {
+		return TH155;
+	}
 	return TH_FUTURE;
+}
+
+extern "C" __declspec(dllexport) const char* steam_appid(void)
+{
+	switch(game_id) {
+	case TH155:
+		return "716710";
+	default: // -Wswitch...
+		return nullptr;
+	}
 }
 
 int __stdcall thcrap_plugin_init()

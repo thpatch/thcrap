@@ -15,6 +15,9 @@
 extern "C" {
 #endif
 
+// Can be used to check if thcrap_update is available.
+HMODULE thcrap_update_module(void);
+
 #define DECLARE_WRAPPER(ret, func, ...) typedef ret (*func##_type)(__VA_ARGS__); ret func##_wrapper(__VA_ARGS__);
 
 DECLARE_WRAPPER(void*, ServerDownloadFile, json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param);
@@ -29,6 +32,8 @@ DECLARE_WRAPPER(int, RepoDiscoverAtURL, const char *start_url, json_t *id_cache,
 DECLARE_WRAPPER(int, RepoDiscoverFromLocal, json_t *id_cache, json_t *url_cache);
 
 DECLARE_WRAPPER(json_t*, patch_bootstrap, const json_t *sel, json_t *repo_servers);
+
+DECLARE_WRAPPER(void, thcrap_update_exit);
 
 #undef DECLARE_WRAPPER
 

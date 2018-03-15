@@ -25,7 +25,9 @@ EXPORTS
 	BP_file_load
 	BP_file_loaded
 	BP_file_header
+	BP_fragmented_open_file
 	BP_fragmented_read_file
+	BP_fragmented_close_file
 
 	; Breakpoints
 	; -----------
@@ -107,7 +109,6 @@ EXPORTS
 	json_array_get_hex
 	json_array_get_string
 	json_array_get_string_safe
-	json_array_from_wchar_array
 	json_flex_array_size
 	json_flex_array_get
 	json_flex_array_get_string_safe
@@ -130,8 +131,14 @@ EXPORTS
 	jsondata_mod_repatch
 	jsondata_mod_exit
 
+	; Fonts and charsets
+	; ------------------
+	font_has_character
+	font_create_for_character
+
 	; Logging
 	; -------
+	log_set_hook
 	log_print
 	log_nprint
 	log_vprintf
@@ -139,6 +146,7 @@ EXPORTS
 	log_mbox
 	log_vmboxf
 	log_mboxf
+	log_mbox_set_owner
 	log_init
 	log_exit
 
@@ -149,10 +157,6 @@ EXPORTS
 
 	; Detouring
 	; ---------
-	func_detour
-	func_detour_by_name
-	func_detour_by_ptr
-
 	detour_chain
 	detour_chain_w32u8
 	detour_top
@@ -247,6 +251,8 @@ EXPORTS
 	; -----
 	resolve_chain
 	resolve_chain_game
+	set_resolve_chain
+	set_resolve_chain_game
 	stack_chain_iterate
 
 	stack_json_resolve_chain
@@ -296,6 +302,8 @@ EXPORTS
 
 	; thcrap_update wrapper functions
 	; -------------------------------
+	thcrap_update_module
+
 	ServerDownloadFile_wrapper
 	update_filter_global_wrapper
 	update_filter_games_wrapper
@@ -305,11 +313,14 @@ EXPORTS
 	RepoDiscoverAtURL_wrapper
 	RepoDiscoverFromLocal_wrapper
 	patch_bootstrap_wrapper
+	thcrap_update_exit_wrapper
 
 	; Virtual file system
 	; -------------------
 	jsonvfs_add
 	jsonvfs_game_add
+	jsonvfs_add_map
+	jsonvfs_game_add_map
 	jsonvfs_get
 
 	; Win32 detours

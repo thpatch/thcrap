@@ -40,7 +40,7 @@ void png_error_callback(png_structp png_ptr, png_const_charp msg)
 }
 
 // PNG reading core is adapted from http://www.libpng.org/pub/png/book/chapter13.html
-BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp)
+BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp, bool gray_to_rgb)
 {
 	stack_chain_iterate_t sci = { 0 };
 	BYTE *file_buffer = nullptr;
@@ -54,13 +54,14 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
 		}
 	}
-	json_decref(chain);
 	if (!file_buffer) {
 		log_print("not found\n");
+		json_decref(chain);
 		return nullptr;
 	}
 	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
+	json_decref(chain);
 	file.buffer = file_buffer;
 	
 	if (!png_check_sig(file.buffer, 8)) {
@@ -94,8 +95,8 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 		png_set_expand(png_ptr);
 	if (bit_depth == 16)
 		png_set_strip_16(png_ptr);
-	if (color_type == PNG_COLOR_TYPE_GRAY ||
-		color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+	if (gray_to_rgb && (color_type == PNG_COLOR_TYPE_GRAY ||
+		color_type == PNG_COLOR_TYPE_GRAY_ALPHA))
 		png_set_gray_to_rgb(png_ptr);
 	png_read_update_info(png_ptr, info_ptr);
 
@@ -125,13 +126,14 @@ bool png_image_get_IHDR(const char *fn, uint32_t *width, uint32_t *height, uint8
 			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
 		}
 	}
-	json_decref(chain);
 	if (!file_buffer) {
 		log_print("not found\n");
+		json_decref(chain);
 		return false;
 	}
-	patch_print_fn(sci.patch_info, fn);
+	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
+	json_decref(chain);
 	file.buffer = file_buffer;
 
 	if (!png_check_sig(file.buffer, 8)) {

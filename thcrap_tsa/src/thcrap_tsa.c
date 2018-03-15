@@ -53,22 +53,30 @@ static tsa_game_t game_id_from_string(const char *game)
 	return TH_FUTURE;
 }
 
+int game_is_trial(void)
+{
+	static int trial = -2;
+	if(trial == -2) {
+		json_t *build = json_object_get(runconfig_get(), "build");
+		const char *build_str = json_string_value(build);
+		size_t build_len = json_string_length(build);
+
+		if(!build_str || build_len < 2) {
+			return trial = -1;
+		}
+		assert(
+			(build_str[0] == 'v' && (build_str[1] == '0' || build_str[1] == '1'))
+			|| !"invalid build format?"
+		);
+
+		trial = build_str[1] == '0';
+	}
+	return trial;
+}
+
 __declspec(dllexport) const char* steam_appid(void)
 {
-	json_t *build = json_object_get(runconfig_get(), "build");
-	const char *build_str = json_string_value(build);
-	size_t build_len = json_string_length(build);
-
-	if(!build_str || build_len < 2) {
-		return NULL;
-	}
-	assert(
-		(build_str[0] == 'v' && (build_str[1] == '0' || build_str[1] == '1'))
-		|| !"invalid build format?"
-	);
-
-	int trial = build_str[1] == '0';
-
+	int trial = game_is_trial();
 	switch(game_id) {
 	case TH16:
 		return trial ? "752490" : "745880";

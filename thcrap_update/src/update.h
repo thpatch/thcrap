@@ -27,8 +27,7 @@ typedef int (*file_callback_t)(const char *fn, get_result_t ret, DWORD file_prog
 typedef int (*patch_update_callback_t)(const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
 typedef int (*stack_update_callback_t)(DWORD stack_progress, DWORD stack_total, const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
 
-int http_init(void);
-void http_exit(void);
+void http_mod_exit(void);
 
 // Tries to download the given [fn] from any server in [servers].
 // If successful, [file_size] receives the size of the downloaded file.
@@ -59,6 +58,9 @@ int patch_update(
 );
 void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param);
 void global_update(stack_update_callback_t callback, void *callback_param);
+
+// Performs all cleanup that wouldn't have been safe to do inside DllMain().
+void thcrap_update_exit(void);
 
 #ifdef __cplusplus
 }

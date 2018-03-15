@@ -876,7 +876,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 			"Couldn't determine the entry point of %s!\n"
 			"\n"
 			"Seems as if %s won't work with this game on your system.\n",
-			PathFindFileNameA(module), PROJECT_NAME_SHORT()
+			PathFindFileNameU(module), PROJECT_NAME_SHORT()
 		);
 		return 1;
 	}
@@ -975,11 +975,7 @@ HANDLE WINAPI inject_CreateRemoteThread(
 	LPDWORD lpThreadId
 )
 {
-#ifdef _DEBUG
-	const char *thcrap_dll = "thcrap_d.dll";
-#else
-	const char *thcrap_dll = "thcrap.dll";
-#endif
+	const char *thcrap_dll = "thcrap" DEBUG_OR_RELEASE ".dll";
 	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
 	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
 	FARPROC kernel32_LoadLibraryW = GetProcAddress(hKernel32, "LoadLibraryW");

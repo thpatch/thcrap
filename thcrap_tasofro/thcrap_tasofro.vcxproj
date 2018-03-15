@@ -38,6 +38,7 @@
     <ClCompile Include="src\crypt.cpp" />
     <ClCompile Include="src\csv.cpp" />
     <ClCompile Include="src\cv0.cpp" />
+    <ClCompile Include="src\nhtex.cpp" />
     <ClCompile Include="src\nsml.cpp" />
     <ClCompile Include="src\nsml_images.cpp" />
     <ClCompile Include="src\pl.cpp" />
@@ -47,6 +48,7 @@
     <ClCompile Include="src\spellcards_generator.cpp" />
     <ClCompile Include="src\tfcs.cpp" />
     <ClCompile Include="src\th135.cpp" />
+    <ClCompile Include="src\th155_bmp_font.cpp" />
     <ClCompile Include="src\thcrap_tasofro.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -55,6 +57,7 @@
     <ClInclude Include="src\bgm.h" />
     <ClInclude Include="src\crypt.h" />
     <ClInclude Include="src\cv0.h" />
+    <ClInclude Include="src\nhtex.h" />
     <ClInclude Include="src\nsml_images.h" />
     <ClInclude Include="src\pl.h" />
     <ClInclude Include="src\plugin.h" />
@@ -62,7 +65,9 @@
     <ClInclude Include="src\spellcards_generator.h" />
     <ClInclude Include="src\tfcs.h" />
     <ClInclude Include="src\th135.h" />
+    <ClInclude Include="src\th155_bmp_font.h" />
     <ClInclude Include="src\thcrap_tasofro.h" />
+    <GAS Include="src\bp_bmpfont.asm" />
     <None Include="thcrap_tasofro.def" />
   </ItemGroup>
 </Project>

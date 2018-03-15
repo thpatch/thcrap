@@ -34,7 +34,7 @@ void log_print_rva_and_module(HMODULE mod, void *addr)
 		log_printf(
 			" (Rx%x) (%s)",
 			(uint8_t *)addr - (uint8_t *)mod,
-			PathFindFileNameA(crash_fn)
+			PathFindFileNameU(crash_fn)
 		);
 	}
 	VLA_FREE(crash_fn);

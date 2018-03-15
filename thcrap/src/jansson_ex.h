@@ -36,10 +36,6 @@ const char* json_array_get_string(const json_t *arr, const size_t ind);
 // if element #[ind] in [arr] is no valid string.
 const char* json_array_get_string_safe(const json_t *arr, const size_t ind);
 
-// Convert [argc] UTF-16 strings from [wargv] to a JSON array containing
-// UTF-8 strings. Useful for dealing with command-line parameters on Windows.
-json_t *json_array_from_wchar_array(int argc, const wchar_t *wargv[]);
-
 // "Flexible array" size - returns the array size if [json] is an array,
 // 1 if it's any other valid JSON object, and 0 if it's NULL.
 size_t json_flex_array_size(const json_t *json);

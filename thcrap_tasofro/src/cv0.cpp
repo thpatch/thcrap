@@ -109,18 +109,22 @@ std::string TasofroCv0::ALine::escape(const std::string& in) const
 		if (in[i] == ',') {
 			out += "\\,";
 		}
-		/*
 		else if (in.compare(i, 7, "{{ruby|") == 0) {
 			i += 7;
-			out += "\\R[";
-			while (i < in.size() && in.compare(i, 2, "}}") != 0) {
-				out += in[i];
+			std::string top;
+			std::string bot;
+			while (i < in.size() && in[i] != '|') {
+				bot += in[i];
 				i++;
 			}
-			out += ']';
+			i++;
+			while (i < in.size() && in.compare(i, 2, "}}") != 0) {
+				top += in[i];
+				i++;
+			}
+			out += std::string("<ruby ") + top + ">" + bot + "</ruby>";
 			i++; // Actually i += 2, because it will be incremented once again in the for loop.
 		}
-		*/
 		else {
 			out += in[i];
 		}
@@ -178,7 +182,14 @@ TasofroCv0::Text* TasofroCv0::Text::read(const char*& file, size_t& size)
 	Text* line = new Text();
 	line->content = ALine::readLine(file, size);
 	while (guessLineType(file, size) == TEXT) {
-		line->content += "\r\n" + ALine::readLine(file, size);
+		line->content += "\n" + ALine::readLine(file, size);
+		size_t i = line->content.length() - 1;
+		while (i > 0 && line->content[i] == '\r' || line->content[i] == '\n') {
+			i--;
+		}
+		if (line->content[i] == '\\') {
+			break;
+		}
 	}
 	return line;
 }
@@ -189,7 +200,7 @@ std::string TasofroCv0::Text::toString() const
 	return content;
 }
 
-void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, json_t *patch)
+void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, int textbox_size, json_t *patch)
 {
 	this->cur_line = 1;
 	this->nb_lines = 0;
@@ -198,7 +209,7 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 	size_t json_line_num;
 	json_t *json_line;
 	json_array_foreach(patch, json_line_num, json_line) {
-		if (this->parseCommand(patch, json_line_num) == true) {
+		if (this->parseCommand(patch, json_line_num, textbox_size) == true) {
 			continue;
 		}
 
@@ -212,12 +223,12 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 
 
 
-bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num)
+bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num, int textbox_size)
 {
 	const char *line;
 
 	line = json_array_get_string(patch, json_line_num);
-	if (strncmp(line, "<balloon>", 9) == 0) {
+	if (strcmp(line, "<balloon>") == 0) {
 		this->cur_line = 1;
 		this->nb_lines = 0;
 		return true;
@@ -227,11 +238,18 @@ bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num)
 		unsigned int i;
 		for (i = json_line_num + 1; i < json_array_size(patch); i++) {
 			line = json_array_get_string(patch, i);
-			if (strncmp(line, "<balloon>", 9) == 0) {
+			if (strcmp(line, "<balloon>") == 0) {
+				break;
+			}
+			else if (line[0] != '\0' && (line[strlen(line) - 1] == '@' || line[strlen(line) - 1] == '\\')) {
+				i++;
 				break;
 			}
 		}
 		this->nb_lines = i - json_line_num;
+		if (this->nb_lines > textbox_size) {
+			this->nb_lines = textbox_size;
+		}
 	}
 
 	return false;
@@ -250,10 +268,10 @@ void TasofroCv0::Text::patchLine(const char *text, std::list<ALine*>& file, cons
 {
 	std::string formattedText = text;
 	if (this->cur_line != this->nb_lines) {
-		formattedText += "\r\n";
+		formattedText += "\n";
 	}
-	else {
-		formattedText += "\\";
+	else if (formattedText.length() == 0 || (formattedText[formattedText.length() - 1] != '@' && formattedText[formattedText.length() - 1] != '\\')) {
+		formattedText += "\\\n";
 	}
 
 	this->content += formattedText;
@@ -261,11 +279,12 @@ void TasofroCv0::Text::patchLine(const char *text, std::list<ALine*>& file, cons
 
 void TasofroCv0::Text::endLine()
 {
-	if (this->cur_line != 3) {
+	if (this->cur_line != this->nb_lines) {
 		this->cur_line++;
 	}
 	else {
 		this->cur_line = 1;
+		this->nb_lines = 0;
 	}
 }
 
@@ -289,7 +308,7 @@ json_t *TasofroCv0::balloonNumberToLines(json_t *patch, size_t balloon_number)
 	return json_lines;
 }
 
-int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*fn, json_t *patch)
+int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	if (!patch) {
 		return 0;
@@ -304,9 +323,14 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*fn, 
 	}
 
 	size_t balloon_number = 1;
+	int textbox_size = 3;
 	for (std::list<TasofroCv0::ALine*>::iterator it = lines.begin(); it != lines.end(); ++it) {
 		TasofroCv0::ALine *line = *it;
-		if (line->getType() != TasofroCv0::TEXT) {
+		if (line->getType() == TasofroCv0::COMMAND && textbox_size != 4 && line->toString().compare(0, 3, "CG:") == 0) {
+			textbox_size = 4;
+			continue;
+		}
+		else if (line->getType() != TasofroCv0::TEXT) {
 			continue;
 		}
 
@@ -315,7 +339,7 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*fn, 
 		if (json_lines == nullptr) {
 			continue;
 		}
-		dynamic_cast<TasofroCv0::Text*>(line)->patch(lines, it, json_lines);
+		dynamic_cast<TasofroCv0::Text*>(line)->patch(lines, it, textbox_size, json_lines);
 	}
 
 	std::string str;
@@ -328,11 +352,64 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*fn, 
 		memcpy(file_out, str.c_str(), str.size());
 		file_out += str.size();
 		size_out -= str.size();
-		memcpy(file_out, "\r\n", 2);
-		file_out += 2;
-		size_out -= 2;
+		*file_out = '\n';
+		file_out++;
+		size_out--;
 	}
 	*file_out = '\0';
+
+	return 1;
+}
+
+/**
+  * Add a way to escape commas in the th105 cv0 parser.
+  *
+  * Returns:
+  * • 0 if the the current character is a backslash followed by a quote.
+  *   We overwrite the backslash and skip the code checking for the comma.
+  * • 1 otherwise, just let the game do its thing.
+  *
+  * Own JSON parameters
+  * -------------------
+  * Mandatory:
+  *
+  *	[string]
+  *		Current position of the parser in the cv0 file.
+  *		Type: immediate
+  *
+  *	[delim]
+  *		Character the game is looking for.
+  *     If the game doesn't try to kill our comma, no need to hide it.
+  *		Type: immediate
+  *
+  * Other breakpoints called
+  * ------------------------
+  *	None
+  */
+int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	char *string = (char*)json_object_get_immediate(bp_info, regs, "string");
+	char delim = (char)json_object_get_immediate(bp_info, regs, "delim");
+	// ----------
+
+	if (delim != ',') {
+		return 1;
+	}
+
+	if (string[0] == '\\' && string[1] == ',') {
+		// Erase the backslash
+		int i;
+		for (i = 0; string[i + 1] && string[i + 1] != '\n'; i++) {
+			string[i] = string[i + 1];
+		}
+		string[i] = string[i + 1];
+		// Ensure the test will fail
+		regs->eax = 0;
+		regs->ecx = 0;
+		return 0;
+	}
 
 	return 1;
 }

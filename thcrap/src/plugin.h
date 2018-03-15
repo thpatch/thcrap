@@ -82,6 +82,7 @@ void mod_func_run_all(const char *suffix, void *param);
 // exports, and calling its "init" and "detour" module functions.
 int plugin_init(HMODULE hMod);
 
-// Loads all thcrap plugins from the current directory.
-int plugins_load(void);
+// Loads all thcrap plugins from the given directory.
+int plugins_load(const char *dir);
+
 int plugins_close(void);

@@ -30,3 +30,11 @@ void runconfig_set(json_t *new_run_cfg);
 // • 3. The plain game ID
 // • 4. NULL
 const json_t *runconfig_title_get(void);
+
+// Convenience macro for binary file names that differ between Debug and
+// Release builds.
+#ifdef _DEBUG
+# define DEBUG_OR_RELEASE "_d"
+#else
+# define DEBUG_OR_RELEASE
+#endif

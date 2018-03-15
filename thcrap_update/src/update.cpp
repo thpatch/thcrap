@@ -13,7 +13,6 @@
 #include <zlib.h>
 #include "update.h"
 
-HINTERNET hHTTP = NULL;
 SRWLOCK inet_srwlock = {SRWLOCK_INIT};
 double perffreq;
 
@@ -27,8 +26,9 @@ typedef struct {
 	LONGLONG time_end;
 } download_context_t;
 
-int http_init(void)
+HINTERNET http_init(void)
 {
+	HINTERNET ret;
 	LARGE_INTEGER pf;
 	DWORD ignore = 1;
 	// DWORD timeout = 500;
@@ -51,24 +51,30 @@ int http_init(void)
 	QueryPerformanceFrequency(&pf);
 	perffreq = (double)pf.QuadPart;
 
-	hHTTP = InternetOpenA(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
-	if(!hHTTP) {
+	ret = InternetOpenU(agent, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+	if(!ret) {
 		// No internet access...?
-		return 1;
+		return nullptr;
 	}
 	/*
-	InternetSetOption(hHTTP, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hHTTP, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
-	InternetSetOption(hHTTP, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_SEND_TIMEOUT, &timeout, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_RECEIVE_TIMEOUT, &timeout, sizeof(DWORD));
 	*/
 
 	// This is necessary when Internet Explorer is set to "work offline"... which
 	// will essentially block all wininet HTTP accesses on handles that do not
 	// explicitly ignore this setting.
-	InternetSetOption(hHTTP, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
+	InternetSetOption(ret, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
 
 	VLA_FREE(agent);
-	return 0;
+	return ret;
+}
+
+HINTERNET* http_handle(void)
+{
+	static HINTERNET hInternet = http_init();
+	return &hInternet;
 }
 
 get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t callback, void *callback_param)
@@ -77,6 +83,7 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;
 	DWORD file_size_local = 0;
+	auto hHTTP = *http_handle();
 	HINTERNET hFile = NULL;
 
 	if(!hHTTP || !url) {
@@ -87,7 +94,10 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 	ZeroMemory(ctx, sizeof(download_context_t));
 
 	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_start);
-	hFile = InternetOpenUrl(hHTTP, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+	hFile = InternetOpenUrl(
+		hHTTP, url, NULL, 0,
+		INTERNET_FLAG_RELOAD | INTERNET_FLAG_KEEP_CONNECTION, 0
+	);
 	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_ping);
 	if(!hFile) {
 		// TODO: We should use FormatMessage() for both coverage and i18n
@@ -104,6 +114,9 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 			break;
 		case ERROR_INTERNET_TIMEOUT:
 			log_printf("timed out\n", inet_ret);
+			break;
+		case ERROR_INTERNET_UNRECOGNIZED_SCHEME:
+			log_print("Unknown protocol\n");
 			break;
 		default:
 			log_printf("WinInet error %d\n", inet_ret);
@@ -173,12 +186,13 @@ end:
 	return get_ret;
 }
 
-void http_exit(void)
+void http_mod_exit(void)
 {
-	if(hHTTP) {
+	auto phHTTP = http_handle();
+	if(*phHTTP) {
 		AcquireSRWLockExclusive(&inet_srwlock);
-		InternetCloseHandle(hHTTP);
-		hHTTP = NULL;
+		InternetCloseHandle(*phHTTP);
+		*phHTTP = nullptr;
 		ReleaseSRWLockExclusive(&inet_srwlock);
 	}
 }
@@ -385,16 +399,35 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 
 void servers_t::from(const json_t *servers)
 {
+	auto validate = [] (size_t pos, json_t *server) {
+		if(!json_is_string(server)) {
+			char *val_str = json_dumps(server, JSON_ENCODE_ANY);
+			log_printf(
+				"ERROR: Expected a server string at array position %u, got \"%s\"\n",
+				pos + 1, val_str
+			);
+			return false;
+		}
+		const stringref_t url = server;
+		const stringref_t PROTOCOL = "://";
+		int check_len = url.len - PROTOCOL.len;
+		bool valid = false;
+		for(decltype(check_len) i = 1; i <= check_len && !valid; i++) {
+			if(!memcmp(url.str + i, PROTOCOL.str, PROTOCOL.len)) {
+				valid = true;
+			}
+		}
+		if(!valid) {
+			log_printf("ERROR: not an URI: \"%s\"\n", url);
+			return false;
+		}
+		return true;
+	};
+
 	auto servers_len = json_array_size(servers);
 	for(size_t i = 0; i < servers_len; i++) {
 		json_t *val = json_array_get(servers, i);
-		if(!json_is_string(val)) {
-			char *val_str = json_dumps(val, JSON_ENCODE_ANY);
-			log_printf(
-				"ERROR: Expected a server string at array position %u, got \"%s\"\n",
-				i + 1, val_str
-			);
-		} else {
+		if(validate(i, val)) {
 			server_t server_new;
 			server_new.url = json_string_value(val);
 			server_new.new_session();

@@ -36,11 +36,8 @@ int __stdcall thcrap_plugin_init()
 	if (hModule != NULL) {
 		char filename[MAX_PATH];
 		GetModuleFileName(hModule, filename, MAX_PATH);
-#ifdef _DEBUG
-		if (strcmp(strrchr(filename, '\\'), "\\thcrap_update_d.dll") != 0) {
-#else
-		if (strcmp(strrchr(filename, '\\'), "\\thcrap_update.dll") != 0) {
-#endif
+		auto *intended_fn = "\\thcrap_update" DEBUG_OR_RELEASE ".dll";
+		if (strcmp(strrchr(filename, '\\'), intended_fn) != 0) {
 			return 1;
 		}
 	}
@@ -51,31 +48,21 @@ int __stdcall thcrap_plugin_init()
 	return 0;
 }
 
-int InitDll(HMODULE hDll)
+void thcrap_update_exit(void)
 {
-	http_init();
-	InitializeCriticalSection(&cs_update);
-	hModule = hDll;
-	return 0;
+	http_mod_exit();
 }
 
-void ExitDll(HMODULE hDll)
-{
-	DeleteCriticalSection(&cs_update);
-	http_exit();
-}
-
-// Yes, this _has_ to be included in every project.
-// Visual C++ won't use it when imported from a library
-// and just defaults to msvcrt's one in this case.
+// Do not call wininet functions in here!
 BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 {
 	switch(ulReasonForCall) {
 		case DLL_PROCESS_ATTACH:
-			InitDll(hDll);
+			InitializeCriticalSection(&cs_update);
+			hModule = hDll;
 			break;
 		case DLL_PROCESS_DETACH:
-			ExitDll(hDll);
+			DeleteCriticalSection(&cs_update);
 			break;
 	}
 	return TRUE;

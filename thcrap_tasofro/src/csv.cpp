@@ -152,5 +152,10 @@ int BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
 		*special_character = 'a'; // Just a plain, non-special character.
 		(*string)++; // Skip one of the 2 quotes
 	}
+
+	// I really don't know why this isn't in the original parser...
+	if (is_in_quote == 1 && (*character & 0xFF) == ',') {
+		*special_character = 'a'; // Just a plain, non-special character.
+	}
 	return 1;
 }

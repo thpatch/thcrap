@@ -302,7 +302,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	}
 
 	SetLastError(0);
-	HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), L"thcrap update UI");
+	HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), "thcrap update UI");
 	bool mapExists = GetLastError() == ERROR_ALREADY_EXISTS;
 	HWND *globalHwnd;
 	if (hMap != nullptr) {
