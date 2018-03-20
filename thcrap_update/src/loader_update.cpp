@@ -171,7 +171,8 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		hFont = CreateFontIndirectW(&nc_metrics.lfMessageFont);
 	}
 
-	state->hwnd[HWND_MAIN] = CreateWindowW(L"LoaderUpdateWindow", L"Touhou Community Reliant Automatic Patcher", WS_OVERLAPPED,
+	state->hwnd[HWND_MAIN] = CreateWindowW(L"LoaderUpdateWindow", L"Touhou Community Reliant Automatic Patcher",
+		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 		CW_USEDEFAULT, 0, 500, 285, NULL, NULL, hMod, state);
 	state->hwnd[HWND_LABEL_STATUS] = CreateWindowW(L"Static", L"Checking for updates...", WS_CHILD | WS_VISIBLE,
 		5, 5, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL_STATUS, hMod, NULL);
@@ -193,11 +194,13 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		CheckDlgButton(state->hwnd[HWND_MAIN], HWND_CHECKBOX, BST_CHECKED);
 	}
 	// @Nmlgc It will be nice if your smartdlg is *that* flexible
-	state->hwnd[HWND_LABEL4] = CreateWindowW(L"Static", L"Check for updates every                    minutes", WS_CHILD | WS_VISIBLE | (state->background_updates ? 0 : WS_DISABLED),
+	state->hwnd[HWND_LABEL4] = CreateWindowW(L"Static", L"Check for updates every                    minutes",
+		WS_CHILD | WS_VISIBLE | (state->background_updates ? 0 : WS_DISABLED),
 		5, 205, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL4, hMod, NULL);
 	state->hwnd[HWND_EDIT] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | ES_NUMBER | (state->background_updates ? 0 : WS_DISABLED),
 		155, 205, 35, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT, hMod, NULL);
-	state->hwnd[HWND_UPDOWN] = CreateWindowW(UPDOWN_CLASSW, NULL, WS_CHILD | WS_VISIBLE | UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_NOTHOUSANDS | UDS_ARROWKEYS | (state->background_updates ? 0 : WS_DISABLED),
+	state->hwnd[HWND_UPDOWN] = CreateWindowW(UPDOWN_CLASSW, NULL,
+		WS_CHILD | WS_VISIBLE | UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_NOTHOUSANDS | UDS_ARROWKEYS | (state->background_updates ? 0 : WS_DISABLED),
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, state->hwnd[HWND_MAIN], (HMENU)HWND_UPDOWN, hMod, NULL);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETBUDDY, (WPARAM)state->hwnd[HWND_EDIT], 0);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
