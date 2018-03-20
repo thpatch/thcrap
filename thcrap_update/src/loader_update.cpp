@@ -244,8 +244,6 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 	const unsigned int format3_len = strlen(format3) + strlen(fn) + 2 * 10 + 1;
 	VLA(char, buffer, max(format1_len, max(format2_len, format3_len)));
 
-	printf("Progress callback: stack=%u/%u, patch=%u/%u, file=%u/%u, ret=%d\n",
-		stack_progress, stack_total, patch_progress, patch_total, file_progress, file_total, ret);
 	if (state->state == STATE_INIT && ret == GET_OK) {
 		SetWindowTextW(state->hwnd[HWND_LABEL_STATUS], L"Updating core files...");
 		state->state = STATE_CORE_UPDATE;
@@ -384,7 +382,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	bool game_started = state.game_started;
 	state.game_started = true;
 	LeaveCriticalSection(&state.cs);
-	if (false && game_started == false) {
+	if (game_started == false) {
 		ret = thcrap_inject_into_new(exe_fn, args);
 	}
 	if (state.background_updates) {
