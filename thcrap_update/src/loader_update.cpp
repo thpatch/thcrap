@@ -274,7 +274,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	json_t *old_cfg = runconfig_get();
 	json_object_merge(game, old_cfg);
 	runconfig_set(game);
-	json_decref(old_cfg);
 
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);

@@ -192,5 +192,6 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);
+	runconfig_set(NULL);
 	return ret;
 }
