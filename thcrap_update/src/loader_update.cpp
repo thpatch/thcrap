@@ -115,6 +115,23 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 				}
 			}
 			break;
+
+		case HWND_BUTTON_EXPAND_LOGS:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				if (IsWindowVisible(state->hwnd[HWND_EDIT_LOGS])) {
+					// Hide log window
+					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 285, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+					ShowWindow(state->hwnd[HWND_EDIT_LOGS], SW_HIDE);
+					SetWindowTextW(state->hwnd[HWND_BUTTON_EXPAND_LOGS], L"Display logs");
+				}
+				else {
+					// Show log window
+					ShowWindow(state->hwnd[HWND_EDIT_LOGS], SW_SHOW);
+					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 390, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+					SetWindowTextW(state->hwnd[HWND_BUTTON_EXPAND_LOGS], L"Hide logs");
+				}
+			}
+			break;
 		}
 		break;
 
@@ -155,7 +172,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	}
 
 	state->hwnd[HWND_MAIN] = CreateWindowW(L"LoaderUpdateWindow", L"Touhou Community Reliant Automatic Patcher", WS_OVERLAPPED,
-		CW_USEDEFAULT, 0, 500, 390, NULL, NULL, hMod, state);
+		CW_USEDEFAULT, 0, 500, 285, NULL, NULL, hMod, state);
 	state->hwnd[HWND_LABEL_STATUS] = CreateWindowW(L"Static", L"Checking for updates...", WS_CHILD | WS_VISIBLE,
 		5, 5, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL_STATUS, hMod, NULL);
 	state->hwnd[HWND_LABEL1] = CreateWindowW(L"Static", L"", WS_CHILD | WS_VISIBLE,
@@ -191,7 +208,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		168, 230, 153, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_UPDATE, hMod, NULL);
 	state->hwnd[HWND_BUTTON_RUN] = CreateWindowW(L"Button", L"Run the game", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
 		331, 230, 153, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_RUN, hMod, NULL);
-	state->hwnd[HWND_EDIT_LOGS] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+	state->hwnd[HWND_EDIT_LOGS] = CreateWindowW(L"Edit", L"", WS_CHILD | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
 		5, 255, 480, 100, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_LOGS, hMod, NULL);
 
 	if (hFont) {
