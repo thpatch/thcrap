@@ -27,6 +27,8 @@ enum {
 	HWND_UPDOWN,
 	HWND_BUTTON_UPDATE,
 	HWND_BUTTON_RUN,
+	HWND_BUTTON_EXPAND_LOGS,
+	HWND_EDIT_LOGS,
 	HWND_END
 };
 
@@ -153,7 +155,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	}
 
 	state->hwnd[HWND_MAIN] = CreateWindowW(L"LoaderUpdateWindow", L"Touhou Community Reliant Automatic Patcher", WS_OVERLAPPED,
-		CW_USEDEFAULT, 0, 500, 285, NULL, NULL, hMod, state);
+		CW_USEDEFAULT, 0, 500, 390, NULL, NULL, hMod, state);
 	state->hwnd[HWND_LABEL_STATUS] = CreateWindowW(L"Static", L"Checking for updates...", WS_CHILD | WS_VISIBLE,
 		5, 5, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL_STATUS, hMod, NULL);
 	state->hwnd[HWND_LABEL1] = CreateWindowW(L"Static", L"", WS_CHILD | WS_VISIBLE,
@@ -183,10 +185,14 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETBUDDY, (WPARAM)state->hwnd[HWND_EDIT], 0);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETRANGE, 0, MAKELPARAM(UD_MAXVAL, 0));
+	state->hwnd[HWND_BUTTON_EXPAND_LOGS] = CreateWindowW(L"Button", L"Display logs", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+		5, 230, 153, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_EXPAND_LOGS, hMod, NULL);
 	state->hwnd[HWND_BUTTON_UPDATE] = CreateWindowW(L"Button", L"Check for updates", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
-		5, 230, 235, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_UPDATE, hMod, NULL);
+		168, 230, 153, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_UPDATE, hMod, NULL);
 	state->hwnd[HWND_BUTTON_RUN] = CreateWindowW(L"Button", L"Run the game", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
-		250, 230, 235, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_RUN, hMod, NULL);
+		331, 230, 153, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_RUN, hMod, NULL);
+	state->hwnd[HWND_EDIT_LOGS] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
+		5, 255, 480, 100, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_LOGS, hMod, NULL);
 
 	if (hFont) {
 		SendMessageW(state->hwnd[HWND_MAIN], WM_SETFONT, (WPARAM)hFont, 0);
@@ -199,6 +205,8 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		SendMessageW(state->hwnd[HWND_EDIT], WM_SETFONT, (WPARAM)hFont, 0);
 		SendMessageW(state->hwnd[HWND_BUTTON_UPDATE], WM_SETFONT, (WPARAM)hFont, 0);
 		SendMessageW(state->hwnd[HWND_BUTTON_RUN], WM_SETFONT, (WPARAM)hFont, 0);
+		SendMessageW(state->hwnd[HWND_BUTTON_EXPAND_LOGS], WM_SETFONT, (WPARAM)hFont, 0);
+		SendMessageW(state->hwnd[HWND_EDIT_LOGS], WM_SETFONT, (WPARAM)hFont, 0);
 	}
 
 	ShowWindow(state->hwnd[HWND_MAIN], SW_SHOW);
@@ -236,6 +244,8 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 	const unsigned int format3_len = strlen(format3) + strlen(fn) + 2 * 10 + 1;
 	VLA(char, buffer, max(format1_len, max(format2_len, format3_len)));
 
+	printf("Progress callback: stack=%u/%u, patch=%u/%u, file=%u/%u, ret=%d\n",
+		stack_progress, stack_total, patch_progress, patch_total, file_progress, file_total, ret);
 	if (state->state == STATE_INIT && ret == GET_OK) {
 		SetWindowTextW(state->hwnd[HWND_LABEL_STATUS], L"Updating core files...");
 		state->state = STATE_CORE_UPDATE;
@@ -243,7 +253,7 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 
 	sprintf(buffer, format1, patch_name, stack_progress + 1, stack_total);
 	SetWindowTextU(state->hwnd[HWND_LABEL1], buffer);
-	sprintf(buffer, format2, patch_progress + 1, patch_total);
+	sprintf(buffer, format2, patch_progress, patch_total);
 	SetWindowTextU(state->hwnd[HWND_LABEL2], buffer);
 	sprintf(buffer, format3, fn, file_progress, file_total);
 	SetWindowTextU(state->hwnd[HWND_LABEL3], buffer);
@@ -256,6 +266,23 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 		return FALSE;
 	}
 	return TRUE;
+}
+
+static HWND hLogEdit;
+void log_callback(const char* text)
+{
+	SendMessageA(hLogEdit, EM_SETSEL, 0, -1);
+	SendMessageA(hLogEdit, EM_SETSEL, -1, -1);
+	SendMessageA(hLogEdit, EM_REPLACESEL, 0, (LPARAM)text);
+}
+
+void log_ncallback(const char* text, size_t len)
+{
+	VLA(char, ntext, len + 1);
+	memcpy(ntext, text, len);
+	ntext[len] = '\0';
+	log_callback(ntext);
+	VLA_FREE(ntext);
 }
 
 BOOL loader_update_with_UI(const char *exe_fn, char *args)
@@ -324,6 +351,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	if (globalHwnd) {
 		*globalHwnd = state.hwnd[HWND_MAIN];
 	}
+	hLogEdit = state.hwnd[HWND_EDIT_LOGS];
+	log_set_hook(log_callback, log_ncallback);
 
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 
@@ -355,7 +384,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	bool game_started = state.game_started;
 	state.game_started = true;
 	LeaveCriticalSection(&state.cs);
-	if (game_started == false) {
+	if (false && game_started == false) {
 		ret = thcrap_inject_into_new(exe_fn, args);
 	}
 	if (state.background_updates) {
@@ -371,8 +400,18 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 			EnterCriticalSection(&state.cs);
 			time_between_updates = state.time_between_updates;
 			LeaveCriticalSection(&state.cs);
+
+			// Display the "Update finished" message
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], TRUE);
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
+			SetWindowTextW(state.hwnd[HWND_LABEL1], L"");
+			SetWindowTextW(state.hwnd[HWND_LABEL2], L"");
+			SetWindowTextW(state.hwnd[HWND_LABEL3], L"");
+			SendMessage(state.hwnd[HWND_PROGRESS1], PBM_SETPOS, 100, 0);
+			SendMessage(state.hwnd[HWND_PROGRESS2], PBM_SETPOS, 100, 0);
+			SendMessage(state.hwnd[HWND_PROGRESS3], PBM_SETPOS, 100, 0);
+
+			// Wait until the next update
 			wait_ret = WaitForMultipleObjects(2, handles, FALSE, time_between_updates * 60 * 1000);
 		} while (wait_ret == WAIT_OBJECT_0 + 1 || wait_ret == WAIT_TIMEOUT);
 	}
