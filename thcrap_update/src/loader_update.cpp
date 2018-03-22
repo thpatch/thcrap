@@ -276,9 +276,9 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 	sprintf(buffer, format3, fn, file_progress, file_total);
 	SetWindowTextU(state->hwnd[HWND_LABEL3], buffer);
 
-	SendMessage(state->hwnd[HWND_PROGRESS1], PBM_SETPOS, stack_progress * 100 / stack_total, 0);
-	SendMessage(state->hwnd[HWND_PROGRESS2], PBM_SETPOS, patch_progress * 100 / patch_total, 0);
-	SendMessage(state->hwnd[HWND_PROGRESS3], PBM_SETPOS, file_progress * 100 / file_total, 0);
+	SendMessage(state->hwnd[HWND_PROGRESS1], PBM_SETPOS, stack_total ? stack_progress * 100 / stack_total : 0, 0);
+	SendMessage(state->hwnd[HWND_PROGRESS2], PBM_SETPOS, patch_total ? patch_progress * 100 / patch_total : 0, 0);
+	SendMessage(state->hwnd[HWND_PROGRESS3], PBM_SETPOS, file_total  ? file_progress  * 100 / file_total  : 0, 0);
 
 	if (state->cancel_update) {
 		return FALSE;
