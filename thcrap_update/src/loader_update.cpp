@@ -79,7 +79,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 				EnterCriticalSection(&state->cs);
 				state->game_started = true;
 				LeaveCriticalSection(&state->cs);
-				thcrap_inject_into_new(state->exe_fn, state->args);
+				thcrap_inject_into_new(state->exe_fn, state->args, NULL, NULL);
 			}
 			break;
 
@@ -303,7 +303,8 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		331, 105, 153, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_RUN, hMod, NULL);
 
 	// Settings and logs
-	state->hwnd[HWND_CHECKBOX_UPDATE_AT_EXIT] = CreateWindowW(L"Button", L"Install updates after running the game", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+	state->hwnd[HWND_CHECKBOX_UPDATE_AT_EXIT] = CreateWindowW(L"Button", L"Install updates after running the game (requires a restart)",
+		WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
 		5, 145, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_UPDATE_AT_EXIT, hMod, NULL);
 	if (state->update_at_exit) {
 		CheckDlgButton(state->hwnd[HWND_MAIN], HWND_CHECKBOX_UPDATE_AT_EXIT, BST_CHECKED);
@@ -491,6 +492,18 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	hLogEdit = state.hwnd[HWND_EDIT_LOGS];
 	log_set_hook(log_callback, log_ncallback);
 
+	if (state.update_at_exit) {
+		EnterCriticalSection(&state.cs);
+		// We didn't enable the "start game" button yet, the game can't be running.
+		state.game_started = true;
+		LeaveCriticalSection(&state.cs);
+
+		SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Waiting until the game exits...");
+		HANDLE hProcess;
+		ret = thcrap_inject_into_new(exe_fn, args, &hProcess, NULL);
+		WaitForSingleObject(hProcess, INFINITE);
+	}
+
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 
 	// Update the thcrap engine
@@ -522,7 +535,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	state.game_started = true;
 	LeaveCriticalSection(&state.cs);
 	if (game_started == false) {
-		ret = thcrap_inject_into_new(exe_fn, args);
+		ret = thcrap_inject_into_new(exe_fn, args, NULL, NULL);
 	}
 	if (state.background_updates) {
 		int time_between_updates;

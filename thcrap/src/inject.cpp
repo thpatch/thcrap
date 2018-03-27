@@ -739,7 +739,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 	return ret;
 }
 
-BOOL thcrap_inject_into_new(const char *exe_fn, char *args)
+BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HANDLE *hThread)
 {
 	int ret = 0;
 	STRLEN_DEC(exe_fn);
@@ -786,6 +786,19 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args)
 	}
 	VLA_FREE(exe_fn_local);
 	VLA_FREE(exe_dir_local);
+
+	if (hProcess) {
+		*hProcess = pi.hProcess;
+	}
+	else {
+		CloseHandle(pi.hProcess);
+	}
+	if (hThread) {
+		*hThread = pi.hThread;
+	}
+	else {
+		CloseHandle(pi.hThread);
+	}
 	return ret;
 }
 

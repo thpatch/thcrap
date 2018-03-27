@@ -77,4 +77,4 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn);
 
 // Starts [exe_fn] as a new process with the given command-line arguments, and
 // injects thcrap with the current run configuration into it.
-BOOL thcrap_inject_into_new(const char *exe_fn, char *args);
+BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HANDLE *hThread);
