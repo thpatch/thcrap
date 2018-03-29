@@ -1,6 +1,6 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Update Plugin
+  * Update module
   *
   * ----
   *

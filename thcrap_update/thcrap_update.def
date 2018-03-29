@@ -1,6 +1,5 @@
 LIBRARY
 EXPORTS
-	thcrap_plugin_init	@1
 	thcrap_update_exit
 
 	; TODO: Rename and remove after moving to a separate updater process
@@ -13,9 +12,6 @@ EXPORTS
 	patch_bootstrap
 	patch_update
 	stack_update
-
-	UpdateThread
-	BP_update_poll
 
 	RepoDiscoverAtURL
 	RepoDiscoverFromLocal

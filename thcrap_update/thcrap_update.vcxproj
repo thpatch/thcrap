@@ -38,9 +38,11 @@
     <ClCompile Include="src\repo.cpp" />
     <ClCompile Include="src\self.cpp" />
     <ClCompile Include="src\thcrap_update.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\update.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\update.cpp" />
     <ClInclude Include="src\loader_update.h" />
     <ClInclude Include="src\notify.h" />
     <ClInclude Include="src\repo.h" />
