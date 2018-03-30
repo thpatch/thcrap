@@ -418,19 +418,20 @@ void log_ncallback(const char* text, size_t len)
 BOOL loader_update_with_UI(const char *exe_fn, char *args)
 {
 	loader_update_state_t state;
-	json_t *game;
 	BOOL ret = 0;
 
 	patches_init(json_object_get_string(runconfig_get(), "run_cfg_fn"));
 	stack_show_missing();
 
-	game = identify(exe_fn);
-	if(game == nullptr) {
-		return 1;
+	{
+		json_t *game = identify(exe_fn);
+		if (game) {
+			json_t *old_cfg = runconfig_get();
+			json_object_merge(game, old_cfg);
+			runconfig_set(game);
+			json_decref(game);
+		}
 	}
-	json_t *old_cfg = runconfig_get();
-	json_object_merge(game, old_cfg);
-	runconfig_set(game);
 
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);
@@ -525,10 +526,15 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		goto end;
 	}
 
-	SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
-	EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
-	state.state = STATE_PATCHES_UPDATE;
-	stack_update(update_filter_games, json_object_get(game, "game"), loader_update_progress_callback, &state);
+	{
+		json_t *game = json_object_get(runconfig_get(), "game");
+		if (game) {
+			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
+			EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
+			state.state = STATE_PATCHES_UPDATE;
+			stack_update(update_filter_games, game, loader_update_progress_callback, &state);
+		}
+	}
 
 	EnterCriticalSection(&state.cs);
 	bool game_started = state.game_started;
@@ -580,6 +586,5 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	CloseHandle(state.hThread);
 	CloseHandle(state.event_created);
 	CloseHandle(state.event_require_update);
-	json_decref(game);
 	return ret;
 }
