@@ -28,13 +28,17 @@
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tasofro.def</ModuleDefinitionFile>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;thcrap_d.lib;libpng16_d.lib;act_nut_lib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;thcrap.lib;libpng16.lib;act_nut_lib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;gdiplus.lib;thcrap_d.lib;libpng16_d.lib;act_nut_lib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;gdiplus.lib;thcrap.lib;libpng16.lib;act_nut_lib.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\act-nut.cpp" />
     <ClCompile Include="src\bgm.cpp" />
+    <ClCompile Include="src\bmpfont_create.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\bmpfont_create_gdiplus.cpp" />
     <ClCompile Include="src\crypt.cpp" />
     <ClCompile Include="src\csv.cpp" />
     <ClCompile Include="src\cv0.cpp" />
@@ -55,6 +59,7 @@
     <ClCompile Include="src\files_list.cpp" />
     <ClInclude Include="src\act-nut.h" />
     <ClInclude Include="src\bgm.h" />
+    <ClInclude Include="src\bmpfont_create.h" />
     <ClInclude Include="src\crypt.h" />
     <ClInclude Include="src\cv0.h" />
     <ClInclude Include="src\nhtex.h" />

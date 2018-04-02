@@ -11,9 +11,15 @@
 #include "./png.h"
 #include "thcrap_tasofro.h"
 #include "th155_bmp_font.h"
+#include "bmpfont_create.h"
 
 size_t get_bmp_font_size(const char *fn, json_t *patch, size_t patch_size)
 {
+	if (patch) {
+		// TODO: generate and cache the file here, return the true size.
+		return 64 * 1024 * 1024;
+	}
+
 	size_t size = 0;
 
 	VLA(char, fn_png, strlen(fn) + 5);
@@ -39,11 +45,115 @@ size_t get_bmp_font_size(const char *fn, json_t *patch, size_t patch_size)
 
 	VLA_FREE(fn_png);
 	VLA_FREE(fn_bin);
+
 	return size;
+}
+
+void add_json_file(bool *chars_list, int& chars_list_count, const char *file)
+{
+	json_t *spells = stack_json_resolve(file, nullptr);
+	const char *key;
+	json_t *it;
+	json_object_foreach(spells, key, it) {
+		if (json_is_string(it)) {
+			const char *str = json_string_value(it);
+			WCHAR_T_DEC(str);
+			WCHAR_T_CONV(str);
+			for (int i = 0; str_w[i]; i++) {
+				if (chars_list[str_w[i]] == false) {
+					chars_list[str_w[i]] = true;
+					chars_list_count++;
+				}
+			}
+			WCHAR_T_FREE(str);
+		}
+	}
+}
+
+// Returns the number of elements set to true in the list
+int fill_chars_list(bool *chars_list, void *file_inout, size_t size_in, json_t *files)
+{
+	// First, add the characters of the original font - we will need them if we display unpatched text.
+	BITMAPFILEHEADER *bpFile = (BITMAPFILEHEADER*)file_inout;
+	BYTE *metadata = (BYTE*)file_inout + bpFile->bfSize;
+	int nb_chars = *(uint16_t*)(metadata + 2);
+	char *chars = (char*)(metadata + 4);
+	int chars_list_count = 0;
+
+	for (int i = 0; i < nb_chars; i++) {
+		char cstr[2];
+		WCHAR wstr[3];
+		if (chars[i * 2 + 1] != 0)
+		{
+			cstr[0] = chars[i * 2 + 1];
+			cstr[1] = chars[i * 2];
+		}
+		else
+		{
+			cstr[0] = chars[i * 2];
+			cstr[1] = 0;
+		}
+		MultiByteToWideChar(932, 0, cstr, 2, wstr, 3);
+
+		if (chars_list[wstr[0]] == false) {
+			chars_list[wstr[0]] = true;
+			chars_list_count++;
+		}
+	}
+
+	// Then, add all the characters that we could possibly want to display.
+	size_t i;
+	json_t *it;
+	json_flex_array_foreach(files, i, it) {
+		const char *fn = json_string_value(it);
+		if (!fn) {
+			// Do nothing
+		}
+		/* else if (strcmp(fn, "*") == 0) {
+			// TODO: look at every jdiff/map files in the root directory and the game
+			//       directory of every patch.
+		}
+		else if (strchr(fn, '*') != nullptr) {
+			// TODO: pattern matching
+		} */
+		else {
+			add_json_file(chars_list, chars_list_count, fn);
+		}
+	}
+
+	return chars_list_count;
 }
 
 int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
+	if (patch) {
+		// List all the characters to include in out font
+		bool *chars_list = new bool[65536];
+		for (int i = 0; i < 65536; i++) {
+			chars_list[i] = false;
+		}
+		int chars_count = 0;
+		chars_count = fill_chars_list(chars_list, file_inout, size_in, json_object_get(patch, "chars_source"));
+
+		// Create the bitmap font
+		size_t output_size;
+		BYTE *buffer = generate_bitmap_font(chars_list, chars_count, patch, &output_size);
+		delete[] chars_list;
+		if (!buffer) {
+			log_print("Bitmap font creation failed\n");
+			return -1;
+		}
+		if (output_size > size_out) {
+			log_print("Bitmap font too big\n");
+			delete[] buffer;
+			return -1;
+		}
+
+		memcpy(file_inout, buffer, output_size);
+		delete[] buffer;
+		return 1;
+	}
+
 	BITMAPFILEHEADER *bpFile = (BITMAPFILEHEADER*)file_inout;
 	BITMAPINFOHEADER *bpInfo = (BITMAPINFOHEADER*)(bpFile + 1);
 	BYTE *bpData = (BYTE*)(bpInfo + 1);
