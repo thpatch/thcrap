@@ -230,7 +230,7 @@ size_t get_tfcs_size(const char*, json_t*, size_t patch_size)
 {
 	// Because a lot of these files are zipped, guessing their exact patched size is hard. We'll add a few more bytes.
 	if (patch_size) {
-		return (size_t)(patch_size * 1.2) + 1;
+		return (size_t)(patch_size * 1.2) + 2048 + 1;
 	}
 	else {
 		return 0;
