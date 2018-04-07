@@ -200,7 +200,7 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 
 	// Read TFCS header
 	header = (tfcs_header_t*)file_inout;
-	if (size_in < sizeof(header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
+	if (size_in < sizeof(*header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
 		// Invalid TFCS file (probably a regular CSV file)
 		return patch_csv(file_inout, size_out, size_in, fn, patch);
 	}
@@ -238,7 +238,7 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 	// Write result
 	file_out_uncomp_size = ptr_out - file_out_uncomp;
 	header->uncomp_size = file_out_uncomp_size;
-	size_out -= sizeof(header) - 1;
+	size_out -= sizeof(*header) - 1;
 	int ret = deflate_bytes(file_out_uncomp, file_out_uncomp_size, header->data, &size_out);
 	header->comp_size = size_out;
 	if (ret != Z_OK) {
