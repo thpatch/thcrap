@@ -248,6 +248,28 @@ static LRESULT CALLBACK progress_bar_with_text_proc(HWND hWnd, UINT uMsg, WPARAM
 	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
+void progress_bar_set_marquee(HWND hwnd, bool marquee)
+{
+	LONG_PTR old_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+	if (marquee == true && (old_style & PBS_MARQUEE) == 0) {
+		SetWindowLongPtrW(hwnd, GWL_STYLE, old_style | PBS_MARQUEE);
+		SendMessageW(hwnd, PBM_SETMARQUEE, TRUE, 0);
+		SetWindowTextW(hwnd, L"");
+	}
+	else if (marquee == false && (old_style & PBS_MARQUEE) != 0) {
+		SendMessageW(hwnd, PBM_SETMARQUEE, FALSE, 0);
+		SetWindowLongPtrW(hwnd, GWL_STYLE, old_style & ~PBS_MARQUEE);
+		SetWindowTextW(hwnd, L"");
+	}
+}
+
+void progress_bars_set_marquee(loader_update_state_t *state, bool marquee)
+{
+	progress_bar_set_marquee(state->hwnd[HWND_PROGRESS1], marquee);
+	progress_bar_set_marquee(state->hwnd[HWND_PROGRESS2], marquee);
+	progress_bar_set_marquee(state->hwnd[HWND_PROGRESS3], marquee);
+}
+
 // param should point to a loader_update_state_t object
 DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 {
@@ -290,6 +312,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		5, 55, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS2, hMod, NULL);
 	state->hwnd[HWND_PROGRESS3] = CreateWindowW(PROGRESS_CLASSW, L"", WS_CHILD | WS_VISIBLE,
 		5, 80, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS3, hMod, NULL);
+	progress_bars_set_marquee(state, true);
 	SetWindowSubclass(state->hwnd[HWND_PROGRESS1], progress_bar_with_text_proc, 1, (DWORD_PTR)new ProgressBarWithText(L""));
 	SetWindowSubclass(state->hwnd[HWND_PROGRESS2], progress_bar_with_text_proc, 2, (DWORD_PTR)new ProgressBarWithText(L""));
 	SetWindowSubclass(state->hwnd[HWND_PROGRESS3], progress_bar_with_text_proc, 3, (DWORD_PTR)new ProgressBarWithText(L""));
@@ -389,6 +412,7 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 	sprintf(buffer, format3, fn, file_progress, file_total);
 	SetWindowTextU(state->hwnd[HWND_PROGRESS3], buffer);
 
+	progress_bars_set_marquee(state, false);
 	SendMessage(state->hwnd[HWND_PROGRESS1], PBM_SETPOS, stack_total ? stack_progress * 100 / stack_total : 0, 0);
 	SendMessage(state->hwnd[HWND_PROGRESS2], PBM_SETPOS, patch_total ? patch_progress * 100 / patch_total : 0, 0);
 	SendMessage(state->hwnd[HWND_PROGRESS3], PBM_SETPOS, file_total  ? file_progress  * 100 / file_total  : 0, 0);
@@ -534,6 +558,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		json_t *game = json_object_get(runconfig_get(), "game");
 		if (game) {
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
+			progress_bars_set_marquee(&state, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
 			state.state = STATE_PATCHES_UPDATE;
 			stack_update(update_filter_games, game, loader_update_progress_callback, &state);
@@ -554,6 +579,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		handles[1] = state.event_require_update;
 		DWORD wait_ret;
 		do {
+			progress_bars_set_marquee(&state, true);
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating other patches and games...");
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], FALSE);
 			global_update(loader_update_progress_callback, &state);
@@ -564,12 +590,10 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 			// Display the "Update finished" message
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], TRUE);
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
+			progress_bars_set_marquee(&state, false);
 			SendMessage(state.hwnd[HWND_PROGRESS1], PBM_SETPOS, 100, 0);
 			SendMessage(state.hwnd[HWND_PROGRESS2], PBM_SETPOS, 100, 0);
 			SendMessage(state.hwnd[HWND_PROGRESS3], PBM_SETPOS, 100, 0);
-			SetWindowTextW(state.hwnd[HWND_PROGRESS1], L"");
-			SetWindowTextW(state.hwnd[HWND_PROGRESS2], L"");
-			SetWindowTextW(state.hwnd[HWND_PROGRESS3], L"");
 
 			// Wait until the next update
 			wait_ret = WaitForMultipleObjects(2, handles, FALSE, time_between_updates * 60 * 1000);
