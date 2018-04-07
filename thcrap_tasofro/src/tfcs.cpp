@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <algorithm>
 
 static int inflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t size_out)
 {
@@ -74,6 +75,30 @@ static int deflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t* 
 	return ret == Z_STREAM_END ? Z_OK : ret;
 }
 
+std::string patch_ruby(std::string str)
+{
+	const std::string ruby_begin = "{{ruby|";
+	const std::string ruby_end = "}}";
+
+	std::string::iterator pattern_begin;
+	std::string::iterator pattern_end;
+	while ((pattern_begin = std::search(str.begin(), str.end(), ruby_begin.begin(), ruby_begin.end())) != str.end()) {
+		pattern_end = std::search(str.begin(), str.end(), ruby_end.begin(), ruby_end.end());
+		if (pattern_end == str.end()) {
+			break;
+		}
+
+		std::string rep = "\\R[";
+		rep.append(pattern_begin + ruby_begin.length(), pattern_end);
+		rep += "]";
+
+		pattern_end += ruby_end.length();
+		str.replace(pattern_begin, pattern_end, rep.begin(), rep.end());
+	}
+
+	return str;
+}
+
 void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 {
 	// Read input
@@ -123,7 +148,7 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 		patch_col = json_object_numkey_get(patch_row, col);
 		if (patch_col) {
 			if (json_is_string(patch_col)) {
-				line[col] = json_string_value(patch_col);
+				line[col] = patch_ruby(json_string_value(patch_col));
 			}
 			else if (json_is_array(patch_col)) {
 				line[col].clear();
@@ -135,7 +160,7 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 						line[col] += "\n";
 					}
 					if (json_is_string(it)) {
-						line[col] += json_string_value(it);
+						line[col] += patch_ruby(json_string_value(it));
 						add_eol = true;
 					}
 				}
