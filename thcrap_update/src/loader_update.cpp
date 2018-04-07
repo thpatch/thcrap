@@ -333,6 +333,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 		5, 245, 480, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_DISABLE_UPDATES, hMod, NULL);
 	state->hwnd[HWND_EDIT_LOGS] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
 		5, 275, 480, 100, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_LOGS, hMod, NULL);
+	SendMessageW(state->hwnd[HWND_EDIT_LOGS], EM_LIMITTEXT, -1, 0);
 
 	// Font
 	if (hFont) {
