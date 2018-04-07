@@ -401,9 +401,12 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 static HWND hLogEdit;
 void log_callback(const char* text)
 {
-	SendMessageA(hLogEdit, EM_SETSEL, 0, -1);
-	SendMessageA(hLogEdit, EM_SETSEL, -1, -1);
-	SendMessageA(hLogEdit, EM_REPLACESEL, 0, (LPARAM)text);
+	SendMessageW(hLogEdit, EM_SETSEL, 0, -1);
+	SendMessageW(hLogEdit, EM_SETSEL, -1, -1);
+	WCHAR_T_DEC(text);
+	WCHAR_T_CONV(text);
+	SendMessageW(hLogEdit, EM_REPLACESEL, 0, (LPARAM)text_w);
+	WCHAR_T_FREE(text);
 }
 
 void log_ncallback(const char* text, size_t len)
