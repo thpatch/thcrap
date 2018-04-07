@@ -367,6 +367,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 
 	ShowWindow(state->hwnd[HWND_MAIN], SW_SHOW);
 	UpdateWindow(state->hwnd[HWND_MAIN]);
+	log_mbox_set_owner(state->hwnd[HWND_MAIN]);
 	SetEvent(state->event_created);
 
 	// We must run this in the same thread anyway, so we might as well
