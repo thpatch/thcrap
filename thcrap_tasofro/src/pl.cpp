@@ -27,17 +27,10 @@ void TasofroPl::readField(const char *in, size_t& pos, size_t size, std::string&
 		}
 
 		if (!is_in_quote) {
-			if (in[pos] == ',' || in[pos] == '#') {
-				return;
-			}
-			if (game_id >= TH155) {
-				// Keep the old behavior for older games because I don't want to break things
-				if ((pos >= 1 && in[pos - 1] == '@') ||
-					(pos >= 2 && in[pos - 1] == '\r' && in[pos - 2] == '@')) {
-					continue;
-				}
-			}
-			if (in[pos] == '\n' || (in[pos] == '\r' && pos + 1 < size && in[pos + 1] == '\n')) {
+			if (in[pos] == ',' ||
+				in[pos] == '#' ||
+				in[pos] == '\n' ||
+				(in[pos] == '\r' && pos + 1 < size && in[pos + 1] == '\n')) {
 				return;
 			}
 		}
@@ -641,6 +634,35 @@ json_t *TasofroPl::balloonNumberToLines(json_t *patch, size_t balloon_number)
 	return json_lines;
 }
 
+static bool storyLineIsFinished(TasofroPl::ALine& line)
+{
+	std::string& text = line[0];
+	return text[text.size() - 1] == '\\';
+}
+
+static void stickStoryLines(std::list<TasofroPl::ALine*>& lines)
+{
+	for (std::list<TasofroPl::ALine*>::iterator it = lines.begin(); it != lines.end(); ++it) {
+		if ((*it)->getType() == TasofroPl::TEXT) {
+			while (storyLineIsFinished(**it) == false) {
+				std::list<TasofroPl::ALine*>::iterator next = it;
+				++next;
+				if ((*next)->getType() == TasofroPl::TEXT) {
+					(**it)[0] += "\n" + (**next)[0];
+					lines.erase(next);
+				}
+				else if ((*next)->getType() == TasofroPl::EMPTY) {
+					(**it)[0] += "\n";
+					lines.erase(next);
+				}
+				else {
+					break;
+				}
+			}
+		}
+	}
+}
+
 int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
 	if (!patch) {
@@ -653,6 +675,11 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, jso
 
 	while (size_in > 0) {
 		lines.push_back(TasofroPl::readLine(file_in, size_in));
+	}
+	if (game_id == TH155) {
+		// Don't split ending lines by line endings.
+		// Instead, try to do a semantic splitting by sticking together the lines belonging to the same text box.
+		stickStoryLines(lines);
 	}
 
 	std::string balloonOwner;
