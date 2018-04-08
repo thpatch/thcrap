@@ -24,6 +24,7 @@ enum {
 	HWND_STATIC_UPDATES_INTERVAL,
 	HWND_EDIT_UPDATES_INTERVAL,
 	HWND_UPDOWN,
+	HWND_CHECKBOX_UPDATE_OTHERS,
 	HWND_BUTTON_UPDATE,
 	HWND_BUTTON_RUN,
 	HWND_BUTTON_EXPAND_LOGS,
@@ -51,6 +52,7 @@ typedef struct {
 	bool game_started;
 	bool update_at_exit;
 	bool background_updates;
+	bool update_others;
 	int time_between_updates;
 	bool cancel_update;
 
@@ -129,6 +131,17 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 			}
 			break;
 
+		case HWND_CHECKBOX_UPDATE_OTHERS:
+			if (HIWORD(wParam) == BN_CLICKED) {
+				if (SendMessage(state->hwnd[HWND_CHECKBOX_UPDATE_OTHERS], BM_GETCHECK, 0, 0) == BST_CHECKED) {
+					state->update_others = true;
+				}
+				else {
+					state->update_others = false;
+				}
+			}
+			break;
+
 		case HWND_BUTTON_DISABLE_UPDATES:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				int len = GetCurrentDirectory(0, NULL);
@@ -166,7 +179,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 				}
 				else {
 					// Show log window
-					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 410, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 435, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
 					state->settings_visible = true;
 				}
 			}
@@ -178,6 +191,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 		if ((HWND)lParam == state->hwnd[HWND_LABEL_STATUS] ||
 			(HWND)lParam == state->hwnd[HWND_CHECKBOX_UPDATE_AT_EXIT] ||
 			(HWND)lParam == state->hwnd[HWND_CHECKBOX_KEEP_UPDATER] ||
+			(HWND)lParam == state->hwnd[HWND_CHECKBOX_UPDATE_OTHERS] ||
 			(HWND)lParam == state->hwnd[HWND_STATIC_UPDATES_INTERVAL] ||
 			(HWND)lParam == state->hwnd[HWND_STATIC_UPDATE_AT_EXIT]) {
 			HDC hdc = (HDC)wParam;
@@ -359,10 +373,15 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETBUDDY, (WPARAM)state->hwnd[HWND_EDIT_UPDATES_INTERVAL], 0);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETRANGE, 0, MAKELPARAM(UD_MAXVAL, 0));
+	state->hwnd[HWND_CHECKBOX_UPDATE_OTHERS] = CreateWindowW(L"Button", L"Update other games and patches", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+		5, 245, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_UPDATE_OTHERS, hMod, NULL);
+	if (state->update_others) {
+		CheckDlgButton(state->hwnd[HWND_MAIN], HWND_CHECKBOX_UPDATE_OTHERS, BST_CHECKED);
+	}
 	state->hwnd[HWND_BUTTON_DISABLE_UPDATES] = CreateWindowW(L"Button", L"Completely disable updates (not recommended)", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		5, 245, 480, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_DISABLE_UPDATES, hMod, NULL);
+		5, 270, 480, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_DISABLE_UPDATES, hMod, NULL);
 	state->hwnd[HWND_EDIT_LOGS] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-		5, 275, 480, 100, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_LOGS, hMod, NULL);
+		5, 300, 480, 100, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_LOGS, hMod, NULL);
 	SendMessageW(state->hwnd[HWND_EDIT_LOGS], EM_LIMITTEXT, -1, 0);
 
 	// Font
@@ -501,6 +520,13 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	if (state.time_between_updates == 0) {
 		state.time_between_updates = 5;
 	}
+	json_t *update_others_object = json_object_get(config, "update_others");
+	if (update_others_object) {
+		state.update_others = json_boolean_value(update_others_object);
+	}
+	else {
+		state.update_others = true;
+	}
 
 	SetLastError(0);
 	HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), "thcrap update UI");
@@ -588,9 +614,20 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		DWORD wait_ret;
 		do {
 			progress_bars_set_marquee(&state, true, true);
-			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating other patches and games...");
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], FALSE);
-			global_update(loader_update_progress_callback, &state);
+			if (state.update_others) {
+				SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating other patches and games...");
+				state.state = STATE_GLOBAL_UPDATE;
+				global_update(loader_update_progress_callback, &state);
+			}
+			else {
+				json_t *game = json_object_get(runconfig_get(), "game");
+				if (game) {
+					SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
+					state.state = STATE_PATCHES_UPDATE;
+					stack_update(update_filter_games, game, loader_update_progress_callback, &state);
+				}
+			}
 			EnterCriticalSection(&state.cs);
 			time_between_updates = state.time_between_updates;
 			LeaveCriticalSection(&state.cs);
@@ -598,6 +635,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 			// Display the "Update finished" message
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], TRUE);
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
+			state.state = STATE_WAITING;
 			progress_bars_set_marquee(&state, false, true);
 			SendMessage(state.hwnd[HWND_PROGRESS1], PBM_SETPOS, 100, 0);
 			SendMessage(state.hwnd[HWND_PROGRESS2], PBM_SETPOS, 100, 0);
@@ -615,6 +653,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	json_object_set_new(config, "update_at_exit", json_boolean(state.update_at_exit));
 	json_object_set_new(config, "background_updates", json_boolean(state.background_updates));
 	json_object_set_new(config, "time_between_updates", json_integer(state.time_between_updates));
+	json_object_set_new(config, "update_others", json_boolean(state.update_others));
 	json_dump_file(config, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 	json_decref(config);
 
