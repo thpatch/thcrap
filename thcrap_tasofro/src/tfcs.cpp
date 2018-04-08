@@ -119,7 +119,7 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 		start = 9;
 	}
 	json_t *patch_lines = json_object_get(patch_row, "lines");
-	if (patch_lines && line.size() <= start + 12 && line[start + 3].empty() == false) {
+	if (patch_lines && line.size() >= start + 12 && line[start + 3].empty() == false) {
 		std::list<TasofroPl::ALine*> texts;
 		// We want to overwrite all the balloons with the user-provided ones,
 		// so we only need to put the 1st one, we can ignore the others.
