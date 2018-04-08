@@ -12,6 +12,7 @@
 #include "thcrap_tasofro.h"
 #include "th155_bmp_font.h"
 #include "bmpfont_create.h"
+#include <string>
 
 size_t get_bmp_font_size(const char *fn, json_t *patch, size_t patch_size)
 {
@@ -49,25 +50,68 @@ size_t get_bmp_font_size(const char *fn, json_t *patch, size_t patch_size)
 	return size;
 }
 
-void add_json_file(bool *chars_list, int& chars_list_count, const char *file)
+void add_json_file(bool *chars_list, int& chars_list_count, json_t *file)
 {
-	json_t *spells = stack_json_resolve(file, nullptr);
-	const char *key;
-	json_t *it;
-	json_object_foreach(spells, key, it) {
-		if (json_is_string(it)) {
-			const char *str = json_string_value(it);
-			WCHAR_T_DEC(str);
-			WCHAR_T_CONV(str);
-			for (int i = 0; str_w[i]; i++) {
-				if (chars_list[str_w[i]] == false) {
-					chars_list[str_w[i]] = true;
-					chars_list_count++;
-				}
-			}
-			WCHAR_T_FREE(str);
+	if (json_is_object(file)) {
+		const char *key;
+		json_t *it;
+		json_object_foreach(file, key, it) {
+			json_incref(it);
+			add_json_file(chars_list, chars_list_count, it);
 		}
 	}
+	else if (json_is_array(file)) {
+		size_t i;
+		json_t *it;
+		json_array_foreach(file, i, it) {
+			json_incref(it);
+			add_json_file(chars_list, chars_list_count, it);
+		}
+	}
+	else if (json_is_string(file)) {
+		const char *str = json_string_value(file);
+		WCHAR_T_DEC(str);
+		WCHAR_T_CONV(str);
+		for (int i = 0; str_w[i]; i++) {
+			if (chars_list[str_w[i]] == false) {
+				chars_list[str_w[i]] = true;
+				chars_list_count++;
+			}
+		}
+		WCHAR_T_FREE(str);
+	}
+	json_decref(file);
+}
+
+static void add_files_in_directory(bool *chars_list, int& chars_list_count, std::string basedir, bool recurse)
+{
+	std::string pattern = basedir + "\\*";
+	WIN32_FIND_DATAA ffd;
+	HANDLE hFind = FindFirstFile(pattern.c_str(), &ffd);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		return;
+	}
+
+	do
+	{
+		if (strcmp(ffd.cFileName, ".") == 0 || strcmp(ffd.cFileName, "..") == 0) {
+			// Do nothing
+		}
+		else if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			if (recurse) {
+				std::string dirname = basedir + "\\" + ffd.cFileName;
+				add_files_in_directory(chars_list, chars_list_count, dirname, recurse);
+			}
+		}
+		else if (strcmp(PathFindExtensionA(ffd.cFileName), ".js") == 0 ||
+				 strcmp(PathFindExtensionA(ffd.cFileName), ".jdiff") == 0) {
+			std::string filename = basedir + "\\" + ffd.cFileName;
+			log_printf(" + %s\n", filename.c_str());
+			add_json_file(chars_list, chars_list_count, json_load_file(filename.c_str(), 0, nullptr));
+		}
+	} while (FindNextFile(hFind, &ffd));
+
+	FindClose(hFind);
 }
 
 // Returns the number of elements set to true in the list
@@ -109,15 +153,28 @@ int fill_chars_list(bool *chars_list, void *file_inout, size_t size_in, json_t *
 		if (!fn) {
 			// Do nothing
 		}
-		/* else if (strcmp(fn, "*") == 0) {
-			// TODO: look at every jdiff/map files in the root directory and the game
-			//       directory of every patch.
+		else if (strcmp(fn, "*") == 0) {
+			log_print("(Font) Searching in every js file for characters...\n");
+			json_t *patches = json_object_get(runconfig_get(), "patches");
+			size_t i;
+			json_t *patch_info;
+			json_array_foreach(patches, i, patch_info) {
+				const json_t *archive = json_object_get(patch_info, "archive");
+				const json_t *game = json_object_get(runconfig_get(), "game");
+				if (json_is_string(archive)) {
+					std::string archive_path = json_string_value(archive);
+					add_files_in_directory(chars_list, chars_list_count, archive_path, false);
+					if (json_is_string(game)) {
+						add_files_in_directory(chars_list, chars_list_count, archive_path + "\\" + json_string_value(game), true);
+					}
+				}
+			}
 		}
-		else if (strchr(fn, '*') != nullptr) {
+		/* else if (strchr(fn, '*') != nullptr) {
 			// TODO: pattern matching
 		} */
 		else {
-			add_json_file(chars_list, chars_list_count, fn);
+			add_json_file(chars_list, chars_list_count, stack_json_resolve(fn, nullptr));
 		}
 	}
 
