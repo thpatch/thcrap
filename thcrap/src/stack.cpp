@@ -147,6 +147,24 @@ void* stack_file_resolve_chain(const json_t *chain, size_t *file_size)
 	return ret;
 }
 
+char* stack_fn_resolve_chain(const json_t *chain)
+{
+	stack_chain_iterate_t sci = { 0 };
+
+	// Both the patch stack and the chain have to be traversed backwards: Later
+	// patches take priority over earlier ones, and build-specific files are
+	// preferred over generic ones.
+	while (stack_chain_iterate(&sci, chain, SCI_BACKWARDS)) {
+		char *fn = fn_for_patch(sci.patch_info, sci.fn);
+		DWORD attr = GetFileAttributesU(fn);
+		if (attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+			return fn;
+		}
+		free(fn);
+	}
+	return nullptr;
+}
+
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
 	void *ret = NULL;

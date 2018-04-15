@@ -71,6 +71,10 @@ char* fn_for_game(const char *fn);
 // currently running build. Return value has to be free()d by the caller!
 char* fn_for_build(const char *fn);
 
+// Returns the full path of a patch-relative file name.
+// Return value has to be free()d by the caller!
+char* fn_for_patch(const json_t *patch_info, const char *fn);
+
 // Prints the full path of a patch-relative file name to the log.
 void patch_print_fn(const json_t *patch_info, const char *fn);
 /// ----------

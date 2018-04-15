@@ -181,6 +181,69 @@ int fill_chars_list(bool *chars_list, void *file_inout, size_t size_in, json_t *
 	return chars_list_count;
 }
 
+void bmpfont_update_cache(std::string fn, bool *chars_list, int chars_count, BYTE *buffer, size_t buffer_size, json_t *patch)
+{
+	json_t *cache_patch = json_object();
+	json_object_set(cache_patch, "patch", patch);
+	json_object_set_new(cache_patch, "chars_count", json_integer(chars_count));
+	json_t *chars_list_json = json_array();
+	for (WCHAR i = 0; i < 65535; i++) {
+		json_array_append_new(chars_list_json, json_boolean(chars_list[i]));
+	}
+	json_object_set(cache_patch, "chars_list", chars_list_json);
+	chars_list_json = json_decref_safe(chars_list_json);
+
+	std::string full_path;
+	{
+		std::string fn_jdiff = fn + ".jdiff";
+		json_t *chain = resolve_chain_game(fn_jdiff.c_str());
+		char *c_full_path = stack_fn_resolve_chain(chain);
+		json_decref(chain);
+		full_path.assign(c_full_path, strlen(c_full_path) - strlen(".jdiff")); // Remove ".jdiff"
+		free(c_full_path);
+	}
+
+	full_path += ".cache";
+	file_write(full_path.c_str(), buffer, buffer_size);
+
+	full_path += ".jdiff";
+	json_dump_file(cache_patch, full_path.c_str(), JSON_INDENT(2));
+
+	json_decref(cache_patch);
+}
+
+BYTE *read_bmpfont_from_cache(std::string fn, bool *chars_list, int chars_count, json_t *patch, size_t *file_size)
+{
+	std::string cache_patch_fn = fn + ".cache.jdiff";
+	json_t *cache_patch = stack_game_json_resolve(cache_patch_fn.c_str(), nullptr);
+	if (!cache_patch) {
+		return nullptr;
+	}
+
+	if (json_equal(patch, json_object_get(cache_patch, "patch")) == 0) {
+		json_decref(cache_patch);
+		return nullptr;
+	}
+
+	if (chars_count != json_integer_value(json_object_get(cache_patch, "chars_count"))) {
+		json_decref(cache_patch);
+		return nullptr;
+	}
+	json_t *chars_list_cache = json_object_get(cache_patch, "chars_list");
+	for (WCHAR i = 0; i < 65535; i++) {
+		if (chars_list[i] != json_boolean_value(json_array_get(chars_list_cache, i))) {
+			json_decref(chars_list_cache);
+			json_decref(cache_patch);
+			return nullptr;
+		}
+	}
+	json_decref(chars_list_cache);
+	json_decref(cache_patch);
+
+	std::string cache_fn = fn + ".cache";
+	return (BYTE*)stack_game_file_resolve(cache_fn.c_str(), file_size);
+}
+
 int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	if (patch) {
@@ -194,7 +257,13 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 
 		// Create the bitmap font
 		size_t output_size;
-		BYTE *buffer = generate_bitmap_font(chars_list, chars_count, patch, &output_size);
+		BYTE *buffer = read_bmpfont_from_cache(fn, chars_list, chars_count, patch, &output_size);
+		if (buffer == nullptr) {
+			buffer = generate_bitmap_font(chars_list, chars_count, patch, &output_size);
+			if (buffer) {
+				bmpfont_update_cache(fn, chars_list, chars_count, buffer, output_size, patch);
+			}
+		}
 		delete[] chars_list;
 		if (!buffer) {
 			log_print("Bitmap font creation failed\n");

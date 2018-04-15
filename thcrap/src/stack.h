@@ -69,6 +69,10 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size);
 json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 /// ---------------
 
+// Generic file name resolver. Returns the file name of the existing file
+// matching the [chain] with the highest priority inside the patch stack.
+char* stack_fn_resolve_chain(const json_t *chain);
+
 /// Information
 /// -----------
 // Displays a message box showing missing archives in the current patch stack,

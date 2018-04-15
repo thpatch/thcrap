@@ -32,6 +32,7 @@ public:
   Gdiplus::Color bg;
   Gdiplus::Color outline;
   Gdiplus::Color text;
+  INT style;
   int outline_width;
   int margin;
 
@@ -109,6 +110,11 @@ void* graphics_init(json_t *config)
   obj->text          = json_to_color(          json_object_get(config, "fg_color"));
   obj->margin        = (int)json_integer_value(json_object_get(config, "margin"));
 
+  obj->style		 = Gdiplus::FontStyleRegular;
+  if (json_is_true(json_object_get(config, "is_bold"))) {
+	  obj->style	 |= Gdiplus::FontStyleBold;
+  }
+
   // Create the font
   const char *font_name = json_string_value(json_object_get(config, "font_name"));
   WCHAR_T_DEC(font_name);
@@ -146,7 +152,7 @@ void graphics_put_char(void* obj_, WCHAR c, BYTE** dest, int* w, int* h)
 
     Gdiplus::GraphicsPath path;
     Gdiplus::StringFormat strFormat;
-    path.AddString(&c, 1, obj->font, Gdiplus::FontStyleRegular, (Gdiplus::REAL)obj->font_size, Gdiplus::Point(0, 0), &strFormat);
+    path.AddString(&c, 1, obj->font, obj->style, (Gdiplus::REAL)obj->font_size, Gdiplus::Point(0, 0), &strFormat);
 
     Gdiplus::Pen pen(obj->outline, (Gdiplus::REAL)obj->outline_width);
     pen.SetLineJoin(Gdiplus::LineJoinRound);

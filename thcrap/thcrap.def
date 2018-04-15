@@ -173,6 +173,7 @@ EXPORTS
 
 	fn_for_game
 	fn_for_build
+	fn_for_patch
 	patch_print_fn
 
 	dir_create_for_fn
@@ -258,6 +259,7 @@ EXPORTS
 	stack_json_resolve_chain
 	stack_json_resolve
 	stack_file_resolve_chain
+	stack_fn_resolve_chain
 	stack_game_file_resolve
 	stack_game_json_resolve
 
