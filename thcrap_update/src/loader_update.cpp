@@ -574,8 +574,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	VLA(char, cur_dir, cur_dir_len);
 	GetCurrentDirectory(cur_dir_len, cur_dir);
 	json_object_set_new(runconfig_get(), "thcrap_dir", json_string(cur_dir));
-	if (update_notify_thcrap() == SELF_OK) {
-		// Re-run the loader
+	if (update_notify_thcrap() == SELF_OK && state.game_started == false) {
+		// Re-run an up-to-date loader
 		LPSTR commandLine = GetCommandLine();
 		STARTUPINFOA sa;
 		PROCESS_INFORMATION pi;
