@@ -42,8 +42,10 @@ int th135_init()
 	patchhook_register("*.nhtex", patch_nhtex, get_nhtex_size);
 
 	if (game_id >= TH155) {
-		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							  "spells.js");
-		jsonvfs_game_add_map("data/story/spell_list/*.csv.jdiff",				  "spells.js");
+		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							"spells.js");
+		jsonvfs_game_add_map("data/story/spell_list/*.csv.jdiff",				"spells.js");
+		jsonvfs_game_add_map("data/actor/*.nut.jdiff",							"spells.js"); // Last words
+		jsonvfs_game_add_map("*.nut.jdiff",										"nut_strings.js");
 		patchhook_register("data/font/*.bmp", patch_bmp_font, get_bmp_font_size);
 	}
 	else if (game_id >= TH145) {
