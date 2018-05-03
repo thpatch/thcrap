@@ -184,6 +184,7 @@ namespace TasofroPl
 	};
 
 	ALine* readLine(const char*& file, size_t& size);
+	ALine* readLineStrictEol(const char*& file, size_t& size);
 	void readField(const char *in, size_t& pos, size_t size, std::string& out);
 	json_t *balloonNumberToLines(json_t *patch, size_t balloon_number);
 }

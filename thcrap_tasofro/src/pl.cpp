@@ -107,6 +107,26 @@ TasofroPl::ALine* TasofroPl::readLine(const char*& file, size_t& size)
 	}
 }
 
+TasofroPl::ALine* TasofroPl::readLineStrictEol(const char*& file, size_t& size)
+{
+	std::string line;
+
+	while (size > 0 && *file != '\n') {
+		line += *file;
+		file++; size--;
+	}
+	if (size > 0) {
+		file++; size--;
+	}
+	if (line.length() >= 1 && line[line.length() - 1] == '\r') {
+		line.erase(line.length() - 1);
+	}
+
+	const char *line_ptr = line.c_str();
+	size_t line_size = line.length();
+	return readLine(line_ptr, line_size);
+}
+
 
 
 TasofroPl::LineType TasofroPl::Empty::getType() const
@@ -663,7 +683,7 @@ static void stickStoryLines(std::list<TasofroPl::ALine*>& lines)
 	}
 }
 
-int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
+int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	if (!patch) {
 		return 0;
@@ -672,9 +692,17 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, jso
 	std::list<TasofroPl::ALine*> lines;
 	const char *file_in = (const char*)file_inout;
 	char *file_out = (char*)file_inout;
+	bool strict_eol = json_boolean_value(json_object_get(runconfig_get(), "pl_parsing_strict_eol"));
 
 	while (size_in > 0) {
-		lines.push_back(TasofroPl::readLine(file_in, size_in));
+		if (strict_eol) {
+			// th155 v1.10
+			lines.push_back(TasofroPl::readLineStrictEol(file_in, size_in));
+		}
+		else {
+			// th155 older versions, or just th135/th145.
+			lines.push_back(TasofroPl::readLine(file_in, size_in));
+		}
 	}
 	if (game_id == TH155) {
 		// Don't split ending lines by line endings.
@@ -704,6 +732,10 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, jso
 		dynamic_cast<TasofroPl::AText*>(line)->patch(lines, it, balloonOwner, json_lines);
 	}
 
+#if 0
+	size_t size_out_orig = size_out;
+#endif
+
 	std::string str;
 	for (TasofroPl::ALine* line : lines) {
 		str = line->toString();
@@ -719,6 +751,10 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char*, jso
 		size_out -= 2;
 	}
 	*file_out = '\0';
+
+#if 0
+	file_write(fn, file_inout, size_out_orig - size_out);
+#endif
 
 	return 1;
 }
