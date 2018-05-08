@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Update notifications for thcrap and the game itself.
+  * Update notifications for thcrap itself.
   */
 
 #include <thcrap.h>
@@ -95,45 +95,6 @@ const char *self_sig_error =
 	"this problem has been resolved.";
 /// ----------------------
 
-/// Game build messages
-/// -------------------
-const char *oldbuild_title = "Old version detected";
-
-const char *oldbuild_header =
-	"You are running an old version of ${game_title} (${build_running}).\n"
-	"\n";
-
-const char *oldbuild_maybe_supported =
-	"${project_short} may or may not work with this version, so we recommend updating to the latest official version (${build_latest}).";
-
-const char *oldbuild_not_supported =
-	"${project_short} will *not* work with this version. Please update to the latest official version, ${build_latest}.";
-
-const char *oldbuild_url =
-	"\n"
-	"\n"
-	"You can download the update at\n"
-	"\n"
-	"\t${url_update}\n"
-	"\n"
-	"(Press Ctrl+C to copy the text of this message box and the URL)";
-/// -------------------
-
-int IsLatestBuild(json_t *build, json_t **latest)
-{
-	json_t *json_latest = json_object_get(runconfig_get(), "latest");
-	size_t i;
-	if(!json_is_string(build) || !latest || !json_latest) {
-		return -1;
-	}
-	json_flex_array_foreach(json_latest, i, *latest) {
-		if(json_equal(build, *latest)) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
 int update_notify_thcrap(void)
 {
 	const size_t SELF_MSG_SLOT = (size_t)self_body;
@@ -177,63 +138,3 @@ int update_notify_thcrap(void)
 	return ret;
 }
 
-int update_notify_game(void)
-{
-	json_t *run_cfg = runconfig_get();
-	const json_t *title = runconfig_title_get();
-	json_t *build = json_object_get(run_cfg, "build");
-	json_t *latest = NULL;
-	int ret;
-	
-	if(!json_is_string(build) || !json_is_string(title)) {
-		return -1;
-	}
-	ret = IsLatestBuild(build, &latest) == 0 && json_is_string(latest);
-	if(ret) {
-		const size_t MSG_SLOT = (size_t)oldbuild_header;
-		unsigned int msg_type = MB_ICONINFORMATION;
-		auto *url_update = json_object_get_string(run_cfg, "url_update");
-
-		// Try to find out whether this version actually is supported or
-		// not, by looking for a <game>.<version>.js file in the stack.
-		// There are a number of drawbacks to this approach, though:
-		// • It can't tell the *amount* of work that actually was done
-		//   for this specific version.
-		// • What if one patch in the stack *does* provide support for
-		//   this older version, but others don't?
-		// • Stringlocs are also part of support. -.-
-		const auto *BUILD_JS_FORMAT = "%s.%s.js";
-		auto *game_str = json_object_get_string(run_cfg, "game");
-		auto *build_str = json_string_value(build);
-		auto build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
-		VLA(char, build_js_fn, build_js_fn_len);
-		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
-		auto *build_js_chain = json_pack("[s]", build_js_fn);
-		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
-		auto supported = build_js != nullptr;
-		json_decref_safe(build_js);
-		json_decref_safe(build_js_chain);
-		VLA_FREE(build_js_fn);
-
-		strings_strclr(MSG_SLOT);
-		strings_strcat(MSG_SLOT, oldbuild_header);
-		if(supported) {
-			strings_strcat(MSG_SLOT, oldbuild_maybe_supported);
-		} else {
-			msg_type = MB_ICONEXCLAMATION;
-			strings_strcat(MSG_SLOT, oldbuild_not_supported);
-		}
-		if(url_update) {
-			strings_strcat(MSG_SLOT, oldbuild_url);
-		}
-
-		strings_replace(MSG_SLOT, "${game_title}", json_string_value(title));
-		strings_replace(MSG_SLOT, "${build_running}", json_string_value(build));
-		strings_replace(MSG_SLOT, "${build_latest}", json_string_value(latest));
-		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
-		auto *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
-
-		log_mbox(oldbuild_title, MB_OK | msg_type, msg);
-	}
-	return ret;
-}
