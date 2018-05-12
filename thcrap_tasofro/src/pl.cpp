@@ -316,7 +316,13 @@ TasofroPl::AText *TasofroPl::AText::createText(const std::vector<std::string>& f
 			return new StoryText(fields, comment);
 		}
 		else {
-			return new Th155StoryText(fields, comment);
+			bool strict_eol = json_boolean_value(json_object_get(runconfig_get(), "pl_parsing_strict_eol"));
+			if (strict_eol) {
+				return new Th155_110StoryText(fields, comment);
+			}
+			else {
+				return new Th155StoryText(fields, comment);
+			}
 		}
 	case ENDINGS:
 		return new EndingText(fields, comment);
@@ -338,6 +344,11 @@ TasofroPl::StoryText::StoryText(const std::vector<std::string>& fields, const st
 
 TasofroPl::Th155StoryText::Th155StoryText(const std::vector<std::string>& fields, const std::string& comment)
 	: StoryText(fields, comment)
+{
+}
+
+TasofroPl::Th155_110StoryText::Th155_110StoryText(const std::vector<std::string>& fields, const std::string& comment)
+	: Th155StoryText(fields, comment)
 {
 }
 
@@ -523,6 +534,15 @@ void TasofroPl::StoryText::beginLine(std::list<ALine*>& file, const std::list<AL
 			"ClearBalloon",
 			this->owner
 			})));
+	}
+}
+
+void TasofroPl::Th155_110StoryText::beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+{
+	if (this->is_first_balloon == false && this->cur_line == 1) {
+		this->fields[0] = this->quote(this->fields[0]);
+		file.insert(it, new Th155_110StoryText(this->fields));
+		this->fields[0] = "";
 	}
 }
 

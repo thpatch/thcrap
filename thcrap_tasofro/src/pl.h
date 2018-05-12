@@ -154,6 +154,16 @@ namespace TasofroPl
 		~Th155StoryText() {}
 	};
 
+	class Th155_110StoryText : public Th155StoryText
+	{
+	protected:
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+
+	public:
+		Th155_110StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
+		~Th155_110StoryText() {}
+	};
+
 	class EndingText : public AText
 	{
 	private:
