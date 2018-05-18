@@ -8,11 +8,48 @@
   */
 
 #include <thcrap.h>
-#include <stdbool.h>
 #include <math.h>
 
+/// POV hat → X/Y axis mapping
+/// ---------------------------
 // 180° / PI
 #define DEG_TO_RAD(x) ((x) * 0.0174532925199432957692369076848f)
+
+/*
+ * The basic algorithm for converting POV hat values is identical for both
+ * WinMM and DirectInput APIs. The only difference is that WinMM expresses
+ * its ranges in UINTs ([0; 2³²-1]), while DirectInput uses LONGs
+ * ([-2³¹; 2³¹-1]). And well, who knows whether *some* driver manufacturer
+ * out there actually uses the entire UINT range for their axis values. So,
+ * just to be safe, templates it is.
+ */
+template <typename T> struct Ranges
+{
+	T x_min, x_max;
+	T y_min, y_max;
+};
+
+template <typename T> bool pov_to_xy(T &x, T& y, Ranges<T> &ranges, DWORD pov)
+{
+	// According to MSDN, some DirectInput drivers report the centered
+	// position of the POV indicator as 65,535. This matches both that
+	// behavior and JOY_POVCENTERED for WinMM.
+	if(LOWORD(pov) == 0xFFFF) {
+		return false;
+	}
+	T x_center = (ranges.x_max - ranges.x_min) / 2;
+	T y_center = (ranges.y_max - ranges.y_min) / 2;
+
+	float angle_deg = pov / 100.0f;
+	float angle_rad = DEG_TO_RAD(angle_deg);
+	// POV values ≠ unit circle angles, so...
+	float angle_sin = 1.0f - cosf(angle_rad);
+	float angle_cos = sinf(angle_rad) + 1.0f;
+	x = (T)(ranges.x_min + (angle_cos * x_center));
+	y = (T)(ranges.y_min + (angle_sin * y_center));
+	return true;
+}
+/// ---------------------------
 
 /// WinMM joystick API
 /// ------------------
@@ -40,24 +77,17 @@ typedef MMRESULT __stdcall joyGetPosEx_type(
 
 DETOUR_CHAIN_DEF(joyGetPosEx);
 
- typedef struct
-{
-	uint32_t min;
-	uint32_t max;
-} range_t;
-
 // joyGetDevCaps() will necessarily be slower
-typedef struct
+struct winmm_joy_caps_t
 {
 	// joyGetPosEx() will return bogus values on joysticks without a POV, so
 	// we must check if we even have one.
 	bool initialized;
 	bool has_pov;
-	range_t range_x;
-	range_t range_y;
-} winmm_joy_caps_t;
+	Ranges<DWORD> range;
+};
 
-winmm_joy_caps_t *joy_info = NULL;
+winmm_joy_caps_t *joy_info = nullptr;
 
 MMRESULT __stdcall my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
 {
@@ -66,48 +96,36 @@ MMRESULT __stdcall my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
 	}
 	pji->dwFlags |= JOY_RETURNPOV;
 
-	MMRESULT ret_pos = chain_joyGetPosEx(uJoyID, pji);
+	auto ret_pos = chain_joyGetPosEx(uJoyID, pji);
 	if(ret_pos != JOYERR_NOERROR) {
 		return ret_pos;
 	}
 
-	winmm_joy_caps_t *jc = &joy_info[uJoyID];
+	auto *jc = &joy_info[uJoyID];
 	if(!jc->initialized) {
 		JOYCAPSW caps;
-		MMRESULT ret_caps = joyGetDevCapsW(uJoyID, &caps, sizeof(caps));
+		auto ret_caps = joyGetDevCapsW(uJoyID, &caps, sizeof(caps));
 		assert(ret_caps == JOYERR_NOERROR);
 
 		jc->initialized = true;
-		jc->has_pov = caps.wCaps & JOYCAPS_HASPOV;
-		jc->range_x.min = caps.wXmin;
-		jc->range_x.max = caps.wXmax;
-		jc->range_y.min = caps.wYmin;
-		jc->range_y.max = caps.wYmax;
+		jc->has_pov = (caps.wCaps & JOYCAPS_HASPOV) != 0;
+		jc->range.x_min = caps.wXmin;
+		jc->range.x_max = caps.wXmax;
+		jc->range.y_min = caps.wYmin;
+		jc->range.y_max = caps.wYmax;
 	} else if(!jc->has_pov) {
 		return ret_pos;
 	}
-
-	if(pji->dwPOV != JOY_POVCENTERED) {
-		uint32_t x_center = (jc->range_x.max - jc->range_x.min) / 2;
-		uint32_t y_center = (jc->range_y.max - jc->range_y.min) / 2;
-
-		float angle_deg = pji->dwPOV / 100.0f;
-		float angle_rad = DEG_TO_RAD(angle_deg);
-		// POV values ≠ unit circle angles, so...
-		float angle_sin = 1.0f - cosf(angle_rad);
-		float angle_cos = sinf(angle_rad) + 1.0f;
-		pji->dwXpos = (DWORD)(jc->range_x.min + (angle_cos * x_center));
-		pji->dwYpos = (DWORD)(jc->range_y.min + (angle_sin * y_center));
-	}
+	pov_to_xy(pji->dwXpos, pji->dwYpos, jc->range, pji->dwPOV);
 	return ret_pos;
 }
 /// ------------------
 
-__declspec(dllexport) void input_mod_detour(void)
+extern "C" __declspec(dllexport) void input_mod_detour(void)
 {
 	// This conveniently returns the number of *possible* joysticks, *not* the
 	// number of joysticks currently connected.
-	UINT num_devs = joyGetNumDevs();
+	auto num_devs = joyGetNumDevs();
 	if(num_devs == 0) {
 		return;
 	}
@@ -118,6 +136,6 @@ __declspec(dllexport) void input_mod_detour(void)
 
 	detour_chain("winmm.dll", 1,
 		"joyGetPosEx", my_joyGetPosEx, &chain_joyGetPosEx,
-		NULL
+		nullptr
 	);
 }

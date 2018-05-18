@@ -42,7 +42,9 @@
     <ClCompile Include="src\gentext.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\input.c" />
+    <ClCompile Include="src\input.cpp">
+	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
+	</ClCompile>
     <ClCompile Include="src\layout.c" />
     <ClCompile Include="src\music.c" />
     <ClCompile Include="src\png_ex.c" />
