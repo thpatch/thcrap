@@ -225,10 +225,22 @@ DID8_GETDEVICESTATE(my_did8_GetDeviceState)
 
 DI8_CREATEDEVICE(my_di8_CreateDevice)
 {
+	/*
+	 * Little copying > little dependency on dxguid.lib.
+	 * Filtering out keyboards is in fact necessary, because:
+	 * 1) the Steam overlay assigns different vtables to keyboards and joypads
+	 * 2) ZUN initializes the keyboard before any joypads
+	 * 3) vtable_detour() then wouldn't detour SetProperty() for joypads,
+	 *    because it already did that for keyboards and we assume all
+	 *    IDirectInputDevice8 vtables to be equal.
+	 *
+	 * Also, not every joypad uses GUID_Joystick.
+	 */
+	const GUID GUID_SysKeyboard = {
+		0x6F1D2B61, 0xD5A0, 0x11CF, 0xBF, 0xC7, 0x44, 0x45, 0x53, 0x54, 0x00, 0x00
+	};
 	auto ret = chain_di8_CreateDevice(that, rguid, ppDevice, pUnkOuter);
-
-	// Yes, not every joypad uses GUID_Joystick.
-	if(ret != DI_OK) {
+	if(ret != DI_OK || !memcmp(&rguid, &GUID_SysKeyboard, sizeof(GUID))) {
 		return ret;
 	}
 	vtable_detour_t my[] = {
