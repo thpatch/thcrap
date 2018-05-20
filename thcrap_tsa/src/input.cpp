@@ -10,6 +10,9 @@
 #include <thcrap.h>
 #include <math.h>
 
+#define DIRECTINPUT_VERSION 0x800
+#include <dinput.h>
+
 /// POV hat → X/Y axis mapping
 /// ---------------------------
 // 180° / PI
@@ -121,6 +124,140 @@ MMRESULT __stdcall my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
 }
 /// ------------------
 
+/// DirectInput API
+/// ---------------
+#define DIRECTINPUT8CREATE(name) HRESULT __stdcall name( \
+	HINSTANCE hinst, \
+	DWORD dwVersion, \
+	REFIID riidltf, \
+	void ****ppvOut, \
+	void *punkOuter \
+)
+
+#define DI8_CREATEDEVICE(name) HRESULT __stdcall name( \
+	void*** that, \
+	REFGUID rguid, \
+	void ****ppDevice, \
+	void *pUnkOuter \
+)
+
+#define DID8_GETPROPERTY(name) HRESULT __stdcall name( \
+	void*** that, \
+	REFGUID rguidProp, \
+	DIPROPHEADER *pdiph \
+)
+
+#define DID8_SETPROPERTY(name) HRESULT __stdcall name( \
+	void*** that, \
+	REFGUID rguidProp, \
+	const DIPROPHEADER *pdiph \
+)
+
+#define DID8_GETDEVICESTATE(name) HRESULT __stdcall name( \
+	void*** that, \
+	DWORD cbData, \
+	void **lpvData \
+)
+
+typedef DIRECTINPUT8CREATE(DirectInput8Create_type);
+typedef DI8_CREATEDEVICE(DI8_CreateDevice_type);
+typedef DID8_GETPROPERTY(DID8_GetProperty_type);
+typedef DID8_SETPROPERTY(DID8_SetProperty_type);
+typedef DID8_GETDEVICESTATE(DID8_GetDeviceState_type);
+
+DirectInput8Create_type *chain_DirectInput8Create;
+DI8_CreateDevice_type *chain_di8_CreateDevice;
+DID8_GetProperty_type *chain_did8_GetProperty;
+DID8_SetProperty_type *chain_did8_SetProperty;
+DID8_GetDeviceState_type *chain_did8_GetDeviceState;
+
+// That disconnect between axes as enumerable "device objects" and the fixed
+// DIJOYSTATE structure is pretty weird and confusing. Fingers crossed that
+// ZUN will always force all gamepads to the same range. (Which seems likely,
+// given the configurable deadzone in custom.exe.)
+Ranges<long> di_range;
+
+DID8_SETPROPERTY(my_did8_SetProperty)
+{
+	auto ret = chain_did8_SetProperty(that, rguidProp, pdiph);
+	if(ret != DI_OK || (size_t)&rguidProp != 4 /* DIPROP_RANGE */) {
+		return ret;
+	}
+	auto *prop = (DIPROPRANGE*)pdiph;
+	auto &r = di_range;
+	if(r.x_min == 0 && r.x_max == 0 && r.y_min == 0 && r.y_max == 0) {
+		di_range = { prop->lMin, prop->lMax, prop->lMin, prop->lMax };
+	} else if (
+		r.x_min != prop->lMin
+		|| r.x_max != prop->lMax
+		|| r.y_min != prop->lMin
+		|| r.y_max != prop->lMax
+	) {
+		log_mbox(nullptr, MB_OK | MB_ICONEXCLAMATION,
+			"Disabling D-pad → axis mapping due to conflicting axis range values.\n"
+			"Please report this bug!"
+		);
+		vtable_detour_t my[] = {
+			{ 6, chain_did8_SetProperty, nullptr },
+			{ 9, chain_did8_GetDeviceState, nullptr }
+		};
+		vtable_detour(*that, my, elementsof(my));
+	}
+	return ret;
+}
+
+DID8_GETDEVICESTATE(my_did8_GetDeviceState)
+{
+	auto ret_state = chain_did8_GetDeviceState(that, cbData, lpvData);
+	if(
+		ret_state != DI_OK
+		|| !(cbData == sizeof(DIJOYSTATE) || cbData == sizeof(DIJOYSTATE2))
+	) {
+		return ret_state;
+	}
+	auto *js = (DIJOYSTATE*)lpvData;
+	bool ret_map = false;
+	for(int i = 0; i < elementsof(js->rgdwPOV) && !ret_map; i++) {
+		ret_map = pov_to_xy(js->lX, js->lY, di_range, js->rgdwPOV[i]);
+	}
+	return ret_state;
+}
+
+DI8_CREATEDEVICE(my_di8_CreateDevice)
+{
+	auto ret = chain_di8_CreateDevice(that, rguid, ppDevice, pUnkOuter);
+
+	// Yes, not every joypad uses GUID_Joystick.
+	if(ret != DI_OK) {
+		return ret;
+	}
+	vtable_detour_t my[] = {
+		{ 6, my_did8_SetProperty, (void**)&chain_did8_SetProperty },
+		{ 9, my_did8_GetDeviceState, (void**)&chain_did8_GetDeviceState }
+	};
+	vtable_detour(**ppDevice, my, elementsof(my));
+	return ret;
+}
+
+DIRECTINPUT8CREATE(my_DirectInput8Create)
+{
+	if(!chain_DirectInput8Create) {
+		return DIERR_INVALIDPARAM;
+	}
+	auto ret = chain_DirectInput8Create(
+		hinst, dwVersion, riidltf, ppvOut, punkOuter
+	);
+	if(ret != DI_OK) {
+		return ret;
+	}
+	vtable_detour_t my[] = {
+		{ 3, my_di8_CreateDevice, (void**)&chain_di8_CreateDevice }
+	};
+	vtable_detour(**ppvOut, my, elementsof(my));
+	return ret;
+}
+/// ---------------
+
 extern "C" __declspec(dllexport) void input_mod_detour(void)
 {
 	// This conveniently returns the number of *possible* joysticks, *not* the
@@ -138,4 +275,13 @@ extern "C" __declspec(dllexport) void input_mod_detour(void)
 		"joyGetPosEx", my_joyGetPosEx, &chain_joyGetPosEx,
 		nullptr
 	);
+
+	auto hDInput = GetModuleHandleW(L"dinput8.dll");
+	if(hDInput) {
+		*(void**)(&chain_DirectInput8Create) = GetProcAddress(hDInput, "DirectInput8Create");
+		detour_chain("dinput8.dll", 1,
+			"DirectInput8Create", my_DirectInput8Create, &chain_DirectInput8Create,
+			nullptr
+		);
+	}
 }
