@@ -1,6 +1,6 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Update plugin
+  * Update module
   *
   * ----
   *
@@ -11,6 +11,7 @@
 
 // All possible ways a self-update can possibly fail
 typedef enum {
+	SELF_NO_UPDATE = -1,
 	SELF_OK = 0,
 	SELF_NO_PUBLIC_KEY,
 	SELF_SERVER_ERROR,

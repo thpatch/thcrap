@@ -20,25 +20,29 @@ typedef struct {
 	CRITICAL_SECTION cs_result;
 } search_state_t;
 
-static search_state_t state;
+static search_state_t __declspec(align(16)) state;
 
-int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
+int SearchCheckExe(wchar_t *local_dir, WIN32_FIND_DATAW *w32fd)
 {
 	int ret = 0;
 	json_t *ver = identify_by_size(w32fd->nFileSizeLow, state.versions);
 	if(ver) {
-		STRLEN_DEC(local_dir);
-		size_t exe_fn_len = local_dir_len + strlen(w32fd->cFileName) + 2;
-		VLA(char, exe_fn, exe_fn_len);
+		WCSLEN_DEC(local_dir);
+		size_t exe_fn_len = local_dir_len + wcslen(w32fd->cFileName) + 2;
+		VLA(wchar_t, exe_fn, exe_fn_len);
 		const char *key;
 		json_t *game_val;
 
-		strncpy(exe_fn, local_dir, local_dir_len);
+		wcsncpy(exe_fn, local_dir, local_dir_len);
 		exe_fn[local_dir_len - 1] = 0;
-		strcat(exe_fn, w32fd->cFileName);
-		str_slash_normalize(exe_fn);
+		wcscat(exe_fn, w32fd->cFileName);
 
-		ver = identify_by_hash(exe_fn, (size_t*)&w32fd->nFileSizeLow, state.versions);
+		size_t exe_fn_a_len = wcslen(exe_fn)*UTF8_MUL + 1;
+		VLA(char, exe_fn_a, exe_fn_a_len);
+		StringToUTF8(exe_fn_a, exe_fn, exe_fn_a_len);
+		str_slash_normalize(exe_fn_a);
+
+		ver = identify_by_hash(exe_fn_a, (size_t*)&w32fd->nFileSizeLow, state.versions);
 		if(!ver) {
 			return ret;
 		}
@@ -65,9 +69,10 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 				variety ? variety : ""
 			);
 
-			json_object_set_new(game_val, exe_fn, id_str);
+			json_object_set_new(game_val, exe_fn_a, id_str);
 		}
 		LeaveCriticalSection(&state.cs_result);
+		VLA_FREE(exe_fn_a);
 		VLA_FREE(exe_fn);
 		ret = 1;
 	}
@@ -78,55 +83,56 @@ int SearchCheckExe(char *local_dir, WIN32_FIND_DATAA *w32fd)
 DWORD WINAPI SearchThread(void *param)
 {
 	HANDLE hFind;
-	WIN32_FIND_DATAA w32fd;
-	char *param_dir = (char*)param;
+	WIN32_FIND_DATAW w32fd;
+	wchar_t *param_dir = (wchar_t*)param;
 
 	// Add the asterisk
-	size_t dir_len = strlen(param_dir) + 2 + 1;
-	VLA(char, local_dir, dir_len);
+	size_t dir_len = wcslen(param_dir) + 2 + 1;
+	VLA(wchar_t, local_dir, dir_len);
 
 	BOOL ret = 1;
 
-	strcpy(local_dir, param_dir);
-	strcat(local_dir, "*");
+	wcscpy(local_dir, param_dir);
+	wcscat(local_dir, L"*");
 
 	InterlockedIncrement(&state.cur_threads);
 
 	SAFE_FREE(param_dir);
-	hFind = FindFirstFile(local_dir, &w32fd);
+	hFind = FindFirstFileW(local_dir, &w32fd);
 	while( (hFind != INVALID_HANDLE_VALUE) && ret ) {
 		if(
-			!strcmp(w32fd.cFileName, ".") ||
-			!strcmp(w32fd.cFileName, "..")
+			!wcscmp(w32fd.cFileName, L".") ||
+			!wcscmp(w32fd.cFileName, L"..")
 		) {
-			ret = FindNextFile(hFind, &w32fd);
+			ret = FindNextFileW(hFind, &w32fd);
 			continue;
 		}
 		local_dir[dir_len - 3] = 0;
 
 		if(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 			DWORD thread_id;
-			size_t cur_file_len = dir_len + strlen(w32fd.cFileName) + 2;
-			char *cur_file = (char*)malloc(cur_file_len * sizeof(char));
+			size_t cur_file_len = dir_len + wcslen(w32fd.cFileName) + 2;
+			wchar_t *cur_file = (wchar_t*)malloc(cur_file_len * sizeof(wchar_t));
 
-			strncpy(cur_file, local_dir, dir_len);
-			strcat(cur_file, w32fd.cFileName);
-			PathAddBackslashA(cur_file);
+			wcsncpy(cur_file, local_dir, dir_len);
+			wcscat(cur_file, w32fd.cFileName);
+			PathAddBackslashW(cur_file);
 
 			// Execute the function normally if we're above the thread limit
-			if(state.cur_threads > state.max_threads) {
+			if(InterlockedCompareExchange(&state.cur_threads, -1, -1) > state.max_threads) {
 				SearchThread(cur_file);
 			} else {
-				CreateThread(NULL, 0, SearchThread, cur_file, 0, &thread_id);
+				HANDLE hThread = CreateThread(NULL, 0, SearchThread, cur_file, 0, &thread_id);
+				if (hThread) CloseHandle(hThread);
 			}
 		} else if(
-			(PathMatchSpec(w32fd.cFileName, "*.exe")) &&
+			(PathMatchSpecW(w32fd.cFileName, L"*.exe")) &&
 			(w32fd.nFileSizeLow >= state.size_min) &&
 			(w32fd.nFileSizeLow <= state.size_max)
 		) {
 			SearchCheckExe(local_dir, &w32fd);
 		}
-		ret = FindNextFile(hFind, &w32fd);
+		ret = FindNextFileW(hFind, &w32fd);
 	}
 	FindClose(hFind);
 	InterlockedDecrement(&state.cur_threads);
@@ -140,7 +146,9 @@ void LaunchSearchThread(const char *dir)
 	HANDLE initial_thread;
 
 	// Freed inside the thread
-	char *cur_dir = strdup(dir);
+	size_t cur_dir_len = strlen(dir) + 1;
+	wchar_t *cur_dir = (wchar_t*)malloc(cur_dir_len * sizeof(wchar_t));
+	StringToUTF16(cur_dir, dir, cur_dir_len);
 	initial_thread = CreateThread(NULL, 0, SearchThread, cur_dir, 0, &thread_id);
 	WaitForSingleObject(initial_thread, INFINITE);
 }

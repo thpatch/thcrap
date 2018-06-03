@@ -1,13 +1,12 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Update plugin
+  * Update module
   *
   * ----
   *
-  * Update notifications for thcrap and the game itself.
+  * Update notifications for thcrap itself.
   */
 
 #pragma once
 
-int update_notify_game(void);
 int update_notify_thcrap(void);

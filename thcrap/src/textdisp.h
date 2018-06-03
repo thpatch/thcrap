@@ -75,8 +75,8 @@
   * eventually passed to CreateFontIndirectEx().
   * The currently supported font parameters are, in order:
   *
-  *			"'Linux Biolinum O'  32   14  600"
-  *			                1)   2)   3)   4)
+  *			"'Linux Biolinum O'  32   14  600 DEFAULT_QUALITY"
+  *			                1)   2)   3)   4)              5)
   *
   * 1) Face name (string) or the font's PitchAndFamily value (int).
   *    The latter can be used as an option for games that don't use font
@@ -85,6 +85,14 @@
   * 2) Height (int)
   * 3) Width (int)
   * 4) Weight (int)
+  * 5) Quality (enum). Case-sensitive, can be one of the following,
+  *    • DEFAULT_QUALITY
+  *    • DRAFT_QUALITY
+  *    • PROOF_QUALITY
+  *    • NONANTIALIASED_QUALITY
+  *    • ANTIALIASED_QUALITY
+  *    • CLEARTYPE_QUALITY
+  *    • CLEARTYPE_NATURAL_QUALITY
   *
   * The basic rules of the syntax:
   *

@@ -27,9 +27,13 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * **Breakpoints** to call custom DLL functions at any instruction of the original code. These functions can read and modify the current CPU register state.
 
+* **Multiple sets** of sequentially applied binary hacks and breakpoints, for working around EXE packers and DRM schemes.
+
  * **File breakpoints** to replace data files in memory with replacements from patches.
 
 * Wildcard-based **file format patching hooks** called on file replacements - can apply patches to data files according to a (stackable!) JSON description.
+
+* Optional **Steam integration** for games that are available through Steam, but don't come with Steam integration themselves. Can be disabled by deleting `steam_api.dll`.
 
 * ... and all that without any significant impact on performance. ☺
 
@@ -38,9 +42,10 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 * `win32_utf8`: A UTF-8 wrapper library around the Win32 API calls we require. This is a stand-alone project and can (and should) be freely used in other applications, too.
 * `thcrap`: The main patch engine.
 * `thcrap_loader`: A command-line loader to call the injection functions of `thcrap` on a newly created process.
-* `thcrap_configure`: A rather cheap command-line patch configuration utility. Will eventually be replaced with a GUI tool.
+* `thcrap_configure`: A GUI wizard for discovering patches, configuring patch stacks, and locating supported games.
 * `thcrap_tsa`: A thcrap plug-in containing patch hooks for games using the STG engine by Team Shanghai Alice.
-* `thcrap_update`: A thcrap plug-in containing updating functionality for patches as well as digitally signed automatic updates of thcrap itself.
+* `thcrap_tasofro`: A thcrap plug-in containing patch hooks for various games by [Twilight Frontier](http://tasofro.net/).
+* `thcrap_update`: Contains updating functionality for patches, digitally signed automatic updates of thcrap itself, as well as an updater GUI. `thcrap_update.dll` can be safely deleted to disable all online functionality.
 
 ### Building ###
 
@@ -84,7 +89,7 @@ Compilation with MinGW is currently not supported. This is not likely to change 
 
 #### Dependencies ####
 
-All required third-party libraries for the C code are included as Git submodules. These are:
+All required third-party libraries for the C/C++ code are included as Git submodules. These are:
 
 * [Jansson](http://www.digip.org/jansson/), required for every module apart from `win32_utf8`.
 
@@ -95,6 +100,7 @@ All required third-party libraries for the C code are included as Git submodules
 The scripts in the `scripts` directory are written in [Python 3](http://python.org/). Some of them require further third-party libraries not included in this repository:
 
 * [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
+* [pathspec](https://pypi.python.org/pypi/pathspec) is required by `repo_update.py`. Can be easily installed via `pip`.
 
 ### License ###
 

@@ -41,7 +41,7 @@ HRESULT CreateLink(
 		IPersistFile* ppf;
 
 		LINK_MACRO_EXPAND(WCHAR_T_DEC);
-		LINK_MACRO_EXPAND(WCHAR_T_CONV_VLA);
+		LINK_MACRO_EXPAND(WCHAR_T_CONV);
 
 		// Set the path to the shortcut target and add the description.
 		psl->SetPath(target_cmd_w);
@@ -69,11 +69,7 @@ HRESULT CreateLink(
 
 int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 {
-#ifdef _DEBUG
-	const char *loader_exe = "thcrap_loader_d.exe";
-#else
-	const char *loader_exe = "thcrap_loader.exe";
-#endif
+	const stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
 	int ret = 0;
 	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
@@ -87,16 +83,16 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 	{
 		const char *key = NULL;
 		json_t *cur_game = NULL;
-		VLA(char, self_path, self_fn_len);
+		VLA(char, self_path, self_fn_len + loader_exe.len);
 		strcpy(self_path, self_fn);
 
-		strcat(self_fn, loader_exe);
+		strcat(self_fn, loader_exe.str);
 
 		log_printf("Creating shortcuts");
 
 		json_object_foreach(games, key, cur_game) {
 			const char *game_fn = json_string_value(cur_game);
-			const char *link_fn = strings_sprintf(LINK_FN, "%s (%s).lnk", key, run_cfg_fn);
+			const char *link_fn = strings_sprintf(LINK_FN, "%s%s (%s).lnk", self_path, key, run_cfg_fn);
 			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
 
 			log_printf(".");

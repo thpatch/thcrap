@@ -15,7 +15,10 @@ BOOL VirtualCheckRegion(const void *ptr, const size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	if(VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
-		return ((size_t)mbi.BaseAddress + mbi.RegionSize) >= ((size_t)ptr + len);
+		auto page_end = (size_t)mbi.BaseAddress + mbi.RegionSize;
+		return
+			(~mbi.Protect & PAGE_NOACCESS)
+			&& (page_end >= ((size_t)ptr + len));
 	}
 	return FALSE;
 }
@@ -27,17 +30,18 @@ BOOL VirtualCheckCode(const void *ptr)
 
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len)
 {
-	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
 	int ret = 0;
 
-	VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
+	if(!VirtualCheckRegion(ptr, len)) {
+		return ret;
+	}
+	VirtualProtect(ptr, len, PAGE_READWRITE, &oldProt);
 	if(Prev ? !memcmp(ptr, Prev, len) : 1) {
 		memcpy(ptr, New, len);
 		ret = 1;
 	}
-	VirtualProtect(mbi.BaseAddress, mbi.RegionSize, oldProt, &oldProt);
+	VirtualProtect(ptr, len, oldProt, &oldProt);
 	return ret;
 }
 
@@ -61,22 +65,29 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 
 /// Import Address Table detouring
 /// ==============================
-
-/// Low-level
-/// ---------
-int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
+inline int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)
 {
 	return PatchRegion(&pThunk->u1.Function, NULL, &new_ptr, sizeof(new_ptr));
 }
 
-int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
+int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour)
 {
-	if(
-		detour && detour->old_func && detour->new_ptr
-		&& VirtualCheckCode(detour->new_ptr)
-	) {
-		PIMAGE_THUNK_DATA pOT = pOrigFirstThunk;
-		PIMAGE_THUNK_DATA pIT = pImpFirstThunk;
+	if(!hMod || !pImpDesc || !detour || !detour->new_ptr || !detour->old_func) {
+		return -1;
+	}
+	if(!VirtualCheckCode(detour->new_ptr)) {
+		return -2;
+	}
+	auto pOT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->OriginalFirstThunk);
+	auto pIT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->FirstThunk);
+
+	// We generally detour by comparing exported names. This has the advantage
+	// that we can override any existing patches, and that it works on Win9x
+	// too (as if that matters). However, in case we lack a pointer to the
+	// OriginalFirstThunk, or the function is only exported by ordinal, this
+	// is not possible, so we have to detour by comparing pointers then.
+
+	if(pImpDesc->OriginalFirstThunk) {
 		for(; pOT->u1.Function; pOT++, pIT++) {
 			PIMAGE_IMPORT_BY_NAME pByName;
 			if(!(pOT->u1.Ordinal & IMAGE_ORDINAL_FLAG)) {
@@ -87,51 +98,21 @@ int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_
 				if(!stricmp(detour->old_func, (char*)pByName->Name)) {
 					return func_detour(pIT, detour->new_ptr);
 				}
+			} else {
+				if((void*)pIT->u1.Function == detour->old_ptr) {
+					return func_detour(pIT, detour->new_ptr);
+				}
+			}
+		}
+	} else {
+		for(; pIT->u1.Function; pIT++) {
+			if((void*)pIT->u1.Function == detour->old_ptr) {
+				return func_detour(pIT, detour->new_ptr);
 			}
 		}
 	}
 	// Function not found
 	return 0;
-}
-
-int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour)
-{
-	if(detour && detour->new_ptr && VirtualCheckCode(detour->new_ptr)) {
-		PIMAGE_THUNK_DATA Thunk;
-		for(Thunk = pImpFirstThunk; Thunk->u1.Function; Thunk++) {
-			if((DWORD*)Thunk->u1.Function == (DWORD*)detour->old_ptr) {
-				return func_detour(Thunk, detour->new_ptr);
-			}
-		}
-	}
-	// Function not found
-	return 0;
-}
-/// ---------
-
-/// High-level
-/// ----------
-int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour)
-{
-	PIMAGE_THUNK_DATA pOT = NULL;
-	PIMAGE_THUNK_DATA pIT = NULL;
-	if(hMod && pImpDesc && detour) {
-		pIT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->FirstThunk);
-
-		// We generally detour by comparing exported names. This has the
-		// advantage that we can override any existing patches, and that
-		// it works on Win9x too (as if that matters). However, in case we lack
-		// a pointer to the OriginalFirstThunk, this is not possible, so we have
-		// to detour by comparing pointers then.
-
-		if(pImpDesc->OriginalFirstThunk) {
-			pOT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->OriginalFirstThunk);
-			return func_detour_by_name(hMod, pOT, pIT, detour);
-		} else {
-			return func_detour_by_ptr(pIT, detour);
-		}
-	}
-	return -1;
 }
 /// ----------
 
@@ -252,6 +233,49 @@ FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback
 	json_t *funcs = json_object_get_create(detours, dll_name, JSON_OBJECT);
 	FARPROC ret = (FARPROC)json_object_get_hex(funcs, func_name);
 	return ret ? ret : fallback;
+}
+
+int vtable_detour(void **vtable, vtable_detour_t *det, size_t det_count)
+{
+	assert(vtable);
+	assert(det);
+
+	if(det_count == 0) {
+		return 0;
+	}
+
+	DWORD old_prot;
+	int replaced = 0;
+	size_t i;
+
+	// VirtualProtect() is infamously slow, so...
+	size_t lowest = (size_t)-1;
+	size_t highest = 0;
+
+	for(i = 0; i < det_count; i++) {
+		lowest = min(lowest, det[i].index);
+		highest = max(highest, det[i].index);
+	}
+
+	size_t bytes_to_lock = ((highest + 1) - lowest) * sizeof(void*);
+
+	VirtualProtect(vtable + lowest, bytes_to_lock, PAGE_READWRITE, &old_prot);
+	for(i = 0; i < det_count; i++) {
+		auto& cur = det[i];
+
+		bool replace = (cur.old_func == nullptr) || (*cur.old_func == nullptr);
+		bool set_old = (cur.old_func != nullptr) && (*cur.old_func == nullptr);
+
+		if(set_old) {
+			*cur.old_func = vtable[cur.index];
+		}
+		if(replace) {
+			vtable[cur.index] = cur.new_func;
+			replaced++;
+		}
+	}
+	VirtualProtect(vtable + lowest, bytes_to_lock, old_prot, &old_prot);
+	return replaced;
 }
 
 void detour_exit(void)

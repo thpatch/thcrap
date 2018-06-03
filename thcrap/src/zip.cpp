@@ -258,7 +258,7 @@ static int zip_file_seek(zip_t *zip, const char *fn)
 		if(json_is_integer(offset_json)) {
 			json_int_t pos = json_integer_value(offset_json);
 			ret = SetFilePointer(
-				zip->hArc, pos, NULL, FILE_BEGIN
+				zip->hArc, (LONG)pos, NULL, FILE_BEGIN
 			) == INVALID_SET_FILE_POINTER ? GetLastError() : 0;
 		}
 	}
@@ -518,7 +518,7 @@ int zip_file_unzip(zip_t *zip, const char *fn)
 		);
 		ret = (handle == INVALID_HANDLE_VALUE);
 		if(!ret) {
-			SetFileTime(handle, &file.ctime, &file.mtime, &file.atime);
+			SetFileTime(handle, &file.ctime, &file.atime, &file.mtime);
 			ret = W32_ERR_WRAP(WriteFile(
 				handle, file_buffer, file.size_uncompressed, &byte_ret, NULL
 			));

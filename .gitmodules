@@ -10,3 +10,9 @@
 [submodule "zlib-ng"]
 	path = libs/zlib-ng
 	url = https://github.com/Dead2/zlib-ng
+[submodule "Act-Nut-lib"]
+	path = Act-Nut-lib
+	url = https://github.com/thpatch/Act-Nut-lib.git
+[submodule "thtypes"]
+	path = thtypes
+	url = https://github.com/thpatch/thtypes.git

@@ -9,29 +9,61 @@
 
 #pragma once
 
-/**
-  * Encryption function type.
-  *
-  * Parameters
-  * ----------
-  *	uint8_t* data
-  *		Buffer to encrypt
-  *
-  *	size_t data_len
-  *		Length of [data]
-  *
-  *	const uint8_t* params
-  *		Optional array of parameters required
-  *
-  *	const uint8_t* params_count
-  *		Number of parameters in [params].
-  *
-  * Returns nothing.
-  */
+typedef enum {
+	TH_NONE,
 
-typedef void (*EncryptionFunc_t)(
-	uint8_t *data, size_t data_len, const uint8_t *params, size_t params_count
-);
+	// • msg: Hard lines only
+	TH06,
+	TH07,
+
+	// • msg: Text starts being encrypted with a simple XOR
+	// • msg: Automatic lines mostly, hard lines for effect
+	TH08,
+
+	// • msg: Hard lines stop being used
+	// • msg: Text starts being encrypted with a more complicated XOR using
+	//        two step variables
+	TH09,
+
+	// • Introduces a custom format for mission.msg
+	TH095,
+
+	// • msg: Different opcodes
+	// • end: Now uses the regular MSG format with a different set of opcodes
+	TH10,
+	ALCOSTG,
+
+	// • anm: Header structure is changed
+	TH11,
+	TH12,
+
+	// • mission: Adds ruby support
+	TH125,
+
+	// • Changes the fixed-size text boxes to variable-size speech bubbles
+	TH128,
+
+	// • Changes the speech bubble shape
+	TH13,
+
+	// • Changes the speech bubble shape
+	// • msg: Adds opcode 32 for overriding the speech bubble shape and
+	//        direction
+	TH14,
+	TH15,
+
+	// • First game released on Steam
+	TH16,
+
+	// Any future game without relevant changes
+	TH_FUTURE,
+} tsa_game_t;
+
+extern tsa_game_t game_id;
+
+// Returns 0 if the currently running game is a full version, 1 if it is a
+// trial, or -1 if this can't be determined.
+int game_is_trial(void);
 
 /// ------
 /// Spells
@@ -44,18 +76,18 @@ typedef void (*EncryptionFunc_t)(
   *	[spell_id]
   *		The ID as given in the ECL file.
   *		Used as the minimum value for the name search.
-  *		Type: register
+  *		Type: immediate
   *
   *	[spell_id_real]
   *		The ID with the difficulty offset added to it.
   *		Used as the maximum value for the name search.
-  *		Type: register
+  *		Type: immediate
   *
   *	[spell_rank]
   *		The difficulty level ID offset.
   *		Used to calculate [spell_id] from [spell_id_real]
   *		if that parameter not available.
-  *		Type: register
+  *		Type: immediate
   *
   * Other breakpoints called
   * ------------------------
@@ -69,8 +101,8 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info);
   * Own JSON parameters
   * -------------------
   *	[spell_name]
-  *		Register to write to.
-  *		Type: register
+  *		Address to write to.
+  *		Type: pointer
   *
   *	[cave_exec]
   *		Set to false to disable the execution of the code cave
@@ -141,10 +173,7 @@ void spells_mod_exit(void);
 // Returns the translated title for track #[track] of the current game.
 const char* music_title_get(size_t track);
 
-// Prints the translated title of track #[track] to [str], according to
-// [format_id] in the string definition table. This format string receives
-// the track number and its translated title, in this order.
-void music_title_print(const char **str, const char *format_id, size_t track);
+void music_title_print(const char **str, const char *format_id, size_t track_id_internal, int track_id_displayed);
 
 /**
   * Pseudo breakpoint taking parameters cached across the other
@@ -154,12 +183,12 @@ void music_title_print(const char **str, const char *format_id, size_t track);
   * -------------------
   *	[track]
   *		Music Room track number, 0-based. Gets cached 1-based.
-  *		Type: register
+  *		Type: immediate
   *
   *	[str]
-  *		Register containing the address of the target string.
+  *		Address of the target string.
   *		Also the return value of this function.
-  *		Type: register
+  *		Type: pointer
   */
 const char** BP_music_params(x86_reg_t *regs, json_t *bp_info);
 
@@ -189,7 +218,7 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
   *
   *	[line_num]
   *		Line number of the comment.
-  *		Type: register
+  *		Type: immediate
   *
   * Other breakpoints called
   * ------------------------
@@ -203,10 +232,9 @@ void music_mod_exit(void);
 
 /// Format patchers
 /// ---------------
-int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, json_t *format);
-int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
-int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
-int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch);
+int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 /// ---------------
 
 /// Win32 wrappers

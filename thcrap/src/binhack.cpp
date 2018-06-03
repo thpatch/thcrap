@@ -9,6 +9,19 @@
 
 #include "thcrap.h"
 
+int hackpoints_error_function_not_found(const char *func_name, int retval)
+{
+	log_printf("ERROR: function '%s' not found! "
+#ifdef _DEBUG
+		"(implementation not exported or still missing?)"
+#else
+		"(outdated or corrupt %s installation, maybe?)"
+#endif
+		"\n", func_name, PROJECT_NAME_SHORT()
+	);
+	return retval;
+}
+
 int is_valid_hex(char c)
 {
 	return
@@ -97,8 +110,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_buf += sizeof(void*);
 				written += sizeof(void*);
 			} else {
-				log_printf("ERROR: No pointer for function '%s'...\n", function);
-				ret = 2;
+				return hackpoints_error_function_not_found(function, 2);
 			}
 			fs = NULL;
 			VLA_FREE(function);
@@ -127,12 +139,13 @@ size_t hackpoints_count(json_t *hackpoints)
 	return ret;
 }
 
-int binhacks_apply(json_t *binhacks)
+int binhacks_apply(json_t *binhacks, HMODULE hMod)
 {
 	const char *key;
 	json_t *hack;
 	size_t binhack_count = hackpoints_count(binhacks);
 	size_t c = 0;
+	int failed = binhack_count;
 
 	if(!binhack_count) {
 		log_printf("No binary hacks to apply.\n");
@@ -165,11 +178,11 @@ int binhacks_apply(json_t *binhacks)
 			continue;
 		}
 		json_flex_array_foreach(json_addr, i, addr_val) {
-			DWORD addr = json_hex_value(addr_val);
+			auto addr = str_address_value(json_string_value(addr_val), hMod, NULL);
 			if(!addr) {
 				continue;
 			}
-			log_printf("(%2d/%2d) 0x%08x ", ++c, binhack_count, addr);
+			log_printf("(%2d/%2d) 0x%p ", ++c, binhack_count, addr);
 			if(title) {
 				log_printf("%s (%s)... ", title, key);
 			} else {
@@ -184,15 +197,16 @@ int binhacks_apply(json_t *binhacks)
 			} else if(binhack_render(exp_buf, addr, expected)) {
 				exp_size = 0;
 			}
-			log_printf(
-				PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)
-				? "OK\n"
-				: "expected bytes not matched, skipping...\n"
-			);
+			if(PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
+				log_printf("OK\n");
+				failed--;
+			} else {
+				log_printf("expected bytes not matched, skipping...\n");
+			}
 		}
 		VLA_FREE(asm_buf);
 		VLA_FREE(exp_buf);
 	}
 	log_printf("------------------------\n");
-	return 0;
+	return failed;
 }

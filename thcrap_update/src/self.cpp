@@ -1,6 +1,6 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Update plugin
+  * Update module
   *
   * ----
   *
@@ -16,7 +16,7 @@
 
 const char *ARC_FN = "thcrap_brliron.zip";
 const char *SIG_FN = "thcrap_brliron.zip.sig";
-const char *PREFIX_BACKUP = "thcrap_old_%s_";
+const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
 
@@ -228,7 +228,7 @@ static char* self_tempname(char *fn, size_t len, const char *prefix)
 static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 {
 	int ret = -1;
-	HMODULE self_mod = NULL;
+	HMODULE self_mod = GetModuleContaining(self_pubkey_from_signer);
 	HCERTSTORE hStore = NULL;
 	HCRYPTMSG hMsg = NULL;
 	DWORD msg_type = 0;
@@ -236,11 +236,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 	DWORD signer_num;
 	DWORD i;
 
-	if(!context || !GetModuleHandleEx(
-		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-		(LPTSTR)self_pubkey_from_signer,
-		&self_mod
-	)) {
+	if(!context || !self_mod) {
 		return -1;
 	}
 	{
@@ -469,7 +465,8 @@ static self_result_t self_replace(zip_t *zip)
 {
 	self_result_t ret = SELF_REPLACE_ERROR;
 	if(zip) {
-		size_t prefix_backup_len = _scprintf(PREFIX_BACKUP, PROJECT_VERSION_STRING()) + 1;
+		// + 1 for the underscore
+		size_t prefix_backup_len = _scprintf(PREFIX_BACKUP, PROJECT_VERSION_STRING()) + 1 + 1;
 		VLA(char, prefix_backup, prefix_backup_len);
 		char backup_dir[TEMP_FN_LEN];
 		const char *fn;
@@ -477,7 +474,12 @@ static self_result_t self_replace(zip_t *zip)
 		size_t i;
 
 		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING());
-		self_tempname(backup_dir, sizeof(backup_dir), prefix_backup);
+		if(!PathFileExistsU(prefix_backup)) {
+			strncpy(backup_dir, prefix_backup, sizeof(backup_dir));
+		} else {
+			strcat(prefix_backup, "_");
+			self_tempname(backup_dir, sizeof(backup_dir), prefix_backup);
+		}
 		VLA_FREE(prefix_backup);
 
 		// We don't error-check CreateDirectory(), as that might return
@@ -519,22 +521,31 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	PCCERT_CONTEXT context = NULL;
 	HCRYPTPROV hCryptProv = 0;
 	HCRYPTHASH hHash = 0;
+
 	smartdlg_state_t window;
+	defer(smartdlg_close(&window));
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
-	VLA(char, cur_dir, cur_dir_len);
-	GetCurrentDirectory(cur_dir_len, cur_dir);
-	SetCurrentDirectory(thcrap_dir);
 
-	ret = SELF_NO_PUBLIC_KEY;
+	VLA(char, cur_dir, cur_dir_len);
+	defer(VLA_FREE(cur_dir));
+
+	GetCurrentDirectory(cur_dir_len, cur_dir);
+
+	SetCurrentDirectory(thcrap_dir);
+	defer(SetCurrentDirectory(cur_dir));
+
 	if(W32_ERR_WRAP(CryptAcquireContext(
 		&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
 	))) {
-		goto end;
+		return SELF_NO_PUBLIC_KEY;
 	}
+	defer(CryptReleaseContext(hCryptProv, 0));
+
 	if(self_pubkey_from_signer(&context)) {
-		goto end;
+		return SELF_NO_PUBLIC_KEY;
 	}
+	defer(CertFreeCertificateContext(context));
 
 	CreateThread(
 		nullptr, 0, self_window_create_and_run, &window, 0, &window.thread_id
@@ -542,19 +553,24 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	WaitForSingleObject(window.event_created, INFINITE);
 
 	arc_buf = self_download(&arc_len, ARC_FN);
+	defer(SAFE_FREE(arc_buf));
 	if(!arc_buf) {
-		ret = SELF_SERVER_ERROR;
-		goto end;
+		return SELF_SERVER_ERROR;
 	}
+
 	sig_buf = (char *)self_download(&sig_len, SIG_FN);
+	defer(SAFE_FREE(sig_buf));
+
 	sig = json_loadb_report(sig_buf, sig_len, JSON_DISABLE_EOF_CHECK, SIG_FN);
 	if(!sig) {
-		ret = SELF_NO_SIG;
-		goto end;
+		return SELF_NO_SIG;
 	}
+	defer(sig = json_decref_safe(sig));
+
 	ret = self_verify(hCryptProv, &hHash, arc_buf, arc_len, sig, context);
+	defer(CryptDestroyHash(hHash));
 	if(ret != SELF_OK) {
-		goto end;
+		return ret;
 	}
 
 	auto prefix_new_len = strlen(PREFIX_NEW);
@@ -570,28 +586,17 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	memcpy(ext, EXT_NEW, ext_new_len);
 
 	if(file_write(arc_fn, arc_buf, arc_len)) {
-		ret = SELF_DISK_ERROR;
-		goto end;
-	}
-	arc = zip_open(arc_fn);
-	ret = self_replace(arc);
-end:
-	CryptDestroyHash(hHash);
-	CryptReleaseContext(hCryptProv, 0);
-	sig = json_decref_safe(sig);
-	SAFE_FREE(sig_buf);
-	SAFE_FREE(arc_buf);
-	CertFreeCertificateContext(context);
-	zip_close(arc);
-	if(ret != SELF_REPLACE_ERROR) {
-		DeleteFile(arc_fn);
+		return SELF_DISK_ERROR;
 	}
 	if(arc_fn_ptr) {
 		*arc_fn_ptr = (char *)malloc(TEMP_FN_LEN);
 		memcpy(*arc_fn_ptr, arc_fn, TEMP_FN_LEN);
 	}
-	SetCurrentDirectory(cur_dir);
-	VLA_FREE(cur_dir);
-	smartdlg_close(&window);
+	arc = zip_open(arc_fn);
+	ret = self_replace(arc);
+	zip_close(arc);
+	if(ret != SELF_REPLACE_ERROR) {
+		DeleteFile(arc_fn);
+	}
 	return ret;
 }

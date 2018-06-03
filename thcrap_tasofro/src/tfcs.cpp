@@ -15,7 +15,12 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 #include "tfcs.h"
+#include "pl.h"
 #include <zlib.h>
+#include <string>
+#include <vector>
+#include <list>
+#include <algorithm>
 
 static int inflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t size_out)
 {
@@ -70,15 +75,134 @@ static int deflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t* 
 	return ret == Z_STREAM_END ? Z_OK : ret;
 }
 
-int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
+std::string patch_ruby(std::string str)
 {
+	const std::string ruby_begin = "{{ruby|";
+	const std::string ruby_end = "}}";
+
+	std::string::iterator pattern_begin;
+	std::string::iterator pattern_end;
+	while ((pattern_begin = std::search(str.begin(), str.end(), ruby_begin.begin(), ruby_begin.end())) != str.end()) {
+		pattern_end = std::search(str.begin(), str.end(), ruby_end.begin(), ruby_end.end());
+		if (pattern_end == str.end()) {
+			break;
+		}
+
+		std::string rep = "\\R[";
+		rep.append(pattern_begin + ruby_begin.length(), pattern_end);
+		rep += "]";
+
+		pattern_end += ruby_end.length();
+		str.replace(pattern_begin, pattern_end, rep.begin(), rep.end());
+	}
+
+	return str;
+}
+
+void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
+{
+	// Read input
+	std::vector<std::string> line;
+	for (DWORD col = 0; col < nb_col; col++) {
+		DWORD field_size = *(DWORD*)in;
+		in += sizeof(DWORD);
+		line.push_back(std::string((const char*)in, field_size));
+		in += field_size;
+	}
+
+	// Patch as data/win/message/*.csv
+	unsigned int start;
+	if (game_id <= TH145) {
+		start = 1;
+	}
+	else {
+		start = 9;
+	}
+	json_t *patch_lines = json_object_get(patch_row, "lines");
+	if (patch_lines && line.size() >= start + 12 && line[start + 3].empty() == false) {
+		std::list<TasofroPl::ALine*> texts;
+		// We want to overwrite all the balloons with the user-provided ones,
+		// so we only need to put the 1st one, we can ignore the others.
+		TasofroPl::AText *text = new TasofroPl::WinText(std::vector<std::string>({
+			line[start + 3],
+			line[start + 2]
+		}));
+		texts.push_back(text);
+		text->patch(texts, texts.begin(), "", patch_lines);
+
+		size_t i = 0;
+		for (TasofroPl::ALine* it : texts) {
+			if (i == 3) {
+				log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
+				break;
+			}
+			line[start + 4 * i + 3] = it->get(0);
+			line[start + 4 * i + 2] = it->get(1);
+			i++;
+		}
+	}
+
+	// Patch each column independently
+	json_t *patch_col;
+	for (DWORD col = 0; col < nb_col; col++) {
+		patch_col = json_object_numkey_get(patch_row, col);
+		if (patch_col) {
+			if (json_is_string(patch_col)) {
+				line[col] = patch_ruby(json_string_value(patch_col));
+			}
+			else if (json_is_array(patch_col)) {
+				line[col].clear();
+				bool add_eol = false;
+				size_t i;
+				json_t *it;
+				json_array_foreach(patch_col, i, it) {
+					if (add_eol) {
+						line[col] += "\n";
+					}
+					if (json_is_string(it)) {
+						line[col] += patch_ruby(json_string_value(it));
+						add_eol = true;
+					}
+				}
+			}
+		}
+	}
+
+	// Write output
+	for (const std::string& col : line) {
+		DWORD field_size = col.length();
+		*(DWORD*)out = field_size;
+		out += sizeof(DWORD);
+		memcpy(out, col.c_str(), field_size);
+		out += field_size;
+	}
+}
+
+void skip_line(BYTE *&in, BYTE *&out, DWORD nb_col)
+{
+	for (DWORD col = 0; col < nb_col; col++) {
+		DWORD field_size = *(DWORD*)in; in += sizeof(DWORD);
+		*(DWORD*)out = field_size;      out += sizeof(DWORD);
+
+		memcpy(out, in, field_size);
+		in  += field_size;
+		out += field_size;
+	}
+}
+
+int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+{
+	if (!patch) {
+		return 0;
+	}
+
 	tfcs_header_t *header;
 
 	// Read TFCS header
 	header = (tfcs_header_t*)file_inout;
-	if (size_in < sizeof(header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
+	if (size_in < sizeof(*header) || memcmp(header->magic, "TFCS\0", 5) != 0) {
 		// Invalid TFCS file (probably a regular CSV file)
-		return patch_csv((char*)file_inout, size_out, size_in, patch);
+		return patch_csv(file_inout, size_out, size_in, fn, patch);
 	}
 
 	BYTE *file_in_uncomp = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, header->uncomp_size);
@@ -94,7 +218,6 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 	DWORD nb_row;
 	DWORD nb_col;
 	DWORD row;
-	DWORD col;
 
 	nb_row = *(DWORD*)ptr_in;  ptr_in  += sizeof(DWORD);
 	*(DWORD*)ptr_out = nb_row; ptr_out += sizeof(DWORD);
@@ -104,41 +227,37 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, json_t *patch)
 		*(DWORD*)ptr_out = nb_col; ptr_out += sizeof(DWORD);
 		json_t *patch_row = json_object_numkey_get(patch, row);
 
-		for (col = 0; col < nb_col; col++) {
-			json_t *patch_col = NULL;
-			DWORD field_in_size = *(DWORD*)ptr_in;
-			ptr_in += sizeof(DWORD);
-
-			const BYTE *field_out;
-			DWORD field_out_size;
-
-			if (!json_is_object(patch_row) || !json_is_string(patch_col = json_object_numkey_get(patch_row, col))) {
-				field_out = ptr_in;
-				field_out_size = field_in_size;
-			}
-			else {
-				field_out = (BYTE*)json_string_value(patch_col);
-				field_out_size = strlen((char*)field_out);
-			}
-			ptr_in += field_in_size;
-
-			*(DWORD*)ptr_out = field_out_size; ptr_out += sizeof(DWORD);
-			memcpy(ptr_out, field_out, field_out_size);
-			ptr_out += field_out_size;
-
-			json_decref_safe(patch_col);
+		if (patch_row) {
+			patch_line(ptr_in, ptr_out, nb_col, patch_row);
 		}
-		json_decref_safe(patch_row);
+		else {
+			skip_line(ptr_in, ptr_out, nb_col);
+		}
 	}
 
 	// Write result
-	header->uncomp_size = ptr_out - file_out_uncomp;
-	size_out -= sizeof(header);
+	file_out_uncomp_size = ptr_out - file_out_uncomp;
+	header->uncomp_size = file_out_uncomp_size;
+	size_out -= sizeof(*header) - 1;
 	int ret = deflate_bytes(file_out_uncomp, file_out_uncomp_size, header->data, &size_out);
 	header->comp_size = size_out;
+	if (ret != Z_OK) {
+		log_printf("WARNING: tasofro CSV patching: compression failed with zlib error %d\n", ret);
+	}
 
 	HeapFree(GetProcessHeap(), 0, file_in_uncomp);
 	HeapFree(GetProcessHeap(), 0, file_out_uncomp);
 
-	return 0;
+	return 1;
+}
+
+size_t get_tfcs_size(const char*, json_t*, size_t patch_size)
+{
+	// Because a lot of these files are zipped, guessing their exact patched size is hard. We'll add a few more bytes.
+	if (patch_size) {
+		return (size_t)(patch_size * 1.2) + 2048 + 1;
+	}
+	else {
+		return 0;
+	}
 }

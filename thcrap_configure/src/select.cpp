@@ -150,24 +150,7 @@ int RemovePatch(json_t *sel_stack, size_t rem_id)
 
 int PrettyPrintPatch(const char *patch, const char *title)
 {
-#define LEFT_LEN 20
-
-	char left[LEFT_LEN + 1];
-	size_t patch_len = strlen(patch);
-
-	if(!patch || !title) {
-		return -1;
-	}
-	memset(left, ' ', LEFT_LEN);
-	if(patch_len < LEFT_LEN) {
-		memcpy(left, patch, patch_len);
-	} else {
-		memcpy(left, patch, LEFT_LEN);
-		strcpy(left + LEFT_LEN - strlen("... "), "... ");
-	}
-	left[LEFT_LEN] = 0;
-
-	printf("%s%s\n", left, title);
+    con_printf("%-20s %s\n", patch, title);
 	return 0;
 }
 
@@ -196,20 +179,22 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 
 			if(print_header) {
 				const char *contact = json_object_get_string(repo_js, "contact");
-				printf(
+                con_printf(
 					"Patches from [%s] (%s):\n"
 					"\t(Contact: %s)\n"
 					"\n", repo_title, repo_id_str, contact
 				);
 				print_header = 0;
 			}
-			printf(" [%2d] ", ++list_count);
+			++list_count;
+			con_clickable(list_count);
+            con_printf(" [%2d] ", list_count);
 			PrettyPrintPatch(patch_id_str, patch_title);
 		}
 		json_decref(sel);
 	}
 	if(!print_header) {
-		printf("\n");
+        con_printf("\n");
 	}
 	return list_count;
 }
@@ -220,11 +205,23 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 	size_t i;
 	json_t *sel;
 
-	if(!json_array_size(sel_stack)) {
-		return list_count;
-	}
-	printf("Selected patches (in ascending order of priority):\n\n");
+	int width = console_width();
+	VLA(char, hr, width + 1);
+	memset(hr, '=', width);
+	hr[width] = '\0';
 
+	// After filling the entire width, the cursor will have already moved to
+	// the next line, so we don't need to add a separate \n after the string.
+    con_printf("%s",hr);
+
+	if(!json_array_size(sel_stack)) {
+		goto end;
+	}
+    con_printf(
+		"\n"
+		"Selected patches (in ascending order of priority):\n"
+		"\n"
+	);
 	json_array_foreach(sel_stack, i, sel) {
 		const char *repo_id = json_array_get_string(sel, 0);
 		const char *patch_id = json_array_get_string(sel, 1);
@@ -233,13 +230,18 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 		const char *patch_title = json_object_get_string(patches, patch_id);
 		json_t *full_id = json_pack("s++", repo_id, "/", patch_id);
 
-		printf("  %2d. ", ++list_count);
+		++list_count;
+		con_clickable(list_count);
+        con_printf("  %2d. ", list_count);
 		PrettyPrintPatch(json_string_value(full_id), patch_title);
 
 		json_array_append(list_order, sel);
 		json_decref(full_id);
 	}
-	printf("\n");
+    con_printf("\n%s", hr);
+
+end:
+	VLA_FREE(hr);
 	return list_count;
 }
 
@@ -271,12 +273,6 @@ json_t* SelectPatchStack(json_t *repo_list)
 	}
 
 	runconfig_set(internal_cfg);
-	if(wine_flag) {
-		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		// Header (5) + sel_stack (3) + prompt (2)
-		COORD buffer = {80, buffer_lines + 5 + 3 + 2};
-		SetConsoleScreenBufferSize(hConsole, buffer);
-	}
 	while(1) {
 		char buf[16];
 		size_t list_pick;
@@ -287,6 +283,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 		json_array_clear(list_order);
 
 		cls(0);
+        console_prepare_prompt();
 
 		log_printf("-----------------\n");
 		log_printf("Selecting patches\n");
@@ -300,25 +297,32 @@ json_t* SelectPatchStack(json_t *repo_list)
 			list_count = RepoPrintPatches(list_order, json_val, sel_stack);
 		}
 		list_count = PrintSelStack(list_order, repo_list, sel_stack);
-		printf("\n");
+        con_printf("\n");
 
 		stack_offset = json_array_size(list_order) - stack_size;
 
-		if(stack_size) {
-			printf(
-				"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm): ",
-			stack_offset, stack_offset + 1, list_count);
-		} else {
-			printf("Pick a patch (1 - %u): ", list_count);
-		}
-		console_read(buf, sizeof(buf));
+		int still_picking = 1;
+		do {
+			list_pick = 0;
+			if(stack_size) {
+                con_printf(
+					"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm): ",
+					stack_offset, stack_offset + 1, list_count);
+			}
+			else {
+                con_printf("Pick a patch (1 - %u): ", list_count);
+			}
+			console_read(buf, sizeof(buf));
 
-		if(
-			(sscanf(buf, "%u", &list_pick) != 1) ||
-			(list_pick > list_count)
-		) {
+			still_picking = sscanf(buf, "%u", &list_pick);
+		} while(
+			list_pick > list_count // Values out of range
+			|| (list_pick == 0 && buf[0] != '\0') // non-numbers
+		);
+
+		if(still_picking != 1) {
 			if(!stack_size) {
-				printf("\nPlease select at least one patch before continuing.\n");
+                con_printf("\nPlease select at least one patch before continuing.\n");
 				pause();
 				continue;
 			}

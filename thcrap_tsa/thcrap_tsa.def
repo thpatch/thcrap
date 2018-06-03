@@ -4,7 +4,6 @@ EXPORTS
 
 	; Images
 	; ------
-	struct_get
 	format_Bpp
 	format_png_equiv
 	format_alpha_max
@@ -46,11 +45,6 @@ EXPORTS
 	bounds_draw_vline
 	bounds_draw_rect
 	bounds_store
-
-	; Encraption
-	; ----------
-	simple_xor
-	util_xor
 
 	; Generic text
 	; ------------
@@ -112,3 +106,4 @@ EXPORTS
 	; TSA-specific detours
 	; --------------------
 	tsa_mod_detour
+	devicelost_mod_detour

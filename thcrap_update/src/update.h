@@ -1,6 +1,6 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Update plugin
+  * Update module
   *
   * ----
   *
@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 typedef enum {
+	GET_CANCELLED = -3,
 	GET_OUT_OF_MEMORY = -2,
 	GET_INVALID_PARAMETER = -1,
 	GET_OK = 0,
@@ -21,8 +22,12 @@ typedef enum {
 	GET_NOT_AVAILABLE, // 404, 502, etc.
 } get_result_t;
 
-int http_init(void);
-void http_exit(void);
+// These callbacks should return TRUE if the download is allowed to continue and FALSE to cancel it.
+typedef int (*file_callback_t)(const char *fn, get_result_t ret, DWORD file_progress, DWORD file_size, void *param);
+typedef int (*patch_update_callback_t)(const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
+typedef int (*stack_update_callback_t)(DWORD stack_progress, DWORD stack_total, const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
+
+void http_mod_exit(void);
 
 // Tries to download the given [fn] from any server in [servers].
 // If successful, [file_size] receives the size of the downloaded file.
@@ -30,7 +35,7 @@ void http_exit(void);
 // certain checksum. If it doesn't match for one server, another one is tried,
 // until none are left. To disable this check, simply pass NULL.
 void* ServerDownloadFile(
-	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc
+	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
 );
 
 // High-level patch and stack updates.
@@ -49,9 +54,13 @@ int update_filter_games(const char *fn, json_t *games);
 json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers);
 
 int patch_update(
-	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data
+	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param
 );
-void stack_update(update_filter_func_t filter_func, json_t *filter_data);
+void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param);
+void global_update(stack_update_callback_t callback, void *callback_param);
+
+// Performs all cleanup that wouldn't have been safe to do inside DllMain().
+void thcrap_update_exit(void);
 
 #ifdef __cplusplus
 }
@@ -94,7 +103,7 @@ struct server_t {
 
 	// Single-server part of servers_t::download().
 	void* download(
-		DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc
+		DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr
 	);
 
 	server_t() {
@@ -117,7 +126,7 @@ struct servers_t : std::vector<server_t> {
 	int num_active() const;
 
 	// Internal version of ServerDownloadFile().
-	void* download(DWORD *file_size, const char *fn, const DWORD *exp_crc);
+	void* download(DWORD *file_size, const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr);
 
 	// Fills this instance with data from a JSON "servers" array as used
 	// in repo.js and patch.js.

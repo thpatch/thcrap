@@ -1,7 +1,23 @@
 LIBRARY
 EXPORTS
 	thcrap_plugin_init	@1
+	nsml_mod_init
+	nsml_mod_detour
+	nsml_mod_exit
 
-	BP_file_header
-	BP_replace_file
+	BP_th135_file_header
+	BP_th135_file_name
+	BP_th135_read_file
+
 	BP_detour_plugin
+	BP_bmpfont_fix_parameters
+
+	BP_nsml_file_header
+	BP_nsml_read_file
+	BP_th105_open_file
+	BP_th105_font_spacing
+
+	BP_th105_fix_csv_parser
+	BP_th105_cv0_escape_comma
+
+	tasofro_CharNextA

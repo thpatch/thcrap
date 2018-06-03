@@ -17,6 +17,7 @@ BOOL VirtualCheckCode(const void *ptr);
 
 // Writes [len] bytes from [new] to [ptr] in the address space of the current
 // or another process if the current value in [ptr] equals [prev].
+// Returns TRUE on success, FALSE on failure.
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
 int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
 
@@ -30,19 +31,6 @@ typedef struct {
 	const void *new_ptr;
 } iat_detour_t;
 
-/// Low-level
-/// ---------
-// Replaces the function pointer of [pThunk] with [new_ptr]
-int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr);
-
-// Sets up [detour] by name or pointer.
-// Returns 1 if the function was found and detoured, 0 if it wasn't.
-int func_detour_by_name(HMODULE hMod, PIMAGE_THUNK_DATA pOrigFirstThunk, PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour);
-int func_detour_by_ptr(PIMAGE_THUNK_DATA pImpFirstThunk, const iat_detour_t *detour);
-/// ---------
-
-/// High-level
-/// ----------
 // Sets up [detour] using the most appropriate low-level detouring function.
 int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_detour_t *detour);
 /// ----------
@@ -124,6 +112,29 @@ int detour_chain(const char *dll_name, int return_old_ptrs, ...);
   * have been part of the respective chains before.
   */
 int detour_chain_w32u8(const w32u8_dll_t *dll);
+
+// Using a double pointer for [old_func] because you want both vtable_detour()
+// to provide the pointer, and the correct function pointer type in your usage
+// code.
+typedef struct {
+	// # of this function in the vtable. *Not* the byte offset.
+	const size_t index;
+
+	void *new_func;
+
+	// Set this to the address of your own function pointer with the correct
+	// type. Filled out by vtable_detour(). Can also be a nullptr.
+	void **old_func;
+} vtable_detour_t;
+
+// Applies the detours to the [vtable] and fills in the original function
+// pointers, if necessary according to [det->old_func]:
+// •  old_func == NULL: Always write to [vtable]
+// • *old_func == NULL: Write new_func to [vtable] and set *old_func to its
+//                      previous value
+// • *old_func != NULL: Do nothing
+// Returns the number of functions detoured.
+int vtable_detour(void **vtable, vtable_detour_t *det, size_t det_count);
 
 // Returns a pointer to the first function in a specific detour chain, or
 // [fallback] if no hook has been registered so far.

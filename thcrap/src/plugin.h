@@ -39,6 +39,9 @@ void* func_get(const char *name);
   *   detours, it should implement this hook, using one or more calls to
   *   detour_cache_add().
   *
+  * • "post_init" (NULL)
+  *   Called after the initialization of thcrap and all modules is complete.
+  *
   * • "repatch" (json_t *files_changed)
   *   Called when the given files have been changed outside the game and need
   *   to be reloaded. [files_changed] is a JSON object with the respective file
@@ -79,6 +82,7 @@ void mod_func_run_all(const char *suffix, void *param);
 // exports, and calling its "init" and "detour" module functions.
 int plugin_init(HMODULE hMod);
 
-// Loads all thcrap plugins from the current directory.
-int plugins_load(void);
+// Loads all thcrap plugins from the given directory.
+int plugins_load(const char *dir);
+
 int plugins_close(void);

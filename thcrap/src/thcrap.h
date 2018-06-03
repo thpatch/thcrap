@@ -23,7 +23,6 @@ extern "C" {
 
 #include <win32_utf8.h>
 #include <jansson.h>
-#include "macros.h"
 #include "exception.h"
 #include "jansson_ex.h"
 #include "global.h"
@@ -40,14 +39,33 @@ extern "C" {
 #include "inject.h"
 #include "init.h"
 #include "jsondata.h"
-#include "specs.h"
 #include "zip.h"
 #include "bp_file.h"
 #include "xpcompat.h"
 #include "repo.h"
 #include "search.h"
 #include "shelllink.h"
+#include "fonts_charset.h"
 
 #ifdef __cplusplus
 }
+
+/// defer implementation for C++
+/// http://www.gingerbill.org/article/defer-in-cpp.html
+/// ----------------------------
+template <typename F> struct privDefer {
+	F f;
+	explicit privDefer(F f) : f(f) {}
+	~privDefer() { f(); }
+};
+
+template <typename F> privDefer<F> defer_func(F f) {
+	return privDefer<F>(f);
+}
+
+#define DEFER_1(x, y) x##y
+#define DEFER_2(x, y) DEFER_1(x, y)
+#define DEFER_3(x)    DEFER_2(x, __COUNTER__)
+#define defer(code)   auto DEFER_3(_defer_) = defer_func([&] () {code; })
+/// ----------------------------
 #endif

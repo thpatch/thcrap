@@ -22,7 +22,7 @@ size_t json_hex_value(json_t *val)
 {
 	const char *str = json_string_value(val);
 	if(str) {
-		return str_address_value(str, NULL);
+		return str_address_value(str, NULL, NULL);
 	}
 	return (size_t)json_integer_value(val);
 }
@@ -70,26 +70,6 @@ const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
 	const char *ret = json_array_get_string(arr, ind);
 	if(!ret) {
 		ret = "";
-	}
-	return ret;
-}
-
-json_t* json_array_from_wchar_array(int argc, const wchar_t *wargv[])
-{
-	json_t *ret = NULL;
-	int i;
-
-	if(!argc || !wargv) {
-		return ret;
-	}
-
-	ret = json_array();
-	for(i = 0; i < argc; i++) {
-		const wchar_t *arg = wargv[i];
-		UTF8_DEC(arg);
-		UTF8_CONV(arg);
-		json_array_append_new(ret, json_string(arg_utf8));
-		UTF8_FREE(arg);
 	}
 	return ret;
 }

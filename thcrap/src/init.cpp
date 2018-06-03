@@ -16,7 +16,110 @@
 // Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
+breakpoint_set_t *bp_set = nullptr; // One per stage
+size_t stage_cur = 0;
+size_t stages_total = 0; // Including the run configuration, therefore >= 1
 /// -----------------------
+
+/// Old game build message
+/// ----------------------
+const char *oldbuild_title = "Old version detected";
+
+const char *oldbuild_header =
+	"You are running an old version of ${game_title} (${build_running}).\n"
+	"\n";
+
+const char *oldbuild_maybe_supported =
+	"${project_short} may or may not work with this version, so we recommend updating to the latest official version (${build_latest}).";
+
+const char *oldbuild_not_supported =
+	"${project_short} will *not* work with this version. Please update to the latest official version, ${build_latest}.";
+
+const char *oldbuild_url =
+	"\n"
+	"\n"
+	"You can download the update at\n"
+	"\n"
+	"\t${url_update}\n"
+	"\n"
+	"(Press Ctrl+C to copy the text of this message box and the URL)";
+
+int IsLatestBuild(json_t *build, json_t **latest)
+{
+	json_t *json_latest = json_object_get(runconfig_get(), "latest");
+	size_t i;
+	if(!json_is_string(build) || !latest || !json_latest) {
+		return -1;
+	}
+	json_flex_array_foreach(json_latest, i, *latest) {
+		if(json_equal(build, *latest)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int oldbuild_show(json_t *run_cfg)
+{
+	const json_t *title = runconfig_title_get();
+	json_t *build = json_object_get(run_cfg, "build");
+	json_t *latest = NULL;
+	int ret;
+
+	if(!json_is_string(build) || !json_is_string(title)) {
+		return -1;
+	}
+	ret = IsLatestBuild(build, &latest) == 0 && json_is_string(latest);
+	if(ret) {
+		const size_t MSG_SLOT = (size_t)oldbuild_header;
+		unsigned int msg_type = MB_ICONINFORMATION;
+		auto *url_update = json_object_get_string(run_cfg, "url_update");
+
+		// Try to find out whether this version actually is supported or
+		// not, by looking for a <game>.<version>.js file in the stack.
+		// There are a number of drawbacks to this approach, though:
+		// • It can't tell the *amount* of work that actually was done
+		//   for this specific version.
+		// • What if one patch in the stack *does* provide support for
+		//   this older version, but others don't?
+		// • Stringlocs are also part of support. -.-
+		const auto *BUILD_JS_FORMAT = "%s.%s.js";
+		auto *game_str = json_object_get_string(run_cfg, "game");
+		auto *build_str = json_string_value(build);
+		auto build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
+		VLA(char, build_js_fn, build_js_fn_len);
+		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
+		auto *build_js_chain = json_pack("[s]", build_js_fn);
+		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
+		auto supported = build_js != nullptr;
+		json_decref_safe(build_js);
+		json_decref_safe(build_js_chain);
+		VLA_FREE(build_js_fn);
+
+		strings_strclr(MSG_SLOT);
+		strings_strcat(MSG_SLOT, oldbuild_header);
+		if(supported) {
+			strings_strcat(MSG_SLOT, oldbuild_maybe_supported);
+		}
+		else {
+			msg_type = MB_ICONEXCLAMATION;
+			strings_strcat(MSG_SLOT, oldbuild_not_supported);
+		}
+		if(url_update) {
+			strings_strcat(MSG_SLOT, oldbuild_url);
+		}
+
+		strings_replace(MSG_SLOT, "${game_title}", json_string_value(title));
+		strings_replace(MSG_SLOT, "${build_running}", json_string_value(build));
+		strings_replace(MSG_SLOT, "${build_latest}", json_string_value(latest));
+		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
+		auto *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
+
+		log_mbox(oldbuild_title, MB_OK | msg_type, msg);
+	}
+	return ret;
+}
+/// -------------------
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
@@ -212,17 +315,7 @@ int thcrap_init(const char *run_cfg_fn)
 	log_printf("Run configuration file: %s\n\n", run_cfg_fn);
 
 	log_printf("Initializing patches...\n");
-	{
-		json_t *patches = json_object_get(run_cfg, "patches");
-		size_t i;
-		json_t *patch_info;
-		json_array_foreach(patches, i, patch_info) {
-			patch_rel_to_abs(patch_info, run_cfg_fn);
-			patch_info = patch_init(patch_info);
-			json_array_set(patches, i, patch_info);
-			json_decref(patch_info);
-		}
-	}
+	patches_init(run_cfg_fn);
 	stack_show_missing();
 
 	log_printf("EXE file name: %s\n", exe_fn);
@@ -232,6 +325,8 @@ int thcrap_init(const char *run_cfg_fn)
 			json_object_merge(full_cfg, user_cfg);
 			runconfig_set(full_cfg);
 			json_decref(full_cfg);
+
+			oldbuild_show(full_cfg);
 		}
 	}
 
@@ -240,7 +335,7 @@ int thcrap_init(const char *run_cfg_fn)
 
 	log_printf("\nInitializing plug-ins...\n");
 	plugin_init(hThcrap);
-	plugins_load();
+	plugins_load(dll_dir);
 
 	/**
 	  * Potentially dangerous stuff. Do not want!
@@ -254,26 +349,100 @@ int thcrap_init(const char *run_cfg_fn)
 		json_array_foreach(patches, i, patch_info) {
 			const char *archive = json_object_get_string(patch_info, "archive");
 			if(archive) {
-				SetCurrentDirectory(archive);
-				plugins_load();
+				plugins_load(archive);
 			}
 		}
 	}
 	*/
-	binhacks_apply(json_object_get(run_cfg, "binhacks"));
-	breakpoints_apply(json_object_get(run_cfg, "breakpoints"));
+
+	// We might want to move this to thcrap_init_binary() too to accommodate
+	// DRM that scrambles the original import table, but since we're not
+	// having any test cases right now...
 	thcrap_detour(hProc);
+
+	// Init stages
+	// -----------
+	auto init_stages = json_object_get(run_cfg, "init_stages");
+	stages_total = json_array_size(init_stages) + 1;
+	*(void **)(&bp_set) = calloc(stages_total, sizeof(breakpoint_set_t));
+	// -----------
+
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	json_decref(user_cfg);
+	return thcrap_init_binary(0, nullptr);
+}
 
-	log_printf("---------------------------\n");
-	log_printf("Complete run configuration:\n");
-	log_printf("---------------------------\n");
-	json_dump_log(run_cfg, JSON_INDENT(2));
-	log_printf("---------------------------\n");
+int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	auto module = (HMODULE)json_object_get_immediate(bp_info, regs, "module");
+	// ----------
+	thcrap_init_binary(++stage_cur, &module);
+	return 1;
+}
+
+int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr)
+{
+	assert(bp_set);
+	assert(stage_num < stages_total);
+
+	if(stages_total >= 2) {
+		log_printf(
+			"Initialization stage %d...\n"
+			"-------------------------\n",
+			stage_num
+		);
+	}
+
+	int ret = 0;
+	auto *run_cfg = runconfig_get();
+	auto stage = thcrap_init_stage_data(stage_num);
+
+	auto *binhacks = json_object_get(stage, "binhacks");
+	auto *breakpoints = json_object_get(stage, "breakpoints");
+
+	auto hModFromStage = (HMODULE)json_object_get_immediate(
+		stage, nullptr, "module"
+	);
+	auto hMod = hModPtr ? *hModPtr : hModFromStage;
+
+	ret += binhacks_apply(binhacks, hMod);
+	ret += breakpoints_apply(&bp_set[stage_num], breakpoints, hMod);
+
+	if(stages_total >= 2) {
+		if(ret != 0 && stage_num == 0 && stages_total >= 2) {
+			log_printf(
+				"Failed. Jumping to last stage...\n"
+				"-------------------------\n"
+			);
+			return thcrap_init_binary(stages_total - 1, nullptr);
+		} else {
+			log_printf("-----------------------\n");
+		}
+	}
+
+	if(stage == run_cfg) {
+		log_printf("---------------------------\n");
+		log_printf("Complete run configuration:\n");
+		log_printf("---------------------------\n");
+		json_dump_log(run_cfg, JSON_INDENT(2));
+		log_printf("---------------------------\n");
+		mod_func_run_all("post_init", NULL);
+	}
 	return 0;
+}
+
+json_t* thcrap_init_stage_data(size_t stage_num)
+{
+	auto run_cfg = runconfig_get();
+	auto init_stages = json_object_get(run_cfg, "init_stages");
+	if(stage_num < json_array_size(init_stages)) {
+		return json_array_get(init_stages, stage_num);
+	}
+	return run_cfg;
 }
 
 int InitDll(HMODULE hDll)
@@ -308,7 +477,7 @@ void ExitDll(HMODULE hDll)
 	mod_func_run_all("thread_exit", NULL);
 	mod_func_run_all("exit", NULL);
 	plugins_close();
-	breakpoints_remove();
+	SAFE_FREE(bp_set);
 	run_cfg = json_decref_safe(run_cfg);
 	DeleteCriticalSection(&cs_file_access);
 

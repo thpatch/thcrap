@@ -1,23 +1,14 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Update plugin
+  * Update module
   *
   * ----
   *
-  * Update notifications for thcrap and the game itself.
+  * Update notifications for thcrap itself.
   */
 
 #include <thcrap.h>
 #include "self.h"
-
-static const char *update_url_message =
-	"The new version can be found at\n"
-	"\n"
-	"\t";
-static const char *mbox_copy_message =
-	"\n"
-	"\n"
-	"(Press Ctrl+C to copy the text of this message box and the URL)";
 
 /// Self-updating messages
 /// ----------------------
@@ -104,28 +95,22 @@ const char *self_sig_error =
 	"this problem has been resolved.";
 /// ----------------------
 
-int IsLatestBuild(json_t *build, json_t **latest)
-{
-	json_t *json_latest = json_object_get(runconfig_get(), "latest");
-	size_t i;
-	if(!json_is_string(build) || !latest || !json_latest) {
-		return -1;
-	}
-	json_flex_array_foreach(json_latest, i, *latest) {
-		if(json_equal(build, *latest)) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
 int update_notify_thcrap(void)
 {
 	const size_t SELF_MSG_SLOT = (size_t)self_body;
-	self_result_t ret = SELF_OK;
+	self_result_t ret = SELF_NO_UPDATE;
 	json_t *run_cfg = runconfig_get();
-	DWORD min_build = json_object_get_hex(run_cfg, "thcrap_version_min");
+
+	json_t *patches = json_object_get(run_cfg, "patches");
+	size_t i;
+	json_t *patch_info;
+	uint32_t min_build = 0;
+	json_array_foreach(patches, i, patch_info) {
+		auto cur_min_build = json_object_get_hex(patch_info, "thcrap_version_min");
+		min_build = max(min_build, cur_min_build);
+	}
 	if(min_build > PROJECT_VERSION()) {
+		ret = SELF_OK;
 		const char *thcrap_dir = json_object_get_string(run_cfg, "thcrap_dir");
 		const char *thcrap_url = json_object_get_string(run_cfg, "thcrap_url");
 		char *arc_fn = NULL;
@@ -153,32 +138,3 @@ int update_notify_thcrap(void)
 	return ret;
 }
 
-int update_notify_game(void)
-{
-	json_t *run_cfg = runconfig_get();
-	const json_t *title = runconfig_title_get();
-	json_t *build = json_object_get(run_cfg, "build");
-	json_t *latest = NULL;
-	int ret;
-	
-	if(!json_is_string(build) || !json_is_string(title)) {
-		return -1;
-	}
-	ret = IsLatestBuild(build, &latest) == 0 && json_is_string(latest);
-	if(ret) {
-		const char *url_update = json_object_get_string(run_cfg, "url_update");
-		log_mboxf("Old version detected", MB_OK | MB_ICONINFORMATION,
-			"You are running an old version of %s (%s).\n"
-			"\n"
-			"%s may or may not work with this version, so we recommend updating "
-			"your game to the latest official version (%s).%s%s%s%s",
-			json_string_value(title), json_string_value(build), PROJECT_NAME_SHORT(),
-			json_string_value(latest),
-			url_update ? "\n\n": "",
-			url_update ? update_url_message : "",
-			url_update ? url_update : "",
-			url_update ? mbox_copy_message : ""
-		);
-	}
-	return ret;
-}

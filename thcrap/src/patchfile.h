@@ -24,12 +24,34 @@
   *	size_t size_in
   *		Size of the original file.
   *
+  *	const char *fn
+  *		Filename of the file.
+  *
   *	json_t *patch
   *		Patch data to be applied.
   *
-  * Returns nothing.
+  * Returns a value >0 if the hook changed the file in file_inout, and a value <=0 otherwise.
   */
-typedef int (*func_patch_t)(void* file_inout, size_t size_out, size_t size_in, json_t *patch);
+typedef int (*func_patch_t)(void* file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+
+/**
+  * Patch file guessing function type.
+  *
+  * Parameters
+  * ----------
+  *	const char *fn
+  *		Filename of the file.
+  *
+  *	json_t *patch
+  *		Patch data to be applied.
+  *
+  *	size_t patch_size
+  *		Size of the patfh file.
+  *
+  * If the patch function may need to increase the file size, return the number of bytes it will need.
+  * Else, return 0.
+  */
+typedef size_t (*func_patch_size_t)(const char *fn, json_t *patch, size_t patch_size);
 
 // Reads the file [fn] into a newly created buffer and returns its file size
 // in [file_size]. Return value has to be free()d by the caller!
@@ -48,6 +70,10 @@ char* fn_for_game(const char *fn);
 // Returns the alternate file name for [fn] specific to the
 // currently running build. Return value has to be free()d by the caller!
 char* fn_for_build(const char *fn);
+
+// Returns the full path of a patch-relative file name.
+// Return value has to be free()d by the caller!
+char* fn_for_patch(const json_t *patch_info, const char *fn);
 
 // Prints the full path of a patch-relative file name to the log.
 void patch_print_fn(const json_t *patch_info, const char *fn);
@@ -92,6 +118,10 @@ int patch_file_delete(const json_t *patch_info, const char *fn);
 // file, and returns the resulting JSON object.
 json_t* patch_init(json_t *patch_info);
 
+// Initialize the patches in runconfig by calling patch_init
+// on each patch in its "patches" member.
+void patches_init(const char *run_cfg_fn);
+
 // Turns the possibly relative archive path of [patch_info] into an absolute
 // one, relative to [base_path].
 int patch_rel_to_abs(json_t *patch_info, const char *base_path);
@@ -105,12 +135,17 @@ json_t* patch_build(const json_t *sel);
 /// Hooks
 /// -----
 // Register a hook function for a certain file extension.
-int patchhook_register(const char *ext, func_patch_t patch_func);
+// If patch_size_func is null, a default implementation returning the size of the jdiff file is used instead.
+int patchhook_register(const char *ext, func_patch_t patch_func, func_patch_size_t patch_size_func);
 
 // Builds an array of patch hook functions for [fn].
 // Has to be json_decref()'d by the caller!
 json_t* patchhooks_build(const char *fn);
 
+// Loads the jdiff file for a hook, and guess the patched file size.
+json_t* patchhooks_load_diff(const json_t *hook_array, const char *fn, size_t *size);
+
 // Runs all hook functions in [hook_array] on the given data.
-int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, json_t *patch);
+// Returns 1 if one of the hook changed the file in file_inout, and 0 otherwise.
+int patchhooks_run(const json_t *hook_array, void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 /// -----

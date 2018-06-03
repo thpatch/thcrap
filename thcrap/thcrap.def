@@ -9,8 +9,13 @@ EXPORTS
 
 	; File breakpoints
 	; ----------------
+	file_mod_init
+	file_mod_exit
 	file_rep_init
 	file_rep_clear
+	file_rep_get
+	file_rep_get_by_object
+	file_rep_set_object
 
 	fr_tls_get
 
@@ -19,6 +24,10 @@ EXPORTS
 	BP_file_buffer
 	BP_file_load
 	BP_file_loaded
+	BP_file_header
+	BP_fragmented_open_file
+	BP_fragmented_read_file
+	BP_fragmented_close_file
 
 	; Breakpoints
 	; -----------
@@ -30,10 +39,8 @@ EXPORTS
 	json_object_get_pointer
 	json_object_get_immediate
 	breakpoint_cave_exec_flag
-	breakpoint_func_get
 	breakpoint_process
 	breakpoints_apply
-	breakpoints_remove
 
 	; Win32 dialogs
 	; -------------
@@ -54,13 +61,6 @@ EXPORTS
 
 	dialog_mod_detour
 
-	; Exception handler
-	; -----------------
-	exception_filter
-	exception_init
-	exception_mod_detour
-	exception_exit
-
 	; Globals
 	; -------
 	PROJECT_NAME
@@ -79,6 +79,8 @@ EXPORTS
 
 	thcrap_detour
 	thcrap_init
+
+	BP_init_next_stage
 
 	; Injection
 	; ---------
@@ -107,7 +109,6 @@ EXPORTS
 	json_array_get_hex
 	json_array_get_string
 	json_array_get_string_safe
-	json_array_from_wchar_array
 	json_flex_array_size
 	json_flex_array_get
 	json_flex_array_get_string_safe
@@ -130,8 +131,14 @@ EXPORTS
 	jsondata_mod_repatch
 	jsondata_mod_exit
 
+	; Fonts and charsets
+	; ------------------
+	font_has_character
+	font_create_for_character
+
 	; Logging
 	; -------
+	log_set_hook
 	log_print
 	log_nprint
 	log_vprintf
@@ -139,6 +146,7 @@ EXPORTS
 	log_mbox
 	log_vmboxf
 	log_mboxf
+	log_mbox_set_owner
 	log_init
 	log_exit
 
@@ -147,16 +155,14 @@ EXPORTS
 	VirtualCheckRegion
 	VirtualCheckCode
 
-	; IAT detouring
-	; -------------
-	func_detour
-	func_detour_by_name
-	func_detour_by_ptr
-
+	; Detouring
+	; ---------
 	detour_chain
 	detour_chain_w32u8
 	detour_top
 	iat_detour_apply
+
+	vtable_detour
 
 	detour_exit
 
@@ -167,6 +173,7 @@ EXPORTS
 
 	fn_for_game
 	fn_for_build
+	fn_for_patch
 	patch_print_fn
 
 	dir_create_for_fn
@@ -182,6 +189,7 @@ EXPORTS
 
 	patch_build
 	patch_init
+	patches_init
 	patch_rel_to_abs
 
 	; Hooks
@@ -197,6 +205,7 @@ EXPORTS
 	GetDllExportDesc
 	GetSectionHeader
 	GetExportedFunctions
+	GetModuleContaining
 	GetRemoteModuleNtHeader
 	GetRemoteModuleEntryPoint
 	GetRemoteModuleHandle
@@ -239,20 +248,18 @@ EXPORTS
 	CreateLink
 	CreateShortcuts
 
-	; Specs
-	; -----
-	specs_mod_init
-	specs_get
-
 	; Stack
 	; -----
 	resolve_chain
 	resolve_chain_game
+	set_resolve_chain
+	set_resolve_chain_game
 	stack_chain_iterate
 
 	stack_json_resolve_chain
 	stack_json_resolve
 	stack_file_resolve_chain
+	stack_fn_resolve_chain
 	stack_game_file_resolve
 	stack_game_json_resolve
 
@@ -297,19 +304,25 @@ EXPORTS
 
 	; thcrap_update wrapper functions
 	; -------------------------------
+	thcrap_update_module
+
 	ServerDownloadFile_wrapper
 	update_filter_global_wrapper
 	update_filter_games_wrapper
 	patch_update_wrapper
 	stack_update_wrapper
+	loader_update_with_UI_wrapper
 	RepoDiscoverAtURL_wrapper
 	RepoDiscoverFromLocal_wrapper
 	patch_bootstrap_wrapper
+	thcrap_update_exit_wrapper
 
 	; Virtual file system
 	; -------------------
 	jsonvfs_add
 	jsonvfs_game_add
+	jsonvfs_add_map
+	jsonvfs_game_add_map
 	jsonvfs_get
 
 	; Win32 detours

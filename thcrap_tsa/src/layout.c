@@ -96,7 +96,7 @@ static HFONT* json_object_get_tsa_font(json_t *object, const char *key)
 	json_t *val = json_object_get(object, key);
 	return
 		json_is_string(val) ? (HFONT*)json_hex_value(val)
-		: json_is_integer(val) ? font_block_get(json_integer_value(val))
+		: json_is_integer(val) ? font_block_get((int)json_integer_value(val))
 		: NULL
 	;
 }
@@ -453,7 +453,7 @@ HDC WINAPI layout_CreateCompatibleDC(HDC hdc)
 	if(!text_dc) {
 		HDC ret = (HDC)chain_CreateCompatibleDC(hdc);
 		text_dc = ret;
-		log_printf("CreateCompatibleDC(0x%8x) -> 0x%8x\n", hdc, ret);
+		log_printf("CreateCompatibleDC(0x%p) -> 0x%p\n", hdc, ret);
 	}
 	return text_dc;
 }

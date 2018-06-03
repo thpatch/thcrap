@@ -10,7 +10,7 @@
       Condition="'$(ConfigurationType)' != 'Makefile'">_SelectedFiles;$(GASDependsOn)</GASDependsOn>
   </PropertyGroup>
   <PropertyGroup>
-    <GASPath Condition= "'$(GASPATH)' == ''">$(ProjectDir)</GASPath>
+    <GASPath Condition= "'$(GASPATH)' == ''">$(SolutionDir)</GASPath>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <GAS>

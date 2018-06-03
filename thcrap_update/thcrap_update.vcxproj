@@ -27,19 +27,23 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_update.def</ModuleDefinitionFile>
-      <AdditionalDependencies>crypt32.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;wininet.lib;shlwapi.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\loader_update.cpp" />
     <ClCompile Include="src\notify.cpp" />
     <ClCompile Include="src\repo.cpp" />
     <ClCompile Include="src\self.cpp" />
     <ClCompile Include="src\thcrap_update.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="src\update.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\update.cpp" />
+    <ClInclude Include="src\loader_update.h" />
     <ClInclude Include="src\notify.h" />
     <ClInclude Include="src\repo.h" />
     <ClInclude Include="src\self.h" />

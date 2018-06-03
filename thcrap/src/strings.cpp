@@ -57,15 +57,15 @@ void stringlocs_reparse(void)
 			stringlocs_log_error("must be a JSON string");
 			continue;
 		}
-		uint8_t error;
-		const char *addr = (const char *)str_address_value(key, &error);
-		if(error == STR_ADDRESS_ERROR_NONE) {
+		str_address_ret_t addr_ret;
+		auto *addr = (const char *)str_address_value(key, NULL, &addr_ret);
+		if(addr_ret.error == STR_ADDRESS_ERROR_NONE) {
 			stringlocs[addr] = json_string_value(val);
 		}
-		if(error & STR_ADDRESS_ERROR_OVERFLOW) {
+		if(addr_ret.error & STR_ADDRESS_ERROR_OVERFLOW) {
 			stringlocs_log_error("exceeds %d bits");
 		}
-		if(error & STR_ADDRESS_ERROR_GARBAGE) {
+		if(addr_ret.error & STR_ADDRESS_ERROR_GARBAGE) {
 			stringlocs_log_error("has garbage at the end");
 		}
 #undef stringlocs_log_error
@@ -101,7 +101,7 @@ const char* strings_lookup(const char *in, size_t *out_len)
 	ReleaseSRWLockShared(&stringlocs_srwlock);
 
 	if(out_len) {
-		*out_len = strlen(ret) + 1;
+		*out_len = strlen(ret);
 	}
 	return ret;
 }
@@ -217,9 +217,9 @@ const char* strings_strcat(const size_t slot, const char *src)
 
 	src = strings_lookup(src, &src_len);
 
-	ret = strings_storage_get(slot, ret_len + src_len);
+	ret = strings_storage_get(slot, ret_len + src_len + 1);
 	if(ret) {
-		strncpy(ret + ret_len, src, src_len);
+		strncpy(ret + ret_len, src, src_len + 1);
 		return ret;
 	}
 	// Try to save the situation at least somewhat...

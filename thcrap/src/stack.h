@@ -24,6 +24,8 @@ typedef struct {
 	const char *fn;
 } stack_chain_iterate_t;
 
+typedef json_t* (*resolve_chain_t)(const char *fn);
+
 /// File resolution
 /// ---------------
 // Creates a JSON array containing the the default resolving chain for [fn].
@@ -33,8 +35,14 @@ typedef struct {
 // name) should use the chain created by this function.
 json_t* resolve_chain(const char *fn);
 
+// Set a user-defined function used to create the chain returned by resolve_chain.
+void set_resolve_chain(resolve_chain_t function);
+
 // Builds a chain for a game-local file name.
 json_t* resolve_chain_game(const char *fn);
+
+// Set a user-defined function used to create the chain returned by resolve_chain_game.
+void set_resolve_chain_game(resolve_chain_t function);
 
 // Repeatedly iterate through the stack using the given resolving [chain].
 // [sci] keeps the iteration state.
@@ -61,11 +69,18 @@ void* stack_game_file_resolve(const char *fn, size_t *file_size);
 json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 /// ---------------
 
+// Generic file name resolver. Returns the file name of the existing file
+// matching the [chain] with the highest priority inside the patch stack.
+char* stack_fn_resolve_chain(const json_t *chain);
+
 /// Information
 /// -----------
 // Displays a message box showing missing archives in the current patch stack,
 // if there are any.
 void stack_show_missing(void);
+
+// Shows the MOTD of each individual patch.
+void stack_show_motds(void);
 /// -----------
 
 /// Manipulation

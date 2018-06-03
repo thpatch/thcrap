@@ -705,13 +705,8 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 {
 	int ret = -1;
-	HMODULE inj_mod = NULL;
-
-	if(GetModuleHandleEx(
-		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-		(LPTSTR)thcrap_inject_into_running,
-		&inj_mod
-	)) {
+	HMODULE inj_mod = GetModuleContaining(thcrap_inject_into_running);
+	if(inj_mod) {
 		size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 		size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
 		VLA(char, inj_dll, inj_dir_len);
@@ -744,60 +739,65 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 	return ret;
 }
 
-BOOL thcrap_inject_into_new(const char *exe_fn, char *args, const char *run_cfg_fn)
+BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HANDLE *hThread)
 {
 	int ret = 0;
-	json_t *run_cfg = json_load_file_report(run_cfg_fn);
-	if(!run_cfg) {
-		return 1;
-	};
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
-	runconfig_set(run_cfg);
-	{
-		STRLEN_DEC(exe_fn);
-		VLA(char, exe_dir_local, exe_fn_len);
-		VLA(char, exe_fn_local, exe_fn_len);
-		STARTUPINFOA si = {0};
-		PROCESS_INFORMATION pi = {0};
-		char *exe_dir = NULL;
+	STRLEN_DEC(exe_fn);
+	VLA(char, exe_dir_local, exe_fn_len);
+	VLA(char, exe_fn_local, exe_fn_len);
+	STARTUPINFOA si = {0};
+	PROCESS_INFORMATION pi = {0};
+	char *exe_dir = NULL;
 
-		strcpy(exe_fn_local, exe_fn);
-		str_slash_normalize_win(exe_fn_local);
+	strcpy(exe_fn_local, exe_fn);
+	str_slash_normalize_win(exe_fn_local);
 
-		strcpy(exe_dir_local, exe_fn);
-		if(PathRemoveFileSpec(exe_dir_local)) {
-			exe_dir = exe_dir_local;
-		}
+	strcpy(exe_dir_local, exe_fn);
+	if(PathRemoveFileSpec(exe_dir_local)) {
+		exe_dir = exe_dir_local;
+	}
 
-		/**
-		  * Sure, the alternative would be to set up the entire engine
-		  * with all plug-ins and modules to correctly run any additional
-		  * detours. While it would indeed be nice to allow those to control
-		  * initial startup, it really shouldn't be necessary for now - and
-		  * it really does run way too much unnecessary code for my taste.
-		  */
-		ret = W32_ERR_WRAP(inject_CreateProcessU(
-			exe_fn_local, args, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
-		));
-		if(ret) {
-			char *msg_str = NULL;
+	/**
+	  * Sure, the alternative would be to set up the entire engine
+	  * with all plug-ins and modules to correctly run any additional
+	  * detours. While it would indeed be nice to allow those to control
+	  * initial startup, it really shouldn't be necessary for now - and
+	  * it really does run way too much unnecessary code for my taste.
+	  */
+	ret = W32_ERR_WRAP(inject_CreateProcessU(
+		exe_fn_local, args, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
+	));
+	if(ret) {
+		char *msg_str = NULL;
 
-			FormatMessage(
-				FORMAT_MESSAGE_FROM_SYSTEM |
-				FORMAT_MESSAGE_ALLOCATE_BUFFER |
-				FORMAT_MESSAGE_IGNORE_INSERTS,
-				NULL, ret, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-				(LPSTR)&msg_str, 0, NULL
-			);
+		FormatMessage(
+			FORMAT_MESSAGE_FROM_SYSTEM |
+			FORMAT_MESSAGE_ALLOCATE_BUFFER |
+			FORMAT_MESSAGE_IGNORE_INSERTS,
+			NULL, ret, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			(LPSTR)&msg_str, 0, NULL
+		);
 
-			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"Failed to start %s: %s",
-				exe_fn, msg_str ? msg_str : ""
-			);
-			LocalFree(msg_str);
-		}
-		VLA_FREE(exe_fn_local);
-		VLA_FREE(exe_dir_local);
+		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+			"Failed to start %s: %s",
+			exe_fn, msg_str ? msg_str : ""
+		);
+		LocalFree(msg_str);
+	}
+	VLA_FREE(exe_fn_local);
+	VLA_FREE(exe_dir_local);
+
+	if (hProcess) {
+		*hProcess = pi.hProcess;
+	}
+	else {
+		CloseHandle(pi.hProcess);
+	}
+	if (hThread) {
+		*hThread = pi.hThread;
+	}
+	else {
+		CloseHandle(pi.hThread);
 	}
 	return ret;
 }
@@ -889,7 +889,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 			"Couldn't determine the entry point of %s!\n"
 			"\n"
 			"Seems as if %s won't work with this game on your system.\n",
-			PathFindFileNameA(module), PROJECT_NAME_SHORT()
+			PathFindFileNameU(module), PROJECT_NAME_SHORT()
 		);
 		return 1;
 	}
@@ -988,11 +988,7 @@ HANDLE WINAPI inject_CreateRemoteThread(
 	LPDWORD lpThreadId
 )
 {
-#ifdef _DEBUG
-	const char *thcrap_dll = "thcrap_d.dll";
-#else
-	const char *thcrap_dll = "thcrap.dll";
-#endif
+	const char *thcrap_dll = "thcrap" DEBUG_OR_RELEASE ".dll";
 	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
 	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
 	FARPROC kernel32_LoadLibraryW = GetProcAddress(hKernel32, "LoadLibraryW");

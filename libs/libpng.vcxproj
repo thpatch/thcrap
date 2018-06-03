@@ -81,6 +81,13 @@ copy /y $(ProjectDir)\libpng\pngconf.h $(ProjectDir)\
     <ClCompile Include="libpng\pngwrite.c" />
     <ClCompile Include="libpng\pngwtran.c" />
     <ClCompile Include="libpng\pngwutil.c" />
+    <None Include="libpng/pngdebug.h "/>
+    <None Include="libpng/pnginfo.h "/>
+    <None Include="libpng/pngpriv.h "/>
+    <None Include="libpng/pngstruct.h "/>
+    <None Include="png.h "/>
+    <None Include="pngconf.h "/>
+    <None Include="pnglibconf.h "/>
     <ResourceCompile Include="libpng\scripts\pngwin.rc">
       <ExcludedFromBuild Condition="'$(ConfigurationType)'=='StaticLibrary'">true</ExcludedFromBuild>
     </ResourceCompile>

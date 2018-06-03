@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 
-<!-- 
+<!--
   The zlib1 configurations will build a binary compliant with the ZLIB1.DLL
   standard (see win32/DLL_FAQ.txt in the original zlib source distribution).
 -->
@@ -92,6 +92,7 @@ copy /y $(ProjectDir)\zlib-ng\zlib.h $(ProjectDir)\
     <ClCompile Include="zlib-ng\deflate_fast.c" />
     <ClCompile Include="zlib-ng\deflate_medium.c" />
     <ClCompile Include="zlib-ng\deflate_slow.c" />
+    <ClCompile Include="zlib-ng\functable.c" />
     <ClCompile Include="zlib-ng\gzclose.c">
       <ExcludedFromBuild Condition="$(BuildZLib1)!=true">true</ExcludedFromBuild>
     </ClCompile>
@@ -114,6 +115,7 @@ copy /y $(ProjectDir)\zlib-ng\zlib.h $(ProjectDir)\
     <ClCompile Include="zlib-ng\zutil.c" />
     <None Include="zlib-ng\crc32.h" />
     <None Include="zlib-ng\deflate.h" />
+    <None Include="zlib-ng\functable.h" />
     <None Include="zlib-ng\gzguts.h" />
     <None Include="zlib-ng\inffast.h" />
     <None Include="zlib-ng\inffixed.h" />

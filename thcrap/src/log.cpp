@@ -14,10 +14,21 @@
 // -------
 static FILE *log_file = NULL;
 static int console_open = 0;
+// For checking nested thcrap instances that access the same log file.
+// We only want to print an error message for the first instance.
+static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
 static const char LOG[] = "thcrap_log.txt";
 static const char LOG_ROTATED[] = "thcrap_log.%d.txt";
 static const int ROTATIONS = 1; // Number of backups to keep
+static void (*log_print_hook)(const char*) = NULL;
+static void(*log_nprint_hook)(const char*, size_t) = NULL;
+static HWND mbox_owner_hwnd = NULL; // Set by log_mbox_set_owner
 // -----------------------
+
+void log_set_hook(void(*hookproc)(const char*), void(*hookproc2)(const char*,size_t)){
+	log_print_hook = hookproc;
+	log_nprint_hook = hookproc2;
+}
 
 // Rotation
 // --------
@@ -62,6 +73,9 @@ void log_print(const char *str)
 		fprintf(log_file, "%s", str);
 		fflush(log_file);
 	}
+	if(log_print_hook) {
+		log_print_hook(str);
+	}
 }
 
 void log_nprint(const char *str, size_t n)
@@ -71,6 +85,9 @@ void log_nprint(const char *str, size_t n)
 	}
 	if(log_file) {
 		fwrite(str, n, 1, log_file);
+	}
+	if (log_nprint_hook) {
+		log_nprint_hook(str, n);
 	}
 }
 
@@ -97,6 +114,65 @@ void log_printf(const char *str, ...)
   * Message box functions.
   */
 
+struct EnumStatus
+{
+	HWND hwnd;
+	int w;
+	int h;
+};
+
+static BOOL CALLBACK enumWindowProc(HWND hwnd, LPARAM lParam)
+{
+	EnumStatus *status = (EnumStatus*)lParam;
+
+	if (!IsWindowVisible(hwnd)) {
+		return TRUE;
+	}
+
+	DWORD pid;
+	GetWindowThreadProcessId(hwnd, &pid);
+	if (pid != GetCurrentProcessId()) {
+		return TRUE;
+	}
+
+	RECT rect;
+	GetWindowRect(hwnd, &rect);
+	int w = rect.right - rect.left;
+	int h = rect.bottom - rect.top;
+	if (w * h > status->w * status->h) {
+		status->hwnd = hwnd;
+	}
+
+	return TRUE;
+}
+
+static HWND guess_mbox_owner()
+{
+	// If an owner have been set, easy - just return it.
+	if (mbox_owner_hwnd) {
+		return mbox_owner_hwnd;
+	}
+
+	// Time to guess. If the current thread has an active window, it's probably a good window to steal.
+	HWND hwnd = GetActiveWindow();
+	if (hwnd) {
+		return hwnd;
+	}
+
+	// It's getting harder. Look at all the top-level visible windows of our processes, and take the biggest one.
+	EnumStatus status;
+	status.hwnd = nullptr;
+	status.w = 10; // Ignore windows smaller than 10x10
+	status.h = 10;
+	EnumWindows(enumWindowProc, (LPARAM)&status);
+	if (status.hwnd) {
+		return status.hwnd;
+	}
+
+	// Let's hope our process is allowed to take the focus.
+	return nullptr;
+}
+
 int log_mbox(const char *caption, const UINT type, const char *text)
 {
 	if(!caption) {
@@ -105,7 +181,7 @@ int log_mbox(const char *caption, const UINT type, const char *text)
 	log_print("---------------------------\n");
 	log_printf("%s\n", text);
 	log_print("---------------------------\n");
-	return MessageBox(NULL, text, caption, type);
+	return MessageBox(guess_mbox_owner(), text, caption, type);
 }
 
 int log_vmboxf(const char *caption, const UINT type, const char *text, va_list va)
@@ -129,6 +205,11 @@ int log_mboxf(const char *caption, const UINT type, const char *text, ...)
 		va_end(va);
 	}
 	return ret;
+}
+
+void log_mbox_set_owner(HWND hwnd)
+{
+	mbox_owner_hwnd = hwnd;
 }
 
 static void OpenConsole(void)
@@ -194,6 +275,36 @@ void log_init(int console)
 		VLA_FREE(line);
 	}
 #endif
+	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
+	size_t full_fn_len = cur_dir_len + sizeof(LOG);
+	VLA(char, full_fn, full_fn_len);
+	defer(VLA_FREE(full_fn));
+	GetCurrentDirectoryU(cur_dir_len, full_fn);
+	full_fn[cur_dir_len - 1] = '/';
+	str_slash_normalize(full_fn); // Necessary!
+	memcpy(full_fn + cur_dir_len, LOG, sizeof(LOG));
+
+	log_filemapping = CreateFileMappingU(
+		INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 1, full_fn
+	);
+	if(!log_file && GetLastError() != ERROR_ALREADY_EXISTS) {
+		auto ret = log_mboxf(nullptr, MB_OKCANCEL | MB_ICONHAND,
+			"Error creating %s: %s\n"
+			"\n"
+			"Logging will be unavailable. "
+			"Further writes to this directory are likely to fail as well. "
+			"Moving %s to a different directory will probably fix this.\n"
+			"\n"
+			"Continue?",
+			full_fn, strerror(errno), PROJECT_NAME_SHORT()
+		);
+		if(ret == IDCANCEL) {
+			auto pExitProcess = ((void (__stdcall*)(UINT))detour_top(
+				"kernel32.dll", "ExitProcess", (FARPROC)thcrap_ExitProcess
+			));
+			pExitProcess(-1);
+		}
+	}
 }
 
 void log_exit(void)
@@ -202,6 +313,7 @@ void log_exit(void)
 		FreeConsole();
 	}
 	if(log_file) {
+		CloseHandle(log_filemapping);
 		fclose(log_file);
 		log_file = NULL;
 	}

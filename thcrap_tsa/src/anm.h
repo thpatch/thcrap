@@ -9,35 +9,7 @@
 
 #pragma once
 
-/// TSA types
-/// ---------
-// All of the 16-bit formats are little-endian.
-typedef enum {
-	FORMAT_BGRA8888 = 1,
-	FORMAT_RGB565 = 3,
-	FORMAT_ARGB4444 = 5, // 0xGB 0xAR
-	FORMAT_GRAY8 = 7
-} format_t;
-
-#pragma pack(push, 1)
-typedef struct {
-	char magic[4];
-	WORD zero;
-	WORD format;
-	// These may be different from the parent entry.
-	WORD w, h;
-	DWORD size;
-	unsigned char data[];
-} thtx_header_t;
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-typedef struct {
-	DWORD id;
-	float x, y, w, h;
-} sprite_t;
-#pragma pack(pop)
-/// ---------
+#include <thtypes/anm_types.h>
 
 /// Patching types
 /// --------------
@@ -63,8 +35,6 @@ typedef struct {
 
 	// Offset to the next entry in the ANM archive. 0 indicates the last one.
 	size_t nextoffset;
-
-	int hasbitmap;
 
 	// File name of the original PNG associated with the bitmap.
 	const char *name;
@@ -127,9 +97,9 @@ void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, forma
 
 /// ANM structure
 /// -------------
-// Fills [entry] with the data of an ANM entry starting at [in], using the
-// format specification from [format].
-int anm_entry_init(anm_entry_t *entry, BYTE *in, json_t *format);
+// Fills [entry] with the data of an ANM entry starting at [in], automatically
+// detecting the correct source format.
+int anm_entry_init(anm_entry_t *entry, BYTE *in);
 
 void anm_entry_clear(anm_entry_t *entry);
 /// -------------

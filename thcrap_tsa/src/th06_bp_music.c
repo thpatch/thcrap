@@ -26,7 +26,7 @@ int BP_th06_music_title_in_game(x86_reg_t *regs, json_t *bp_info)
 		track = *stage * 2;
 	}
 	if (str && *str) {
-		music_title_print(str, NULL, track + offset);
+		music_title_print(str, NULL, track + offset, track + offset);
 	}
 	return 1;
 }
