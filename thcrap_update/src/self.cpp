@@ -20,7 +20,7 @@ const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
 
-static void* self_download(DWORD *arc_len, const char *arc_fn)
+static void* self_download(DWORD &arc_len, const char *arc_fn)
 {
 	// Yup, hardcoded download URLs. After all, these should be a property
 	// of the engine, and now that it is capable of updating itself,
@@ -28,7 +28,9 @@ static void* self_download(DWORD *arc_len, const char *arc_fn)
 	static server_t self_server(
 		"http://thcrap.thpatch.net/"
 	);
-	return self_server.download(arc_len, NULL, arc_fn, NULL);
+	auto dl = self_server.download(arc_fn, nullptr);
+	arc_len = dl.file_size;
+	return dl.file_buffer;
 }
 
 /// Download notification window
@@ -552,13 +554,13 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	arc_buf = self_download(&arc_len, ARC_FN);
+	arc_buf = self_download(arc_len, ARC_FN);
 	defer(SAFE_FREE(arc_buf));
 	if(!arc_buf) {
 		return SELF_SERVER_ERROR;
 	}
 
-	sig_buf = (char *)self_download(&sig_len, SIG_FN);
+	sig_buf = (char *)self_download(sig_len, SIG_FN);
 	defer(SAFE_FREE(sig_buf));
 
 	sig = json_loadb_report(sig_buf, sig_len, JSON_DISABLE_EOF_CHECK, SIG_FN);

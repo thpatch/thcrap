@@ -69,6 +69,21 @@ void thcrap_update_exit(void);
 /// ---------------------------------------
 #include <vector>
 
+struct server_t;
+
+struct download_ret_t {
+	get_result_t result = GET_INVALID_PARAMETER;
+
+	// Must be free()d by the caller.
+	BYTE *file_buffer = nullptr;
+	DWORD file_size = 0;
+
+	// Absolute timestamps.
+	LONGLONG time_start = 0;
+	LONGLONG time_ping = 0;
+	LONGLONG time_end = 0;
+};
+
 struct server_t {
 	// This either comes from a JSON object with a lifetime longer than any
 	// instance of this structure, or a hardcoded string, so no need to use
@@ -102,8 +117,8 @@ struct server_t {
 	}
 
 	// Single-server part of servers_t::download().
-	void* download(
-		DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr
+	download_ret_t download(
+		const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr
 	);
 
 	server_t() {
@@ -126,7 +141,9 @@ struct servers_t : std::vector<server_t> {
 	int num_active() const;
 
 	// Internal version of ServerDownloadFile().
-	void* download(DWORD *file_size, const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr);
+	download_ret_t download(
+		const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr
+	);
 
 	// Fills this instance with data from a JSON "servers" array as used
 	// in repo.js and patch.js.

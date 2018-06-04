@@ -33,8 +33,6 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 {
 	int ret = 0;
 	const char *repo_fn = "repo.js";
-	DWORD repo_size;
-	char *repo_buffer = NULL;
 	json_t *repo_js = NULL;
 	const char *id = NULL;
 	json_t *repo_fn_local = NULL;
@@ -51,9 +49,11 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 			it++;
 		}
 	}
-	repo_buffer = (char *)servers.download(&repo_size, repo_fn, NULL, NULL, NULL);
-	if(repo_buffer) {
-		repo_js = json_loadb_report(repo_buffer, repo_size, 0, repo_fn);
+	auto repo_dl = servers.download(repo_fn, nullptr, nullptr, nullptr);
+	if(repo_dl.file_buffer) {
+		repo_js = json_loadb_report(
+			(char *)repo_dl.file_buffer, repo_dl.file_size, 0, repo_fn
+		);
 	}
 	// Cache all servers that have been visited
 	for(auto it : servers) {
@@ -69,7 +69,7 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 		if(!old_server) {
 			repo_fn_local = RepoGetLocalFN(id);
 			repo_fn_local_str = json_string_value(repo_fn_local);
-			ret = file_write(repo_fn_local_str, repo_buffer, repo_size);
+			ret = file_write(repo_fn_local_str, repo_dl.file_buffer, repo_dl.file_size);
 			json_object_set(id_cache, id, json_true());
 			if(ret) {
 				log_printf(
@@ -91,7 +91,7 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 	ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache);
 end:
 	json_decref(repo_fn_local);
-	SAFE_FREE(repo_buffer);
+	SAFE_FREE(repo_dl.file_buffer);
 	json_decref(repo_js);
 	json_decref(url_cache);
 	json_decref(id_cache);

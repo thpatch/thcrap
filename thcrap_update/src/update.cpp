@@ -16,16 +16,6 @@
 SRWLOCK inet_srwlock = {SRWLOCK_INIT};
 double perffreq;
 
-typedef struct {
-	BYTE *file_buffer;
-	DWORD file_size;
-
-	// Absolute timestamps.
-	LONGLONG time_start;
-	LONGLONG time_ping;
-	LONGLONG time_end;
-} download_context_t;
-
 HINTERNET http_init(void)
 {
 	HINTERNET ret;
@@ -77,9 +67,9 @@ HINTERNET* http_handle(void)
 	return &hInternet;
 }
 
-get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t callback, void *callback_param)
+download_ret_t http_get(const char *url, file_callback_t callback, void *callback_param)
 {
-	get_result_t get_ret = GET_INVALID_PARAMETER;
+	download_ret_t ret;
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;
 	DWORD file_size_local = 0;
@@ -87,18 +77,17 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 	HINTERNET hFile = NULL;
 
 	if(!hHTTP || !url) {
-		return GET_INVALID_PARAMETER;
+		ret.result = GET_INVALID_PARAMETER;
+		return ret;
 	}
 	AcquireSRWLockShared(&inet_srwlock);
 
-	ZeroMemory(ctx, sizeof(download_context_t));
-
-	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_start);
+	QueryPerformanceCounter((LARGE_INTEGER *)&ret.time_start);
 	hFile = InternetOpenUrl(
 		hHTTP, url, NULL, 0,
 		INTERNET_FLAG_RELOAD | INTERNET_FLAG_KEEP_CONNECTION, 0
 	);
-	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_ping);
+	QueryPerformanceCounter((LARGE_INTEGER *)&ret.time_ping);
 	if(!hFile) {
 		// TODO: We should use FormatMessage() for both coverage and i18n
 		// reasons here, but its messages are way too verbose for my taste.
@@ -122,7 +111,7 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 			log_printf("WinInet error %d\n", inet_ret);
 			break;
 		}
-		get_ret = GET_SERVER_ERROR;
+		ret.result = GET_SERVER_ERROR;
 		goto end;
 	}
 
@@ -131,19 +120,19 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 	);
 	log_printf("%d ", http_stat);
 	if(http_stat != 200) {
-		get_ret = GET_NOT_AVAILABLE;
+		ret.result = GET_NOT_AVAILABLE;
 		goto end;
 	}
 
 	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_CONTENT_LENGTH,
-		&ctx->file_size, &byte_ret, 0
+		&ret.file_size, &byte_ret, 0
 	);
-	ctx->file_buffer = (BYTE*)malloc(ctx->file_size);
-	if(ctx->file_buffer) {
-		BYTE *p = ctx->file_buffer;
-		DWORD rem_size = ctx->file_size;
+	ret.file_buffer = (BYTE*)malloc(ret.file_size);
+	if(ret.file_buffer) {
+		auto *p = ret.file_buffer;
+		auto rem_size = ret.file_size;
 		if (callback) {
-			callback(url, GET_OK, 0, ctx->file_size, callback_param);
+			callback(url, GET_OK, 0, ret.file_size, callback_param);
 		}
 		while(rem_size) {
 			DWORD read_size = 0;
@@ -152,38 +141,38 @@ get_result_t http_get(download_context_t *ctx, const char *url, file_callback_t 
 			}
 			if(read_size == 0) {
 				log_printf("disconnected\n");
-				get_ret = GET_SERVER_ERROR;
+				ret.result = GET_SERVER_ERROR;
 				goto end;
 			}
 			if(InternetReadFile(hFile, p, read_size, &byte_ret)) {
 				rem_size -= byte_ret;
 				p += byte_ret;
 				if (callback) {
-					if (callback(url, GET_OK, ctx->file_size - rem_size, ctx->file_size, callback_param) == FALSE) {
-						get_ret = GET_CANCELLED;
+					if (callback(url, GET_OK, ret.file_size - rem_size, ret.file_size, callback_param) == FALSE) {
+						ret.result = GET_CANCELLED;
 						goto end;
 					}
 				}
 			} else {
-				SAFE_FREE(ctx->file_buffer);
+				SAFE_FREE(ret.file_buffer);
 				log_printf("\nReading error #%d! ", GetLastError());
-				get_ret = GET_SERVER_ERROR;
+				ret.result = GET_SERVER_ERROR;
 				goto end;
 			}
 		}
-		get_ret = GET_OK;
+		ret.result = GET_OK;
 	} else {
-		get_ret = GET_OUT_OF_MEMORY;
+		ret.result = GET_OUT_OF_MEMORY;
 	}
 end:
-	QueryPerformanceCounter((LARGE_INTEGER *)&ctx->time_end);
-	if (get_ret != GET_OK && callback) {
-		callback(url, get_ret, 0, ctx->file_size, callback_param);
+	QueryPerformanceCounter((LARGE_INTEGER *)&ret.time_end);
+	if (ret.result != GET_OK && callback) {
+		callback(url, ret.result, 0, ret.file_size, callback_param);
 	}
 
 	InternetCloseHandle(hFile);
 	ReleaseSRWLockShared(&inet_srwlock);
-	return get_ret;
+	return ret;
 }
 
 void http_mod_exit(void)
@@ -223,24 +212,16 @@ void server_t::ping_push(LONGLONG newval)
 	ping[elements - 1] = newval;
 }
 
-void* server_t::download(
-	DWORD *file_size, get_result_t *ret, const char *fn, const DWORD *exp_crc, file_callback_t callback, void *callback_param
+download_ret_t server_t::download(
+	const char *fn, const DWORD *exp_crc, file_callback_t callback, void *callback_param
 )
 {
-	assert(file_size);
-
-	get_result_t temp_ret;
-	download_context_t ctx;
 	URL_COMPONENTSA uc = {0};
 	auto server_len = strlen(this->url) + 1;
 	// * 3 because characters may be URL-encoded
 	DWORD url_len = server_len + (strlen(fn) * 3) + 1;
 	VLA(char, server_host, server_len);
 	VLA(char, url, url_len);
-
-	if(!ret) {
-		ret = &temp_ret;
-	}
 
 	InternetCombineUrl(this->url, fn, url, &url_len, 0);
 
@@ -252,8 +233,7 @@ void* server_t::download(
 
 	log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
-	*ret = http_get(&ctx, url, callback, callback_param);
-	*file_size = ctx.file_size;
+	download_ret_t ctx = http_get(url, callback, callback_param);
 
 	VLA_FREE(url);
 	VLA_FREE(server_host);
@@ -264,14 +244,14 @@ void* server_t::download(
 		}
 		this->disable();
 		SAFE_FREE(ctx.file_buffer);
-		return nullptr;
+		return ctx;
 	};
 
 	// Let's assume that all servers are sane, so rather than drawing some
 	// sort of line and saying "well, on *these* errors we'll give it
 	// another chance, and on *these* we don't", we'll just disable a
 	// server on any error.
-	switch(*ret) {
+	switch(ctx.result) {
 	case GET_CANCELLED:
 		return fail("Cancelled");
 	case GET_INVALID_PARAMETER:
@@ -291,8 +271,8 @@ void* server_t::download(
 		// are faster, but for now, it certainly isn't.
 		return fail("Not Available");
 	}
-	assert(*ret == GET_OK);
-	if(*file_size == 0) {
+	assert(ctx.result == GET_OK);
+	if(ctx.file_size == 0) {
 		// This might be a legit non-failure case one day, but until then...
 		return fail("0-byte file!");
 	}
@@ -306,7 +286,7 @@ void* server_t::download(
 	double diff_transfer_ms = (diff_transfer / perffreq) * 1000.0;
 	log_printf(
 		"(%d b, %.1f + %.1f ms)\n",
-		*file_size, diff_ping_ms, diff_transfer_ms
+		ctx.file_size, diff_ping_ms, diff_transfer_ms
 	);
 	this->ping_push(diff_ping);
 
@@ -316,7 +296,7 @@ void* server_t::download(
 			return fail("CRC32 mismatch! Please report this to server owner.");
 		}
 	}
-	return ctx.file_buffer;
+	return ctx;
 }
 
 int servers_t::get_first() const
@@ -363,20 +343,29 @@ int servers_t::num_active() const
 	return ret;
 }
 
-void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc, file_callback_t callback, void *callback_param)
+download_ret_t servers_t::download(
+	const char *fn, const DWORD *exp_crc, file_callback_t callback, void *callback_param
+)
 {
-	assert(file_size);
-	int i;
+	download_ret_t ret;
+	auto fail = [&ret] (get_result_t result) {
+		ret.result = result;
+		return ret;
+	};
 
+	if(!fn) {
+		return fail(GET_INVALID_PARAMETER);
+	}
+
+	int i;
 	int servers_first = this->get_first();
 	auto servers_total = this->size();
 	auto servers_left = servers_total;
 
-	if(!fn || servers_first < 0) {
-		return NULL;
+	if(servers_first < 0) {
+		return fail(GET_NOT_AVAILABLE);
 	}
 	for(i = servers_first; servers_left; i = (i + 1) % servers_total) {
-		get_result_t get_ret;
 		server_t &server = (*this)[i];
 
 		servers_left--;
@@ -386,15 +375,15 @@ void* servers_t::download(DWORD *file_size, const char *fn, const DWORD *exp_crc
 			log_printf("Retrying on next server...\n");
 		}
 
-		auto file_buffer = server.download(file_size, &get_ret, fn, exp_crc, callback, callback_param);
+		ret = server.download(fn, exp_crc, callback, callback_param);
 
-		if(get_ret <= GET_INVALID_PARAMETER) {
-			return NULL;
-		} else if(file_buffer) {
-			return file_buffer;
+		if(ret.result <= GET_INVALID_PARAMETER) {
+			return ret;
+		} else if(ret.file_buffer) {
+			return ret;
 		}
 	}
-	return NULL;
+	return fail(GET_NOT_AVAILABLE);
 }
 
 void servers_t::from(const json_t *servers)
@@ -460,7 +449,11 @@ void* ServerDownloadFile(
 	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
 )
 {
-	return servers_cache(servers).download(file_size, fn, exp_crc, callback, callback_param);
+	assert(file_size);
+
+	auto ret = servers_cache(servers).download(fn, exp_crc, callback, callback_param);
+	*file_size = ret.file_size;
+	return ret.file_buffer;
 }
 
 int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)
@@ -556,8 +549,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 
 	json_t *local_files = NULL;
 
-	DWORD remote_files_js_size;
-	char *remote_files_js_buffer = NULL;
+	download_ret_t remote_files_dl;
 
 	json_t *remote_files_orig = NULL;
 	json_t *remote_files_to_get = NULL;
@@ -579,7 +571,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		if(ret == 3) {
 			log_printf("Can't reach any valid server at the moment.\nCancelling update...\n");
 		}
-		SAFE_FREE(remote_files_js_buffer);
+		SAFE_FREE(remote_files_dl.file_buffer);
 		json_decref(remote_files_to_get);
 		json_decref(remote_files_orig);
 		json_decref(local_files);
@@ -625,13 +617,15 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		log_printf("Checking for updates of %s...\n", patch_name);
 	}
 
-	remote_files_js_buffer = (char *)servers.download(&remote_files_js_size, files_fn, NULL, NULL, NULL);
-	if(!remote_files_js_buffer) {
+	remote_files_dl = servers.download(files_fn, nullptr, nullptr, nullptr);
+	if(!remote_files_dl.file_buffer) {
 		// All servers offline...
 		return finish(3);
 	}
 
-	remote_files_orig = json_loadb_report(remote_files_js_buffer, remote_files_js_size, 0, files_fn);
+	remote_files_orig = json_loadb_report(
+		(char*)remote_files_dl.file_buffer, remote_files_dl.file_size, 0, files_fn
+	);
 	if(!json_is_object(remote_files_orig)) {
 		// Remote files.js is invalid!
 		return finish(4);
@@ -671,8 +665,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 
 	i = 0;
 	json_object_foreach(remote_files_to_get, key, remote_val) {
-		void *file_buffer = nullptr;
-		DWORD file_size;
+		download_ret_t ret;
 		json_t *local_val;
 
 		if(servers.num_active() == 0) {
@@ -685,8 +678,8 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 
 		// Delete locally unchanged files with a JSON null value in the remote list
 		if(json_is_null(remote_val) && json_is_integer(local_val)) {
-			file_size = 0;
-			file_buffer = patch_file_load(patch_info, key, (size_t*)&file_size);
+			uint32_t file_size = 0;
+			void *file_buffer = patch_file_load(patch_info, key, (size_t*)&file_size);
 			if(file_buffer && file_size) {
 				DWORD local_crc = crc32(0, (Bytef*)file_buffer, file_size);
 				if(local_crc == json_integer_value(local_val)) {
@@ -704,13 +697,13 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 			update_delete(key);
 		} else if(json_is_integer(remote_val)) {
 			DWORD remote_crc = (DWORD)json_integer_value(remote_val);
-			file_buffer = servers.download(&file_size, key, &remote_crc, patch_update_callback, &patch_update_callback_param);
+			ret = servers.download(key, &remote_crc, patch_update_callback, &patch_update_callback_param);
 		} else {
-			file_buffer = servers.download(&file_size, key, NULL, patch_update_callback, &patch_update_callback_param);
+			ret = servers.download(key, nullptr, patch_update_callback, &patch_update_callback_param);
 		}
-		if(file_buffer) {
-			patch_file_store(patch_info, key, file_buffer, file_size);
-			SAFE_FREE(file_buffer);
+		if(ret.file_buffer) {
+			patch_file_store(patch_info, key, ret.file_buffer, ret.file_size);
+			SAFE_FREE(ret.file_buffer);
 			json_object_set(local_files, key, remote_val);
 		}
 		patch_json_store(patch_info, files_fn, local_files);
