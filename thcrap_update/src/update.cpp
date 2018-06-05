@@ -234,6 +234,7 @@ download_ret_t server_t::download(
 	log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
 	download_ret_t ctx = http_get(url, callback, callback_param);
+	ctx.origin = this;
 
 	VLA_FREE(url);
 	VLA_FREE(server_host);

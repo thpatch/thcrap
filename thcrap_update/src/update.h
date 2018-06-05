@@ -74,6 +74,10 @@ struct server_t;
 struct download_ret_t {
 	get_result_t result = GET_INVALID_PARAMETER;
 
+	// Server that delivered this specific file.
+	// Can be a nullptr in case there are no servers left.
+	server_t *origin = nullptr;
+
 	// Must be free()d by the caller.
 	BYTE *file_buffer = nullptr;
 	DWORD file_size = 0;
