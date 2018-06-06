@@ -149,6 +149,17 @@ struct servers_t : std::vector<server_t> {
 		const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr
 	);
 
+	// Tries to download [fn] from the servers, repeating the process until
+	// a valid JSON object has been downloaded or none of the remaining active
+	// servers managed to send one. Used for bootstrapping repositories and
+	// updates, where we don't have checksums yet and JSON validity can (for
+	// now) be the only criterion for a successful, non-MITM'd download.
+	// Also fills out [dl] if it's not a nullptr. In that case, [dl->buffer]
+	// must be free()d by the caller.
+	json_t* download_valid_json(
+		const char *fn, download_ret_t *dl = nullptr, file_callback_t callback = nullptr, void *callback_param = nullptr
+	);
+
 	// Fills this instance with data from a JSON "servers" array as used
 	// in repo.js and patch.js.
 	void from(const json_t *servers);

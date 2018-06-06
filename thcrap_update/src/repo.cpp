@@ -33,7 +33,7 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 {
 	int ret = 0;
 	const char *repo_fn = "repo.js";
-	json_t *repo_js = NULL;
+	download_ret_t repo_dl;
 	const char *id = NULL;
 	json_t *repo_fn_local = NULL;
 	const char *repo_fn_local_str;
@@ -49,12 +49,8 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 			it++;
 		}
 	}
-	auto repo_dl = servers.download(repo_fn, nullptr, nullptr, nullptr);
-	if(repo_dl.file_buffer) {
-		repo_js = json_loadb_report(
-			(char *)repo_dl.file_buffer, repo_dl.file_size, 0, repo_fn
-		);
-	}
+	auto repo_js = servers.download_valid_json(repo_fn, &repo_dl);
+
 	// Cache all servers that have been visited
 	for(auto it : servers) {
 		if(it.visited()) {

@@ -555,12 +555,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		return SELF_SERVER_ERROR;
 	}
 
-	auto sig_dl = srv.download(SIG_FN, nullptr);
-	defer(SAFE_FREE(sig_dl.file_buffer));
-
-	auto sig = json_loadb_report(
-		(char *)sig_dl.file_buffer, sig_dl.file_size, JSON_DISABLE_EOF_CHECK, SIG_FN
-	);
+	auto sig = srv.download_valid_json(SIG_FN);
 	if(!sig) {
 		return SELF_NO_SIG;
 	}

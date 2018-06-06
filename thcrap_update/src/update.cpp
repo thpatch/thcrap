@@ -387,6 +387,41 @@ download_ret_t servers_t::download(
 	return fail(GET_NOT_AVAILABLE);
 }
 
+json_t* servers_t::download_valid_json(
+	const char *fn, download_ret_t *dl_given, file_callback_t callback, void *callback_param
+)
+{
+	download_ret_t dl_temp;
+	download_ret_t &dl_ref = dl_given ? *dl_given : dl_temp;
+
+	// We want to inherit all return values from download()
+	while(1) {
+		dl_ref = download(fn, nullptr, callback, callback_param);
+		if(!dl_ref.origin) {
+			// All servers offline...
+			break;
+		}
+		auto *ret = json_loadb(
+			(char *)dl_ref.file_buffer, dl_ref.file_size, JSON_DISABLE_EOF_CHECK, nullptr
+		);
+		if(ret) {
+			if(!dl_given) {
+				SAFE_FREE(dl_ref.file_buffer);
+			}
+			return ret;
+		}
+		SAFE_FREE(dl_ref.file_buffer);
+
+		dl_ref.origin->disable();
+		if(num_active() > 0) {
+			log_printf("Invalid JSON, retrying on next server...\n");
+		} else {
+			log_printf("Invalid JSON!\n");
+		}
+	}
+	return nullptr;
+}
+
 void servers_t::from(const json_t *servers)
 {
 	auto validate = [] (size_t pos, json_t *server) {
@@ -618,17 +653,13 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		log_printf("Checking for updates of %s...\n", patch_name);
 	}
 
-	remote_files_dl = servers.download(files_fn, nullptr, nullptr, nullptr);
-	if(!remote_files_dl.file_buffer) {
+	remote_files_orig = servers.download_valid_json(files_fn);
+	if(remote_files_orig == nullptr) {
 		// All servers offline...
 		return finish(3);
 	}
-
-	remote_files_orig = json_loadb_report(
-		(char*)remote_files_dl.file_buffer, remote_files_dl.file_size, 0, files_fn
-	);
 	if(!json_is_object(remote_files_orig)) {
-		// Remote files.js is invalid!
+		// No *valid* (= non-object) files.js on any remote server!
 		return finish(4);
 	}
 
