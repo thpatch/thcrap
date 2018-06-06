@@ -20,17 +20,15 @@ const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
 
-static void* self_download(DWORD &arc_len, const char *arc_fn)
+static servers_t& self_servers()
 {
 	// Yup, hardcoded download URLs. After all, these should be a property
 	// of the engine, and now that it is capable of updating itself,
 	// there's no need to include these in any patch.
-	static server_t self_server(
+	static servers_t self_server(
 		"http://thcrap.thpatch.net/"
 	);
-	auto dl = self_server.download(arc_fn, nullptr);
-	arc_len = dl.file_size;
-	return dl.file_buffer;
+	return self_server;
 }
 
 /// Download notification window
@@ -514,12 +512,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 {
 	self_result_t ret;
 	char arc_fn[TEMP_FN_LEN];
-	DWORD arc_len = 0;
-	void *arc_buf = NULL;
 	zip_t *arc = NULL;
-	DWORD sig_len = 0;
-	char *sig_buf = NULL;
-	json_t *sig = NULL;
 	PCCERT_CONTEXT context = NULL;
 	HCRYPTPROV hCryptProv = 0;
 	HCRYPTHASH hHash = 0;
@@ -554,22 +547,26 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	arc_buf = self_download(arc_len, ARC_FN);
-	defer(SAFE_FREE(arc_buf));
-	if(!arc_buf) {
+	auto srv = self_servers();
+	auto arc_dl = srv.download(ARC_FN, nullptr);
+
+	defer(SAFE_FREE(arc_dl.file_buffer));
+	if(!arc_dl.file_buffer) {
 		return SELF_SERVER_ERROR;
 	}
 
-	sig_buf = (char *)self_download(sig_len, SIG_FN);
-	defer(SAFE_FREE(sig_buf));
+	auto sig_dl = srv.download(SIG_FN, nullptr);
+	defer(SAFE_FREE(sig_dl.file_buffer));
 
-	sig = json_loadb_report(sig_buf, sig_len, JSON_DISABLE_EOF_CHECK, SIG_FN);
+	auto sig = json_loadb_report(
+		(char *)sig_dl.file_buffer, sig_dl.file_size, JSON_DISABLE_EOF_CHECK, SIG_FN
+	);
 	if(!sig) {
 		return SELF_NO_SIG;
 	}
 	defer(sig = json_decref_safe(sig));
 
-	ret = self_verify(hCryptProv, &hHash, arc_buf, arc_len, sig, context);
+	ret = self_verify(hCryptProv, &hHash, arc_dl.file_buffer, arc_dl.file_size, sig, context);
 	defer(CryptDestroyHash(hHash));
 	if(ret != SELF_OK) {
 		return ret;
@@ -587,7 +584,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	}
 	memcpy(ext, EXT_NEW, ext_new_len);
 
-	if(file_write(arc_fn, arc_buf, arc_len)) {
+	if(file_write(arc_fn, arc_dl.file_buffer, arc_dl.file_size)) {
 		return SELF_DISK_ERROR;
 	}
 	if(arc_fn_ptr) {
