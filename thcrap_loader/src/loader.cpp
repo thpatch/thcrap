@@ -41,6 +41,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	const char *run_cfg_fn = NULL;
 	json_t *run_cfg = NULL;
 
+	const char *game_id = nullptr;
 	const char *cmd_exe_fn = NULL;
 	const char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
@@ -123,6 +124,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		} else {
 			// Need to set game_missing even if games_js is null.
 			cmd_exe_fn = game_lookup(games_js, arg);
+			game_id = arg;
 		}
 	}
 
@@ -188,7 +190,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
 	runconfig_set(run_cfg);
 
-	ret = loader_update_with_UI_wrapper(final_exe_fn, NULL);
+	ret = loader_update_with_UI_wrapper(final_exe_fn, NULL, game_id);
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);

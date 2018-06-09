@@ -470,7 +470,7 @@ void log_ncallback(const char* text, size_t len)
 	VLA_FREE(ntext);
 }
 
-BOOL loader_update_with_UI(const char *exe_fn, char *args)
+BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_fallback)
 {
 	loader_update_state_t state;
 	BOOL ret = 0;
@@ -589,13 +589,19 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	}
 
 	{
+		json_t *game_fallback = nullptr;
 		json_t *game = json_object_get(runconfig_get(), "game");
+		if (!game) {
+			game_fallback = json_string(game_id_fallback);
+			game = game_fallback;
+		}
 		if (game) {
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
 			progress_bars_set_marquee(&state, true, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
 			state.state = STATE_PATCHES_UPDATE;
 			stack_update(update_filter_games, game, loader_update_progress_callback, &state);
+			json_decref(game_fallback);
 		}
 	}
 

@@ -74,9 +74,9 @@ void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data,
 	CALL_WRAPPED_FUNCTION(stack_update, filter_func, filter_data, callback, callback_param)
 }
 ASSERT_FUNCTION_PROTO(stack_update);
-BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args)
+BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *game_id_fallback)
 {
-	CALL_WRAPPED_FUNCTION(loader_update_with_UI, exe_fn, args)
+	CALL_WRAPPED_FUNCTION(loader_update_with_UI, exe_fn, args, game_id_fallback)
 	return thcrap_inject_into_new(exe_fn, args, NULL, NULL);
 }
 ASSERT_FUNCTION_PROTO(loader_update_with_UI);
