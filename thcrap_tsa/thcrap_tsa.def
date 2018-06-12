@@ -99,6 +99,12 @@ EXPORTS
 	patch_msg_dlg
 	patch_msg_end
 
+	; Mission
+	BP_mission
+	BP_mission_check_furi_a
+	BP_mission_printf_hook
+	missions_mod_init
+
 	; TSA-specific detours
 	; --------------------
 	tsa_mod_detour
