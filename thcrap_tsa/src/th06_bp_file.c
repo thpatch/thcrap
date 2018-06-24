@@ -1,4 +1,4 @@
-﻿/**
+/**
 * Touhou Community Reliant Automatic Patcher
 * Team Shanghai Alice support plugin
 *
@@ -108,15 +108,6 @@ int BP_th06_file_load(x86_reg_t *regs, json_t *bp_info)
 	return BP_file_load(regs, bp_info);
 }
 
-int th06_skip_image(file_rep_t *fr)
-{
-	memcpy(fr->game_buffer, fr->rep_buffer, fr->pre_json_size);
-	file_rep_clear(fr);
-	PNGSPLIT_SAFE_FREE(pngsplit_png);
-	pngsplit_state = TH06_PNGSPLIT_NONE;
-	return 1;
-}
-
 int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
 	if (pngsplit_state == TH06_PNGSPLIT_RGB || pngsplit_state == TH06_PNGSPLIT_ALPHA) {
@@ -134,12 +125,6 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 			PNGSPLIT_SAFE_FREE(pngsplit_png);
 			pngsplit_state = TH06_PNGSPLIT_NONE;
 			return BP_file_loaded(regs, bp_info);
-		}
-
-		png_byte orig_bit_depth = ((png_bytep)fr->game_buffer)[8 /* magic */ + 8 /* chunk header */ + 8 /* index of bit depth in IHRD */];
-		png_byte orig_color_type = ((png_bytep)fr->game_buffer)[8 /* magic */ + 8 /* chunk header */ + 9 /* index of color type in IHRD */];
-		if (orig_color_type != PNG_COLOR_TYPE_RGB && orig_color_type != PNG_COLOR_TYPE_PALETTE) { // I don't think the game uses another color type. Maybe RGBA, and in that case the input file will probably be RGBA as well.
-			return th06_skip_image(fr);
 		}
 
 		if (pngsplit_state == TH06_PNGSPLIT_ALPHA) {
@@ -170,11 +155,6 @@ int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 
 		if (pngsplit_state == TH06_PNGSPLIT_RGB)
 		{
-			// If we have an alpha mask here, that means the patch developer tries to replace the image for the alpha mask, and... let's hope he knows what he does.
-			if (orig_color_type == PNG_COLOR_TYPE_PALETTE && orig_bit_depth != 8) {
-				return th06_skip_image(fr);
-			}
-
 			// Do the splitting
 			pngsplit_png = pngsplit_read(fr->rep_buffer);
 			if (!pngsplit_png) {
