@@ -27,7 +27,9 @@ extern "C" {
 
 	int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
 	int patch_csv(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
+	int patch_tfcs_subtitles(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
 	size_t get_tfcs_size(const char*, json_t*, size_t patch_size);
+	size_t get_tfcs_subtitles_size(const char*, json_t*, size_t patch_size);
 
 #ifdef __cplusplus
 }

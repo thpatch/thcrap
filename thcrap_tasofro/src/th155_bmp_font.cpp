@@ -156,6 +156,15 @@ int fill_chars_list(bool *chars_list, void *file_inout, size_t size_in, json_t *
 		else if (strcmp(fn, "*") == 0) {
 			log_print("(Font) Searching in every js file for characters...\n");
 			json_t *patches = json_object_get(runconfig_get(), "patches");
+			json_incref(patches);
+			json_t *subtitles = json_object_get(runconfig_get(), "subtitles");
+			if (subtitles) {
+				json_t *all_patches = json_copy(patches);
+				json_array_extend(all_patches, subtitles);
+				json_decref(patches);
+				patches = all_patches;
+			}
+
 			size_t i;
 			json_t *patch_info;
 			json_array_foreach(patches, i, patch_info) {
@@ -169,6 +178,8 @@ int fill_chars_list(bool *chars_list, void *file_inout, size_t size_in, json_t *
 					}
 				}
 			}
+
+			json_decref(patches);
 		}
 		/* else if (strchr(fn, '*') != nullptr) {
 			// TODO: pattern matching

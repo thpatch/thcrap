@@ -258,6 +258,7 @@ EXPORTS
 
 	stack_json_resolve_chain
 	stack_json_resolve
+	stack_json_resolve_ex
 	stack_file_resolve_chain
 	stack_fn_resolve_chain
 	stack_game_file_resolve

@@ -1,6 +1,7 @@
 LIBRARY
 EXPORTS
 	thcrap_plugin_init	@1
+	subtitles_mod_init
 	nsml_mod_init
 	nsml_mod_detour
 	nsml_mod_exit

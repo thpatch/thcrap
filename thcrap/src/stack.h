@@ -46,14 +46,18 @@ void set_resolve_chain_game(resolve_chain_t function);
 
 // Repeatedly iterate through the stack using the given resolving [chain].
 // [sci] keeps the iteration state.
-int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction);
+int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction, json_t *patches);
 
-// Walks through the current patch stack, merging every file with the filename
-// [fn] into a single JSON object. Returns the merged JSON object or NULL if
-// there is no matching file in the patch stack. If given, [file_size]
-// receives the maximum number of bytes required to store the final merged
-// JSON data.
-json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size);
+// Walks through the given patch stack, merging every file with the filename
+// [fn] into a single JSON object.
+// Returns the merged JSON object or NULL if there is no matching file
+// in the patch stack.
+// If given, [file_size] receives the maximum number of bytes required to store
+// the final merged JSON data.
+// If [patch] is NULL, the current patch stack is used instead.
+json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size, json_t *patches);
+json_t* stack_json_resolve_ex(const char *fn, size_t *file_size, json_t *patches);
+// Uses the current patch stack
 json_t* stack_json_resolve(const char *fn, size_t *file_size);
 
 // Generic file resolver. Returns the file matching the [chain] with the

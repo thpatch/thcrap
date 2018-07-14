@@ -90,7 +90,7 @@ int oldbuild_show(json_t *run_cfg)
 		VLA(char, build_js_fn, build_js_fn_len);
 		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
 		auto *build_js_chain = json_pack("[s]", build_js_fn);
-		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
+		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr, nullptr);
 		auto supported = build_js != nullptr;
 		json_decref_safe(build_js);
 		json_decref_safe(build_js_chain);
@@ -155,7 +155,7 @@ json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 	if(json_array_size(chain)) {
 		json_array_insert_new(chain, 0, json_string("global.js"));
 		log_printf("(JSON) Resolving configuration for %s... ", fn);
-		ret = stack_json_resolve_chain(chain, file_size);
+		ret = stack_json_resolve_chain(chain, file_size, nullptr);
 	}
 	json_decref(chain);
 	return ret;

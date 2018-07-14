@@ -42,6 +42,11 @@ int th135_init()
 	patchhook_register("*.nhtex", patch_nhtex, get_nhtex_size);
 
 	if (game_id >= TH155) {
+		static json_t *subtitles_support = json_object_get(runconfig_get(), "subtitles_support");
+		static json_t *subtitles_stack = json_object_get(runconfig_get(), "subtitles");
+		if (json_is_true(subtitles_support) && json_is_array(subtitles_stack)) {
+			patchhook_register("data/win/message/*.csv", patch_tfcs_subtitles, get_tfcs_subtitles_size);
+		}
 		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							"spells.js");
 		jsonvfs_game_add_map("data/story/spell_list/*.csv.jdiff",				"spells.js");
 		jsonvfs_game_add_map("data/actor/*.nut.jdiff",							"spells.js"); // Last words
@@ -222,4 +227,42 @@ int BP_th135_read_file(x86_reg_t *regs, json_t *bp_info)
 	int ret = BP_fragmented_read_file(regs, new_bp_info);
 	json_decref(new_bp_info);
 	return ret;
+}
+
+int subtitles_mod_init(void)
+{
+	json_t *patches = json_object_get(runconfig_get(), "subtitles");
+	if (patches == nullptr) {
+		return 0;
+	}
+
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		patch_rel_to_abs(patch_info, json_object_get_string(runconfig_get(), "run_cfg_fn"));
+		patch_info = patch_init(patch_info);
+		json_array_set(patches, i, patch_info);
+		json_decref(patch_info);
+	}
+	return 0;
+}
+
+json_t *custom_stack_game_json_resolve(const char *fn, size_t *size, json_t *patches)
+{
+	if (size) {
+		*size = 0;
+	}
+	if (patches == nullptr) {
+		return nullptr;
+	}
+
+	const json_t *game = json_object_get(runconfig_get(), "game");
+	std::string patch_fn = "";
+	if (json_is_string(game)) {
+		patch_fn = std::string(json_string_value(game)) + "/";
+	}
+	patch_fn += std::string(fn) + ".jdiff";
+	json_t *patch = stack_json_resolve_ex(patch_fn.c_str(), size, patches);
+
+	return patch;
 }

@@ -50,7 +50,7 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 
 	if (json_array_size(chain)) {
 		log_printf("(PNG) Resolving %s...", json_array_get_string(chain, 0));
-		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS) != 0) {
+		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr) != 0) {
 			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
 		}
 	}
@@ -122,7 +122,7 @@ bool png_image_get_IHDR(const char *fn, uint32_t *width, uint32_t *height, uint8
 
 	if (json_array_size(chain)) {
 		log_printf("(PNG) Resolving %s...", json_array_get_string(chain, 0));
-		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS) != 0) {
+		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr) != 0) {
 			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
 		}
 	}

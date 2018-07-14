@@ -509,7 +509,7 @@ int stack_game_png_apply(anm_entry_t *entry)
 		if(json_array_size(chain)) {
 			log_printf("(PNG) Resolving %s... ", json_array_get_string(chain, 0));
 		}
-		while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
+		while(stack_chain_iterate(&sci, chain, SCI_FORWARDS, NULL)) {
 			if(!patch_png_apply(entry, sci.patch_info, sci.fn)) {
 				ret = 1;
 			}
