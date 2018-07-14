@@ -151,12 +151,12 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 	}
 	else {
 		static json_t *subtitles_support = nullptr;
-		static json_t *subtitles_stack = nullptr;
+		static json_t *subtitles_config = nullptr;
 		if (subtitles_support == nullptr) {
 			subtitles_support = json_object_get(runconfig_get(), "subtitles_support");
 		}
-		if (subtitles_stack == nullptr) {
-			subtitles_stack = json_object_get(runconfig_get(), "subtitles");
+		if (subtitles_config == nullptr) {
+			subtitles_config = json_object_get(runconfig_get(), "subtitles");
 		}
 		bool line_is_subtitle = json_is_true(json_object_get(patch_row, "is_subtitle"));
 
@@ -179,18 +179,17 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 			return true;
 		};
 
-		log_printf("%s - line_is_subtitle=%d, subtitles_support=%d, subtitles_stack=%d\n",
-			json_dumps(json_object_get(patch_row, "lines"), 0) , line_is_subtitle, json_is_true(subtitles_support), json_is_true(subtitles_stack));
 		if (line_is_subtitle) {
 			patch_win_message(line, patch_row, 9, patch_subtitles_func);
 		}
+		else if (json_is_true(subtitles_support) && json_is_true(subtitles_config)) {
+			// If subtitles_config is true (which means it is NOT a patch stack, just the "true" value),
+			// we don't have user-provided subtitles and we need to patch the subtitles with the main stack,
+			// and to keep the balloon in Japanese.
+			patch_win_message(line, patch_row, 9, patch_subtitles_func);
+		}
 		else {
-			if (json_is_true(subtitles_support) && json_is_true(subtitles_stack)) {
-				patch_win_message(line, patch_row, 9, patch_subtitles_func);
-			}
-			else {
-				patch_win_message(line, patch_row, 9, patch_balloon_func);
-			}
+			patch_win_message(line, patch_row, 9, patch_balloon_func);
 		}
 	}
 
