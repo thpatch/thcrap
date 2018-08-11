@@ -522,6 +522,44 @@ size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
 	return GetTextExtentForFont(str, font ? *font : NULL);
 }
 
+int widest_string(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	json_t *font_id_obj = json_object_get(bp_info, "font_id");
+	json_t *strs = json_object_get(bp_info, "strs");
+	int correction_summand = json_object_get_immediate(bp_info, regs, "correction_summand");
+	// ----------
+	int final_w = 0;
+	size_t i = 0;
+	size_t font_id;
+	json_t *val;
+
+	assert(font_id_obj && strs);
+	font_id = json_immediate_value(font_id_obj, regs);
+
+	json_flex_array_foreach(strs, i, val) {
+		const char *str = (const char*)json_immediate_value(val, regs);
+		assert(str);
+		int w = GetTextExtentForFontID(str, font_id) * 2;
+		final_w = max(final_w, w);
+	}
+	final_w += correction_summand;
+	return max(final_w, 0);
+}
+
+#define WIDEST_STRING(name, type) \
+	int BP_##name##(x86_reg_t *regs, json_t *bp_info) \
+	{ \
+		type *width = (type *)json_object_get_pointer(bp_info, regs, "width"); \
+		assert(width); \
+		*width = (type)widest_string(regs, bp_info); \
+		return breakpoint_cave_exec_flag(bp_info); \
+	}
+
+WIDEST_STRING(widest_string, size_t);
+WIDEST_STRING(widest_string_f, float);
+
 int layout_mod_init(HMODULE hMod)
 {
 	Layout_Tabs = json_array();

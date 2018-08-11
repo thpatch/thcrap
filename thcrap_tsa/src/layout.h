@@ -45,6 +45,35 @@ size_t __stdcall GetTextExtentForFont(const char *str, HFONT font);
 // GetTextExtentForFont with the font pointer pulled from the TSA font block.
 size_t __stdcall GetTextExtentForFontID(const char *str, size_t id);
 
+/*
+ * Returns the widest string in an array of strings. widest_string returns
+ * integers in [width], widest_string_f returns floats.
+ *
+ * Own JSON parameters
+ * -------------------
+ *	[font_id]
+ *		Font to be used for the width calculation
+ *		Type: immediate (unsigned integer)
+ *
+ *	[strs]
+ *		Strings to calculate the width of
+ *		Type: flexible array of pointers
+ *
+ *	[width]
+ *		Target address for the calculation
+ *		Type: pointer
+ *
+ *	[correction_summand]
+ *		Additional value to add to the final result (optional)
+ *		Type: immediate (signed integer)
+ *
+ * Other breakpoints called
+ * ------------------------
+ *	None
+*/
+__declspec(dllexport) int BP_widest_string(x86_reg_t *regs, json_t *bp_info);
+__declspec(dllexport) int BP_widest_string_f(x86_reg_t *regs, json_t *bp_info);
+
 int layout_mod_init(HMODULE hMod);
 void layout_mod_detour(void);
 void layout_mod_exit(void);
