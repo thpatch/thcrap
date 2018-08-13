@@ -45,7 +45,7 @@ W32U8_DETOUR_CHAIN_DEF(TextOut);
   *   • "offset" (int, defaults to sizeof(HFONT)) for the number of bytes
   *     between the individual font pointers
   *   • "min" (int, defaults to 0) and "max" (int) to define the lower and
-  *     upper bounds of the block, respectively.
+  *     upper (inclusive) bounds of the block, respectively.
   *
   * • A JSON array containing HFONT pointers to all fonts in the game's ID
   *   order. This can be used if the game doesn't store the pointers in one
@@ -70,7 +70,7 @@ static HFONT* font_block_get(int id)
 		if(json_is_integer(block_min) && json_is_integer(block_max) && addr) {
 			min = json_integer_value(block_min);
 			max = json_integer_value(block_max);
-			if(id >= min && id < max) {
+			if(id >= min && id <= max) {
 				ret = (HFONT*)(addr + id * offset);
 			}
 		} else {
@@ -79,7 +79,7 @@ static HFONT* font_block_get(int id)
 		}
 	} else if(json_is_array(font_block)) {
 		min = 0;
-		max = json_array_size(font_block);
+		max = json_array_size(font_block) - 1;
 		ret = (HFONT*)json_array_get_hex(font_block, id);
 	}
 	if(id < min || id > max) {
