@@ -110,7 +110,7 @@ int BP_mission_check_furi_a(x86_reg_t *regs, json_t *bp_info)
 	else {
 		json_t* furiline = json_array_get(furi, line - 3);
 		if (json_is_integer(furiline)) {
-			mission_furi_a = json_number_value(furiline);
+			mission_furi_a = (int32_t)json_integer_value(furiline);
 		}
 		else {
 			assert(json_is_array(furiline));
