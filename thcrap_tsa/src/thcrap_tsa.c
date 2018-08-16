@@ -49,6 +49,8 @@ static tsa_game_t game_id_from_string(const char *game)
 		return TH15;
 	} else if(!strcmp(game, "th16")) {
 		return TH16;
+	} else if(!strcmp(game, "th165")) {
+		return TH165;
 	}
 	return TH_FUTURE;
 }
@@ -80,6 +82,8 @@ __declspec(dllexport) const char* steam_appid(void)
 	switch(game_id) {
 	case TH16:
 		return trial ? "752490" : "745880";
+	case TH165:
+		return "924650";
 	default: // -Wswitch...
 		return NULL;
 	}
