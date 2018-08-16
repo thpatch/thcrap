@@ -153,6 +153,7 @@ LRESULT CALLBACK ListProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	return origListProc(hwnd, uMsg, wParam, lParam);
 }
 
+bool con_can_close = false;
 INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static int input_len = 0;
 	static int last_index = 0;
@@ -402,7 +403,9 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		return TRUE;
 	}
 	case WM_CLOSE:
-		EndDialog(hwndDlg, 0);
+		if (con_can_close || MessageBoxW(hwndDlg, L"Patch configuration is not finished.\n\nQuit anyway?", L"Touhou Community Reliant Automatic Patcher", MB_YESNO | MB_ICONWARNING) == IDYES) {
+			EndDialog(hwndDlg, 0);
+		}
 		return TRUE;
 	case WM_NCDESTROY:
 		g_hwnd = NULL;

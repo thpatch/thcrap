@@ -280,6 +280,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
 			"\n", cur_dir
 		);
+		con_can_close = true;
 		pause();
 	}
 end:
