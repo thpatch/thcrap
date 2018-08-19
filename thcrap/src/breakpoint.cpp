@@ -96,6 +96,7 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 	/// ----------------
 
 	while (*expr && *expr != end) {
+		consume_whitespace();
 		if (strchr("+-*/%", *expr)) {
 			op = *expr;
 			expr++;
