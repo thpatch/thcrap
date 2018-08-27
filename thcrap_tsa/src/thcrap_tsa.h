@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum {
 	TH_NONE,
 
@@ -242,3 +246,7 @@ int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, const char *
 /// --------------
 void tsa_mod_detour(void);
 /// --------------
+
+#ifdef __cplusplus
+}
+#endif
