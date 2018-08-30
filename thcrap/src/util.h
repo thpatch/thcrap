@@ -96,7 +96,10 @@ void str_hexdate_format(char format[11], uint32_t date);
 
 #define STRLWR_CONV(str) \
 	memcpy(str##_lower, str, str##_len); \
-	strlwr(str##_lower);
+	strlwr(str##_lower); \
+
+#define STRLWR_FREE(str) \
+	VLA_FREE(str##_lower);
 /// -------
 
 #define STR_ADDRESS_ERROR_NONE 0

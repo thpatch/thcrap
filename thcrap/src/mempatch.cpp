@@ -127,7 +127,7 @@ json_t* detour_get_create(const char *dll_name)
 		detours = json_object();
 	}
 	ret = json_object_get_create(detours, dll_name_lower, JSON_OBJECT);
-	VLA_FREE(dll_name_lower);
+	STRLWR_FREE(dll_name);
 
 	return ret;
 }
@@ -223,6 +223,7 @@ int iat_detour_apply(HMODULE hMod)
 				i++;
 			}
 		}
+		STRLWR_FREE(dll_name);
 		pImpDesc++;
 	}
 	return ret;
