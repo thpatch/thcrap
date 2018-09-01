@@ -104,11 +104,6 @@ size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *ke
 // (since that code might overwrite the modified data otherwise).
 int breakpoint_cave_exec_flag(json_t *bp_info);
 
-// Looks up the breakpoint function for [key] in the list of exported functions.
-// [key] is delimited by the first '#' character. This can be used to call a
-// single breakpoint function at any number of points in the original code.
-BreakpointFunc_t breakpoint_func_get(const char *key);
-
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.

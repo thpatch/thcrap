@@ -239,27 +239,6 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 	return !json_is_false(json_object_get(bp_info, "cave_exec"));
 }
 
-BreakpointFunc_t breakpoint_func_get(const char *key)
-{
-	BreakpointFunc_t ret = NULL;
-	if(key) {
-		STRLEN_DEC(key);
-		VLA(char, bp_key, key_len + strlen("BP_") + 1);
-
-		// Multi-slot support
-		const char *slot = strchr(key, '#');
-		if(slot) {
-			key_len = slot - key;
-		}
-
-		strcpy(bp_key, "BP_");
-		strncat(bp_key, key, key_len);
-		ret = (BreakpointFunc_t)func_get(bp_key);
-		VLA_FREE(bp_key);
-	}
-	return ret;
-}
-
 size_t breakpoint_process(breakpoint_local_t *bp, x86_reg_t *regs)
 {
 	assert(bp);
