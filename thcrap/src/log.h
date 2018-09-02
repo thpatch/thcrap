@@ -27,7 +27,7 @@ void log_printf(const char *text, ...);
 
 #ifdef _MSC_VER
 # define log_func_printf(text, ...) \
-	log_printf("[" __FUNCTION__ "]: "text, __VA_ARGS__)
+	log_printf("[" __FUNCTION__ "]: " text, ##__VA_ARGS__)
 #else
 # define log_func_printf(text, ...) \
 	log_printf("[%s]: " text, __func__, ##__VA_ARGS__)
