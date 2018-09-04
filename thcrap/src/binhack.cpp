@@ -8,6 +8,17 @@
   */
 
 #include "thcrap.h"
+#include <math.h>
+#include <locale.h>
+
+/*
+ * Grumble, grumble, C is garbage and will only do string→float conversion
+ * using the decimal separator from the current locale, and OF COURSE it never
+ * occured to anyone, not even Microsoft, to provide a neutral strtod() that
+ * always looks for a decimal point, and so we have to dynamically allocate
+ * (and free) The Neutral Locale instead. C is garbage.
+ */
+_locale_t lc_neutral = nullptr;
 
 int hackpoints_error_function_not_found(const char *func_name, int retval)
 {
@@ -33,12 +44,16 @@ int is_valid_hex(char c)
 enum value_type_t {
 	VT_NONE = 0,
 	VT_BYTE = 1, // sizeof(char)
+	VT_FLOAT = 4, // sizeof(float)
+	VT_DOUBLE = 8 // sizeof(double)
 };
 
 struct value_t {
 	value_type_t type = VT_NONE;
 	union {
 		unsigned char b;
+		float f;
+		double d;
 	};
 
 	size_t size() {
@@ -53,8 +68,44 @@ bool consume_value(value_t &val, const char** str)
 
 	const char *c = *str;
 
+	// Double / float
+	if(*c == '+' || *c == '-') {
+		if(!lc_neutral) {
+			lc_neutral = _create_locale(LC_NUMERIC, "C");
+		}
+		char *endptr;
+
+		errno = 0;
+		double result = _strtod_l(*str, &endptr, lc_neutral);
+		if(errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL)) {
+			auto val_len = (endptr - *str);
+			log_printf(
+				"ERROR: Floating point constant \"%.*s\" out of range!\n",
+				val_len, str
+			);
+			return false;
+		} else if(endptr == *str) {
+			// Not actually a floating-point number, keep going though
+			*str += 1;
+			return true;
+		}
+		if(*endptr == 'f') {
+			val.type = VT_FLOAT;
+			val.f = (float)result;
+			endptr++;
+		} else {
+			val.type = VT_DOUBLE;
+			val.d = result;
+		}
+		if(*endptr != ' ' && *endptr != '\0') {
+			val.type = VT_NONE;
+			*str += 1;
+		} else {
+			*str = endptr;
+		}
+	}
 	// Byte
-	if(is_valid_hex(c[0]) && is_valid_hex(c[1])) {
+	else if(is_valid_hex(c[0]) && is_valid_hex(c[1])) {
 		char conv[3];
 		conv[2] = 0;
 		memcpy(conv, *str, 2);
@@ -161,6 +212,8 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			const char *copy_ptr = nullptr;
 			switch(val.type) {
 			case VT_BYTE:   copy_ptr = (const char *)&val.b; break;
+			case VT_FLOAT:  copy_ptr = (const char *)&val.f; break;
+			case VT_DOUBLE: copy_ptr = (const char *)&val.d; break;
 			default:        break; // -Wswitch...
 			}
 			if(copy_ptr) {
@@ -260,4 +313,9 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 	}
 	log_printf("------------------------\n");
 	return failed;
+}
+
+extern "C" __declspec(dllexport) void binhack_mod_exit()
+{
+	SAFE_CLEANUP(_free_locale, lc_neutral);
 }
