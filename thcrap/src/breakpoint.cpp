@@ -70,7 +70,14 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 {
 	const char *expr = *expr_ptr;
 	size_t value = NULL;
-	char op = '+';
+	unsigned char op = '+';
+
+	enum twochar_op_t : unsigned char {
+		EQ = 0x80,
+		NE,
+		LE,
+		GE
+	};
 
 	/// Parser functions
 	/// ----------------
@@ -97,7 +104,19 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 
 	while (*expr && *expr != end) {
 		consume_whitespace();
-		if (strchr("+-*/%", *expr)) {
+		if(consume("==")) {
+			op = EQ;
+			continue;
+		} else if(consume("!=")) {
+			op = NE;
+			continue;
+		} else if(consume("<=")) {
+			op = LE;
+			continue;
+		} else if(consume(">=")) {
+			op = GE;
+			continue;
+		} else if (strchr("+-*/%<>", *expr)) {
 			op = *expr;
 			expr++;
 			continue;
@@ -154,6 +173,24 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 			break;
 		case '%':
 			value %= cur_value;
+			break;
+		case '<':
+			value = value < cur_value;
+			break;
+		case '>':
+			value = value > cur_value;
+			break;
+		case EQ:
+			value = value == cur_value;
+			break;
+		case NE:
+			value = value != cur_value;
+			break;
+		case LE:
+			value = value <= cur_value;
+			break;
+		case GE:
+			value = value >= cur_value;
 			break;
 		}
 	}
