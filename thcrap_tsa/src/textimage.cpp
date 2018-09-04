@@ -32,7 +32,19 @@ typedef IUnknown IDirect3DTexture;
 typedef uint32_t D3DFORMAT;
 typedef uint32_t D3DPOOL;
 typedef uint32_t D3DRESOURCETYPE;
+typedef uint32_t D3DMULTISAMPLE_TYPE;
 typedef uint32_t D3DXIMAGE_FILEFORMAT;
+
+typedef struct _D3DSURFACE_DESC {
+	D3DFORMAT Format;
+	D3DRESOURCETYPE Type;
+	DWORD Usage;
+	D3DPOOL Pool;
+	UINT Size;
+	D3DMULTISAMPLE_TYPE MultiSampleType;
+	UINT Width;
+	UINT Height;
+} D3DSURFACE_DESC;
 
 typedef struct _D3DXIMAGE_INFO {
 	uint32_t Width;
@@ -43,6 +55,12 @@ typedef struct _D3DXIMAGE_INFO {
 	D3DRESOURCETYPE ResourceType;
 	D3DXIMAGE_FILEFORMAT ImageFileFormat;
 } D3DXIMAGE_INFO;
+
+typedef HRESULT __stdcall d3dtex_GetLevelDesc(
+	IDirect3DTexture *that,
+	UINT Level,
+	D3DSURFACE_DESC *pDesc
+);
 /// ====================
 
 /// Game memory pointers
@@ -174,9 +192,11 @@ size_t sprite_spec_size()
 {
 	switch(game_id) {
 	case TH06:  return sizeof(sprite_spec06_t);
+	case TH07:  return sizeof(sprite_spec07_t);
 	default:    return 0;
 	}
 }
+/// -----------------------------
 
 textimage_t* textimage_error(const char *text, ...)
 {
@@ -240,6 +260,7 @@ void textimage_commit()
 
 		switch(game_id) {
 		// Don't overwrite the register order
+		case TH07:
 		case TH06:
 			copy_size -= 4;
 			break;
@@ -364,6 +385,15 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 		return release_and_fallback(-2);
 	}
 
+	D3DSURFACE_DESC hw;
+	auto GetLevelDesc = (d3dtex_GetLevelDesc *)(*(size_t**)tex)[14];
+	if(FAILED(GetLevelDesc(tex, 0, &hw))) {
+		// This will probably only ever give different values
+		// on ancient 3dfx Voodoo cards anyway, so... :P
+		hw.Width = srcinfo.Width;
+		hw.Height = srcinfo.Height;
+	}
+
 	SAFE_FREE(specs);
 	const int cols = (int)(srcinfo.Width / sprite_w);
 	const int rows = (int)(srcinfo.Height / sprite_h);
@@ -376,7 +406,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 	int row = 0;
 
 	auto spec_init_base = [&] (char *p) {
-		auto s = (sprite_spec06_t *)p;
+		auto s = (sprite_spec_base_t *)p;
 		s->texture_slot = texture_slot;
 		s->abs_w = (float)sprite_w;
 		s->abs_h = (float)sprite_h;
@@ -395,6 +425,11 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 	auto *p = (char *)specs;
 	while(i < sprite_count) {
 		switch(game_id) {
+		case TH07: {
+			auto *p07 = (sprite_spec07_t*)p;
+			p07->hw_texture_scale_w = (float)srcinfo.Width  / hw.Width;
+			p07->hw_texture_scale_h = (float)srcinfo.Height / hw.Height;
+		} // fallthrough
 		case TH06:
 			spec_init_base(p);
 			break;
