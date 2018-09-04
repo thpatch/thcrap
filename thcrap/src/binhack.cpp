@@ -30,6 +30,45 @@ int is_valid_hex(char c)
 		('a' <= c && c <= 'f');
 }
 
+enum value_type_t {
+	VT_NONE = 0,
+	VT_BYTE = 1, // sizeof(char)
+};
+
+struct value_t {
+	value_type_t type = VT_NONE;
+	union {
+		unsigned char b;
+	};
+
+	size_t size() {
+		return (size_t)type;
+	}
+};
+
+// Returns false only if parsing should be aborted.
+bool consume_value(value_t &val, const char** str)
+{
+	assert(str);
+
+	const char *c = *str;
+
+	// Byte
+	if(is_valid_hex(c[0]) && is_valid_hex(c[1])) {
+		char conv[3];
+		conv[2] = 0;
+		memcpy(conv, *str, 2);
+		val.type = VT_BYTE;
+		val.b = (unsigned char)strtol(conv, nullptr, 16);
+		*str += 2;
+	}
+	// Nothing, keep going
+	else {
+		*str += 1;
+	}
+	return true;
+}
+
 size_t binhack_calc_size(const char *binhack_str)
 {
 	size_t size = 0;
@@ -39,22 +78,26 @@ size_t binhack_calc_size(const char *binhack_str)
 		return 0;
 	}
 	while(*c) {
-		if(!fs && is_valid_hex(*c) && is_valid_hex(*(c+1)) ) {
-			size++;
-			c++;
-		}
-		else if(*c == '[' || *c == '<') {
+		if(*c == '[' || *c == '<') {
 			if(fs) {
 				log_printf("ERROR: Nested function pointers near %s!\n", c);
 				return 0;
 			}
 			fs = c + 1;
+			c++;
+		} else if(fs) {
+			if((*c == ']' || *c == '>')) {
+				size += sizeof(void*);
+				fs = nullptr;
+			}
+			c++;
+		} else {
+			value_t val;
+			if(!consume_value(val, &c)) {
+				return 0;
+			}
+			size += val.size();
 		}
-		else if(fs && (*c == ']' || *c == '>')) {
-			size += sizeof(void*);
-			fs = NULL;
-		}
-		c++;
 	}
 	if(fs) {
 		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
@@ -69,32 +112,22 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	const char *fs = NULL; // function start
 	size_t written = 0;
 	int func_rel = 0; // Relative function pointer flag
-	char conv[3];
 	int ret = 0;
 
 	if(!binhack_buf || !binhack_str) {
 		return -1;
 	}
 
-	conv[2] = 0;
 	while(*c) {
-		if(!fs && is_valid_hex(*c) && is_valid_hex(*(c+1)) ) {
-			memcpy(conv, c, 2);
-			*binhack_buf = (char)strtol(conv, NULL, 16);
-
-			binhack_buf++;
-			c++;
-			written++;
-		}
-		else if(*c == '[' || *c == '<') {
+		if(*c == '[' || *c == '<') {
 			if(fs) {
 				log_printf("ERROR: Nested function pointers near %s!\n", c);
 				return 0;
 			}
 			func_rel = (*c == '[');
 			fs = c + 1;
-		}
-		else if(fs && (*c == ']' || *c == '>')) {
+			c++;
+		} else if(fs && (*c == ']' || *c == '>')) {
 			VLA(char, function, (c - fs) + 1);
 			size_t fp = 0;
 
@@ -117,8 +150,26 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			if(ret) {
 				break;
 			}
+			c++;
+		} else if(fs) {
+			c++;
+		} else {
+			value_t val;
+			if(!consume_value(val, &c)) {
+				return 1;
+			}
+			const char *copy_ptr = nullptr;
+			switch(val.type) {
+			case VT_BYTE:   copy_ptr = (const char *)&val.b; break;
+			default:        break; // -Wswitch...
+			}
+			if(copy_ptr) {
+				binhack_buf = (BYTE *)memcpy_advance_dst(
+					(char *)binhack_buf, copy_ptr, val.size()
+				);
+				written += val.size();
+			}
 		}
-		c++;
 	}
 	if(fs) {
 		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
