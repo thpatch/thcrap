@@ -5,6 +5,26 @@
   * ----
   *
   * Binary hack handling.
+  *
+  * Binary hacks consists of a "code" string that is rendered at one or more
+  * addresses, optionally if the previous bytes at those addresses match an
+  * "expected" byte sequence.
+  *
+  * "code" supports the following data types, which can occur anywhere in the
+  * string:
+  * • Lower- or uppercase hex characters (0-9, a-f, A-F), describing bytes.
+  *   A single byte is always by two adjacent hex characters.
+  * • [Relative] or <absolute> pointers to named functions exported by any
+  *   thcrap module
+  * • float and double literals in the typical C syntax, which are rendered
+  *   into their 4- (if postfixed with f or F, as in C) or 8-byte IEEE 754
+  *   representation. However, specifying the +/- sign in front is
+  *   *mandatory*, to keep parsing sane. Also, these literals must be
+  *   delimited with spaces, or come at the beginning or end of the "code"
+  *   string.
+  * • Anything else not matching these types is ignored.
+  *
+  * They can also be disabled by setting "ignore" to true.
   */
 
 #pragma once
