@@ -68,4 +68,7 @@ template <typename F> privDefer<F> defer_func(F f) {
 #define DEFER_3(x)    DEFER_2(x, __COUNTER__)
 #define defer(code)   auto DEFER_3(_defer_) = defer_func([&] () {code; })
 /// ----------------------------
+
+#define SAFE_DELETE(x)       SAFE_CLEANUP(delete,   x);
+#define SAFE_DELETE_ARRAY(x) SAFE_CLEANUP(delete[], x);
 #endif

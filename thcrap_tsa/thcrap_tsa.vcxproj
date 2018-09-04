@@ -39,6 +39,9 @@
     <ClCompile Include="src\bgm.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\textimage.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="src\devicelost.c" />
     <ClCompile Include="src\gentext.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -62,6 +65,7 @@
     <ClInclude Include="src\anm.h" />
     <ClInclude Include="src\layout.h" />
     <ClInclude Include="src\png_ex.h" />
+    <ClInclude Include="src\textimage.hpp" />
     <ClInclude Include="src\th06_pngsplit.h" />
     <ClInclude Include="src\thcrap_tsa.h" />
     <None Include="thcrap_tsa.def" />
