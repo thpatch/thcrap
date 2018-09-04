@@ -80,7 +80,7 @@ int nsml_init()
 	}
 	else if (game_id == TH105 || game_id == TH123) {
 		patchhook_register("*.cv0", patch_cv0, nullptr);
-		patchhook_register("*.cv1", patch_csv, nullptr);
+		patchhook_register("*.cv1", patch_csv, get_csv_size);
 		patchhook_register("*.cv2", patch_cv2, get_cv2_size);
 		patchhook_register("*.dat", patch_dat_for_png, [](const char*, json_t*, size_t) -> size_t { return 0; });
 	}

@@ -95,7 +95,7 @@ int patch_csv(void *file_inout, size_t size_out, size_t size_in, const char*, js
 		}
 	}
 	if (j > size_out) {
-		log_print("WARNING: buffer overflow in tasofro CSV patching (output buffer too small)!\n");
+		log_printf("WARNING: buffer overflow in tasofro CSV patching (wrote %d bytes in a %d buffer)!\n", j, size_out);
 	}
 
 #ifdef _DEBUG
@@ -108,6 +108,17 @@ int patch_csv(void *file_inout, size_t size_out, size_t size_in, const char*, js
 
 	HeapFree(GetProcessHeap(), 0, file_in);
 	return 1;
+}
+
+size_t get_csv_size(const char*, json_t*, size_t patch_size)
+{
+	// Because a lot of these files are zipped, guessing their exact patched size is hard. We'll add a few more bytes.
+	if (patch_size) {
+		return (size_t)(patch_size * 1.2) + 2048 + 1;
+	}
+	else {
+		return 0;
+	}
 }
 
 /**
