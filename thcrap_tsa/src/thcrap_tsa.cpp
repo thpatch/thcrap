@@ -14,6 +14,32 @@
 
 tsa_game_t game_id;
 
+// Game iterator
+// -------------
+tsa_game_t operator ++(tsa_game_t &game)
+{
+	if(game == TH_FUTURE) {
+		return game;
+	}
+	return (game = static_cast<tsa_game_t>(static_cast<int>(game) + 1));
+}
+
+tsa_game_t operator *(tsa_game_t game)
+{
+	return game;
+}
+
+tsa_game_t begin(tsa_game_t game)
+{
+	return TH06;
+}
+
+tsa_game_t end(tsa_game_t game)
+{
+	return TH_FUTURE;
+}
+// -------------
+
 // Translate strings to IDs.
 static tsa_game_t game_id_from_string(const char *game)
 {

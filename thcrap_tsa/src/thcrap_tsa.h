@@ -64,6 +64,14 @@ typedef enum {
 	TH_FUTURE,
 } tsa_game_t;
 
+#ifdef __cplusplus
+// Define iteration over all games via `for(const  auto &game : tsa_game_t())`
+tsa_game_t operator ++(tsa_game_t &game);
+tsa_game_t operator *(tsa_game_t game);
+tsa_game_t begin(tsa_game_t game);
+tsa_game_t end(tsa_game_t game);
+#endif
+
 extern tsa_game_t game_id;
 
 // Returns 0 if the currently running game is a full version, 1 if it is a
