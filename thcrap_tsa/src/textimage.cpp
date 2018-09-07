@@ -189,15 +189,19 @@ void groups_clear()
 /// ===============
 
 // Also used to determine supported games.
-size_t sprite_spec_size()
+size_t sprite_spec_size(tsa_game_t game)
 {
-	switch(game_id) {
+	switch(game) {
 	case TH06:  return sizeof(sprite_spec06_t);
 	case TH07:  return sizeof(sprite_spec07_t);
 	default:    return 0;
 	}
 }
-/// -----------------------------
+
+size_t sprite_spec_size()
+{
+	return sprite_spec_size(game_id);
+}
 
 textimage_t* textimage_error(const char *text, ...)
 {
@@ -581,6 +585,16 @@ sprite_runtime_t* sprite_runtime_get(const char *slotstr)
 /// ===========
 int BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 {
+#ifdef _DEBUG
+	// Sanity checks...
+	size_t required_union_size = 0;
+	for(const auto &game : tsa_game_t()) {
+		required_union_size = max(required_union_size, sprite_spec_size(game));
+	}
+	sprite_runtime_t sr;
+	assert(sizeof(sr.spec_game) == required_union_size);
+#endif
+
 	if(sprite_spec_size() == 0) {
 		textimage_error("Text images are not supported for this game.");
 		return 1;
