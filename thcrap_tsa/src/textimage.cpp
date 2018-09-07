@@ -6,7 +6,7 @@
   *
   * Support for custom images in place of original (mostly text) sprites.
   *
-  * Ctrl-F for `game_id` to find all places that have to be updated to support
+  * Ctrl-F for `06` to find all places that have to be updated to support
   * a new game.
   */
 
@@ -156,6 +156,7 @@ struct sprite_runtime_t
 	// The game's own sprite spec
 	union {
 		sprite_spec06_t th06;
+		sprite_spec07_t th07;
 	} spec_game;
 
 	// Pointer to the game's own script for its original sprite
