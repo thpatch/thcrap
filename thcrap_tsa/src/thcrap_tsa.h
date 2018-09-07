@@ -237,9 +237,9 @@ void music_mod_exit(void);
 
 /// Format patchers
 /// ---------------
-int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
-int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
-int patch_anm(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_msg_dlg(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_msg_end(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 /// ---------------
 
 /// Win32 wrappers

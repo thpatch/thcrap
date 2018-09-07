@@ -33,34 +33,32 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\bp_mission.c" />
-    <ClCompile Include="src\anm.c" />
-    <ClCompile Include="src\anm_bounds.c" />
-    <ClCompile Include="src\bgm.cpp">
+    <ClCompile Include="src\bp_mission.cpp" />
+    <ClCompile Include="src\anm.cpp" />
+    <ClCompile Include="src\anm_bounds.cpp" />
+    <ClCompile Include="src\bgm.cpp" />
+    <ClCompile Include="src\textimage.cpp" />
+    <ClCompile Include="src\devicelost.cpp" />
+    <ClCompile Include="src\gentext.cpp" />
+    <ClCompile Include="src\input.cpp" />
+    <ClCompile Include="src\layout.cpp" />
+    <ClCompile Include="src\music.cpp" />
+    <ClCompile Include="src\png_ex.cpp" />
+    <ClCompile Include="src\spells.cpp" />
+    <ClCompile Include="src\th06_bp_file.c">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\textimage.cpp">
+    <ClCompile Include="src\th06_bp_music.cpp" />
+    <ClCompile Include="src\th06_msg.c">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\devicelost.c" />
-    <ClCompile Include="src\gentext.cpp">
+    <ClCompile Include="src\th06_pngsplit.c">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\input.cpp">
-	  <PrecompiledHeader>NotUsing</PrecompiledHeader>
-	</ClCompile>
-    <ClCompile Include="src\layout.c" />
-    <ClCompile Include="src\music.c" />
-    <ClCompile Include="src\png_ex.c" />
-    <ClCompile Include="src\spells.c" />
-    <ClCompile Include="src\th06_bp_file.c" />
-    <ClCompile Include="src\th06_bp_music.c" />
-    <ClCompile Include="src\th06_msg.c" />
-    <ClCompile Include="src\th06_pngsplit.c" />
-    <ClCompile Include="src\thcrap_tsa.c">
+    <ClCompile Include="src\thcrap_tsa.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\win32_tsa.c" />
+    <ClCompile Include="src\win32_tsa.cpp" />
     <ClInclude Include="..\thtypes\anm_types.h" />
     <ClInclude Include="src\anm.h" />
     <ClInclude Include="src\layout.h" />

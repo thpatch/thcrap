@@ -173,7 +173,7 @@ int sprite_patch_set(
 
 	// Note that we don't use the PNG_IMAGE_* macros here - the actual bit depth
 	// after format_from_bgra() may no longer be equal to the one in the PNG header.
-	sp->format = entry->thtx->format;
+	sp->format = (format_t)entry->thtx->format;
 	sp->bpp = format_Bpp(sp->format);
 
 	sp->dst_x = sprite->x;
@@ -384,7 +384,7 @@ int anm_entry_init(anm_entry_t *entry, BYTE *in)
 		size_t sprite_orig_num = entry->sprite_num;
 		size_t i;
 		DWORD *sprite_in = (DWORD*)(in + headersize);
-		entry->sprites = malloc(sizeof(sprite_local_t) * sprite_orig_num);
+		entry->sprites = new sprite_local_t[sprite_orig_num];
 		for(i = 0; i < sprite_orig_num; i++, sprite_in++) {
 			const sprite_t *s_orig = (const sprite_t*)(in + *sprite_in);
 			sprite_local_t *s_local = &entry->sprites[i];
@@ -405,7 +405,7 @@ int anm_entry_init(anm_entry_t *entry, BYTE *in)
 void anm_entry_clear(anm_entry_t *entry)
 {
 	if(entry) {
-		SAFE_FREE(entry->sprites);
+		SAFE_DELETE_ARRAY(entry->sprites);
 		ZeroMemory(entry, sizeof(*entry));
 	}
 }
@@ -435,7 +435,7 @@ int patch_png_load_for_thtx(png_image_exp image, const json_t *patch_info, const
 	}
 
 	if(png_image_begin_read_from_memory(&image->img, file_buffer, file_size)) {
-		image->img.format = format_png_equiv(thtx->format);
+		image->img.format = format_png_equiv((format_t)thtx->format);
 		if(image->img.format != PNG_FORMAT_INVALID) {
 			size_t png_size = PNG_IMAGE_SIZE(image->img);
 			image->buf = (png_bytep)malloc(png_size);
@@ -447,7 +447,8 @@ int patch_png_load_for_thtx(png_image_exp image, const json_t *patch_info, const
 	}
 	SAFE_FREE(file_buffer);
 	if(image->buf) {
-		format_from_bgra(image->buf, image->img.width * image->img.height, thtx->format);
+		unsigned int pixels = image->img.width * image->img.height;
+		format_from_bgra(image->buf, pixels, (format_t)thtx->format);
 	}
 	return !image->buf;
 }
@@ -520,7 +521,7 @@ int stack_game_png_apply(anm_entry_t *entry)
 	return ret;
 }
 
-int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	(void)fn;
 	json_t *dat_dump = json_object_get(runconfig_get(), "dat_dump");
@@ -531,11 +532,12 @@ int patch_anm(BYTE *file_inout, size_t size_out, size_t size_in, const char *fn,
 	png_image_ex png = {0};
 	png_image_ex bounds = {0};
 
-	BYTE *anm_entry_out = file_inout;
+	auto *anm_entry_out = (uint8_t *)file_inout;
+	auto *endptr = (uint8_t *)(file_inout) + size_in;
 
 	log_printf("---- ANM ----\n");
 
-	while(anm_entry_out && anm_entry_out < file_inout + size_in) {
+	while(anm_entry_out && anm_entry_out < endptr) {
 		anm_entry_t entry = {0};
 		if(anm_entry_init(&entry, anm_entry_out)) {
 			log_printf("Corrupt ANM file or format definition, aborting ...\n");

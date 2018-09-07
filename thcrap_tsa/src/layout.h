@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /// Tokenization
 /// ------------
 // Matches at most [len] bytes of layout markup at [str].
@@ -77,3 +81,7 @@ __declspec(dllexport) int BP_widest_string_f(x86_reg_t *regs, json_t *bp_info);
 int layout_mod_init(HMODULE hMod);
 void layout_mod_detour(void);
 void layout_mod_exit(void);
+
+#ifdef __cplusplus
+}
+#endif

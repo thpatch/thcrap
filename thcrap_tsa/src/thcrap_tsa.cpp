@@ -76,7 +76,7 @@ int game_is_trial(void)
 	return trial;
 }
 
-__declspec(dllexport) const char* steam_appid(void)
+extern "C" __declspec(dllexport) const char* steam_appid(void)
 {
 	int trial = game_is_trial();
 	switch(game_id) {

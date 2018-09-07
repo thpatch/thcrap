@@ -45,7 +45,7 @@ char* fn_for_bounds(const char *fn)
 	}
 
 	ret_len = strlen(dir) + 1 + strlen(prefix) + strlen(game_fn) + 1;
-	ret = malloc(ret_len);
+	ret = (char *)malloc(ret_len);
 	// Start replacements after the directory
 	p = ret + strlen(dir);
 

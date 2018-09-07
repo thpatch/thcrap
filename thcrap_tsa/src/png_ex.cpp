@@ -28,7 +28,7 @@ int png_image_new(
 		image->img.format = format;
 
 		image_size = PNG_IMAGE_SIZE(image->img);
-		image->buf = malloc(image_size);
+		image->buf = (png_bytep)malloc(image_size);
 		if(image->buf) {
 			ZeroMemory(image->buf, image_size);
 		}
@@ -70,7 +70,7 @@ int png_image_resize(
 	new_stride = PNG_IMAGE_ROW_STRIDE(image->img);
 	new_size = PNG_IMAGE_SIZE(image->img);
 
-	new_buf = realloc(image->buf, new_size);
+	new_buf = (png_bytep)realloc(image->buf, new_size);
 	if(new_buf) {
 		image->buf = new_buf;
 		ZeroMemory(image->buf + prev_size, new_size - prev_size);
