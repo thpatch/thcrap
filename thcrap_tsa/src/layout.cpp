@@ -51,9 +51,8 @@ W32U8_DETOUR_CHAIN_DEF(TextOut);
   *   order. This can be used if the game doesn't store the pointers in one
   *   contiguous memory block, which makes automatic calculation impossible.
   */
-static HFONT* font_block_get(int id)
+Option<HFONT> font_block_get(int id)
 {
-	HFONT* ret = NULL;
 	const json_t *run_cfg = runconfig_get();
 	json_t *font_block = json_object_get(run_cfg, "tsa_font_block");
 	json_int_t min = 0, max = 0;
@@ -71,16 +70,16 @@ static HFONT* font_block_get(int id)
 			min = json_integer_value(block_min);
 			max = json_integer_value(block_max);
 			if(id >= min && id <= max) {
-				ret = (HFONT*)(addr + id * offset);
+				return Option<HFONT>(*(HFONT*)(addr + id * offset));
 			}
 		} else {
 			log_func_printf("invalid TSA font block format\n");
-			return NULL;
+			return Option<HFONT>();
 		}
 	} else if(json_is_array(font_block)) {
 		min = 0;
 		max = json_array_size(font_block) - 1;
-		ret = (HFONT*)json_array_get_hex(font_block, id);
+		return Option<HFONT>(*(HFONT*)json_array_get_hex(font_block, id));
 	}
 	if(id < min || id > max) {
 		log_func_printf(
@@ -88,14 +87,14 @@ static HFONT* font_block_get(int id)
 			min, max, id
 		);
 	}
-	return ret;
+	return Option<HFONT>();
 }
 
-static HFONT* json_object_get_tsa_font(json_t *object, const char *key)
+Option<HFONT> json_object_get_tsa_font(json_t *object, const char *key)
 {
 	json_t *val = json_object_get(object, key);
 	return
-		json_is_string(val) ? (HFONT*)json_hex_value(val)
+		json_is_string(val) ? Option<HFONT>(*(HFONT*)json_hex_value(val))
 		: json_is_integer(val) ? font_block_get((int)json_integer_value(val))
 		: NULL
 	;
@@ -131,11 +130,11 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	char **str_reg = (char**)json_object_get_register(bp_info, regs, "str");
 	size_t *offset = json_object_get_register(bp_info, regs, "offset");
-	HFONT* font_dialog = json_object_get_tsa_font(bp_info, "font_dialog");
-	HFONT* font_ruby = json_object_get_tsa_font(bp_info, "font_ruby");
+	auto font_dialog = json_object_get_tsa_font(bp_info, "font_dialog");
+	auto font_ruby = json_object_get_tsa_font(bp_info, "font_ruby");
 	char *str = *str_reg;
 	// ----------
-	if(!font_dialog || !font_ruby) {
+	if(!font_dialog.valid || !font_ruby.valid) {
 		log_func_printf(
 			"Missing \"font_dialog\" or \"font_ruby\" parameter, skipping..."
 		);
@@ -159,9 +158,9 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 		*str_offset_end = '\0';
 		*str_base_end = '\0';
 		*offset =
-			GetTextExtentForFont(str_offset, *font_dialog)
-			+ (GetTextExtentForFont(str_base, *font_dialog) / 2)
-			- (GetTextExtentForFont(str_ruby, *font_ruby) / 2);
+			GetTextExtentForFont(str_offset, font_dialog.val)
+			+ (GetTextExtentForFont(str_base, font_dialog.val) / 2)
+			- (GetTextExtentForFont(str_ruby, font_ruby.val) / 2);
 		*str_offset_end = '\t';
 		*str_base_end = '\t';
 
@@ -518,8 +517,8 @@ size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 
 size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
 {
-	HFONT *font = font_block_get(id);
-	return GetTextExtentForFont(str, font ? *font : NULL);
+	auto font = font_block_get(id);
+	return GetTextExtentForFont(str, font.valid ? font.val : nullptr);
 }
 
 int widest_string(x86_reg_t *regs, json_t *bp_info)

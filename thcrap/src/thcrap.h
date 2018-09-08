@@ -71,4 +71,14 @@ template <typename F> privDefer<F> defer_func(F f) {
 
 #define SAFE_DELETE(x)       SAFE_CLEANUP(delete,   x);
 #define SAFE_DELETE_ARRAY(x) SAFE_CLEANUP(delete[], x);
+
+// Rust-style Option type. Useful for cases where the zero value of T is
+// equally valid.
+template <typename T> struct Option {
+	bool valid;
+	T val;
+
+	Option(T val) : valid(true), val(val) {}
+	Option() : valid(false) {}
+};
 #endif

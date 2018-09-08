@@ -468,11 +468,6 @@ textimage_t* textimage_t::create(
 	textimage_t *lower
 )
 {
-	struct Option {
-		bool valid;
-		uint32_t val;
-	};
-
 	auto fn = json_object_get_string(desc, "filename");
 	if(!fn) {
 		return textimage_error(
@@ -489,8 +484,9 @@ textimage_t* textimage_t::create(
 				"%s: \"%s\" must be an unsigned 32-bit integer%s",
 				fn, val, ge_than >= 1 ? " greater than zero" : ""
 			);
+			return Option<uint32_t>();
 		}
-		return Option{ valid, (uint32_t)v };
+		return Option<uint32_t>((uint32_t)v);
 	};
 
 	auto texture_slot = check_val("texture_slot", 0);
