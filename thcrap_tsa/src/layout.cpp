@@ -81,9 +81,20 @@ HFONT fontcache_get(LONG height)
   * • A JSON array containing HFONT pointers to all fonts in the game's ID
   *   order. This can be used if the game doesn't store the pointers in one
   *   contiguous memory block, which makes automatic calculation impossible.
+  *
+  * For TH06-TH09, this ID simply is the internal text height (before applying
+  * the game-specific CreateFont() height formula), which is then pulled from
+  * the font cache for these games.
   */
 Option<HFONT> font_block_get(int id)
 {
+	if(game_id >= TH06 && game_id <= TH09) {
+		// Simplifies binary hacks if we replicate the game's
+		// height -> CreateFont() height formula here.
+		return Option<HFONT>(fontcache_get(
+			(id * 2) - ((game_id == TH07 || game_id == TH08) ? 2 : 0)
+		));
+	}
 	const json_t *run_cfg = runconfig_get();
 	json_t *font_block = json_object_get(run_cfg, "tsa_font_block");
 	json_int_t min = 0, max = 0;
