@@ -590,7 +590,9 @@ size_t __stdcall GetTextExtent(const char *str)
 
 size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 {
-	HGDIOBJ prev_font = layout_SelectObject(text_dc, font);
+	// TH08 doesn't create the DC prior to the first binhacked call of this.
+	auto dc = layout_CreateCompatibleDC(nullptr);
+	HGDIOBJ prev_font = layout_SelectObject(dc, font);
 	size_t ret = GetTextExtent(str);
 	layout_SelectObject(text_dc, prev_font);
 	return ret;
