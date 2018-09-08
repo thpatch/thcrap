@@ -30,6 +30,8 @@ typedef enum {
 	TH09,
 
 	// • Introduces a custom format for mission.msg
+	// • Fonts start being created once at the beginning of the game, rather
+	//   than for every line of text rendered
 	TH095,
 
 	// • msg: Different opcodes

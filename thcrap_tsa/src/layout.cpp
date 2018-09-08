@@ -8,6 +8,8 @@
   */
 
 #include <thcrap.h>
+#include <unordered_map>
+#include "thcrap_tsa.h"
 #include "layout.h"
 
 /// Static global variables
@@ -24,15 +26,44 @@ typedef HDC WINAPI CreateCompatibleDC_type(
 	HDC hdc
 );
 
+typedef BOOL WINAPI DeleteObject_type(
+	HGDIOBJ obj
+);
+
 typedef HGDIOBJ WINAPI SelectObject_type(
 	HDC hdc,
 	HGDIOBJ h
 );
 
 DETOUR_CHAIN_DEF(CreateCompatibleDC);
+W32U8_DETOUR_CHAIN_DEF(CreateFont);
+DETOUR_CHAIN_DEF(DeleteObject);
 DETOUR_CHAIN_DEF(SelectObject);
 W32U8_DETOUR_CHAIN_DEF(TextOut);
 /// -------------
+
+/// TH06-TH09 font cache
+/// --------------------
+static std::unordered_map<LONG, HFONT> fontcache;
+
+HFONT fontcache_get(LONG height)
+{
+	auto stored = fontcache.find(height);
+	if(stored == fontcache.end()) {
+		LONG weight = (game_id == TH09) ? 400 : (game_id == TH08) ? 600 : 700;
+		auto font = chain_CreateFontU(
+			height, 0, 0, 0, weight,
+			false, false, false,
+			SHIFTJIS_CHARSET,
+			OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+			ANTIALIASED_QUALITY,
+			FF_ROMAN | FIXED_PITCH, "MS Gothic"
+		);
+		return (fontcache[height] = font);
+	}
+	return stored->second;
+}
+/// --------------------
 
 /// TSA font block
 /// --------------
@@ -457,10 +488,49 @@ HDC WINAPI layout_CreateCompatibleDC(HDC hdc)
 	return text_dc;
 }
 
+HFONT WINAPI fontcache_CreateFontU(
+	int cHeight,
+	int cWidth,
+	int cEscapement,
+	int cOrientation,
+	int cWeight,
+	DWORD bItalic,
+	DWORD bUnderline,
+	DWORD bStrikeOut,
+	DWORD iCharSet,
+	DWORD iOutPrecision,
+	DWORD iClipPrecision,
+	DWORD iQuality,
+	DWORD iPitchAndFamily,
+	LPCSTR pszFaceName
+)
+{
+	if(game_id >= TH06 && game_id <= TH09) {
+		return fontcache_get(cHeight);
+	}
+	return chain_CreateFontU(
+		cHeight, cWidth, cEscapement, cOrientation, cWeight,
+		bItalic, bUnderline, bStrikeOut,
+		iCharSet,
+		iOutPrecision, iClipPrecision,
+		iQuality,
+		iPitchAndFamily, pszFaceName
+	);
+}
+
 BOOL WINAPI layout_DeleteDC(HDC hdc)
 {
 	// Bypass this function - we delete our DC on layout_exit()
 	return 1;
+}
+
+BOOL WINAPI fontcache_DeleteObject(HGDIOBJ obj)
+{
+	bool is_font = GetObjectType(obj) == OBJ_FONT;
+	if(game_id >= TH06 && game_id <= TH09 && is_font) {
+		return 1;
+	}
+	return chain_DeleteObject(obj);
 }
 
 HGDIOBJ WINAPI layout_SelectObject(
@@ -569,7 +639,14 @@ void layout_mod_detour(void)
 {
 	detour_chain("gdi32.dll", 1,
 		"CreateCompatibleDC", layout_CreateCompatibleDC, &chain_CreateCompatibleDC,
+
+		// Must be CreateFont rather than CreateFontIndirectEx to
+		// continue supporting the legacy "font" runconfig key, as
+		// well as font changes via hardcoded string translation.
+		"CreateFontA", fontcache_CreateFontU, &chain_CreateFontU,
+
 		"DeleteDC", layout_DeleteDC, NULL,
+		"DeleteObject", fontcache_DeleteObject, &chain_DeleteObject,
 		"SelectObject", layout_SelectObject, &chain_SelectObject,
 		"TextOutA", layout_TextOutU, &chain_TextOutU,
 		NULL
@@ -583,4 +660,8 @@ void layout_mod_exit(void)
 		DeleteDC(text_dc);
 		text_dc = NULL;
 	}
+	for(auto &font : fontcache) {
+		DeleteObject((HGDIOBJ)font.second);
+	}
+	fontcache.clear();
 }
