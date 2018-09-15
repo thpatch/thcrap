@@ -275,12 +275,12 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 		// calculated byte size of the hack
 		size_t asm_size = binhack_calc_size(code);
 		size_t exp_size = binhack_calc_size(expected);
-		VLA(BYTE, asm_buf, asm_size);
-		VLA(BYTE, exp_buf, exp_size);
-
 		if(!asm_size) {
 			continue;
 		}
+
+		VLA(BYTE, asm_buf, asm_size);
+		VLA(BYTE, exp_buf, exp_size);
 		json_flex_array_foreach(json_addr, i, addr_val) {
 			auto addr = str_address_value(json_string_value(addr_val), hMod, NULL);
 			if(!addr) {
