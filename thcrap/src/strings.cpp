@@ -15,6 +15,11 @@
 W32U8_DETOUR_CHAIN_DEF(MessageBox);
 /// -------------
 
+// Since we can't use the jsondata module to make this repatchable,
+// we only need to keep the last parsed JSON object around to
+// provide the "backing memory" for the ID strings.
+json_t *backing_obj = nullptr;
+
 // Length-prefixed string object used for persistent storage
 typedef struct {
 	size_t len;
@@ -30,11 +35,6 @@ std::unordered_map<const char *, const char *> stringlocs;
 
 void stringlocs_reparse(void)
 {
-	// Since we can't use the jsondata module to make this repatchable,
-	// we only need to keep the last parsed JSON object around to
-	// provide the "backing memory" for the ID strings.
-	static json_t *backing_obj = NULL;
-
 	json_t* new_obj = stack_game_json_resolve("stringlocs.js", NULL);
 	const char *key;
 	const json_t *val;
@@ -304,4 +304,6 @@ void strings_mod_exit(void)
 		SAFE_FREE(i.second);
 	}
 	strings_storage.clear();
+	stringlocs.clear();
+	backing_obj = json_decref_safe(backing_obj);
 }
