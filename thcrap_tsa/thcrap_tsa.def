@@ -2,49 +2,12 @@ LIBRARY
 EXPORTS
 	thcrap_plugin_init	@1
 
-	; Images
-	; ------
-	format_Bpp
-	format_png_equiv
-	format_alpha_max
-	format_alpha_sum
-	format_from_bgra
-	format_blend
-
-	anm_entry_init
-	anm_entry_clear
-
-	sprite_split_new
-	sprite_split_x
-	sprite_split_y
-	sprite_patch_set
-	sprite_alpha_analyze
-	sprite_alpha_analyze_rep
-	sprite_alpha_analyze_dst
-	sprite_blit
-	sprite_patch
-
-	stack_game_png_apply
-
-	patch_png_load_for_thtx
-	patch_thtx
-	patch_anm
-
+	; TH06
+	; ----
 	BP_th06_file_name
 	BP_th06_file_size
 	BP_th06_file_load
 	BP_th06_file_loaded
-
-	; Bounds
-	; ------
-	fn_for_bounds
-
-	bounds_init
-	bounds_draw_line
-	bounds_draw_hline
-	bounds_draw_vline
-	bounds_draw_rect
-	bounds_store
 
 	; Generic text
 	; ------------
@@ -54,9 +17,6 @@ EXPORTS
 	; Layout
 	; ------
 	BP_ruby_offset
-
-	layout_match
-	layout_tokenize
 
 	GetTextExtentBase
 	GetTextExtent
@@ -69,9 +29,6 @@ EXPORTS
 
 	; Music
 	; -----
-	music_title_get
-	music_title_print
-
 	BP_music_title
 	BP_music_cmt
 	BP_th06_music_title_in_game
@@ -100,6 +57,7 @@ EXPORTS
 	patch_msg_end
 
 	; Mission
+	; -------
 	BP_mission
 	BP_mission_check_furi_a
 	BP_mission_printf_hook
