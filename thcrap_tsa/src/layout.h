@@ -67,8 +67,8 @@ size_t __stdcall GetTextExtentForFontID(const char *str, size_t id);
  *		Target address for the calculation
  *		Type: pointer
  *
- *	[correction_summand]
- *		Additional value to add to the final result (optional)
+ *	[correction_summand] (optional)
+ *		Additional value to add to the final result
  *		Type: immediate (signed integer)
  *
  * Other breakpoints called

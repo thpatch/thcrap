@@ -6,14 +6,14 @@
   *
   * Binary hack handling.
   *
-  * Binary hacks consists of a "code" string that is rendered at one or more
+  * Binary hacks consist of a "code" string that is rendered at one or more
   * addresses, optionally if the previous bytes at those addresses match an
   * "expected" byte sequence.
   *
   * "code" supports the following data types, which can occur anywhere in the
   * string:
   * • Lower- or uppercase hex characters (0-9, a-f, A-F), describing bytes.
-  *   A single byte is always by two adjacent hex characters.
+  *   A single byte is always made up of two adjacent hex characters.
   * • [Relative] or <absolute> pointers to named functions exported by any
   *   thcrap module
   * • float and double literals in the typical C syntax, which are rendered
