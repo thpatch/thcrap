@@ -99,22 +99,22 @@ void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, forma
 /// -------------
 // Fills [entry] with the data of an ANM entry starting at [in], automatically
 // detecting the correct source format.
-int anm_entry_init(anm_entry_t *entry, BYTE *in);
+int anm_entry_init(anm_entry_t &entry, BYTE *in);
 
-void anm_entry_clear(anm_entry_t *entry);
+void anm_entry_clear(anm_entry_t &entry);
 /// -------------
 
 /// Sprite-level patching
 /// ---------------------
 // Splits a [sprite] that wraps around the texture into two non-wrapping parts,
-// adding the newly created sprites to the end of [entry->sprites].
-int sprite_split_x(anm_entry_t *entry, sprite_local_t *sprite);
-int sprite_split_y(anm_entry_t *entry, sprite_local_t *sprite);
+// adding the newly created sprites to the end of [entry.sprites].
+int sprite_split_x(anm_entry_t &entry, sprite_local_t *sprite);
+int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite);
 
 // Calculates the coordinates.
 int sprite_patch_set(
-	sprite_patch_t *sp,
-	const anm_entry_t *entry,
+	sprite_patch_t &sp,
+	const anm_entry_t &entry,
 	const sprite_local_t *sprite,
 	const png_image_exp image
 );
@@ -129,14 +129,14 @@ sprite_alpha_t sprite_alpha_analyze(
 	const png_uint_32 h
 );
 // Convenience functions to analyze destination and replacement sprites
-sprite_alpha_t sprite_alpha_analyze_rep(const sprite_patch_t *sp);
-sprite_alpha_t sprite_alpha_analyze_dst(const sprite_patch_t *sp);
+sprite_alpha_t sprite_alpha_analyze_rep(const sprite_patch_t &sp);
+sprite_alpha_t sprite_alpha_analyze_dst(const sprite_patch_t &sp);
 
 // Runs the blitting function [func] on each row of [sp].
-int sprite_blit(const sprite_patch_t *sp, const BlitFunc_t func);
+int sprite_blit(const sprite_patch_t &sp, const BlitFunc_t func);
 
 // Performs alpha analysis on [sp] and runs an appropriate blitting function.
-sprite_alpha_t sprite_patch(const sprite_patch_t *sp);
+sprite_alpha_t sprite_patch(const sprite_patch_t &sp);
 
 // Walks through the patch stack and patches every game-local PNG file called
 // [entry->name] onto the THTX texture [entry->thtx] on sprite level, using
@@ -148,22 +148,22 @@ int stack_game_png_apply(anm_entry_t *entry);
 /// -----------------------
 char* fn_for_bounds(const char *fn);
 
-void bounds_init(png_image_exp bounds, const thtx_header_t *thtx, const char *fn);
+void bounds_init(png_image_ex &bounds, const thtx_header_t *thtx, const char *fn);
 
 int bounds_draw_line(
-	png_image_exp image,
+	png_image_ex &image,
 	const size_t x, const size_t y,
 	const size_t pixeldist, const size_t len, png_byte val
 );
 int bounds_draw_hline(
-	png_image_exp image, const size_t x, const size_t y, const size_t len, png_byte val
+	png_image_ex &image, const size_t x, const size_t y, const size_t len, png_byte val
 );
 int bounds_draw_vline(
-	png_image_exp image, const size_t x, const size_t y, const size_t len, png_byte val
+	png_image_ex &image, const size_t x, const size_t y, const size_t len, png_byte val
 );
 int bounds_draw_rect(
-	png_image_exp image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t *spr
+	png_image_ex &image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t *spr
 );
 
-int bounds_store(const char *fn, png_image_exp image);
+int bounds_store(const char *fn, png_image_ex &image);
 /// -----------------------

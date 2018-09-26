@@ -11,9 +11,9 @@
 #include <png.h>
 #include "png_ex.h"
 #include "thcrap_tsa.h"
-#include "anm.h"
+#include "anm.hpp"
 
-void bounds_init(png_image_exp image, const thtx_header_t *thtx, const char *fn)
+void bounds_init(png_image_ex &image, const thtx_header_t *thtx, const char *fn)
 {
 	// The caller expects the image to be cleared in any case
 	png_image_clear(image);
@@ -61,7 +61,7 @@ char* fn_for_bounds(const char *fn)
 }
 
 int bounds_draw_line(
-	png_image_exp image,
+	png_image_ex &image,
 	const size_t x, const size_t y,
 	const size_t pixeldist, const size_t len, png_byte val
 )
@@ -72,17 +72,17 @@ int bounds_draw_line(
 	size_t i;
 	png_bytep out;
 
-	if(!image || !image->buf || !len || x >= image->img.width || y >= image->img.height) {
+	if(!image.buf || !len || x >= image.img.width || y >= image.img.height) {
 		return -1;
 	}
 
-	bpp = PNG_IMAGE_PIXEL_SIZE(image->img.format);
-	stride = bpp * image->img.width;
+	bpp = PNG_IMAGE_PIXEL_SIZE(image.img.format);
+	stride = bpp * image.img.width;
 	offset = (y * stride) + (x * bpp);
 
 	for(
-		(i = 0), (out = image->buf + offset);
-		(i < len) && (out < image->buf + PNG_IMAGE_SIZE(image->img));
+		(i = 0), (out = image.buf + offset);
+		(i < len) && (out < image.buf + PNG_IMAGE_SIZE(image.img));
 		(i++), (out += pixeldist * bpp)
 	) {
 		out[0] = out[bpp - 1] = val;
@@ -91,45 +91,38 @@ int bounds_draw_line(
 }
 
 int bounds_draw_hline(
-	png_image_exp image, const size_t x, const size_t y, const size_t len, png_byte val
+	png_image_ex &image, const size_t x, const size_t y, const size_t len, png_byte val
 )
 {
 	return bounds_draw_line(image, x, y, 1, len, val);
 }
 
 int bounds_draw_vline(
-	png_image_exp image, const size_t x, const size_t y, const size_t len, png_byte val
+	png_image_ex &image, const size_t x, const size_t y, const size_t len, png_byte val
 )
 {
-	if(!image) {
-		return -1;
-	}
-	return bounds_draw_line(image, x, y, image->img.width, len, val);
+	return bounds_draw_line(image, x, y, image.img.width, len, val);
 }
 
 int bounds_draw_rect(
-	png_image_exp image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t *spr
+	png_image_ex &image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t *spr
 )
 {
-	if(!spr) {
-		return -1;
-	} else {
-		size_t real_x = thtx_x + spr->x;
-		size_t real_y = thtx_y + spr->y;
+	size_t real_x = thtx_x + spr->x;
+	size_t real_y = thtx_y + spr->y;
 
-		bounds_draw_hline(image, real_x, real_y, spr->w, 0xFF);
-		bounds_draw_hline(image, real_x, real_y + (spr->h - 1), spr->w, 0xFF);
+	bounds_draw_hline(image, real_x, real_y, spr->w, 0xFF);
+	bounds_draw_hline(image, real_x, real_y + (spr->h - 1), spr->w, 0xFF);
 
-		bounds_draw_vline(image, real_x, real_y, spr->h, 0xFF);
-		bounds_draw_vline(image, real_x + (spr->w - 1), real_y, spr->h, 0xFF);
-	}
+	bounds_draw_vline(image, real_x, real_y, spr->h, 0xFF);
+	bounds_draw_vline(image, real_x + (spr->w - 1), real_y, spr->h, 0xFF);
 	return 0;
 }
 
-int bounds_store(const char *fn, png_image_exp image)
+int bounds_store(const char *fn, png_image_ex &image)
 {
 	char *bounds_fn;
-	if(!fn || !image || !image->buf) {
+	if(!fn || !image.buf) {
 		return -1;
 	}
 	bounds_fn = fn_for_bounds(fn);
