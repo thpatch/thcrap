@@ -342,7 +342,7 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 	entry.sprite_num = header->sprites; \
 	entry.name = (const char*)(header->nameoffset + (size_t)header); \
 	thtxoffset = header->thtxoffset; \
-	hasdata = header->hasdata; \
+	entry.hasdata = (header->hasdata != 0); \
 	headersize = sizeof(type);
 
 int anm_entry_init(anm_entry_t &entry, BYTE *in)
@@ -352,7 +352,6 @@ int anm_entry_init(anm_entry_t &entry, BYTE *in)
 	}
 
 	size_t thtxoffset = 0;
-	size_t hasdata = 0;
 	size_t headersize = 0;
 
 	anm_entry_clear(entry);
@@ -364,17 +363,20 @@ int anm_entry_init(anm_entry_t &entry, BYTE *in)
 		ANM_ENTRY_FILTER(in, anm_header06_t);
 	}
 
-	assert((hasdata == 0) == (thtxoffset == 0));
+	assert((entry.hasdata == false) == (thtxoffset == 0));
 	assert(headersize);
 
-	if(hasdata && thtxoffset) {
+	entry.hasdata |= (entry.name[0] != '@');
+	if(thtxoffset) {
 		entry.thtx = (thtx_header_t*)(thtxoffset + (size_t)in);
 		if(memcmp(entry.thtx->magic, "THTX", sizeof(entry.thtx->magic))) {
 			return 1;
 		}
 		entry.w = entry.thtx->w;
 		entry.h = entry.thtx->h;
+	}
 
+	if(entry.hasdata) {
 		// This will change with splits being appended...
 		size_t sprite_orig_num = entry.sprite_num;
 		size_t i;
@@ -532,7 +534,7 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 			log_printf("Corrupt ANM file or format definition, aborting ...\n");
 			break;
 		}
-		if(entry.thtx) {
+		if(entry.hasdata) {
 			if(!name_prev || strcmp(entry.name, name_prev)) {
 				if(!json_is_false(dat_dump)) {
 					bounds_store(name_prev, bounds);

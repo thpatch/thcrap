@@ -37,6 +37,9 @@ typedef struct {
 	png_uint_32 w;
 	png_uint_32 h;
 
+	// Relevant for TH06 which doesn't use THTX.
+	bool hasdata;
+
 	// Offset to the next entry in the ANM archive. 0 indicates the last one.
 	size_t nextoffset;
 
