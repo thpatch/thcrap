@@ -370,6 +370,9 @@ int anm_entry_init(anm_entry_t &entry, BYTE *in)
 	// Otherwise, we fall back to basic patching later.
 	if(headersize && hasdata && thtxoffset) {
 		entry.thtx = (thtx_header_t*)(thtxoffset + (size_t)in);
+		if(memcmp(entry.thtx->magic, "THTX", sizeof(entry.thtx->magic))) {
+			return 1;
+		}
 
 		// This will change with splits being appended...
 		size_t sprite_orig_num = entry.sprite_num;
@@ -413,10 +416,6 @@ int patch_png_load_for_thtx(png_image_ex &image, const json_t *patch_info, const
 	png_image_free(&image.img);
 	ZeroMemory(&image.img, sizeof(png_image));
 	image.img.version = PNG_IMAGE_VERSION;
-
-	if(strncmp(thtx->magic, "THTX", sizeof(thtx->magic))) {
-		return 1;
-	}
 
 	file_buffer = patch_file_load(patch_info, fn, &file_size);
 	if(!file_buffer) {
