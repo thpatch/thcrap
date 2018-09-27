@@ -334,8 +334,6 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 	return -1;
 }
 
-// These filter functions copy all the necessary data from [in] to [entry] and
-// return the header size if this ANM entry is of interest to us.
 #define ANM_ENTRY_FILTER(in, type) \
 	type *header = (type *)in; \
 	entry.x = header->x; \
@@ -365,10 +363,9 @@ int anm_entry_init(anm_entry_t &entry, BYTE *in)
 	}
 
 	assert((hasdata == 0) == (thtxoffset == 0));
+	assert(headersize);
 
-	// Prepare sprite pointers if we have a header size.
-	// Otherwise, we fall back to basic patching later.
-	if(headersize && hasdata && thtxoffset) {
+	if(hasdata && thtxoffset) {
 		entry.thtx = (thtx_header_t*)(thtxoffset + (size_t)in);
 		if(memcmp(entry.thtx->magic, "THTX", sizeof(entry.thtx->magic))) {
 			return 1;
