@@ -183,20 +183,20 @@ int sprite_patch_set(
 	sp.rep_y = entry.y + sp.dst_y;
 
 	if(
-		sp.dst_x >= entry.thtx->w || sp.dst_y >= entry.thtx->h ||
+		sp.dst_x >= entry.w || sp.dst_y >= entry.h ||
 		sp.rep_x >= image.img.width || sp.rep_y >= image.img.height
 	) {
 		return 2;
 	}
 
 	sp.rep_stride = image.img.width * sp.bpp;
-	sp.dst_stride = entry.thtx->w * sp.bpp;
+	sp.dst_stride = entry.w * sp.bpp;
 
 	// See th11's face/enemy5/face05lo.png (the dummy 8x8 one from
 	// stgenm06.anm, not stgenm05.anm) for an example where the sprite
 	// width and height actually exceed the dimensions of the THTX.
-	png_uint_32 sprite_clamped_w = min(sprite->w, (entry.thtx->w - sprite->x));
-	png_uint_32 sprite_clamped_h = min(sprite->h, (entry.thtx->h - sprite->y));
+	png_uint_32 sprite_clamped_w = min(sprite->w, (entry.w - sprite->x));
+	png_uint_32 sprite_clamped_h = min(sprite->h, (entry.h - sprite->y));
 
 	sp.copy_w = min(sprite_clamped_w, (image.img.width - sp.rep_x));
 	sp.copy_h = min(sprite_clamped_h, (image.img.height - sp.rep_y));
@@ -296,16 +296,16 @@ sprite_local_t *sprite_split_new(anm_entry_t &entry)
 
 int sprite_split_x(anm_entry_t &entry, sprite_local_t *sprite)
 {
-	if(entry.thtx && entry.thtx->w) {
+	if(entry.thtx && entry.w > 0) {
 		png_uint_32 split_w = sprite->x + sprite->w;
-		if(split_w > entry.thtx->w) {
+		if(split_w > entry.w) {
 			sprite_local_t *sprite_new = sprite_split_new(entry);
 			if(!sprite_new) {
 				return 1;
 			}
 			sprite_new->x = 0;
 			sprite_new->y = sprite->y;
-			sprite_new->w = min(split_w - entry.thtx->w, sprite->x);
+			sprite_new->w = min(split_w - entry.w, sprite->x);
 			sprite_new->h = sprite->h;
 			return sprite_split_y(entry, sprite_new);
 		}
@@ -316,9 +316,9 @@ int sprite_split_x(anm_entry_t &entry, sprite_local_t *sprite)
 
 int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 {
-	if(entry.thtx && entry.thtx->h) {
+	if(entry.thtx && entry.h > 0) {
 		png_uint_32 split_h = sprite->y + sprite->h;
-		if(split_h > entry.thtx->h) {
+		if(split_h > entry.h) {
 			sprite_local_t *sprite_new = sprite_split_new(entry);
 			if(!sprite_new) {
 				return 1;
@@ -326,7 +326,7 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 			sprite_new->x = sprite->x;
 			sprite_new->y = 0;
 			sprite_new->w = sprite->w;
-			sprite_new->h = min(split_h - entry.thtx->h, sprite->h);
+			sprite_new->h = min(split_h - entry.h, sprite->h);
 			return sprite_split_x(entry, sprite_new);
 		}
 		return 0;
@@ -336,6 +336,8 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 
 #define ANM_ENTRY_FILTER(in, type) \
 	type *header = (type *)in; \
+	entry.w = header->w; \
+	entry.h = header->h; \
 	entry.nextoffset = header->nextoffset; \
 	entry.sprite_num = header->sprites; \
 	entry.name = (const char*)(header->nameoffset + (size_t)header); \
@@ -370,6 +372,8 @@ int anm_entry_init(anm_entry_t &entry, BYTE *in)
 		if(memcmp(entry.thtx->magic, "THTX", sizeof(entry.thtx->magic))) {
 			return 1;
 		}
+		entry.w = entry.thtx->w;
+		entry.h = entry.thtx->h;
 
 		// This will change with splits being appended...
 		size_t sprite_orig_num = entry.sprite_num;
@@ -444,7 +448,7 @@ int patch_png_load_for_thtx(png_image_ex &image, const json_t *patch_info, const
 // [png] is assumed to have the same bit depth as the texture in [entry].
 int patch_thtx(anm_entry_t &entry, png_image_ex &image)
 {
-	if(!entry.thtx || !image.buf) {
+	if(!image.buf) {
 		return -1;
 	}
 	if(entry.sprites && entry.sprite_num > 1) {
@@ -460,8 +464,8 @@ int patch_thtx(anm_entry_t &entry, png_image_ex &image)
 		sprite_local_t sprite = {0};
 		sprite_patch_t sp = {0};
 
-		sprite.w = entry.thtx->w;
-		sprite.h = entry.thtx->h;
+		sprite.w = entry.w;
+		sprite.h = entry.h;
 		if(!sprite_patch_set(sp, entry, &sprite, image)) {
 			return sprite_patch(sp);
 		}
@@ -532,11 +536,11 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 			if(!name_prev || strcmp(entry.name, name_prev)) {
 				if(!json_is_false(dat_dump)) {
 					bounds_store(name_prev, bounds);
-					bounds_init(bounds, entry.thtx, entry.name);
+					bounds_init(bounds, entry.w, entry.h, entry.name);
 				}
 				name_prev = entry.name;
 			}
-			png_image_resize(bounds, entry.x + entry.thtx->w, entry.y + entry.thtx->h);
+			png_image_resize(bounds, entry.x + entry.w, entry.y + entry.h);
 			if(entry.sprites) {
 				size_t i;
 				for(i = 0; i < entry.sprite_num; i++) {

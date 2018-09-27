@@ -32,6 +32,10 @@ typedef struct {
 	// X and Y offsets of the THTX inside the image
 	png_uint_32 x;
 	png_uint_32 y;
+	// Copied from the THTX header if we have one,
+	// or the ANM entry header otherwise.
+	png_uint_32 w;
+	png_uint_32 h;
 
 	// Offset to the next entry in the ANM archive. 0 indicates the last one.
 	size_t nextoffset;
@@ -148,7 +152,7 @@ int stack_game_png_apply(anm_entry_t *entry);
 /// -----------------------
 char* fn_for_bounds(const char *fn);
 
-void bounds_init(png_image_ex &bounds, const thtx_header_t *thtx, const char *fn);
+void bounds_init(png_image_ex &bounds, png_uint_32 w, png_uint_32 h, const char *fn);
 
 int bounds_draw_line(
 	png_image_ex &image,

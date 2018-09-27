@@ -13,17 +13,17 @@
 #include "thcrap_tsa.h"
 #include "anm.hpp"
 
-void bounds_init(png_image_ex &image, const thtx_header_t *thtx, const char *fn)
+void bounds_init(png_image_ex &image, png_uint_32 w, png_uint_32 h, const char *fn)
 {
 	// The caller expects the image to be cleared in any case
 	png_image_clear(image);
-	if(thtx && fn) {
+	if(fn) {
 		// Still needing this one?
 		char *bounds_fn = fn_for_bounds(fn);
 		int ret = PathFileExists(bounds_fn);
 		SAFE_FREE(bounds_fn);
 		if(!ret) {
-			png_image_new(image, thtx->w, thtx->h, PNG_FORMAT_RGBA);
+			png_image_new(image, w, h, PNG_FORMAT_RGBA);
 		}
 	}
 }
