@@ -336,8 +336,6 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 
 #define ANM_ENTRY_FILTER(in, type) \
 	type *header = (type *)in; \
-	entry.x = header->x; \
-	entry.y = header->y; \
 	entry.nextoffset = header->nextoffset; \
 	entry.sprite_num = header->sprites; \
 	entry.name = (const char*)(header->nameoffset + (size_t)header); \
@@ -358,6 +356,8 @@ int anm_entry_init(anm_entry_t &entry, BYTE *in)
 	anm_entry_clear(entry);
 	if(game_id >= TH11) {
 		ANM_ENTRY_FILTER(in, anm_header11_t);
+		entry.x = header->x;
+		entry.y = header->y;
 	} else {
 		ANM_ENTRY_FILTER(in, anm_header06_t);
 	}

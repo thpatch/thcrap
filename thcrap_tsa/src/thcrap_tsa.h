@@ -39,7 +39,8 @@ typedef enum {
 	TH10,
 	ALCOSTG,
 
-	// • anm: Header structure is changed
+	// • anm: Header structure is changed, introducing support for X and Y
+	//        offsets
 	TH11,
 	TH12,
 
