@@ -280,6 +280,97 @@ sprite_alpha_t sprite_patch(const sprite_patch_t &sp)
 }
 /// ---------------------
 
+/// ANM header patching
+/// -------------------
+bool header_mod_error(const char *text, ...)
+{
+	va_list va;
+	va_start(va, text);
+	log_vmboxf("ANM header patching error", MB_ICONERROR, text, va);
+	va_end(va);
+	return false;
+}
+
+sprite_mods_t header_mods_t::sprite_mods()
+{
+	sprite_mods_t ret;
+	if(!sprites) {
+		return ret;
+	}
+
+	ret.num = sprites_seen++;
+
+#define FAIL(text, ...) \
+	sprites = nullptr; \
+	return header_mod_error( \
+		"\"sprites\"{\"%u\"}: " text "%s", \
+		ret.num, ##__VA_ARGS__, \
+		"\nIgnoring remaining sprite boundary mods for this file..." \
+	);
+
+	auto bounds_parse = [&](const json_t *bounds_j) {
+		const char *COORD_NAMES[4] = { "X", "Y", "width", "height" };
+
+		if(json_array_size(bounds_j) != 4) {
+			FAIL("Must be a JSON array in [X, Y, width, height] format.");
+		}
+		for(unsigned int i = 0; i < 4; i++) {
+			auto coord_j = json_array_get(bounds_j, i);
+			bool failed = !json_is_integer(coord_j);
+			if(!failed) {
+				ret.bounds.val[i] = (float)json_integer_value(coord_j);
+				failed = (ret.bounds.val[i] < 0.0f);
+			}
+			if(failed) {
+				FAIL(
+					"Coordinate #%u (%s) must be a positive JSON integer.",
+					i + 1, COORD_NAMES[i]
+				);
+			}
+		}
+		return (ret.bounds.valid = true);
+	};
+
+	auto mod_j = json_object_numkey_get(sprites, ret.num);
+	if(mod_j) {
+		bounds_parse(mod_j);
+	}
+	return ret;
+
+#undef FAIL
+}
+
+void sprite_mods_t::apply_orig(sprite_t &orig)
+{
+	if(bounds.valid) {
+		log_printf(
+			"(Header) Sprite #%u: [%.0f, %.0f, %.0f, %.0f] \xE2\x86\x92 [%.0f, %.0f, %.0f, %.0f]\n",
+			num,
+			orig.x, orig.y, orig.w, orig.h,
+			bounds.val[0], bounds.val[1], bounds.val[2], bounds.val[3]
+		);
+		orig.x = bounds.val[0];
+		orig.y = bounds.val[1];
+		orig.w = bounds.val[2];
+		orig.h = bounds.val[3];
+	}
+}
+
+header_mods_t::header_mods_t(json_t *patch)
+{
+	auto object_get = [this, patch] (const char *key) -> json_t* {
+		auto ret = json_object_get(patch, key);
+		if(ret && !json_is_object(ret)) {
+			header_mod_error("\"%s\" must be a JSON object.", key);
+			return nullptr;
+		}
+		return ret;
+	};
+
+	sprites = object_get("sprites");
+}
+/// -------------------
+
 /// ANM structure
 /// -------------
 sprite_local_t *sprite_split_new(anm_entry_t &entry)
@@ -345,7 +436,7 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 	entry.hasdata = (header->hasdata != 0); \
 	headersize = sizeof(type);
 
-int anm_entry_init(anm_entry_t &entry, BYTE *in)
+int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *patch)
 {
 	if(!in) {
 		return -1;
@@ -376,23 +467,24 @@ int anm_entry_init(anm_entry_t &entry, BYTE *in)
 		entry.h = entry.thtx->h;
 	}
 
-	if(entry.hasdata) {
-		// This will change with splits being appended...
-		size_t sprite_orig_num = entry.sprite_num;
-		size_t i;
-		DWORD *sprite_in = (DWORD*)(in + headersize);
-		entry.sprites = new sprite_local_t[sprite_orig_num];
-		for(i = 0; i < sprite_orig_num; i++, sprite_in++) {
-			const sprite_t *s_orig = (const sprite_t*)(in + *sprite_in);
-			sprite_local_t *s_local = &entry.sprites[i];
+	// This will change with splits being appended...
+	auto sprite_orig_num = entry.sprite_num;
+	auto *sprite_in = (uint32_t*)(in + headersize);
 
-			s_local->x = (png_uint_32)s_orig->x;
-			s_local->y = (png_uint_32)s_orig->y;
-			s_local->w = (png_uint_32)s_orig->w;
-			s_local->h = (png_uint_32)s_orig->h;
-			sprite_split_x(entry, s_local);
-			sprite_split_y(entry, s_local);
-		}
+	entry.sprites = new sprite_local_t[sprite_orig_num];
+	for(size_t i = 0; i < sprite_orig_num; i++, sprite_in++) {
+		auto *s_orig = (sprite_t*)(in + *sprite_in);
+		auto *s_local = &entry.sprites[i];
+
+		auto spr_m = hdr_m.sprite_mods();
+		spr_m.apply_orig(*s_orig);
+
+		s_local->x = (png_uint_32)s_orig->x;
+		s_local->y = (png_uint_32)s_orig->y;
+		s_local->w = (png_uint_32)s_orig->w;
+		s_local->h = (png_uint_32)s_orig->h;
+		sprite_split_x(entry, s_local);
+		sprite_split_y(entry, s_local);
 	}
 	return 0;
 }
@@ -520,6 +612,8 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	// Some ANMs reference the same file name multiple times in a row
 	const char *name_prev = NULL;
 
+	header_mods_t hdr_m(patch);
+	anm_entry_t entry = {0};
 	png_image_ex png = {0};
 	png_image_ex bounds = {0};
 
@@ -529,8 +623,7 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	log_printf("---- ANM ----\n");
 
 	while(anm_entry_out && anm_entry_out < endptr) {
-		anm_entry_t entry = {0};
-		if(anm_entry_init(entry, anm_entry_out)) {
+		if(anm_entry_init(hdr_m, entry, anm_entry_out, patch)) {
 			log_printf("Corrupt ANM file or format definition, aborting ...\n");
 			break;
 		}

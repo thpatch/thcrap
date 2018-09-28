@@ -27,7 +27,7 @@ typedef enum {
 	SPRITE_ALPHA_FULL
 } sprite_alpha_t;
 
-// All ANM data we need
+// All per-entry ANM data we need
 typedef struct {
 	// X and Y offsets of the THTX inside the image
 	png_uint_32 x;
@@ -102,11 +102,52 @@ void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, forma
 // -------------------
 /// -------
 
+/// ANM header patching
+/// -------------------
+/* Stackable modifications of non-pixel data in the ANM header can be defined
+ * in <filename>.anm.jdiff. Currently, the following pieces of data can be
+ * modified this way:
+ *
+ * • Boundaries of existing sprites:
+ *   {
+ *   	"sprites": {
+ *   		"<Decimal sprite # as listed by thanm -l>": [X, Y, width, height],
+ *   		...
+ *   	}
+ *   }
+ */
+
+struct sprite_mods_t {
+	// Sprite number
+	size_t num;
+
+	// Applied onto the original sprite
+	Option<float[4]> bounds;
+
+	void apply_orig(sprite_t &orig);
+};
+
+struct header_mods_t {
+	// Number of sprites seen so far. Necessary to maintain global,
+	// absolute sprite IDs, consistent with the output of thanm -l.
+	size_t sprites_seen = 0;
+
+	// Top-level JSON objects
+	json_t *sprites;
+
+	// Type-checks and prepares sprite-specific mods for the sprite
+	// with the ID <sprites_seen>.
+	sprite_mods_t sprite_mods();
+
+	header_mods_t(json_t *patch);
+};
+/// -------------------
+
 /// ANM structure
 /// -------------
 // Fills [entry] with the data of an ANM entry starting at [in], automatically
-// detecting the correct source format.
-int anm_entry_init(anm_entry_t &entry, BYTE *in);
+// detecting the correct source format, and applying the given ANM header [patch].
+int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *patch);
 
 void anm_entry_clear(anm_entry_t &entry);
 /// -------------
