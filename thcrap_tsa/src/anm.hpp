@@ -44,6 +44,7 @@ typedef struct {
 	size_t nextoffset;
 
 	// File name of the original PNG associated with the bitmap.
+	// Can be set to a custom name by an ANM header patch.
 	const char *name;
 
 	thtx_header_t *thtx;
@@ -108,6 +109,16 @@ void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, forma
  * in <filename>.anm.jdiff. Currently, the following pieces of data can be
  * modified this way:
  *
+ * • Entry-specific metadata:
+ *   {
+ *   	"entries": {
+ *   		"<Entry # in the order listed by thanm -l>": {
+ *   			"name": "(different filename to be used for replacement PNGs)"
+ *   		},
+ *   		...
+ *   	}
+ *   }
+ *
  * • Boundaries of existing sprites:
  *   {
  *   	"sprites": {
@@ -116,6 +127,16 @@ void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, forma
  *   	}
  *   }
  */
+
+struct entry_mods_t {
+	// Entry number
+	size_t num;
+
+	// Applied directly to our structures, not patched into the game memory
+	const char *name = nullptr;
+
+	void apply_ourdata(anm_entry_t &entry);
+};
 
 struct sprite_mods_t {
 	// Sprite number
@@ -127,14 +148,20 @@ struct sprite_mods_t {
 	void apply_orig(sprite_t &orig);
 };
 
+// ANM header patching data
 struct header_mods_t {
-	// Number of sprites seen so far. Necessary to maintain global,
-	// absolute sprite IDs, consistent with the output of thanm -l.
+	// Number of entries/sprites seen so far. Necessary to maintain global,
+	// absolute entry/sprite IDs, consistent with the output of thanm -l.
+	size_t entries_seen = 0;
 	size_t sprites_seen = 0;
 
 	// Top-level JSON objects
+	json_t *entries;
 	json_t *sprites;
 
+	// Type-checks and prepares entry-specific mods for the entry
+	// with the ID <entries_seen>.
+	entry_mods_t entry_mods();
 	// Type-checks and prepares sprite-specific mods for the sprite
 	// with the ID <sprites_seen>.
 	sprite_mods_t sprite_mods();

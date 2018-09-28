@@ -291,6 +291,53 @@ bool header_mod_error(const char *text, ...)
 	return false;
 }
 
+entry_mods_t header_mods_t::entry_mods()
+{
+	entry_mods_t ret;
+	if(!entries) {
+		return ret;
+	}
+
+	ret.num = entries_seen++;
+
+#define FAIL(context, text) \
+	entries = nullptr; \
+	header_mod_error( \
+		"\"entries\"{\"%u\"%s}: %s%s", ret.num, context, text, \
+		"\nIgnoring remaining entry modifications for this file..." \
+	); \
+	return ret;
+
+	auto mod_j = json_object_numkey_get(entries, ret.num);
+	if(!mod_j) {
+		return ret;
+	}
+	if(!json_is_object(mod_j)) {
+		FAIL("", "Must be a JSON object.");
+	}
+
+	// File name
+	auto name_j = json_object_get(mod_j, "name");
+	if(name_j && !json_is_string(name_j)) {
+		FAIL(": {\"name\"}", "Must be a JSON string.");
+	}
+	ret.name = json_string_value(name_j);
+	return ret;
+
+#undef FAIL
+}
+
+void entry_mods_t::apply_ourdata(anm_entry_t &entry)
+{
+	if(name) {
+		log_printf(
+			"(Header) Entry #%u: %s \xE2\x86\x92 %s\n",
+			num, entry.name, name
+		);
+		entry.name = name;
+	}
+}
+
 sprite_mods_t header_mods_t::sprite_mods()
 {
 	sprite_mods_t ret;
@@ -367,6 +414,7 @@ header_mods_t::header_mods_t(json_t *patch)
 		return ret;
 	};
 
+	entries = object_get("entries");
 	sprites = object_get("sprites");
 }
 /// -------------------
@@ -446,6 +494,7 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 	size_t headersize = 0;
 
 	anm_entry_clear(entry);
+	auto ent_m = hdr_m.entry_mods();
 	if(game_id >= TH11) {
 		ANM_ENTRY_FILTER(in, anm_header11_t);
 		entry.x = header->x;
@@ -486,6 +535,7 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 		sprite_split_x(entry, s_local);
 		sprite_split_y(entry, s_local);
 	}
+	ent_m.apply_ourdata(entry);
 	return 0;
 }
 
@@ -654,6 +704,7 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	}
 	png_image_clear(bounds);
 	png_image_clear(png);
+
 	log_printf("-------------\n");
 	return 1;
 }
