@@ -9,6 +9,15 @@
 
 #pragma once
 
+// Expands to an integer constant expression evaluating to a close upper bound
+// on the number the number of decimal digits in a value expressible in the
+// integer type given by the argument (if it is a type name) or the integer
+// type of the argument (if it is an expression). The meaning of the resulting
+// expression is unspecified for other arguments.
+// https://stackoverflow.com/questions/43787672/the-max-number-of-digits-in-an-int-based-on-number-of-bits
+// Useful to calculate buffer sizes for itoa() calls.
+#define DECIMAL_DIGITS_BOUND(t) (241 * sizeof(t) / 100 + 1)
+
 // Returns [json] if the object is still alive, and NULL if it was deleted.
 json_t* json_decref_safe(json_t *json);
 

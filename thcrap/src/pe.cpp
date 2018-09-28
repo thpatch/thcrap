@@ -131,7 +131,7 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	for(i = 0; i < ExportDesc->NumberOfFunctions; i++) {
 		DWORD name_ptr = 0;
 		const char *name;
-		char auto_name[16];
+		char auto_name[DECIMAL_DIGITS_BOUND(DWORD) + 1];
 
 		// Look up name
 		for(j = 0; (j < ExportDesc->NumberOfNames && !name_ptr); j++) {

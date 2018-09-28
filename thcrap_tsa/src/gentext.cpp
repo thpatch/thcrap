@@ -55,7 +55,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 		gc->file = jsondata_game_get(file);
 	}
 	if(ids) {
-		const size_t value_len = sizeof(size_t) * 4;
+		const size_t value_len = DECIMAL_DIGITS_BOUND(size_t);
 		size_t key_new_len = value_len * json_flex_array_size(ids) + 1;
 		VLA(char, key_new, key_new_len);
 		char *p = key_new;
