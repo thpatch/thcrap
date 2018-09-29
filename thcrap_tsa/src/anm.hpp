@@ -11,6 +11,17 @@
 
 #include <thtypes/anm_types.h>
 
+/// Blitting modes
+/// --------------
+// These blit a row with length [pixels] from [rep] to [dst], using [format].
+typedef void(*BlitFunc_t)(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
+
+// Simply overwrites a number of [pixels] in [rep] with [dst].
+void blit_overwrite(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
+// Alpha-blends a number of [pixels] from [rep] on top of [dst].
+void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
+/// --------------
+
 /// Patching types
 /// --------------
 typedef struct {
@@ -90,17 +101,6 @@ size_t format_alpha_sum(png_bytep data, unsigned int pixels, format_t format);
 
 // Converts a number of BGRA8888 [pixels] in [data] to the given [format] in-place.
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
-
-// Blitting operations
-// -------------------
-// These blit a row with length [pixels] from [rep] to [dst], using [format].
-typedef void (*BlitFunc_t)(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
-
-// Simply overwrites a number of [pixels] in [rep] with [dst].
-void format_copy(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
-// Alpha-blends a number of [pixels] from [rep] on top of [dst].
-void format_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_t format);
-// -------------------
 /// -------
 
 /// ANM header patching
