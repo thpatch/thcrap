@@ -105,17 +105,17 @@ int bounds_draw_vline(
 }
 
 int bounds_draw_rect(
-	png_image_ex &image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t *spr
+	png_image_ex &image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t &spr
 )
 {
-	size_t real_x = thtx_x + spr->x;
-	size_t real_y = thtx_y + spr->y;
+	size_t real_x = thtx_x + spr.x;
+	size_t real_y = thtx_y + spr.y;
 
-	bounds_draw_hline(image, real_x, real_y, spr->w, 0xFF);
-	bounds_draw_hline(image, real_x, real_y + (spr->h - 1), spr->w, 0xFF);
+	bounds_draw_hline(image, real_x, real_y, spr.w, 0xFF);
+	bounds_draw_hline(image, real_x, real_y + (spr.h - 1), spr.w, 0xFF);
 
-	bounds_draw_vline(image, real_x, real_y, spr->h, 0xFF);
-	bounds_draw_vline(image, real_x + (spr->w - 1), real_y, spr->h, 0xFF);
+	bounds_draw_vline(image, real_x, real_y, spr.h, 0xFF);
+	bounds_draw_vline(image, real_x + (spr.w - 1), real_y, spr.h, 0xFF);
 	return 0;
 }
 

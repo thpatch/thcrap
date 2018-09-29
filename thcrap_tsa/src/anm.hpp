@@ -10,6 +10,7 @@
 #pragma once
 
 #include <thtypes/anm_types.h>
+#include <vector>
 
 /// Blitting modes
 /// --------------
@@ -24,12 +25,16 @@ void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_
 
 /// Patching types
 /// --------------
-typedef struct {
+struct sprite_local_t {
 	png_uint_32 x;
 	png_uint_32 y;
 	png_uint_32 w;
 	png_uint_32 h;
-} sprite_local_t;
+
+	sprite_local_t(png_uint_32 x, png_uint_32 y, png_uint_32 w, png_uint_32 h)
+		: x(x), y(y), w(w), h(h) {
+	}
+};
 
 // Alpha analysis results
 typedef enum {
@@ -60,8 +65,7 @@ typedef struct {
 
 	thtx_header_t *thtx;
 
-	sprite_local_t *sprites;
-	size_t sprite_num;
+	std::vector<sprite_local_t> sprites;
 } anm_entry_t;
 
 // Coordinates for sprite-based patching
@@ -183,14 +187,14 @@ void anm_entry_clear(anm_entry_t &entry);
 /// ---------------------
 // Splits a [sprite] that wraps around the texture into two non-wrapping parts,
 // adding the newly created sprites to the end of [entry.sprites].
-int sprite_split_x(anm_entry_t &entry, sprite_local_t *sprite);
-int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite);
+int sprite_split_x(anm_entry_t &entry, sprite_local_t &sprite);
+int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite);
 
 // Calculates the coordinates.
 int sprite_patch_set(
 	sprite_patch_t &sp,
 	const anm_entry_t &entry,
-	const sprite_local_t *sprite,
+	const sprite_local_t &sprite,
 	const png_image_exp image
 );
 
@@ -237,7 +241,7 @@ int bounds_draw_vline(
 	png_image_ex &image, const size_t x, const size_t y, const size_t len, png_byte val
 );
 int bounds_draw_rect(
-	png_image_ex &image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t *spr
+	png_image_ex &image, const size_t thtx_x, const size_t thtx_y, const sprite_local_t &spr
 );
 
 int bounds_store(const char *fn, png_image_ex &image);

@@ -165,11 +165,11 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 int sprite_patch_set(
 	sprite_patch_t &sp,
 	const anm_entry_t &entry,
-	const sprite_local_t *sprite,
+	const sprite_local_t &sprite,
 	const png_image_ex &image
 )
 {
-	if(!entry.thtx || !sprite || !image.buf) {
+	if(!entry.thtx || !image.buf) {
 		return -1;
 	}
 	ZeroMemory(&sp, sizeof(sp));
@@ -179,8 +179,8 @@ int sprite_patch_set(
 	sp.format = (format_t)entry.thtx->format;
 	sp.bpp = format_Bpp(sp.format);
 
-	sp.dst_x = sprite->x;
-	sp.dst_y = sprite->y;
+	sp.dst_x = sprite.x;
+	sp.dst_y = sprite.y;
 
 	sp.rep_x = entry.x + sp.dst_x;
 	sp.rep_y = entry.y + sp.dst_y;
@@ -198,8 +198,8 @@ int sprite_patch_set(
 	// See th11's face/enemy5/face05lo.png (the dummy 8x8 one from
 	// stgenm06.anm, not stgenm05.anm) for an example where the sprite
 	// width and height actually exceed the dimensions of the THTX.
-	png_uint_32 sprite_clamped_w = min(sprite->w, (entry.w - sprite->x));
-	png_uint_32 sprite_clamped_h = min(sprite->h, (entry.h - sprite->y));
+	png_uint_32 sprite_clamped_w = min(sprite.w, (entry.w - sprite.x));
+	png_uint_32 sprite_clamped_h = min(sprite.h, (entry.h - sprite.y));
 
 	sp.copy_w = min(sprite_clamped_w, (image.img.width - sp.rep_x));
 	sp.copy_h = min(sprite_clamped_h, (image.img.height - sp.rep_y));
@@ -424,52 +424,36 @@ header_mods_t::header_mods_t(json_t *patch)
 
 /// ANM structure
 /// -------------
-sprite_local_t *sprite_split_new(anm_entry_t &entry)
-{
-	sprite_local_t *sprites_new = (sprite_local_t*)realloc(
-		entry.sprites, (entry.sprite_num + 1) * sizeof(sprite_local_t)
-	);
-	if(!sprites_new) {
-		return NULL;
-	}
-	entry.sprites = sprites_new;
-	return &sprites_new[entry.sprite_num++];
-}
-
-int sprite_split_x(anm_entry_t &entry, sprite_local_t *sprite)
+int sprite_split_x(anm_entry_t &entry, sprite_local_t &sprite)
 {
 	if(entry.thtx && entry.w > 0) {
-		png_uint_32 split_w = sprite->x + sprite->w;
+		png_uint_32 split_w = sprite.x + sprite.w;
 		if(split_w > entry.w) {
-			sprite_local_t *sprite_new = sprite_split_new(entry);
-			if(!sprite_new) {
-				return 1;
-			}
-			sprite_new->x = 0;
-			sprite_new->y = sprite->y;
-			sprite_new->w = min(split_w - entry.w, sprite->x);
-			sprite_new->h = sprite->h;
-			return sprite_split_y(entry, sprite_new);
+			entry.sprites.push_back(sprite_local_t{
+				0,
+				sprite.y,
+				min(split_w - entry.w, sprite.x),
+				sprite.h
+			});
+			return sprite_split_y(entry, entry.sprites.back());
 		}
 		return 0;
 	}
 	return -1;
 }
 
-int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
+int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite)
 {
 	if(entry.thtx && entry.h > 0) {
-		png_uint_32 split_h = sprite->y + sprite->h;
+		png_uint_32 split_h = sprite.y + sprite.h;
 		if(split_h > entry.h) {
-			sprite_local_t *sprite_new = sprite_split_new(entry);
-			if(!sprite_new) {
-				return 1;
-			}
-			sprite_new->x = sprite->x;
-			sprite_new->y = 0;
-			sprite_new->w = sprite->w;
-			sprite_new->h = min(split_h - entry.h, sprite->h);
-			return sprite_split_x(entry, sprite_new);
+			entry.sprites.push_back(sprite_local_t{
+				sprite.x,
+				0,
+				sprite.w,
+				min(split_h - entry.h, sprite.h)
+			});
+			return sprite_split_x(entry, entry.sprites.back());
 		}
 		return 0;
 	}
@@ -481,7 +465,7 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t *sprite)
 	entry.w = header->w; \
 	entry.h = header->h; \
 	entry.nextoffset = header->nextoffset; \
-	entry.sprite_num = header->sprites; \
+	sprite_orig_num = header->sprites; \
 	entry.name = (const char*)(header->nameoffset + (size_t)header); \
 	thtxoffset = header->thtxoffset; \
 	entry.hasdata = (header->hasdata != 0); \
@@ -495,6 +479,7 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 
 	size_t thtxoffset = 0;
 	size_t headersize = 0;
+	size_t sprite_orig_num = 0;
 
 	anm_entry_clear(entry);
 	auto ent_m = hdr_m.entry_mods();
@@ -519,22 +504,21 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 		entry.h = entry.thtx->h;
 	}
 
-	// This will change with splits being appended...
-	auto sprite_orig_num = entry.sprite_num;
+	entry.sprites.reserve(sprite_orig_num);
 	auto *sprite_in = (uint32_t*)(in + headersize);
-
-	entry.sprites = new sprite_local_t[sprite_orig_num];
 	for(size_t i = 0; i < sprite_orig_num; i++, sprite_in++) {
 		auto *s_orig = (sprite_t*)(in + *sprite_in);
-		auto *s_local = &entry.sprites[i];
 
 		auto spr_m = hdr_m.sprite_mods();
 		spr_m.apply_orig(*s_orig);
 
-		s_local->x = (png_uint_32)s_orig->x;
-		s_local->y = (png_uint_32)s_orig->y;
-		s_local->w = (png_uint_32)s_orig->w;
-		s_local->h = (png_uint_32)s_orig->h;
+		sprite_local_t s_local(
+			(png_uint_32)s_orig->x,
+			(png_uint_32)s_orig->y,
+			(png_uint_32)s_orig->w,
+			(png_uint_32)s_orig->h
+		);
+		entry.sprites.push_back(s_local);
 		sprite_split_x(entry, s_local);
 		sprite_split_y(entry, s_local);
 	}
@@ -546,8 +530,15 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 
 void anm_entry_clear(anm_entry_t &entry)
 {
-	SAFE_DELETE_ARRAY(entry.sprites);
-	ZeroMemory(&entry, sizeof(entry));
+	entry.x = 0;
+	entry.y = 0;
+	entry.w = 0;
+	entry.h = 0;
+	entry.hasdata = false;
+	entry.nextoffset = 0;
+	entry.name = nullptr;
+	entry.thtx = nullptr;
+	entry.sprites.clear();
 }
 /// -------------
 
@@ -589,31 +580,26 @@ int patch_png_load_for_thtx(png_image_ex &image, const json_t *patch_info, const
 	return !image.buf;
 }
 
-// Patches an [image] prepared by png_load_for_thtx() into [entry].
-// Patching will be performed on sprite level if [entry.sprites] and
-// [entry.sprite_num] are valid.
+// Patches an [image] prepared by png_load_for_thtx() into [entry]
+// Patching is performed on sprite level, segmented by [entry.sprites].
 // [png] is assumed to have the same bit depth as the texture in [entry].
 int patch_thtx(anm_entry_t &entry, png_image_ex &image)
 {
 	if(!image.buf) {
 		return -1;
 	}
-	if(entry.sprites && entry.sprite_num > 1) {
-		size_t i;
-		for(i = 0; i < entry.sprite_num; i++) {
+	if(entry.sprites.size() > 1) {
+		for(const auto &sprite : entry.sprites) {
 			sprite_patch_t sp;
-			if(!sprite_patch_set(sp, entry, &entry.sprites[i], image)) {
+			if(!sprite_patch_set(sp, entry, sprite, image)) {
 				sprite_patch(sp);
 			}
 		}
 	} else {
 		// Construct a fake sprite covering the entire texture
-		sprite_local_t sprite = {0};
+		sprite_local_t sprite(0, 0, entry.w, entry.h);
 		sprite_patch_t sp = {0};
-
-		sprite.w = entry.w;
-		sprite.h = entry.h;
-		if(!sprite_patch_set(sp, entry, &sprite, image)) {
+		if(!sprite_patch_set(sp, entry, sprite, image)) {
 			return sprite_patch(sp);
 		}
 	}
@@ -689,11 +675,8 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 				name_prev = entry.name;
 			}
 			png_image_resize(bounds, entry.x + entry.w, entry.y + entry.h);
-			if(entry.sprites) {
-				size_t i;
-				for(i = 0; i < entry.sprite_num; i++) {
-					bounds_draw_rect(bounds, entry.x, entry.y, &entry.sprites[i]);
-				}
+			for(const auto &sprite : entry.sprites) {
+				bounds_draw_rect(bounds, entry.x, entry.y, sprite);
 			}
 			// Do the patching
 			stack_game_png_apply(entry);
