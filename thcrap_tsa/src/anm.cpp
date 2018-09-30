@@ -451,7 +451,7 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite)
 				sprite.x,
 				0,
 				sprite.w,
-				min(split_h - entry.h, sprite.h)
+				min(split_h - entry.h, sprite.y)
 			});
 			return sprite_split_x(entry, entry.sprites.back());
 		}
