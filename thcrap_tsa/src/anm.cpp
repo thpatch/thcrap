@@ -350,19 +350,25 @@ sprite_mods_t header_mods_t::sprite_mods()
 
 	ret.num = sprites_seen++;
 
-#define FAIL(text, ...) \
+#define FAIL(context, text, ...) \
 	sprites = nullptr; \
-	return header_mod_error( \
-		"\"sprites\"{\"%u\"}: " text "%s", \
-		ret.num, ##__VA_ARGS__, \
-		"\nIgnoring remaining sprite boundary mods for this file..." \
+	header_mod_error( \
+		"\"sprites\"{\"%u\"%s}: " text "%s", \
+		ret.num, context, ##__VA_ARGS__, \
+		"\nIgnoring remaining sprite mods for this file..." \
 	);
 
-	auto bounds_parse = [&](const json_t *bounds_j) {
+#define RETURN_FAIL(context, text, ...) \
+	FAIL(context, text, ##__VA_ARGS__); \
+	return false;
+
+	auto bounds_parse = [&](const char *context, const json_t *bounds_j) {
 		const char *COORD_NAMES[4] = { "X", "Y", "width", "height" };
 
 		if(json_array_size(bounds_j) != 4) {
-			FAIL("Must be a JSON array in [X, Y, width, height] format.");
+			RETURN_FAIL(context,
+				"Bounds must be specified as a JSON array in [X, Y, width, height] format."
+			);
 		}
 		for(unsigned int i = 0; i < 4; i++) {
 			auto coord_j = json_array_get(bounds_j, i);
@@ -372,7 +378,7 @@ sprite_mods_t header_mods_t::sprite_mods()
 				failed = (ret.bounds.val[i] < 0.0f);
 			}
 			if(failed) {
-				FAIL(
+				RETURN_FAIL(context,
 					"Coordinate #%u (%s) must be a positive JSON integer.",
 					i + 1, COORD_NAMES[i]
 				);
@@ -382,11 +388,19 @@ sprite_mods_t header_mods_t::sprite_mods()
 	};
 
 	auto mod_j = json_object_numkey_get(sprites, ret.num);
-	if(mod_j) {
-		bounds_parse(mod_j);
+	if(json_is_object(mod_j)) {
+		auto bounds_j = json_object_get(mod_j, "bounds");
+		if(bounds_j) {
+			bounds_parse(": {\"bounds\"}", bounds_j);
+		}
+	} else if(json_is_array(mod_j)) {
+		bounds_parse("", mod_j);
+	} else if(mod_j) {
+		FAIL("", "Invalid data type. See anm.hpp for documentation on ANM header patching.");
 	}
 	return ret;
 
+#undef RETURN_FAIL
 #undef FAIL
 }
 

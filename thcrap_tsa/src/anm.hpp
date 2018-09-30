@@ -130,6 +130,15 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  *   		...
  *   	}
  *   }
+ *   Or, if other sprite attributes should be changed as well:
+ *   {
+ *   	"sprites": {
+ *   		"<Decimal sprite # as listed by thanm -l>": {
+ *   			"bounds": [X, Y, width, height]
+ *   		},
+ *   		...
+ *   	}
+ *   }
  */
 
 struct entry_mods_t {
