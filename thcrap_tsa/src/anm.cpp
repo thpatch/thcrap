@@ -518,23 +518,28 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 		entry.h = entry.thtx->h;
 	}
 
-	entry.sprites.reserve(sprite_orig_num);
-	auto *sprite_in = (uint32_t*)(in + headersize);
-	for(size_t i = 0; i < sprite_orig_num; i++, sprite_in++) {
-		auto *s_orig = (sprite_t*)(in + *sprite_in);
+	if(sprite_orig_num == 0) {
+		// Construct a fake sprite covering the entire texture
+		entry.sprites.emplace_back(0, 0, entry.w, entry.h);
+	} else {
+		entry.sprites.reserve(sprite_orig_num);
+		auto *sprite_in = (uint32_t*)(in + headersize);
+		for(size_t i = 0; i < sprite_orig_num; i++, sprite_in++) {
+			auto *s_orig = (sprite_t*)(in + *sprite_in);
 
-		auto spr_m = hdr_m.sprite_mods();
-		spr_m.apply_orig(*s_orig);
+			auto spr_m = hdr_m.sprite_mods();
+			spr_m.apply_orig(*s_orig);
 
-		sprite_local_t s_local(
-			(png_uint_32)s_orig->x,
-			(png_uint_32)s_orig->y,
-			(png_uint_32)s_orig->w,
-			(png_uint_32)s_orig->h
-		);
-		entry.sprites.push_back(s_local);
-		sprite_split_x(entry, s_local);
-		sprite_split_y(entry, s_local);
+			sprite_local_t s_local(
+				(png_uint_32)s_orig->x,
+				(png_uint_32)s_orig->y,
+				(png_uint_32)s_orig->w,
+				(png_uint_32)s_orig->h
+			);
+			entry.sprites.push_back(s_local);
+			sprite_split_x(entry, s_local);
+			sprite_split_y(entry, s_local);
+		}
 	}
 	ent_m.apply_ourdata(entry);
 	return 0;
@@ -594,32 +599,6 @@ int patch_png_load_for_thtx(png_image_ex &image, const json_t *patch_info, const
 	return !image.buf;
 }
 
-// Patches an [image] prepared by png_load_for_thtx() into [entry]
-// Patching is performed on sprite level, segmented by [entry.sprites].
-// [png] is assumed to have the same bit depth as the texture in [entry].
-int patch_thtx(anm_entry_t &entry, png_image_ex &image)
-{
-	if(!image.buf) {
-		return -1;
-	}
-	if(entry.sprites.size() > 1) {
-		for(const auto &sprite : entry.sprites) {
-			sprite_patch_t sp;
-			if(!sprite_patch_set(sp, entry, sprite, image)) {
-				sprite_patch(sp);
-			}
-		}
-	} else {
-		// Construct a fake sprite covering the entire texture
-		sprite_local_t sprite(0, 0, entry.w, entry.h);
-		sprite_patch_t sp = {0};
-		if(!sprite_patch_set(sp, entry, sprite, image)) {
-			return sprite_patch(sp);
-		}
-	}
-	return 0;
-}
-
 // Helper function for stack_game_png_apply.
 int patch_png_apply(anm_entry_t &entry, const json_t *patch_info, const char *fn)
 {
@@ -627,8 +606,13 @@ int patch_png_apply(anm_entry_t &entry, const json_t *patch_info, const char *fn
 	if(patch_info && fn) {
 		png_image_ex png = {0};
 		ret = patch_png_load_for_thtx(png, patch_info, fn, entry.thtx);
-		if(!ret) {
-			patch_thtx(entry, png);
+		if(!ret && png.buf) {
+			for(const auto &sprite : entry.sprites) {
+				sprite_patch_t sp;
+				if(!sprite_patch_set(sp, entry, sprite, png)) {
+					sprite_patch(sp);
+				}
+			}
 			patch_print_fn(patch_info, fn);
 		}
 		SAFE_FREE(png.buf);

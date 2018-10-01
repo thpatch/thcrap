@@ -65,6 +65,7 @@ typedef struct {
 
 	thtx_header_t *thtx;
 
+	// Guaranteed to contain at least one sprite after initialization.
 	std::vector<sprite_local_t> sprites;
 } anm_entry_t;
 
