@@ -75,10 +75,29 @@ template <typename F> privDefer<F> defer_func(F f) {
 // Rust-style Option type. Useful for cases where the zero value of T is
 // equally valid.
 template <typename T> struct Option {
+protected:
 	bool valid;
 	T val;
 
+public:
 	Option(T val) : valid(true), val(val) {}
 	Option() : valid(false) {}
+
+	bool is_none() {
+		return !valid;
+	}
+
+	bool is_some() {
+		return valid;
+	}
+
+	const T& unwrap() {
+		assert(valid);
+		return val;
+	}
+
+	const T& unwrap_or(const T &def) {
+		return valid ? val : def;
+	}
 };
 #endif

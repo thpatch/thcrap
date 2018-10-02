@@ -370,12 +370,13 @@ sprite_mods_t header_mods_t::sprite_mods()
 				"Bounds must be specified as a JSON array in [X, Y, width, height] format."
 			);
 		}
+		float coords[4];
 		for(unsigned int i = 0; i < 4; i++) {
 			auto coord_j = json_array_get(bounds_j, i);
 			bool failed = !json_is_integer(coord_j);
 			if(!failed) {
-				ret.bounds.val[i] = (float)json_integer_value(coord_j);
-				failed = (ret.bounds.val[i] < 0.0f);
+				coords[i] = (float)json_integer_value(coord_j);
+				failed = (coords[i] < 0.0f);
 			}
 			if(failed) {
 				RETURN_FAIL(context,
@@ -384,7 +385,8 @@ sprite_mods_t header_mods_t::sprite_mods()
 				);
 			}
 		}
-		return (ret.bounds.valid = true);
+		ret.bounds = coords;
+		return true;
 	};
 
 	auto mod_j = json_object_numkey_get(sprites, ret.num);
@@ -406,17 +408,18 @@ sprite_mods_t header_mods_t::sprite_mods()
 
 void sprite_mods_t::apply_orig(sprite_t &orig)
 {
-	if(bounds.valid) {
+	if(bounds.is_some()) {
+		const auto &b = bounds.unwrap();
 		log_printf(
 			"(Header) Sprite #%u: [%.0f, %.0f, %.0f, %.0f] \xE2\x86\x92 [%.0f, %.0f, %.0f, %.0f]\n",
 			num,
 			orig.x, orig.y, orig.w, orig.h,
-			bounds.val[0], bounds.val[1], bounds.val[2], bounds.val[3]
+			b[0], b[1], b[2], b[3]
 		);
-		orig.x = bounds.val[0];
-		orig.y = bounds.val[1];
-		orig.w = bounds.val[2];
-		orig.h = bounds.val[3];
+		orig.x = b[0];
+		orig.y = b[1];
+		orig.w = b[2];
+		orig.h = b[3];
 	}
 }
 

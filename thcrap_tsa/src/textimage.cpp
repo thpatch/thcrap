@@ -493,7 +493,7 @@ textimage_t* textimage_t::create(
 	auto sprite_w = check_val("sprite_w", 1);
 	auto sprite_h = check_val("sprite_h", 1);
 
-	if(!texture_slot.valid || !sprite_w.valid || !sprite_h.valid) {
+	if(texture_slot.is_none() || sprite_w.is_none() || sprite_h.is_none()) {
 		return nullptr;
 	}
 
@@ -514,10 +514,10 @@ textimage_t* textimage_t::create(
 	auto ret = new textimage_t;
 	ret->fn = fn;
 	ret->priority = priority;
-	ret->texture_slot = texture_slot.val;
+	ret->texture_slot = texture_slot.unwrap();
 	ret->sprite_slot = sprite_slot;
-	ret->sprite_w = sprite_w.val;
-	ret->sprite_h = sprite_h.val;
+	ret->sprite_w = sprite_w.unwrap();
+	ret->sprite_h = sprite_h.unwrap();
 	ret->script_buf = script_buf;
 	ret->lower = lower;
 	if(lower) {
