@@ -26,13 +26,17 @@ void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_
 /// Patching types
 /// --------------
 struct sprite_local_t {
+	BlitFunc_t blitmode; // nullptr == "auto"
 	png_uint_32 x;
 	png_uint_32 y;
 	png_uint_32 w;
 	png_uint_32 h;
 
-	sprite_local_t(png_uint_32 x, png_uint_32 y, png_uint_32 w, png_uint_32 h)
-		: x(x), y(y), w(w), h(h) {
+	sprite_local_t(
+		BlitFunc_t blitmode,
+		png_uint_32 x, png_uint_32 y, png_uint_32 w, png_uint_32 h
+	)
+		: blitmode(blitmode), x(x), y(y), w(w), h(h) {
 	}
 };
 
@@ -74,6 +78,7 @@ typedef struct {
 	// General info
 	int bpp;
 	format_t format;
+	BlitFunc_t blitmode;
 
 	// Coordinates for the sprite inside the THTX
 	png_uint_32 dst_x;
@@ -114,11 +119,18 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  * in <filename>.anm.jdiff. Currently, the following pieces of data can be
  * modified this way:
  *
+ * • Setting the blitting mode for all sprites in this ANM:
+ *   {
+ *   	"blitmode": "<blitting mode>"
+ *   }
+ *   See BLITMODES[] in anm.cpp for more info on the supported modes.
+ *
  * • Entry-specific metadata:
  *   {
  *   	"entries": {
  *   		"<Entry # in the order listed by thanm -l>": {
- *   			"name": "(different filename to be used for replacement PNGs)"
+ *   			"name": "(different filename to be used for replacement PNGs)",
+ *   			"blitmode": "<blitting mode>"
  *   		},
  *   		...
  *   	}
@@ -131,11 +143,21 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  *   		...
  *   	}
  *   }
- *   Or, if other sprite attributes should be changed as well:
+ *
+ * • Blitting mode of individual sprites:
+ *   {
+ *   	"sprites": {
+ *   		"<Decimal sprite # as listed by thanm -l>": "<blitting mode>",
+ *   		...
+ *   	}
+ *   }
+ *
+ * • Changing both boundaries and the blitting mode for a single sprite:
  *   {
  *   	"sprites": {
  *   		"<Decimal sprite # as listed by thanm -l>": {
- *   			"bounds": [X, Y, width, height]
+ *   			"bounds": [X, Y, width, height],
+ *   			"blitmode": "<blitting mode>"
  *   		},
  *   		...
  *   	}
@@ -148,6 +170,7 @@ struct entry_mods_t {
 
 	// Applied directly to our structures, not patched into the game memory
 	const char *name = nullptr;
+	Option<BlitFunc_t> blitmode;
 
 	void apply_ourdata(anm_entry_t &entry);
 };
@@ -166,6 +189,9 @@ struct sprite_mods_t {
 	// Sprite number
 	size_t num;
 
+	// Applied directly to our structures, not patched into the game memory
+	Option<BlitFunc_t> blitmode;
+
 	// Applied onto the original sprite
 	Option<float[4]> bounds;
 
@@ -182,6 +208,8 @@ struct header_mods_t {
 	// Top-level JSON objects
 	json_t *entries;
 	json_t *sprites;
+	// No Option<> here, since we want to default to "auto" (= nullptr).
+	BlitFunc_t blitmode;
 
 	// Type-checks and prepares entry-specific mods for the entry
 	// with the ID <entries_seen>.
@@ -234,8 +262,8 @@ sprite_alpha_t sprite_alpha_analyze_dst(const sprite_patch_t &sp);
 // Runs the blitting function [func] on each row of [sp].
 int sprite_blit(const sprite_patch_t &sp, const BlitFunc_t func);
 
-// Performs alpha analysis on [sp] and runs an appropriate blitting function.
-sprite_alpha_t sprite_patch(const sprite_patch_t &sp);
+// Runs the blitting function on the sprite data in [sp].
+int sprite_patch(const sprite_patch_t &sp);
 
 // Walks through the patch stack and patches every game-local PNG file called
 // [entry->name] onto the THTX texture [entry->thtx] on sprite level, using

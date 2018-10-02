@@ -65,6 +65,30 @@ void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_
 		blit_overwrite(dst, rep, pixels, format);
 	}
 }
+
+struct blitmode_t {
+	stringref_t name;
+	BlitFunc_t func;
+	stringref_t desc;
+};
+
+const blitmode_t BLITMODES[] = {
+	{
+		"auto",
+		nullptr,
+		"Chooses the appropriate blitting function based on the values in the alpha channels of the original and the replacement image. (default)"
+	},
+	{
+		"blend",
+		blit_blend,
+		"Alpha-blends the replacement image on top of the game's original image."
+	},
+	{
+		"overwrite",
+		blit_overwrite,
+		"Overwrites all original pixels with pixels from the replacement image."
+	},
+};
 /// --------------
 
 /// Formats
@@ -178,6 +202,7 @@ int sprite_patch_set(
 	// after format_from_bgra() may no longer be equal to the one in the PNG header.
 	sp.format = (format_t)entry.thtx->format;
 	sp.bpp = format_Bpp(sp.format);
+	sp.blitmode = sprite.blitmode;
 
 	sp.dst_x = sprite.x;
 	sp.dst_y = sprite.y;
@@ -266,8 +291,11 @@ int sprite_blit(const sprite_patch_t &sp, const BlitFunc_t func)
 	return 0;
 }
 
-sprite_alpha_t sprite_patch(const sprite_patch_t &sp)
+int sprite_patch(const sprite_patch_t &sp)
 {
+	if(sp.blitmode) {
+		return sprite_blit(sp, sp.blitmode);
+	}
 	sprite_alpha_t rep_alpha = sprite_alpha_analyze_rep(sp);
 	if(rep_alpha != SPRITE_ALPHA_EMPTY) {
 		BlitFunc_t func = NULL;
@@ -279,7 +307,7 @@ sprite_alpha_t sprite_patch(const sprite_patch_t &sp)
 		}
 		sprite_blit(sp, func);
 	}
-	return rep_alpha;
+	return 0;
 }
 /// ---------------------
 
@@ -292,6 +320,45 @@ bool header_mod_error(const char *text, ...)
 	log_vmboxf("ANM header patching error", MB_ICONERROR, text, va);
 	va_end(va);
 	return false;
+}
+
+Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
+{
+	if(!blitmode_j) {
+		return Option<BlitFunc_t>{};
+	}
+	if(json_is_string(blitmode_j)) {
+		auto blitmode = json_string_value(blitmode_j);
+		for(const auto &mode : BLITMODES) {
+			if(!strcmp(mode.name.str, blitmode)) {
+				return mode.func;
+			}
+		}
+	}
+	stringref_t MODE_DESC_FMT = "\n\n\xE2\x80\xA2 \"%s\": %s";
+	size_t modes_len = 0;
+	for(const auto &mode : BLITMODES) {
+		modes_len += MODE_DESC_FMT.len + mode.name.len + mode.desc.len;
+	}
+	VLA(char, modes, modes_len + 1);
+	char *p = modes;
+	for(const auto &mode : BLITMODES) {
+		p += sprintf(p, MODE_DESC_FMT.str, mode.name.str, mode.desc.str);
+	}
+
+	va_list va;
+	va_start(va, context);
+	size_t ctx_len = _vscprintf(context, va);
+	VLA(char, ctx, ctx_len + 1);
+	vsprintf(ctx, context, va);
+	header_mod_error(
+		"%s: Invalid blitting mode. Must be one of the following:%s",
+		ctx, modes
+	);
+	VLA_FREE(ctx);
+	va_end(va);
+	VLA_FREE(modes);
+	return Option<BlitFunc_t>{};
 }
 
 entry_mods_t header_mods_t::entry_mods()
@@ -325,6 +392,12 @@ entry_mods_t header_mods_t::entry_mods()
 		FAIL(": {\"name\"}", "Must be a JSON string.");
 	}
 	ret.name = json_string_value(name_j);
+
+	// Blitting mode
+	auto blitmode_j = json_object_get(mod_j, "blitmode");
+	ret.blitmode = blitmode_parse(
+		blitmode_j, "\"entries\"{\"%u\": {\"blitmode\"}}", ret.num
+	);
 	return ret;
 
 #undef FAIL
@@ -395,8 +468,16 @@ sprite_mods_t header_mods_t::sprite_mods()
 		if(bounds_j) {
 			bounds_parse(": {\"bounds\"}", bounds_j);
 		}
+		auto blitmode_j = json_object_get(mod_j, "blitmode");
+		ret.blitmode = blitmode_parse(
+			blitmode_j, "\"sprites\"{\"%u\": {\"blitmode\"}}", ret.num
+		);
 	} else if(json_is_array(mod_j)) {
 		bounds_parse("", mod_j);
+	} else if(json_is_string(mod_j)) {
+		ret.blitmode = blitmode_parse(
+			mod_j, "\"sprites\"{\"%u\"}", ret.num
+		);
 	} else if(mod_j) {
 		FAIL("", "Invalid data type. See anm.hpp for documentation on ANM header patching.");
 	}
@@ -436,6 +517,10 @@ header_mods_t::header_mods_t(json_t *patch)
 
 	entries = object_get("entries");
 	sprites = object_get("sprites");
+
+	auto blitmode_j = json_object_get(patch, "blitmode");
+	auto blitmode_o = blitmode_parse(blitmode_j, "\"blitmode\"");
+	blitmode = blitmode_o.unwrap_or(nullptr);
 }
 /// -------------------
 
@@ -447,6 +532,7 @@ int sprite_split_x(anm_entry_t &entry, sprite_local_t &sprite)
 		png_uint_32 split_w = sprite.x + sprite.w;
 		if(split_w > entry.w) {
 			entry.sprites.push_back(sprite_local_t{
+				sprite.blitmode,
 				0,
 				sprite.y,
 				min(split_w - entry.w, sprite.x),
@@ -465,6 +551,7 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite)
 		png_uint_32 split_h = sprite.y + sprite.h;
 		if(split_h > entry.h) {
 			entry.sprites.push_back(sprite_local_t{
+				sprite.blitmode,
 				sprite.x,
 				0,
 				sprite.w,
@@ -500,6 +587,7 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 
 	anm_entry_clear(entry);
 	auto ent_m = hdr_m.entry_mods();
+	auto entry_blitmode = ent_m.blitmode.unwrap_or(hdr_m.blitmode);
 	if(game_id >= TH11) {
 		ANM_ENTRY_FILTER(in, anm_header11_t);
 		entry.x = header->x;
@@ -523,7 +611,7 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 
 	if(sprite_orig_num == 0) {
 		// Construct a fake sprite covering the entire texture
-		entry.sprites.emplace_back(0, 0, entry.w, entry.h);
+		entry.sprites.emplace_back(entry_blitmode, 0, 0, entry.w, entry.h);
 	} else {
 		entry.sprites.reserve(sprite_orig_num);
 		auto *sprite_in = (uint32_t*)(in + headersize);
@@ -534,6 +622,7 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 			spr_m.apply_orig(*s_orig);
 
 			sprite_local_t s_local(
+				spr_m.blitmode.unwrap_or(entry_blitmode),
 				(png_uint_32)s_orig->x,
 				(png_uint_32)s_orig->y,
 				(png_uint_32)s_orig->w,
