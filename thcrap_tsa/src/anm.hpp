@@ -60,8 +60,9 @@ typedef struct {
 	// Relevant for TH06 which doesn't use THTX.
 	bool hasdata;
 
-	// Offset to the next entry in the ANM archive. 0 indicates the last one.
-	size_t nextoffset;
+	// Pointer to the next entry in the ANM archive.
+	// A nullptr indicates the last one.
+	uint8_t *next;
 
 	// File name of the original PNG associated with the bitmap.
 	// Can be set to a custom name by an ANM header patch.

@@ -568,7 +568,7 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite)
 	type *header = (type *)in; \
 	entry.w = header->w; \
 	entry.h = header->h; \
-	entry.nextoffset = header->nextoffset; \
+	entry.next = (header->nextoffset) ? in + header->nextoffset : nullptr; \
 	sprite_orig_num = header->sprites; \
 	entry.name = (const char*)(header->nameoffset + (size_t)header); \
 	thtxoffset = header->thtxoffset; \
@@ -646,7 +646,7 @@ void anm_entry_clear(anm_entry_t &entry)
 	entry.w = 0;
 	entry.h = 0;
 	entry.hasdata = false;
-	entry.nextoffset = 0;
+	entry.next = nullptr;
 	entry.name = nullptr;
 	entry.thtx = nullptr;
 	entry.sprites.clear();
@@ -771,11 +771,10 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 			// Do the patching
 			stack_game_png_apply(entry);
 		}
-		if(!entry.nextoffset) {
+		if(!entry.next) {
 			bounds_store(name_prev, bounds);
-			anm_entry_out = NULL;
 		}
-		anm_entry_out += entry.nextoffset;
+		anm_entry_out = entry.next;
 		anm_entry_clear(entry);
 	}
 	png_image_clear(bounds);
