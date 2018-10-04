@@ -361,6 +361,92 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 	return Option<BlitFunc_t>{};
 }
 
+script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint32_t version)
+{
+	script_mods_t ret = { num, offset.id };
+
+#define FAIL(context, text, ...) \
+	scripts = nullptr; \
+	header_mod_error( \
+		"{\"entries\"{\"%u\": {\"scripts\": {\"%d\"" context "}}}}: " text "%s", \
+		num, ret.script_num, ##__VA_ARGS__, \
+		"\nIgnoring remaining script modifications for this entry..." \
+	); \
+	return ret;
+
+#define CHECK_LINE_NUMBER(context, ...) \
+	if(line_i >= ret.script.num_instrs) { \
+		FAIL( \
+			context, \
+			"Line number %u out of range, script only has %u instructions.", \
+			##__VA_ARGS__, (unsigned int)line_i, ret.script.num_instrs \
+		) \
+	}
+
+	auto mod_j = json_object_numkey_get(scripts, ret.script_num);
+	if(!mod_j) {
+		return ret;
+	}
+	if(!json_is_object(mod_j)) {
+		FAIL("", "Must be a JSON object.");
+	}
+
+	auto first_instr = in + offset.offset;
+	(version == 0)
+		? ret.script.init((anm_instr0_t *)(first_instr))
+		: ret.script.init((anm_instr_t *)(first_instr));
+
+	auto deletions_j = json_object_get(mod_j, "deletions");
+	if(deletions_j && !json_is_array(deletions_j) && !json_is_integer(deletions_j)) {
+		FAIL(": {\"deletions\"}", "Must be a flexible JSON array of integers.");
+	}
+	auto deletions_count = json_flex_array_size(deletions_j);
+	ret.deletions.reserve(deletions_count);
+
+	for(decltype(deletions_count) i = 0; i < deletions_count; i++) {
+		auto line_j = json_flex_array_get(deletions_j, i);
+		auto line_i = json_integer_value(line_j);
+		if(!json_is_integer(line_j) || line_i < 0) {
+			FAIL(": {\"deletions\"[%u]}", "Must be a positive JSON integer.", i);
+		}
+		CHECK_LINE_NUMBER(": {\"deletions\"[%u]}", i);
+		auto line = (unsigned int)line_i;
+		for(const auto &l : ret.deletions) {
+			if(l == line) {
+				FAIL(
+					": {\"deletions\"[%u]}",
+					"Duplicate deletion of line %u.",
+					i, l
+				);
+			}
+		}
+		ret.deletions.emplace_back(line);
+	}
+	// Make the line numbers relative to the previous deletion
+	for(decltype(deletions_count) i = 1; i < deletions_count; i++) {
+		ret.deletions[i] -= i;
+	}
+	return ret;
+
+#undef FAIL
+}
+
+void script_mods_t::apply_orig()
+{
+#define LOG(text, ...) \
+	log_printf("(Header) Entry #%u, Script #%d: " text "\n", \
+		entry_num, script_num, ##__VA_ARGS__ \
+	);
+
+	for(size_t i = 0; i < deletions.size(); i++) {
+		decltype(i) line = deletions[i];
+		LOG("Deleting line %u", line + i);
+		((script).*(script.delete_line))(line);
+	}
+
+#undef LOG
+}
+
 entry_mods_t header_mods_t::entry_mods()
 {
 	entry_mods_t ret;
@@ -398,6 +484,14 @@ entry_mods_t header_mods_t::entry_mods()
 	ret.blitmode = blitmode_parse(
 		blitmode_j, "\"entries\"{\"%u\": {\"blitmode\"}}", ret.num
 	);
+
+	// Scripts
+	auto scripts_j = json_object_get(mod_j, "scripts");
+	if(scripts_j && !json_is_object(scripts_j)) {
+		FAIL(": {\"scripts\"}", "Must be a JSON object.");
+	}
+	ret.scripts = scripts_j;
+
 	return ret;
 
 #undef FAIL
@@ -564,13 +658,76 @@ int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite)
 	return -1;
 }
 
+inline bool instr_is_last(anm_instr0_t *instr)
+{
+	return (instr->type == 0) && (instr->time == 0);
+}
+
+inline bool instr_is_last(anm_instr_t *instr)
+{
+	return (instr->type == 0xffff);
+}
+
+inline void instr_make_last(anm_instr0_t *instr)
+{
+	instr->type = 0;
+	instr->time = 0;
+}
+
+inline void instr_make_last(anm_instr_t *instr)
+{
+	instr->type = 0xffff;
+}
+
+inline anm_instr0_t* instr_next(anm_instr0_t *instr)
+{
+	return (anm_instr0_t*)((char *)instr + sizeof(*instr) + instr->length);
+}
+
+inline anm_instr_t* instr_next(anm_instr_t *instr)
+{
+	return (anm_instr_t*)((char *)instr + instr->length);
+}
+
+template <typename T> void script_t::_delete_line(unsigned int line)
+{
+	assert(line < num_instrs);
+
+	auto instr = (T *)first_instr;
+	unsigned int i = 0;
+	while(i < line) {
+		instr = instr_next(instr);
+		i++;
+	}
+	auto instr_after = instr_next(instr);
+	size_t bytes_removed = (uint8_t *)instr_after - (uint8_t *)instr;
+	memmove(instr, instr_after, after_last - (uint8_t *)instr_after);
+	after_last -= bytes_removed;
+	instr_make_last((T *)after_last);
+	num_instrs--;
+}
+
+template <typename T> void script_t::init(T *first)
+{
+	auto instr = first;
+	while(instr_is_last(instr) == false) {
+		num_instrs++;
+		instr = instr_next(instr);
+	}
+	first_instr = (uint8_t *)first;
+	after_last = (uint8_t *)instr_next(instr);
+	delete_line = &script_t::_delete_line<T>;
+}
+
 #define ANM_ENTRY_FILTER(in, type) \
 	type *header = (type *)in; \
+	version = header->version; \
 	entry.w = header->w; \
 	entry.h = header->h; \
 	entry.next = (header->nextoffset) ? in + header->nextoffset : nullptr; \
 	sprite_orig_num = header->sprites; \
 	entry.name = (const char*)(header->nameoffset + (size_t)header); \
+	script_num = header->scripts; \
 	thtxoffset = header->thtxoffset; \
 	entry.hasdata = (header->hasdata != 0); \
 	headersize = sizeof(type);
@@ -584,6 +741,8 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 	size_t thtxoffset = 0;
 	size_t headersize = 0;
 	size_t sprite_orig_num = 0;
+	size_t script_num;
+	uint32_t version;
 
 	anm_entry_clear(entry);
 	auto ent_m = hdr_m.entry_mods();
@@ -632,6 +791,13 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 			sprite_split_x(entry, s_local);
 			sprite_split_y(entry, s_local);
 		}
+	}
+
+	auto script_offsets = (anm_offset_t*)(
+		in + headersize + sprite_orig_num * sizeof(uint32_t)
+	);
+	for(size_t i = 0; i < script_num; i++) {
+		ent_m.script_mods(in, script_offsets[i], version).apply_orig();
 	}
 	ent_m.apply_ourdata(entry);
 	return 0;

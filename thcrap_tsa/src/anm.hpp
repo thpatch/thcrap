@@ -126,12 +126,24 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  *   }
  *   See BLITMODES[] in anm.cpp for more info on the supported modes.
  *
- * • Entry-specific metadata:
+ * • Entry-specific metadata and scripts:
  *   {
  *   	"entries": {
  *   		"<Entry # in the order listed by thanm -l>": {
  *   			"name": "(different filename to be used for replacement PNGs)",
- *   			"blitmode": "<blitting mode>"
+ *   			"blitmode": "<blitting mode>",
+ *   			"scripts": {
+ *   				"<Script # as listed by thanm -l>": {
+ *
+ *   All script line numbers are 0-based and are interpreted relative to the
+ *   *original* script, *before* any deletions.
+ *
+ *   					"deletions": <line> | [<line #>, <line #>, ...]
+ *
+ *   Deletes one or multiple instructions from this script.
+ *   For example, [0, 1, 2] would deletes the first three lines.
+ #  				},
+ #  				...
  *   		},
  *   		...
  *   	}
@@ -165,6 +177,31 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  *   }
  */
 
+class script_t {
+	uint8_t *first_instr;
+	uint8_t *after_last;
+
+	template <typename T> void _delete_line(unsigned int line);
+
+public:
+	// Excluding the terminating instruction, as in thanm -l.
+	unsigned int num_instrs;
+
+	// Version-dependent operations
+	void (script_t::*delete_line)(unsigned int line);
+
+	template <typename T> void init(T *first);
+};
+
+struct script_mods_t {
+	uint32_t entry_num;
+	int32_t script_num;
+	script_t script;
+
+	std::vector<unsigned int> deletions;
+	void apply_orig();
+};
+
 struct entry_mods_t {
 	// Entry number
 	size_t num;
@@ -172,6 +209,13 @@ struct entry_mods_t {
 	// Applied directly to our structures, not patched into the game memory
 	const char *name = nullptr;
 	Option<BlitFunc_t> blitmode;
+
+	// For parsing script mods later
+	json_t *scripts = nullptr;
+
+	// Type-checks and prepares script-specific mods for the script in
+	// this specific ANM [version] at the given [offset].
+	script_mods_t script_mods(uint8_t *in, anm_offset_t &offset, uint32_t version);
 
 	void apply_ourdata(anm_entry_t &entry);
 };
