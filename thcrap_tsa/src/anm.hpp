@@ -137,11 +137,21 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  *
  *   All script line numbers are 0-based and are interpreted relative to the
  *   *original* script, *before* any deletions.
+ *   Deletions are always applied first, followed by changes.
  *
  *   					"deletions": <line> | [<line #>, <line #>, ...]
  *
  *   Deletes one or multiple instructions from this script.
  *   For example, [0, 1, 2] would deletes the first three lines.
+ *
+ *   					"changes": {
+ *   						"<line>#<parameter address>": "<binary hack>",
+ *   						...
+ *
+ *   Applies the given binary hack to the parameter at the given address,
+ *   using thcrap binary hack syntax. (See binhack.h for ducumentation.)
+ *
+ *   					}
  #  				},
  #  				...
  *   		},
@@ -177,18 +187,36 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  *   }
  */
 
+struct script_param_change_t {
+	unsigned int line;
+	uint16_t param_addr;
+	const char *code;
+	size_t code_size;
+};
+
 class script_t {
 	uint8_t *first_instr;
 	uint8_t *after_last;
 
+	template <typename T> T* _instr_at_line(unsigned int line);
+	template <typename T> uint16_t _param_length_of(unsigned int line);
 	template <typename T> void _delete_line(unsigned int line);
+	template <typename T> void _apply_param_change(
+		unsigned int line, uint16_t param_addr,
+		const uint8_t *code, size_t code_size
+	);
 
 public:
 	// Excluding the terminating instruction, as in thanm -l.
 	unsigned int num_instrs;
 
 	// Version-dependent operations
+	uint16_t (script_t::*param_length_of)(unsigned int line);
 	void (script_t::*delete_line)(unsigned int line);
+	void (script_t::*apply_param_change)(
+		unsigned int line, uint16_t param_addr,
+		const uint8_t *code, size_t code_size
+	);
 
 	template <typename T> void init(T *first);
 };
@@ -199,6 +227,7 @@ struct script_mods_t {
 	script_t script;
 
 	std::vector<unsigned int> deletions;
+	std::vector<script_param_change_t> param_changes;
 	void apply_orig();
 };
 

@@ -383,6 +383,18 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		) \
 	}
 
+#define CHECK_LINE_NUMBER_AFTER_DELETIONS(context, ...) \
+	if(line_i >= (ret.script.num_instrs - deletions_count)) { \
+		FAIL( \
+			context, \
+			"Line number %u out of range, script only has %u instructions after %u deletions.", \
+			##__VA_ARGS__, \
+			(unsigned int)line_i, \
+			ret.script.num_instrs - deletions_count, \
+			deletions_count \
+		) \
+	}
+
 	auto mod_j = json_object_numkey_get(scripts, ret.script_num);
 	if(!mod_j) {
 		return ret;
@@ -402,6 +414,11 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 	}
 	auto deletions_count = json_flex_array_size(deletions_j);
 	ret.deletions.reserve(deletions_count);
+
+	auto changes_j = json_object_get(mod_j, "changes");
+	if(changes_j && !json_is_object(changes_j)) {
+		FAIL(": {\"changes\"}", "Must be a JSON object.");
+	}
 
 	for(decltype(deletions_count) i = 0; i < deletions_count; i++) {
 		auto line_j = json_flex_array_get(deletions_j, i);
@@ -426,6 +443,60 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 	for(decltype(deletions_count) i = 1; i < deletions_count; i++) {
 		ret.deletions[i] -= i;
 	}
+
+	const char *key;
+	json_t *val_j;
+	json_object_foreach(changes_j, key, val_j) {
+		auto fail_key_syntax = [&]() {
+			FAIL(
+				": {\"changes\": {\"%s\"}",
+				"Invalid key syntax, must be \"<line>#<parameter address>\".",
+				key
+			);
+		};
+
+		auto key_sep = strchr(key, '#');
+		if(!key_sep || key_sep == key || key_sep[0] == '\0') {
+			return fail_key_syntax();
+		}
+		char *endptr = nullptr;
+
+		auto line = strtol(key, &endptr, 10);
+		if(endptr != key_sep || line < 0) {
+			return fail_key_syntax();
+		}
+		unsigned int line_i = line;
+		CHECK_LINE_NUMBER_AFTER_DELETIONS(": {\"changes\": {\"%s\"}", key);
+
+		{
+			auto addr = strtol(key_sep + 1, &endptr, 10);
+			if(endptr == (key_sep + 1) || endptr[0] != '\0' || addr < 0) {
+				return fail_key_syntax();
+			}
+
+			auto code = json_string_value(val_j);
+			auto code_size = binhack_calc_size(code);
+			if(!code || !code_size) {
+				FAIL(
+					": {\"changes\": {\"%s\"}", "Must be a binary hack string.",
+					key
+				);
+			}
+
+			auto param_length = ((ret.script).*(ret.script.param_length_of))(line_i);
+			if((size_t)addr >= (param_length - code_size)) {
+				FAIL(
+					": {\"changes\": {\"%s\"}",
+					"Address %u + binary hack of length %u exceeds the parameter length of line %u.",
+					key, addr, code_size, param_length
+				);
+			}
+
+			ret.param_changes.emplace_back(script_param_change_t{
+				line_i - deletions_count, (uint16_t)addr, code, code_size
+			});
+		}
+	}
 	return ret;
 
 #undef FAIL
@@ -442,6 +513,22 @@ void script_mods_t::apply_orig()
 		decltype(i) line = deletions[i];
 		LOG("Deleting line %u", line + i);
 		((script).*(script.delete_line))(line);
+	}
+	for(size_t i = 0; i < param_changes.size(); i++) {
+		const auto &pc = param_changes[i];
+		VLA(uint8_t, code, pc.code_size);
+
+		// Should have failed in the size calculation already.
+		assert(binhack_render(code, 0, pc.code) == 0);
+
+		LOG(
+			"Changing parameter data at offset %u on line %u",
+			pc.param_addr, deletions.size() + pc.line
+		);
+		((script).*(script.apply_param_change))(
+			pc.line, pc.param_addr, code, pc.code_size
+		);
+		VLA_FREE(code);
 	}
 
 #undef LOG
@@ -689,22 +776,43 @@ inline anm_instr_t* instr_next(anm_instr_t *instr)
 	return (anm_instr_t*)((char *)instr + instr->length);
 }
 
-template <typename T> void script_t::_delete_line(unsigned int line)
+template <typename T> T* script_t::_instr_at_line(unsigned int line)
 {
 	assert(line < num_instrs);
-
 	auto instr = (T *)first_instr;
 	unsigned int i = 0;
 	while(i < line) {
 		instr = instr_next(instr);
 		i++;
 	}
+	return instr;
+}
+
+template <typename T> uint16_t script_t::_param_length_of(unsigned int line)
+{
+	auto instr = _instr_at_line<T>(line);
+	auto instr_diff = ((uint8_t *)instr_next(instr) - (uint8_t *)instr);
+	return (uint16_t)(instr_diff - sizeof(T));
+}
+
+template <typename T> void script_t::_delete_line(unsigned int line)
+{
+	auto instr = _instr_at_line<T>(line);
 	auto instr_after = instr_next(instr);
 	size_t bytes_removed = (uint8_t *)instr_after - (uint8_t *)instr;
 	memmove(instr, instr_after, after_last - (uint8_t *)instr_after);
 	after_last -= bytes_removed;
 	instr_make_last((T *)after_last);
 	num_instrs--;
+}
+
+template <typename T> void script_t::_apply_param_change(
+	unsigned int line, uint16_t param_addr,
+	const uint8_t *code, size_t code_size
+)
+{
+	auto instr = _instr_at_line<T>(line);
+	memcpy(instr->data + param_addr, code, code_size);
 }
 
 template <typename T> void script_t::init(T *first)
@@ -716,7 +824,9 @@ template <typename T> void script_t::init(T *first)
 	}
 	first_instr = (uint8_t *)first;
 	after_last = (uint8_t *)instr_next(instr);
+	param_length_of = &script_t::_param_length_of<T>;
 	delete_line = &script_t::_delete_line<T>;
+	apply_param_change = &script_t::_apply_param_change<T>;
 }
 
 #define ANM_ENTRY_FILTER(in, type) \
