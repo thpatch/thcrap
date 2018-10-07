@@ -384,7 +384,9 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 	}
 
 #define CHECK_LINE_NUMBER_AFTER_DELETIONS(context, ...) \
-	if(line_i >= (ret.script.num_instrs - deletions_count)) { \
+	if(deletions_count == 0) { \
+		CHECK_LINE_NUMBER(context, ##__VA_ARGS__); \
+	} else if(line_i >= (ret.script.num_instrs - deletions_count)) { \
 		FAIL( \
 			context, \
 			"Line number %u out of range, script only has %u instructions after %u deletions.", \
@@ -450,7 +452,9 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		auto fail_key_syntax = [&]() {
 			FAIL(
 				": {\"changes\": {\"%s\"}",
-				"Invalid key syntax, must be \"<line>#<parameter address>\".",
+				"Invalid key syntax, must be one of:\n"
+				"\xE2\x80\xA2 \"<line>#<parameter address>\" (to change instruction parameters)\n"
+				"\xE2\x80\xA2 \"<line>#time\" (to change the frame an instruction is executed on)\n",
 				key
 			);
 		};
@@ -468,7 +472,18 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		unsigned int line_i = line;
 		CHECK_LINE_NUMBER_AFTER_DELETIONS(": {\"changes\": {\"%s\"}", key);
 
-		{
+		if(!strcmp(key_sep + 1, "time")) {
+			auto time = json_integer_value(val_j);
+			if(!json_is_integer(val_j) || (time < INT16_MIN) | (time > INT16_MAX)) {
+				FAIL(
+					": {\"changes\": {\"%s\"}", "Time must be a signed 16-bit integer, between %d and %d.",
+					key, INT16_MIN, INT16_MAX
+				);
+			}
+			ret.time_changes.emplace_back(script_time_change_t{
+				line_i - deletions_count, (uint16_t)time
+			});
+		} else {
 			auto addr = strtol(key_sep + 1, &endptr, 10);
 			if(endptr == (key_sep + 1) || endptr[0] != '\0' || addr < 0) {
 				return fail_key_syntax();
@@ -487,8 +502,8 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 			if((size_t)addr >= (param_length - code_size)) {
 				FAIL(
 					": {\"changes\": {\"%s\"}",
-					"Address %u + binary hack of length %u exceeds the parameter length of line %u.",
-					key, addr, code_size, param_length
+					"Address %u + binary hack of length %u exceeds the parameter length of line %u (%u).",
+					key, addr, code_size, line, param_length
 				);
 			}
 
@@ -529,6 +544,10 @@ void script_mods_t::apply_orig()
 			pc.line, pc.param_addr, code, pc.code_size
 		);
 		VLA_FREE(code);
+	}
+	for(const auto &tc : time_changes) {
+		LOG("Changing time on line %u", deletions.size() + tc.line);
+		((script).*(script.apply_time_change))(tc);
 	}
 
 #undef LOG
@@ -806,6 +825,12 @@ template <typename T> void script_t::_delete_line(unsigned int line)
 	num_instrs--;
 }
 
+template <typename T> void script_t::_apply_time_change(script_time_change_t change)
+{
+	auto instr = _instr_at_line<T>(change.line);
+	instr->time = change.time;
+}
+
 template <typename T> void script_t::_apply_param_change(
 	unsigned int line, uint16_t param_addr,
 	const uint8_t *code, size_t code_size
@@ -826,6 +851,7 @@ template <typename T> void script_t::init(T *first)
 	after_last = (uint8_t *)instr_next(instr);
 	param_length_of = &script_t::_param_length_of<T>;
 	delete_line = &script_t::_delete_line<T>;
+	apply_time_change = &script_t::_apply_time_change<T>;
 	apply_param_change = &script_t::_apply_param_change<T>;
 }
 

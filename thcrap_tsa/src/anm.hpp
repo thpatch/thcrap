@@ -146,6 +146,7 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format);
  *
  *   					"changes": {
  *   						"<line>#<parameter address>": "<binary hack>",
+ *   						"<line>#time": <frame as a JSON integer"
  *   						...
  *
  *   Applies the given binary hack to the parameter at the given address,
@@ -194,6 +195,11 @@ struct script_param_change_t {
 	size_t code_size;
 };
 
+struct script_time_change_t {
+	unsigned int line;
+	int16_t time;
+};
+
 class script_t {
 	uint8_t *first_instr;
 	uint8_t *after_last;
@@ -201,6 +207,7 @@ class script_t {
 	template <typename T> T* _instr_at_line(unsigned int line);
 	template <typename T> uint16_t _param_length_of(unsigned int line);
 	template <typename T> void _delete_line(unsigned int line);
+	template <typename T> void _apply_time_change(script_time_change_t change);
 	template <typename T> void _apply_param_change(
 		unsigned int line, uint16_t param_addr,
 		const uint8_t *code, size_t code_size
@@ -213,6 +220,7 @@ public:
 	// Version-dependent operations
 	uint16_t (script_t::*param_length_of)(unsigned int line);
 	void (script_t::*delete_line)(unsigned int line);
+	void (script_t::*apply_time_change)(script_time_change_t change);
 	void (script_t::*apply_param_change)(
 		unsigned int line, uint16_t param_addr,
 		const uint8_t *code, size_t code_size
@@ -227,6 +235,7 @@ struct script_mods_t {
 	script_t script;
 
 	std::vector<unsigned int> deletions;
+	std::vector<script_time_change_t> time_changes;
 	std::vector<script_param_change_t> param_changes;
 	void apply_orig();
 };
