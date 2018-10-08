@@ -51,7 +51,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 A ready-made Visual Studio build configuration, covering all modules and their dependencies, is provided as part of this repository. To set up the build:
 
-* Install [Visual Studio Community 2013](https://www.visualstudio.com/products/visual-studio-community-vs).
+* Install [Visual Studio Community 2013](https://visualstudio.microsoft.com/vs/older-downloads/).
 * Make sure that you've pulled all Git submodules together with this repo:
 
 		git clone --recursive https://github.com/thpatch/thcrap.git
