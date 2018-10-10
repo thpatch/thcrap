@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2014 Petri Lehtinen <petri@digip.org>
+ * Copyright (c) 2010-2016 Petri Lehtinen <petri@digip.org>
  *
  * Jansson is free software; you can redistribute it and/or modify
  * it under the terms of the MIT license. See LICENSE for details.
@@ -28,7 +28,7 @@
 /* Bring in the cmake-detected defines */
 #define HAVE_STDINT_H 1
 /* #undef HAVE_INTTYPES_H */
-/* #undef HAVE_SYS_TYPES_H */
+#define HAVE_SYS_TYPES_H 1
 
 /* Include our standard type header for the integer typedef */
 
@@ -59,10 +59,16 @@
 /* If locale.h and localeconv() are available, define to 1, otherwise to 0. */
 #define JSON_HAVE_LOCALECONV 1
 
+/* If __atomic builtins are available they will be used to manage
+   reference counts of json_t. */
+#define JSON_HAVE_ATOMIC_BUILTINS 0
+
+/* If __atomic builtins are not available we try using __sync builtins
+   to manage reference counts of json_t. */
+#define JSON_HAVE_SYNC_BUILTINS 0
 
 /* Maximum recursion depth for parsing JSON input.
    This limits the depth of e.g. array-within-array constructions. */
 #define JSON_PARSER_MAX_DEPTH 2048
-
 
 #endif

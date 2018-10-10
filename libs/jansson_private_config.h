@@ -5,7 +5,7 @@
 /* #undef HAVE_SYS_PARAM_H */
 #define HAVE_SYS_STAT_H 1
 /* #undef HAVE_SYS_TIME_H */
-/* #undef HAVE_SYS_TYPES_H */
+#define HAVE_SYS_TYPES_H 1
 #define HAVE_STDINT_H 1
 
 #define HAVE_CLOSE 1
@@ -47,13 +47,7 @@
 #  define ssize_t int
 #endif
 
-/* #undef HAVE_SNPRINTF */
-
-#ifndef HAVE_SNPRINTF
-#  define snprintf _snprintf
-#endif
-
-/* #undef HAVE_VSNPRINTF */
-
 #define USE_URANDOM 1
 #define USE_WINDOWS_CRYPTOAPI 1
+
+#define INITIAL_HASHTABLE_ORDER 3

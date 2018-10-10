@@ -73,6 +73,7 @@ copy /y $(ProjectDir)\zlib-ng\zlib.h $(ProjectDir)\
 %(Command)</Command>
     </PreBuildEvent>
     <ClCompile>
+      <PreprocessorDefinitions>UNALIGNED_OK;ZLIB_COMPAT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="$(BuildZLib1)==true">WITH_GZFILEOP;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>

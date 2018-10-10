@@ -16,7 +16,7 @@ struct file_buffer_t {
 	size_t size;
 };
 
-void read_bytes(png_structp png_ptr, png_bytep out, png_size_t out_size)
+void read_bytes(png_structp png_ptr, png_bytep out, size_t out_size)
 {
 	file_buffer_t *in = (file_buffer_t*)png_get_io_ptr(png_ptr);
 	if (out_size > in->size) {
