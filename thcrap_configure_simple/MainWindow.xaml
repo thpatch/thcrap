@@ -3,8 +3,82 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:local="clr-namespace:thcrap_configure_simple"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    <local:View1 />
+    <!--<local:View1 />-->
+    <xctk:Wizard Name="wizard"
+                 FinishButtonClosesWindow="True"
+                 CanHelp="False"
+                 HelpButtonVisibility="Hidden"
+                 PageChanged="Wizard_PageChanged">
+        <!-- TODO
+            * MessageBox on Cancel
+            * Timer on page 1 (on another thread, call the main thread when done)
+            * Later: skip page1 if it is already finished
+            * Page5: take the game-choosing algo from Electron
+        -->
+        <xctk:WizardPage x:Name="IntroPage"
+                         Title="Welcome to thcrap"
+                         Description="Clic next to install a patch." />
+        <xctk:WizardPage x:Name="Page1" PageType="Interior"
+                         Title="Initializing things"
+                         CanSelectNextPage="False">
+            <StackPanel>
+                <TextBlock Text="Please wait..." />
+                <ProgressBar Height="17px" IsIndeterminate="True" />
+            </StackPanel>
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page2" PageType="Interior"
+                         PreviousPage="{Binding ElementName=IntroPage}"
+                         Title="Choose the patch you want">
+            <StackPanel>
+                <RadioButton GroupName="patch"><TextBlock>lang_de (from Touhou Patch Center)</TextBlock></RadioButton>
+                <RadioButton GroupName="patch"><TextBlock>lang_en (from Touhou Patch Center)</TextBlock></RadioButton>
+                <RadioButton GroupName="patch"><TextBlock>lang_fr (from Touhou Patch Center)</TextBlock></RadioButton>
+            </StackPanel>
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page3" PageType="Interior"
+                         Title="Downloading core data"
+                         CanSelectNextPage="False">
+            <StackPanel>
+                <TextBlock Text="Please wait..." />
+                <TextBlock Name="Page3Filename" />
+                <ProgressBar Height="17px" IsIndeterminate="True" />
+            </StackPanel>
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page4" PageType="Interior"
+                         PreviousPage="{Binding ElementName=Page2}"
+                         Title="Find games">
+            <StackPanel>
+                <TextBlock>Where are your games?</TextBlock>
+                <RadioButton GroupName="dirRadio">
+                    <StackPanel>
+                        <TextBlock>Select a directory</TextBlock>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock>C:\Fake\Path</TextBlock>
+                            <Button>Browse...</Button>
+                        </StackPanel>
+                    </StackPanel>
+                </RadioButton>
+                <RadioButton GroupName="dirRadio"><TextBlock>I don't know, search everywhere</TextBlock></RadioButton>
+            </StackPanel>
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page5" PageType="Interior"
+                         Title="Installing thcrap"
+                         CanSelectNextPage="False">
+            <StackPanel>
+                <TextBlock Name="Page5Text" Text="Searching games..." />
+                <TextBlock Name="Page5Filename" />
+                <ProgressBar Height="17px" IsIndeterminate="True" />
+            </StackPanel>
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="LastPage" PageType="Interior"
+                         Title="Last Page"
+                         Description="This is the last page in the process"
+                         CanFinish="True"
+                         CanCancel="False"
+                         CanSelectPreviousPage="False" />
+    </xctk:Wizard>
 </Window>
