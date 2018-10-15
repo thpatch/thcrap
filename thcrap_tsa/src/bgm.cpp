@@ -141,16 +141,16 @@ int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn,
   * fine. In particular, these functions *must* succeed to eliminate any
   * crashes or deadlocks:
   *
-  * • DirectSoundCreate8()
-  * • IDirectSound8::SetCooperativeLevel()
-  * • IDirectSound8::CreateSoundBuffer()
-  * • IDirectSound8::DuplicateSoundBuffer()
-  * • IDirectSoundBuffer8::Lock(), apparently only needed for TH12.8?
+  * â€¢ DirectSoundCreate8()
+  * â€¢ IDirectSound8::SetCooperativeLevel()
+  * â€¢ IDirectSound8::CreateSoundBuffer()
+  * â€¢ IDirectSound8::DuplicateSoundBuffer()
+  * â€¢ IDirectSoundBuffer8::Lock(), apparently only needed for TH12.8?
   *   (And yes, the game then fills the returned buffer with zeros, of course
   *   without verifying the returned buffer lock size. Which means that we
   *   also have to actually allocate the required amount of bytes. -.-)
-  * • IDirectSoundBuffer8::QueryInterface() with IID_IDirectSoundNotify;
-  * • IDirectSoundNotify::SetNotificationPositions()
+  * â€¢ IDirectSoundBuffer8::QueryInterface() with IID_IDirectSoundNotify;
+  * â€¢ IDirectSoundNotify::SetNotificationPositions()
   *
   * So, here we go...
   */
