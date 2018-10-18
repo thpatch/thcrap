@@ -9,7 +9,6 @@
 
 #include "thcrap.h"
 
-CRITICAL_SECTION cs_file_access;
 json_t* run_cfg = NULL;
 
 const char* PROJECT_NAME(void)

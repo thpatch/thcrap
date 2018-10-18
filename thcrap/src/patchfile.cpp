@@ -22,7 +22,6 @@ void* file_read(const char *fn, size_t *file_size)
 	if(!file_size) {
 		file_size = &file_size_tmp;
 	}
-	EnterCriticalSection(&cs_file_access);
 	{
 		HANDLE handle;
 		DWORD byte_ret;
@@ -41,7 +40,6 @@ void* file_read(const char *fn, size_t *file_size)
 			CloseHandle(handle);
 		}
 	}
-	LeaveCriticalSection(&cs_file_access);
 	return ret;
 }
 
@@ -54,7 +52,6 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size)
 
 		dir_create_for_fn(fn);
 
-		EnterCriticalSection(&cs_file_access);
 		handle = CreateFile(
 			fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
 			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
@@ -64,7 +61,6 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size)
 			WriteFile(handle, file_buffer, file_size, &byte_ret, NULL);
 			CloseHandle(handle);
 		}
-		LeaveCriticalSection(&cs_file_access);
 	}
 	return ret;
 }

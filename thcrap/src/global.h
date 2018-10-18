@@ -9,9 +9,6 @@
 
 #pragma once
 
-// We only want to read from or write to one file at a time
-extern CRITICAL_SECTION cs_file_access;
-
 extern json_t *run_cfg;
 
 // Project stats

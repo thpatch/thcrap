@@ -450,7 +450,6 @@ int InitDll(HMODULE hDll)
 	size_t dll_dir_len;
 
 	w32u8_set_fallback_codepage(932);
-	InitializeCriticalSection(&cs_file_access);
 
 	exception_init();
 	// Needs to be at the lowest level
@@ -479,7 +478,6 @@ void ExitDll(HMODULE hDll)
 	plugins_close();
 	SAFE_FREE(bp_set);
 	run_cfg = json_decref_safe(run_cfg);
-	DeleteCriticalSection(&cs_file_access);
 
 	SAFE_FREE(dll_dir);
 	detour_exit();
