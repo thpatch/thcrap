@@ -16,3 +16,9 @@
 [submodule "thtypes"]
 	path = thtypes
 	url = https://github.com/thpatch/thtypes.git
+[submodule "libs/vorbis"]
+	path = libs/libvorbis
+	url = https://git.xiph.org/vorbis.git
+[submodule "libs/ogg"]
+	path = libs/libogg
+	url = https://git.xiph.org/ogg.git

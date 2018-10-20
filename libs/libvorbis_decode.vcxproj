@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug Static|Win32">
+      <Configuration>Debug Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Dynamic|Win32">
+      <Configuration>Debug Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Static|Win32">
+      <Configuration>Release Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Dynamic|Win32">
+      <Configuration>Release Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3A214E06-B95E-4D61-A291-1F8DF2EC10FD}</ProjectGuid>
+    <RootNamespace>libvorbis</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="Xiph.props" />
+  </ImportGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <DisableSpecificWarnings>4244;4100;4267;4189;4305;4127;4706;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link Condition="'$(ConfigurationType)'=='DynamicLibrary'">
+      <ModuleDefinitionFile>libvorbis\win32\vorbis.def</ModuleDefinitionFile>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">libogg_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">libogg.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="libvorbis\lib\analysis.c" />
+    <ClCompile Include="libvorbis\lib\bitrate.c" />
+    <ClCompile Include="libvorbis\lib\block.c" />
+    <ClCompile Include="libvorbis\lib\codebook.c" />
+    <ClCompile Include="libvorbis\lib\envelope.c" />
+    <ClCompile Include="libvorbis\lib\floor0.c" />
+    <ClCompile Include="libvorbis\lib\floor1.c" />
+    <ClCompile Include="libvorbis\lib\info.c" />
+    <ClCompile Include="libvorbis\lib\lookup.c" />
+    <ClCompile Include="libvorbis\lib\lpc.c" />
+    <ClCompile Include="libvorbis\lib\lsp.c" />
+    <ClCompile Include="libvorbis\lib\mapping0.c" />
+    <ClCompile Include="libvorbis\lib\mdct.c" />
+    <ClCompile Include="libvorbis\lib\psy.c" />
+    <ClCompile Include="libvorbis\lib\registry.c" />
+    <ClCompile Include="libvorbis\lib\res0.c" />
+    <ClCompile Include="libvorbis\lib\sharedbook.c" />
+    <ClCompile Include="libvorbis\lib\smallft.c" />
+    <ClCompile Include="libvorbis\lib\synthesis.c" />
+    <ClCompile Include="libvorbis\lib\vorbisfile.c" />
+    <ClCompile Include="libvorbis\lib\window.c" />
+    <ClInclude Include="libvorbis\lib\backends.h" />
+    <ClInclude Include="libvorbis\lib\bitrate.h" />
+    <ClInclude Include="libvorbis\lib\codebook.h" />
+    <ClInclude Include="libvorbis\include\vorbis\codec.h" />
+    <ClInclude Include="libvorbis\lib\codec_internal.h" />
+    <ClInclude Include="libvorbis\lib\envelope.h" />
+    <ClInclude Include="libvorbis\lib\modes\floor_all.h" />
+    <ClInclude Include="libvorbis\lib\books\floor\floor_books.h" />
+    <ClInclude Include="libvorbis\lib\highlevel.h" />
+    <ClInclude Include="libvorbis\lib\lookup.h" />
+    <ClInclude Include="libvorbis\lib\lookup_data.h" />
+    <ClInclude Include="libvorbis\lib\lpc.h" />
+    <ClInclude Include="libvorbis\lib\lsp.h" />
+    <ClInclude Include="libvorbis\lib\masking.h" />
+    <ClInclude Include="libvorbis\lib\mdct.h" />
+    <ClInclude Include="libvorbis\lib\misc.h" />
+    <ClInclude Include="libvorbis\lib\os.h" />
+    <ClInclude Include="libvorbis\lib\psy.h" />
+    <ClInclude Include="libvorbis\lib\modes\psych_11.h" />
+    <ClInclude Include="libvorbis\lib\modes\psych_16.h" />
+    <ClInclude Include="libvorbis\lib\modes\psych_44.h" />
+    <ClInclude Include="libvorbis\lib\modes\psych_8.h" />
+    <ClInclude Include="libvorbis\lib\registry.h" />
+    <ClInclude Include="libvorbis\lib\books\coupled\res_books_stereo.h" />
+    <ClInclude Include="libvorbis\lib\books\uncoupled\res_books_uncoupled.h" />
+    <ClInclude Include="libvorbis\lib\modes\residue_16.h" />
+    <ClInclude Include="libvorbis\lib\modes\residue_44.h" />
+    <ClInclude Include="libvorbis\lib\modes\residue_44u.h" />
+    <ClInclude Include="libvorbis\lib\modes\residue_8.h" />
+    <ClInclude Include="libvorbis\lib\scales.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_11.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_16.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_22.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_32.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_44.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_44u.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_8.h" />
+    <ClInclude Include="libvorbis\lib\modes\setup_X.h" />
+    <ClInclude Include="libvorbis\lib\smallft.h" />
+    <ClInclude Include="libvorbis\include\vorbis\vorbisfile.h" />
+    <ClInclude Include="libvorbis\lib\window.h" />
+    <None Include="libvorbis\win32\vorbis.def" />
+  </ItemGroup>
+</Project>
