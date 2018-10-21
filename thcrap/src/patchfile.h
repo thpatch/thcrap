@@ -53,8 +53,17 @@ typedef int (*func_patch_t)(void* file_inout, size_t size_out, size_t size_in, c
   */
 typedef size_t (*func_patch_size_t)(const char *fn, json_t *patch, size_t patch_size);
 
-// Reads the file [fn] into a newly created buffer and returns its file size
-// in [file_size]. Return value has to be free()d by the caller!
+// Opens the file [fn] for read operations. Just a lightweight wrapper around
+// CreateFile(): Returns INVALID_HANDLE_VALUE on failure, and the caller must
+// call CloseHandle() on the returned value.
+HANDLE file_stream(const char *fn);
+
+// Reads the given file [stream] into a newly created buffer and optionally
+// returns its [file_size]. If given, [file_size] is guaranteed to be set
+// to 0 on failure. The returned buffer has to be free()d by the caller!
+void* file_stream_read(HANDLE stream, size_t *file_size);
+
+// Combines file_stream() and file_stream_read().
 void* file_read(const char *fn, size_t *file_size);
 
 // Writes [file_buffer] to a file named [fn]. The file is always overwritten!

@@ -11,36 +11,39 @@
 
 static const char PATCH_HOOKS[] = "patchhooks";
 
-void* file_read(const char *fn, size_t *file_size)
+HANDLE file_stream(const char *fn)
 {
-	void *ret = NULL;
-	size_t file_size_tmp;
+	return CreateFile(
+		fn, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
+	);
+}
 
-	if(!fn) {
-		return ret;
-	}
+void* file_stream_read(HANDLE stream, size_t *file_size)
+{
+	void *ret = nullptr;
+	size_t file_size_tmp;
 	if(!file_size) {
 		file_size = &file_size_tmp;
 	}
-	{
-		HANDLE handle;
-		DWORD byte_ret;
-
-		handle = CreateFile(
-			fn, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
-			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
-		);
-		*file_size = 0;
-		if(handle != INVALID_HANDLE_VALUE) {
-			*file_size = GetFileSize(handle, NULL);
-			if(*file_size != 0) {
-				ret = malloc(*file_size);
-				ReadFile(handle, ret, *file_size, &byte_ret, NULL);
-			}
-			CloseHandle(handle);
-		}
+	*file_size = 0;
+	if(stream == INVALID_HANDLE_VALUE) {
+		return ret;
 	}
+
+	DWORD byte_ret;
+	*file_size = GetFileSize(stream, nullptr);
+	if(*file_size != 0) {
+		ret = malloc(*file_size);
+		ReadFile(stream, ret, *file_size, &byte_ret, nullptr);
+	}
+	CloseHandle(stream);
 	return ret;
+}
+
+void* file_read(const char *fn, size_t *file_size)
+{
+	return file_stream_read(file_stream(fn), file_size);
 }
 
 int file_write(const char *fn, const void *file_buffer, const size_t file_size)
