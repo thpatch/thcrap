@@ -336,6 +336,10 @@ int layout_parse_font(LOGFONT *lf, const json_t *token)
 				// Italic font
 				lf->lfItalic = TRUE;
 				ret = 1;
+			} else if(*cmd == 'u') {
+				// Underlined font
+				lf->lfUnderline = TRUE;
+				ret = 1;
 			}
 			cmd++;
 		}
