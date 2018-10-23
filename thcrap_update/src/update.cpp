@@ -67,7 +67,9 @@ HINTERNET* http_handle(void)
 	return &hInternet;
 }
 
-download_ret_t http_get(const char *url, file_callback_t callback, void *callback_param)
+download_ret_t http_get(
+	const char *url, const DWORD *exp_crc, file_callback_t callback, void *callback_param
+)
 {
 	download_ret_t ret;
 	DWORD byte_ret = sizeof(DWORD);
@@ -80,11 +82,30 @@ download_ret_t http_get(const char *url, file_callback_t callback, void *callbac
 		ret.result = GET_INVALID_PARAMETER;
 		return ret;
 	}
+
+	char *url_crc = nullptr;
+	if(exp_crc) {
+		// Appending the CRC as a query string to the URL allows CDNs to
+		// cache-bust patch files whenever newer versions are requested.
+		// As of October 2018, all webservers currently used for thcrap
+		// patches just ignore the query string otherwise.
+		const stringref_t QUERY_FMT = "?crc32=";
+		const auto query_len = QUERY_FMT.len + sizeof(*exp_crc) * 2;
+
+		auto url_len = strlen(url);
+		VLA(char, url_crc_vla, url_len + query_len + 1);
+		url_crc = url_crc_vla;
+
+		auto *p = memcpy_advance_dst(url_crc, url, url_len);
+		p = stringref_copy_advance_dst(p, QUERY_FMT);
+		p = itoa(*exp_crc, p, 16);
+	}
+
 	AcquireSRWLockShared(&inet_srwlock);
 
 	QueryPerformanceCounter((LARGE_INTEGER *)&ret.time_start);
 	hFile = InternetOpenUrl(
-		hHTTP, url, NULL, 0,
+		hHTTP, (url_crc) ? url_crc : url, NULL, 0,
 		INTERNET_FLAG_RELOAD | INTERNET_FLAG_KEEP_CONNECTION, 0
 	);
 	QueryPerformanceCounter((LARGE_INTEGER *)&ret.time_ping);
@@ -172,6 +193,7 @@ end:
 
 	InternetCloseHandle(hFile);
 	ReleaseSRWLockShared(&inet_srwlock);
+	VLA_FREE(url_crc);
 	return ret;
 }
 
@@ -233,7 +255,7 @@ download_ret_t server_t::download(
 
 	log_printf("%s (%s)... ", fn, uc.lpszHostName);
 
-	download_ret_t ctx = http_get(url, callback, callback_param);
+	auto ctx = http_get(url, exp_crc, callback, callback_param);
 	ctx.origin = this;
 
 	VLA_FREE(url);
