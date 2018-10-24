@@ -105,6 +105,8 @@ int patch_file_exists(const json_t *patch_info, const char *fn);
 int patch_file_blacklisted(const json_t *patch_info, const char *fn);
 
 // Loads the file [fn] from [patch_info].
+// Used analogous to file_stream() and file_stream_read().
+HANDLE patch_file_stream(const json_t *patch_info, const char *fn);
 void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_size);
 
 // Loads the JSON file [fn] from [patch_info].

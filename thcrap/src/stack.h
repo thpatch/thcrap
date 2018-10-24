@@ -60,13 +60,15 @@ json_t* stack_json_resolve_ex(const char *fn, size_t *file_size, json_t *patches
 // Uses the current patch stack
 json_t* stack_json_resolve(const char *fn, size_t *file_size);
 
-// Generic file resolver. Returns the file matching the [chain] with the
-// highest priority inside the patch stack.
-void* stack_file_resolve_chain(const json_t *chain, size_t *file_size);
+// Generic file resolver. Returns a stream of the file matching the [chain]
+// with the highest priority inside the patch stack, or INVALID_HANDLE_VALUE
+// if there is no such file in the stack.
+HANDLE stack_file_resolve_chain(const json_t *chain);
 
 // Searches the current patch stack for a replacement for the game data file
-// [fn]. Returns the loaded patch file which has to be free()d by the caller
-// or NULL if the file is not to be patched.
+// [fn] and returns either a stream or a newly created buffer, analogous to
+// file_stream() and file_stream_read().
+HANDLE stack_game_file_stream(const char *fn);
 void* stack_game_file_resolve(const char *fn, size_t *file_size);
 
 // Resolves a game-local JSON file.

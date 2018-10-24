@@ -203,20 +203,20 @@ int patch_file_blacklisted(const json_t *patch_info, const char *fn)
 	return 0;
 }
 
-void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_size)
+HANDLE patch_file_stream(const json_t *patch_info, const char *fn)
 {
-	char *patch_fn = fn_for_patch(patch_info, fn);
-	void *ret = NULL;
-
-	if(!file_size) {
-		return NULL;
+	if(patch_file_blacklisted(patch_info, fn)) {
+		return INVALID_HANDLE_VALUE;
 	}
-	*file_size = 0; // *Especially* if the file is blacklisted!
-	if(!patch_file_blacklisted(patch_info, fn)) {
-		ret = file_read(patch_fn, file_size);
-	}
+	auto *patch_fn = fn_for_patch(patch_info, fn);
+	auto ret = file_stream(patch_fn);
 	SAFE_FREE(patch_fn);
 	return ret;
+}
+
+void* patch_file_load(const json_t *patch_info, const char *fn, size_t *file_size)
+{
+	return file_stream_read(patch_file_stream(patch_info, fn), file_size);
 }
 
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size)

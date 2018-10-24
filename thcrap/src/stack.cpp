@@ -132,27 +132,23 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 	return stack_json_resolve_ex(fn, file_size, nullptr);
 }
 
-void* stack_file_resolve_chain(const json_t *chain, size_t *file_size)
+HANDLE stack_file_resolve_chain(const json_t *chain)
 {
-	void *ret = NULL;
 	stack_chain_iterate_t sci = {0};
-
-	// Empty stacks are a thing, too.
-	if(file_size) {
-		*file_size = 0;
-	}
 
 	// Both the patch stack and the chain have to be traversed backwards: Later
 	// patches take priority over earlier ones, and build-specific files are
 	// preferred over generic ones.
-	while(stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr) && !ret) {
-		ret = patch_file_load(sci.patch_info, sci.fn, file_size);
-		if(ret) {
+	while(stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr)) {
+		auto ret = patch_file_stream(sci.patch_info, sci.fn);
+		if(ret != INVALID_HANDLE_VALUE) {
 			patch_print_fn(sci.patch_info, sci.fn);
+			log_print("\n");
+			return ret;
 		}
 	}
-	log_printf(ret ? "\n" : "not found\n");
-	return ret;
+	log_printf("not found\n");
+	return INVALID_HANDLE_VALUE;
 }
 
 char* stack_fn_resolve_chain(const json_t *chain)
@@ -173,16 +169,21 @@ char* stack_fn_resolve_chain(const json_t *chain)
 	return nullptr;
 }
 
-void* stack_game_file_resolve(const char *fn, size_t *file_size)
+HANDLE stack_game_file_stream(const char *fn)
 {
-	void *ret = NULL;
+	HANDLE ret = INVALID_HANDLE_VALUE;
 	json_t *chain = resolve_chain_game(fn);
 	if(json_array_size(chain)) {
 		log_printf("(Data) Resolving %s... ", json_array_get_string(chain, 0));
-		ret = stack_file_resolve_chain(chain, file_size);
+		ret = stack_file_resolve_chain(chain);
 	}
 	json_decref(chain);
 	return ret;
+}
+
+void* stack_game_file_resolve(const char *fn, size_t *file_size)
+{
+	return file_stream_read(stack_game_file_stream(fn), file_size);
 }
 
 json_t* stack_game_json_resolve(const char *fn, size_t *file_size)

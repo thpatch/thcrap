@@ -93,7 +93,7 @@ void* graphics_init(json_t *config)
   if (json_array_size(chain)) {
 	  size_t font_file_size;
 	  log_printf("(Data) Resolving %s... ", json_array_get_string(chain, 0));
-	  void *font_file = stack_file_resolve_chain(chain, &font_file_size);
+	  void *font_file = file_stream_read(stack_file_resolve_chain(chain), &font_file_size);
 	  Gdiplus::Status status = obj->fontCollection.AddMemoryFont(font_file, font_file_size);
 	  if (status != Gdiplus::Ok) {
 		  log_printf("AddMemoryFont failed: %d\n", status);

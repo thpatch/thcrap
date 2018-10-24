@@ -182,6 +182,7 @@ EXPORTS
 
 	patch_file_exists
 	patch_file_blacklisted
+	patch_file_stream
 	patch_file_load
 	patch_json_load
 	patch_json_merge
@@ -263,6 +264,7 @@ EXPORTS
 	stack_json_resolve_ex
 	stack_file_resolve_chain
 	stack_fn_resolve_chain
+	stack_game_file_stream
 	stack_game_file_resolve
 	stack_game_json_resolve
 
