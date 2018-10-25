@@ -46,6 +46,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 * `thcrap_tsa`: A thcrap plug-in containing patch hooks for games using the STG engine by Team Shanghai Alice.
 * `thcrap_tasofro`: A thcrap plug-in containing patch hooks for various games by [Twilight Frontier](http://tasofro.net/).
 * `thcrap_update`: Contains updating functionality for patches, digitally signed automatic updates of thcrap itself, as well as an updater GUI. `thcrap_update.dll` can be safely deleted to disable all online functionality.
+* `thcrap_bgmmod`: A helper library to handle the non-game-specific parts of BGM modding for originally uncompressed PCM music, like codec support and loop point handling. Currently statically linked into `thcrap_tsa` as this module is currently the only one with support for BGM modding, but already split into a separate library to be ready for covering more engines in the future.
 
 ### Building ###
 
