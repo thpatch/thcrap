@@ -109,6 +109,8 @@ struct codec_t {
 	stringref_t ext;
 	pcm_part_open_t &open;
 };
+
+extern const codec_t CODECS[1];
 /// ------
 
 /// Error reporting and debugging

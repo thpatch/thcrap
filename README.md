@@ -98,6 +98,10 @@ All required third-party libraries for the C/C++ code are included as Git submod
 
 * [zlib](http://zlib.net/), required by `thcrap_update` for CRC32 verification. It's required by `libpng` anyway, though.
 
+* `thcrap_bgmmod` currently supports the following codecs via third-party libraries:
+
+  * **Ogg Vorbis** via [libogg](https://xiph.org/ogg/), [libvorbis](https://xiph.org/vorbis/) and libvorbisfile
+
 The scripts in the `scripts` directory are written in [Python 3](http://python.org/). Some of them require further third-party libraries not included in this repository:
 
 * [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.

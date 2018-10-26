@@ -20,10 +20,16 @@
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
   </ImportGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs/libogg/include/;$(SolutionDir)libs/libvorbis/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\bgmmod.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\vorbis.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\bgmmod.hpp" />

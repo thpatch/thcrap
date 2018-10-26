@@ -13,6 +13,13 @@
 /// String constants
 /// ----------------
 const stringref_t LOOP_INFIX = ".loop";
+const int LONGEST_CODEC_LEN = [] {
+	int ret = 0;
+	for(const auto &codec : CODECS) {
+		ret = max(ret, codec.ext.len);
+	}
+	return ret;
+}();
 /// ----------------
 
 /// Track class
@@ -76,6 +83,14 @@ std::unique_ptr<track_pcm_t> pcm_open(
 	);
 }
 /// -----------
+
+/// Codecs
+/// ------
+std::unique_ptr<pcm_part_t> vorbis_open(HANDLE &&stream);
+const codec_t CODECS[1] = {
+	".ogg", vorbis_open,
+};
+/// ------
 
 /// Error reporting and debugging
 /// -----------------------------
