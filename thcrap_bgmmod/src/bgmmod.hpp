@@ -113,6 +113,21 @@ struct codec_t {
 extern const codec_t CODECS[1];
 /// ------
 
+/// Streaming APIs
+/// --------------
+// MMIO implementation
+// -------------------
+namespace mmio
+{
+	// Initializes BGM modding for the MMIO API.
+	// No module function, has to be called manually.
+	int detour(void);
+
+	bool is_modded_handle(HMMIO hmmio);
+}
+// -------------------
+/// --------------
+
 /// Error reporting and debugging
 /// -----------------------------
 void bgmmod_verrorf(const char *text, va_list va);

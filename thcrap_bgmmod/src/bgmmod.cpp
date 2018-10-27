@@ -4,7 +4,8 @@
   *
   * ----
   *
-  * Implementations of public functions not related to specific codecs.
+  * Implementations of public functions not related to specific codecs or
+  * streaming APIs.
   */
 
 #include <thcrap.h>

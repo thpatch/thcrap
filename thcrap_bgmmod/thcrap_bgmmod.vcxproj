@@ -29,6 +29,7 @@
     <ClCompile Include="src\bgmmod.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\mmio.cpp" />
     <ClCompile Include="src\vorbis.cpp" />
   </ItemGroup>
   <ItemGroup>
