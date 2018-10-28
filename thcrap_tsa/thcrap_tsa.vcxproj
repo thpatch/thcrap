@@ -60,6 +60,7 @@
     </ClCompile>
     <ClCompile Include="src\win32_tsa.cpp" />
     <ClInclude Include="..\thtypes\anm_types.h" />
+    <ClInclude Include="..\thtypes\bgm_types.h" />
     <ClInclude Include="src\anm.hpp" />
     <ClInclude Include="src\layout.h" />
     <ClInclude Include="src\png_ex.h" />

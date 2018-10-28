@@ -17,6 +17,8 @@ typedef enum {
 	TH_NONE,
 
 	// • msg: Hard lines only
+	// • bgm: Uses the MMIO API with separate .wav files, together with
+	//        separate .pos files to define loop points
 	TH06,
 	TH07,
 

@@ -12,6 +12,9 @@ extern "C" {
 # include <thtypes/bgm_types.h>
 # include "thcrap_tsa.h"
 }
+#include <thcrap_bgmmod/src/bgmmod.hpp>
+
+#pragma comment(lib, "thcrap_bgmmod" DEBUG_OR_RELEASE)
 
 const stringref_t LOOPMOD_FN = "loops.js";
 
@@ -33,6 +36,52 @@ bgm_fmt_t* bgm_find(stringref_t fn)
 	}
 	return nullptr;
 };
+
+/// BGM modding weirdness for TH06
+/// ==============================
+// When setting up new BGM, the game always creates new streaming threads and
+// events with fitting intervals calculated from the PCM format of the BGM
+// file. Which is good and correct (and later games should have done it too),
+// *except* that TH06 retrieves the format by creating a new instance of its
+// CWaveFile class, whose constructor immediately fills the streaming buffer
+// with the first 4 seconds of the BGM... only to throw away that instance at
+// the end of the function and later create a new one, used for the actual
+// streaming. Since this needlessly decodes 4 seconds of sound, let's abuse
+// the fact that the corresponding .pos file is only loaded immediately before
+// actual streaming begins, and lock decoding from mmioOpen() up to our .pos
+// hook. Much nicer than what the Touhou Vorbis Compressor had to do.
+bool th06_decode_lock = true;
+bool th06_bgmmod_active = true;
+
+static MMRESULT (WINAPI *chain_mmioAdvance)(HMMIO, LPMMIOINFO, UINT);
+static HMMIO (WINAPI *chain_mmioOpenA)(LPSTR, LPMMIOINFO, DWORD);
+
+MMRESULT WINAPI th06_mmioAdvance(HMMIO hmmio, LPMMIOINFO pmmioinfo, UINT fuAdvance)
+{
+	static bool th06_decode_lock_prev = th06_decode_lock;
+	// It might seem that unmodded .wav playback would benefit from
+	// this too, but if we do this, one of the game's mmioDescend()
+	// calls in CWaveFile::ResetFile() will fail...
+	if(th06_bgmmod_active && th06_decode_lock) {
+		pmmioinfo->pchNext = pmmioinfo->pchBuffer;
+		if(th06_decode_lock_prev == false) {
+			ZeroMemory(pmmioinfo->pchBuffer, pmmioinfo->cchBuffer);
+		}
+		th06_decode_lock_prev = true;
+		return MMSYSERR_NOERROR;
+	};
+	th06_decode_lock_prev = th06_decode_lock;
+	return chain_mmioAdvance(hmmio, pmmioinfo, fuAdvance);
+}
+
+HMMIO WINAPI th06_mmioOpenA(LPSTR pszFileName, LPMMIOINFO pmmioinfo, DWORD fdwOpen)
+{
+	th06_decode_lock = true;
+	auto ret = chain_mmioOpenA(pszFileName, pmmioinfo, fdwOpen);
+	th06_bgmmod_active = mmio::is_modded_handle(ret);
+	return ret;
+}
+/// ==============================
 
 int loopmod_fmt()
 {
@@ -100,6 +149,23 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 
 int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
+	auto *pos = (bgm_pos_t*)file_inout;
+	th06_decode_lock = false;
+	if(th06_bgmmod_active) {
+		// TH06 handles looping by rewinding the file and incrementally
+		// reading it using mmioAdvance() until the loop point is reached,
+		// rather than just seeking there. (See CWaveFile::ResetFile().)
+		// Since "reading" means "decoding" means "another potential
+		// performance drop" in the case of a BGM mod, this is another
+		// oddity we'd like to get rid of, since looping is handled by
+		// the decoding layer anyway.
+		// Setting the loop point to 0 only leaves the rewinding calls
+		// consisting of mmioSeek() and mmioDescend(), which the decoding
+		// layer can simply ignore.
+		pos->loop_start = 0;
+		return true;
+	}
+
 	auto fn_base_len = strchr(fn, '.') - fn;
 	VLA(char, fn_base, fn_base_len + 1);
 	defer( VLA_FREE(fn_base) );
@@ -111,7 +177,6 @@ int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 		return false;
 	}
 
-	auto *pos = (bgm_pos_t*)file_inout;
 	auto *loop_start = json_object_get(patch, "loop_start");
 	auto *loop_end = json_object_get(patch, "loop_end");
 
@@ -454,11 +519,19 @@ extern "C" __declspec(dllexport) void bgm_mod_init(void)
 
 extern "C" __declspec(dllexport) void bgm_mod_detour(void)
 {
-	HMODULE hModule = GetModuleHandleA("dsound.dll");
-	if(hModule) {
-		*(void**)&chain_DirectSoundCreate8 = GetProcAddress(hModule, "DirectSoundCreate8");
+	auto dsound = GetModuleHandleA("dsound.dll");
+	if(dsound) {
+		*(void**)&chain_DirectSoundCreate8 = GetProcAddress(dsound, "DirectSoundCreate8");
 		detour_chain("dsound.dll", 1,
 			"DirectSoundCreate8", bgm_DirectSoundCreate8, &chain_DirectSoundCreate8,
+			nullptr
+		);
+	}
+	if(game_id == TH06) {
+		mmio::detour();
+		detour_chain("winmm.dll", 1,
+			"mmioAdvance", th06_mmioAdvance, &chain_mmioAdvance,
+			"mmioOpenA", th06_mmioOpenA, &chain_mmioOpenA,
 			nullptr
 		);
 	}
