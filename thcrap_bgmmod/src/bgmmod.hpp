@@ -19,10 +19,31 @@ extern const int LONGEST_CODEC_LEN;
 
 /// Sampling rate / bit depth / channel structure
 /// ---------------------------------------------
+#define PCM_FORMAT_DESC_FMT "%u Hz / %u Bit / %uch"
+
 struct pcm_format_t {
 	uint32_t samplingrate;
 	uint16_t bitdepth;
 	uint16_t channels;
+
+	// "Function returning array is not allowed", so...
+	struct desc_t {
+		char str[
+			DECIMAL_DIGITS_BOUND(decltype(samplingrate)) - 2
+			+ DECIMAL_DIGITS_BOUND(decltype(bitdepth)) - 2
+			+ DECIMAL_DIGITS_BOUND(decltype(channels)) - 2
+			+ sizeof(PCM_FORMAT_DESC_FMT)
+		];
+		size_t len;
+	} to_string() const
+	{
+		desc_t ret;
+		ret.len = snprintf(
+			ret.str, sizeof(ret.str), PCM_FORMAT_DESC_FMT,
+			samplingrate, bitdepth, channels
+		);
+		return ret;
+	}
 };
 /// ---------------------------------------------
 
