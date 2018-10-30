@@ -78,6 +78,16 @@ std::unique_ptr<track_pcm_t> pcm_open(
 		if(!loop_sgm) {
 			return nullptr;
 		}
+		if(intro_sgm->pcmf != loop_sgm->pcmf) {
+			bgmmod_errorf(
+				"PCM format mismatch between intro and loop parts!\n"
+				"\xE2\x80\xA2 Intro: %s\n"
+				"\xE2\x80\xA2 Loop: %s",
+				intro_sgm->pcmf.to_string().str,
+				loop_sgm->pcmf.to_string().str
+			);
+			return nullptr;
+		}
 	}
 	return std::make_unique<track_pcm_t>(
 		std::move(intro_sgm), std::move(loop_sgm)

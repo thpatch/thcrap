@@ -26,6 +26,16 @@ struct pcm_format_t {
 	uint16_t bitdepth;
 	uint16_t channels;
 
+	bool operator ==(const pcm_format_t &other) const {
+		return samplingrate == other.samplingrate
+			&& bitdepth == other.bitdepth
+			&& channels == other.channels;
+	}
+
+	bool operator !=(const pcm_format_t &other) const {
+		return !(*this == other);
+	}
+
 	// "Function returning array is not allowed", so...
 	struct desc_t {
 		char str[
