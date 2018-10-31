@@ -729,6 +729,7 @@ header_mods_t::header_mods_t(json_t *patch)
 int sprite_split_x(anm_entry_t &entry, sprite_local_t &sprite)
 {
 	if(entry.thtx && entry.w > 0) {
+		sprite.x %= entry.w;
 		png_uint_32 split_w = sprite.x + sprite.w;
 		if(split_w > entry.w) {
 			entry.sprites.push_back(sprite_local_t{
@@ -748,6 +749,7 @@ int sprite_split_x(anm_entry_t &entry, sprite_local_t &sprite)
 int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite)
 {
 	if(entry.thtx && entry.h > 0) {
+		sprite.y %= entry.h;
 		png_uint_32 split_h = sprite.y + sprite.h;
 		if(split_h > entry.h) {
 			entry.sprites.push_back(sprite_local_t{
