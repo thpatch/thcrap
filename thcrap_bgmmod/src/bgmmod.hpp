@@ -141,7 +141,7 @@ struct codec_t {
 	pcm_part_open_t &open;
 };
 
-extern const codec_t CODECS[1];
+extern const codec_t CODECS[2];
 /// ------
 
 /// Streaming APIs

@@ -22,17 +22,19 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs/libogg/include/;$(SolutionDir)libs/libvorbis/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs/dr_libs/;$(SolutionDir)libs/libogg/include/;$(SolutionDir)libs/libvorbis/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\bgmmod.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\flac.cpp" />
     <ClCompile Include="src\mmio.cpp" />
     <ClCompile Include="src\vorbis.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\libs\dr_libs\dr_flac.h" />
     <ClInclude Include="src\bgmmod.hpp" />
   </ItemGroup>
 </Project>
