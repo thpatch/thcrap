@@ -153,39 +153,12 @@ HMMIO WINAPI bgmmod_mmioOpenA(LPSTR pszFileName, LPMMIOINFO pmmioinfo, DWORD fdw
 	}
 
 	auto basename_len = (ext - basename);
-	auto mod_fn_len = basename_len + LOOP_INFIX.len + LONGEST_CODEC_LEN + 1;
-	VLA(char, mod_fn, mod_fn_len);
-	defer(VLA_FREE(mod_fn));
-	auto ext_p = memcpy_advance_dst(mod_fn, basename, basename_len);
-
-	auto intro_stream = INVALID_HANDLE_VALUE;
-	auto loop_stream = INVALID_HANDLE_VALUE;
-
-	auto try_codecs = [&](HANDLE &ret, char *ext_p) -> const codec_t* {
-		for(const auto &codec : CODECS) {
-			stringref_copy_advance_dst(ext_p, codec.ext);
-			ret = stack_game_file_stream(mod_fn);
-			if(ret != INVALID_HANDLE_VALUE) {
-				return &codec;
-			}
-		}
-		return nullptr;
-	};
-
-	auto codec = try_codecs(intro_stream, ext_p);
-	if(codec == nullptr) {
+	auto modtrack = stack_bgm_resolve({ basename, basename_len });
+	if(modtrack == nullptr) {
 		return fallback();
 	}
-	// TODO: Error reporting and fallback.
 
-	ext_p = stringref_copy_advance_dst(ext_p, LOOP_INFIX);
-	stringref_copy_advance_dst(ext_p, codec->ext);
-	loop_stream = stack_game_file_stream(mod_fn);
-
-	mmio_wrap.track = pcm_open(codec->open,
-		std::move(intro_stream), std::move(loop_stream)
-	);
-
+	mmio_wrap.track = std::move(modtrack);
 	mmio_wrap.open_flags = fdwOpen;
 	mmio_wrap.next = (fdwOpen & MMIO_ALLOCBUF)
 		? mmio_wrap.buffer

@@ -97,13 +97,84 @@ std::unique_ptr<track_pcm_t> pcm_open(
 
 /// Codecs
 /// ------
-std::unique_ptr<pcm_part_t> flac_open(HANDLE &&stream);
 std::unique_ptr<pcm_part_t> vorbis_open(HANDLE &&stream);
+std::unique_ptr<pcm_part_t> flac_open(HANDLE &&stream);
+
+// Sorted from lowest to highest quality.
 const codec_t CODECS[2] = {
-	".flac", flac_open,
 	".ogg", vorbis_open,
+	".flac", flac_open,
 };
+#define RESOLVE_HINT "{flac > ogg}"
 /// ------
+
+/// Stack file resolution
+/// ---------------------
+std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
+{
+	log_printf(
+		"(BGM) Resolving %.*s." RESOLVE_HINT "... ",
+		basename.len, basename.str
+	);
+
+	const stringref_t game = json_object_get(runconfig_get(), "game");
+	auto mod_fn_len =
+		game.len + 1 + basename.len + LOOP_INFIX.len + LONGEST_CODEC_LEN + 1;
+
+	VLA(char, mod_fn, mod_fn_len);
+	defer({ VLA_FREE(mod_fn) });
+
+	char *mod_fn_p = mod_fn;
+	if(game.str) {
+		mod_fn_p = stringref_copy_advance_dst(mod_fn_p, game);
+		*(mod_fn_p++) = '/';
+	}
+	mod_fn_p = stringref_copy_advance_dst(mod_fn_p, basename);
+
+	auto chain = json_array();
+	defer({ json_decref(chain); });
+
+	for(const auto &codec : CODECS) {
+		stringref_copy_advance_dst(mod_fn_p, codec.ext);
+		json_array_append_new(chain, json_string(mod_fn));
+	}
+
+	stack_chain_iterate_t sci = { 0 };
+	while(stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr)) {
+		auto intro = patch_file_stream(sci.patch_info, sci.fn);
+		auto loop = INVALID_HANDLE_VALUE;
+		if(intro != INVALID_HANDLE_VALUE) {
+			patch_print_fn(sci.patch_info, sci.fn);
+
+			const auto &codec = CODECS[sci.step % elementsof(CODECS)];
+			// Kinda ugly, but makes sure that we keep using whatever
+			// else we might have added to the link of the chain.
+			auto sci_fn_end = sci.fn;
+			size_t sci_basename_len = 0;
+			while(sci_fn_end[0] != '\0') {
+				if(sci_fn_end[0] == '.') {
+					sci_basename_len = sci_fn_end - sci.fn;
+				}
+				sci_fn_end++;
+			}
+
+			mod_fn_p = memcpy_advance_dst(mod_fn, sci.fn, sci_basename_len);
+			mod_fn_p = stringref_copy_advance_dst(mod_fn_p, LOOP_INFIX);
+			stringref_copy_advance_dst(mod_fn_p, codec.ext);
+
+			loop = patch_file_stream(sci.patch_info, mod_fn);
+			if(loop != INVALID_HANDLE_VALUE) {
+				patch_print_fn(sci.patch_info, mod_fn);
+			}
+			log_print("\n");
+
+			return pcm_open(codec.open, std::move(intro), std::move(loop));
+		}
+	}
+	log_print("not found\n");
+	return nullptr;
+}
+/// ---------------------
 
 /// Error reporting and debugging
 /// -----------------------------

@@ -144,6 +144,11 @@ struct codec_t {
 extern const codec_t CODECS[2];
 /// ------
 
+/// Stack file resolution
+/// ---------------------
+std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename);
+/// ---------------------
+
 /// Streaming APIs
 /// --------------
 // MMIO implementation
