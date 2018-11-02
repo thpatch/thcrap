@@ -129,11 +129,18 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 		mod_fn_p = stringref_copy_advance_dst(mod_fn_p, game);
 		*(mod_fn_p++) = '/';
 	}
+	const auto *mod_fn_basename = mod_fn_p;
 	mod_fn_p = stringref_copy_advance_dst(mod_fn_p, basename);
 
 	auto chain = json_array();
 	defer({ json_decref(chain); });
 
+	// Patch root
+	for(const auto &codec : CODECS) {
+		stringref_copy_advance_dst(mod_fn_p, codec.ext);
+		json_array_append_new(chain, json_string(mod_fn_basename));
+	}
+	// Game directory
 	for(const auto &codec : CODECS) {
 		stringref_copy_advance_dst(mod_fn_p, codec.ext);
 		json_array_append_new(chain, json_string(mod_fn));
