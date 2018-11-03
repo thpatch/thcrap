@@ -54,6 +54,10 @@ struct pcm_format_t {
 		);
 		return ret;
 	}
+
+	// Writes this format to the given variety of a WAVEFORMAT* structure.
+	void patch(WAVEFORMATEX &wfx) const;
+	void patch(PCMWAVEFORMAT &pwf) const;
 };
 /// ---------------------------------------------
 

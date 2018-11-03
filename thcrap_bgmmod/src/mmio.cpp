@@ -172,17 +172,7 @@ LONG WINAPI bgmmod_mmioRead(HMMIO hmmio, HPSTR pch, LONG cch)
 	// TODO: Both TH06 and Kioh Gyoku only use this
 	// function for reading that structure, so...?
 	assert(cch == sizeof(PCMWAVEFORMAT));
-
-	auto *wfx = (PCMWAVEFORMAT*)pch;
-
-	const auto &fmt = mod->track->pcmf;
-
-	wfx->wf.wFormatTag = WAVE_FORMAT_PCM;
-	wfx->wf.nChannels = fmt.channels;
-	wfx->wf.nSamplesPerSec = fmt.samplingrate;
-	wfx->wBitsPerSample = fmt.bitdepth;
-	wfx->wf.nBlockAlign = (wfx->wf.nChannels * wfx->wBitsPerSample) / 8;
-	wfx->wf.nAvgBytesPerSec = wfx->wf.nSamplesPerSec * wfx->wf.nBlockAlign;
+	mod->track->pcmf.patch(*(PCMWAVEFORMAT *)pch);
 	return cch;
 }
 

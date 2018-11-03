@@ -23,6 +23,24 @@ const int LONGEST_CODEC_LEN = [] {
 }();
 /// ----------------
 
+/// Sampling rate / bit depth / channel structure
+/// ---------------------------------------------
+void pcm_format_t::patch(WAVEFORMATEX &wfx) const
+{
+	wfx.wFormatTag = WAVE_FORMAT_PCM;
+	wfx.nChannels = channels;
+	wfx.nSamplesPerSec = samplingrate;
+	wfx.wBitsPerSample = bitdepth;
+	wfx.nBlockAlign = (wfx.nChannels * wfx.wBitsPerSample) / 8;
+	wfx.nAvgBytesPerSec = wfx.nSamplesPerSec * wfx.nBlockAlign;
+}
+
+void pcm_format_t::patch(PCMWAVEFORMAT &pwf) const
+{
+	patch((WAVEFORMATEX &)pwf);
+}
+/// ---------------------------------------------
+
 /// Track class
 /// -----------
 void track_pcm_t::decode(void *_buf, size_t size)
