@@ -72,6 +72,11 @@ typedef struct {
 
 	// Guaranteed to contain at least one sprite after initialization.
 	std::vector<sprite_local_t> sprites;
+
+	// Transforms the logical sprite [s_orig] into up to four physical,
+	// non-wrapping on-image sprites, and adds the results to <sprites>
+	// if necessary.
+	void transform_and_add_sprite(const sprite_t &s_orig, BlitFunc_t blitmode);
 } anm_entry_t;
 
 // Coordinates for sprite-based patching
@@ -316,11 +321,6 @@ void anm_entry_clear(anm_entry_t &entry);
 
 /// Sprite-level patching
 /// ---------------------
-// Splits a [sprite] that wraps around the texture into two non-wrapping parts,
-// adding the newly created sprites to the end of [entry.sprites].
-int sprite_split_x(anm_entry_t &entry, sprite_local_t &sprite);
-int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite);
-
 // Calculates the coordinates.
 int sprite_patch_set(
 	sprite_patch_t &sp,

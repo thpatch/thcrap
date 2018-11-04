@@ -91,6 +91,46 @@ const blitmode_t BLITMODES[] = {
 };
 /// --------------
 
+void anm_entry_t::transform_and_add_sprite(const sprite_t &s_orig, BlitFunc_t blitmode)
+{
+	if(w == 0 || h == 0 || s_orig.w == 0.0f || s_orig.h == 0.0f) {
+		return;
+	}
+	sprite_local_t s_lower_right(blitmode,
+		((png_uint_32)s_orig.x) % w,
+		((png_uint_32)s_orig.y) % h,
+		min((png_uint_32)s_orig.w, w),
+		min((png_uint_32)s_orig.h, h)
+	);
+	auto split_w = (int32_t)(s_lower_right.x + s_lower_right.w) - (int32_t)w;
+	auto split_h = (int32_t)(s_lower_right.y + s_lower_right.h) - (int32_t)h;
+	if(split_w > 0) {
+		s_lower_right.w = w - s_lower_right.x;
+	}
+	if(split_h > 0) {
+		s_lower_right.h = h - s_lower_right.y;
+	}
+	if(split_w > 0 && split_h > 0) {
+		// Upper-left split
+		sprites.emplace_back(sprite_local_t{ blitmode,
+			0, 0, (png_uint_32)split_w, (png_uint_32)split_h,
+		});
+	}
+	if(split_w > 0) {
+		// Lower-left split
+		sprites.emplace_back(sprite_local_t{ blitmode,
+			0, s_lower_right.y, (png_uint_32)split_w, s_lower_right.h,
+		});
+	}
+	if(split_h > 0) {
+		// Upper-right split
+		sprites.emplace_back(sprite_local_t{ blitmode,
+			s_lower_right.x, 0, s_lower_right.w, (png_uint_32)split_h,
+		});
+	}
+	sprites.emplace_back(s_lower_right);
+}
+
 /// Formats
 /// -------
 unsigned int format_Bpp(format_t format)
@@ -210,10 +250,8 @@ int sprite_patch_set(
 	sp.rep_x = entry.x + sp.dst_x;
 	sp.rep_y = entry.y + sp.dst_y;
 
-	if(
-		sp.dst_x >= entry.w || sp.dst_y >= entry.h ||
-		sp.rep_x >= image.img.width || sp.rep_y >= image.img.height
-	) {
+	assert(sp.dst_x < entry.w || sp.dst_y < entry.h);
+	if(sp.rep_x >= image.img.width || sp.rep_y >= image.img.height) {
 		return 2;
 	}
 
@@ -223,11 +261,11 @@ int sprite_patch_set(
 	// See th11's face/enemy5/face05lo.png (the dummy 8x8 one from
 	// stgenm06.anm, not stgenm05.anm) for an example where the sprite
 	// width and height actually exceed the dimensions of the THTX.
-	png_uint_32 sprite_clamped_w = min(sprite.w, (entry.w - sprite.x));
-	png_uint_32 sprite_clamped_h = min(sprite.h, (entry.h - sprite.y));
+	assert(sprite.w <= (entry.w - sprite.x));
+	assert(sprite.h <= (entry.h - sprite.y));
 
-	sp.copy_w = min(sprite_clamped_w, (image.img.width - sp.rep_x));
-	sp.copy_h = min(sprite_clamped_h, (image.img.height - sp.rep_y));
+	sp.copy_w = min(sprite.w, (image.img.width - sp.rep_x));
+	sp.copy_h = min(sprite.h, (image.img.height - sp.rep_y));
 
 	sp.dst_buf = entry.thtx->data + (sp.dst_y * sp.dst_stride) + (sp.dst_x * sp.bpp);
 	sp.rep_buf = image.buf + (sp.rep_y * sp.rep_stride) + (sp.rep_x * sp.bpp);
@@ -726,46 +764,6 @@ header_mods_t::header_mods_t(json_t *patch)
 
 /// ANM structure
 /// -------------
-int sprite_split_x(anm_entry_t &entry, sprite_local_t &sprite)
-{
-	if(entry.thtx && entry.w > 0) {
-		sprite.x %= entry.w;
-		png_uint_32 split_w = sprite.x + sprite.w;
-		if(split_w > entry.w) {
-			entry.sprites.push_back(sprite_local_t{
-				sprite.blitmode,
-				0,
-				sprite.y,
-				min(split_w - entry.w, sprite.x),
-				sprite.h
-			});
-			return sprite_split_y(entry, entry.sprites.back());
-		}
-		return 0;
-	}
-	return -1;
-}
-
-int sprite_split_y(anm_entry_t &entry, sprite_local_t &sprite)
-{
-	if(entry.thtx && entry.h > 0) {
-		sprite.y %= entry.h;
-		png_uint_32 split_h = sprite.y + sprite.h;
-		if(split_h > entry.h) {
-			entry.sprites.push_back(sprite_local_t{
-				sprite.blitmode,
-				sprite.x,
-				0,
-				sprite.w,
-				min(split_h - entry.h, sprite.y)
-			});
-			return sprite_split_x(entry, entry.sprites.back());
-		}
-		return 0;
-	}
-	return -1;
-}
-
 inline bool instr_is_last(anm_instr0_t *instr)
 {
 	return (instr->type == 0) && (instr->time == 0);
@@ -918,16 +916,8 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 			auto spr_m = hdr_m.sprite_mods();
 			spr_m.apply_orig(*s_orig);
 
-			sprite_local_t s_local(
-				spr_m.blitmode.unwrap_or(entry_blitmode),
-				(png_uint_32)s_orig->x,
-				(png_uint_32)s_orig->y,
-				(png_uint_32)s_orig->w,
-				(png_uint_32)s_orig->h
-			);
-			entry.sprites.push_back(s_local);
-			sprite_split_x(entry, s_local);
-			sprite_split_y(entry, s_local);
+			auto blitmode = spr_m.blitmode.unwrap_or(entry_blitmode);
+			entry.transform_and_add_sprite(*s_orig, blitmode);
 		}
 	}
 
