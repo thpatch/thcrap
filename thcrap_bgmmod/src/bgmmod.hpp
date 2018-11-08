@@ -65,7 +65,8 @@ struct pcm_format_t {
 /// -----------
 struct track_t {
 	const pcm_format_t pcmf;
-	// Total size of the track, in decoded PCM bytes according to [pcmf].
+	// Sizes are in decoded PCM bytes according to [pcmf].
+	const size_t intro_size;
 	const size_t total_size;
 
 	// *Always* has to fill the buffer entirely, if necessary by looping back.
@@ -75,8 +76,11 @@ struct track_t {
 	// should be treated as infinitely long.
 	virtual void seek_to_byte(size_t byte) = 0;
 
-	track_t(const pcm_format_t &pcmf, const size_t &total_size)
-		: pcmf(pcmf), total_size(total_size) {
+	track_t(
+		const pcm_format_t &pcmf,
+		const size_t &intro_size, const size_t &total_size
+	)
+		: pcmf(pcmf), intro_size(intro_size), total_size(total_size) {
 	}
 
 	virtual ~track_t() {}
@@ -120,6 +124,7 @@ struct track_pcm_t : public track_t {
 		std::unique_ptr<pcm_part_t> &&loop_in
 	) : track_t(
 		intro_in->pcmf,
+		loop_in ? intro_in->part_bytes : 0,
 		intro_in->part_bytes + (loop_in ? loop_in->part_bytes : 0)
 	) {
 		intro = std::move(intro_in);
