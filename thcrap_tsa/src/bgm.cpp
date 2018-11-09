@@ -13,12 +13,16 @@ extern "C" {
 # include "thcrap_tsa.h"
 }
 #include <thcrap_bgmmod/src/bgmmod.hpp>
+#include <algorithm>
+#include <vector>
 
 #pragma comment(lib, "thcrap_bgmmod" DEBUG_OR_RELEASE)
 
 const stringref_t LOOPMOD_FN = "loops.js";
 
-// For repatchability. Pointing into game memory.
+// The game's own thbgm.fmt structure. Necessary for mapping seek positions
+// back to file names for BGM modding, and repatchability of loop point
+// modding.
 bgm_fmt_t* bgm_fmt = nullptr;
 
 bgm_fmt_t* bgm_find(stringref_t fn)
@@ -83,6 +87,250 @@ HMMIO WINAPI th06_mmioOpenA(LPSTR pszFileName, LPMMIOINFO pmmioinfo, DWORD fdwOp
 }
 /// ==============================
 
+/// BGM modding for ≥TH07
+/// =====================
+// Let's be correct, and support more than one handle to thbgm.dat.
+std::vector<HANDLE> thbgm_handles;
+std::unique_ptr<std::unique_ptr<track_t>[]> thbgm_mods;
+// Index into both [thbgm_mods] and the bgm_fmt_t array.
+// Negative if no track is playing.
+int thbgm_cur_bgmid = -1;
+
+static auto chain_CreateFileA = CreateFileU;
+static auto chain_CloseHandle = CloseHandle;
+static auto chain_ReadFile = ReadFile;
+static auto chain_SetFilePointer = SetFilePointer;
+
+track_t* thbgm_modtrack_for_current_bgmid()
+{
+	return (thbgm_cur_bgmid >= 0)
+		? thbgm_mods[thbgm_cur_bgmid].get()
+		: nullptr;
+}
+
+// "Trance seeking" support
+// ------------------------
+// Pretty much the entire challenge of ≥TH07: For the BGM switches that occur
+// when entering and leaving trance mode in TH13, SetFilePointer() only ever
+// sees the *sum* of the track start position and the offset into the track,
+// coming from the game's own internal timer.
+// Since we obviously want BGM to be moddable on a per-track basis, and allow
+// modded BGM to be longer (and larger) than the originals, this would
+// necessitate mapping the start positions of modded BGM in the thbgm.fmt
+// structure to the "empty space after the end of thbgm.dat", thereby imposing
+// a theoretical limit on BGM length. Sure, not too nice, but also not to big
+// of a deal in practice.
+//
+// The real problem occurs when non-trance and trance tracks have different
+// lengths. In that case, the aforementioned sum still ends up pointing into
+// an unintended, different track. What should we do then? Calculate the
+// maximum track length among the modded tracks and make sure that all of them
+// occupy that virtual amount of space after the end of thbgm.dat? Then add
+// further game-specific knowledge to only build the maximum for each non-
+// trance / trance track pair? Sure, but… eh, that's limits on top of limits.
+//
+// So, let's just capture that offset into the track separately, and subtract
+// it for identifying the track. And with the game keeping its own timer and
+// the decoding layer being supposed to extend the looping section infinitely,
+// we can have our different lengths too.
+//
+// And sure, breakpoints always seem like a maintenance burden at first, but
+// this is way cleaner than any alternative I could come up with. Requires no
+// game-specific branches in this module, and doesn't introduce limits where
+// there previously weren't any.
+size_t tranceseek_offset;
+
+int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	auto offset_j = json_object_get(bp_info, "offset");
+	assert(offset_j);
+	// ----------
+	tranceseek_offset = json_immediate_value(offset_j, regs);
+	return 1;
+}
+// ------------------------
+
+// Indices are more useful for BGM modding, since we also need to index into
+// thbgm_mods[]. Only finds a track that starts exactly at [offset]; to
+// support TH13-style "trance" seeks, see the `bgmmod_tranceseek_byte_offset`
+// breakpoint.
+int bgm_find(uint32_t offset)
+{
+	assert(bgm_fmt);
+	auto p = bgm_fmt;
+	while(p->fn[0] != '\0') {
+		if(offset == p->track_offset) {
+			return p - bgm_fmt;
+		}
+		p++;
+	}
+	return -1;
+}
+
+bool is_bgm_handle(HANDLE hFile)
+{
+	for(const auto &h : thbgm_handles) {
+		if(h == hFile) {
+			return true;
+		}
+	}
+	return false;
+}
+
+HANDLE WINAPI thbgm_CreateFileA(
+	LPCSTR lpFileName,
+	DWORD dwDesiredAccess,
+	DWORD dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD dwCreationDisposition,
+	DWORD dwFlagsAndAttributes,
+	HANDLE hTemplateFile
+)
+{
+	auto ret = chain_CreateFileA(
+		lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
+	);
+	if(PathMatchSpecU(PathFindFileNameU(lpFileName), "*bgm*.dat")) {
+		thbgm_handles.emplace_back(ret);
+		bgmmod_debugf("CreateFileA(%s) -> %p\n", lpFileName, ret);
+	}
+	return ret;
+}
+
+BOOL WINAPI thbgm_CloseHandle(
+	HANDLE hObject
+)
+{
+	auto elm = std::find(thbgm_handles.begin(), thbgm_handles.end(), hObject);
+	if(elm != thbgm_handles.end()) {
+		thbgm_handles.erase(elm);
+		bgmmod_debugf("CloseHandle(%p)\n", hObject);
+	}
+	return chain_CloseHandle(hObject);
+}
+
+BOOL WINAPI thbgm_ReadFile(
+	HANDLE hFile,
+	LPVOID lpBuffer,
+	DWORD nNumberOfBytesToRead,
+	LPDWORD lpNumberOfBytesRead,
+	LPOVERLAPPED lpOverlapped
+)
+{
+	if(is_bgm_handle(hFile)) {
+		auto *modtrack = thbgm_modtrack_for_current_bgmid();
+		if(modtrack) {
+			bgmmod_debugf("ReadFile(%p, %u)\n", hFile, nNumberOfBytesToRead);
+			modtrack->decode(lpBuffer, nNumberOfBytesToRead);
+			if(lpNumberOfBytesRead) {
+				*lpNumberOfBytesRead = nNumberOfBytesToRead;
+			}
+			return true;
+		}
+	}
+	return chain_ReadFile(
+		hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped
+	);
+}
+
+DWORD WINAPI thbgm_SetFilePointer(
+	HANDLE hFile,
+	LONG lDistanceToMove,
+	PLONG lpDistanceToMoveHigh,
+	DWORD dwMoveMethod
+)
+{
+	static bool seekblock = false;
+
+	auto fallback = [&] () {
+		return chain_SetFilePointer(
+			hFile, lDistanceToMove, lpDistanceToMoveHigh, dwMoveMethod
+		);
+	};
+
+	if(!is_bgm_handle(hFile) || !bgm_fmt) {
+		return fallback();
+	}
+	bgmmod_debugf("SetFilePointer(%p, %d, %u) -> ", hFile, lDistanceToMove, dwMoveMethod);
+	if(lDistanceToMove == 0 && dwMoveMethod == FILE_CURRENT) {
+		// When pausing ≥TH11, those games retrieve the current BGM file
+		// position in order to then CloseHandle() thbgm.dat, re-open it
+		// once the player resumes the game, then call SetFilePointer()
+		// twice, first to seek to the *beginning* of the track, then to
+		// seek to the previously retrived position.
+		// "Correctly" wrapping those tell and seek calls might not only
+		// lead to yet another needless performance drop in the decoding
+		// layer, but will lead to a similar problem like the one with
+		// the TH13 trance seeks: if our modded BGM is longer than the
+		// original, we couldn't differentiate that seek from a "switch"
+		// to somewhere inside one of the following tracks in thbgm.dat.
+		//
+		// The returned position must be larger than the track offset,
+		// since the game stores the value relative to that position.
+		// So let's just return the track offset itself?
+		//
+		// ...nope, because we do have to support seeks to the start of
+		// a track that *don't* change which track is currently playing.
+		// This is how the game rewinds the BGM when restarting in Stage
+		// Practice, Spell Practice, the Extra Stage, Stage 1 from Stage
+		// 1, or when replaying the same BGM from the beginning in the
+		// Music Room. So, uh... let's block that first, rewinding seek,
+		// just for this case, and add a single byte on top of the track
+		// offset. This way, we can also "uniquely" identify this second
+		// seek and ignore it, make sure we stay within the same track,
+		// and are still prepared in case ZUN ever wants to *actually*
+		// seek within a track in the future.
+		// Kind of clumsy, but better than requiring a trance seek
+		// breakpoint in every affected game, and it would only ever
+		// fail if ZUN added an 8-bit mono track, so.
+		auto *modtrack = thbgm_modtrack_for_current_bgmid();
+		if(modtrack != nullptr) {
+			const auto &fmt = bgm_fmt[thbgm_cur_bgmid];
+			seekblock = true;
+			return fmt.track_offset + 1;
+		}
+		return fallback();
+	}
+	auto track_pos = lDistanceToMove - tranceseek_offset;
+	tranceseek_offset = 0;
+
+	auto new_bgmid = bgm_find(track_pos);
+	if(new_bgmid < 0) {
+		new_bgmid = thbgm_cur_bgmid;
+	}
+	defer({ thbgm_cur_bgmid = new_bgmid; });
+
+	auto *new_modtrack = thbgm_mods[new_bgmid].get();
+	auto &new_fmt = bgm_fmt[new_bgmid];
+	if(new_modtrack) {
+		auto seek_offset = lDistanceToMove - new_fmt.track_offset;
+		if(new_bgmid != thbgm_cur_bgmid) {
+			log_debugf("Track switch, seek to byte #%u\n", seek_offset);
+		} else if(seekblock) {
+			log_debugf("Blocked seek attempt to byte #%u\n", seek_offset);
+			seekblock = false;
+			return lDistanceToMove;
+		} else if(seek_offset == 1) {
+			log_debugf("Ignored seek-after-tell\n");
+			return lDistanceToMove;
+		} else if(seek_offset == 0) {
+			log_debugf("Rewind\n");
+		} else if(seek_offset == new_modtrack->intro_size) {
+			log_debugf("Loop\n");
+		} else {
+			log_debugf("Seek to byte #%u\n", seek_offset);
+		}
+		new_modtrack->seek_to_byte(seek_offset);
+		return lDistanceToMove;
+	}
+	log_debugf("Unmodded seek\n");
+	return fallback();
+}
+/// =====================
+
 int loopmod_fmt()
 {
 	int modded = 0;
@@ -144,7 +392,35 @@ size_t keep_original_size(const char *fn, json_t *patch, size_t patch_size)
 int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	bgm_fmt = (bgm_fmt_t*)file_inout;
-	return loopmod_fmt();
+	loopmod_fmt();
+
+	auto bgm_count = (size_out / sizeof(bgm_fmt_t));
+
+	thbgm_mods = std::make_unique<std::unique_ptr<track_t>[]>(bgm_count);
+	for(decltype(bgm_count) i = 0; i < bgm_count; i++) {
+		auto &fmt_ingame = bgm_fmt[i];
+		auto basename_len = strchr(fmt_ingame.fn, '.') - fmt_ingame.fn;
+		const stringref_t basename = { fmt_ingame.fn, basename_len };
+
+		auto mod = stack_bgm_resolve(basename);
+		if(mod) {
+			mod->pcmf.patch(fmt_ingame.wfx);
+
+			// The BGM streaming buffer is 4 seconds long, and until TH13, the
+			// games would just rewind the track if it was shorter than that.
+			// So, we simply "extend" the looping part to be longer.
+			auto track_size_corrected = mod->total_size;
+			auto loop_size = track_size_corrected - mod->intro_size;
+			while(track_size_corrected < fmt_ingame.wfx.nAvgBytesPerSec * 4) {
+				track_size_corrected += loop_size;
+			}
+			fmt_ingame.intro_size = mod->intro_size;
+			fmt_ingame.track_size = track_size_corrected;
+
+			thbgm_mods[i] = std::move(mod);
+		}
+	}
+	return 1;
 }
 
 int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
@@ -532,6 +808,14 @@ extern "C" __declspec(dllexport) void bgm_mod_detour(void)
 		detour_chain("winmm.dll", 1,
 			"mmioAdvance", th06_mmioAdvance, &chain_mmioAdvance,
 			"mmioOpenA", th06_mmioOpenA, &chain_mmioOpenA,
+			nullptr
+		);
+	} else {
+		detour_chain("kernel32.dll", 1,
+			"CreateFileA", thbgm_CreateFileA, &chain_CreateFileA,
+			"CloseHandle", thbgm_CloseHandle, &chain_CloseHandle,
+			"ReadFile", thbgm_ReadFile, &chain_ReadFile,
+			"SetFilePointer", thbgm_SetFilePointer, &chain_SetFilePointer,
 			nullptr
 		);
 	}

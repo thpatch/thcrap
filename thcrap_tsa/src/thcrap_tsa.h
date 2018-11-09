@@ -20,6 +20,10 @@ typedef enum {
 	// • bgm: Uses the MMIO API with separate .wav files, together with
 	//        separate .pos files to define loop points
 	TH06,
+
+	// • bgm: Early trial versions use .wav.sli files to define loop points
+	// • bgm: Full version switches to thbgm.dat, read using the KERNEL32
+	//        file API, indexed by the new .fmt files
 	TH07,
 
 	// • msg: Text starts being encrypted with a simple XOR
@@ -82,6 +86,27 @@ extern tsa_game_t game_id;
 // Returns 0 if the currently running game is a full version, 1 if it is a
 // trial, or -1 if this can't be determined.
 int game_is_trial(void);
+
+/// BGM modding
+/// -----------
+/*
+ * Separately records the byte position within the next track that thbgm.dat
+ * will be seeked to, to make sure that the correct track can be identified
+ * regardless of the length of the modded BGM.
+ * Ctrl-F "trance seeking" in bgm.cpp for why this is necessary for TH13.
+ *
+ * Own JSON parameters
+ * -------------------
+ *	[offset]
+ *		Pointer to the number of bytes after the beginning of the track
+ *		Type: immediate
+ *
+ * Other breakpoints called
+ * ------------------------
+ *	None
+ */
+__declspec(dllexport) int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info);
+/// -----------
 
 /// ------
 /// Spells
