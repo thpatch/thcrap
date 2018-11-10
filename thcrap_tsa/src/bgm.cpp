@@ -419,6 +419,9 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 
 			thbgm_mods[i] = std::move(mod);
 		}
+		// Because why should we load anything else than exactly that,
+		// even for original tracks?
+		fmt_ingame.preload_size = fmt_ingame.track_size;
 	}
 	return 1;
 }
