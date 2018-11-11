@@ -24,6 +24,11 @@ void log_nprint(const char *text, size_t n);
 // Formatted
 void log_vprintf(const char *text, va_list va);
 void log_printf(const char *text, ...);
+#ifdef _DEBUG
+# define log_debugf log_printf
+#else
+# define log_debugf(text, ...)
+#endif
 
 #ifdef _MSC_VER
 # define log_func_printf(text, ...) \

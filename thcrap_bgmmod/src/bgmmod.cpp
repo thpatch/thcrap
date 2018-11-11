@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Definitions of constants and other private code independent from codecs.
+  * Implementations of public functions not related to specific codecs.
   */
 
 #include <thcrap.h>
@@ -14,3 +14,19 @@
 /// ----------------
 const stringref_t LOOP_INFIX = ".loop";
 /// ----------------
+
+/// Error reporting and debugging
+/// -----------------------------
+void bgmmod_verrorf(const char *text, va_list va)
+{
+	log_vmboxf("BGM modding error", MB_OK | MB_ICONERROR, text, va);
+}
+
+void bgmmod_errorf(const char *text, ...)
+{
+	va_list va;
+	va_start(va, text);
+	bgmmod_verrorf(text, va);
+	va_end(va);
+}
+/// -----------------------------
