@@ -36,6 +36,7 @@
       </GAS_tlog>
     </ItemGroup>
     <Message
+      Condition="'@(GAS)' != '' and '%(GAS.ExcludedFromBuild)' != 'true'"
       Importance="High"
       Text="%(GAS.ExecutionDescription)" />
     <WriteLinesToFile
