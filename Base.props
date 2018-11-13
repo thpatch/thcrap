@@ -53,4 +53,10 @@
       </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="gas.props" />
+  </ImportGroup>
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="gas.targets" />
+  </ImportGroup>
 </Project>
