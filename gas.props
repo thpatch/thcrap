@@ -18,9 +18,9 @@
       <ObjectFile>$(IntDir)\%(Filename).obj</ObjectFile>
       <PreProc>0</PreProc>
       <Parser>0</Parser>
-      <CommandLineTemplate>"$(GASPath)i686-w64-mingw32-as.exe" [AllOptions] [AdditionalOptions] [Inputs]</CommandLineTemplate>
+      <CommandLineTemplate>cl /EP [IncludePaths] [Inputs] | "$(GASPath)i686-w64-mingw32-as.exe" [AdditionalOptions]</CommandLineTemplate>
       <Outputs>%(ObjectFile)</Outputs>
-      <ExecutionDescription>Assembling %(Filename)%(Extension)...</ExecutionDescription>
+      <ExecutionDescription>Preprocessing and assembling %(Filename)%(Extension)...</ExecutionDescription>
       <ShowOnlyRuleProperties>false</ShowOnlyRuleProperties>
     </GAS>
   </ItemDefinitionGroup>
