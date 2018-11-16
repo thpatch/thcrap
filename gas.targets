@@ -48,6 +48,7 @@
       CommandLineTemplate="%(GAS.CommandLineTemplate)"
       IncludePaths="%(GAS.IncludePaths)"
       Defines="%(GAS.Defines)"
+      SAFESEH="%(GAS.SAFESEH)"
       ObjectFile="%(GAS.ObjectFile)"
       AdditionalOptions="%(GAS.AdditionalOptions)"
       Inputs="@(GAS)" />

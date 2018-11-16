@@ -8,7 +8,11 @@
   <PropertyGroup>
     <GASDependsOn
       Condition="'$(ConfigurationType)' != 'Makefile'">_SelectedFiles;$(GASDependsOn)</GASDependsOn>
+    <SAFESEH Condition= "'$(SAFESEH)' == ''">true</SAFESEH>
     <GASPath Condition= "'$(GASPATH)' == ''">$(SolutionDir)</GASPath>
+    <!-- Since environment variables aren't expanded in Switch attributes of
+       - MSBuild properties… -->
+    <SAFESEHSwitch Condition="$(SAFESEH)==true">/Fx $(SolutionDir)safeseh.h</SAFESEHSwitch>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <GAS>
@@ -16,7 +20,7 @@
       <ObjectFile>$(IntDir)\%(Filename).obj</ObjectFile>
       <PreProc>0</PreProc>
       <Parser>0</Parser>
-      <CommandLineTemplate>cl /EP [IncludePaths] [Defines] [Inputs] /nologo | "$(GASPath)i686-w64-mingw32-as.exe" -o "%(ObjectFile)" [AdditionalOptions]</CommandLineTemplate>
+      <CommandLineTemplate>cl /EP [IncludePaths] [Defines] [Inputs] $(SAFESEHSwitch) /nologo | "$(GASPath)i686-w64-mingw32-as.exe" -o "%(ObjectFile)" [AdditionalOptions]</CommandLineTemplate>
       <Outputs>%(ObjectFile)</Outputs>
       <ExecutionDescription>Preprocessing and assembling %(Filename)%(Extension)...</ExecutionDescription>
       <ShowOnlyRuleProperties>false</ShowOnlyRuleProperties>

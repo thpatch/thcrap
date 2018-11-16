@@ -23,6 +23,3 @@ _BP_bmpfont_fix_parameters:
 	movss	%xmm2, dword [%esp+4]
 	add		%esp, 0x14
 	ret
-
-// /SAFESEH compliance. Note that the @feat.00 symbol *must not* be global.
-	.set @feat.00, 1

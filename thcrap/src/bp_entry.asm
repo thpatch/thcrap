@@ -25,6 +25,3 @@ _bp_entry_localptr:
 	popa
 	ret
 _bp_entry_end:
-
-// /SAFESEH compliance. Note that the @feat.00 symbol *must not* be global.
-	.set @feat.00, 1

@@ -55,6 +55,13 @@
       Description="Specify pre-defined symbols ('symbol' or 'symbol = value'). (-D)"
       Switch="-D &quot;[value]&quot;" />
 
+    <BoolProperty
+      Name="SAFESEH"
+      Subcategory="Configuration"
+      HelpContext="0"
+      DisplayName="SAFESEH Compilance"
+      Description="Automatically #includes the symbol for SAFESEH compliance in the assembled file. (/Fx safeseh.h)" />
+
     <StringProperty
       Name="ObjectFile"
       Subcategory="Output"
