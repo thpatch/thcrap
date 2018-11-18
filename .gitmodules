@@ -25,3 +25,6 @@
 [submodule "libs/dr_libs"]
 	path = libs/dr_libs
 	url = https://github.com/mackron/dr_libs/
+[submodule "libs/mpg123"]
+	path = libs/libmpg123
+	url = https://github.com/nmlgc/libmpg123.git
