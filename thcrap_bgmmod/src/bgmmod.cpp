@@ -115,15 +115,17 @@ std::unique_ptr<track_pcm_t> pcm_open(
 
 /// Codecs
 /// ------
+std::unique_ptr<pcm_part_t> mp3_open(HANDLE &&stream);
 std::unique_ptr<pcm_part_t> vorbis_open(HANDLE &&stream);
 std::unique_ptr<pcm_part_t> flac_open(HANDLE &&stream);
 
 // Sorted from lowest to highest quality.
-const codec_t CODECS[2] = {
+const codec_t CODECS[3] = {
+	".mp3", mp3_open,
 	".ogg", vorbis_open,
 	".flac", flac_open,
 };
-#define RESOLVE_HINT "{flac > ogg}"
+#define RESOLVE_HINT "{flac > ogg > mp3}"
 /// ------
 
 /// Stack file resolution

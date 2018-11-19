@@ -150,7 +150,7 @@ struct codec_t {
 	pcm_part_open_t &open;
 };
 
-extern const codec_t CODECS[2];
+extern const codec_t CODECS[3];
 /// ------
 
 /// Stack file resolution

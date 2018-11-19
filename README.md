@@ -102,6 +102,7 @@ All required third-party libraries for the C/C++ code are included as Git submod
 
   * **FLAC** via [dr_flac](https://mackron.github.io/dr_flac.html)
   * **Ogg Vorbis** via [libogg](https://xiph.org/ogg/), [libvorbis](https://xiph.org/vorbis/) and libvorbisfile
+  * **MP3** via [libmpg123](https://www.mpg123.de/)
 
 The scripts in the `scripts` directory are written in [Python 3](http://python.org/). Some of them require further third-party libraries not included in this repository:
 

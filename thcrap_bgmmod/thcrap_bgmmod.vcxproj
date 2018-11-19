@@ -22,7 +22,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs/dr_libs/;$(SolutionDir)libs/libogg/include/;$(SolutionDir)libs/libvorbis/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs/dr_libs/;$(SolutionDir)libs/libogg/include/;$(SolutionDir)libs/libvorbis/include/;$(SolutionDir)libs/libmpg123/src/libmpg123;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -31,6 +31,7 @@
     </ClCompile>
     <ClCompile Include="src\flac.cpp" />
     <ClCompile Include="src\mmio.cpp" />
+    <ClCompile Include="src\mp3.cpp" />
     <ClCompile Include="src\vorbis.cpp" />
   </ItemGroup>
   <ItemGroup>
