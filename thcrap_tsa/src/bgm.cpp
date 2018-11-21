@@ -396,6 +396,41 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 
 	auto bgm_count = (size_out / sizeof(bgm_fmt_t));
 
+	// On the surface, the presence of a WAVEFORMATEX structure in
+	// thbgm.fmt, and TH13's trance tracks, suggest that the games can
+	// work with any PCM format. *However*:
+	// • TH07-TH12.8 only create a single BGM streaming buffer for all
+	//   tracks, meaning that the PCM format is limited to the one used
+	//   by the title screen theme
+	// • ≥TH13 do create separate buffers for each track, but always
+	//   use the buffer *size* calcuated from the PCM format used by
+	//   the title screen theme. Normally, this wouldn't be much of a
+	//   problem if it weren't for the fact that the notification byte
+	//   positions might no longer lie on sample boundaries, which
+	//   might cause issues with certain codecs.
+	// Therefore, the only safe formats are the one that the game
+	// itself is known to work with. That's two formats for TH13, and
+	// one format for all other games
+	// Yes, TH06 is the only original game that actually does none of
+	// these.
+	std::vector<pcm_format_t> allowed_pcmfs;
+
+	auto is_allowed = [&allowed_pcmfs] (const pcm_format_t &pcmf) {
+		return std::find(
+			allowed_pcmfs.begin(), allowed_pcmfs.end(), pcmf
+		) != allowed_pcmfs.end();
+	};
+
+	for(decltype(bgm_count) i = 0; i < bgm_count; i++) {
+		const auto &wfx = bgm_fmt[i].wfx;
+		pcm_format_t pcmf{
+			wfx.nSamplesPerSec, wfx.wBitsPerSample, wfx.nChannels
+		};
+		if(!is_allowed(pcmf)) {
+			allowed_pcmfs.emplace_back(pcmf);
+		}
+	}
+
 	thbgm_mods = std::make_unique<std::unique_ptr<track_t>[]>(bgm_count);
 	for(decltype(bgm_count) i = 0; i < bgm_count; i++) {
 		auto &fmt_ingame = bgm_fmt[i];
@@ -404,6 +439,30 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 
 		auto mod = stack_bgm_resolve(basename);
 		if(mod) {
+			if(!is_allowed(mod->pcmf)) {
+				stringref_t PCMF_LINE_FMT = "\n\xE2\x80\xA2 ";
+				size_t supported_len = 0;
+				size_t desc_len = sizeof(pcm_format_t::desc_t);
+				for(const auto &pcmf : allowed_pcmfs) {
+					supported_len += PCMF_LINE_FMT.len + desc_len;
+				}
+				VLA(char, supported, supported_len + 1);
+				char *p = supported;
+				for(const auto &pcmf : allowed_pcmfs) {
+					const auto desc = pcmf.to_string();
+					p = stringref_copy_advance_dst(p, PCMF_LINE_FMT);
+					p = strncpy_advance_dst(p, desc.str, desc.len);
+				}
+
+				bgmmod_errorf(
+					"Format error in BGM mod for %s.\n"
+					"Modded BGM is %s, but the game only supports:\n"
+					"%s",
+					fmt_ingame.fn, mod->pcmf.to_string().str, supported
+				);
+				VLA_FREE(supported);
+				continue;
+			}
 			mod->pcmf.patch(fmt_ingame.wfx);
 
 			// The BGM streaming buffer is 4 seconds long, and until TH13, the
