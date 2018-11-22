@@ -25,20 +25,39 @@ const stringref_t LOOPMOD_FN = "loops.js";
 // modding.
 bgm_fmt_t* bgm_fmt = nullptr;
 
-bgm_fmt_t* bgm_find(stringref_t fn)
+// Indices are more useful for BGM modding, since we also need to index into
+// thbgm_mods[]. Only finds a track that starts exactly at [offset]; to
+// support TH13-style "trance" seeks, see the `bgmmod_tranceseek_byte_offset`
+// breakpoint.
+template<typename F> int _bgm_find(F condition)
 {
 	assert(bgm_fmt);
-	if(fn.len > sizeof(bgm_fmt->fn)) {
-		return nullptr;
-	}
 	auto track = bgm_fmt;
 	while(track->fn[0] != '\0') {
-		if(!strncmp(track->fn, fn.str, fn.len)) {
-			return track;
+		if(condition(*track)) {
+			return track - bgm_fmt;
 		}
 		track++;
 	}
-	return nullptr;
+	return -1;
+}
+
+int bgm_find(uint32_t offset)
+{
+	return _bgm_find([offset] (const bgm_fmt_t &track) {
+		return offset == track.track_offset;
+	});
+}
+
+int bgm_find(stringref_t fn)
+{
+	assert(bgm_fmt);
+	if(fn.len > sizeof(bgm_fmt->fn)) {
+		return -1;
+	}
+	return _bgm_find([fn] (const bgm_fmt_t &track) {
+		return !strncmp(track.fn, fn.str, fn.len);
+	});
 };
 
 /// BGM modding weirdness for TH06
@@ -151,23 +170,6 @@ int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 // ------------------------
-
-// Indices are more useful for BGM modding, since we also need to index into
-// thbgm_mods[]. Only finds a track that starts exactly at [offset]; to
-// support TH13-style "trance" seeks, see the `bgmmod_tranceseek_byte_offset`
-// breakpoint.
-int bgm_find(uint32_t offset)
-{
-	assert(bgm_fmt);
-	auto p = bgm_fmt;
-	while(p->fn[0] != '\0') {
-		if(offset == p->track_offset) {
-			return p - bgm_fmt;
-		}
-		p++;
-	}
-	return -1;
-}
 
 bool is_bgm_handle(HANDLE hFile)
 {
@@ -335,8 +337,8 @@ int loopmod_fmt()
 {
 	int modded = 0;
 	auto mod = [] (stringref_t track_name, const json_t* track_mod) {
-		auto track = bgm_find(track_name);
-		if(!track) {
+		auto track_id = bgm_find(track_name);
+		if(track_id == -1) {
 			// Trials don't have all the tracks, better to not show a
 			// message box for them.
 			if(!game_is_trial()) {
@@ -351,8 +353,15 @@ int loopmod_fmt()
 				);
 			}
 			return false;
-		}
+		} else if(thbgm_mods && thbgm_mods[track_id]) {
+			log_printf(
+				"[BGM] [Loopmod] Ignoring %s due to active BGM mod for the same track\n",
+				track_name
+			);
+			return false;
+		};
 
+		auto *track = bgm_fmt + track_id;
 		auto sample_size = track->wfx.nChannels * (track->wfx.wBitsPerSample / 8);
 		auto *loop_start = json_object_get(track_mod, "loop_start");
 		auto *loop_end = json_object_get(track_mod, "loop_end");
