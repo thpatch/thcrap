@@ -180,6 +180,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			c++;
 		} else if(fs && (*c == ']' || *c == '>')) {
 			VLA(char, function, (c - fs) + 1);
+			defer({ VLA_FREE(function); });
 			size_t fp = 0;
 
 			strncpy(function, fs, c - fs);
@@ -197,7 +198,6 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				return hackpoints_error_function_not_found(function, 2);
 			}
 			fs = NULL;
-			VLA_FREE(function);
 			if(ret) {
 				break;
 			}
