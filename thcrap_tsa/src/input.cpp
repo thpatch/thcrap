@@ -9,6 +9,7 @@
 
 #include <thcrap.h>
 #include <math.h>
+#include <memory>
 
 #define DIRECTINPUT_VERSION 0x800
 #include <dinput.h>
@@ -85,12 +86,12 @@ struct winmm_joy_caps_t
 {
 	// joyGetPosEx() will return bogus values on joysticks without a POV, so
 	// we must check if we even have one.
-	bool initialized;
+	bool initialized = false;
 	bool has_pov;
 	Ranges<DWORD> range;
 };
 
-winmm_joy_caps_t *joy_info = nullptr;
+std::unique_ptr<winmm_joy_caps_t[]> joy_info;
 
 MMRESULT __stdcall my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
 {
@@ -278,7 +279,7 @@ extern "C" __declspec(dllexport) void input_mod_detour(void)
 	if(num_devs == 0) {
 		return;
 	}
-	joy_info = (winmm_joy_caps_t*)calloc(sizeof(winmm_joy_caps_t), num_devs);
+	joy_info = std::make_unique<winmm_joy_caps_t[]>(num_devs);
 	if(!joy_info) {
 		return;
 	}
