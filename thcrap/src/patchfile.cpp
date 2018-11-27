@@ -48,23 +48,24 @@ void* file_read(const char *fn, size_t *file_size)
 
 int file_write(const char *fn, const void *file_buffer, const size_t file_size)
 {
-	int ret = -1;
-	if(fn && file_buffer && file_size) {
-		HANDLE handle;
-		DWORD byte_ret;
-
-		dir_create_for_fn(fn);
-
-		handle = CreateFile(
-			fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-			FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
-		);
-		ret = (handle == INVALID_HANDLE_VALUE);
-		if(!ret) {
-			WriteFile(handle, file_buffer, file_size, &byte_ret, NULL);
-			CloseHandle(handle);
-		}
+	if(!fn || !file_buffer || !file_size) {
+		return ERROR_INVALID_PARAMETER;
 	}
+	DWORD byte_ret;
+
+	dir_create_for_fn(fn);
+
+	auto handle = CreateFile(
+		fn, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr
+	);
+	if(handle == INVALID_HANDLE_VALUE) {
+		return GetLastError();
+	}
+	auto ret = W32_ERR_WRAP(
+		WriteFile(handle, file_buffer, file_size, &byte_ret, nullptr
+	));
+	CloseHandle(handle);
 	return ret;
 }
 

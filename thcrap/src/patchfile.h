@@ -67,6 +67,7 @@ void* file_stream_read(HANDLE stream, size_t *file_size);
 void* file_read(const char *fn, size_t *file_size);
 
 // Writes [file_buffer] to a file named [fn]. The file is always overwritten!
+// Returns 0 on success, or a Win32 error code on failure.
 int file_write(const char *fn, const void *file_buffer, const size_t file_size);
 
 /// ----------
@@ -117,6 +118,7 @@ json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_s
 // Returns the file size of [fn].
 size_t patch_json_merge(json_t **json_inout, const json_t *patch_info, const char *fn);
 
+// These return the result of file_write().
 int patch_file_store(const json_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size);
 int patch_json_store(const json_t *patch_info, const char *fn, const json_t *json);
 
