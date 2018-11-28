@@ -12,6 +12,12 @@
 
 #pragma once
 
+// Returns a string representation of the given Win32 error code.
+// Currently in English and fairly abbreviated compared to FormatMessage().
+const char* lasterror_str_for(DWORD err);
+// Calls GetLastError() itself.
+const char* lasterror_str();
+
 void log_set_hook(void(*hookproc)(const char*), void(*hookproc2)(const char*, size_t));
 
 /// ---------------

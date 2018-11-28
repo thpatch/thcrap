@@ -138,6 +138,9 @@ EXPORTS
 
 	; Logging
 	; -------
+	lasterror_str_for
+	lasterror_str
+
 	log_set_hook
 	log_print
 	log_nprint

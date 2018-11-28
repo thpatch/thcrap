@@ -25,6 +25,36 @@ static void(*log_nprint_hook)(const char*, size_t) = NULL;
 static HWND mbox_owner_hwnd = NULL; // Set by log_mbox_set_owner
 // -----------------------
 
+struct lasterror_t {
+	char str[DECIMAL_DIGITS_BOUND(DWORD) + 1];
+};
+
+THREAD_LOCAL(lasterror_t, lasterror_tls, nullptr, nullptr);
+
+const char* lasterror_str_for(DWORD err)
+{
+	switch(err) {
+	case ERROR_SHARING_VIOLATION:
+		return "File in use";
+	case ERROR_MOD_NOT_FOUND:
+		return "File not found";
+	default: // -Wswitch...
+		break;
+	}
+	auto str = lasterror_tls_get();
+	if(!str) {
+		static lasterror_t lasterror_static;
+		str = &lasterror_static;
+	}
+	snprintf(str->str, sizeof(str->str), "%u", err);
+	return str->str;
+}
+
+const char* lasterror_str()
+{
+	return lasterror_str_for(GetLastError());
+}
+
 void log_set_hook(void(*hookproc)(const char*), void(*hookproc2)(const char*,size_t)){
 	log_print_hook = hookproc;
 	log_nprint_hook = hookproc2;

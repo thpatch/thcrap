@@ -80,8 +80,8 @@ extern "C" __declspec(dllexport) void steam_mod_post_init(void)
 	hSteamAPI = LoadLibraryU(dll_fn);
 	if(!hSteamAPI) {
 		log_printf(
-			"[Steam] Couldn't load %s (last error %u), no integration possible\n",
-			dll_fn, GetLastError()
+			"[Steam] Couldn't load %s (%s), no integration possible\n",
+			dll_fn, lasterror_str()
 		);
 		return;
 	}

@@ -62,7 +62,7 @@ void plugin_load(const char *dir, const char *fn)
 		LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
 	);
 	if(!plugin) {
-		log_printf("[Plugin] Error loading %s: %d\n", fn_abs, GetLastError());
+		log_printf("[Plugin] Error loading %s: %s\n", fn_abs, lasterror_str());
 		return;
 	}
 	FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
