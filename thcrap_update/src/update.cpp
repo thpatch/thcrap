@@ -636,10 +636,11 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		return ret;
 	};
 
-	auto update_delete = [&patch_info, &local_files] (const char *fn) {
+	auto update_delete = [&patch_info, &files_fn, &local_files] (const char *fn) {
 		log_printf("Deleting %s...\n", fn);
 		if(!patch_file_delete(patch_info, fn)) {
 			json_object_del(local_files, fn);
+			patch_json_store(patch_info, files_fn, local_files);
 		}
 	};
 
@@ -756,11 +757,16 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 			ret = servers.download(key, nullptr, patch_update_callback, &patch_update_callback_param);
 		}
 		if(ret.file_buffer) {
-			patch_file_store(patch_info, key, ret.file_buffer, ret.file_size);
+			auto store_ret = patch_file_store(patch_info, key, ret.file_buffer, ret.file_size);
 			SAFE_FREE(ret.file_buffer);
-			json_object_set(local_files, key, remote_val);
+			if(!store_ret) {
+				json_object_set(local_files, key, remote_val);
+				patch_json_store(patch_info, files_fn, local_files);
+			} else {
+				auto err_str = lasterror_str_for(store_ret);
+				log_printf("✘ Error saving %s: %s\n", key, err_str);
+			}
 		}
-		patch_json_store(patch_info, files_fn, local_files);
 	}
 	if(i == file_count) {
 		log_printf("Update completed.\n");
