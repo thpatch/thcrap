@@ -56,7 +56,13 @@ MMRESULT WINAPI bgmmod_mmioAdvance(HMMIO hmmio, LPMMIOINFO pmmioinfo, UINT fuAdv
 	// TODO: Currently a TH06 assumption, but what else can we possibly do?
 	assert(fuAdvance == MMIO_READ);
 
-	mod->track->decode((uint8_t*)pmmioinfo->pchBuffer, pmmioinfo->cchBuffer);
+	if(mod->track) {
+		auto *buf = (uint8_t*)pmmioinfo->pchBuffer;
+		auto len = pmmioinfo->cchBuffer;
+		if(!mod->track->decode(buf, len)) {
+			mod->track = nullptr;
+		}
+	}
 	pmmioinfo->pchNext = pmmioinfo->pchBuffer;
 
 	return MMSYSERR_NOERROR;

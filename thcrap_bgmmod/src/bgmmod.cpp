@@ -43,24 +43,34 @@ void pcm_format_t::patch(PCMWAVEFORMAT &pwf) const
 
 /// Track class
 /// -----------
-void track_pcm_t::decode(void *_buf, size_t size)
+bool track_t::decode(void *buf, size_t size)
+{
+	auto *p = (uint8_t*)buf;
+	auto size_left = size;
+	assert(p);
+	while(size_left > 0) {
+		auto ret = decode_single(p, size_left);
+		if(ret == (size_t)-1) {
+			ZeroMemory(buf, size);
+			return false;
+		}
+		p += ret;
+		size_left -= ret;
+	}
+	return true;
+}
+
+size_t track_pcm_t::decode_single(void *_buf, size_t size)
 {
 	auto *buf = (uint8_t*)_buf;
-	assert(buf);
-	while(size > 0) {
-		auto ret = cur->part_decode(buf, size);
-		if(ret == (size_t)-1) {
-			// TODO: Error?
-			return;
-		} else if(ret == 0) {
-			if((cur == intro.get()) && (loop != nullptr)) {
-				cur = loop.get();
-			}
-			cur->part_seek_to_sample(0);
+	auto ret = cur->part_decode_single(buf, size);
+	if(ret == 0) {
+		if((cur == intro.get()) && (loop != nullptr)) {
+			cur = loop.get();
 		}
-		buf += ret;
-		size -= ret;
+		cur->part_seek_to_sample(0);
 	}
+	return ret;
 }
 
 void track_pcm_t::seek_to_byte(size_t byte)

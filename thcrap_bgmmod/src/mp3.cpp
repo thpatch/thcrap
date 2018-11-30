@@ -41,7 +41,7 @@ struct mp3_part_t : public pcm_part_t {
 	bool decode_done = false;
 	mpg123_handle *mh;
 
-	size_t part_decode(void *buf, size_t size);
+	size_t part_decode_single(void *buf, size_t size);
 	void part_seek_to_sample(size_t sample);
 
 	mp3_part_t(mpg123_handle *mh, pcm_format_t pcmf, size_t part_bytes)
@@ -50,7 +50,7 @@ struct mp3_part_t : public pcm_part_t {
 	virtual ~mp3_part_t();
 };
 
-size_t mp3_part_t::part_decode(void *buf, size_t size)
+size_t mp3_part_t::part_decode_single(void *buf, size_t size)
 {
 	if(decode_done) {
 		decode_done = false;

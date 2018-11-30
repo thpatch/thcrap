@@ -69,12 +69,20 @@ struct track_t {
 	const size_t intro_size;
 	const size_t total_size;
 
-	// *Always* has to fill the buffer entirely, if necessary by looping back.
-	virtual void decode(void *buf, size_t size) = 0;
+	// Single decoding call that also handles looping. Should return
+	// the number of bytes actually decoded, which can be less than
+	// [size]. If an error occured, it should return -1, and show a
+	// message box.
+	virtual size_t decode_single(void *buf, size_t size) = 0;
 	// Seeks to the raw decoded audio byte, according to [pcmf].
 	// Can get arbitrarily large, therefore the looping section
 	// should be treated as infinitely long.
 	virtual void seek_to_byte(size_t byte) = 0;
+
+	// *Always* fills [buf] entirely. Returns true if successful,
+	// or false in case of an unrecoverable decoding error, in
+	// which case the buffer is filled with zeroes.
+	bool decode(void *buf, size_t size);
 
 	track_t(
 		const pcm_format_t &pcmf,
@@ -96,7 +104,7 @@ struct pcm_part_t {
 	// Single decoding call. Should return the number of bytes actually
 	// decoded, which can be less than [size]. If an error occured, it
 	// should return -1, and show a message box.
-	virtual size_t part_decode(void *buf, size_t size) = 0;
+	virtual size_t part_decode_single(void *buf, size_t size) = 0;
 	// Seeks to the raw decoded, non-interleaved audio sample (byte
 	// divided by bitdepth and number of channels). Guaranteed to be
 	// less than the total number of samples in the stream.
@@ -116,7 +124,7 @@ struct track_pcm_t : public track_t {
 	pcm_part_t *cur;
 
 	/// track_t functions
-	void decode(void *buf, size_t size);
+	size_t decode_single(void *buf, size_t size);
 	void seek_to_byte(size_t byte);
 
 	track_pcm_t(

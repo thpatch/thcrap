@@ -75,7 +75,7 @@ const char* ov_strerror(int ret)
 struct vorbis_part_t : public pcm_part_t {
 	OggVorbis_File vf;
 
-	size_t part_decode(void *buf, size_t size);
+	size_t part_decode_single(void *buf, size_t size);
 	void part_seek_to_sample(size_t sample);
 
 	vorbis_part_t(OggVorbis_File &&vf, pcm_format_t pcmf, size_t part_bytes)
@@ -84,7 +84,7 @@ struct vorbis_part_t : public pcm_part_t {
 	virtual ~vorbis_part_t();
 };
 
-size_t vorbis_part_t::part_decode(void *buf, size_t size)
+size_t vorbis_part_t::part_decode_single(void *buf, size_t size)
 {
 	auto ret = ov_read(&vf, (char *)buf, size, 0, 2, 1, nullptr);
 	if(ret < 0) {

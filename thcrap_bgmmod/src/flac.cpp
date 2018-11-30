@@ -54,7 +54,7 @@ typedef drflac_uint64 drflac_read_func_t(drflac *, drflac_uint64, void *);
 struct flac_part_t : public pcm_part_t {
 	drflac *ff;
 
-	size_t part_decode(void *buf, size_t size);
+	size_t part_decode_single(void *buf, size_t size);
 	void part_seek_to_sample(size_t sample);
 
 	flac_part_t(drflac *ff, pcm_format_t pcmf, size_t part_bytes)
@@ -63,7 +63,7 @@ struct flac_part_t : public pcm_part_t {
 	virtual ~flac_part_t();
 };
 
-size_t flac_part_t::part_decode(void *buf, size_t size)
+size_t flac_part_t::part_decode_single(void *buf, size_t size)
 {
 	drflac_read_func_t *read;
 	auto bytedepth = pcmf.bitdepth / 8;

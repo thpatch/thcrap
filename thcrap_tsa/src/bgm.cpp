@@ -226,7 +226,9 @@ BOOL WINAPI thbgm_ReadFile(
 		auto *modtrack = thbgm_modtrack_for_current_bgmid();
 		if(modtrack) {
 			bgmmod_debugf("ReadFile(%p, %u)\n", hFile, nNumberOfBytesToRead);
-			modtrack->decode(lpBuffer, nNumberOfBytesToRead);
+			if(!modtrack->decode(lpBuffer, nNumberOfBytesToRead)) {
+				thbgm_mods[thbgm_cur_bgmid] = nullptr;
+			}
 			if(lpNumberOfBytesRead) {
 				*lpNumberOfBytesRead = nNumberOfBytesToRead;
 			}
