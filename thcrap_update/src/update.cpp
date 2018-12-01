@@ -731,10 +731,28 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		patch_update_callback_param.patch_progress = i;
 		local_val = json_object_get(local_files, key);
 
-		// Delete locally unchanged files with a JSON null value in the remote list
-		if(json_is_null(remote_val) && json_is_integer(local_val)) {
+		auto local_file_name = fn_for_patch(patch_info, key);
+		// If we couldn't write to the file now, we probably also can't
+		// when the download is finished. Don't need to waste traffic then.
+		bool local_file_inaccessible = [&local_file_name] () {
+			auto handle = CreateFileU(local_file_name,
+				GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+				OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr
+			);
+			auto err = GetLastError();
+			CloseHandle(handle);
+			return (handle == INVALID_HANDLE_VALUE) && !(
+				err == ERROR_FILE_NOT_FOUND || err == ERROR_PATH_NOT_FOUND
+			);
+		}();
+
+		if(local_file_inaccessible) {
+			log_printf("%s (file inaccessible, skipping...)\n", key);
+		} else if(json_is_null(remote_val) && json_is_integer(local_val)) {
+			// Delete locally unchanged files with a JSON null value
+			// in the remote list
 			uint32_t file_size = 0;
-			void *file_buffer = patch_file_load(patch_info, key, (size_t*)&file_size);
+			void *file_buffer = file_read(local_file_name, (size_t*)&file_size);
 			if(file_buffer && file_size) {
 				DWORD local_crc = crc32(0, (Bytef*)file_buffer, file_size);
 				if(local_crc == json_integer_value(local_val)) {
@@ -757,7 +775,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 			ret = servers.download(key, nullptr, patch_update_callback, &patch_update_callback_param);
 		}
 		if(ret.file_buffer) {
-			auto store_ret = patch_file_store(patch_info, key, ret.file_buffer, ret.file_size);
+			auto store_ret = file_write(local_file_name, ret.file_buffer, ret.file_size);
 			SAFE_FREE(ret.file_buffer);
 			if(!store_ret) {
 				json_object_set(local_files, key, remote_val);
@@ -767,6 +785,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 				log_printf("✘ Error saving %s: %s\n", key, err_str);
 			}
 		}
+		SAFE_FREE(local_file_name);
 	}
 	if(i == file_count) {
 		log_printf("Update completed.\n");
