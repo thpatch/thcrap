@@ -44,8 +44,8 @@ struct mp3_part_t : public pcm_part_t {
 	size_t part_decode_single(void *buf, size_t size);
 	void part_seek_to_sample(size_t sample);
 
-	mp3_part_t(mpg123_handle *mh, pcm_format_t pcmf, size_t part_bytes)
-		: mh(mh), pcm_part_t(pcmf, part_bytes) {
+	mp3_part_t(mpg123_handle *mh, pcm_part_info_t &&info)
+		: mh(mh), pcm_part_t(std::move(info)) {
 	}
 	virtual ~mp3_part_t();
 };
@@ -141,5 +141,7 @@ std::unique_ptr<pcm_part_t> mp3_open(HANDLE &&stream)
 	size_t byte_size = sample_length * bytedepth * channels;
 	pcm_format_t pcmf = { (uint32_t)samplerate, bytedepth * 8, channels };
 
-	return std::make_unique<mp3_part_t>(mh, pcmf, byte_size);
+	return std::make_unique<mp3_part_t>(mh, pcm_part_info_t{
+		pcmf, byte_size
+	});
 }

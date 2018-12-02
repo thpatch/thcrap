@@ -57,8 +57,8 @@ struct flac_part_t : public pcm_part_t {
 	size_t part_decode_single(void *buf, size_t size);
 	void part_seek_to_sample(size_t sample);
 
-	flac_part_t(drflac *ff, pcm_format_t pcmf, size_t part_bytes)
-		: ff(ff), pcm_part_t(pcmf, part_bytes) {
+	flac_part_t(drflac *ff, pcm_part_info_t &&info)
+		: ff(ff), pcm_part_t(std::move(info)) {
 	}
 	virtual ~flac_part_t();
 };
@@ -117,5 +117,7 @@ std::unique_ptr<pcm_part_t> flac_open(HANDLE &&stream)
 	pcm_format_t pcmf = { ff->sampleRate, output_bitdepth, ff->channels };
 	auto byte_size = (size_t)(ff->totalSampleCount * (output_bitdepth / 8));
 
-	return std::make_unique<flac_part_t>(ff, pcmf, byte_size);
+	return std::make_unique<flac_part_t>(ff, pcm_part_info_t{
+		pcmf, byte_size
+	});
 }

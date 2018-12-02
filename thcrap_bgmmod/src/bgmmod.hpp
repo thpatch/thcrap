@@ -94,13 +94,15 @@ struct track_t {
 	virtual ~track_t() {}
 };
 
-// Base class for an individual intro or loop file.
-// Should be derived for each supported codec.
-struct pcm_part_t {
+struct pcm_part_info_t {
 	const pcm_format_t pcmf;
 	// Size of this part, in decoded PCM bytes according to [pcmf].
 	const size_t part_bytes;
+};
 
+// Base class for an individual intro or loop file.
+// Should be derived for each supported codec.
+struct pcm_part_t : public pcm_part_info_t {
 	// Single decoding call. Should return the number of bytes actually
 	// decoded, which can be less than [size]. If an error occured, it
 	// should return -1, and show a message box.
@@ -110,8 +112,8 @@ struct pcm_part_t {
 	// less than the total number of samples in the stream.
 	virtual void part_seek_to_sample(size_t sample) = 0;
 
-	pcm_part_t(pcm_format_t pcmf, size_t part_bytes)
-		: pcmf(pcmf), part_bytes(part_bytes) {
+	pcm_part_t(pcm_part_info_t &&info)
+		: pcm_part_info_t(info) {
 	}
 	virtual ~pcm_part_t() {}
 };

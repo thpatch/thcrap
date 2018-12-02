@@ -78,8 +78,8 @@ struct vorbis_part_t : public pcm_part_t {
 	size_t part_decode_single(void *buf, size_t size);
 	void part_seek_to_sample(size_t sample);
 
-	vorbis_part_t(OggVorbis_File &&vf, pcm_format_t pcmf, size_t part_bytes)
-		: vf(vf), pcm_part_t(pcmf, part_bytes) {
+	vorbis_part_t(OggVorbis_File &&vf, pcm_part_info_t &&info)
+		: vf(vf), pcm_part_t(std::move(info)) {
 	};
 	virtual ~vorbis_part_t();
 };
@@ -135,5 +135,7 @@ std::unique_ptr<pcm_part_t> vorbis_open(HANDLE &&stream)
 	auto bits_per_sample = (pcmf.bitdepth / 8) * pcmf.channels;
 	auto byte_size = (size_t)(sample_length * bits_per_sample);
 
-	return std::make_unique<vorbis_part_t>(std::move(vf), pcmf, byte_size);
+	return std::make_unique<vorbis_part_t>(std::move(vf), pcm_part_info_t{
+		pcmf, byte_size
+	});
 }
