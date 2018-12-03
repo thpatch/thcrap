@@ -2,6 +2,8 @@ Touhou Community Reliant Automatic Patcher
 ------------------------------------------
 
 [![Join the chat at http://discord.thpatch.net](https://discordapp.com/api/guilds/213769640852193282/widget.png)](http://discord.thpatch.net/)
+[![Backers on Open Collective](https://opencollective.com/thpatch/backers/badge.svg)](#backers)
+ [![Sponsors on Open Collective](https://opencollective.com/thpatch/sponsors/badge.svg)](#sponsors) 
 
 ### Description ###
 
@@ -108,6 +110,36 @@ The scripts in the `scripts` directory are written in [Python 3](http://python.o
 
 * [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
 * [pathspec](https://pypi.python.org/pypi/pathspec) is required by `repo_update.py`. Can be easily installed via `pip`.
+
+## Contributors
+
+This project exists thanks to all the people who contribute. 
+<a href="https://github.com/thpatch/thcrap/graphs/contributors"><img src="https://opencollective.com/thpatch/contributors.svg?width=890&button=false" /></a>
+
+
+## Backers
+
+Thank you to all our backers! 🙏 [[Become a backer](https://opencollective.com/thpatch#backer)]
+
+<a href="https://opencollective.com/thpatch#backers" target="_blank"><img src="https://opencollective.com/thpatch/backers.svg?width=890"></a>
+
+
+## Sponsors
+
+Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [[Become a sponsor](https://opencollective.com/thpatch#sponsor)]
+
+<a href="https://opencollective.com/thpatch/sponsor/0/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/0/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/1/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/1/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/2/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/2/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/3/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/3/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/4/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/4/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/5/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/5/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/6/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/6/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/7/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/7/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/8/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/8/avatar.svg"></a>
+<a href="https://opencollective.com/thpatch/sponsor/9/website" target="_blank"><img src="https://opencollective.com/thpatch/sponsor/9/avatar.svg"></a>
+
+
 
 ### License ###
 
