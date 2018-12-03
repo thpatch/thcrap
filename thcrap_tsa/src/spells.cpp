@@ -89,6 +89,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 
 		size_t cmt_key_str_len = strlen("comment_") + 16 + 1;
 		VLA(char, cmt_key_str, cmt_key_str_len);
+		defer({ VLA_FREE(cmt_key_str); });
 		sprintf(cmt_key_str, "comment_%u", comment_num);
 
 		// Count down from the real number to the given number
@@ -102,8 +103,6 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 			*str = json_array_get_string_safe(json_cmt, line_num);
 			return breakpoint_cave_exec_flag(bp_info);
 		}
-
-		VLA_FREE(cmt_key_str);
 	}
 	return 1;
 }
