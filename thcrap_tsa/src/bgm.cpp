@@ -114,6 +114,7 @@ std::unique_ptr<std::unique_ptr<track_t>[]> thbgm_mods;
 // Index into both [thbgm_mods] and the bgm_fmt_t array.
 // Negative if no track is playing.
 int thbgm_cur_bgmid = -1;
+size_t thbgm_modtrack_bytes_read = 0;
 
 static auto chain_CreateFileA = CreateFileU;
 static auto chain_CloseHandle = CloseHandle;
@@ -232,6 +233,7 @@ BOOL WINAPI thbgm_ReadFile(
 			if(lpNumberOfBytesRead) {
 				*lpNumberOfBytesRead = nNumberOfBytesToRead;
 			}
+			thbgm_modtrack_bytes_read += nNumberOfBytesToRead;
 			return true;
 		}
 	}
@@ -259,47 +261,47 @@ DWORD WINAPI thbgm_SetFilePointer(
 		return fallback();
 	}
 	bgmmod_debugf("SetFilePointer(%p, %d, %u) -> ", hFile, lDistanceToMove, dwMoveMethod);
-	if(lDistanceToMove == 0 && dwMoveMethod == FILE_CURRENT) {
-		// When pausing ≥TH11, those games retrieve the current BGM file
-		// position in order to then CloseHandle() thbgm.dat, re-open it
-		// once the player resumes the game, then call SetFilePointer()
-		// twice, first to seek to the *beginning* of the track, then to
-		// seek to the previously retrived position.
-		// "Correctly" wrapping those tell and seek calls might not only
-		// lead to yet another needless performance drop in the decoding
-		// layer, but will lead to a similar problem like the one with
-		// the TH13 trance seeks: if our modded BGM is longer than the
-		// original, we couldn't differentiate that seek from a "switch"
-		// to somewhere inside one of the following tracks in thbgm.dat.
-		//
-		// The returned position must be larger than the track offset,
-		// since the game stores the value relative to that position.
-		// So let's just return the track offset itself?
-		//
-		// ...nope, because we do have to support seeks to the start of
-		// a track that *don't* change which track is currently playing.
-		// This is how the game rewinds the BGM when restarting in Stage
-		// Practice, Spell Practice, the Extra Stage, Stage 1 from Stage
-		// 1, or when replaying the same BGM from the beginning in the
-		// Music Room. So, uh... let's block that first, rewinding seek,
-		// just for this case, and add a single byte on top of the track
-		// offset. This way, we can also "uniquely" identify this second
-		// seek and ignore it, make sure we stay within the same track,
-		// and are still prepared in case ZUN ever wants to *actually*
-		// seek within a track in the future.
-		// Kind of clumsy, but better than requiring a trance seek
-		// breakpoint in every affected game, and it would only ever
-		// fail if ZUN added an 8-bit mono track, so.
-		auto *modtrack = thbgm_modtrack_for_current_bgmid();
-		if(modtrack != nullptr) {
-			const auto &fmt = bgm_fmt[thbgm_cur_bgmid];
-			seekblock = true;
-			return fmt.track_offset + 1;
-		}
-		return fallback();
+
+	bool is_tell = (lDistanceToMove == 0 && dwMoveMethod == FILE_CURRENT);
+	if(is_tell) {
+		log_debugf("Tell\n");
 	}
+
+	// Make sure to always consume the trance seek offset!
 	auto track_pos = lDistanceToMove - tranceseek_offset;
 	tranceseek_offset = 0;
+
+	// When pausing ≥TH11, those games retrieve the current BGM file
+	// position in order to then CloseHandle() thbgm.dat, re-open it once
+	// the player resumes the game, then call SetFilePointer() twice,
+	// first to seek to the *beginning* of the track, then to seek to the
+	// previously retrieved position.
+	// The games actually update their internal track progress variable
+	// used for looping with the value returned here, so we do have to
+	// wrap it correctly to avoid loop glitches.
+	// So, let's block that first, rewinding seek, as well as the
+	// following attempt to re-seek the file to the same position, before
+	// handling anything else.
+	// Luckily, TH13's trance seeks are already handled by capturing the
+	// offset, so this causes no further problems even if if our modded
+	// BGM as longer than the original, and we can still differentiate
+	// that seek from a "switch" to somewhere inside one of the following
+	// tracks in thbgm.dat.
+	auto *modtrack = thbgm_modtrack_for_current_bgmid();
+	if(modtrack != nullptr) {
+		const auto &fmt = bgm_fmt[thbgm_cur_bgmid];
+		auto cur_thbgm_pos = fmt.track_offset + thbgm_modtrack_bytes_read;
+		if(is_tell) {
+			seekblock = true;
+			return cur_thbgm_pos;
+		} else if(
+			dwMoveMethod == FILE_BEGIN
+			&& lDistanceToMove == cur_thbgm_pos
+		) {
+			log_debugf("Ignored seek-after-tell\n");
+			return lDistanceToMove;
+		}
+	}
 
 	auto new_bgmid = bgm_find(track_pos);
 	if(new_bgmid < 0) {
@@ -317,9 +319,6 @@ DWORD WINAPI thbgm_SetFilePointer(
 			log_debugf("Blocked seek attempt to byte #%u\n", seek_offset);
 			seekblock = false;
 			return lDistanceToMove;
-		} else if(seek_offset == 1) {
-			log_debugf("Ignored seek-after-tell\n");
-			return lDistanceToMove;
 		} else if(seek_offset == 0) {
 			log_debugf("Rewind\n");
 		} else if(seek_offset == new_modtrack->intro_size) {
@@ -327,6 +326,7 @@ DWORD WINAPI thbgm_SetFilePointer(
 		} else {
 			log_debugf("Seek to byte #%u\n", seek_offset);
 		}
+		thbgm_modtrack_bytes_read = seek_offset;
 		new_modtrack->seek_to_byte(seek_offset);
 		return lDistanceToMove;
 	}
