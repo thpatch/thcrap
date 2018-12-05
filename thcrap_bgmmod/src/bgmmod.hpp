@@ -14,7 +14,6 @@
 /// String constants
 /// ----------------
 extern const stringref_t LOOP_INFIX;
-extern const int LONGEST_CODEC_LEN;
 /// ----------------
 
 /// Sampling rate / bit depth / channel structure
