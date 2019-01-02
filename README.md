@@ -3,13 +3,13 @@ Touhou Community Reliant Automatic Patcher
 
 [![Join the chat at http://discord.thpatch.net](https://discordapp.com/api/guilds/213769640852193282/widget.png)](http://discord.thpatch.net/)
 
-### Description ###
+## Description ##
 
 Basically, this is an almost-generic, easily expandable and customizable framework to patch Windows applications in memory, specifically tailored towards the translation of Japanese games.
 
 It is mainly developed to facilitate self-updating, multilingual translation of the [Touhou Project](http://en.wikipedia.org/wiki/Touhou_Project) games on [Touhou Patch Center](http://thpatch.net/), but can theoretically be used for just about any other patch for these games, without going through that site.
 
-#### Main features of the base engine #####
+### Main features of the base engine ###
 
 * Easy **DLL injection** of the main engine and plug-ins into the target process.
 
@@ -37,7 +37,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 * ... and all that without any significant impact on performance. ☺
 
-### Modules included ###
+## Modules included ##
 
 * `win32_utf8`: A UTF-8 wrapper library around the Win32 API calls we require. This is a stand-alone project and can (and should) be freely used in other applications, too.
 * `thcrap`: The main patch engine.
@@ -48,7 +48,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 * `thcrap_update`: Contains updating functionality for patches, digitally signed automatic updates of thcrap itself, as well as an updater GUI. `thcrap_update.dll` can be safely deleted to disable all online functionality.
 * `thcrap_bgmmod`: A helper library to handle the non-game-specific parts of BGM modding for originally uncompressed PCM music, like codec support and loop point handling. Currently statically linked into `thcrap_tsa` as this module is currently the only one with support for BGM modding, but already split into a separate library to be ready for covering more engines in the future.
 
-### Building ###
+## Building ##
 
 A ready-made Visual Studio build configuration, covering all modules and their dependencies, is provided as part of this repository. To set up the build:
 
@@ -76,19 +76,19 @@ or
 
 in the thcrap directory. The binaries will end up in the `bin/` subdirectory.
 
-#### Signing a release archive for automatic updates ####
+### Signing a release archive for automatic updates ###
 First, convert `cert.pvk` to a .pem file using OpenSSL, then use this file together with `scripts/release_sign.py`:
 
 	openssl rsa -inform pvk -in cert.pvk -outform pem -out cert.pem
 	python release_sign.py -k cert.pem thcrap.zip
 
-#### Using different compilers ####
+### Using different compilers ###
 
 Visual Studio Community 2013 is recommended for building, and the build configuration references the Visual Studio 2013 platform toolset with Windows XP targeting support by default. However, the project should generally build under every version since Visual C++ 2010 Express after changing the `<PlatformToolset>` value in `Base.props`. For a list of all platform toolsets available on your system, open the `Properties` dialog for any included project and refer to the drop-down menu at *Configuration Properties → General → Platform Toolset*.
 
 Compilation with MinGW is currently not supported. This is not likely to change in the foreseeable future as we don't see much value in it.
 
-#### Dependencies ####
+### Dependencies ###
 
 All required third-party libraries for the C/C++ code are included as Git submodules. These are:
 
@@ -109,7 +109,7 @@ The scripts in the `scripts` directory are written in [Python 3](http://python.o
 * [PyCrypto](https://www.dlitz.net/software/pycrypto/) is required by `release_sign.py`.
 * [pathspec](https://pypi.python.org/pypi/pathspec) is required by `repo_update.py`. Can be easily installed via `pip`.
 
-### License ###
+## License ##
 
 The Touhou Community Reliant Patcher and all accompanying modules are released to the Public Domain, unless stated otherwise. This means you can do whatever you want with this code without so much as crediting us.
 
