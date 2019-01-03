@@ -2,6 +2,7 @@ Touhou Community Reliant Automatic Patcher
 ------------------------------------------
 
 [![Join the chat at http://discord.thpatch.net](https://discordapp.com/api/guilds/213769640852193282/widget.png)](http://discord.thpatch.net/)
+[![Backers on Open Collective](https://opencollective.com/thpatch/backers/badge.svg)](#backers)
 
 ## Description ##
 
@@ -114,3 +115,15 @@ The scripts in the `scripts` directory are written in [Python 3](http://python.o
 The Touhou Community Reliant Patcher and all accompanying modules are released to the Public Domain, unless stated otherwise. This means you can do whatever you want with this code without so much as crediting us.
 
 That said, we *do* appreciate attribution. ☺
+
+## Backers ##
+
+Love our work? [Become a backer of Touhou Patch Center on Open Collective](https://opencollective.com/thpatch), and help us decide the priorities of thcrap's future development.
+
+Thank you to all our backers!
+
+<a href="https://opencollective.com/thpatch#backers" target="_blank"><img src="https://opencollective.com/thpatch/backers.svg?width=890"></a>
+
+## The team ##
+
+<a href="https://github.com/thpatch/thcrap/graphs/contributors"><img src="https://opencollective.com/thpatch/contributors.svg?width=890&limit=4&button=true" /></a>
