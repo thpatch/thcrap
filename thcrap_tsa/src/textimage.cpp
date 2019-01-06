@@ -11,6 +11,7 @@
   */
 
 #include <thcrap.h>
+#include <minid3d.h>
 #include <unordered_map>
 #include <vector>
 #include <thtypes/internal/sprite.h>
@@ -23,47 +24,6 @@ logger_t textimage_log("Text image error");
 
 #define SLOTSTR_ERROR "Must parse into a sprite slot or a known image file name"
 /// ======
-
-/// DirectX / D3DX types
-/// ====================
-// We don't care about any of these, but it's nice to have the correct types.
-// Omitting the Direct3D version though, since this function is the same for
-// both Direct3D 8 and 9.
-typedef IUnknown IDirect3DDevice;
-typedef IUnknown IDirect3DTexture;
-typedef uint32_t D3DFORMAT;
-typedef uint32_t D3DPOOL;
-typedef uint32_t D3DRESOURCETYPE;
-typedef uint32_t D3DMULTISAMPLE_TYPE;
-typedef uint32_t D3DXIMAGE_FILEFORMAT;
-
-typedef struct _D3DSURFACE_DESC {
-	D3DFORMAT Format;
-	D3DRESOURCETYPE Type;
-	DWORD Usage;
-	D3DPOOL Pool;
-	UINT Size;
-	D3DMULTISAMPLE_TYPE MultiSampleType;
-	UINT Width;
-	UINT Height;
-} D3DSURFACE_DESC;
-
-typedef struct _D3DXIMAGE_INFO {
-	uint32_t Width;
-	uint32_t Height;
-	uint32_t Depth;
-	uint32_t MipLevels;
-	D3DFORMAT Format;
-	D3DRESOURCETYPE ResourceType;
-	D3DXIMAGE_FILEFORMAT ImageFileFormat;
-} D3DXIMAGE_INFO;
-
-typedef HRESULT __stdcall d3dtex_GetLevelDesc(
-	IDirect3DTexture *that,
-	UINT Level,
-	D3DSURFACE_DESC *pDesc
-);
-/// ====================
 
 /// Game memory pointers
 /// ====================
@@ -384,7 +344,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 	}
 
 	D3DSURFACE_DESC hw;
-	auto GetLevelDesc = (d3dtex_GetLevelDesc *)(*(size_t**)tex)[14];
+	auto GetLevelDesc = (d3dtex_GetLevelDesc_type *)(*(size_t**)tex)[14];
 	if(FAILED(GetLevelDesc(tex, 0, &hw))) {
 		// This will probably only ever give different values
 		// on ancient 3dfx Voodoo cards anyway, so... :P

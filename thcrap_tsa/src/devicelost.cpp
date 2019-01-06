@@ -8,14 +8,7 @@
   */
 
 #include <thcrap.h>
-#include "thcrap_tsa.h"
-
-// HRESULT values from d3d9.h
-#define FACILITY_D3D 0x88760000
-#define D3D_OK 0
-#define D3DERR_DRIVERINTERNALERROR	(FACILITY_D3D|2087)
-#define D3DERR_DEVICELOST			(FACILITY_D3D|2152)
-#define D3DERR_DEVICENOTRESET		(FACILITY_D3D|2153)
+#include <minid3d.h>
 
 typedef HRESULT __stdcall d3dd9_TestCooperativeLevel(void ***);
 

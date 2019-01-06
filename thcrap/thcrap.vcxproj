@@ -82,6 +82,7 @@
     <ClInclude Include="src\init.h" />
     <ClInclude Include="src\jansson_ex.h" />
     <ClInclude Include="src\log.h" />
+    <ClInclude Include="src\minid3d.h" />
     <ClInclude Include="src\patchfile.h" />
     <ClInclude Include="src\pe.h" />
     <ClInclude Include="src\plugin.h" />
