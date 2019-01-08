@@ -12,12 +12,10 @@
 
 typedef HRESULT __stdcall d3dd9_TestCooperativeLevel(void ***);
 
-// original memeber function pointers
-static int(__stdcall*orig_d3dd9_Reset)(void***, void*) = NULL;
-static int(__stdcall*orig_d3d9_CreateDevice)(void***, UINT, int, void*, DWORD, void*, void****) = NULL;
-static void***(__stdcall*orig_Direct3DCreate9)(UINT SDKVersion) = NULL;
+// Original member function pointers
+static int(__stdcall*orig_d3dd9_Reset)(void***, D3DPRESENT_PARAMETERS*) = NULL;
 
-int __stdcall my_d3dd9_Reset(void*** that, void* pPresentationParameters) {
+int __stdcall my_d3dd9_Reset(void*** that, D3DPRESENT_PARAMETERS* pPresentationParameters) {
 	auto TestCooperativeLevel = (d3dd9_TestCooperativeLevel *)(*that)[3];
 	int rv = D3D_OK;
 	int coop = TestCooperativeLevel(that);
@@ -47,37 +45,10 @@ int __stdcall my_d3dd9_Reset(void*** that, void* pPresentationParameters) {
 	}
 }
 
-int __stdcall my_d3d9_CreateDevice(void*** that, UINT Adapter, int DeviceType, void* hFocusWindow, DWORD BehaviourFlags, void* pPresentationParameters, void**** ppReturnedDeviceInterface) {
-	int rv = orig_d3d9_CreateDevice(that, Adapter, DeviceType, hFocusWindow, BehaviourFlags, pPresentationParameters, ppReturnedDeviceInterface);
-	if (rv == D3D_OK && ppReturnedDeviceInterface && *ppReturnedDeviceInterface) {
-		vtable_detour_t my[] = {
-			{ 16, my_d3dd9_Reset, (void**)&orig_d3dd9_Reset },
-		};
-		vtable_detour(**ppReturnedDeviceInterface, my, elementsof(my));
-	}
-	return rv;
-}
-
-void*** __stdcall my_Direct3DCreate9(UINT SDKVersion) {
-	if (!orig_Direct3DCreate9) return NULL;
-	void*** rv = orig_Direct3DCreate9(SDKVersion);
-	if (rv) {
-		vtable_detour_t my[] = {
-			{ 16, my_d3d9_CreateDevice, (void**)&orig_d3d9_CreateDevice },
-		};
-		vtable_detour(*rv, my, elementsof(my));
-	}
-	return rv;
-}
-
 void devicelost_mod_detour(void)
 {
-	HMODULE hModule = GetModuleHandle(L"d3d9.dll");
-	if (hModule) {
-		orig_Direct3DCreate9 = (void***(__stdcall*)(UINT))GetProcAddress(hModule, "Direct3DCreate9");
-		detour_chain("d3d9.dll", 1,
-			"Direct3DCreate9", my_Direct3DCreate9, &orig_Direct3DCreate9,
-			NULL
-		);
-	}
+	vtable_detour_t my[] = {
+		{ 16, my_d3dd9_Reset, (void**)&orig_d3dd9_Reset },
+	};
+	d3d9_device_detour(my, elementsof(my));
 }

@@ -9,12 +9,17 @@
 
 #pragma once
 
-// We currently don't care about any of these, but it's nice to have the
-// correct types.
+// Interfaces
+typedef IUnknown IDirect3D;
 typedef IUnknown IDirect3DDevice;
 typedef IUnknown IDirect3DTexture;
+
+// We currently don't care about any of these, but it's nice to have the
+// correct types.
+typedef uint32_t D3DDEVTYPE;
 typedef uint32_t D3DFORMAT;
 typedef uint32_t D3DPOOL;
+typedef struct {} D3DPRESENT_PARAMETERS;
 typedef uint32_t D3DRESOURCETYPE;
 typedef uint32_t D3DMULTISAMPLE_TYPE;
 
@@ -60,3 +65,14 @@ typedef struct _D3DXIMAGE_INFO {
 	D3DXIMAGE_FILEFORMAT ImageFileFormat;
 } D3DXIMAGE_INFO;
 /// ----
+
+/// Detouring helpers
+/// -----------------
+// Using the same API as vtable_detour(), these can be used to directly detour
+// IDirect3DDevice functions without duplicating the boilerplate of detouring
+// Direct3DCreate() and IDirect3D::CreateDevice(). Since the contents of [det]
+// need to be cached until the corresponding CreateDevice() function runs, its
+// lifetime doesn't matter.
+extern "C" THCRAP_API void d3d8_device_detour(vtable_detour_t *det, size_t det_count);
+extern "C" THCRAP_API void d3d9_device_detour(vtable_detour_t *det, size_t det_count);
+/// -----------------

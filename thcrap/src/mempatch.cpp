@@ -236,7 +236,7 @@ FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback
 	return ret ? ret : fallback;
 }
 
-int vtable_detour(void **vtable, vtable_detour_t *det, size_t det_count)
+int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
 {
 	assert(vtable);
 	assert(det);
