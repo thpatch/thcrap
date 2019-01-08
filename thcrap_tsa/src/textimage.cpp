@@ -344,8 +344,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 	}
 
 	D3DSURFACE_DESC hw;
-	auto GetLevelDesc = (d3dtex_GetLevelDesc_type *)(*(size_t**)tex)[14];
-	if(FAILED(GetLevelDesc(tex, 0, &hw))) {
+	if(FAILED(d3dtex_GetLevelDesc(D3D8, tex, 0, &hw))) {
 		// This will probably only ever give different values
 		// on ancient 3dfx Voodoo cards anyway, so... :P
 		hw.Width = srcinfo.Width;

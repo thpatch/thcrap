@@ -9,6 +9,34 @@
 
 #pragma once
 
+/// Calling undetoured, identical functions at different vtable offsets
+/// -------------------------------------------------------------------
+typedef enum {
+	D3D8, D3D9
+} d3d_version_t;
+
+#define FULLDEC(type, varname) type varname
+#define VARNAMES(type, varname) varname
+
+#define MINID3D_TYPEDEF(rettype, func) \
+	typedef rettype __stdcall func##_type(func##_(FULLDEC));
+
+#define MINID3D_VTABLE_FUNC_DEF(rettype, func, vtable_index_d3d8, vtable_index_d3d9) \
+	MINID3D_TYPEDEF(rettype, func) \
+	\
+	__inline rettype func(d3d_version_t ver, func##_(FULLDEC)) \
+	{ \
+		FARPROC *vt = *(FARPROC**)that; \
+		func##_type *fp = (func##_type*)( \
+			(ver == D3D8) ? vt[vtable_index_d3d8] : \
+			(ver == D3D9) ? vt[vtable_index_d3d9] : \
+			NULL \
+		); \
+		assert(fp); \
+		return fp(func##_(VARNAMES)); \
+	}
+/// -------------------------------------------------------------------
+
 // Interfaces
 typedef IUnknown IDirect3D;
 typedef IUnknown IDirect3DDevice;
@@ -43,12 +71,27 @@ typedef struct _D3DSURFACE_DESC {
 #define D3DERR_DEVICENOTRESET     	(FACILITY_D3D|2153)
 /// ------
 
+/// IDirect3D
+/// ---------
+#define d3d_CreateDevice_(x) \
+	x(IDirect3D*, that), \
+	x(UINT, Adapter), \
+	x(D3DDEVTYPE, DeviceType), \
+	x(HWND, hFocusWindow), \
+	x(DWORD, BehaviourFlags), \
+	x(D3DPRESENT_PARAMETERS*, pPresentationParameters), \
+	x(void****, ppReturnedDeviceInterface)
+MINID3D_TYPEDEF(HRESULT, d3d_CreateDevice)
+/// ---------
+
 /// IDirect3DTexture
 /// ----------------
-typedef HRESULT __stdcall d3dtex_GetLevelDesc_type(IDirect3DTexture *,
-	UINT Level,
-	D3DSURFACE_DESC *pDesc
-);
+#define d3dtex_GetLevelDesc_(x) \
+	x(IDirect3DTexture*, that), \
+	x(UINT, Level), \
+	x(D3DSURFACE_DESC*, pDesc)
+
+MINID3D_VTABLE_FUNC_DEF(HRESULT, d3dtex_GetLevelDesc, 14, 17);
 /// ----------------
 
 /// D3DX

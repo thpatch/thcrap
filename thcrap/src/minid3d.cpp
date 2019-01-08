@@ -13,35 +13,21 @@
 
 /// Direct3D API
 /// ------------
-#define DIRECT3DCREATE_PARAMS \
-	UINT SDKVersion
+#define Direct3DCreate_(x) \
+	x(UINT, SDKVersion)
 
-#define D3D_CREATEDEVICE_PARAMS \
-	IDirect3D* that, \
-	UINT Adapter, \
-	D3DDEVTYPE DeviceType, \
-	HWND hFocusWindow, \
-	DWORD BehaviourFlags, \
-	D3DPRESENT_PARAMETERS* pPresentationParameters, \
-	void**** ppReturnedDeviceInterface
-
-#define DIRECT3DCREATE(name) void*** __stdcall name(DIRECT3DCREATE_PARAMS)
-#define D3D_CREATEDEVICE(name) HRESULT __stdcall name(D3D_CREATEDEVICE_PARAMS)
+#define DIRECT3DCREATE(name) void*** __stdcall name(Direct3DCreate_(FULLDEC))
 
 typedef DIRECT3DCREATE(Direct3DCreate_type);
-typedef D3D_CREATEDEVICE(d3d_CreateDevice_type);
 /// ------------
 
 // "Direct3D Device Detour" :P
 HRESULT __stdcall d3ddd_CreateDevice(
 	d3d_CreateDevice_type *c_orig, const std::vector<vtable_detour_t >& detours,
-	D3D_CREATEDEVICE_PARAMS
+	d3d_CreateDevice_(FULLDEC)
 )
 {
-	auto ret = c_orig(
-		that, Adapter, DeviceType, hFocusWindow, BehaviourFlags,
-		pPresentationParameters, ppReturnedDeviceInterface
-	);
+	auto ret = c_orig(d3d_CreateDevice_(VARNAMES));
 	if(ret == D3D_OK && ppReturnedDeviceInterface && *ppReturnedDeviceInterface) {
 		vtable_detour(**ppReturnedDeviceInterface, detours.data(), detours.size());
 	}
@@ -51,13 +37,13 @@ HRESULT __stdcall d3ddd_CreateDevice(
 void*** __stdcall d3ddd_Direct3DCreate(
 	Direct3DCreate_type *c_orig, size_t vtable_index,
 	d3d_CreateDevice_type *cd_new, d3d_CreateDevice_type **cd_old,
-	DIRECT3DCREATE_PARAMS
+	Direct3DCreate_(FULLDEC)
 )
 {
 	if(!c_orig) {
 		return nullptr;
 	}
-	auto ret = c_orig(SDKVersion);
+	auto ret = c_orig(Direct3DCreate_(VARNAMES));
 	if(ret) {
 		vtable_detour_t my[] = {
 			{ vtable_index, cd_new, (void**)cd_old }
@@ -99,12 +85,11 @@ int d3d_device_detour(
 	Direct3DCreate_type *chain_Direct3DCreate##ver; \
 	d3d_CreateDevice_type *chain_d3d_CreateDevice##ver; \
 	\
-	D3D_CREATEDEVICE(d3ddd_CreateDevice##ver) \
+	HRESULT __stdcall d3ddd_CreateDevice##ver(d3d_CreateDevice_(FULLDEC)) \
 	{ \
 		return d3ddd_CreateDevice( \
 			chain_d3d_CreateDevice##ver, detours_d3dd##ver, \
-			that, Adapter, DeviceType, hFocusWindow, BehaviourFlags, \
-			pPresentationParameters, ppReturnedDeviceInterface \
+			d3d_CreateDevice_(VARNAMES) \
 		); \
 	} \
 	\
@@ -113,7 +98,7 @@ int d3d_device_detour(
 		return d3ddd_Direct3DCreate( \
 			chain_Direct3DCreate##ver, vtable_index, \
 			d3ddd_CreateDevice##ver, &chain_d3d_CreateDevice##ver, \
-			SDKVersion \
+			Direct3DCreate_(VARNAMES) \
 		); \
 	} \
 	\
