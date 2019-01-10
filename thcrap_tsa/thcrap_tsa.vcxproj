@@ -50,9 +50,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\th06_bp_music.cpp" />
-    <ClCompile Include="src\th06_msg.c">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="src\th06_msg.cpp" />
     <ClCompile Include="src\th06_pngsplit.c">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

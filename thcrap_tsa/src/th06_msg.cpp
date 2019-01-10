@@ -14,6 +14,9 @@
 #include "thcrap_tsa.h"
 #include "layout.h"
 
+// Don't warn about zero-sized arrays
+#pragma warning(disable: 4200)
+
 #pragma pack(push, 1)
 typedef struct {
 	uint16_t time;
@@ -234,7 +237,7 @@ void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_sta
 			log_printf("\xF0\x9F\x92\xAC\n"); // 💬
 		}
 		size_t font_id = (size_t)json_integer_value(state->font_dialog_id);
-		size_t width = GetTextExtentForFontID(dst, font_id);
+		size_t width = GetTextExtentForFontID((char *)dst, font_id);
 		state->line_widths[state->cur_line] = width;
 	}
 
@@ -504,7 +507,7 @@ json_t* font_dialog_id(void)
 	return json_object_get(ruby_offset_info, "font_dialog");
 }
 
-int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patch, const msg_format_t *format)
+int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, const msg_format_t *format)
 {
 	assert(format);
 	assert(format->entry_offset_mul);
@@ -645,113 +648,82 @@ int patch_msg(uint8_t *file_inout, size_t size_out, size_t size_in, json_t *patc
 /// Game formats
 /// ------------
 // In-game dialog
-const msg_format_t MSG_TH06 = {
-	.entry_offset_mul = 1,
-	.opcodes = {
-		{ 3, OP_HARD_LINE },
-		{ 8, OP_HARD_LINE, "h1" },
-		{ 0 }
-	}
-};
+const msg_format_t MSG_TH06 = { 1, nullptr, {
+	{ 3, OP_HARD_LINE },
+	{ 8, OP_HARD_LINE, "h1" },
+	{ 0 }
+} };
 
-const msg_format_t MSG_TH08 = {
-	.entry_offset_mul = 1,
-	.enc_func = msg_crypt_th08,
-	.opcodes = {
-		{  3, OP_HARD_LINE },
-		{  4, OP_AUTO_END },
-		{ 15, OP_AUTO_END },
-		{ 16, OP_AUTO_LINE },
-		{ 19, OP_AUTO_LINE },
-		{ 20, OP_AUTO_LINE },
-		{ 0 }
-	}
-};
+const msg_format_t MSG_TH08 = { 1, msg_crypt_th08, {
+	{  3, OP_HARD_LINE },
+	{  4, OP_AUTO_END },
+	{ 15, OP_AUTO_END },
+	{ 16, OP_AUTO_LINE },
+	{ 19, OP_AUTO_LINE },
+	{ 20, OP_AUTO_LINE },
+	{ 0 }
+} };
 
-const msg_format_t MSG_TH09 = {
-	.entry_offset_mul = 2,
-	.enc_func = msg_crypt_th09,
-	.opcodes = {
-		{  4, OP_AUTO_END },
-		{ 15, OP_AUTO_END },
-		{ 16, OP_AUTO_LINE },
-		{ 0 }
-	}
-};
+const msg_format_t MSG_TH09 = { 2, msg_crypt_th09, {
+	{  4, OP_AUTO_END },
+	{ 15, OP_AUTO_END },
+	{ 16, OP_AUTO_LINE },
+	{ 0 }
+} };
 
-const msg_format_t MSG_TH10 = {
-	.entry_offset_mul = 2,
-	.enc_func = msg_crypt_th09,
-	.opcodes = {
-		{  7, OP_AUTO_END },
-		{  8, OP_AUTO_END },
-		{ 10, OP_AUTO_END },
-		{ 16, OP_AUTO_LINE },
-		{ 0 }
-	}
-};
+const msg_format_t MSG_TH10 = { 2, msg_crypt_th09, {
+	{  7, OP_AUTO_END },
+	{  8, OP_AUTO_END },
+	{ 10, OP_AUTO_END },
+	{ 16, OP_AUTO_LINE },
+	{ 0 }
+} };
 
-const msg_format_t MSG_TH11 = {
-	.entry_offset_mul = 2,
-	.enc_func = msg_crypt_th09,
-	.opcodes = {
-		{  7, OP_AUTO_END },
-		{  8, OP_AUTO_END },
-		{  9, OP_AUTO_END },
-		{ 11, OP_AUTO_END },
-		{ 17, OP_AUTO_LINE },
-		{ 25, OP_DELETE },
-		{ 0 }
-	}
-};
+const msg_format_t MSG_TH11 = { 2, msg_crypt_th09, {
+	{  7, OP_AUTO_END },
+	{  8, OP_AUTO_END },
+	{  9, OP_AUTO_END },
+	{ 11, OP_AUTO_END },
+	{ 17, OP_AUTO_LINE },
+	{ 25, OP_DELETE },
+	{ 0 }
+} };
 
-const msg_format_t MSG_TH128 = {
-	.entry_offset_mul = 2,
-	.enc_func = msg_crypt_th09,
-	.opcodes = {
-		{  7, OP_SIDE_LEFT },
-		{  8, OP_SIDE_RIGHT },
+const msg_format_t MSG_TH128 = { 2, msg_crypt_th09, {
+	{  7, OP_SIDE_LEFT },
+	{  8, OP_SIDE_RIGHT },
 
-		// Only used for the Parallel Ending explanation
-		// at the end of TH13's Extra Stage.
-		{  9, OP_SIDE_LEFT },
+	// Only used for the Parallel Ending explanation
+	// at the end of TH13's Extra Stage.
+	{  9, OP_SIDE_LEFT },
 
-		{ 11, OP_AUTO_END },
-		{ 17, OP_AUTO_LINE },
-		{ 25, OP_DELETE },
-		{ 28, OP_BUBBLE_POS },
-		{ 0 }
-	}
-};
+	{ 11, OP_AUTO_END },
+	{ 17, OP_AUTO_LINE },
+	{ 25, OP_DELETE },
+	{ 28, OP_BUBBLE_POS },
+	{ 0 }
+} };
 
-const msg_format_t MSG_TH14 = {
-	.entry_offset_mul = 2,
-	.enc_func = msg_crypt_th09,
-	.opcodes = {
-		{ 7, OP_SIDE_LEFT },
-		{ 8, OP_SIDE_RIGHT },
-		{ 9, OP_SIDE_LEFT }, // unused
-		{ 11, OP_AUTO_END },
-		{ 17, OP_AUTO_LINE },
-		{ 25, OP_DELETE },
-		{ 28, OP_BUBBLE_POS },
-		{ 32, OP_BUBBLE_SHAPE },
-		{ 0 }
-}
-};
+const msg_format_t MSG_TH14 = { 2, msg_crypt_th09, {
+	{ 7, OP_SIDE_LEFT },
+	{ 8, OP_SIDE_RIGHT },
+	{ 9, OP_SIDE_LEFT }, // unused
+	{ 11, OP_AUTO_END },
+	{ 17, OP_AUTO_LINE },
+	{ 25, OP_DELETE },
+	{ 28, OP_BUBBLE_POS },
+	{ 32, OP_BUBBLE_SHAPE },
+	{ 0 }
+} };
 
 // Endings (TH10 and later)
-const msg_format_t END_TH10 = {
-	.entry_offset_mul = 2,
-	.enc_func = msg_crypt_th09,
-	.opcodes = {
-		{ 3, OP_AUTO_LINE },
-		{ 5, OP_AUTO_END },
-		{ 6, OP_AUTO_END },
-		{ 9, OP_AUTO_END },
-		{ 0 }
-	}
-};
+const msg_format_t END_TH10 = { 2, msg_crypt_th09, {
+	{ 3, OP_AUTO_LINE },
+	{ 5, OP_AUTO_END },
+	{ 6, OP_AUTO_END },
+	{ 9, OP_AUTO_END },
+	{ 0 }
+} };
 
 const msg_format_t* msg_format_for(tsa_game_t game)
 {
@@ -772,13 +744,13 @@ const msg_format_t* msg_format_for(tsa_game_t game)
 }
 /// ------------
 
-int patch_msg_dlg(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+int patch_msg_dlg(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	const msg_format_t *format = msg_format_for(game_id);
 	return patch_msg(file_inout, size_out, size_in, patch, format);
 }
 
-int patch_msg_end(uint8_t *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+int patch_msg_end(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	return patch_msg(file_inout, size_out, size_in, patch, &END_TH10);
 }
