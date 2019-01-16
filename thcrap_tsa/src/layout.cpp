@@ -217,7 +217,10 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 
 /// Tokenization
 /// ------------
-json_t* layout_match(size_t *match_len, const char *str, size_t len)
+// Matches at most [len] bytes of layout markup at [str].
+// Returns an array with the layout parameters and, optionally,
+// the full length of the layout markup in [str] in [match_len].
+json_t* layout_match(size_t &match_len, const char *str, size_t len)
 {
 	size_t i = 1;
 	const char *p = NULL;
@@ -244,9 +247,7 @@ json_t* layout_match(size_t *match_len, const char *str, size_t len)
 			s = p + 1;
 		}
 	}
-	if(match_len) {
-		*match_len = s - str;
-	}
+	match_len = s - str;
 	return ret;
 }
 
@@ -262,7 +263,7 @@ json_t* layout_tokenize(const char *str, size_t len)
 		const char *cur_str = str + i;
 		size_t cur_len = len - i;
 
-		json_t *match = layout_match(&cur_len, cur_str, cur_len);
+		json_t *match = layout_match(cur_len, cur_str, cur_len);
 
 		// Requiring at least 2 parameters (meaning, a single $)
 		// for a layout command still lets people write "<text>"
@@ -322,23 +323,23 @@ BOOL layout_textout_raw(layout_state_t *lay, POINT p)
 
 // Modifies [lf] according to the font-related commands in [cmd].
 // Returns 1 if anything in [lf] was changed.
-int layout_parse_font(LOGFONT *lf, const json_t *token)
+int layout_parse_font(LOGFONT &lf, const json_t *token)
 {
 	int ret = 0;
 	const char *cmd = json_array_get_string(token, 0);
-	if(lf && cmd) {
+	if(cmd) {
 		while(*cmd) {
 			if(*cmd == 'b') {
 				// Bold font
-				lf->lfWeight *= 2;
+				lf.lfWeight *= 2;
 				ret = 1;
 			} else if(*cmd == 'i') {
 				// Italic font
-				lf->lfItalic = TRUE;
+				lf.lfItalic = true;
 				ret = 1;
 			} else if(*cmd == 'u') {
 				// Underlined font
-				lf->lfUnderline = TRUE;
+				lf.lfUnderline = true;
 				ret = 1;
 			}
 			cmd++;
@@ -461,7 +462,7 @@ int layout_process(layout_state_t *lay, layout_func_t func, const char *str, siz
 			// If requested, derive a bold/italic font from the current one.
 			// This is done before evaluating tab commmands to guarantee that
 			// any calls to GetTextExtent() return the correct widths.
-			if(layout_parse_font(&font_new, token)) {
+			if(layout_parse_font(font_new, token)) {
 				hFontNew = CreateFontIndirectW(&font_new);
 				SelectObject(lay->hdc, hFontNew);
 			}

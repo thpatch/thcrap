@@ -17,11 +17,6 @@ extern "C" {
 
 /// Tokenization
 /// ------------
-// Matches at most [len] bytes of layout markup at [str].
-// Returns an array with the layout parameters and, optionally,
-// the full length of the layout markup in [str] in [match_len].
-json_t* layout_match(size_t *match_len, const char *str, size_t len);
-
 // Split the string into an array of tokens to render in a sequence.
 // These are either strings (= direct text)
 // or arrays in itself (= layout commands).
