@@ -10,6 +10,10 @@
 #include "thcrap.h"
 #include "tlnote.hpp"
 
+// UTF-8-encoded codepoint that separates in-line TL note text (after) from
+// regular text (before).
+#define TLNOTE_INLINE 0x14
+
 /// Error reporting and debugging
 /// -----------------------------
 logger_t tlnote_log("TL note error");

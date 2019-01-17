@@ -9,10 +9,6 @@
 
 #pragma once
 
-// UTF-8-encoded codepoint that separates in-line TL note text (after) from
-// regular text (before).
-#define TLNOTE_INLINE 0x14
-
 typedef struct {
 	char type;
 	char note[1];
