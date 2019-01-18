@@ -32,11 +32,9 @@ struct tlnote_t {
 // Information for splitting a line of text into the regular part and its TL
 // note, if there is one.
 struct tlnote_split_t {
-	// Length of the regular text before the TL note.
-	// Equal to the length of the input string if there is none.
-	int regular_len;
+	// The regular text, not including the TL note. *Never* null-terminated!
+	stringref_t regular;
 
-	// TL note making up the rest of the line.
 	// Evaluates to false if there is none.
 	const tlnote_t tlnote;
 };

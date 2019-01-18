@@ -60,8 +60,7 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text)
 	}
 	if(sepchar_ptr) {
 		tlnote_t tlnote = { { sepchar_ptr, p - sepchar_ptr } };
-		return { sepchar_ptr - text.str, tlnote };
+		return { { text.str, sepchar_ptr - text.str }, tlnote };
 	}
-	return { text.len };
+	return { text };
 }
-
