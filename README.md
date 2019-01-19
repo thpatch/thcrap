@@ -122,8 +122,8 @@ Love our work? [Become a backer of Touhou Patch Center on Open Collective](https
 
 Thank you to all our backers!
 
-<a href="https://opencollective.com/thpatch#backers" target="_blank"><img src="https://opencollective.com/thpatch/backers.svg?width=890"></a>
+<a href="https://opencollective.com/thpatch#backers" target="_blank"><img src="https://opencollective.com/thpatch/backers.svg?width=890&button=true"></a>
 
 ## The team ##
 
-<a href="https://github.com/thpatch/thcrap/graphs/contributors"><img src="https://opencollective.com/thpatch/contributors.svg?width=890&limit=4&button=true" /></a>
+<a href="https://github.com/thpatch/thcrap/graphs/contributors"><img src="https://opencollective.com/thpatch/contributors.svg?width=890&limit=4&button=false" /></a>
