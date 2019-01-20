@@ -9,6 +9,7 @@
 
 #include <thcrap.h>
 #include <unordered_map>
+#include <tlnote.hpp>
 #include "thcrap_tsa.h"
 #include "layout.h"
 
@@ -300,6 +301,7 @@ typedef struct {
 	// After layout processing completed, this contains
 	// the total rendered width of the full string.
 	int cur_x;
+	tlnote_t tlnote;
 
 	/// Current pass
 	size_t token_id;
@@ -437,6 +439,11 @@ int layout_process(layout_state_t *lay, layout_func_t func, const char *str, siz
 	if(len >= strlen(str)) {
 		str = strings_lookup(str, &len);
 	}
+
+	auto tln = tlnote_find({ str, (int)len });
+	str = tln.regular.str;
+	len = tln.regular.len;
+	lay->tlnote = tln.tlnote;
 
 	if(hBitmap) {
 		// TODO: This gets the full width of the text bitmap. The
@@ -584,7 +591,9 @@ BOOL WINAPI layout_TextOutU(
 		orig_x = (orig_x - RUBY_OFFSET_DUMMY_FULL) + ruby_offset_actual;
 	}
 	layout_state_t lay = {hdc, {orig_x, orig_y}};
-	return layout_process(&lay, layout_textout_raw, lpString, c);
+	auto ret = layout_process(&lay, layout_textout_raw, lpString, c);
+	tlnote_show(lay.tlnote);
+	return ret;
 }
 /// ----------------
 
