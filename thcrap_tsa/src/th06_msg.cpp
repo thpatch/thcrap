@@ -129,6 +129,23 @@ typedef enum {
 	SIDE_RIGHT = 1
 } side_t;
 
+struct patch_line_t {
+	stringref_t line;
+
+	bool valid() const {
+		return line.str != nullptr;
+	}
+
+	operator bool() { return valid(); }
+
+	patch_line_t()
+		: line({ nullptr, 0 }) {
+	}
+	patch_line_t(const char *str, int len)
+		: line({ str, len }) {
+	}
+};
+
 typedef struct {
 	const msg_format_t *format;
 
@@ -153,7 +170,48 @@ typedef struct {
 
 	// Indices
 	size_t cur_line;
+
+	// Retrieve and validate the current diff line, ensuring that its
+	// length is less than 0xFF - [extra_param_len].
+	patch_line_t diff_line_cur(int extra_param_len);
 } patch_msg_state_t;
+
+patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
+{
+	auto line = json_array_get_string(diff_lines, cur_line);
+	if(!line) {
+		return {};
+	}
+	// Validate that the string is valid TSA ruby syntax.
+	// Important because the games themselves (surprise, suprise) don't verify
+	// the return value of the strchr() call used to get the parameters.
+	// Thus, they would simply crash if a | is not followed by two commas.
+	if(line[0] == '|') {
+		auto *p2 = strchr(line + 1, ',');
+		if(strchr(p2 + 1, ',') == nullptr) {
+			return {};
+		}
+	}
+	// Trim the line to the last full codepoint that would still fit
+	// into the original opcode.
+	int len_trimmed = 0;
+	auto limit = 255 - extra_param_len;
+	while(line[len_trimmed]) {
+		auto old_len_trimmed = len_trimmed;
+		len_trimmed++;
+		// Every string that gets here is UTF-8 anyway.
+		while((line[len_trimmed] & 0xc0) == 0x80) {
+			len_trimmed++;
+		}
+		if(len_trimmed >= limit) {
+			len_trimmed = old_len_trimmed;
+			break;
+		}
+	}
+	// Include the terminating '\0'
+	len_trimmed += 1;
+	return { line, len_trimmed };
+}
 
 /**
   * Line replacement function type.
@@ -166,12 +224,12 @@ typedef struct {
   *	patch_msg_state_t *state
   *		Patch state object
   *
-  *  const char *rep
-  *		Replacement string
+  *  const stringref_t *rep
+  *		Trimmed replacement line
   *
   * Returns nothing.
   */
-typedef void (*ReplaceFunc_t)(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *new_line);
+typedef void (*ReplaceFunc_t)(th06_msg_t *cmd_out, patch_msg_state_t *state, const stringref_t &rep);
 
 const op_info_t* get_op_info(const msg_format_t* format, uint8_t op)
 {
@@ -201,24 +259,6 @@ th06_msg_t* th06_msg_advance(const th06_msg_t* msg)
 	return (th06_msg_t*)((uint8_t*)msg + th06_msg_full_len(msg));
 }
 
-size_t get_len_at_last_codepoint(const char *str, const size_t limit)
-{
-	size_t ret = 0;
-	while(str[ret]) {
-		size_t old_ret = ret;
-		ret++;
-		// Every string that gets here is UTF-8 anyway.
-		while((str[ret] & 0xc0) == 0x80) {
-			ret++;
-		}
-		if(ret >= limit) {
-			ret = old_ret;
-			break;
-		}
-	}
-	return ret + 1;
-}
-
 void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_state_t *state)
 {
 	memcpy(dst, rep, len);
@@ -246,20 +286,18 @@ void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_sta
 	}
 }
 
-void replace_auto_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *rep)
+void replace_auto_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const stringref_t &rep)
 {
-	cmd_out->length = get_len_at_last_codepoint(rep, 255);
-	replace_line(cmd_out->data, rep, cmd_out->length, state);
+	cmd_out->length = rep.len;
+	replace_line(cmd_out->data, rep.str, cmd_out->length, state);
 }
 
-void replace_hard_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const char *rep)
+void replace_hard_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const stringref_t &rep)
 {
 	hard_line_data_t* line = (hard_line_data_t*)cmd_out->data;
-	size_t line_copy_len = get_len_at_last_codepoint(rep, 255 - 4);
-
 	line->linenum = state->cur_line;
-	cmd_out->length = line_copy_len + 4;
-	replace_line(line->str, rep, line_copy_len, state);
+	cmd_out->length = rep.len + 4;
+	replace_line(line->str, rep.str, rep.len, state);
 }
 
 void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind)
@@ -269,22 +307,6 @@ void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind
 	} else {
 		sprintf(key_str, "%d_%d", time, time_ind);
 	}
-}
-
-int validate_line(const char *line)
-{
-	if(!line) {
-		return 0;
-	}
-	// Validate that the string is valid TSA ruby syntax.
-	// Important because the games themselves (surprise, suprise) don't verify
-	// the return value of the strchr() call used to get the parameters.
-	// Thus, they would simply crash if a | is not followed by two commas.
-	if(line[0] == '|') {
-		const char *p2 = strchr(line + 1, ',');
-		return p2 ? strchr(p2 + 1, ',') != 0 : 0;
-	}
-	return 1;
 }
 
 // Returns 1 if the output buffer should advance, 0 if it shouldn't.
@@ -306,10 +328,10 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 	}
 
 	if(json_is_array(state->diff_lines)) {
-		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line);
-		int ret = validate_line(json_line);
+		auto pl = state->diff_line_cur(rep_func == replace_hard_line ? 4 : 0);
+		auto ret = pl.valid();
 		if(ret) {
-			rep_func(cmd_out, state, json_line);
+			rep_func(cmd_out, state, pl.line);
 			state->last_line_cmd = cmd_out;
 			state->last_line_op = cur_op;
 		}
@@ -328,25 +350,20 @@ void box_end(patch_msg_state_t *state)
 
 	// Do we have any extra lines in the patch file?
 	while(state->cur_line < json_array_size(state->diff_lines)) {
-		const char *json_line = json_array_get_string(state->diff_lines, state->cur_line);
-		if(validate_line(json_line)) {
+		auto hard_line = (state->last_line_op->cmd == OP_HARD_LINE);
+		auto extra_param_len = hard_line ? 4 : 0;
+		auto pl = state->diff_line_cur(extra_param_len);
+		if(pl) {
 			th06_msg_t *new_line_cmd = th06_msg_advance(state->last_line_cmd);
 			ptrdiff_t move_len;
-			int hard_line;
-			size_t extra_param_len;
 			size_t line_offset;
-			size_t line_len_trimmed;
 
 			move_len = (uint8_t*)th06_msg_advance(state->cmd_out) - (uint8_t*)new_line_cmd;
-
-			hard_line = (state->last_line_op->cmd == OP_HARD_LINE);
-			extra_param_len = hard_line ? 4 : 0;
 			line_offset = sizeof(th06_msg_t) + extra_param_len;
-			line_len_trimmed = get_len_at_last_codepoint(json_line, 255 - extra_param_len);
 
 			// Make room for the new line
 			memmove(
-				(uint8_t*)(new_line_cmd) + line_offset + line_len_trimmed,
+				(uint8_t*)(new_line_cmd) + line_offset + pl.line.len,
 				new_line_cmd,
 				move_len
 			);
