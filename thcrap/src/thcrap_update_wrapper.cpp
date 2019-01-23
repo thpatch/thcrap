@@ -10,7 +10,6 @@
 #include "thcrap.h"
 #include "thcrap_update_wrapper.h"
 #include <thcrap_update\src\loader_update.h>
-#include <thcrap_update\src\repo.h>
 
 HMODULE thcrap_update_module(void)
 {
@@ -81,16 +80,16 @@ BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *g
 }
 ASSERT_FUNCTION_PROTO(loader_update_with_UI);
 
-int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache)
+int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
 {
-	CALL_WRAPPED_FUNCTION(RepoDiscoverAtURL, start_url, id_cache, url_cache)
+	CALL_WRAPPED_FUNCTION(RepoDiscoverAtURL, start_url, id_cache, url_cache, fwe_callback)
 	return 0;
 }
 ASSERT_FUNCTION_PROTO(RepoDiscoverAtURL);
 
-int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache)
+int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
 {
-	CALL_WRAPPED_FUNCTION(RepoDiscoverFromLocal, id_cache, url_cache)
+	CALL_WRAPPED_FUNCTION(RepoDiscoverFromLocal, id_cache, url_cache, fwe_callback)
 	return 0;
 }
 ASSERT_FUNCTION_PROTO(RepoDiscoverFromLocal);

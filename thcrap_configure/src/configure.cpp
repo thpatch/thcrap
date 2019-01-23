@@ -214,10 +214,10 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	);
 	pause();
 
-	if (RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache)) {
+	if (RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache, file_write_error)) {
 		goto end;
 	}
-	if (RepoDiscoverFromLocal_wrapper(id_cache, url_cache)) {
+	if (RepoDiscoverFromLocal_wrapper(id_cache, url_cache, file_write_error)) {
 		goto end;
 	}
 	repo_list = RepoLoad();

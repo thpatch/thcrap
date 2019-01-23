@@ -12,7 +12,7 @@
 #include "update.h"
 
 
-int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
+int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
 {
 	int ret = 0;
 	json_t *neighbors = json_object_get(repo_js, "neighbors");
@@ -21,7 +21,7 @@ int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
 	json_array_foreach(neighbors, i, neighbor) {
 		const char *neighbor_str = json_string_value(neighbor);
 		// Recursion!
-		ret = RepoDiscoverAtURL(neighbor_str, id_cache, url_cache);
+		ret = RepoDiscoverAtURL(neighbor_str, id_cache, url_cache, fwe_callback);
 		if(ret) {
 			break;
 		}
@@ -29,7 +29,7 @@ int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache)
 	return ret;
 }
 
-int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache)
+int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
 {
 	int ret = 0;
 	const char *repo_fn = "repo.js";
@@ -68,14 +68,9 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 			ret = file_write(repo_fn_local_str, repo_dl.file_buffer, repo_dl.file_size);
 			json_object_set(id_cache, id, json_true());
 			if(ret) {
-				log_printf(
-					"\n"
-					"Error writing to %s!\n"
-					"You probably do not have the permission to write to the current directory,\n"
-					"or the file itself is write-protected.\n",
-					repo_fn_local_str
-				);
-				goto end;
+				if(fwe_callback && !fwe_callback(repo_fn_local_str)) {
+					goto end;
+				}
 			}
 		} else {
 			log_printf("Already got a repository named '%s', ignoring...\n", id);
@@ -84,7 +79,7 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 		log_printf("Repository file does not specify an ID!\n");
 	}
 
-	ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache);
+	ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache, fwe_callback);
 end:
 	json_decref(repo_fn_local);
 	SAFE_FREE(repo_dl.file_buffer);
@@ -94,13 +89,13 @@ end:
 	return ret;
 }
 
-int RepoDiscoverAtURL(const char *start_url, json_t *id_cache, json_t *url_cache)
+int RepoDiscoverAtURL(const char *start_url, json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
 {
 	servers_t in_servers(start_url);
-	return RepoDiscoverAtServers(in_servers, id_cache, url_cache);
+	return RepoDiscoverAtServers(in_servers, id_cache, url_cache, fwe_callback);
 }
 
-int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
+int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
 {
 	int ret = 0;
 	HANDLE hFind = NULL;
@@ -108,9 +103,9 @@ int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache)
 	while(repo_js = RepoLocalNext(&hFind)) {
 		servers_t servers;
 		servers.from(json_object_get(repo_js, "servers"));
-		ret = RepoDiscoverAtServers(servers, id_cache, url_cache);
+		ret = RepoDiscoverAtServers(servers, id_cache, url_cache, fwe_callback);
 		if(!ret) {
-			ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache);
+			ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache, fwe_callback);
 		}
 		json_decref(repo_js);
 	}
