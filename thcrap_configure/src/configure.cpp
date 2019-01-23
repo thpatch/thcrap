@@ -284,6 +284,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		pause();
 	}
 end:
+	con_can_close = true;
 	SAFE_FREE(run_cfg_str);
 	json_decref(new_cfg);
 	json_decref(sel_stack);
