@@ -146,7 +146,15 @@ struct patch_line_t {
 	}
 };
 
-typedef struct {
+struct patch_msg_state_t;
+struct replacer_t {
+	const int extra_param_len;
+	void(*const replace)(
+		th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep
+	);
+};
+
+struct patch_msg_state_t {
 	const msg_format_t *format;
 
 	// Can be any value, 0, negative, ... So, a pointer it is.
@@ -174,7 +182,7 @@ typedef struct {
 	// Retrieve and validate the current diff line, ensuring that its
 	// length is less than 0xFF - [extra_param_len].
 	patch_line_t diff_line_cur(int extra_param_len);
-} patch_msg_state_t;
+};
 
 patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 {
@@ -213,24 +221,6 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 	return { line, len_trimmed };
 }
 
-/**
-  * Line replacement function type.
-  *
-  * Parameters
-  * ----------
-  *	th06_msg_t *cmd_out
-  *		Target .msg command
-  *
-  *	patch_msg_state_t *state
-  *		Patch state object
-  *
-  *  const stringref_t *rep
-  *		Trimmed replacement line
-  *
-  * Returns nothing.
-  */
-typedef void (*ReplaceFunc_t)(th06_msg_t *cmd_out, patch_msg_state_t *state, const stringref_t &rep);
-
 const op_info_t* get_op_info(const msg_format_t* format, uint8_t op)
 {
 	const op_info_t *opcode = format->opcodes;
@@ -259,7 +249,7 @@ th06_msg_t* th06_msg_advance(const th06_msg_t* msg)
 	return (th06_msg_t*)((uint8_t*)msg + th06_msg_full_len(msg));
 }
 
-void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_state_t *state)
+void replace_line(uint8_t *dst, patch_msg_state_t *state, const char *rep, const size_t len)
 {
 	memcpy(dst, rep, len);
 	dst[len - 1] = '\0';
@@ -286,19 +276,23 @@ void replace_line(uint8_t *dst, const char *rep, const size_t len, patch_msg_sta
 	}
 }
 
-void replace_auto_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const stringref_t &rep)
-{
-	cmd_out->length = rep.len;
-	replace_line(cmd_out->data, rep.str, cmd_out->length, state);
-}
+const replacer_t REP_HARD_LINE = {
+	4, [] (th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep)
+	{
+		auto* line = (hard_line_data_t*)cmd_out.data;
+		line->linenum = state.cur_line;
+		cmd_out.length = rep.len + 4;
+		replace_line(line->str, &state, rep.str, rep.len);
+	}
+};
 
-void replace_hard_line(th06_msg_t *cmd_out, patch_msg_state_t *state, const stringref_t &rep)
-{
-	hard_line_data_t* line = (hard_line_data_t*)cmd_out->data;
-	line->linenum = state->cur_line;
-	cmd_out->length = rep.len + 4;
-	replace_line(line->str, rep.str, rep.len, state);
-}
+const replacer_t REP_AUTO_LINE = {
+	0, [] (th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep)
+	{
+		cmd_out.length = rep.len;
+		replace_line(cmd_out.data, &state, rep.str, cmd_out.length);
+	}
+};
 
 void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind)
 {
@@ -310,7 +304,7 @@ void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind
 }
 
 // Returns 1 if the output buffer should advance, 0 if it shouldn't.
-int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t rep_func)
+int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, replacer_t replacer)
 {
 	const op_info_t* cur_op = get_op_info(state->format, cmd_out->type);
 
@@ -328,10 +322,10 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, ReplaceFunc_t re
 	}
 
 	if(json_is_array(state->diff_lines)) {
-		auto pl = state->diff_line_cur(rep_func == replace_hard_line ? 4 : 0);
+		auto pl = state->diff_line_cur(replacer.extra_param_len);
 		auto ret = pl.valid();
 		if(ret) {
-			rep_func(cmd_out, state, pl.line);
+			replacer.replace(*cmd_out, *state, pl.line);
 			state->last_line_cmd = cmd_out;
 			state->last_line_op = cur_op;
 		}
@@ -351,15 +345,15 @@ void box_end(patch_msg_state_t *state)
 	// Do we have any extra lines in the patch file?
 	while(state->cur_line < json_array_size(state->diff_lines)) {
 		auto hard_line = (state->last_line_op->cmd == OP_HARD_LINE);
-		auto extra_param_len = hard_line ? 4 : 0;
-		auto pl = state->diff_line_cur(extra_param_len);
+		auto replacer = hard_line ? REP_HARD_LINE : REP_AUTO_LINE;
+		auto pl = state->diff_line_cur(replacer.extra_param_len);
 		if(pl) {
 			th06_msg_t *new_line_cmd = th06_msg_advance(state->last_line_cmd);
 			ptrdiff_t move_len;
 			size_t line_offset;
 
 			move_len = (uint8_t*)th06_msg_advance(state->cmd_out) - (uint8_t*)new_line_cmd;
-			line_offset = sizeof(th06_msg_t) + extra_param_len;
+			line_offset = sizeof(th06_msg_t) + replacer.extra_param_len;
 
 			// Make room for the new line
 			memmove(
@@ -368,7 +362,7 @@ void box_end(patch_msg_state_t *state)
 				move_len
 			);
 			memcpy(new_line_cmd, state->last_line_cmd, line_offset);
-			process_line(new_line_cmd, state, hard_line ? replace_hard_line : replace_auto_line);
+			process_line(new_line_cmd, state, replacer);
 			// Meh, pointer arithmetic.
 			state->cmd_out = (th06_msg_t*)((uint8_t*)state->cmd_out + th06_msg_full_len(new_line_cmd));
 		} else {
@@ -484,7 +478,7 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 			if( (state->last_line_op) && (state->last_line_op->cmd == OP_HARD_LINE) ) {
 				box_end(state);
 			}
-			return process_line(state->cmd_out, state, replace_auto_line);
+			return process_line(state->cmd_out, state, REP_AUTO_LINE);
 
 		case OP_HARD_LINE:
 			line = (hard_line_data_t*)state->cmd_out->data;
@@ -508,7 +502,7 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 				}
 			}
 			state->cur_line = linenum;
-			return process_line(state->cmd_out, state, replace_hard_line);
+			return process_line(state->cmd_out, state, REP_HARD_LINE);
 
 		case OP_AUTO_END:
 			return op_auto_end(state);
