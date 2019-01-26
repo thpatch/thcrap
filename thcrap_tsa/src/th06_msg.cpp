@@ -182,6 +182,8 @@ struct patch_msg_state_t {
 	// Retrieve and validate the current diff line, ensuring that its
 	// length is less than 0xFF - [extra_param_len].
 	patch_line_t diff_line_cur(int extra_param_len);
+
+	void replace_line(th06_msg_t &cmd_out, replacer_t replacer, const patch_line_t &pl);
 };
 
 patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
@@ -219,6 +221,13 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 	// Include the terminating '\0'
 	len_trimmed += 1;
 	return { line, len_trimmed };
+}
+
+void patch_msg_state_t::replace_line(th06_msg_t &cmd_out, replacer_t replacer, const patch_line_t &pl)
+{
+	assert(pl.valid());
+	replacer.replace(cmd_out, *this, pl.line);
+	last_line_cmd = &cmd_out;
 }
 
 const op_info_t* get_op_info(const msg_format_t* format, uint8_t op)
@@ -304,7 +313,7 @@ void format_slot_key(char *key_str, int time, const char *msg_type, int time_ind
 }
 
 // Returns 1 if the output buffer should advance, 0 if it shouldn't.
-int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, replacer_t replacer)
+int replace_next_diff_line(th06_msg_t *cmd_out, patch_msg_state_t *state, replacer_t replacer)
 {
 	const op_info_t* cur_op = get_op_info(state->format, cmd_out->type);
 
@@ -325,8 +334,7 @@ int process_line(th06_msg_t *cmd_out, patch_msg_state_t *state, replacer_t repla
 		auto pl = state->diff_line_cur(replacer.extra_param_len);
 		auto ret = pl.valid();
 		if(ret) {
-			replacer.replace(*cmd_out, *state, pl.line);
-			state->last_line_cmd = cmd_out;
+			state->replace_line(*cmd_out, replacer, pl);
 			state->last_line_op = cur_op;
 		}
 		state->cur_line++;
@@ -362,12 +370,11 @@ void box_end(patch_msg_state_t *state)
 				move_len
 			);
 			memcpy(new_line_cmd, state->last_line_cmd, line_offset);
-			process_line(new_line_cmd, state, replacer);
+			state->replace_line(*new_line_cmd, replacer, pl);
 			// Meh, pointer arithmetic.
 			state->cmd_out = (th06_msg_t*)((uint8_t*)state->cmd_out + th06_msg_full_len(new_line_cmd));
-		} else {
-			state->cur_line++;
 		}
+		state->cur_line++;
 	}
 
 	if(state->bubble_pos) {
@@ -478,7 +485,7 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 			if( (state->last_line_op) && (state->last_line_op->cmd == OP_HARD_LINE) ) {
 				box_end(state);
 			}
-			return process_line(state->cmd_out, state, REP_AUTO_LINE);
+			return replace_next_diff_line(state->cmd_out, state, REP_AUTO_LINE);
 
 		case OP_HARD_LINE:
 			line = (hard_line_data_t*)state->cmd_out->data;
@@ -502,7 +509,7 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 				}
 			}
 			state->cur_line = linenum;
-			return process_line(state->cmd_out, state, REP_HARD_LINE);
+			return replace_next_diff_line(state->cmd_out, state, REP_HARD_LINE);
 
 		case OP_AUTO_END:
 			return op_auto_end(state);
