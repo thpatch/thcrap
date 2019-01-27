@@ -38,6 +38,14 @@ BOOL WINAPI layout_TextOutU(
 // Raw text width calculation, without taking layout markup into account.
 size_t GetTextExtentBase(HDC hdc, const json_t *str_obj);
 
+/// Internal, full-size text extent functions
+/// -----------------------------------------
+size_t __stdcall text_extent_full(const char *str);
+size_t __stdcall text_extent_full_for_font(const char *str, HFONT font);
+/// -----------------------------------------
+
+/// Public, half-size text extent functions. Actively used by breakpoints!
+/// ----------------------------------------------------------------------
 // Calculates the rendered length of [str] on the current text DC
 // with the currently selected font, taking layout markup into account.
 size_t __stdcall GetTextExtent(const char *str);
@@ -48,6 +56,7 @@ size_t __stdcall GetTextExtentForFont(const char *str, HFONT font);
 
 // GetTextExtentForFont with the font pointer pulled from the TSA font block.
 size_t __stdcall GetTextExtentForFontID(const char *str, size_t id);
+/// ----------------------------------------------------------------------
 
 /*
  * Returns the widest string in an array of strings. widest_string returns

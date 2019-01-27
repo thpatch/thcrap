@@ -581,25 +581,34 @@ size_t GetTextExtentBase(HDC hdc, const json_t *str_obj)
 	return size.cx;
 }
 
-size_t __stdcall GetTextExtent(const char *str)
+size_t __stdcall text_extent_full(const char *str)
 {
-	size_t ret = 0;
-	layout_state_t lay = {text_dc};
+	layout_state_t lay = { text_dc };
 	STRLEN_DEC(str);
 	layout_process(&lay, NULL, str, str_len);
-	ret = lay.cur_x /= 2;
+	return lay.cur_x;
+}
+
+size_t __stdcall text_extent_full_for_font(const char *str, HFONT font)
+{
+	// TH08 doesn't create the DC prior to the first binhacked call of this.
+	auto dc = layout_CreateCompatibleDC(nullptr);
+	HGDIOBJ prev_font = layout_SelectObject(dc, font);
+	size_t ret = text_extent_full(str);
+	layout_SelectObject(text_dc, prev_font);
+	return ret;
+}
+
+size_t __stdcall GetTextExtent(const char *str)
+{
+	auto ret = text_extent_full(str) / 2;
 	log_printf("GetTextExtent('%s') = %d\n", str, ret);
 	return ret;
 }
 
 size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
 {
-	// TH08 doesn't create the DC prior to the first binhacked call of this.
-	auto dc = layout_CreateCompatibleDC(nullptr);
-	HGDIOBJ prev_font = layout_SelectObject(dc, font);
-	size_t ret = GetTextExtent(str);
-	layout_SelectObject(text_dc, prev_font);
-	return ret;
+	return text_extent_full_for_font(str, font) / 2;
 }
 
 size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
