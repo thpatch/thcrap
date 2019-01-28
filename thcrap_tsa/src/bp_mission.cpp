@@ -123,9 +123,10 @@ int BP_mission_check_furi_a(x86_reg_t *regs, json_t *bp_info)
 				str = json_array_get_string(lines, line);
 			}
 
-			mission_furi_a = GetTextExtentForFontID(begin, 0)
-				+ GetTextExtentForFontID(target, 0) / 2
-				- GetTextExtentForFontID(str, 2) / 2;
+			auto font_bottom = font_block_get(0).unwrap_or(nullptr);
+			auto font_ruby = font_block_get(2).unwrap_or(nullptr);
+
+			mission_furi_a = ruby_offset_half(begin, target, str, font_bottom, font_ruby);
 		}
 	}
 

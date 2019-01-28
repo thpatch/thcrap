@@ -199,10 +199,10 @@ int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 		}
 		*str_offset_end = '\0';
 		*str_base_end = '\0';
-		*offset =
-			GetTextExtentForFont(str_offset, font_dialog.unwrap())
-			+ (GetTextExtentForFont(str_base, font_dialog.unwrap()) / 2)
-			- (GetTextExtentForFont(str_ruby, font_ruby.unwrap()) / 2);
+		*offset = ruby_offset_half(
+			str_offset, str_base, str_ruby,
+			font_dialog.unwrap(), font_ruby.unwrap()
+		);
 		*str_offset_end = '\t';
 		*str_base_end = '\t';
 
@@ -615,6 +615,14 @@ size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
 {
 	auto font = font_block_get(id);
 	return GetTextExtentForFont(str, font.unwrap_or(nullptr));
+}
+
+size_t ruby_offset_half(const char *begin, const char *bottom, const char *ruby, HFONT font_bottom, HFONT font_ruby)
+{
+	auto ret = text_extent_full_for_font(begin, font_bottom)
+		+ (text_extent_full_for_font(bottom, font_bottom) / 2)
+		- (text_extent_full_for_font(ruby, font_ruby) / 2);
+	return ret / 2;
 }
 
 int widest_string(x86_reg_t *regs, json_t *bp_info)

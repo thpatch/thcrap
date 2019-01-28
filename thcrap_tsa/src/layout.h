@@ -10,6 +10,8 @@
 #pragma once
 
 #ifdef __cplusplus
+Option<HFONT> font_block_get(int id);
+
 extern "C" {
 #endif
 
@@ -57,6 +59,16 @@ size_t __stdcall GetTextExtentForFont(const char *str, HFONT font);
 // GetTextExtentForFont with the font pointer pulled from the TSA font block.
 size_t __stdcall GetTextExtentForFontID(const char *str, size_t id);
 /// ----------------------------------------------------------------------
+
+// Calculates the half-size X offset at which to display [ruby] to make it
+// appear centered above the text [bottom], which comes after [begin]:
+//
+//	<-ret.->[ruby]
+//	[begin][bottom]
+size_t ruby_offset_half(
+	const char *begin, const char *bottom, const char *ruby,
+	HFONT font_bottom, HFONT font_ruby
+);
 
 /*
  * Returns the widest string in an array of strings. widest_string returns
