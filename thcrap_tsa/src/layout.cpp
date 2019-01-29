@@ -619,10 +619,12 @@ size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
 
 size_t ruby_offset_half(const char *begin, const char *bottom, const char *ruby, HFONT font_bottom, HFONT font_ruby)
 {
-	auto ret = text_extent_full_for_font(begin, font_bottom)
-		+ (text_extent_full_for_font(bottom, font_bottom) / 2)
-		- (text_extent_full_for_font(ruby, font_ruby) / 2);
-	return ret / 2;
+	auto ret = (text_extent_full_for_font(begin, font_bottom) * 2)
+		+ text_extent_full_for_font(bottom, font_bottom)
+		- text_extent_full_for_font(ruby, font_ruby);
+	// Since we're calculating at 2× the full precision (and 4× the half),
+	// adding 2 makes sure that the integer division rounds up at 0.5.
+	return (ret + 2) / 4;
 }
 
 int widest_string(x86_reg_t *regs, json_t *bp_info)
