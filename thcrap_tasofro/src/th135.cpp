@@ -1,4 +1,4 @@
-﻿/**
+/**
   * Touhou Community Reliant Automatic Patcher
   * Tasogare Frontier support plugin
   *
@@ -21,7 +21,6 @@
 #include "th155_bmp_font.h"
 #include "crypt.h"
 
-// TODO: read the file names list in JSON format
 int th135_init()
 {
 	const char *crypt = json_object_get_string(runconfig_get(), "crypt");

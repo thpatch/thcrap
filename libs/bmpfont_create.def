@@ -1,0 +1,6 @@
+EXPORTS
+	bmpfont_init
+	bmpfont_add_option
+	bmpfont_add_option_binary
+	bmpfont_run
+	bmpfont_free

@@ -1,0 +1,6 @@
+EXPORTS
+	graphics_init
+	graphics_consume_option
+	graphics_consume_option_binary
+	graphics_put_char
+	graphics_free

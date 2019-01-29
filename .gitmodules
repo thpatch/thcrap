@@ -10,9 +10,6 @@
 [submodule "zlib-ng"]
 	path = libs/zlib-ng
 	url = https://github.com/Dead2/zlib-ng
-[submodule "Act-Nut-lib"]
-	path = Act-Nut-lib
-	url = https://github.com/thpatch/Act-Nut-lib.git
 [submodule "thtypes"]
 	path = thtypes
 	url = https://github.com/thpatch/thtypes.git
@@ -28,3 +25,6 @@
 [submodule "libs/mpg123"]
 	path = libs/libmpg123
 	url = https://github.com/nmlgc/libmpg123.git
+[submodule "libs/135tk"]
+	path = libs/135tk
+	url = https://github.com/brliron/135tk
