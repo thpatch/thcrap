@@ -69,10 +69,10 @@ size_t flac_part_t::part_decode_single(void *buf, size_t size)
 	auto bytedepth = pcmf.bitdepth / 8;
 	switch(bytedepth) {
 	case 2:
-		read = (drflac_read_func_t *)drflac_read_s16;
+		read = (drflac_read_func_t *)drflac_read_pcm_frames_s16;
 		break;
 	case 4:
-		read = (drflac_read_func_t *)drflac_read_s32;
+		read = (drflac_read_func_t *)drflac_read_pcm_frames_s32;
 		break;
 	default:
 		assert(!"(FLAC) Unsupported bit depth?!");
@@ -80,14 +80,14 @@ size_t flac_part_t::part_decode_single(void *buf, size_t size)
 
 	// dr_flac doesn't return any specific errors in its public APIs, so
 	// we'll just rewind in that case by returning 0 here... Fair enough.
-	auto ret = (size_t)read(ff, size / bytedepth, (uint8_t *)buf);
-	return (ret * bytedepth);
+	auto samples = (size / bytedepth) / pcmf.channels;
+	auto ret = (size_t)read(ff, samples, (uint8_t *)buf);
+	return (ret * bytedepth * pcmf.channels);
 }
 
 void flac_part_t::part_seek_to_sample(size_t sample)
 {
-	drflac_uint64 channeled_sample = sample * pcmf.channels;
-	drflac_seek_to_sample(ff, channeled_sample);
+	drflac_seek_to_pcm_frame(ff, sample);
 }
 
 flac_part_t::~flac_part_t()
