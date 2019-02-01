@@ -560,6 +560,17 @@ HGDIOBJ WINAPI layout_SelectObject(
 	}
 }
 
+// Since the games themselves would just multiply the half-size ruby offset
+// with 2, we capture the actual full-size result of the ruby offset division.
+// This admittedly pretty gross hack allows ruby annotations to also be placed
+// at odd offsets, effectively gaining twice the precision.
+// Negative values would have been nicer, but the TH12.5 mission breakpoints
+// already use negative values to signal something else... Bleh.
+#define RUBY_OFFSET_DUMMY_HALF (INT16_MAX)
+#define RUBY_OFFSET_DUMMY_FULL (RUBY_OFFSET_DUMMY_HALF * 2)
+
+size_t ruby_offset_actual;
+
 BOOL WINAPI layout_TextOutU(
 	HDC hdc,
 	int orig_x,
@@ -567,6 +578,10 @@ BOOL WINAPI layout_TextOutU(
 	LPCSTR lpString,
 	int c
 ) {
+	// Make sure to keep shadow offsets...
+	if(orig_x > (RUBY_OFFSET_DUMMY_FULL / 2)) {
+		orig_x = (orig_x - RUBY_OFFSET_DUMMY_FULL) + ruby_offset_actual;
+	}
 	layout_state_t lay = {hdc, {orig_x, orig_y}};
 	return layout_process(&lay, layout_textout_raw, lpString, c);
 }
@@ -619,12 +634,13 @@ size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
 
 size_t ruby_offset_half(const char *begin, const char *bottom, const char *ruby, HFONT font_bottom, HFONT font_ruby)
 {
-	auto ret = (text_extent_full_for_font(begin, font_bottom) * 2)
+	auto offset_double = (text_extent_full_for_font(begin, font_bottom) * 2)
 		+ text_extent_full_for_font(bottom, font_bottom)
 		- text_extent_full_for_font(ruby, font_ruby);
 	// Since we're calculating at 2× the full precision (and 4× the half),
-	// adding 2 makes sure that the integer division rounds up at 0.5.
-	return (ret + 2) / 4;
+	// adding 1 makes sure that the integer division rounds up at 0.5.
+	ruby_offset_actual = (offset_double + 1) / 2;
+	return RUBY_OFFSET_DUMMY_HALF;
 }
 
 int widest_string(x86_reg_t *regs, json_t *bp_info)
