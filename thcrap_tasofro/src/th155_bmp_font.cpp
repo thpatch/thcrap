@@ -218,7 +218,9 @@ void bmpfont_update_cache(std::string fn, char *chars_list, int chars_count, BYT
 	file_write(full_path.c_str(), buffer, buffer_size);
 
 	full_path += ".jdiff";
-	json_dump_file(cache_patch, full_path.c_str(), JSON_INDENT(2));
+	FILE *fp = fopen_u(full_path.c_str(), "w");
+	json_dumpf(cache_patch, fp, JSON_INDENT(2));
+	fclose(fp);
 
 	json_decref(cache_patch);
 }
