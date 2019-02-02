@@ -640,6 +640,15 @@ size_t ruby_offset_half(const char *begin, const char *bottom, const char *ruby,
 	// Since we're calculating at 2× the full precision (and 4× the half),
 	// adding 1 makes sure that the integer division rounds up at 0.5.
 	ruby_offset_actual = (offset_double + 1) / 2;
+	// Compensate for the weird shifting of the on-screen X position of
+	// the ruby sprite in recent games...
+	// The original scripts seem to actually rely on that, so this has
+	// to happen here and not in the ANMs.
+	if(game_id == TH15 || game_id == TH16) {
+		ruby_offset_actual += 4;
+	} else if(game_id >= TH165) {
+		ruby_offset_actual -= 4;
+	}
 	return RUBY_OFFSET_DUMMY_HALF;
 }
 
