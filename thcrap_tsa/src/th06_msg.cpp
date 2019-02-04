@@ -40,7 +40,7 @@ typedef struct {
 typedef struct {
 	uint16_t side;
 	uint16_t linenum;
-	uint8_t str[];
+	char str[];
 } hard_line_data_t;
 #pragma pack(pop)
 
@@ -149,6 +149,7 @@ struct patch_line_t {
 struct patch_msg_state_t;
 struct replacer_t {
 	const int extra_param_len;
+	// [rep] is *not* null-terminated!
 	void(*const replace)(
 		th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep
 	);
@@ -180,7 +181,8 @@ struct patch_msg_state_t {
 	size_t cur_line;
 
 	// Retrieve and validate the current diff line, ensuring that its
-	// length is less than 0xFF - [extra_param_len].
+	// length is less than 0xFE - [extra_param_len] (to allow space for
+	// the terminating '\0').
 	patch_line_t diff_line_cur(int extra_param_len);
 
 	void replace_line(th06_msg_t &cmd_out, replacer_t replacer, const patch_line_t &pl);
@@ -188,39 +190,37 @@ struct patch_msg_state_t {
 
 patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 {
-	auto line = json_array_get_string(diff_lines, cur_line);
-	if(!line) {
+	stringref_t line = json_array_get_string(diff_lines, cur_line);
+	if(!line.str) {
 		return {};
 	}
 	// Validate that the string is valid TSA ruby syntax.
 	// Important because the games themselves (surprise, suprise) don't verify
 	// the return value of the strchr() call used to get the parameters.
 	// Thus, they would simply crash if a | is not followed by two commas.
-	if(line[0] == '|') {
-		auto *p2 = strchr(line + 1, ',');
+	if(line.str[0] == '|') {
+		auto *p2 = strchr(line.str + 1, ',');
 		if(strchr(p2 + 1, ',') == nullptr) {
 			return {};
 		}
 	}
 	// Trim the line to the last full codepoint that would still fit
-	// into the original opcode.
+	// into the original opcode after including the terminating '\0'.
 	int len_trimmed = 0;
-	auto limit = 255 - extra_param_len;
-	while(line[len_trimmed]) {
+	auto limit = 0xFF - 1 - extra_param_len;
+	while(len_trimmed < line.len) {
 		auto old_len_trimmed = len_trimmed;
 		len_trimmed++;
 		// Every string that gets here is UTF-8 anyway.
-		while((line[len_trimmed] & 0xc0) == 0x80) {
+		while((line.str[len_trimmed] & 0xc0) == 0x80) {
 			len_trimmed++;
 		}
-		if(len_trimmed >= limit) {
+		if(len_trimmed > limit || len_trimmed > line.len) {
 			len_trimmed = old_len_trimmed;
 			break;
 		}
 	}
-	// Include the terminating '\0'
-	len_trimmed += 1;
-	return { line, len_trimmed };
+	return { line.str, len_trimmed };
 }
 
 void patch_msg_state_t::replace_line(th06_msg_t &cmd_out, replacer_t replacer, const patch_line_t &pl)
@@ -258,10 +258,9 @@ th06_msg_t* th06_msg_advance(const th06_msg_t* msg)
 	return (th06_msg_t*)((uint8_t*)msg + th06_msg_full_len(msg));
 }
 
-void replace_line(uint8_t *dst, patch_msg_state_t *state, const char *rep, const size_t len)
+void replace_line(char *dst, patch_msg_state_t *state, const stringref_t &rep)
 {
-	memcpy(dst, rep, len);
-	dst[len - 1] = '\0';
+	stringref_copy_advance_dst(dst, rep);
 
 	// We might only cut the JSON line right now, but in view of everything
 	// else we could possibly do, calculating the line length right here,
@@ -276,12 +275,12 @@ void replace_line(uint8_t *dst, patch_msg_state_t *state, const char *rep, const
 			log_printf("\xF0\x9F\x92\xAC\n"); // 💬
 		}
 		size_t font_id = (size_t)json_integer_value(state->font_dialog_id);
-		size_t width = GetTextExtentForFontID((char *)dst, font_id);
+		size_t width = GetTextExtentForFontID(dst, font_id);
 		state->line_widths[state->cur_line] = width;
 	}
 
 	if(state->format->enc_func) {
-		state->format->enc_func(dst, len);
+		state->format->enc_func((uint8_t *)dst, rep.len + 1);
 	}
 }
 
@@ -290,16 +289,16 @@ const replacer_t REP_HARD_LINE = {
 	{
 		auto* line = (hard_line_data_t*)cmd_out.data;
 		line->linenum = state.cur_line;
-		cmd_out.length = rep.len + 4;
-		replace_line(line->str, &state, rep.str, rep.len);
+		cmd_out.length = rep.len + 4 + 1;
+		replace_line(line->str, &state, rep);
 	}
 };
 
 const replacer_t REP_AUTO_LINE = {
 	0, [] (th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep)
 	{
-		cmd_out.length = rep.len;
-		replace_line(cmd_out.data, &state, rep.str, cmd_out.length);
+		cmd_out.length = rep.len + 1;
+		replace_line((char *)cmd_out.data, &state, rep);
 	}
 };
 
@@ -365,7 +364,7 @@ void box_end(patch_msg_state_t *state)
 
 			// Make room for the new line
 			memmove(
-				(uint8_t*)(new_line_cmd) + line_offset + pl.line.len,
+				(uint8_t*)(new_line_cmd) + line_offset + (pl.line.len + 1),
 				new_line_cmd,
 				move_len
 			);
