@@ -11,6 +11,7 @@
   */
 
 #include <thcrap.h>
+#include <tlnote.hpp>
 #include "thcrap_tsa.h"
 #include "layout.h"
 
@@ -131,6 +132,7 @@ typedef enum {
 
 struct patch_line_t {
 	stringref_t line;
+	tlnote_encoded_index_t tli;
 
 	bool valid() const {
 		return line.str != nullptr;
@@ -141,8 +143,8 @@ struct patch_line_t {
 	patch_line_t()
 		: line({ nullptr, 0 }) {
 	}
-	patch_line_t(const char *str, int len)
-		: line({ str, len }) {
+	patch_line_t(const char *str, int len, const tlnote_encoded_index_t &tli)
+		: line({ str,len }), tli(tli) {
 	}
 };
 
@@ -190,7 +192,8 @@ struct patch_msg_state_t {
 
 patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 {
-	stringref_t line = json_array_get_string(diff_lines, cur_line);
+	tlnote_encoded_index_t tli;
+	stringref_t line = json_array_get(diff_lines, cur_line);
 	if(!line.str) {
 		return {};
 	}
@@ -204,10 +207,16 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 			return {};
 		}
 	}
+	auto tln = tlnote_find(line);
+	if(tln.tlnote) {
+		tli = tlnote_prerender(tln.tlnote);
+		line = tln.regular;
+	}
 	// Trim the line to the last full codepoint that would still fit
-	// into the original opcode after including the terminating '\0'.
+	// into the original opcode after including the terminating '\0'
+	// and the TL note.
 	int len_trimmed = 0;
-	auto limit = 0xFF - 1 - extra_param_len;
+	auto limit = 0xFF - 1 - extra_param_len - tli.len();
 	while(len_trimmed < line.len) {
 		auto old_len_trimmed = len_trimmed;
 		len_trimmed++;
@@ -220,13 +229,25 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 			break;
 		}
 	}
-	return { line.str, len_trimmed };
+	return { line.str, len_trimmed, tli };
 }
 
 void patch_msg_state_t::replace_line(th06_msg_t &cmd_out, replacer_t replacer, const patch_line_t &pl)
 {
 	assert(pl.valid());
-	replacer.replace(cmd_out, *this, pl.line);
+	if(pl.tli) {
+		auto pl_full_len = pl.line.len + pl.tli.len();
+		assert(pl_full_len <= 0xFE - replacer.extra_param_len);
+		VLA(char, pl_full, pl_full_len + 1);
+
+		auto *p = stringref_copy_advance_dst(pl_full, pl.line);
+		p = stringref_copy_advance_dst(p, pl.tli);
+
+		replacer.replace(cmd_out, *this, { pl_full, pl_full_len });
+		VLA_FREE(pl_full);
+	} else {
+		replacer.replace(cmd_out, *this, pl.line);
+	}
 	last_line_cmd = &cmd_out;
 }
 
@@ -358,13 +379,14 @@ void box_end(patch_msg_state_t *state)
 			th06_msg_t *new_line_cmd = th06_msg_advance(state->last_line_cmd);
 			ptrdiff_t move_len;
 			size_t line_offset;
+			auto line_len_full = pl.line.len + pl.tli.len() + 1;
 
 			move_len = (uint8_t*)th06_msg_advance(state->cmd_out) - (uint8_t*)new_line_cmd;
 			line_offset = sizeof(th06_msg_t) + replacer.extra_param_len;
 
 			// Make room for the new line
 			memmove(
-				(uint8_t*)(new_line_cmd) + line_offset + (pl.line.len + 1),
+				(uint8_t*)(new_line_cmd) + line_offset + line_len_full,
 				new_line_cmd,
 				move_len
 			);
