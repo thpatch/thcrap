@@ -207,7 +207,7 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 			return {};
 		}
 	}
-	auto tln = tlnote_find(line);
+	auto tln = tlnote_find(line, true);
 	if(tln.tlnote) {
 		tli = tlnote_prerender(tln.tlnote);
 		line = tln.regular;

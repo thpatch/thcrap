@@ -178,7 +178,7 @@ THCRAP_API void tlnote_show(const tlnote_t tlnote)
 	log_printf("(TL note: %.*s)\n", note.length(), note.c_str());
 }
 
-THCRAP_API tlnote_split_t tlnote_find(stringref_t text)
+THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 {
 	const char *p = text.str;
 	const char *sepchar_ptr = nullptr;
@@ -205,6 +205,7 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text)
 	if(cond) { \
 		return fail(); \
 	}
+			FAIL_IF(inline_only);
 			FAIL_IF(sepchar_ptr);
 			FAIL_IF(i + 1 >= text.len);
 			unsigned char byte_len;

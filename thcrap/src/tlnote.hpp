@@ -69,8 +69,10 @@ struct tlnote_split_t {
 // Directly shows [tlnote].
 THCRAP_API void tlnote_show(const tlnote_t tlnote);
 
-// Searches [text] for a TL note.
-THCRAP_API tlnote_split_t tlnote_find(stringref_t text);
+// Searches [text] for a TL note. If [inline_only] is true, the function fails
+// if a pre-rendered TL note index is found, so it should always be set when
+// running the function on user input.
+THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only);
 
 // Prerenders the given [tlnote] and returns its new shortened representation
 // (prefix byte + UTF-8-encoded internal index), which can then optionally be
