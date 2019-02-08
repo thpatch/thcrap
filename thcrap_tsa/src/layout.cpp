@@ -601,6 +601,7 @@ size_t __stdcall text_extent_full(const char *str)
 	layout_state_t lay = { text_dc };
 	STRLEN_DEC(str);
 	layout_process(&lay, NULL, str, str_len);
+	log_printf("GetTextExtent('%s') = %d\n", str, lay.cur_x / 2);
 	return lay.cur_x;
 }
 
@@ -616,9 +617,7 @@ size_t __stdcall text_extent_full_for_font(const char *str, HFONT font)
 
 size_t __stdcall GetTextExtent(const char *str)
 {
-	auto ret = text_extent_full(str) / 2;
-	log_printf("GetTextExtent('%s') = %d\n", str, ret);
-	return ret;
+	return text_extent_full(str) / 2;
 }
 
 size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
