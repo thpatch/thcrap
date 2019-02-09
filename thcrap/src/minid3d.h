@@ -4,7 +4,8 @@
   *
   * ----
   *
-  * Mini Direct3D 8/9 combination header, including only what we need so far.
+  * Mini Direct3D combination header, including only what we need so far,
+  * with the subset that works for every supported Direct3D version.
   */
 
 #pragma once
@@ -40,6 +41,9 @@ typedef enum {
 // Interfaces
 typedef IUnknown IDirect3D;
 typedef IUnknown IDirect3DDevice;
+// This is just a DWORD token value in Direct3D 8, so let's not make it an
+// IUnknown and not tempt anyone to try calling Release() on this.
+typedef DWORD IDirect3DStateBlock;
 typedef IUnknown IDirect3DTexture;
 
 // We currently don't care about any of these, but it's nice to have the
@@ -50,6 +54,13 @@ typedef uint32_t D3DPOOL;
 typedef struct {} D3DPRESENT_PARAMETERS;
 typedef uint32_t D3DRESOURCETYPE;
 typedef uint32_t D3DMULTISAMPLE_TYPE;
+
+typedef enum _D3DSTATEBLOCKTYPE {
+	D3DSBT_ALL = 1, // capture all state
+	D3DSBT_PIXELSTATE = 2, // capture pixel state
+	D3DSBT_VERTEXSTATE = 3, // capture vertex state
+	D3DSBT_FORCE_DWORD = 0x7fffffff,
+} D3DSTATEBLOCKTYPE;
 
 typedef struct _D3DSURFACE_DESC {
 	D3DFORMAT Format;
@@ -83,6 +94,75 @@ typedef struct _D3DSURFACE_DESC {
 	x(void****, ppReturnedDeviceInterface)
 MINID3D_TYPEDEF(HRESULT, d3d_CreateDevice)
 /// ---------
+
+/// IDirect3DStateBlock9
+/// --------------------
+#define d3dsb9_Capture_(x) \
+	x(IDirect3DStateBlock, pSB)
+
+#define d3dsb9_Apply_(x) \
+	x(IDirect3DStateBlock, pSB)
+/// --------------------
+
+/// IDirect3DDevice
+/// ---------------
+#define d3dd_EndScene_(x) \
+	x(IDirect3DDevice*, that)
+
+#define d3dd8_ApplyStateBlock_(x) \
+	x(IDirect3DDevice*, that), \
+	x(IDirect3DStateBlock, pSB)
+	// (Yes, no pointer here, due to Direct3D 8 compatibility)
+
+#define d3dd8_CaptureStateBlock_(x) \
+	x(IDirect3DDevice*, that), \
+	x(IDirect3DStateBlock, pSB)
+	// (Yes, no pointer here, due to Direct3D 8 compatibility)
+
+#define d3dd8_DeleteStateBlock_(x) \
+	x(IDirect3DDevice*, that), \
+	x(IDirect3DStateBlock, pSB)
+	// (Yes, no pointer here, due to Direct3D 8 compatibility)
+
+#define d3dd_CreateStateBlock_(x) \
+	x(IDirect3DDevice*, that), \
+	x(D3DSTATEBLOCKTYPE, Type), \
+	x(IDirect3DStateBlock*, pSB)
+	// (Yes, no double pointer here, due to Direct3D 8 compatibility)
+
+MINID3D_VTABLE_FUNC_DEF(HRESULT, d3dd_EndScene, 35, 42)
+
+__inline HRESULT d3dd_ApplyStateBlock(d3d_version_t ver, d3dd8_ApplyStateBlock_(FULLDEC))
+{
+	typedef HRESULT __stdcall ft8(d3dd8_ApplyStateBlock_(FULLDEC));
+	typedef HRESULT __stdcall ft9(d3dsb9_Apply_(FULLDEC));
+	return
+		(ver == D3D8) ? (*(ft8***)that)[54](d3dd8_ApplyStateBlock_(VARNAMES)) :
+		(ver == D3D9) ? (*(ft9***) pSB)[ 5](d3dsb9_Apply_(VARNAMES)) :
+		((FARPROC)NULL)();
+}
+
+__inline HRESULT d3dd_CaptureStateBlock(d3d_version_t ver, d3dd8_CaptureStateBlock_(FULLDEC))
+{
+	typedef HRESULT __stdcall ft8(d3dd8_CaptureStateBlock_(FULLDEC));
+	typedef HRESULT __stdcall ft9(d3dsb9_Capture_(FULLDEC));
+	return
+		(ver == D3D8) ? (*(ft8***)that)[55](d3dd8_CaptureStateBlock_(VARNAMES)) :
+		(ver == D3D9) ? (*(ft9***)pSB)[4](d3dsb9_Capture_(VARNAMES)) :
+		((FARPROC)NULL)();
+}
+
+__inline HRESULT d3dd_DeleteStateBlock(d3d_version_t ver, d3dd8_DeleteStateBlock_(FULLDEC))
+{
+	typedef HRESULT __stdcall ft8(d3dd8_DeleteStateBlock_(FULLDEC));
+	return
+		(ver == D3D8) ? (*(ft8***)that)[56](d3dd8_DeleteStateBlock_(VARNAMES)) :
+		(ver == D3D9) ? ((IUnknown*)pSB)->Release() :
+		((FARPROC)NULL)();
+}
+
+MINID3D_VTABLE_FUNC_DEF(HRESULT, d3dd_CreateStateBlock, 57, 59)
+/// ---------------
 
 /// IDirect3DTexture
 /// ----------------

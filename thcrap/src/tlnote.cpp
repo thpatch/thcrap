@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "minid3d.h"
 #include "tlnote.hpp"
 
 /// Codepoints
@@ -155,6 +156,38 @@ int32_t tlnote_render(const stringref_t &note)
 }
 /// -----------------------------
 
+/// Render calls and detoured functions
+/// -----------------------------------
+d3dd_EndScene_type *chain_d3dd8_EndScene;
+d3dd_EndScene_type *chain_d3dd9_EndScene;
+
+void tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
+{
+	// IDirect3DDevice9::Reset() would fail with D3DERR_INVALIDCALL if any
+	// state blocks still exist, so we couldn't just have a single static
+	// one that we create once. It's fast enough to do this every frame
+	// anyway.
+	IDirect3DStateBlock sb_game;
+	d3dd_CreateStateBlock(ver, d3dd, D3DSBT_ALL, &sb_game);
+	d3dd_CaptureStateBlock(ver, d3dd, sb_game);
+
+	d3dd_ApplyStateBlock(ver, d3dd, sb_game);
+	d3dd_DeleteStateBlock(ver, d3dd, sb_game);
+}
+
+HRESULT __stdcall tlnote_d3dd8_EndScene(IDirect3DDevice *that)
+{
+	tlnote_frame(D3D8, that);
+	return chain_d3dd8_EndScene(that);
+}
+
+HRESULT __stdcall tlnote_d3dd9_EndScene(IDirect3DDevice *that)
+{
+	tlnote_frame(D3D9, that);
+	return chain_d3dd9_EndScene(that);
+}
+/// -----------------------------------
+
 THCRAP_API void tlnote_show(const tlnote_t tlnote)
 {
 	if(!tlnote.str) {
@@ -243,3 +276,18 @@ THCRAP_API tlnote_encoded_index_t tlnote_prerender(const tlnote_t tlnote)
 	stringref_t note = { tlnote.str->note, tlnote.len };
 	return { tlnote_render(note) + RENDERED_OFFSET };
 }
+
+/// Module functions
+/// ----------------
+extern "C" __declspec(dllexport) void tlnote_mod_detour(void)
+{
+	vtable_detour_t d3d8[] = {
+		{ 35, tlnote_d3dd8_EndScene, (void**)&chain_d3dd8_EndScene },
+	};
+	vtable_detour_t d3d9[] = {
+		{ 42, tlnote_d3dd9_EndScene, (void**)&chain_d3dd9_EndScene },
+	};
+	d3d8_device_detour(d3d8, elementsof(d3d8));
+	d3d9_device_detour(d3d9, elementsof(d3d9));
+}
+/// ----------------
