@@ -127,3 +127,21 @@ typedef struct {
   * end of the parsed address are not needed.
   */
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
+
+/// Geometry
+/// --------
+#ifdef __cplusplus
+struct vector2_t {
+	float x, y;
+};
+
+struct vector3_t {
+	float x, y, z;
+};
+
+// Hey, it's unique at least. "rect_t" would be a lot more ambiguous, with the
+// RECT structure of the Windows API being left/top/right/bottom.
+struct xywh_t {
+	float x, y, w, h;
+};
+#endif

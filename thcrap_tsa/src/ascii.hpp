@@ -9,14 +9,6 @@
 
 #pragma once
 
-struct vector2_t {
-	float x, y;
-};
-
-struct vector3_t {
-	float x, y, z;
-};
-
 float ascii_char_width();
 float ascii_extent(const char *str);
 float ascii_align_center(float x, const char *str);
