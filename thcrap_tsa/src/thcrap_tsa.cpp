@@ -8,6 +8,8 @@
   */
 
 #include <thcrap.h>
+// (for TL note removal hooks)
+#include <tlnote.hpp>
 #include <commctrl.h>
 #include "thcrap_tsa.h"
 #include "layout.h"
@@ -115,6 +117,13 @@ extern "C" __declspec(dllexport) const char* steam_appid(void)
 	}
 }
 
+size_t tlnote_remove_size_hook(const char *fn, json_t *patch, size_t patch_size)
+{
+	// We want these gone as early as possible
+	tlnote_remove();
+	return 0;
+}
+
 int __stdcall thcrap_plugin_init()
 {
 	if(stack_remove_if_unneeded("base_tsa")) {
@@ -131,7 +140,9 @@ int __stdcall thcrap_plugin_init()
 	patchhook_register("msg*.msg", patch_msg_dlg, NULL); // th143
 	patchhook_register("e*.msg", patch_msg_end, NULL); // th10+ endings
 
-	patchhook_register("*.anm", patch_anm, NULL);
+	patchhook_register("*.anm", patch_anm, tlnote_remove_size_hook);
+	// Remove TL notes when retrying a stage
+	patchhook_register("*.std", nullptr, tlnote_remove_size_hook);
 	return 0;
 }
 

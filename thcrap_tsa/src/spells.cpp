@@ -8,6 +8,8 @@
   */
 
 #include <thcrap.h>
+// (TL notes should be removed before every spell card declaration)
+#include <tlnote.hpp>
 #include "thcrap_tsa.h"
 
 // Lookup cache
@@ -48,6 +50,8 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 	// -----------------
 	BP_spell_id(regs, bp_info);
 	// -----------------
+
+	tlnote_remove();
 
 	if(spell_name && cache_spell_id_real >= cache_spell_id) {
 		const char *new_name = NULL;

@@ -178,6 +178,7 @@ struct patch_msg_state_t {
 	th128_bubble_pos_t *bubble_pos;
 	const th06_msg_t *last_line_cmd;
 	const op_info_t *last_line_op;
+	const json_t *last_lines_with_tlnote;
 
 	// Indices
 	size_t cur_line;
@@ -211,6 +212,13 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 	if(tln.tlnote) {
 		tli = tlnote_prerender(tln.tlnote);
 		line = tln.regular;
+		last_lines_with_tlnote = diff_lines;
+	} else if(
+		last_lines_with_tlnote != nullptr
+		&& diff_lines != last_lines_with_tlnote
+	) {
+		tli = tlnote_removal_index();
+		last_lines_with_tlnote = nullptr;
 	}
 	// Trim the line to the last full codepoint that would still fit
 	// into the original opcode after including the terminating '\0'
@@ -646,6 +654,10 @@ int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			}
 			entry_new = 0;
 			state.time = -1;
+			// Use the occasion to remove any TL notes from spell
+			// cards that might still be on screen... Yeah, kinda
+			// ugly to set a *lines* variable to an *entry*, but eh.
+			state.last_lines_with_tlnote = state.diff_entry;
 		}
 
 		if(state.cmd_in->time != state.time) {
