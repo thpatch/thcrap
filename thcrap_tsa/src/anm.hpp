@@ -263,16 +263,6 @@ struct entry_mods_t {
 	void apply_ourdata(anm_entry_t &entry);
 };
 
-// TODO: Workaround for C2536 on Visual C++ 2013
-template <> Option<float[4]>::Option(float val[4])
-{
-	this->valid = true;
-	this->val[0] = val[0];
-	this->val[1] = val[1];
-	this->val[2] = val[2];
-	this->val[3] = val[3];
-}
-
 struct sprite_mods_t {
 	// Sprite number
 	size_t num;
@@ -281,7 +271,7 @@ struct sprite_mods_t {
 	Option<BlitFunc_t> blitmode;
 
 	// Applied onto the original sprite
-	Option<float[4]> bounds;
+	Option<xywh_t> bounds;
 
 	void apply_orig(sprite_t &orig);
 };

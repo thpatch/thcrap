@@ -90,6 +90,24 @@ json_t* json_object_merge(json_t *old_obj, json_t *new_obj);
 json_t* json_object_get_keys_sorted(const json_t *object);
 /// -------
 
+/// "Custom types"
+/// --------------
+#ifdef __cplusplus
+}
+
+typedef struct {
+	const char *err; // non-nullptr in case of an error
+	xywh_t v;
+} json_xywh_t;
+
+// Parses a [X, Y, width, height] JSON array, returning an error if [arr]
+// doesn't match this format. Currently only accepting positive integers!
+json_xywh_t json_xywh_value(const json_t *arr);
+
+extern "C" {
+#endif
+/// --------------
+
 // Wrapper around json_loadb and json_load_file with indirect UTF-8 filename
 // support and nice error reporting.
 // [source] can be specified to show the source of the JSON buffer in case of

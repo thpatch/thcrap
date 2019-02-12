@@ -258,6 +258,34 @@ json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const
 	return ret;
 }
 
+json_xywh_t json_xywh_value(const json_t *arr)
+{
+	json_xywh_t ret = { nullptr };
+	if(json_array_size(arr) != 4) {
+		ret.err = "Must be specified as a JSON array in [X, Y, width, height] format.";
+		return ret;
+	}
+	for(unsigned int i = 0; i < 4; i++) {
+		auto coord_j = json_array_get(arr, i);
+		bool failed = !json_is_integer(coord_j);
+		if(!failed) {
+			ret.v.c[i] = (float)json_integer_value(coord_j);
+			failed = (ret.v.c[i] < 0.0f);
+		}
+		if(failed) {
+			const char *ERRORS[4] = {
+				"Coordinate #1 (X) must be a positive JSON integer.",
+				"Coordinate #2 (Y) must be a positive JSON integer.",
+				"Coordinate #3 (width) must be a positive JSON integer.",
+				"Coordinate #4 (height) must be a positive JSON integer."
+			};
+			ret.err = ERRORS[i];
+			return ret;
+		}
+	}
+	return ret;
+}
+
 json_t* json_load_file_report(const char *json_fn)
 {
 	size_t json_size;

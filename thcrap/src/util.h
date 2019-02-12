@@ -142,6 +142,11 @@ struct vector3_t {
 // Hey, it's unique at least. "rect_t" would be a lot more ambiguous, with the
 // RECT structure of the Windows API being left/top/right/bottom.
 struct xywh_t {
-	float x, y, w, h;
+	union {
+		struct {
+			float x, y, w, h;
+		};
+		float c[4];
+	};
 };
 #endif

@@ -24,6 +24,7 @@ extern "C" {
 #include <win32_utf8.h>
 #include <jansson.h>
 #include "exception.h"
+#include "util.h"
 #include "jansson_ex.h"
 #include "global.h"
 #include "log.h"
@@ -31,7 +32,6 @@ extern "C" {
 #include "stack.h"
 #include "binhack.h"
 #include "breakpoint.h"
-#include "util.h"
 #include "mempatch.h"
 #include "pe.h"
 #include "plugin.h"
