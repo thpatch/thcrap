@@ -12,7 +12,6 @@
 #include "thcrap_tasofro.h"
 #include "th155_bmp_font.h"
 #include <libs/135tk/bmpfont/bmpfont_create.h>
-#include <string>
 
 // Increment this number to force a bmpfont cache refresh
 static const int cache_version = 2;

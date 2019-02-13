@@ -8,7 +8,6 @@
   */
 
 #include <thcrap.h>
-#include <string>
 #include "thcrap_tsa.h"
 #include "ascii.hpp"
 

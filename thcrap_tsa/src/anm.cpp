@@ -668,8 +668,8 @@ sprite_mods_t header_mods_t::sprite_mods()
 
 	auto bounds_parse = [&](const char *context, const json_t *bounds_j) {
 		auto rect = json_xywh_value(bounds_j);
-		if(rect.err) {
-			RETURN_FAIL(context, "(Bounds) %s", rect.err);
+		if(!rect.err.empty()) {
+			RETURN_FAIL(context, "(Bounds) %s", rect.err.c_str());
 		}
 		ret.bounds = rect.v;
 		return true;

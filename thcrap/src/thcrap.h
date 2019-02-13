@@ -18,6 +18,8 @@
 #endif
 
 #ifdef __cplusplus
+#include <string>
+
 extern "C" {
 #endif
 

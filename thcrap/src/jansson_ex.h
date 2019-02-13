@@ -95,10 +95,21 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 #ifdef __cplusplus
 }
 
-typedef struct {
-	const char *err; // non-nullptr in case of an error
+struct json_custom_value_t {
+	std::string err;
+};
+
+struct json_vector2_t : public json_custom_value_t {
+	vector2_t v;
+};
+
+// Parses a [X, Y] JSON array, returning an error if [arr] doesn't match
+// this format. Currently only accepting positive integers!
+json_vector2_t json_vector2_value(const json_t *arr);
+
+struct json_xywh_t : public json_custom_value_t {
 	xywh_t v;
-} json_xywh_t;
+};
 
 // Parses a [X, Y, width, height] JSON array, returning an error if [arr]
 // doesn't match this format. Currently only accepting positive integers!

@@ -18,7 +18,6 @@
 #include "tfcs.h"
 #include "pl.h"
 #include <zlib.h>
-#include <string>
 #include <vector>
 #include <list>
 #include <algorithm>

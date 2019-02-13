@@ -9,7 +9,6 @@
 
 #include "thcrap.h"
 #include <algorithm>
-#include <string>
 #include <vector>
 #include "minid3d.h"
 #include "tlnote.hpp"

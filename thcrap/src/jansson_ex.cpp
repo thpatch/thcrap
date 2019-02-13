@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <array>
 
 json_t* json_decref_safe(json_t *json)
 {
@@ -258,14 +259,33 @@ json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const
 	return ret;
 }
 
-json_xywh_t json_xywh_value(const json_t *arr)
+template <typename T, size_t N> T json_tuple_value(
+	const json_t* arr, const std::array<const stringref_t, N> value_names
+)
 {
-	json_xywh_t ret = { nullptr };
-	if(json_array_size(arr) != 4) {
-		ret.err = "Must be specified as a JSON array in [X, Y, width, height] format.";
+	T ret;
+	if(json_array_size(arr) != N) {
+		const stringref_t ERR_FMT = "Must be specified as a JSON array in [%s] format.";
+		const stringref_t SEP = ", ";
+		auto allnames_len = SEP.len * (N - 1);
+		for(auto &i : value_names) {
+			allnames_len += i.len;
+		}
+		VLA(char, allnames, allnames_len + 1);
+		defer({ VLA_FREE(allnames); });
+
+		char *p = allnames;
+		for(int i = 0; i < (int)(N) - 1; i++) {
+			p = stringref_copy_advance_dst(p, value_names[i]);
+			p = stringref_copy_advance_dst(p, SEP);
+		}
+		p = stringref_copy_advance_dst(p, value_names[N - 1]);
+
+		ret.err.resize(ERR_FMT.len + allnames_len + 1);
+		sprintf(&ret.err[0], ERR_FMT.str, allnames);
 		return ret;
 	}
-	for(unsigned int i = 0; i < 4; i++) {
+	for(unsigned int i = 0; i < N; i++) {
 		auto coord_j = json_array_get(arr, i);
 		bool failed = !json_is_integer(coord_j);
 		if(!failed) {
@@ -273,17 +293,27 @@ json_xywh_t json_xywh_value(const json_t *arr)
 			failed = (ret.v.c[i] < 0.0f);
 		}
 		if(failed) {
-			const char *ERRORS[4] = {
-				"Coordinate #1 (X) must be a positive JSON integer.",
-				"Coordinate #2 (Y) must be a positive JSON integer.",
-				"Coordinate #3 (width) must be a positive JSON integer.",
-				"Coordinate #4 (height) must be a positive JSON integer."
-			};
-			ret.err = ERRORS[i];
+			auto ERR_FMT = "Coordinate #%u (%s) must be a positive JSON integer.";
+			ret.err.resize(_scprintf(ERR_FMT, i + 1, value_names[i]));
+			sprintf(&ret.err[0], ERR_FMT, i + 1, value_names[i]);
 			return ret;
 		}
 	}
 	return ret;
+}
+
+json_vector2_t json_vector2_value(const json_t *arr)
+{
+	return json_tuple_value<json_vector2_t, 2>(arr,
+		{ "X", "Y" }
+	);
+}
+
+json_xywh_t json_xywh_value(const json_t *arr)
+{
+	return json_tuple_value<json_xywh_t, 4>(arr,
+		{ "X", "Y", "width", "height" }
+	);
 }
 
 json_t* json_load_file_report(const char *json_fn)

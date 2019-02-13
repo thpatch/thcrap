@@ -9,7 +9,6 @@
 
 #include "thcrap.h"
 #include <vector>
-#include <string>
 
 static json_t *funcs = NULL;
 static json_t *mod_funcs = NULL;

@@ -132,7 +132,12 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
 /// --------
 #ifdef __cplusplus
 struct vector2_t {
-	float x, y;
+	union {
+		struct {
+			float x, y;
+		};
+		float c[2];
+	};
 };
 
 struct vector3_t {

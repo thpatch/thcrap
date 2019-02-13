@@ -6,7 +6,6 @@
 #include <string.h>
 #include <CommCtrl.h>
 #include <queue>
-#include <string>
 #include <mutex>
 #include <future>
 #include <memory>
