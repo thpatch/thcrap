@@ -4,7 +4,7 @@
   *
   * ----
   *
-  * Text rendering layout.
+  * GDI-based text rendering layout.
   */
 
 #pragma once

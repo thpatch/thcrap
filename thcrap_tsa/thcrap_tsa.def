@@ -2,6 +2,10 @@ LIBRARY
 EXPORTS
 	thcrap_plugin_init	@1
 
+	; ASCII
+	; -----
+	ascii_vpatchf
+
 	; TH06
 	; ----
 	BP_th06_file_name

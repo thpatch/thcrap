@@ -33,6 +33,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\ascii.cpp" />
     <ClCompile Include="src\bp_mission.cpp" />
     <ClCompile Include="src\anm.cpp" />
     <ClCompile Include="src\anm_bounds.cpp" />
@@ -62,6 +63,7 @@
     <ClInclude Include="..\thtypes\anm_types.h" />
     <ClInclude Include="..\thtypes\bgm_types.h" />
     <ClInclude Include="src\anm.hpp" />
+    <ClInclude Include="src\ascii.hpp" />
     <ClInclude Include="src\layout.h" />
     <ClInclude Include="src\png_ex.h" />
     <ClInclude Include="src\textimage.hpp" />
