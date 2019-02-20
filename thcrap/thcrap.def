@@ -277,6 +277,7 @@ EXPORTS
 
 	; Hardcoded string translation
 	; ----------------------------
+	strings_id
 	strings_get
 	strings_lookup
 	strings_va_lookup

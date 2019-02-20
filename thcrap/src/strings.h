@@ -11,6 +11,10 @@
 
 /// Translation
 /// -----------
+// Returns the ID for the given [str], or NULL if it couldn't be determined.
+// Currently only looking up the pointer value in the stringlocs map.
+const char* strings_id(const char* str);
+
 // Returns [id] from the string definition table,
 // or NULL if no string for [id] available.
 const json_t* strings_get(const char *id);

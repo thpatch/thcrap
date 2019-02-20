@@ -77,6 +77,18 @@ void stringlocs_reparse(void)
 	ReleaseSRWLockExclusive(&stringlocs_srwlock);
 }
 
+const char* strings_id(const char *str)
+{
+	const char *ret = nullptr;
+	AcquireSRWLockShared(&stringlocs_srwlock);
+	auto id_key = stringlocs.find(str);
+	if(id_key != stringlocs.end()) {
+		ret = id_key->second;
+	}
+	ReleaseSRWLockShared(&stringlocs_srwlock);
+	return ret;
+}
+
 const json_t* strings_get(const char *id)
 {
 	return json_object_get(jsondata_get("stringdefs.js"), id);
@@ -91,9 +103,9 @@ const char* strings_lookup(const char *in, size_t *out_len)
 	}
 
 	AcquireSRWLockShared(&stringlocs_srwlock);
-	auto id_key = stringlocs.find(in);
-	if(id_key != stringlocs.end()) {
-		const char *new_str = json_string_value(strings_get(id_key->second));
+	auto id = strings_id(in);
+	if(id) {
+		auto *new_str = json_string_value(strings_get(id));
 		if(new_str && new_str[0]) {
 			ret = new_str;
 		}
