@@ -94,6 +94,15 @@ const json_t* strings_get(const char *id)
 	return json_object_get(jsondata_get("stringdefs.js"), id);
 }
 
+stringref_t strings_get_fallback(const string_named_t& sn)
+{
+	auto ret = strings_get(sn.id);
+	if(!json_is_string(ret)) {
+		return sn.fallback;
+	}
+	return ret;
+}
+
 const char* strings_lookup(const char *in, size_t *out_len)
 {
 	const char *ret = in;

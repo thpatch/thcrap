@@ -16,8 +16,23 @@
 const char* strings_id(const char* str);
 
 // Returns [id] from the string definition table,
-// or NULL if no string for [id] available.
+// or NULL if no string for [id] is available.
 const json_t* strings_get(const char *id);
+
+#ifdef __cplusplus
+}
+
+// Like strings_get(), but with a fallback onto [def] if no string for [id]
+// is available.
+struct string_named_t {
+	const char *id;
+	const stringref_t &fallback;
+};
+
+stringref_t strings_get_fallback(const string_named_t& sn);
+
+extern "C" {
+#endif
 
 // Returns the translated string for [in] from the string definition table,
 // or [in] itself if no translation is available.

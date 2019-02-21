@@ -279,6 +279,7 @@ EXPORTS
 	; ----------------------------
 	strings_id
 	strings_get
+	strings_get_fallback
 	strings_lookup
 	strings_va_lookup
 	strings_storage_get
