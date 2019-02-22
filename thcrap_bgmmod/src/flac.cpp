@@ -15,8 +15,7 @@
 #define DR_FLAC_IMPLEMENTATION
 #include <dr_flac.h>
 
-#define flac_errorf(text, ...) \
-	bgmmod_format_errorf("FLAC", text, ##__VA_ARGS__)
+auto flac_l = bgmmod_format_log("FLAC");
 
 /// Callbacks
 /// ---------
@@ -101,7 +100,7 @@ std::unique_ptr<pcm_part_t> flac_open(HANDLE &&stream)
 	drflac *ff = drflac_open(flac_w32_read, flac_w32_seek, stream);
 
 	auto fail = [&] (const char *text) {
-		flac_errorf("%s", text);
+		flac_l.errorf("%s", text);
 		CloseHandle(stream);
 		drflac_close(ff);
 		return nullptr;

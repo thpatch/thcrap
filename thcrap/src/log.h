@@ -65,10 +65,18 @@ void log_mbox_set_owner(HWND hwnd);
 
 class logger_t {
 	const char *err_caption;
+	const char *prefix = nullptr;
 
 public:
 	THCRAP_API virtual std::nullptr_t verrorf(const char *text, va_list va) const;
 	THCRAP_API virtual std::nullptr_t errorf(const char *text, ...) const;
+
+	// Returns a new logger that prepends [prefix] to all messages.
+	logger_t prefixed(const char *prefix) const {
+		auto ret = logger_t(err_caption);
+		ret.prefix = prefix;
+		return ret;
+	}
 
 	logger_t(const char *err_caption)
 		: err_caption(err_caption) {

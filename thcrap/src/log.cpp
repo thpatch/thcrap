@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <string>
 
 // -------
 // Globals
@@ -265,7 +266,15 @@ static void OpenConsole(void)
 /// ------------------
 std::nullptr_t logger_t::verrorf(const char *text, va_list va) const
 {
-	log_vmboxf(err_caption, MB_OK | MB_ICONERROR, text, va);
+	auto mbox = [this, va] (const char *str) {
+		log_vmboxf(err_caption, MB_OK | MB_ICONERROR, str, va);
+	};
+	if(prefix) {
+		std::string prefixed = prefix + std::string(text);
+		mbox(prefixed.c_str());
+	} else {
+		mbox(text);
+	}
 	return nullptr;
 }
 

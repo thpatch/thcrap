@@ -14,8 +14,7 @@
 
 #pragma comment(lib, "libmpg123" DEBUG_OR_RELEASE)
 
-#define mp3_errorf(text, ...) \
-	bgmmod_format_errorf("MP3", text, ##__VA_ARGS__)
+auto mp3_l = bgmmod_format_log("MP3");
 
 /// Callbacks
 /// ---------
@@ -62,7 +61,7 @@ size_t mp3_part_t::part_decode_single(void *buf, size_t size)
 	} else if(ret == MPG123_DONE) {
 		decode_done = true;
 	} else {
-		mp3_errorf("%s", mpg123_plain_strerror(ret));
+		mp3_l.errorf("%s", mpg123_plain_strerror(ret));
 		return -1;
 	}
 	return byte_ret;
@@ -89,9 +88,9 @@ std::unique_ptr<pcm_part_t> mp3_open(HANDLE &&stream)
 		va_start(va, text);
 		if(err != MPG123_OK) {
 			auto err_str = mpg123_plain_strerror(err);
-			mp3_errorf("%s: %s", text, err_str);
+			mp3_l.errorf("%s: %s", text, err_str);
 		} else {
-			mp3_errorf("%s", text);
+			mp3_l.errorf("%s", text);
 		}
 		va_end(va);
 		if(mh) {

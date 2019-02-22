@@ -189,6 +189,6 @@ extern logger_t bgmmod_log;
 #define bgmmod_debugf(text, ...) \
 	log_debugf("[BGM] " text, ##__VA_ARGS__)
 // TODO: Filename?
-#define bgmmod_format_errorf(format, text, ...) \
-	bgmmod_log.errorf("%s" text, "(" format ") ", ##__VA_ARGS__)
+#define bgmmod_format_log(format) \
+	bgmmod_log.prefixed("(" format ") ")
 /// -----------------------------

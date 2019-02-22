@@ -16,8 +16,7 @@
 #pragma comment(lib, "libogg" DEBUG_OR_RELEASE)
 #pragma comment(lib, "libvorbis" DEBUG_OR_RELEASE)
 
-#define vorbis_errorf(text, ...) \
-	bgmmod_format_errorf("Ogg Vorbis", text, ##__VA_ARGS__)
+auto vorbis_l = bgmmod_format_log("Ogg Vorbis");
 
 /// Callbacks
 /// ---------
@@ -88,7 +87,7 @@ size_t vorbis_part_t::part_decode_single(void *buf, size_t size)
 {
 	auto ret = ov_read(&vf, (char *)buf, size, 0, 2, 1, nullptr);
 	if(ret < 0) {
-		vorbis_errorf(
+		vorbis_l.errorf(
 			"Error %d at sample %lld: %s",
 			ret, ov_pcm_tell(&vf), ov_strerror(ret)
 		);
@@ -113,7 +112,7 @@ std::unique_ptr<pcm_part_t> vorbis_open(HANDLE &&stream)
 	OggVorbis_File vf = { 0 };
 
 	auto fail = [&] (int ret) {
-		vorbis_errorf("%s", ov_strerror(ret));
+		vorbis_l.errorf("%s", ov_strerror(ret));
 		ov_clear(&vf);
 		return nullptr;
 	};
