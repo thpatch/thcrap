@@ -58,5 +58,26 @@ int log_mboxf(const char *caption, const UINT type, const char *text, ...);
 void log_mbox_set_owner(HWND hwnd);
 /// -------------
 
+/// Per-module loggers
+/// ------------------
+#ifdef __cplusplus
+}
+
+class logger_t {
+	const char *err_caption;
+
+public:
+	THCRAP_API virtual std::nullptr_t verrorf(const char *text, va_list va) const;
+	THCRAP_API virtual std::nullptr_t errorf(const char *text, ...) const;
+
+	logger_t(const char *err_caption)
+		: err_caption(err_caption) {
+	}
+};
+
+extern "C" {
+#endif
+/// ------------------
+
 void log_init(int console);
 void log_exit(void);

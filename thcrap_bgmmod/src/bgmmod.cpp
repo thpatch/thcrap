@@ -100,7 +100,7 @@ std::unique_ptr<track_pcm_t> pcm_open(
 			return nullptr;
 		}
 		if(intro_sgm->pcmf != loop_sgm->pcmf) {
-			bgmmod_errorf(
+			bgmmod_log.errorf(
 				"PCM format mismatch between intro and loop parts!\n"
 				"\xE2\x80\xA2 Intro: %s\n"
 				"\xE2\x80\xA2 Loop: %s",
@@ -213,16 +213,5 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 
 /// Error reporting and debugging
 /// -----------------------------
-void bgmmod_verrorf(const char *text, va_list va)
-{
-	log_vmboxf("BGM modding error", MB_OK | MB_ICONERROR, text, va);
-}
-
-void bgmmod_errorf(const char *text, ...)
-{
-	va_list va;
-	va_start(va, text);
-	bgmmod_verrorf(text, va);
-	va_end(va);
-}
+logger_t bgmmod_log("BGM modding error");
 /// -----------------------------

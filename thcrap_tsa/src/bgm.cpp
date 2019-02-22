@@ -465,7 +465,7 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 					p = strncpy_advance_dst(p, desc.str, desc.len);
 				}
 
-				bgmmod_errorf(
+				bgmmod_log.errorf(
 					"Format error in BGM mod for %s.\n"
 					"Modded BGM is %s, but the game only supports:\n"
 					"%s",

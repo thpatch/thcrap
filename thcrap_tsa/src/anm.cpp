@@ -351,14 +351,7 @@ int sprite_patch(const sprite_patch_t &sp)
 
 /// ANM header patching
 /// -------------------
-bool header_mod_error(const char *text, ...)
-{
-	va_list va;
-	va_start(va, text);
-	log_vmboxf("ANM header patching error", MB_ICONERROR, text, va);
-	va_end(va);
-	return false;
-}
+logger_t header_mod_log("ANM header patching error");
 
 Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 {
@@ -389,7 +382,7 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 	size_t ctx_len = _vscprintf(context, va);
 	VLA(char, ctx, ctx_len + 1);
 	vsprintf(ctx, context, va);
-	header_mod_error(
+	header_mod_log.errorf(
 		"%s: Invalid blitting mode. Must be one of the following:%s",
 		ctx, modes
 	);
@@ -405,7 +398,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 
 #define FAIL(context, text, ...) \
 	scripts = nullptr; \
-	header_mod_error( \
+	header_mod_log.errorf( \
 		"{\"entries\"{\"%u\": {\"scripts\": {\"%d\"" context "}}}}: " text "%s", \
 		num, ret.script_num, ##__VA_ARGS__, \
 		"\nIgnoring remaining script modifications for this entry..." \
@@ -602,7 +595,7 @@ entry_mods_t header_mods_t::entry_mods()
 
 #define FAIL(context, text) \
 	entries = nullptr; \
-	header_mod_error( \
+	header_mod_log.errorf( \
 		"\"entries\"{\"%u\"%s}: %s%s", ret.num, context, text, \
 		"\nIgnoring remaining entry modifications for this file..." \
 	); \
@@ -663,7 +656,7 @@ sprite_mods_t header_mods_t::sprite_mods()
 
 #define FAIL(context, text, ...) \
 	sprites = nullptr; \
-	header_mod_error( \
+	header_mod_log.errorf( \
 		"\"sprites\"{\"%u\"%s}: " text "%s", \
 		ret.num, context, ##__VA_ARGS__, \
 		"\nIgnoring remaining sprite mods for this file..." \
@@ -747,8 +740,7 @@ header_mods_t::header_mods_t(json_t *patch)
 	auto object_get = [this, patch] (const char *key) -> json_t* {
 		auto ret = json_object_get(patch, key);
 		if(ret && !json_is_object(ret)) {
-			header_mod_error("\"%s\" must be a JSON object.", key);
-			return nullptr;
+			return header_mod_log.errorf("\"%s\" must be a JSON object.", key);
 		}
 		return ret;
 	};

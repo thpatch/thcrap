@@ -261,6 +261,24 @@ static void OpenConsole(void)
 	console_open = 1;
 }
 
+/// Per-module loggers
+/// ------------------
+std::nullptr_t logger_t::verrorf(const char *text, va_list va) const
+{
+	log_vmboxf(err_caption, MB_OK | MB_ICONERROR, text, va);
+	return nullptr;
+}
+
+std::nullptr_t logger_t::errorf(const char *text, ...) const
+{
+	va_list va;
+	va_start(va, text);
+	auto ret = verrorf(text, va);
+	va_end(va);
+	return ret;
+}
+/// ------------------
+
 void log_init(int console)
 {
 	log_rotate();

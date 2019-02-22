@@ -184,11 +184,11 @@ namespace mmio
 
 /// Error reporting and debugging
 /// -----------------------------
-void bgmmod_verrorf(const char *text, va_list va);
-void bgmmod_errorf(const char *text, ...);
+extern logger_t bgmmod_log;
+
 #define bgmmod_debugf(text, ...) \
 	log_debugf("[BGM] " text, ##__VA_ARGS__)
 // TODO: Filename?
 #define bgmmod_format_errorf(format, text, ...) \
-	bgmmod_errorf("%s" text, "(" format ") ", ##__VA_ARGS__)
+	bgmmod_log.errorf("%s" text, "(" format ") ", ##__VA_ARGS__)
 /// -----------------------------
