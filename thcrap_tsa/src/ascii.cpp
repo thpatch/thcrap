@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <string>
 #include "thcrap_tsa.h"
 #include "ascii.hpp"
 
@@ -269,4 +270,109 @@ extern "C" __declspec(dllexport) int __stdcall ascii_vpatchf(
 extern "C" __declspec(dllexport) int BP_ascii_params(x86_reg_t *regs, json_t *bp_info)
 {
 	return params.update(regs, bp_info);
+}
+
+void ascii_repatch()
+{
+	auto stringdefs = jsondata_get("stringdefs.js");
+	auto strings_set = [&stringdefs] (const char *id, const std::string& str) {
+		json_object_set_new(stringdefs, id, json_stringn(str.c_str(), str.size()));
+	};
+	auto right_pad = [] (const stringref_t& strref, int padchars) {
+		auto str = std::string(strref.str, strref.len);
+		if(padchars <= 0) {
+			return str;
+		}
+		return str + std::string(padchars, ' ');
+	};
+
+	// TH165: Recreate the Replay format strings
+	if(game_id == TH165) {
+		int day_width_max = 0;
+		const string_named_t TH165_DAYS[] = {
+			{ "th165_ascii_replay_sun", "Sun" },
+			{ "th165_ascii_replay_mon", "Mon" },
+			{ "th165_ascii_replay_tue", "Tue" },
+			{ "th165_ascii_replay_wed", "Wed" },
+			{ "th165_ascii_replay_thu", "Thu" },
+			{ "th165_ascii_replay_fri", "Fri" },
+			{ "th165_ascii_replay_sat", "Sat" },
+			{ "th165_ascii_replay_sun2", "2nd Sun" },
+			{ "th165_ascii_replay_mon2", "2nd Mon" },
+			{ "th165_ascii_replay_tue2", "2nd Tue" },
+			{ "th165_ascii_replay_wed2", "2nd Wed" },
+			{ "th165_ascii_replay_thu2", "2nd Thu" },
+			{ "th165_ascii_replay_fri2", "2nd Fri" },
+			{ "th165_ascii_replay_sat2", "2nd Sat" },
+			{ "th165_ascii_replay_sun3", "3rd Sun" },
+			{ "th165_ascii_replay_mon3", "3rd Mon" },
+			{ "th165_ascii_replay_tue3", "3rd Tue" },
+			{ "th165_ascii_replay_wed3", "3rd Wed" },
+			{ "th165_ascii_replay_thu3", "3rd Thu" },
+			{ "th165_ascii_replay_fri3", "3rd Fri" },
+			{ "th165_ascii_replay_sat3", "3rd Sat" },
+			{ "th165_ascii_replay_diary", "Diary" },
+		};
+		for(auto &day : TH165_DAYS) {
+			auto str = strings_get_fallback(day);
+			day_width_max = max(day_width_max, str.len);
+		}
+		const int USERNAME_LEN = 4;
+		auto number = strings_get_fallback({ "th06_ascii_2_digit_number_format", "No.%.2d" });
+		auto user = strings_get_fallback({ "th06_ascii_replay_user", "User" });
+		auto number_printed_len = _scprintf(number.str, 25);
+		// The save menu shouldn't be made larger depending on the User translation
+		auto replay_col1_len = max(max(number_printed_len, user.len), USERNAME_LEN);
+		auto number_save = std::string(number.str, number.len);
+		auto number_padded = right_pad(number, replay_col1_len - number_printed_len);
+		auto user_padded = right_pad(user, replay_col1_len - user.len);
+		auto username_padded = right_pad("%s", replay_col1_len - USERNAME_LEN);
+
+		const std::string NAME_AND_DATE_EMPTY = " ------------ --/--/-- ";
+		const std::string NAME_AND_DATE = " %s %.2d/%.2d/%.2d ";
+
+		// Empty format
+		auto fmt = number_save + NAME_AND_DATE_EMPTY;
+		fmt += std::string(day_width_max + 2, '-');
+		strings_set("th165_ascii_replay_save_empty", fmt);
+
+		fmt.replace(0, number_save.size(), number_padded);
+		fmt.insert(number_padded.size() + NAME_AND_DATE_EMPTY.size(), "--:--  ");
+		fmt += "  ---%%";
+		strings_set("th165_ascii_replay_number_empty", fmt);
+
+		fmt.replace(0, number_padded.size(), user_padded);
+		strings_set("th165_ascii_replay_user_empty", fmt);
+
+		// Regular format
+		fmt = number_save + NAME_AND_DATE;
+		fmt += "%" + std::to_string(day_width_max) + "s-%d";
+		strings_set("th165_ascii_replay_save", fmt);
+
+		fmt.replace(0, number_save.size(), number_padded);
+		fmt.insert(number_padded.size() + NAME_AND_DATE.size(), "%.2d:%.2d  ");
+		// 2-digit slowdown percentages aren't aligned correctly in the
+		// original game, actually.
+		fmt += " %4.1f%%";
+		strings_set("th165_ascii_replay_number", fmt);
+
+		fmt.replace(0, number_padded.size(), username_padded);
+		strings_set("th165_ascii_replay_user", fmt);
+	}
+}
+
+extern "C" __declspec(dllexport) void ascii_mod_repatch(json_t *files_changed)
+{
+	const char *fn;
+	json_t *val;
+	json_object_foreach(files_changed, fn, val) {
+		if(strstr(fn, "stringdefs.")) {
+			ascii_repatch();
+		}
+	}
+}
+
+extern "C" __declspec(dllexport) void ascii_mod_init(json_t *files_changed)
+{
+	ascii_repatch();
 }
