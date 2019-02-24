@@ -256,12 +256,30 @@ int ascii_vpatchf_th06(
 #undef SCORE_LEN
 }
 
+int ascii_vpatchf_th165(
+	ascii_put_func_t &putfunc, vector3_t pos, const char* fmt, va_list va
+)
+{
+	auto single_str = strings_vsprintf((size_t)&pos, fmt, va);
+	const stringref_t REPLAY_SAVE_PREFIX = "th165_ascii_replay_save";
+
+	// Center the replay save menu inside the playfield
+	auto id = strings_id(fmt);
+	if(id && !strncmp(id, REPLAY_SAVE_PREFIX.str, REPLAY_SAVE_PREFIX.len)) {
+		const auto PLAYFIELD_CENTER = 320.0f;
+		pos.x = ascii_align_center(PLAYFIELD_CENTER, single_str);
+	}
+	return putfunc(params.ClassPtr(), pos, single_str);
+}
+
 extern "C" __declspec(dllexport) int __stdcall ascii_vpatchf(
 	ascii_put_func_t &putfunc, vector3_t &pos, const char* fmt, va_list va
 )
 {
 	if(game_id == TH06) {
 		return ascii_vpatchf_th06(putfunc, pos, fmt, va);
+	} else if(game_id == TH165) {
+		return ascii_vpatchf_th165(putfunc, pos, fmt, va);
 	}
 	auto single_str = strings_vsprintf((size_t)&pos, fmt, va);
 	return putfunc(params.ClassPtr(), pos, single_str);
