@@ -117,5 +117,10 @@
 
 void patch_fonts_load(const json_t *patch_info);
 
+// Parses a font rule string according to the syntax above, fills [lf] with
+// the parameters given, and returns the amount of parameters (the "score")
+// contained in [str].
+THCRAP_API int fontrule_parse(LOGFONTA *lf, const char *str);
+
 void textdisp_mod_init(void);
 void textdisp_mod_detour(void);

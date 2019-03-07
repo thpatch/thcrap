@@ -135,7 +135,6 @@ BYTE fontrule_arg_quality(const char **str, int *score)
 	return ret;
 }
 
-// Returns the amount of LOGFONT parameters (the "score") contained in [str].
 int fontrule_parse(LOGFONTA *lf, const char *str)
 {
 	int score = 0;
