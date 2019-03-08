@@ -161,7 +161,7 @@ int fontrule_parse(LOGFONTA *lf, const char *str)
 	}
 
 #define FONTRULE_APPLY(dst, rep, val, unspecified) \
-	if(rep->val != unspecified && priority ? 1 : !dst->val) { \
+	if(rep->val != unspecified && (priority ? 1 : !dst->val)) { \
 		dst->val = rep->val; \
 	}
 
