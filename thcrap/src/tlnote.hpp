@@ -9,6 +9,49 @@
 
 #pragma once
 
+/// Rendering values
+/// ----------------
+// Variables that define the look of rendered TL notes.
+class tlnote_env_render_t {
+protected:
+	// Resolution at which all TL notes will be rendered internally.
+	// Region and font size will be interpreted relative to this
+	// resolution, and appear scaled down on-screen if the game's
+	// actual back buffer is smaller.
+	vector2_t _reference_resolution;
+
+	// Width of the on-screen region where TL notes should appear, and
+	// therefore the texture they are rendered to.
+	float _region_w;
+
+	HFONT _font = nullptr;
+
+public:
+	const vector2_t& reference_resolution() const {
+		return _reference_resolution;
+	}
+	const float& region_w() const {
+		return _region_w;
+	}
+	HFONT font() const {
+		return _font;
+	}
+
+	THCRAP_API bool reference_resolution_set(const vector2_t &newval);
+	THCRAP_API bool font_set(const LOGFONTA &lf);
+};
+
+struct tlnote_env_t : public tlnote_env_render_t {
+	float region_top;
+	float region_left;
+	float region_h;
+
+	THCRAP_API bool region_size_set(const vector2_t &newval);
+};
+
+THCRAP_API tlnote_env_t& tlnote_env();
+/// ----------------
+
 // Created by tlnote_prerender().
 struct tlnote_encoded_index_t {
 private:

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <vector>
 #include "minid3d.h"
+#include "textdisp.h"
 #include "tlnote.hpp"
 
 /// Codepoints
@@ -40,6 +41,136 @@ tlnote_t::tlnote_t(const stringref_t str)
 	assert(str.len > 1);
 }
 /// ----------
+
+/// Rendering values
+/// ----------------
+void font_delete(HFONT font)
+{
+	if(!font) {
+		return;
+	}
+	typedef BOOL WINAPI DeleteObject_type(
+		HGDIOBJ obj
+	);
+	((DeleteObject_type *)detour_top(
+		"gdi32.dll", "DeleteObject", (FARPROC)DeleteObject
+	))(font);
+}
+
+THCRAP_API bool tlnote_env_render_t::reference_resolution_set(const vector2_t &newval)
+{
+	if(newval.x <= 0 || newval.y <= 0) {
+		tlnote_log.errorf(
+			"Reference resolution must be positive and nonzero, got %f\xE2\x9C\x95%f",
+			newval.x, newval.y
+		);
+		return false;
+	}
+	_reference_resolution = newval;
+	return true;
+}
+
+THCRAP_API bool tlnote_env_render_t::font_set(const LOGFONTA &lf)
+{
+	font_delete(_font);
+	// Must be CreateFont() rather than CreateFontIndirect() to
+	// continue supporting the legacy "font" runconfig key.
+	_font = ((CreateFontA_type *)detour_top(
+		"gdi32.dll", "CreateFontA", (FARPROC)CreateFontU
+	))(
+		lf.lfHeight, lf.lfWidth, lf.lfEscapement, lf.lfOrientation,
+		lf.lfWeight, lf.lfItalic, lf.lfUnderline, lf.lfStrikeOut,
+		lf.lfCharSet, lf.lfOutPrecision, lf.lfClipPrecision,
+		lf.lfQuality, lf.lfPitchAndFamily, lf.lfFaceName
+	);
+	return true;
+}
+
+THCRAP_API bool tlnote_env_t::region_size_set(const vector2_t &newval)
+{
+	const auto &rr = _reference_resolution;
+	if(
+		newval.x <= 0 || newval.y <= 0 || newval.x >= rr.x || newval.y >= rr.y
+	) {
+		tlnote_log.errorf(
+			"Region size must be nonzero and smaller than the reference resolution (%f\xE2\x9C\x95%f), got %f\xE2\x9C\x95%f",
+			rr.x, rr.y, newval.x, newval.y
+		);
+		return false;
+	}
+	_region_w = newval.x;
+	region_h = newval.y;
+	return true;
+}
+
+bool tlnote_env_from_runconfig(tlnote_env_t &env)
+{
+	auto fail = [] (const char *context, const char *err) {
+		tlnote_log.errorf("{\"tlnotes\": {\"%s\"}}: %s", context, err);
+		return false;
+	};
+
+#define PARSE(var, func, fail_check, on_fail, on_success) { \
+	auto json_value = json_object_get(cfg, #var); \
+	if(json_value) { \
+		auto parsed = func(json_value); \
+		if(fail_check) on_fail else on_success \
+	} \
+}
+
+#define PARSE_TUPLE(var, func, on_success) \
+	PARSE(var, func, (!parsed.err.empty()), { \
+		fail(#var, parsed.err.c_str()); \
+	}, on_success)
+
+	auto cfg = json_object_get(runconfig_get(), "tlnotes");
+	if(!cfg) {
+		return true;
+	}
+
+	bool ret = true;
+
+	PARSE_TUPLE(reference_resolution, json_vector2_value, {
+		ret &= env.reference_resolution_set(parsed.v);
+	});
+	PARSE_TUPLE(region_topleft, json_vector2_value, {
+		env.region_left = parsed.v.x;
+		env.region_top = parsed.v.y;
+	});
+	PARSE_TUPLE(region_size, json_vector2_value, {
+		ret &= env.region_size_set(parsed.v);
+	});
+	PARSE(font, json_string_value, (parsed == nullptr), {
+		fail("font", "Must be a font rule string.");
+	}, {
+		LOGFONTA lf = {0};
+		fontrule_parse(&lf, parsed);
+		ret &= env.font_set(lf);
+	});
+
+#undef PARSE_TUPLE
+#undef PARSE
+
+	return ret;
+}
+
+tlnote_env_t& tlnote_env()
+{
+	static struct tlnote_env_static_wrap_t {
+		tlnote_env_t env;
+
+		// TODO: We might want to continuously nag the patch author once
+		// we actually make the runconfig repatchable, but for now...
+		tlnote_env_static_wrap_t() {
+			tlnote_env_from_runconfig(env);
+		}
+		~tlnote_env_static_wrap_t() {
+			font_delete(env.font());
+		}
+	} env_wrap;
+	return env_wrap.env;
+}
+/// ----------------
 
 /// Indexing of rendered TL notes
 /// -----------------------------
