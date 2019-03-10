@@ -142,6 +142,10 @@ struct vector2_t {
 	bool operator ==(const vector2_t &other) const {
 		return (x == other.x) && (y == other.y);
 	}
+
+	bool operator !=(const vector2_t &other) const {
+		return !(operator ==(other));
+	}
 };
 
 struct vector3_t {

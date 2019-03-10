@@ -46,6 +46,13 @@ public:
 			&& (_region_w == other._region_w)
 			&& (_font == other._font);
 	}
+
+	// Got everything we need for rendering?
+	bool complete() const {
+		return
+			(_region_w != 0.0f)
+			&& (_reference_resolution != vector2_t{ 0.0f, 0.0f });
+	}
 };
 
 struct tlnote_env_t : public tlnote_env_render_t {
@@ -53,7 +60,13 @@ struct tlnote_env_t : public tlnote_env_render_t {
 	float region_left;
 	float region_h;
 
+	xywh_t region() {
+		return { region_left, region_top, region_w(), region_h };
+	}
 	THCRAP_API bool region_size_set(const vector2_t &newval);
+	// Scales [val], expressed in coordinates relative to the reference
+	// resolution, to the given actual [resolution].
+	THCRAP_API xywh_t scale_to(const vector2_t &resolution, const xywh_t &val);
 };
 
 THCRAP_API tlnote_env_t& tlnote_env();

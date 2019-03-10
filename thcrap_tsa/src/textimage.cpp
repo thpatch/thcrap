@@ -321,7 +321,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 	D3DXIMAGE_INFO srcinfo;
 	HRESULT ret = D3DXCreateTextureFromFileInMemoryEx(
 		pD3DDevice, image_buf, image_size,
-		0, 0, 1, 0, 0, 1, 0xFFFFFFFF, 0xFFFFFFFF, 0, &srcinfo, nullptr,
+		0, 0, 1, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED, 0xFFFFFFFF, 0xFFFFFFFF, 0, &srcinfo, nullptr,
 		&tex
 	);
 	free(image_buf);
