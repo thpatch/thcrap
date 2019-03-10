@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <algorithm>
 #include <vector>
 #include "minid3d.h"
 #include "textdisp.h"
@@ -172,9 +171,54 @@ tlnote_env_t& tlnote_env()
 }
 /// ----------------
 
+/// Direct3D pointers
+/// -----------------
+// Game support modules might want to pre-render TL notes before the game
+// created its IDirect3DDevice instance.
+d3d_version_t d3d_ver = D3D_NONE;
+IDirect3DDevice *d3dd = nullptr;
+/// -----------------
+
+/// Texture creation
+/// ----------------
+struct tlnote_rendered_t {
+	// "Primary key" data
+	// -------------------
+	std::string note;
+	tlnote_env_render_t render_env;
+	// -------------------
+
+	// Runtime stuff
+	// -------------
+	IDirect3DTexture *tex = nullptr;
+	// -------------
+
+	IDirect3DTexture* render(d3d_version_t ver, IDirect3DDevice *d3dd);
+
+	bool matches(const stringref_t &n2, const tlnote_env_render_t &r2) const {
+		return
+			(note.size() == n2.len)
+			&& (render_env == r2)
+			&& (note.compare(n2.str) == 0);
+	}
+
+	tlnote_rendered_t(const stringref_t &note, tlnote_env_render_t render_env)
+		: note({ note.str, (size_t)note.len }), render_env(render_env) {
+	}
+};
+
+IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *d3dd)
+{
+	if(tex) {
+		return tex;
+	}
+	return tex;
+}
+/// ----------------
+
 /// Indexing of rendered TL notes
 /// -----------------------------
-std::vector<std::string> rendered;
+std::vector<tlnote_rendered_t> rendered;
 
 #define SURROGATE_START (0xD800)
 #define SURROGATE_END   (0xE000)
@@ -268,20 +312,37 @@ bool operator ==(const std::string &a, const stringref_t &b)
 
 int32_t tlnote_render(const stringref_t &note)
 {
-	auto elm = std::find(rendered.begin(), rendered.end(), note);
-	if(elm != rendered.end()) {
-		return (int32_t)(elm - rendered.begin());
+	const auto &env = tlnote_env();
+	for(int32_t i = 0; i < (int32_t)rendered.size(); i++) {
+		if(rendered[i].matches(note, env)) {
+			return i;
+		}
 	}
-	std::string note_owned{ note.str, (size_t)note.len };
+
+	tlnote_rendered_t r{ note, env };
 	auto index = rendered.size();
 	if(index >= RENDERED_MAX) {
 		// You absolute madman.
 		static int32_t madness_index = 0;
 		index = madness_index;
 		madness_index = (madness_index + 1) % RENDERED_MAX;
-		rendered[index] = note_owned;
+		rendered[index] = r;
 	}
-	rendered.push_back(note_owned);
+	rendered.emplace_back(r);
+
+	// Render any outstanding TL notes that were created
+	// while we didn't have an IDirect3DDevice.
+	static bool got_unrendered_notes = false;
+	if(d3d_ver == D3D_NONE || d3dd == nullptr) {
+		got_unrendered_notes = true;
+	} else if(got_unrendered_notes) {
+		for(auto &v : rendered) {
+			v.render(d3d_ver, d3dd);
+		}
+		got_unrendered_notes = false;
+	} else {
+		rendered.back().render(d3d_ver, d3dd);
+	}
 	return index;
 }
 /// -----------------------------
@@ -293,6 +354,9 @@ d3dd_EndScene_type *chain_d3dd9_EndScene;
 
 void tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 {
+	d3d_ver = ver;
+	::d3dd = d3dd;
+
 	// IDirect3DDevice9::Reset() would fail with D3DERR_INVALIDCALL if any
 	// state blocks still exist, so we couldn't just have a single static
 	// one that we create once. It's fast enough to do this every frame
@@ -336,9 +400,9 @@ THCRAP_API void tlnote_show(const tlnote_t tlnote)
 		tlnote_log.errorf("Illegal TL note type? (U+%04X)", tlnote.str->type);
 		return;
 	}
-	const auto &note = rendered[index];
+	const auto &tlr = rendered[index];
 	// TODO: For now...
-	log_printf("(TL note: %.*s)\n", note.length(), note.c_str());
+	log_printf("(TL note: %.*s)\n", tlr.note.length(), tlr.note.c_str());
 }
 
 THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)

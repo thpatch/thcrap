@@ -13,7 +13,7 @@
 /// Calling undetoured, identical functions at different vtable offsets
 /// -------------------------------------------------------------------
 typedef enum {
-	D3D8, D3D9
+	D3D_NONE = 0, D3D8, D3D9
 } d3d_version_t;
 
 #define FULLDEC(type, varname) type varname

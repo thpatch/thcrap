@@ -39,6 +39,13 @@ public:
 
 	THCRAP_API bool reference_resolution_set(const vector2_t &newval);
 	THCRAP_API bool font_set(const LOGFONTA &lf);
+
+	bool operator ==(const tlnote_env_render_t &other) const {
+		return
+			(_reference_resolution == other._reference_resolution)
+			&& (_region_w == other._region_w)
+			&& (_font == other._font);
+	}
 };
 
 struct tlnote_env_t : public tlnote_env_render_t {
@@ -117,9 +124,10 @@ THCRAP_API void tlnote_show(const tlnote_t tlnote);
 // running the function on user input.
 THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only);
 
-// Prerenders the given [tlnote] and returns its new shortened representation
-// (prefix byte + UTF-8-encoded internal index), which can then optionally be
-// used instead of the full TL note text. Useful for both saving bytes inside
-// the strings used to trigger TL notes, and for avoiding lag during regular
-// gameplay by deferring the rendering to a less noticeable time.
+// Prerenders the given [tlnote] with the current render environment and
+// returns its new shortened representation (prefix byte + UTF-8-encoded
+// internal index), which can then optionally be used instead of the full TL
+// note text. Useful for both saving bytes inside the strings used to trigger
+// TL notes, and for avoiding lag during regular gameplay by deferring the
+// rendering to a less noticeable time.
 THCRAP_API tlnote_encoded_index_t tlnote_prerender(const tlnote_t tlnote);

@@ -138,6 +138,10 @@ struct vector2_t {
 		};
 		float c[2];
 	};
+
+	bool operator ==(const vector2_t &other) const {
+		return (x == other.x) && (y == other.y);
+	}
 };
 
 struct vector3_t {
