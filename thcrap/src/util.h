@@ -161,5 +161,10 @@ struct xywh_t {
 		};
 		float c[4];
 	};
+
+	xywh_t scaled_by(float units) const {
+		auto unit2 = units * 2.0f;
+		return { x - units, y - units, w + unit2, h + unit2 };
+	}
 };
 #endif

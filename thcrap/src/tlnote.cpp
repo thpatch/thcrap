@@ -574,6 +574,28 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 			elementsof(verts) - 2, verts, sizeof(verts[0])
 		);
 	};
+
+	auto render_colored_quad = [&] (quad_t q, uint32_t col_diffuse) {
+		d3dd_SetFVF(ver, d3dd, D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+		d3dd_SetRenderState(ver, d3dd, D3DRS_ALPHABLENDENABLE, false);
+		d3dd_SetTextureStageState(ver, d3dd, 0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+		d3dd_SetTextureStageState(ver, d3dd, 0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+		struct fvf_xyzrwh_diffuse_t {
+			vector3_t pos;
+			float rhw;
+			uint32_t col_diffuse;
+		};
+		fvf_xyzrwh_diffuse_t verts[] = {
+			{ {q.left, q.top, 0.0f}, 1.0f, col_diffuse },
+			{ {q.right, q.top, 0.0f}, 1.0f, col_diffuse },
+			{ {q.right, q.bottom, 0.0f}, 1.0f, col_diffuse },
+			{ {q.left, q.bottom, 0.0f}, 1.0f, col_diffuse },
+			{ {q.left, q.top, 0.0f}, 1.0f, col_diffuse },
+		};
+		d3dd_DrawPrimitiveUP(ver, d3dd, D3DPT_LINESTRIP,
+			elementsof(verts) - 1, verts, sizeof(verts[0])
+		);
+	};
 	// ------------
 
 	auto &env = tlnote_env();
@@ -596,6 +618,16 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 	}
 
 	vector2_t res = { (float)viewport.Width, (float)viewport.Height };
+#ifdef _DEBUG
+	auto bounds_shadow_col = D3DCOLOR_ARGB(0xFF, 0, 0, 0);
+	auto bounds = env.scale_to(res, env.region());
+	bounds.w--;
+	bounds.h--;
+
+	render_colored_quad(bounds.scaled_by(+1), bounds_shadow_col);
+	render_colored_quad(bounds.scaled_by(-1), bounds_shadow_col);
+	render_colored_quad(bounds, D3DCOLOR_ARGB(0xFF, 0xFF, 0, 0));
+#endif
 	auto tlr_quad = env.scale_to(res, region_unscaled);
 	auto tlr_col = D3DCOLOR_ARGB(0xFF, 0xFF, 0xFF, 0xFF);
 	render_textured_quad(tlr_quad, tlr_col, texcoord_y, texcoord_h);
