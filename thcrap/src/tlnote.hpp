@@ -11,6 +11,9 @@
 
 /// Rendering values
 /// ----------------
+#define OUTLINE_RADIUS_MAX 15
+#define OUTLINE_RADIUS_MAX_STR "15"
+
 // Variables that define the look of rendered TL notes.
 class tlnote_env_render_t {
 protected:
@@ -22,11 +25,14 @@ protected:
 
 	// Width of the on-screen region where TL notes should appear, and
 	// therefore the texture they are rendered to.
+	// Not including the outline.
 	float _region_w;
 
 	HFONT _font = nullptr;
 
 public:
+	uint8_t outline_radius = 2;
+
 	const vector2_t& reference_resolution() const {
 		return _reference_resolution;
 	}
@@ -44,7 +50,8 @@ public:
 		return
 			(_reference_resolution == other._reference_resolution)
 			&& (_region_w == other._region_w)
-			&& (_font == other._font);
+			&& (_font == other._font)
+			&& (outline_radius == other.outline_radius);
 	}
 
 	// Got everything we need for rendering?

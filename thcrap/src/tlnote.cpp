@@ -164,6 +164,15 @@ bool tlnote_env_from_runconfig(tlnote_env_t &env)
 		ret &= env.font_set(lf);
 	});
 
+	PARSE(outline_radius, json_integer_value, (
+		!json_is_integer(json_value)
+		|| parsed < 0 || parsed > OUTLINE_RADIUS_MAX
+	), {
+		fail("outline_radius", "Must be an integer between 0 and " OUTLINE_RADIUS_MAX_STR ".");
+	}, {
+		env.outline_radius = (uint8_t)parsed;
+	});
+
 #undef PARSE_TUPLE
 #undef PARSE
 
@@ -287,8 +296,9 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 	BITMAP bmp;
 	GetObject(hBitmap, sizeof(bmp), &bmp);
 
-	tex_w = gdi_rect.right;
-	tex_h = gdi_rect.bottom;
+	const auto &outline_radius = render_env.outline_radius;
+	tex_w = gdi_rect.right + (outline_radius * 2);
+	tex_h = gdi_rect.bottom + (outline_radius * 2);
 
 	// TODO: Is there still 3dfx Voodoo-style limited 3D hardware
 	// out there today that needs to be worked around?
@@ -307,16 +317,36 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 
 	auto tex_bits = (uint8_t *)lockedrect.pBits;
 
+	// Shift the texture write pointer by the outline height
+	tex_bits += lockedrect.Pitch * outline_radius;
+
+	auto outside_circle = [] (int x, int y, int radius) {
+		return (x * x) + (y * y) > (radius * radius);
+	};
+
 	for(LONG y = 0; y < gdi_rect.bottom; y++) {
 		auto dib_col = ((dib_pixel_t *)dib_bits);
-		auto tex_col = ((d3d_pixel_t *)tex_bits);
+		// Shift the texture write pointer by the outline width
+		auto tex_col = ((d3d_pixel_t *)tex_bits) + outline_radius;
 
 		for(LONG x = 0; x < gdi_rect.right; x++) {
 			auto alpha = max(max(dib_col->r, dib_col->g), dib_col->b);
 			tex_col->r = dib_col->r;
 			tex_col->g = dib_col->g;
 			tex_col->b = dib_col->b;
-			tex_col->a = alpha;
+			if(alpha > 0) {
+				for(int oy = -outline_radius; oy <= outline_radius; oy++) {
+					for(int ox = -outline_radius; ox <= outline_radius; ox++) {
+						if(outside_circle(ox, oy, outline_radius)) {
+							continue;
+						}
+						auto *outline_p = (d3d_pixel_t*)(
+							((uint8_t*)tex_col) - (lockedrect.Pitch * oy)
+						) + ox;
+						outline_p->a = max(outline_p->a, alpha);
+					}
+				}
+			}
 			dib_col++;
 			tex_col++;
 		}
