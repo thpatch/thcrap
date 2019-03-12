@@ -53,7 +53,6 @@ typedef uint32_t D3DFORMAT;
 typedef uint32_t D3DPOOL;
 typedef struct {} D3DPRESENT_PARAMETERS;
 typedef uint32_t D3DRESOURCETYPE;
-typedef uint32_t D3DMULTISAMPLE_TYPE;
 
 typedef enum _D3DSTATEBLOCKTYPE {
 	D3DSBT_ALL = 1, // capture all state
@@ -67,8 +66,10 @@ typedef struct _D3DSURFACE_DESC {
 	D3DRESOURCETYPE Type;
 	DWORD Usage;
 	D3DPOOL Pool;
-	UINT Size;
-	D3DMULTISAMPLE_TYPE MultiSampleType;
+	// Size in Direct3D 8, MultiSampleType in Direct3D 9
+	uint32_t Reserved1;
+	// MultiSampleType in Direct3D 8, MultiSampleQuality in Direct3D 9
+	uint32_t Reserved2;
 	UINT Width;
 	UINT Height;
 } D3DSURFACE_DESC;
