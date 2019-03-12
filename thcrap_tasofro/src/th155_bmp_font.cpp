@@ -14,6 +14,9 @@
 #include <libs/135tk/bmpfont/bmpfont_create.h>
 #include <string>
 
+// Increment this number to force a bmpfont cache refresh
+static const int cache_version = 2;
+
 size_t get_bmp_font_size(const char *fn, json_t *patch, size_t patch_size)
 {
 	if (patch) {
@@ -195,6 +198,7 @@ int fill_chars_list(char *chars_list, void *file_inout, size_t size_in, json_t *
 void bmpfont_update_cache(std::string fn, char *chars_list, int chars_count, BYTE *buffer, size_t buffer_size, json_t *patch)
 {
 	json_t *cache_patch = json_object();
+	json_object_set_new(cache_patch, "cache_version", json_integer(cache_version));
 	json_object_set(cache_patch, "patch", patch);
 	json_object_set_new(cache_patch, "chars_count", json_integer(chars_count));
 	json_t *chars_list_json = json_array();
@@ -238,7 +242,8 @@ BYTE *read_bmpfont_from_cache(std::string fn, char *chars_list, int chars_count,
 		return nullptr;
 	}
 
-	if (chars_count != json_integer_value(json_object_get(cache_patch, "chars_count"))) {
+	if (chars_count   != json_integer_value(json_object_get(cache_patch, "chars_count")) ||
+		cache_version != json_integer_value(json_object_get(cache_patch, "cache_version"))) {
 		json_decref(cache_patch);
 		return nullptr;
 	}
