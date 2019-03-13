@@ -139,6 +139,9 @@ struct tlnote_split_t {
 // Directly shows [tlnote].
 THCRAP_API void tlnote_show(const tlnote_t tlnote);
 
+// Hides any active TL note.
+THCRAP_API void tlnote_remove();
+
 // Searches [text] for a TL note. If [inline_only] is true, the function fails
 // if a pre-rendered TL note index is found, so it should always be set when
 // running the function on user input.
@@ -151,3 +154,6 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only);
 // TL notes, and for avoiding lag during regular gameplay by deferring the
 // rendering to a less noticeable time.
 THCRAP_API tlnote_encoded_index_t tlnote_prerender(const tlnote_t tlnote);
+
+// Returns the shortened representation of a timed TL note removal.
+THCRAP_API tlnote_encoded_index_t tlnote_removal_index();

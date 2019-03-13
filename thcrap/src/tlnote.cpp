@@ -365,14 +365,21 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 /// -----------------------------
 std::vector<tlnote_rendered_t> rendered;
 
+// The encoded index of RENDERED_NONE, which can be used for timed removal of
+// TL notes, will be (this number + RENDERED_OFFSET), which must be encodable
+// in UTF-8. -1 for RENDERED_NONE and 2 for RENDERED_OFFSET means that
+// RENDERED_NONE encodes to U+0001, the smallest possible encodable number
+// (since U+0000 would immediately terminate the string), with rendered[0]
+// mapping to 2.
+
 #define RENDERED_NONE -1
 
 #define SURROGATE_START (0xD800)
 #define SURROGATE_END   (0xE000)
 #define SURROGATE_COUNT (SURROGATE_END - SURROGATE_START)
 
-// Encoded index that maps to the first entry in [rendered]
-#define RENDERED_OFFSET 1
+// Encoded index that maps to the first entry in [rendered].
+#define RENDERED_OFFSET 2
 // Excluding '\0' as well as the UTF-16 surrogate halves (how nice of us!)
 #define RENDERED_MAX (0x10FFFF - SURROGATE_COUNT)
 
@@ -700,6 +707,11 @@ THCRAP_API void tlnote_show(const tlnote_t tlnote)
 	id_active = index;
 }
 
+THCRAP_API void tlnote_remove()
+{
+	id_active = RENDERED_NONE;
+}
+
 THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 {
 	const char *p = text.str;
@@ -764,6 +776,11 @@ THCRAP_API tlnote_encoded_index_t tlnote_prerender(const tlnote_t tlnote)
 	}
 	stringref_t note = { tlnote.str->note, tlnote.len };
 	return { tlnote_render(note) + RENDERED_OFFSET };
+}
+
+THCRAP_API tlnote_encoded_index_t tlnote_removal_index()
+{
+	return { RENDERED_NONE + RENDERED_OFFSET };
 }
 
 /// Module functions
