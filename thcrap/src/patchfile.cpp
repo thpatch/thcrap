@@ -370,9 +370,10 @@ int patchhook_register(const char *wildcard, func_patch_t patch_func, func_patch
 	json_t *patch_hooks = json_object_get_create(run_cfg, PATCH_HOOKS, JSON_OBJECT);
 	json_t *hook_array = json_object_get_create(patch_hooks, wildcard_normalized, JSON_ARRAY);
 	VLA_FREE(wildcard_normalized);
-	if(!patch_func) {
-		return -1;
-	}
+	// No checks whether [patch_func] or [patch_size_func] are null
+	// pointers here! Some game support code might only want to hook
+	// [patch_size_func] to e.g. conveniently run some generic, non-
+	// file-related code as early as possible.
 	json_t *hook = json_object();
 	json_object_set_new(hook, "patch_func",      json_integer((size_t)patch_func));
 	json_object_set_new(hook, "patch_size_func", json_integer((size_t)patch_size_func));
