@@ -67,6 +67,8 @@ struct tlnote_env_t : public tlnote_env_render_t {
 	float region_left;
 	float region_h;
 
+	float fade_ms = 500.0f;
+
 	xywh_t region() {
 		return { region_left, region_top, region_w(), region_h };
 	}

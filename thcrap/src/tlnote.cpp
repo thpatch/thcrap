@@ -13,6 +13,8 @@
 #include "textdisp.h"
 #include "tlnote.hpp"
 
+#pragma comment(lib, "winmm.lib")
+
 #define COM_ERR_WRAP(func, ...) { \
 	HRESULT d3d_ret = func(##__VA_ARGS__); \
 	if(FAILED(d3d_ret)) { \
@@ -139,6 +141,13 @@ bool tlnote_env_from_runconfig(tlnote_env_t &env)
 		fail(#var, parsed.err.c_str()); \
 	}, on_success)
 
+#define PARSE_FLOAT_POSITIVE(var) \
+	PARSE(var, json_number_value, (parsed <= 0.0f), { \
+		fail(#var, "Must be a positive, nonzero real number."); \
+	}, { \
+		env.var = (float)parsed; \
+	});
+
 	auto cfg = json_object_get(runconfig_get(), "tlnotes");
 	if(!cfg) {
 		return true;
@@ -173,6 +182,9 @@ bool tlnote_env_from_runconfig(tlnote_env_t &env)
 		env.outline_radius = (uint8_t)parsed;
 	});
 
+	PARSE_FLOAT_POSITIVE(fade_ms);
+
+#undef PARSE_FLOAT_POSITIVE
 #undef PARSE_TUPLE
 #undef PARSE
 
@@ -519,8 +531,15 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 
 	// What do we render?
 	// ------------------
+	static decltype(id_active) id_last = RENDERED_NONE;
+	static DWORD time_birth = 0;
+	defer({ id_last = id_active; });
 	if(id_active == RENDERED_NONE) {
 		return true;
+	}
+	auto now = timeGetTime();
+	if(id_last != id_active) {
+		time_birth = now;
 	}
 	// OK, *something.*
 	// ------------------
@@ -645,6 +664,7 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 
 	d3dd_SetTexture(ver, d3dd, 0, tlr->render(ver, d3dd));
 
+	auto age = now - time_birth;
 	float texcoord_y = 0.0f;
 	float texcoord_h = 1.0f;
 	if(tlr->tex_h > region_unscaled.h) {
@@ -653,6 +673,8 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 		region_unscaled.y += region_unscaled.h - tlr->tex_h;
 		region_unscaled.h = (float)tlr->tex_h;
 	}
+
+	float alpha = min((age / env.fade_ms), 1.0f);
 
 	vector2_t res = { (float)viewport.Width, (float)viewport.Height };
 #ifdef _DEBUG
@@ -666,7 +688,7 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 	render_colored_quad(bounds, D3DCOLOR_ARGB(0xFF, 0xFF, 0, 0));
 #endif
 	auto tlr_quad = env.scale_to(res, region_unscaled);
-	auto tlr_col = D3DCOLOR_ARGB(0xFF, 0xFF, 0xFF, 0xFF);
+	auto tlr_col = D3DCOLOR_ARGB((uint8_t)(alpha * 255.0f), 0xFF, 0xFF, 0xFF);
 	render_textured_quad(tlr_quad, tlr_col, texcoord_y, texcoord_h);
 	d3dd_ApplyStateBlock(ver, d3dd, sb_game);
 	d3dd_DeleteStateBlock(ver, d3dd, sb_game);
