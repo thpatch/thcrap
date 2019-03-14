@@ -67,6 +67,9 @@ struct tlnote_env_t : public tlnote_env_render_t {
 	float region_left;
 	float region_h;
 
+	// In UTF-8 bytes per second; determines the speed of automatic scrolling.
+	float read_speed = 35.0f;
+
 	float fade_ms = 500.0f;
 
 	xywh_t region() {

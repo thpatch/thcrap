@@ -183,6 +183,7 @@ bool tlnote_env_from_runconfig(tlnote_env_t &env)
 	});
 
 	PARSE_FLOAT_POSITIVE(fade_ms);
+	PARSE_FLOAT_POSITIVE(read_speed);
 
 #undef PARSE_FLOAT_POSITIVE
 #undef PARSE_TUPLE
@@ -668,7 +669,18 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 	float texcoord_y = 0.0f;
 	float texcoord_h = 1.0f;
 	if(tlr->tex_h > region_unscaled.h) {
+		auto ms_per_byte = (1000.0f / env.read_speed);
+		auto readtime_ms = (unsigned long)(ms_per_byte * tlr->note.length());
+		auto time_per_y = (float)(readtime_ms / tlr->tex_h);
+		auto y_cur = (age % readtime_ms) / time_per_y;
+
+		auto region_h_half = (region_unscaled.h / 2);
+		auto y_cur_center = y_cur - region_h_half;
+		auto scroll = y_cur_center / (tlr->tex_h - region_unscaled.h);
+		scroll = min(scroll, 1.0f);
+		scroll = max(scroll, 0.0f);
 		texcoord_h = (float)region_unscaled.h / tlr->tex_h;
+		texcoord_y = scroll * (1.0f - texcoord_h);
 	} else {
 		region_unscaled.y += region_unscaled.h - tlr->tex_h;
 		region_unscaled.h = (float)tlr->tex_h;
