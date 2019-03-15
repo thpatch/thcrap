@@ -52,6 +52,22 @@ tlnote_t::tlnote_t(const stringref_t str)
 
 /// Rendering values
 /// ----------------
+Option<valign_t> tlnote_valign_value(const json_t *val)
+{
+	auto str = json_string_value(val);
+	if(!str) {
+		return {};
+	}
+	if(!strcmp(str, "top")) {
+		return valign_t::top;
+	} else if(!strcmp(str, "center")) {
+		return valign_t::center;
+	} else if(!strcmp(str, "bottom")) {
+		return valign_t::bottom;
+	}
+	return {};
+}
+
 void font_delete(HFONT font)
 {
 	if(!font) {
@@ -184,6 +200,12 @@ bool tlnote_env_from_runconfig(tlnote_env_t &env)
 
 	PARSE_FLOAT_POSITIVE(fade_ms);
 	PARSE_FLOAT_POSITIVE(read_speed);
+
+	PARSE(valign, tlnote_valign_value, (parsed.is_none()), {
+		fail("valign", TLNOTE_VALIGN_ERROR);
+	}, {
+		env.valign = parsed.unwrap();
+	});
 
 #undef PARSE_FLOAT_POSITIVE
 #undef PARSE_TUPLE
@@ -682,7 +704,16 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 		texcoord_h = (float)region_unscaled.h / tlr->tex_h;
 		texcoord_y = scroll * (1.0f - texcoord_h);
 	} else {
-		region_unscaled.y += region_unscaled.h - tlr->tex_h;
+		switch(env.valign) {
+		case valign_t::top:
+			break;
+		case valign_t::center:
+			region_unscaled.y += (region_unscaled.h / 2.0f) - (tlr->tex_h / 2.0f);
+			break;
+		case valign_t::bottom:
+			region_unscaled.y += region_unscaled.h - tlr->tex_h;
+			break;
+		}
 		region_unscaled.h = (float)tlr->tex_h;
 	}
 

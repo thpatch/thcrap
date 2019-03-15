@@ -14,6 +14,18 @@
 #define OUTLINE_RADIUS_MAX 15
 #define OUTLINE_RADIUS_MAX_STR "15"
 
+// Vertical alignment
+// ------------------
+enum class valign_t {
+	top, center, bottom
+};
+
+// People might actually want this publicly?
+#define TLNOTE_VALIGN_ERROR \
+	"Must be \"top\", \"center\", or \"bottom\"."
+THCRAP_API Option<valign_t> tlnote_valign_value(const json_t *val);
+// ------------------
+
 // Variables that define the look of rendered TL notes.
 class tlnote_env_render_t {
 protected:
@@ -71,6 +83,10 @@ struct tlnote_env_t : public tlnote_env_render_t {
 	float read_speed = 35.0f;
 
 	float fade_ms = 500.0f;
+
+	// Vertical alignment for notes that are shorter than the height
+	// of the TL note region.
+	valign_t valign = valign_t::bottom;
 
 	xywh_t region() {
 		return { region_left, region_top, region_w(), region_h };
