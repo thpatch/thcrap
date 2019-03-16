@@ -264,7 +264,9 @@ int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
 	for(i = 0; i < det_count; i++) {
 		auto& cur = det[i];
 
-		bool replace = (cur.old_func == nullptr) || (*cur.old_func == nullptr);
+		bool replace =
+			(cur.old_func == nullptr) || (*cur.old_func == nullptr)
+			|| (*cur.old_func == vtable[cur.index]);
 		bool set_old = (cur.old_func != nullptr) && (*cur.old_func == nullptr);
 
 		if(set_old) {
