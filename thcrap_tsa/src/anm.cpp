@@ -878,7 +878,14 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 		entry.h = entry.thtx->h;
 	}
 
-	if(sprite_orig_num == 0) {
+	// See TH09.5's help_0?.anm and TH16.5 title.anm title/title_insta.png
+	// for cases where the patchable image is larger than the one defined
+	// sprite. In the latter case, we wouldn't want to resize the sprite,
+	// as this would shift the texture and distort its on-screen geometry.
+	// And always expanding a single sprite to the entire texture is never
+	// wrong, so before we start messing around with custom/temporary sprite
+	// redefinitions...
+	if(sprite_orig_num <= 1) {
 		// Construct a fake sprite covering the entire texture
 		entry.sprites.emplace_back(entry_blitmode, 0, 0, entry.w, entry.h);
 	} else {
