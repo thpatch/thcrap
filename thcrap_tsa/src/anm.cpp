@@ -530,7 +530,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 			}
 
 			auto param_length = ((ret.script).*(ret.script.param_length_of))(line_i);
-			if((size_t)addr >= (param_length - code_size)) {
+			if((size_t)addr > (param_length - code_size)) {
 				FAIL(
 					": {\"changes\": {\"%s\"}",
 					"Address %u + binary hack of length %u exceeds the parameter length of line %u (%u).",
