@@ -878,14 +878,7 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 		entry.h = entry.thtx->h;
 	}
 
-	// See TH09.5's help_0?.anm and TH16.5 title.anm title/title_insta.png
-	// for cases where the patchable image is larger than the one defined
-	// sprite. In the latter case, we wouldn't want to resize the sprite,
-	// as this would shift the texture and distort its on-screen geometry.
-	// And always expanding a single sprite to the entire texture is never
-	// wrong, so before we start messing around with custom/temporary sprite
-	// redefinitions...
-	if(sprite_orig_num <= 1) {
+	if(sprite_orig_num == 0) {
 		// Construct a fake sprite covering the entire texture
 		entry.sprites.emplace_back(entry_blitmode, 0, 0, entry.w, entry.h);
 	} else {
@@ -894,11 +887,27 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 		for(size_t i = 0; i < sprite_orig_num; i++, sprite_in++) {
 			auto *s_orig = (sprite_t*)(in + *sprite_in);
 
+			// This needs, in fact, be called for every sprite in order
+			// to not mess up its internal counter! Which is why we have
+			// to duplicate the condition from above, not only to keep
+			// that one sprite moddable for the game itself.
 			auto spr_m = hdr_m.sprite_mods();
 			spr_m.apply_orig(*s_orig);
 
 			auto blitmode = spr_m.blitmode.unwrap_or(entry_blitmode);
-			entry.transform_and_add_sprite(*s_orig, blitmode);
+			// See TH09.5's help_0?.anm and TH16.5's title/title_insta.png
+			// in title.anm for cases where the patchable image is larger
+			// than the one defined sprite. In the latter case, we wouldn't
+			// want to resize the sprite, as this would shift the texture
+			// and distort its on-screen geometry.
+			// And always expanding a single sprite to the entire texture
+			// is never wrong, so before we start messing around with
+			// custom/temporary sprite redefinitions...
+			if(sprite_orig_num <= 1) {
+				entry.sprites.emplace_back(blitmode, 0, 0, entry.w, entry.h);
+			} else {
+				entry.transform_and_add_sprite(*s_orig, blitmode);
+			}
 		}
 	}
 
