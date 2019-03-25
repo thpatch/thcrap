@@ -137,7 +137,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	json_t *repo_list = NULL;
 
-	const char *start_repo = "http://thcrap.nmlgc.net/repos/nmlgc/";
+	const char *start_repo = "http://mirrors.thpatch.net/nmlgc/";
 
 	json_t *sel_stack = NULL;
 	json_t *new_cfg = json_pack("{s[]}", "patches");
