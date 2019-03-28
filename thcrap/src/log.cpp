@@ -337,6 +337,7 @@ void log_init(int console)
 	defer(VLA_FREE(full_fn));
 	GetCurrentDirectoryU(cur_dir_len, full_fn);
 	full_fn[cur_dir_len - 1] = '/';
+	full_fn[cur_dir_len] = '\0';
 	str_slash_normalize(full_fn); // Necessary!
 	memcpy(full_fn + cur_dir_len, LOG, sizeof(LOG));
 
