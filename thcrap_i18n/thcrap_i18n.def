@@ -1,0 +1,11 @@
+EXPORTS
+	i18n_translate
+	i18n_translate_wide
+	i18n_load_narrow
+	i18n_load_wide
+	i18n_load_narrow_only
+	i18n_load_wide_only
+	i18n_langid
+	i18n_lang_selector
+	i18n_lang_init
+	i18n_lang_init_quiet

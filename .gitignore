@@ -229,3 +229,6 @@ docs/_build/
 *.pfx
 *.pvk
 *.sig
+
+# i18n configuration
+i18n/config.json

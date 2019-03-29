@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.2026
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_loader", "thcrap_loader\thcrap_loader.vcxproj", "{2DB35726-8702-4CC8-9394-3D4FFF47F7DD}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -37,6 +37,7 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_configure", "thcrap_configure\thcrap_configure.vcxproj", "{F85D84FC-6CEA-44CD-8A55-015AE9EFD02A}"
 	ProjectSection(ProjectDependencies) = postProject
 		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
+		{4F1C381C-5220-4411-A27B-A7D0731B8099} = {4F1C381C-5220-4411-A27B-A7D0731B8099}
 		{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942} = {8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}
 		{8D7455CC-BE95-4F59-9047-D390454C7261} = {8D7455CC-BE95-4F59-9047-D390454C7261}
 	EndProjectSection
@@ -44,9 +45,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_tasofro", "thcrap_tasofro\thcrap_tasofro.vcxproj", "{7833FCCF-C3EA-46ED-8D38-5CAB478AB041}"
 	ProjectSection(ProjectDependencies) = postProject
 		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
+		{7E7EDD47-9F33-48AC-BCCB-2E306193C945} = {7E7EDD47-9F33-48AC-BCCB-2E306193C945}
 		{D6973076-9317-4EF2-A0B8-B7A18AC0713E} = {D6973076-9317-4EF2-A0B8-B7A18AC0713E}
 		{21DF27A2-2AC5-4C09-9687-1D391237C01D} = {21DF27A2-2AC5-4C09-9687-1D391237C01D}
-		{7E7EDD47-9F33-48AC-BCCB-2E306193C945} = {7E7EDD47-9F33-48AC-BCCB-2E306193C945}
 		{8D7455CC-BE95-4F59-9047-D390454C7261} = {8D7455CC-BE95-4F59-9047-D390454C7261}
 	EndProjectSection
 EndProject
@@ -56,8 +57,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "act_nut_lib", "libs\135tk\a
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bmpfont_create", "libs\bmpfont_create.vcxproj", "{7E7EDD47-9F33-48AC-BCCB-2E306193C945}"
 	ProjectSection(ProjectDependencies) = postProject
-		{E347A19A-2281-4630-AE1C-AB07B213B30D} = {E347A19A-2281-4630-AE1C-AB07B213B30D}
 		{0F72DD87-86A8-4001-8B5F-B9BB1165211E} = {0F72DD87-86A8-4001-8B5F-B9BB1165211E}
+		{E347A19A-2281-4630-AE1C-AB07B213B30D} = {E347A19A-2281-4630-AE1C-AB07B213B30D}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bmpfont_create_gdi", "libs\bmpfont_create_gdi.vcxproj", "{E347A19A-2281-4630-AE1C-AB07B213B30D}"
@@ -88,6 +89,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_bgmmod", "thcrap_bgm
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libmpg123", "libs\libmpg123.vcxproj", "{67CAA87B-7CF1-4F93-BB67-21C513F40803}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_i18n", "thcrap_i18n\thcrap_i18n.vcxproj", "{4F1C381C-5220-4411-A27B-A7D0731B8099}"
+	ProjectSection(ProjectDependencies) = postProject
+		{91E1D907-56ED-493E-AF3B-35CC16E3E4F2} = {91E1D907-56ED-493E-AF3B-35CC16E3E4F2}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -167,8 +173,15 @@ Global
 		{67CAA87B-7CF1-4F93-BB67-21C513F40803}.Debug|Win32.Build.0 = Debug Static|Win32
 		{67CAA87B-7CF1-4F93-BB67-21C513F40803}.Release|Win32.ActiveCfg = Release Static|Win32
 		{67CAA87B-7CF1-4F93-BB67-21C513F40803}.Release|Win32.Build.0 = Release Static|Win32
+		{4F1C381C-5220-4411-A27B-A7D0731B8099}.Debug|Win32.ActiveCfg = Debug|Win32
+		{4F1C381C-5220-4411-A27B-A7D0731B8099}.Debug|Win32.Build.0 = Debug|Win32
+		{4F1C381C-5220-4411-A27B-A7D0731B8099}.Release|Win32.ActiveCfg = Release|Win32
+		{4F1C381C-5220-4411-A27B-A7D0731B8099}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C0C6CFCD-2E69-4958-8AB1-3A49D9FB2485}
 	EndGlobalSection
 EndGlobal

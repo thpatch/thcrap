@@ -124,11 +124,11 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 }
 
 #include <win32_utf8/entry_winmain.c>
-
+#include "thcrap_i18n/src/thcrap_i18n.h"
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
 	int ret = 0;
-
+	i18n_lang_init(THCRAP_I18N_APPDOMAIN);
 	// Global URL cache to not download anything twice
 	json_t *url_cache = json_object();
 	// Repository ID cache to prioritize the most local repository if more
@@ -163,7 +163,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	}
 
 	console_prepare_prompt();
-	log_printf(
+	log_printf(_A(
 		"==========================================\n"
 		"Touhou Community Reliant Automatic Patcher - Patch configuration tool\n"
 		"==========================================\n"
@@ -173,7 +173,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		"Touhou Community Reliant Automatic Patcher.\n"
 		"\n"
 		"\n"
-	);
+	));
 	if (thcrap_update_module()) {
 		log_printf(
 			"The configuration process has four steps:\n"
