@@ -175,7 +175,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		"\n"
 	));
 	if (thcrap_update_module()) {
-		log_printf(
+		log_printf(_A(
 			"The configuration process has four steps:\n"
 			"\n"
 			"\t\t1. Selecting patches\n"
@@ -191,12 +191,12 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			"\n"
 			"You can specify a different URL as a command-line parameter.\n"
 			"Additionally, all patches from previously discovered repositories, stored in\n"
-			"subdirectories of the current directory, will be available for selection.\n",
+			"subdirectories of the current directory, will be available for selection.\n"),
 			start_repo
 		);
 	}
 	else {
-		log_printf(
+		log_printf(_A(
 			"The configuration process has two steps:\n"
 			"\n"
 			"\t\t1. Selecting patches\n"
@@ -205,7 +205,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			"\n"
 			"\n"
 			"Updates are disabled. Therefore, patch selection is limited to the\n"
-			"repositories that are locally available.\n"
+			"repositories that are locally available.\n")
 		);
 	}
 	log_print(
@@ -222,7 +222,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	}
 	repo_list = RepoLoad();
 	if (!json_object_size(repo_list)) {
-		log_printf("No patch repositories available...\n");
+		log_printf(_A("No patch repositories available...\n"));
 		pause();
 		goto end;
 	}
@@ -232,7 +232,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		size_t i;
 		json_t *sel;
 
-		log_printf("Downloading game-independent data...\n");
+		log_printf(_A("Downloading game-independent data...\n"));
 		stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, NULL);
 
 		/// Build the new run configuration
@@ -251,7 +251,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
 	if (!file_write_text(run_cfg_fn_js, run_cfg_str)) {
-		log_printf("\n\nThe following run configuration has been written to %s:\n", run_cfg_fn_js);
+		log_printf(_A("\n\nThe following run configuration has been written to %s:\n"), run_cfg_fn_js);
 		log_printf(run_cfg_str);
 		log_printf("\n\n");
 		pause();
@@ -263,12 +263,12 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if (json_object_size(games) > 0 && (console_ask_yn("Create shortcuts? (required for first run)") == 'n' || !CreateShortcuts(run_cfg_fn, games))) {
+	if (json_object_size(games) > 0 && (console_ask_yn(_A("Create shortcuts? (required for first run)")) == 'n' || !CreateShortcuts(run_cfg_fn, games))) {
 		json_t *filter = json_object_get_keys_sorted(games);
-		log_printf("\nDownloading data specific to the located games...\n");
+		log_printf(_A("\nDownloading data specific to the located games...\n"));
 		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
 		filter = json_decref_safe(filter);
-		log_printf(
+		log_printf(_A(
 			"\n"
 			"\n"
 			"Done.\n"
@@ -278,7 +278,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			"(%s).\n"
 			"\n"
 			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
-			"\n", cur_dir
+			"\n"), cur_dir
 		);
 		con_can_close = true;
 		pause();

@@ -1,4 +1,20 @@
 {
 "==========================================\nTouhou Community Reliant Automatic Patcher - Patch configuration tool\n==========================================\n\n\nThis tool will create a new patch configuration for the\nTouhou Community Reliant Automatic Patcher.\n\n\n":
-"==========================================\nTouhou Community Reliant Automatic Patcher - Программа для конфигурации патчей\n==========================================\n\n\nЭта утилита создаст новую конфигурацию для \nTouhou Community Reliant Automatic Patcher.\n\n\n"
+"==========================================\nTouhou Community Reliant Automatic Patcher - Программа для конфигурации патчей\n==========================================\n\n\nЭта утилита создаст новую конфигурацию для \nTouhou Community Reliant Automatic Patcher.\n\n\n",
+
+"The configuration process has four steps:\n\n\t\t1. Selecting patches\n\t\t2. Downloading game-independent data\n\t\t3. Locating game installations\n\t\t4. Downloading game-specific data\n\n\n\nPatch repository discovery will start at\n\n\t%s\n\nYou can specify a different URL as a command-line parameter.\nAdditionally, all patches from previously discovered repositories, stored in\nsubdirectories of the current directory, will be available for selection.\n":null,
+
+"The configuration process has two steps:\n\n\t\t1. Selecting patches\n\t\t2. Locating game installations\n\n\n\nUpdates are disabled. Therefore, patch selection is limited to the\nrepositories that are locally available.\n": null,
+
+"No patch repositories available...\n": null,
+
+"Downloading game-independent data...\n": null,
+
+"\n\nThe following run configuration has been written to %s:\n": null,
+
+"Create shortcuts? (required for first run)": null,
+
+"\nDownloading data specific to the located games...\n": null,
+
+"\n\nDone.\n\nYou can now start the respective games with your selected configuration\nthrough the shortcuts created in the current directory\n(%s).\n\nThese shortcuts work from anywhere, so feel free to move them wherever you like.\n\n": null
 }
