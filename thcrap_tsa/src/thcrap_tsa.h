@@ -69,6 +69,7 @@ typedef enum {
 	// • First game released on Steam
 	TH16,
 	TH165,
+	TH17,
 
 	// Any future game without relevant changes
 	TH_FUTURE,
