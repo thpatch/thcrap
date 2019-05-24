@@ -420,7 +420,7 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 	loader_update_state_t *state = (loader_update_state_t*)param;
 	const char *format1 = "Updating %s (%d/%d)...";
 	const char *format2 = "Updating file %d/%d...";
-	const char *format3 = "%s (%d b / %d b)";
+	const char *format3 = "%s (%d B / %d B)";
 	const char *patch_name = json_object_get_string(patch, "id");
 	const unsigned int format1_len = strlen(format1) + strlen(patch_name) + 2 * 10 + 1;
 	const unsigned int format2_len = strlen(format2) + 2 * 10 + 1;
