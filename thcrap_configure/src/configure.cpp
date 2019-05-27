@@ -278,6 +278,8 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			"(%s).\n"
 			"\n"
 			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
+			"Alternatively, if you find yourself drowned in shortcuts, you should try this tool:\n"
+			"https://github.com/Tudi20/Universal-THCRAP-Launcher/releases\n"
 			"\n"), cur_dir
 		);
 		con_can_close = true;
