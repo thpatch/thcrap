@@ -1,5 +1,5 @@
 [submodule "win32_utf8"]
-	path = win32_utf8
+	path = libs/win32_utf8
 	url = https://github.com/thpatch/win32_utf8.git
 [submodule "jansson"]
 	path = libs/jansson

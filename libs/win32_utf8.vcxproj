@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros">
+    <ProjectTitle>Win32 UTF-8 wrapper</ProjectTitle>
+    <ProjectURL>https://github.com/thpatch/win32_utf8</ProjectURL>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug Static|Win32">
+      <Configuration>Debug Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Dynamic|Win32">
+      <Configuration>Debug Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Static|Win32">
+      <Configuration>Release Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Dynamic|Win32">
+      <Configuration>Release Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A185D5A7-3E03-4C87-9774-65C014631F5B}</ProjectGuid>
+    <RootNamespace>win32_utf8</RootNamespace>
+    <ProjectName>win32_utf8</ProjectName>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="Static+Dynamic.props" />
+  </ImportGroup>
+  <PropertyGroup Label="Configuration">
+    <Linking>dynamic</Linking>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/DELAYLOAD:comdlg32.dll /DELAYLOAD:dsound.dll /DELAYLOAD:gdi32.dll /DELAYLOAD:ole32.dll /DELAYLOAD:psapi.dll /DELAYLOAD:shell32.dll /DELAYLOAD:shlwapi.dll /DELAYLOAD:user32.dll /DELAYLOAD:version.dll /DELAYLOAD:wininet.dll %(AdditionalOptions)</AdditionalOptions>
+      <ModuleDefinitionFile>win32_utf8\win32_utf8.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="win32_utf8\src\comdlg32_dll.h" />
+    <ClInclude Include="win32_utf8\src\dsound_dll.h" />
+    <ClInclude Include="win32_utf8\src\entry.h" />
+    <ClInclude Include="win32_utf8\src\gdi32_dll.h" />
+    <ClInclude Include="win32_utf8\src\kernel32_dll.h" />
+    <ClInclude Include="win32_utf8\src\macros.h" />
+    <ClInclude Include="win32_utf8\src\message_enum.h" />
+    <ClInclude Include="win32_utf8\src\msvcrt_dll.h" />
+    <ClInclude Include="win32_utf8\src\psapi_dll.h" />
+    <ClInclude Include="win32_utf8\src\shell32_dll.h" />
+    <ClInclude Include="win32_utf8\src\shlwapi_dll.h" />
+    <ClInclude Include="win32_utf8\src\user32_dll.h" />
+    <ClInclude Include="win32_utf8\src\utf.h" />
+    <ClInclude Include="win32_utf8\src\version_dll.h" />
+    <ClInclude Include="win32_utf8\src\wininet_dll.h" />
+    <ClInclude Include="win32_utf8\src\wrappers.h" />
+    <ClInclude Include="win32_utf8\win32_utf8.h" />
+    <ClCompile Include="win32_utf8\win32_utf8_build_dynamic.c">
+      <ExcludedFromBuild Condition="'$(ConfigurationType)'!='DynamicLibrary'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="win32_utf8\win32_utf8_build_static.c">
+      <ExcludedFromBuild Condition="'$(ConfigurationType)'=='DynamicLibrary'">true</ExcludedFromBuild>
+    </ClCompile>
+    <None Include="win32_utf8\entry_main.c" />
+    <None Include="win32_utf8\entry_winmain.c" />
+    <None Include="win32_utf8\src\build.c" />
+    <None Include="win32_utf8\src\entry.c" />
+    <None Include="win32_utf8\src\comdlg32_dll.c" />
+    <None Include="win32_utf8\src\dsound_dll.c" />
+    <None Include="win32_utf8\src\gdi32_dll.c" />
+    <None Include="win32_utf8\src\kernel32_dll.c" />
+    <None Include="win32_utf8\src\macros.c" />
+    <None Include="win32_utf8\src\msvcrt_dll.c" />
+    <None Include="win32_utf8\src\psapi_dll.c" />
+    <None Include="win32_utf8\src\shell32_dll.c" />
+    <None Include="win32_utf8\src\shlwapi_dll.c" />
+    <None Include="win32_utf8\src\user32_dll.c" />
+    <None Include="win32_utf8\src\utf.c" />
+    <None Include="win32_utf8\src\version_dll.c" />
+    <None Include="win32_utf8\src\win32_utf8.c" />
+    <None Include="win32_utf8\src\wininet_dll.c" />
+    <None Include="win32_utf8\src\wrappers.c" />
+    <None Include="win32_utf8\win32_utf8.def" />
+  </ItemGroup>
+</Project>
