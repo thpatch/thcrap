@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros">
+    <ProjectTitle>Act/Nut lib</ProjectTitle>
+    <ProjectURL>https://github.com/thpatch/Act-Nut-lib</ProjectURL>
+  </PropertyGroup>
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug Static|Win32">
+      <Configuration>Debug Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug Dynamic|Win32">
+      <Configuration>Debug Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Static|Win32">
+      <Configuration>Release Static</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release Dynamic|Win32">
+      <Configuration>Release Dynamic</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{21DF27A2-2AC5-4C09-9687-1D391237C01D}</ProjectGuid>
+    <RootNamespace>act_nut_lib</RootNamespace>
+    <ProjectName>act_nut_lib</ProjectName>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="Static+Dynamic.props" />
+  </ImportGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)\135tk\Act-Nut-lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ObjectFileName>$(IntDir)\%(RelativeDir)\</ObjectFileName>
+      <PreprocessorDefinitions>_CRT_NONSTDC_NO_WARNINGS</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>$(ProjectDir)\135tk\Act-Nut-lib\act_nut_lib.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="135tk\Act-Nut-lib\Object.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\Utils.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\exports.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\act\Object.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\act\File.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\act\Entry.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\act\Entries.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\nut\SQObject.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\nut\SQComplexObjects.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\nut\SQInstruction.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\nut\SQFunctionProto.cpp" />
+    <ClCompile Include="135tk\Act-Nut-lib\nut\Stream.cpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\Object.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\Utils.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\exports.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\act\Object.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\act\File.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\act\Entry.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\act\Entries.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\nut\SQObject.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\nut\SQComplexObjects.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\nut\SQInstruction.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\nut\SQFunctionProto.hpp" />
+    <ClInclude Include="135tk\Act-Nut-lib\nut\Stream.hpp" />
+    <None Include="135tk\Act-Nut-lib\act_nut_lib.def" />
+  </ItemGroup>
+</Project>
