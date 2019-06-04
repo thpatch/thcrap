@@ -6,6 +6,9 @@
   <PropertyGroup>
     <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
   </PropertyGroup>
+  <PropertyGroup>
+    <OutSubdir>binaries\</OutSubdir>
+  </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="Base.props" />
   </ImportGroup>
