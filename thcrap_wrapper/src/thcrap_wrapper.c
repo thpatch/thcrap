@@ -10,6 +10,15 @@ size_t my_wcslen(const wchar_t *str)
 	return n;
 }
 
+int my_wcscmp(const wchar_t *s1, const wchar_t *s2)
+{
+	while (*s1 && *s1 == *s2) {
+		s1++;
+		s2++;
+	}
+	return *s2 - *s1;
+}
+
 // Returns the pointer to the end of dst, so that you can chain the call to append
 // several strings.
 LPWSTR my_strcpy(LPWSTR dst, LPCWSTR src)
@@ -81,30 +90,38 @@ int main()
 {
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
-    LPWSTR lpApplicationName;
-    LPWSTR lpCommandLine;
-    LPWSTR lpCurrentDirectory;
+    LPWSTR rcApplicationName;
+    LPWSTR rcCommandLine;
+	LPWSTR commandLineUsed;
+    LPWSTR rcCurrentDirectory;
 
-    lpApplicationName  = getStringResource(0);
-    lpCommandLine      = getStringResource(1);
-    lpCurrentDirectory = getStringResource(2);
+    rcApplicationName  = getStringResource(0);
+    rcCommandLine      = getStringResource(1);
+    rcCurrentDirectory = getStringResource(2);
+
+	if (rcCommandLine && my_wcscmp(rcCommandLine, L"[self]") == 0) {
+		commandLineUsed = GetCommandLineW();
+	}
+	else {
+		commandLineUsed = rcCommandLine;
+	}
 
     for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
     si.cb = sizeof(si);
     for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
 
-    if (CreateProcess(lpApplicationName, lpCommandLine, NULL, NULL, FALSE, 0, NULL, lpCurrentDirectory, &si, &pi) == 0) {
-        printError(lpApplicationName ? lpApplicationName : lpCommandLine);
-        if (lpApplicationName)  HeapFree(GetProcessHeap(), 0, lpApplicationName);
-        if (lpCommandLine)      HeapFree(GetProcessHeap(), 0, lpCommandLine);
-        if (lpCurrentDirectory) HeapFree(GetProcessHeap(), 0, lpCurrentDirectory);
+    if (CreateProcess(rcApplicationName, commandLineUsed, NULL, NULL, FALSE, 0, NULL, rcCurrentDirectory, &si, &pi) == 0) {
+        printError(rcApplicationName ? rcApplicationName : commandLineUsed);
+        if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+        if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
+        if (rcCurrentDirectory) HeapFree(GetProcessHeap(), 0, rcCurrentDirectory);
         return 1;
     }
 
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-    if (lpApplicationName)  HeapFree(GetProcessHeap(), 0, lpApplicationName);
-    if (lpCommandLine)      HeapFree(GetProcessHeap(), 0, lpCommandLine);
-    if (lpCurrentDirectory) HeapFree(GetProcessHeap(), 0, lpCurrentDirectory);
+    if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+    if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
+    if (rcCurrentDirectory) HeapFree(GetProcessHeap(), 0, rcCurrentDirectory);
     return 0;
 }
