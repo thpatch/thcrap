@@ -1,3 +1,5 @@
+1 ICON "..\\gfx\\abstractcactus\\icon_01.ico"
+
 STRINGTABLE
 BEGIN
 	0 L"binaries\\thcrap_configure" DEBUG_OR_RELEASE_W L".exe"
