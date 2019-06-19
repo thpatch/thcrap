@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{98C00188-ADF9-4C1B-B325-BE4E52411AF9}</ProjectGuid>
+    <RootNamespace>thcrap_loader_wrapper</RootNamespace>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(SolutionDir)\thcrap_wrapper\thcrap_wrapper.props" />
+  </ImportGroup>
+  <PropertyGroup>
+    <!--
+      We need to have a unique RootNamespace, but we want to have the same TargetName
+      as the exe we wrap, so we overwrite it here.
+    <TargetName Condition="$(UseDebugLibraries)==true">thcrap_loader_d</TargetName>
+    <TargetName Condition="$(UseDebugLibraries)!=true">thcrap_loader</TargetName>
+    -->
+  </PropertyGroup>
+  <ItemGroup>
+    <ResourceCompile Include="thcrap_loader_wrapper.rc">
+      <PreprocessorDefinitions Condition="$(UseDebugLibraries)==true">DEBUG_OR_RELEASE_W=L\"_d\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="$(UseDebugLibraries)!=true">DEBUG_OR_RELEASE_W=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
