@@ -11,9 +11,10 @@
     <!--
       We need to have a unique RootNamespace, but we want to have the same TargetName
       as the exe we wrap, so we overwrite it here.
+    -->
     <TargetName Condition="$(UseDebugLibraries)==true">thcrap_loader_d</TargetName>
     <TargetName Condition="$(UseDebugLibraries)!=true">thcrap_loader</TargetName>
-    -->
+	<TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
   </PropertyGroup>
   <ItemGroup>
     <ResourceCompile Include="thcrap_loader_wrapper.rc">
