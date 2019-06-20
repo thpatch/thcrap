@@ -82,11 +82,10 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	// Load games.js
 	{
-		size_t games_js_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1 + strlen("games.js") + 1;
+		size_t games_js_fn_len = GetCurrentDirectoryU(0, NULL) + 1 + strlen("games.js") + 1;
 		VLA(char, games_js_fn, games_js_fn_len);
 
-		GetModuleFileNameU(NULL, games_js_fn, games_js_fn_len);
-		PathRemoveFileSpec(games_js_fn);
+		GetCurrentDirectoryU(games_js_fn_len, games_js_fn);
 		PathAddBackslashA(games_js_fn);
 		strcat(games_js_fn, "games.js");
 		games_js = json_load_file_report(games_js_fn);
