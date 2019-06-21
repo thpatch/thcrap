@@ -148,7 +148,6 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	json_t *games = NULL;
 
 	const char *run_cfg_fn = NULL;
-	const char *run_cfg_fn_js = NULL;
 	char *run_cfg_str = NULL;
 
 	strings_mod_init();
@@ -215,6 +214,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	);
 	pause();
 
+
 	if (RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache, file_write_error)) {
 		goto end;
 	}
@@ -242,13 +242,19 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		}
 	}
 
+
 	// Other default settings
 	json_object_set_new(new_cfg, "console", json_false());
 	json_object_set_new(new_cfg, "dat_dump", json_false());
 
 	run_cfg_fn = run_cfg_fn_build(RUN_CFG_FN, sel_stack);
 	run_cfg_fn = EnterRunCfgFN(RUN_CFG_FN, RUN_CFG_FN_JS);
-	run_cfg_fn_js = strings_storage_get(RUN_CFG_FN_JS, 0);
+	size_t run_cfg_fn_size = strlen("config") + 1 + strlen(run_cfg_fn) + strlen(".js") + 1;
+
+	VLA(char, run_cfg_fn_js, run_cfg_fn_size);
+	strcpy(run_cfg_fn_js, "config/");
+	strcat(run_cfg_fn_js, run_cfg_fn);
+	strcat(run_cfg_fn_js, ".js");
 
 	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
 	if (!file_write_text(run_cfg_fn_js, run_cfg_str)) {
@@ -260,6 +266,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	else if (!file_write_error(run_cfg_fn_js)) {
 		goto end;
 	}
+	VLA_FREE(run_cfg_fn_js);
 
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
