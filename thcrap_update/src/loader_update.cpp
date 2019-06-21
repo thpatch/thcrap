@@ -498,7 +498,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	state.args = args;
 	state.state = STATE_INIT;
 
-	json_t *config = json_load_file_report("config.js");
+	json_t *config = json_load_file_report("conifg/config.js");
 	if (!config) {
 		config = json_object();
 	}
@@ -660,7 +660,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	json_object_set_new(config, "background_updates", json_boolean(state.background_updates));
 	json_object_set_new(config, "time_between_updates", json_integer(state.time_between_updates));
 	json_object_set_new(config, "update_others", json_boolean(state.update_others));
-	json_dump_file(config, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+	json_dump_file(config, "config/config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 	json_decref(config);
 
 	DeleteCriticalSection(&state.cs);
