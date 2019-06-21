@@ -10,7 +10,7 @@
 #include <thcrap.h>
 #include "configure.h"
 
-static const char games_js_fn[] = "games.js";
+static const char games_js_fn[] = "config/games.js";
 
 static const char* ChooseLocation(const char *id, json_t *locs)
 {
@@ -165,7 +165,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		"\n"
 	);
 
-	games = json_load_file_report("games.js");
+	games = json_load_file_report("config/games.js");
 	if(json_object_size(games) != 0) {
 		log_printf("You already have a %s with the following contents:\n\n", games_js_fn);
 		json_dump_log(games, JSON_INDENT(2) | JSON_SORT_KEYS);

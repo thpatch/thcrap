@@ -93,11 +93,9 @@ int main()
     LPWSTR rcApplicationName;
     LPWSTR rcCommandLine;
 	LPWSTR commandLineUsed;
-    LPWSTR rcCurrentDirectory;
 
     rcApplicationName  = getStringResource(0);
     rcCommandLine      = getStringResource(1);
-    rcCurrentDirectory = getStringResource(2);
 
 	if (rcCommandLine && my_wcscmp(rcCommandLine, L"[self]") == 0) {
 		commandLineUsed = GetCommandLineW();
@@ -110,11 +108,10 @@ int main()
     si.cb = sizeof(si);
     for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
 
-    if (CreateProcess(rcApplicationName, commandLineUsed, NULL, NULL, FALSE, 0, NULL, rcCurrentDirectory, &si, &pi) == 0) {
+    if (CreateProcess(rcApplicationName, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
         printError(rcApplicationName ? rcApplicationName : commandLineUsed);
         if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
         if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-        if (rcCurrentDirectory) HeapFree(GetProcessHeap(), 0, rcCurrentDirectory);
         return 1;
     }
 
@@ -122,6 +119,5 @@ int main()
     CloseHandle(pi.hThread);
     if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
     if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-    if (rcCurrentDirectory) HeapFree(GetProcessHeap(), 0, rcCurrentDirectory);
     return 0;
 }

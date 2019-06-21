@@ -17,8 +17,8 @@ static int console_open = 0;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
-static const char LOG[] = "thcrap_log.txt";
-static const char LOG_ROTATED[] = "thcrap_log.%d.txt";
+static const char LOG[] = "logs/thcrap_log.txt";
+static const char LOG_ROTATED[] = "logs/thcrap_log.%d.txt";
 static const int ROTATIONS = 1; // Number of backups to keep
 static void (*log_print_hook)(const char*) = NULL;
 static void(*log_nprint_hook)(const char*, size_t) = NULL;
@@ -289,6 +289,7 @@ std::nullptr_t logger_t::errorf(const char *text, ...) const
 
 void log_init(int console)
 {
+	CreateDirectoryU("logs", NULL);
 	log_rotate();
 
 	log_file = fopen(LOG, "wt");

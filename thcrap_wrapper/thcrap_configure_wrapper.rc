@@ -3,5 +3,4 @@
 STRINGTABLE
 BEGIN
 	0 L"binaries\\thcrap_configure" DEBUG_OR_RELEASE_W L".exe"
-	2 L"binaries\\"
 END
