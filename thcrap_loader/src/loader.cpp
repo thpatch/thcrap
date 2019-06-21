@@ -34,7 +34,6 @@ const char* game_lookup(const json_t *games_js, const char *game)
 
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
-	CreateDirectoryU("config", NULL);
 
 	int ret;
 	json_t *games_js = NULL;
