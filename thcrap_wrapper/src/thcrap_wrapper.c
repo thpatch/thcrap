@@ -92,7 +92,7 @@ int main()
     PROCESS_INFORMATION pi;
     LPWSTR rcApplicationName;
     LPWSTR rcCommandLine;
-	LPWSTR commandLineUsed;
+    LPWSTR commandLineUsed;
     LPWSTR rcCurrentDirectory;
 
     rcApplicationName  = getStringResource(0);

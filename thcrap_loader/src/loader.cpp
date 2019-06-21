@@ -34,6 +34,7 @@ const char* game_lookup(const json_t *games_js, const char *game)
 
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
+
 	int ret;
 	json_t *games_js = NULL;
 
@@ -82,12 +83,12 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	// Load games.js
 	{
-		size_t games_js_fn_len = GetCurrentDirectoryU(0, NULL) + 1 + strlen("games.js") + 1;
+		size_t games_js_fn_len = GetCurrentDirectoryU(0, NULL) + 1 + strlen("config\\games.js") + 1;
 		VLA(char, games_js_fn, games_js_fn_len);
 
 		GetCurrentDirectoryU(games_js_fn_len, games_js_fn);
 		PathAddBackslashA(games_js_fn);
-		strcat(games_js_fn, "games.js");
+		strcat(games_js_fn, "config\\games.js");
 		games_js = json_load_file_report(games_js_fn);
 		VLA_FREE(games_js_fn);
 	}
