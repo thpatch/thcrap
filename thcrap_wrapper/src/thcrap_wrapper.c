@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <shlwapi.h>
 
 // A quick implementation of a few CRT functions because we don't link with the CRT.
 size_t my_wcslen(const wchar_t *str)
@@ -105,6 +106,14 @@ int main()
 	else {
 		commandLineUsed = rcCommandLine;
 	}
+
+	if (rcCurrentDirectory == NULL) {
+		rcCurrentDirectory = HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
+		GetModuleFileNameW(NULL, rcCurrentDirectory, MAX_PATH);
+		PathRemoveFileSpecW(rcCurrentDirectory);
+	}
+
+	SetCurrentDirectoryW(rcCurrentDirectory);
 
     for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
     si.cb = sizeof(si);
