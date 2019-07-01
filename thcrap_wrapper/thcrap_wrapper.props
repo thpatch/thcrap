@@ -22,6 +22,7 @@
       <SubSystem>Windows</SubSystem>
 	  <!-- Note: this removes the dependency on the CRT for the release build, but not for the debug one. -->
       <EntryPointSymbol>main</EntryPointSymbol>
+	  <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
