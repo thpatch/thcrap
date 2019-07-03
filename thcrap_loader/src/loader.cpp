@@ -32,7 +32,7 @@ const char* game_lookup(const json_t *games_js, const char *game)
 	}
 	const char *game_path_str = json_string_value(game_path);
 	if (PathIsRelativeA(game_path_str)) {
-		VLA(char, ret, (current_dir_len + strlen(game_path_str)));
+		char* ret = (char*)malloc(current_dir_len + strlen(game_path_str));
 		strcpy(ret, current_dir);
 		PathAppendA(ret, game_path_str);
 		return ret;
@@ -67,9 +67,8 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	const char *game_id = nullptr;
 	const char *cmd_exe_fn = NULL;
-	const char *cfg_exe_fn = NULL;
+	char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
-	//const char *run_cfg_fn = NULL;
 	size_t run_cfg_fn_len = 0;
 	
 
@@ -121,7 +120,8 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	// Parse command line
 	for(int i = 1; i < argc; i++) {
-		const char *arg = argv[i];
+		char *arg = (char*)malloc(strlen(argv[i]));
+		strcpy(arg, argv[i]);
 		const char *param_ext = PathFindExtensionA(arg);
 
 		if(!stricmp(param_ext, ".js")) {
@@ -132,21 +132,21 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			if(json_is_object(run_cfg)) {
 				json_decref(run_cfg);
 			}
-
+			str_slash_normalize_win(arg);
 			if (PathIsRelativeA(arg)) {
 				if (strchr(arg, '\\')) {
-					run_cfg_fn = (char*)_malloca(strlen(rel_start) + strlen(arg));
+					run_cfg_fn = (char*)malloc(strlen(rel_start) + strlen(arg));
 					strcpy(run_cfg_fn, rel_start);
 					strcat(run_cfg_fn, arg);
 				} else {
 					//VLA(char, run_cfg_fn, (current_dir_len + strlen("config\\") + strlen(arg) + 1));
-					run_cfg_fn = (char*)_malloca(sizeof(char)*(current_dir_len + strlen("config\\") + strlen(arg)));
+					run_cfg_fn = (char*)malloc((current_dir_len + strlen("config\\") + strlen(arg)));
 					strcpy(run_cfg_fn, current_dir);
 					strcat(run_cfg_fn, "config\\");
 					strcat(run_cfg_fn, arg);
 				}
 			} else {
-				const char* run_cfg_fn = arg;
+				run_cfg_fn = arg;
 			}
 
 			run_cfg = json_load_file_report(run_cfg_fn);
@@ -160,7 +160,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			}
 			if(new_exe_fn) {
 				if (PathIsRelativeA(new_exe_fn)) {
-					VLA(char, cfg_exe_fn, (strlen(rel_start) + strlen(new_exe_fn)));
+					cfg_exe_fn = (char*)malloc(strlen(rel_start) + strlen(new_exe_fn));
 					strcpy(cfg_exe_fn, rel_start);
 					PathAppendA(cfg_exe_fn, new_exe_fn);
 				}
@@ -172,6 +172,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			cmd_exe_fn = game_lookup(games_js, arg);
 			game_id = arg;
 		}
+		free(arg);
 	}
 
 	if(!run_cfg) {

@@ -98,7 +98,7 @@ int main()
 
     rcApplicationPath  = getStringResource(0);
     rcCommandLine      = getStringResource(1);
-	rcApplicationName  = getStringResource(2);
+    rcApplicationName  = getStringResource(2);
 
 	if (rcApplicationPath == NULL) {
 		rcApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
@@ -132,6 +132,6 @@ int main()
     CloseHandle(pi.hThread);
     if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
     if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-	if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+    if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
     return 0;
 }
