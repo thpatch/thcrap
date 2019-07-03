@@ -299,7 +299,7 @@ int thcrap_init(const char *run_cfg_fn)
 
 	GetModuleFileNameU(NULL, exe_fn, exe_fn_len);
 	GetCurrentDirectory(game_dir_len, game_dir);
-
+	PathAppendA(dll_dir, "..");
 	SetCurrentDirectory(dll_dir);
 
 	user_cfg = json_load_file_report(run_cfg_fn);

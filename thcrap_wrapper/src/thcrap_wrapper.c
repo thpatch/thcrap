@@ -91,14 +91,23 @@ int main()
 {
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
-    LPWSTR rcApplicationName;
+    LPWSTR rcApplicationPath;
     LPWSTR rcCommandLine;
     LPWSTR commandLineUsed;
-    LPWSTR rcCurrentDirectory;
+	LPWSTR rcApplicationName;
 
-    rcApplicationName  = getStringResource(0);
+    rcApplicationPath  = getStringResource(0);
     rcCommandLine      = getStringResource(1);
-    rcCurrentDirectory = getStringResource(2);
+	rcApplicationName  = getStringResource(2);
+
+	if (rcApplicationPath == NULL) {
+		rcApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
+		GetModuleFileNameW(NULL, rcApplicationPath, MAX_PATH);
+		PathRemoveFileSpecW(rcApplicationPath);
+		PathAppendW(rcApplicationPath, L"binaries\\");
+	}
+
+	PathAppendW(rcApplicationPath, rcApplicationName);
 
 	if (rcCommandLine && my_wcscmp(rcCommandLine, L"[self]") == 0) {
 		commandLineUsed = GetCommandLineW();
@@ -107,30 +116,22 @@ int main()
 		commandLineUsed = rcCommandLine;
 	}
 
-	if (rcCurrentDirectory == NULL) {
-		rcCurrentDirectory = HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
-		GetModuleFileNameW(NULL, rcCurrentDirectory, MAX_PATH);
-		PathRemoveFileSpecW(rcCurrentDirectory);
-	}
-
-	SetCurrentDirectoryW(rcCurrentDirectory);
-
     for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
     si.cb = sizeof(si);
     for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
 
-    if (CreateProcess(rcApplicationName, commandLineUsed, NULL, NULL, FALSE, 0, NULL, rcCurrentDirectory, &si, &pi) == 0) {
-        printError(rcApplicationName ? rcApplicationName : commandLineUsed);
-        if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+    if (CreateProcess(rcApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
+        printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
+        if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
         if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-        if (rcCurrentDirectory) HeapFree(GetProcessHeap(), 0, rcCurrentDirectory);
+		if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
         return 1;
     }
 
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-    if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+    if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
     if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-    if (rcCurrentDirectory) HeapFree(GetProcessHeap(), 0, rcCurrentDirectory);
+	if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
     return 0;
 }

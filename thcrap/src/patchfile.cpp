@@ -302,7 +302,7 @@ void patches_init(const char *run_cfg_fn)
 	size_t i;
 	json_t *patch_info;
 	json_array_foreach(patches, i, patch_info) {
-		patch_rel_to_abs(patch_info, run_cfg_fn);
+		patch_rel_to_abs(patch_info, "."); // This line may be replaced entirely, this is just a cheap hack to get everything to work
 		patch_info = patch_init(patch_info);
 		json_array_set(patches, i, patch_info);
 		json_decref(patch_info);
@@ -341,7 +341,10 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 			PathAppendA(base_dir, base_path);
 		}
 		str_slash_normalize_win(base_dir);
-		PathRemoveFileSpec(base_dir);
+
+		if (!PathIsDirectoryA(base_path)) {
+			PathRemoveFileSpec(base_dir); 
+		}
 
 		size_t archive_len = json_string_length(archive_obj) + 1;
 		size_t abs_archive_len = base_path_len + archive_len;

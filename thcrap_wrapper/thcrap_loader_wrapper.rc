@@ -1,5 +1,5 @@
 STRINGTABLE
 BEGIN
-	0 L"binaries\\thcrap_loader" DEBUG_OR_RELEASE_W L".exe"
 	1 L"[self]"
+	2 L"thcrap_loader" DEBUG_OR_RELEASE_W L".exe"
 END

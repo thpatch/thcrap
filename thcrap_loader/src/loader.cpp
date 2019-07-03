@@ -20,32 +20,58 @@ const char *EXE_HELP =
 	"precedence.";
 
 const char *game_missing = NULL;
+size_t current_dir_len = 0;
+char *current_dir;
 
 const char* game_lookup(const json_t *games_js, const char *game)
 {
-	const json_t *ret = json_object_get(games_js, game);
-	if(!json_string_length(ret)) {
+	const json_t *game_path = json_object_get(games_js, game);
+	if (!json_string_length(game_path)) {
 		game_missing = game;
+		return json_string_value(game_path);
 	}
-	return json_string_value(ret);
+	const char *game_path_str = json_string_value(game_path);
+	if (PathIsRelativeA(game_path_str)) {
+		VLA(char, ret, (current_dir_len + strlen(game_path_str)));
+		strcpy(ret, current_dir);
+		PathAppendA(ret, game_path_str);
+		return ret;
+	}
+	return game_path_str;
 }
 
 #include <win32_utf8/entry_winmain.c>
 
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
+	size_t rel_start_len = GetCurrentDirectoryU(0, NULL);
+	VLA(char, rel_start, (rel_start_len + 1));
+	GetCurrentDirectoryU(rel_start_len, rel_start);
+	PathAddBackslashA(rel_start);
+
+	char current_dir[MAX_PATH];
+	GetModuleFileNameU(NULL, current_dir, MAX_PATH);
+	PathRemoveFileSpecU(current_dir);
+	PathAppendA(current_dir, "..");
+	PathAddBackslashA(current_dir);
+	SetCurrentDirectoryU(current_dir);
+
+	size_t current_dir_len = strlen(current_dir);
 
 	int ret;
 	json_t *games_js = NULL;
 
 	int run_cfg_seen = 0;
-	const char *run_cfg_fn = NULL;
+	char *run_cfg_fn = NULL;
 	json_t *run_cfg = NULL;
 
 	const char *game_id = nullptr;
 	const char *cmd_exe_fn = NULL;
 	const char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
+	//const char *run_cfg_fn = NULL;
+	size_t run_cfg_fn_len = 0;
+	
 
 	if(argc < 2) {
 		log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
@@ -106,7 +132,23 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			if(json_is_object(run_cfg)) {
 				json_decref(run_cfg);
 			}
-			run_cfg_fn = arg;
+
+			if (PathIsRelativeA(arg)) {
+				if (strchr(arg, '\\')) {
+					run_cfg_fn = (char*)_malloca(strlen(rel_start) + strlen(arg));
+					strcpy(run_cfg_fn, rel_start);
+					strcat(run_cfg_fn, arg);
+				} else {
+					//VLA(char, run_cfg_fn, (current_dir_len + strlen("config\\") + strlen(arg) + 1));
+					run_cfg_fn = (char*)_malloca(sizeof(char)*(current_dir_len + strlen("config\\") + strlen(arg)));
+					strcpy(run_cfg_fn, current_dir);
+					strcat(run_cfg_fn, "config\\");
+					strcat(run_cfg_fn, arg);
+				}
+			} else {
+				const char* run_cfg_fn = arg;
+			}
+
 			run_cfg = json_load_file_report(run_cfg_fn);
 
 			new_exe_fn = json_object_get_string(run_cfg, "exe");
@@ -117,7 +159,11 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 				}
 			}
 			if(new_exe_fn) {
-				cfg_exe_fn = new_exe_fn;
+				if (PathIsRelativeA(new_exe_fn)) {
+					VLA(char, cfg_exe_fn, (strlen(rel_start) + strlen(new_exe_fn)));
+					strcpy(cfg_exe_fn, rel_start);
+					PathAppendA(cfg_exe_fn, new_exe_fn);
+				}
 			}
 		} else if(!stricmp(param_ext, ".exe")) {
 			cmd_exe_fn = arg;
@@ -138,16 +184,11 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			);
 			ret = -2;
 		} else {
-			size_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
-			VLA(char, cur_dir, cur_dir_len);
-			GetCurrentDirectoryU(cur_dir_len, cur_dir);
-
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"The run configuration file \"%s\" was not found in the current directory (%s).\n",
-				run_cfg_fn, cur_dir
+				"The run configuration file \"%s\" was not found.\n",
+				run_cfg_fn
 			);
 
-			VLA_FREE(cur_dir);
 			ret = -4;
 		}
 		goto end;
