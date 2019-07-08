@@ -100,14 +100,18 @@ int main()
     rcCommandLine      = getStringResource(1);
     rcApplicationName  = getStringResource(2);
 
+	LPWSTR ApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
+
+	GetModuleFileNameW(NULL, ApplicationPath, MAX_PATH);
+	PathRemoveFileSpecW(ApplicationPath);
+
 	if (rcApplicationPath == NULL) {
-		rcApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
-		GetModuleFileNameW(NULL, rcApplicationPath, MAX_PATH);
-		PathRemoveFileSpecW(rcApplicationPath);
-		PathAppendW(rcApplicationPath, L"binaries\\");
+		PathAppendW(ApplicationPath, L"binaries\\");
+	} else {
+		PathAppendW(ApplicationPath, rcApplicationPath);
 	}
 
-	PathAppendW(rcApplicationPath, rcApplicationName);
+	PathAppendW(ApplicationPath, rcApplicationName);
 
 	if (rcCommandLine && my_wcscmp(rcCommandLine, L"[self]") == 0) {
 		commandLineUsed = GetCommandLineW();
@@ -120,11 +124,12 @@ int main()
     si.cb = sizeof(si);
     for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
 
-    if (CreateProcess(rcApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
+    if (CreateProcess(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
         printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
         if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
         if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-		if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+        if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+        if (ApplicationPath)    HeapFree(GetProcessHeap(), 0, ApplicationPath);
         return 1;
     }
 
@@ -133,5 +138,6 @@ int main()
     if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
     if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
     if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
+    if (ApplicationPath)    HeapFree(GetProcessHeap(), 0, ApplicationPath);
     return 0;
 }
