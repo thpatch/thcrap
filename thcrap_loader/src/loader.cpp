@@ -131,7 +131,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			if(json_is_object(run_cfg)) {
 				json_decref(run_cfg);
 			}
-			if (PathIsRelativeA(arg)) {
+			if (PathIsRelativeU(arg)) {
 				if (strchr(arg, '\\')) {
 					run_cfg_fn = (char*)malloc(strlen(rel_start) + strlen(arg));
 					strcpy(run_cfg_fn, rel_start);
