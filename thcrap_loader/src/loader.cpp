@@ -120,8 +120,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	// Parse command line
 	for(int i = 1; i < argc; i++) {
-		char *arg = (char*)malloc(strlen(argv[i]));
-		strcpy(arg, argv[i]);
+		const char *arg = argv[i];
 		const char *param_ext = PathFindExtensionA(arg);
 
 		if(!stricmp(param_ext, ".js")) {
@@ -132,7 +131,6 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			if(json_is_object(run_cfg)) {
 				json_decref(run_cfg);
 			}
-			str_slash_normalize_win(arg);
 			if (PathIsRelativeA(arg)) {
 				if (strchr(arg, '\\')) {
 					run_cfg_fn = (char*)malloc(strlen(rel_start) + strlen(arg));
@@ -146,7 +144,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 					strcat(run_cfg_fn, arg);
 				}
 			} else {
-				run_cfg_fn = arg;
+				const char *run_cfg_fn = arg;
 			}
 
 			run_cfg = json_load_file_report(run_cfg_fn);
@@ -172,7 +170,6 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			cmd_exe_fn = game_lookup(games_js, arg);
 			game_id = arg;
 		}
-		free(arg);
 	}
 
 	if(!run_cfg) {
