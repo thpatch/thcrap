@@ -55,7 +55,7 @@ void plugin_load(const char *dir, const char *fn)
 	VLA(char, fn_abs, dir_len + fn_len);
 	defer(VLA_FREE(fn_abs));
 
-	sprintf(fn_abs, "%s/%s", dir, fn);
+	sprintf(fn_abs, "%s\\%s", dir, fn);
 
 	auto plugin = LoadLibraryExU(fn_abs, nullptr,
 		LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
@@ -81,7 +81,7 @@ int plugins_load(const char *dir)
 {
 	BOOL ret = 0;
 	WIN32_FIND_DATAA w32fd;
-	HANDLE hFind = FindFirstFile("*.dll", &w32fd);
+	HANDLE hFind = FindFirstFile("binaries\\*.dll", &w32fd);
 	if(hFind == INVALID_HANDLE_VALUE) {
 		return 1;
 	}

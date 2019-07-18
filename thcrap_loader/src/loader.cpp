@@ -52,8 +52,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	char current_dir[MAX_PATH];
 	GetModuleFileNameU(NULL, current_dir, MAX_PATH);
 	PathRemoveFileSpecU(current_dir);
-	PathAppendA(current_dir, "..");
-	PathAddBackslashA(current_dir);
+	PathAppendU(current_dir, "..");
 	SetCurrentDirectoryU(current_dir);
 
 	size_t current_dir_len = strlen(current_dir);
