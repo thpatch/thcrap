@@ -47,7 +47,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	size_t rel_start_len = GetCurrentDirectoryU(0, NULL);
 	VLA(char, rel_start, (rel_start_len + 1));
 	GetCurrentDirectoryU(rel_start_len, rel_start);
-	PathAddBackslashA(rel_start);
+	PathAddBackslashU(rel_start);
 
 	char current_dir[MAX_PATH];
 	GetModuleFileNameU(NULL, current_dir, MAX_PATH);
