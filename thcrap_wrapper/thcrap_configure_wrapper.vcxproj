@@ -12,14 +12,14 @@
       We need to have a unique RootNamespace, but we want to have the same TargetName
       as the exe we wrap, so we overwrite it here.
     -->
-    <TargetName Condition="$(UseDebugLibraries)==true">thcrap_configure_d</TargetName>
-    <TargetName Condition="$(UseDebugLibraries)!=true">thcrap_configure</TargetName>
+    <TargetName Condition="'$(Configuration)'=='Debug'">thcrap_configure_d</TargetName>
+    <TargetName Condition="'$(Configuration)'!='Debug'">thcrap_configure</TargetName>
 	<TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
   </PropertyGroup>
   <ItemGroup>
     <ResourceCompile Include="thcrap_configure_wrapper.rc">
-      <PreprocessorDefinitions Condition="$(UseDebugLibraries)==true">DEBUG_OR_RELEASE_W=L\"_d\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <PreprocessorDefinitions Condition="$(UseDebugLibraries)!=true">DEBUG_OR_RELEASE_W=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">DEBUG_OR_RELEASE_W=L\"_d\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'!='Debug'">DEBUG_OR_RELEASE_W=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
   </ItemGroup>
 </Project>
