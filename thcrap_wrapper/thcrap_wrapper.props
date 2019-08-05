@@ -12,7 +12,6 @@
   </ItemGroup>
   <PropertyGroup>
     <ConfigurationType>Application</ConfigurationType>
-    <UseDebugLibraries Condition="'$(Configuration)'=='Debug'">true</UseDebugLibraries>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\Base.props" />
@@ -20,7 +19,6 @@
   <ItemDefinitionGroup>
     <Link>
       <SubSystem>Windows</SubSystem>
-	  <!-- Note: this removes the dependency on the CRT for the release build, but not for the debug one. -->
       <EntryPointSymbol>main</EntryPointSymbol>
 	  <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
