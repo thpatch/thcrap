@@ -140,7 +140,7 @@ static bool do_update(json_t *update)
 
 bool update_finalize()
 {
-	json_t *update_list = json_load_file_report("binaries\\update.json");
+	json_t *update_list = json_load_file_report("bin\\update.json");
 	if (update_list == nullptr) {
 		return false;
 	}

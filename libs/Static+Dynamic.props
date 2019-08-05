@@ -18,7 +18,7 @@
     </Link>
   </ItemDefinitionGroup>
   <PropertyGroup>
-    <OutSubdir>binaries\</OutSubdir>
+    <OutSubdir>bin\</OutSubdir>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\Base.props" />

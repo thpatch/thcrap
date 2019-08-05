@@ -81,7 +81,7 @@ int plugins_load(const char *dir)
 {
 	BOOL ret = 0;
 	WIN32_FIND_DATAA w32fd;
-	HANDLE hFind = FindFirstFile("binaries\\*.dll", &w32fd);
+	HANDLE hFind = FindFirstFile("bin\\*.dll", &w32fd);
 	if(hFind == INVALID_HANDLE_VALUE) {
 		return 1;
 	}

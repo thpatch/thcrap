@@ -335,7 +335,7 @@ int thcrap_init(const char *run_cfg_fn)
 
 	log_printf("\nInitializing plug-ins...\n");
 	plugin_init(hThcrap);
-	PathAppendU(dll_dir, "binaries");
+	PathAppendU(dll_dir, "bin");
 	plugins_load(dll_dir);
 	PathAppendU(dll_dir, "..");
 

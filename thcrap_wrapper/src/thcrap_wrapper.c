@@ -106,7 +106,7 @@ int main()
 	PathRemoveFileSpecW(ApplicationPath);
 
 	if (rcApplicationPath == NULL) {
-		PathAppendW(ApplicationPath, L"binaries\\");
+		PathAppendW(ApplicationPath, L"bin\\");
 	} else {
 		PathAppendW(ApplicationPath, rcApplicationPath);
 	}
