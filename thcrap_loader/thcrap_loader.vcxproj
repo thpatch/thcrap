@@ -33,7 +33,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\loader.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\postupdate.cpp" />
   </ItemGroup>
 </Project>

@@ -23,6 +23,8 @@ const char *game_missing = NULL;
 size_t current_dir_len = 0;
 char *current_dir;
 
+bool update_finalize();
+
 const char* game_lookup(const json_t *games_js, const char *game)
 {
 	const json_t *game_path = json_object_get(games_js, game);
@@ -71,6 +73,12 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	const char *final_exe_fn = NULL;
 	size_t run_cfg_fn_len = 0;
 	
+
+	// If thcrap just updated itself, finalize the update by moving things around if needed.
+	// This can be done before parsing the command line.
+	if (!update_finalize()) {
+		return 1;
+	}
 
 	if(argc < 2) {
 		log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
