@@ -127,12 +127,14 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 #include "thcrap_i18n/src/thcrap_i18n.h"
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
-	VLA(char, current_dir, MAX_PATH);
-	GetModuleFileNameU(NULL, current_dir, MAX_PATH);
-	PathRemoveFileSpecU(current_dir);
-	PathAppendA(current_dir, "..");
-	SetCurrentDirectoryU(current_dir);
-	VLA_FREE(current_dir);
+	{
+		char current_dir[MAX_PATH];
+		GetModuleFileNameU(NULL, current_dir, MAX_PATH);
+		PathRemoveFileSpecU(current_dir);
+		PathAppendA(current_dir, "..");
+		SetCurrentDirectoryU(current_dir);
+	}
+
 	CreateDirectoryU("config", NULL);
 	int ret = 0;
 	i18n_lang_init(THCRAP_I18N_APPDOMAIN);
@@ -161,7 +163,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	console_init();
 
 	GetCurrentDirectory(cur_dir_len, cur_dir);
-	PathAddBackslashA(cur_dir);
+	PathAddBackslash(cur_dir);
 	str_slash_normalize(cur_dir);
 
 	if (argc > 1) {
@@ -220,7 +222,8 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	);
 	pause();
 
-
+	CreateDirectoryU("patches", NULL);
+	SetCurrentDirectoryU("patches");
 	if (RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache, file_write_error)) {
 		goto end;
 	}
@@ -244,9 +247,16 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 		/// Build the new run configuration
 		json_array_foreach(sel_stack, i, sel) {
-			json_array_append_new(new_cfg_patches, patch_build(sel));
+			// patch_build needs to be rewritten so other code that uses it won't get paths like patches/patches/...
+			const char *repo_id = json_array_get_string(sel, 0);
+			const char *patch_id = json_array_get_string(sel, 1);
+			json_t* _sel = json_pack("{ss+++}",
+				"archive", repo_id, "/", patch_id, "/"
+			);
+			json_array_append_new(new_cfg_patches, _sel);
 		}
 	}
+	SetCurrentDirectoryU("..");
 
 
 	// Other default settings
