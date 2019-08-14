@@ -15,7 +15,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Label="Configuration">
-    <PlatformToolset>v120_xp</PlatformToolset>
+    <PlatformToolset>v141_xp</PlatformToolset>
     <OutDir>$(SolutionDir)bin\$(OutSubdir)</OutDir>
     <IntDir>$(SolutionDir)obj\$(RootNamespace) $(Configuration) $(PlatformShortName)\</IntDir>
   </PropertyGroup>
