@@ -202,7 +202,7 @@ struct script_param_change_t {
 
 struct script_time_change_t {
 	unsigned int line;
-	int16_t time;
+	uint16_t time;
 };
 
 class script_t {
