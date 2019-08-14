@@ -87,6 +87,7 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 		VLA(char, self_path, self_fn_len + loader_exe.len);
 		strcpy(self_path, self_fn);
 
+		strcat(self_fn, "bin\\");
 		strcat(self_fn, loader_exe.str);
 
 		log_printf("Creating shortcuts");
