@@ -177,6 +177,7 @@ char* fn_for_patch(const json_t *patch_info, const char *fn)
 	patch_fn = (char*)malloc(patch_fn_len * sizeof(char));
 
 	strncpy(patch_fn, json_string_value(archive), archive_len);
+	PathAddBackslashU(patch_fn);
 	strcat(patch_fn, fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;
@@ -286,7 +287,7 @@ json_t* patch_build(const json_t *sel)
 	const char *repo_id = json_array_get_string(sel, 0);
 	const char *patch_id = json_array_get_string(sel, 1);
 	return json_pack("{ss+++}",
-		"archive", repo_id, "/", patch_id, "/"
+		"archive", "patches/", repo_id, "/", patch_id, "/"
 	);
 }
 

@@ -220,7 +220,8 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	);
 	pause();
 
-
+	CreateDirectoryU("patches", NULL);
+	SetCurrentDirectoryU("patches");
 	if (RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache, file_write_error)) {
 		goto end;
 	}
@@ -233,6 +234,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		pause();
 		goto end;
 	}
+	SetCurrentDirectoryU("..");
 	sel_stack = SelectPatchStack(repo_list);
 	if (json_array_size(sel_stack)) {
 		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
