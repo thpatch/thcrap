@@ -2,5 +2,6 @@
 
 STRINGTABLE
 BEGIN
+	1 L"[self]"
 	2 L"thcrap_configure" DEBUG_OR_RELEASE_W L".exe"
 END
