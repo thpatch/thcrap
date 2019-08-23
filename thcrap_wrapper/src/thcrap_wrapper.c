@@ -89,6 +89,37 @@ LPWSTR getStringResource(UINT id)
 
 int main()
 {
+	{
+		DWORD RtInstalled;
+		size_t pcbData = 4;
+		SYSTEM_INFO Info;
+		HKEY Key;
+		GetNativeSystemInfo(&Info);
+		LSTATUS ret;
+		switch (Info.wProcessorArchitecture) {
+		case PROCESSOR_ARCHITECTURE_AMD64:
+			ret = RegOpenKeyW(
+				HKEY_LOCAL_MACHINE,
+				L"SOFTWARE\\WOW6432Node\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86",
+				&Key
+			);
+			break;
+		case PROCESSOR_ARCHITECTURE_INTEL:
+			RegOpenKeyW(
+				HKEY_LOCAL_MACHINE,
+				L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86",
+				&Key
+			);
+			break;
+		}
+		RegQueryValueExW(Key, L"Installed", NULL, NULL, (LPBYTE)&RtInstalled, &pcbData);
+		if (RtInstalled != 1) {
+			MessageBoxW(NULL, L"VC Runtime is not installed, aborting", NULL, NULL);
+			return -1;
+		}
+	}
+	
+
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
     LPWSTR rcApplicationPath;
