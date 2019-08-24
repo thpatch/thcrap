@@ -89,6 +89,34 @@ LPWSTR getStringResource(UINT id)
 
 int main()
 {
+    STARTUPINFOW si;
+    PROCESS_INFORMATION pi;
+    LPWSTR rcApplicationPath;
+    LPWSTR rcCommandLine;
+    LPWSTR commandLineUsed;
+	LPWSTR rcApplicationName;
+
+	rcApplicationPath = getStringResource(0);
+	rcCommandLine = getStringResource(1);
+	rcApplicationName = getStringResource(2);
+
+	LPWSTR ApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
+
+	GetModuleFileNameW(NULL, ApplicationPath, MAX_PATH);
+	PathRemoveFileSpecW(ApplicationPath);
+
+	if (rcApplicationPath == NULL) {
+		PathAppendW(ApplicationPath, L"bin\\");
+	}
+	else {
+		PathAppendW(ApplicationPath, rcApplicationPath);
+	}
+
+
+	for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
+	si.cb = sizeof(si);
+	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
+
 	{
 		DWORD RtInstalled;
 		size_t pcbData = 4;
@@ -113,33 +141,15 @@ int main()
 			break;
 		}
 		RegQueryValueExW(Key, L"Installed", NULL, NULL, (LPBYTE)&RtInstalled, &pcbData);
+		RegCloseKey(Key);
 		if (RtInstalled != 1) {
-			MessageBoxW(NULL, L"VC Runtime is not installed, aborting", NULL, NULL);
-			return -1;
+			MessageBoxW(NULL, L"The Visual C++ Runtime is not installed on this computer, installing now", L"Visual C++", NULL);
+			wchar_t* RtPath = HeapAlloc(GetProcessHeap(), 1, my_wcslen(ApplicationPath) + 18 * sizeof(wchar_t)); // 18 * sizeof(wchar_t) = wcslen(L"vc_redist.x86.exe")
+			my_strcpy(my_strcpy(RtPath, ApplicationPath), L"vc_redist.x86.exe");
+			CreateProcess(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+			HeapFree(GetProcessHeap(), 1, RtPath);
+ 			return -1;
 		}
-	}
-	
-
-    STARTUPINFOW si;
-    PROCESS_INFORMATION pi;
-    LPWSTR rcApplicationPath;
-    LPWSTR rcCommandLine;
-    LPWSTR commandLineUsed;
-	LPWSTR rcApplicationName;
-
-    rcApplicationPath  = getStringResource(0);
-    rcCommandLine      = getStringResource(1);
-    rcApplicationName  = getStringResource(2);
-
-	LPWSTR ApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
-
-	GetModuleFileNameW(NULL, ApplicationPath, MAX_PATH);
-	PathRemoveFileSpecW(ApplicationPath);
-
-	if (rcApplicationPath == NULL) {
-		PathAppendW(ApplicationPath, L"bin\\");
-	} else {
-		PathAppendW(ApplicationPath, rcApplicationPath);
 	}
 
 	PathAppendW(ApplicationPath, rcApplicationName);
@@ -150,10 +160,6 @@ int main()
 	else {
 		commandLineUsed = rcCommandLine;
 	}
-
-    for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
-    si.cb = sizeof(si);
-    for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
 
     if (CreateProcess(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
         printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
