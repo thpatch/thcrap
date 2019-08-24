@@ -43,6 +43,7 @@ static bool do_update_run_cfg(const char *run_cfg_fn, const char* dst) {
 		VLA(char, new_archive, strlen(archive) + strlen(_dst) + 1);
 		strcpy(strcpy(new_archive, _dst), archive);
 		json_object_set(patch_info, "archive", json_string(new_archive));
+		VLA_FREE(new_archive);
 	}
 	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2) | JSON_SORT_KEYS);
 }
@@ -190,11 +191,13 @@ bool update_finalize()
 		if (do_update(update) == false) {
 			log_mbox(nullptr, MB_OK, "An error happened while finalizing the thcrap update!\n"
 				THCRAP_CORRUPTED_MSG);
+			free(_dst);
 			json_decref(update_list);
 			return false;
 		}
 	}
 
+	free(_dst);
 	json_decref(update_list);
 	return true;
 }
