@@ -11,6 +11,8 @@
 
 #define THCRAP_CORRUPTED_MSG "You thcrap installation may be corrupted. You can try to redownload it from https://www.thpatch.net/wiki/Touhou_Patch_Center:Download"
 
+char *_dst = NULL;
+
 static bool create_directory_for_path(const char *path)
 {
 	char dir[MAX_PATH];
@@ -27,6 +29,24 @@ static bool create_directory_for_path(const char *path)
 	return true;
 }
 
+static bool do_update_run_cfg(const char *run_cfg_fn, const char* dst) {
+	json_t *run_cfg = json_load_file_report(run_cfg_fn);
+	json_t *patches = json_object_get(run_cfg, "patches");
+	if (!json_is_array(patches)) {
+		// Not a run configuration and therefore doesn't have a patches array
+		return false;
+	}
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		const char *archive = json_object_get_string(patch_info, "archive");
+		VLA(char, new_archive, strlen(archive) + strlen(_dst) + 1);
+		strcpy(strcpy(new_archive, _dst), archive);
+		json_object_set(patch_info, "archive", json_string(new_archive));
+	}
+	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2) | JSON_SORT_KEYS);
+}
+
 static bool do_move_file(const char *src, const char *dst)
 {
 	if (!PathFileExistsU(src)) {
@@ -36,6 +56,11 @@ static bool do_move_file(const char *src, const char *dst)
 
 	if (strchr(dst, '\\') || strchr(dst, '/')) {
 		// Move to another directory
+		const char *ext = PathFindExtensionA(src);
+		if (strcmp(ext, ".js")) {
+			do_update_run_cfg(src, _dst);
+		}
+
 		if (!create_directory_for_path(dst)) {
 			return false;
 		}
@@ -64,6 +89,13 @@ static bool do_move_file(const char *src, const char *dst)
 
 static bool do_move(const char *src, const char *dst)
 {
+	if (PathIsDirectoryU(src)) {
+		if (_dst = NULL) {
+			_dst = (char*)malloc(strlen(src));
+			strcpy(_dst, dst);
+		}
+	}
+
 	if (strchr(src, '*') == nullptr) {
 		// Simple file
 		return do_move_file(src, dst);
