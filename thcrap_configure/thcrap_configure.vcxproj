@@ -49,7 +49,4 @@
   <ItemGroup>
     <Manifest Include="thcrap_configure.manifest" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
-  </ItemGroup>
 </Project>
