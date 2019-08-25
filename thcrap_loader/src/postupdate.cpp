@@ -43,9 +43,14 @@ static bool do_update_run_cfg(const char *run_cfg_fn, const char* dst) {
 		VLA(char, new_archive, strlen(archive) + strlen(_dst) + 1);
 		strcpy(strcpy(new_archive, _dst), archive);
 		json_object_set(patch_info, "archive", json_string(new_archive));
+		json_array_set(patches, i, patch_info);
 		VLA_FREE(new_archive);
 	}
+	json_object_set(run_cfg, "patches", patches);
 	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2) | JSON_SORT_KEYS);
+	json_decref(patches);
+	json_decref(run_cfg);
+	return true;
 }
 
 static bool do_move_file(const char *src, const char *dst)
