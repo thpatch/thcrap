@@ -23,7 +23,7 @@ json_t* RepoLocalNext(HANDLE *hFind)
 	BOOL find_ret = 0;
 	if(*hFind == NULL) {
 		// Too bad we can't do "*/repo.js" or something similar.
-		*hFind = FindFirstFile("patch_repos/*", &w32fd); // patch_repos
+		*hFind = FindFirstFile("patch_repos/*", &w32fd);
 		if(*hFind == INVALID_HANDLE_VALUE) {
 			return NULL;
 		}
