@@ -220,7 +220,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	);
 	pause();
 
-	CreateDirectoryU("patches", NULL);
+	CreateDirectoryU("patch_repos", NULL); // patch_repos
 	if (RepoDiscoverAtURL_wrapper(start_repo, id_cache, url_cache, file_write_error)) {
 		goto end;
 	}

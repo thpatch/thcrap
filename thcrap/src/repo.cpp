@@ -13,7 +13,7 @@
 json_t* RepoGetLocalFN(const char *id)
 {
 	const char *repo_fn = "repo.js";
-	return json_pack("s+++", "patches/", id, "/", repo_fn);
+	return json_pack("s+++", "patch_repos/", id, "/", repo_fn);
 }
 
 json_t* RepoLocalNext(HANDLE *hFind)
@@ -23,7 +23,7 @@ json_t* RepoLocalNext(HANDLE *hFind)
 	BOOL find_ret = 0;
 	if(*hFind == NULL) {
 		// Too bad we can't do "*/repo.js" or something similar.
-		*hFind = FindFirstFile("patches/*", &w32fd);
+		*hFind = FindFirstFile("patch_repos/*", &w32fd); // patch_repos
 		if(*hFind == INVALID_HANDLE_VALUE) {
 			return NULL;
 		}
