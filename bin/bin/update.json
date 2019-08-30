@@ -58,6 +58,11 @@
 			"*.js":              "config/",
 			"thcrap_log.txt":    "logs/",
 			"thcrap_log.1.txt":  "logs/"
+		},
+		"update_repo_paths": {
+			"cfg_files": "config/*.js",
+			"old_path": "/",
+			"new_path": "repos/"
 		}
 	}
 ]
