@@ -53,8 +53,8 @@ static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, c
 			}
 			strcpy(new_archive, new_path);
 			strcat(new_archive, archive + old_path_len);
-
 		}
+		json_object_set(patch_info, "archive", json_string(new_archive));
 		VLA_FREE(new_archive);
 	}
 	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2) | JSON_SORT_KEYS);
