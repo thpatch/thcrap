@@ -42,17 +42,17 @@ static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, c
 		const char *archive = json_object_get_string(patch_info, "archive");
 		VLA(char, new_archive, strlen(archive) + strlen(new_path) + 1);
 
-		if (strcmp(old_path, "/")) {
+		if (!strcmp(old_path, "/")) {
 			strcpy(new_archive, new_path);
 			strcat(new_archive, archive);
 		}
 		else {
 			size_t old_path_len = strlen(old_path);
-			if (!strncmp(archive, old_path, old_path_len)) {
+			if (strncmp(archive, old_path, old_path_len)) {
 				continue;
 			}
 			strcpy(new_archive, new_path);
-			strcat(new_archive, archive + old_path_len);
+			strcat(new_archive, archive + old_path_len - 1);
 		}
 		json_object_set(patch_info, "archive", json_string(new_archive));
 		VLA_FREE(new_archive);
@@ -188,8 +188,8 @@ static bool do_update(json_t *update)
 			do_update_repo_paths(cfg_files, old_path, new_path);
 		}
 		else {
-			VLA(char, run_cfg_dir, strlen(old_path));
-			strcpy(run_cfg_dir, old_path);
+			VLA(char, run_cfg_dir, strlen(cfg_files));
+			strcpy(run_cfg_dir, cfg_files);
 			PathRemoveFileSpecU(run_cfg_dir);
 			PathAddBackslashU(run_cfg_dir);
 			str_slash_normalize(run_cfg_dir);
