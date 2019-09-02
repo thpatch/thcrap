@@ -1,37 +1,4 @@
-#include <windows.h>
-#include <shlwapi.h>
-
-// A quick implementation of a few CRT functions because we don't link with the CRT.
-size_t my_wcslen(const wchar_t *str)
-{
-	size_t n = 0;
-	while (str[n]) {
-		n++;
-	}
-	return n;
-}
-
-int my_wcscmp(const wchar_t *s1, const wchar_t *s2)
-{
-	while (*s1 && *s1 == *s2) {
-		s1++;
-		s2++;
-	}
-	return *s2 - *s1;
-}
-
-// Returns the pointer to the end of dst, so that you can chain the call to append
-// several strings.
-LPWSTR my_strcpy(LPWSTR dst, LPCWSTR src)
-{
-	while (*src) {
-		*dst = *src;
-		src++;
-		dst++;
-	}
-	*dst = '\0';
-	return dst;
-}
+#include "thcrap_wrapper.h"
 
 void printError(LPCWSTR path)
 {
@@ -71,18 +38,26 @@ LPWSTR getStringResource(UINT id)
     do {
         if (buffer == NULL) {
             buffer = HeapAlloc(GetProcessHeap(), 0, size);
+			if (buffer == NULL) {
+				return NULL;
+			}
         }
         else {
             size = size * size;
-            buffer = HeapReAlloc(GetProcessHeap(), 0, buffer, size);
+            LPWSTR newBuffer = HeapReAlloc(GetProcessHeap(), 0, buffer, size);
+			if (newBuffer == NULL) {
+				HeapFree(GetProcessHeap(), 0, buffer);
+				return NULL;
+			}
+			buffer = newBuffer;
         }
 
-        count = LoadString(GetModuleHandle(NULL), id, buffer, size);
+        count = LoadStringW(GetModuleHandle(NULL), id, buffer, size / sizeof(WCHAR));
         if (count == 0) {
             HeapFree(GetProcessHeap(), 0, buffer);
             return NULL;
         }
-    } while (count + 1 == size);
+    } while ((count + 1) * sizeof(WCHAR) == size);
 
     return buffer;
 }
@@ -100,7 +75,7 @@ int main()
 	rcCommandLine = getStringResource(1);
 	rcApplicationName = getStringResource(2);
 
-	LPWSTR ApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 1, MAX_PATH);
+	LPWSTR ApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 0, MAX_PATH * sizeof(WCHAR));
 
 	GetModuleFileNameW(NULL, ApplicationPath, MAX_PATH);
 	PathRemoveFileSpecW(ApplicationPath);
@@ -112,45 +87,7 @@ int main()
 		PathAppendW(ApplicationPath, rcApplicationPath);
 	}
 
-
-	for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
-	si.cb = sizeof(si);
-	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
-
-	{
-		DWORD RtInstalled;
-		size_t pcbData = 4;
-		SYSTEM_INFO Info;
-		HKEY Key;
-		GetNativeSystemInfo(&Info);
-		LSTATUS ret;
-		switch (Info.wProcessorArchitecture) {
-		case PROCESSOR_ARCHITECTURE_AMD64:
-			ret = RegOpenKeyW(
-				HKEY_LOCAL_MACHINE,
-				L"SOFTWARE\\WOW6432Node\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86",
-				&Key
-			);
-			break;
-		case PROCESSOR_ARCHITECTURE_INTEL:
-			RegOpenKeyW(
-				HKEY_LOCAL_MACHINE,
-				L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86",
-				&Key
-			);
-			break;
-		}
-		RegQueryValueExW(Key, L"Installed", NULL, NULL, (LPBYTE)&RtInstalled, &pcbData);
-		RegCloseKey(Key);
-		if (RtInstalled != 1) {
-			MessageBoxW(NULL, L"The Visual C++ Runtime is not installed on this computer, installing now", L"Visual C++", NULL);
-			wchar_t* RtPath = HeapAlloc(GetProcessHeap(), 1, my_wcslen(ApplicationPath) + 18 * sizeof(wchar_t)); // 18 * sizeof(wchar_t) = wcslen(L"vc_redist.x86.exe")
-			my_strcpy(my_strcpy(RtPath, ApplicationPath), L"vc_redist.x86.exe");
-			CreateProcess(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-			HeapFree(GetProcessHeap(), 1, RtPath);
- 			return -1;
-		}
-	}
+	installCrt(ApplicationPath);
 
 	PathAppendW(ApplicationPath, rcApplicationName);
 
@@ -161,7 +98,11 @@ int main()
 		commandLineUsed = rcCommandLine;
 	}
 
-    if (CreateProcess(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
+	for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
+	si.cb = sizeof(si);
+	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
+
+	if (CreateProcess(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
         printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
         if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
         if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);

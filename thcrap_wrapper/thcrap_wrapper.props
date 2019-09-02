@@ -17,6 +17,10 @@
     <Import Project="$(SolutionDir)\Base.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>thcrap_wrapper.h</PrecompiledHeaderFile>
+    </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EntryPointSymbol>main</EntryPointSymbol>
@@ -25,7 +29,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\thcrap_wrapper.c">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\install_crt.c" />
+    <ClCompile Include="src\utils.c" />
+    <ClInclude Include="src\thcrap_wrapper.h" />
   </ItemGroup>
 </Project>
