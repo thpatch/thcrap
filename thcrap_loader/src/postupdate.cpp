@@ -27,6 +27,41 @@ static bool create_directory_for_path(const char *path)
 	return true;
 }
 
+static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, const char *new_path) {
+	json_t *run_cfg = json_load_file_report(run_cfg_fn);
+	json_t *patches = json_object_get(run_cfg, "patches");
+
+	if (!json_is_array(patches)) {
+		json_decref(run_cfg);
+		return;
+	}
+
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		const char *archive = json_object_get_string(patch_info, "archive");
+		VLA(char, new_archive, strlen(archive) + strlen(new_path) + 1);
+
+		if (!strcmp(old_path, "/")) {
+			strcpy(new_archive, new_path);
+			strcat(new_archive, archive);
+		}
+		else {
+			size_t old_path_len = strlen(old_path);
+			if (strncmp(archive, old_path, old_path_len)) {
+				continue;
+			}
+			strcpy(new_archive, new_path);
+			strcat(new_archive, archive + old_path_len - 1);
+		}
+		json_object_set(patch_info, "archive", json_string(new_archive));
+		VLA_FREE(new_archive);
+	}
+	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2) | JSON_SORT_KEYS);
+	json_decref(run_cfg);
+	return;
+}
+
 static bool do_move_file(const char *src, const char *dst)
 {
 	if (!PathFileExistsU(src)) {
@@ -36,6 +71,7 @@ static bool do_move_file(const char *src, const char *dst)
 
 	if (strchr(dst, '\\') || strchr(dst, '/')) {
 		// Move to another directory
+
 		if (!create_directory_for_path(dst)) {
 			return false;
 		}
@@ -64,6 +100,8 @@ static bool do_move_file(const char *src, const char *dst)
 
 static bool do_move(const char *src, const char *dst)
 {
+	// If the thing moved is a directory, it's a patch repo. The destination is stored here for when the run configuration get's updated
+
 	if (strchr(src, '*') == nullptr) {
 		// Simple file
 		return do_move_file(src, dst);
@@ -95,9 +133,10 @@ static bool do_move(const char *src, const char *dst)
 
 static bool do_update(json_t *update)
 {
-	json_t *update_detect = json_object_get(update, "detect");
-	json_t *update_delete = json_object_get(update, "delete");
-	json_t *update_move   = json_object_get(update, "move");
+	json_t *update_detect     = json_object_get(update, "detect");
+	json_t *update_delete     = json_object_get(update, "delete");
+	json_t *update_move       = json_object_get(update, "move");
+	json_t *update_repo_paths = json_object_get(update, "update_repo_paths");
 
 	if (update_detect) {
 		json_t *exist = json_object_get(update_detect, "exist");
@@ -132,6 +171,39 @@ static bool do_update(json_t *update)
 			if (!do_move(key, json_string_value(value))) {
 				return false;
 			}
+		}
+	}
+
+	if (update_repo_paths) {
+		const char *cfg_files = json_object_get_string(update_repo_paths, "cfg_files");
+		const char *old_path = json_object_get_string(update_repo_paths, "old_path");
+		const char *new_path = json_object_get_string(update_repo_paths, "new_path");
+		if (!cfg_files | !old_path | !new_path) {
+			log_mbox(nullptr, MB_OK, "\"update_repo_paths\" is missing one or more parameters!\n"
+				THCRAP_CORRUPTED_MSG);
+			return false;
+		}
+
+		if (!strchr(cfg_files, '*')) {
+			do_update_repo_paths(cfg_files, old_path, new_path);
+		}
+		else {
+			VLA(char, run_cfg_dir, strlen(cfg_files));
+			strcpy(run_cfg_dir, cfg_files);
+			PathRemoveFileSpecU(run_cfg_dir);
+			PathAddBackslashU(run_cfg_dir);
+			str_slash_normalize(run_cfg_dir);
+			size_t run_cfg_dir_len = strlen(run_cfg_dir);
+			WIN32_FIND_DATAA find_data;
+			HANDLE hFind = FindFirstFileU(cfg_files, &find_data);
+			do {
+				VLA(char, run_cfg_fn, run_cfg_dir_len + 1 + strlen(find_data.cFileName));
+				strcpy(run_cfg_fn, run_cfg_dir);
+				strcat(run_cfg_fn, find_data.cFileName);
+				do_update_repo_paths(run_cfg_fn, old_path, new_path);
+				VLA_FREE(run_cfg_fn);
+			} while (FindNextFileU(hFind, &find_data));
+			FindClose(hFind);
 		}
 	}
 

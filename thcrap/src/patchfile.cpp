@@ -287,7 +287,7 @@ json_t* patch_build(const json_t *sel)
 	const char *repo_id = json_array_get_string(sel, 0);
 	const char *patch_id = json_array_get_string(sel, 1);
 	return json_pack("{ss+++}",
-		"archive", "patches/", repo_id, "/", patch_id, "/"
+		"archive", "patch_repos/", repo_id, "/", patch_id, "/"
 	);
 }
 
@@ -303,9 +303,16 @@ void patches_init(const char *run_cfg_fn)
 	size_t i;
 	json_t *patch_info;
 	json_array_foreach(patches, i, patch_info) {
-		patch_rel_to_abs(patch_info, "."); // This line may be replaced entirely, this is just a cheap hack to get everything to work
+		const char *patch_path = json_object_get_string(patch_info, "archive");
+		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 1;
+		VLA(char, full_patch_path, full_patch_path_len);
+		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
+		strcpy(PathAddBackslashU(full_patch_path), patch_path);
+		str_slash_normalize(full_patch_path);
+		json_object_set(patch_info, "archive", json_string(full_patch_path));
 		patch_info = patch_init(patch_info);
 		json_array_set(patches, i, patch_info);
+		VLA_FREE(full_patch_path);
 		json_decref(patch_info);
 	}
 }
