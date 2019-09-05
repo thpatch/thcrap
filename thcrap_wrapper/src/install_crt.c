@@ -143,16 +143,19 @@ void installCrt(LPWSTR ApplicationPath)
 	si.cb = sizeof(si);
 	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)& pi)[i] = 0;
 
-	LPWSTR cmd = L"";
 	LPWSTR RtPath = HeapAlloc(GetProcessHeap(), 0, (my_wcslen(ApplicationPath) + my_wcslen(L"\"vc_redist.x86.exe\" /install /quiet /norestart") + 1) * sizeof(wchar_t));
 	LPWSTR p = RtPath;
 	p = my_strcpy(p, L"\"");
 	p = my_strcpy(p, ApplicationPath);
 	p = my_strcpy(p, L"vc_redist.x86.exe");
 	p = my_strcpy(p, L"\" /install /quiet /norestart");
-	CreateProcess(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+	BOOL ret = CreateProcess(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 	HeapFree(GetProcessHeap(), 0, RtPath);
 	CloseHandle(pi.hThread);
+
+	if (!ret) {
+		return;
+	}
 
 	// Create a window
 	HWND hwnd = createCrtInstallPopup();
