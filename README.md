@@ -126,4 +126,4 @@ Thank you to all our backers!
 
 ## The team ##
 
-<a href="https://github.com/thpatch/thcrap/graphs/contributors"><img src="https://opencollective.com/thpatch/contributors.svg?width=890&limit=4&button=false" /></a>
+<a href="https://github.com/thpatch/thcrap/graphs/contributors"><img src="https://opencollective.com/thpatch/contributors.svg?width=890&limit=5&button=false" /></a>
