@@ -11,6 +11,8 @@
 
 #define THCRAP_CORRUPTED_MSG "You thcrap installation may be corrupted. You can try to redownload it from https://www.thpatch.net/wiki/Touhou_Patch_Center:Download"
 
+static bool do_move(const char* src, const char* dst);
+
 static bool create_directory_for_path(const char *path)
 {
 	char dir[MAX_PATH];
@@ -64,6 +66,8 @@ static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, c
 
 static bool do_move_file(const char *src, const char *dst)
 {
+	char full_dst[MAX_PATH];
+
 	if (!PathFileExistsU(src)) {
 		// The source file doesn't exist. This is probably an optional file.
 		return true;
@@ -76,32 +80,32 @@ static bool do_move_file(const char *src, const char *dst)
 			return false;
 		}
 
-		char full_dst[MAX_PATH];
 		strcpy(full_dst, dst);
 		// PathAppendU is too dumb to deal with forward slashes
 		str_slash_normalize_win(full_dst);
 		PathAppendU(full_dst, src);
-		if (!MoveFileU(src, full_dst)) {
-			log_mboxf(nullptr, MB_OK, "Update: failed to move %s to %s.\n"
-				THCRAP_CORRUPTED_MSG, src, dst);
-			return false;
-		}
+		dst = full_dst;
 	}
-	else {
-		// Rename a file
-		if (!MoveFileU(src, dst)) {
-			log_mboxf(nullptr, MB_OK, "Update: failed to rename %s to %s.\n"
-				THCRAP_CORRUPTED_MSG, src, dst);
-			return false;
-		}
+
+	DWORD src_attr = GetFileAttributesA(src);
+	DWORD dst_attr = GetFileAttributesA(dst);
+	if (src_attr != INVALID_FILE_ATTRIBUTES && dst_attr != INVALID_FILE_ATTRIBUTES &&
+		(src_attr & FILE_ATTRIBUTE_DIRECTORY) && (dst_attr & FILE_ATTRIBUTE_DIRECTORY)) {
+		// Source and destination are both directories. Merge them.
+		return do_move((std::string(src) + "/*").c_str(), dst);
 	}
+
+	if (!MoveFileU(src, dst)) {
+		log_mboxf(nullptr, MB_OK, "Update: failed to move %s to %s.\n"
+			THCRAP_CORRUPTED_MSG, src, dst);
+		return false;
+	}
+
 	return true;
 }
 
 static bool do_move(const char *src, const char *dst)
 {
-	// If the thing moved is a directory, it's a patch repo. The destination is stored here for when the run configuration get's updated
-
 	if (strchr(src, '*') == nullptr) {
 		// Simple file
 		return do_move_file(src, dst);
