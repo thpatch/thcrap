@@ -164,7 +164,16 @@ static bool do_update(json_t *update)
 		json_flex_array_foreach(update_delete, i, it) {
 			// No error checking. Failure to remove a file tend to not be a critical error,
 			// it just keeps some clutter around forever.
-			DeleteFileU(json_string_value(it));
+			const char* file = json_string_value(it);
+			DWORD attr = GetFileAttributesA(file);
+			if (attr != INVALID_FILE_ATTRIBUTES) {
+				if (attr & FILE_ATTRIBUTE_DIRECTORY) {
+					RemoveDirectoryU(file);
+				}
+				else {
+					DeleteFileU(file);
+				}
+			}
 		}
 	}
 
