@@ -214,8 +214,51 @@ static bool do_update(json_t *update)
 	return true;
 }
 
+static void delete_recursive(std::string path)
+{
+	DWORD attr = GetFileAttributesA(path.c_str());
+	if (attr == INVALID_FILE_ATTRIBUTES) {
+		return;
+	}
+	if (!(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+		DeleteFileU(path.c_str());
+		return;
+	}
+
+	std::string wildcard = path + "\\*";
+	WIN32_FIND_DATAA findData;
+	HANDLE hFind = FindFirstFileU(wildcard.c_str(), &findData);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		return;
+	}
+	do {
+		if (strcmp(findData.cFileName, ".") != 0 &&
+			strcmp(findData.cFileName, "..") != 0) {
+			delete_recursive(path + "\\" + findData.cFileName);
+		}
+	} while (FindNextFileU(hFind, &findData));
+	FindClose(hFind);
+	RemoveDirectoryU(path.c_str());
+}
+
+static void remove_old_versions()
+{
+	WIN32_FIND_DATAA findData;
+	HANDLE hFind = FindFirstFileU("thcrap_old_*", &findData);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		return;
+	}
+	do {
+		delete_recursive(findData.cFileName);
+	} while (FindNextFileU(hFind, &findData));
+	FindClose(hFind);
+}
+
 bool update_finalize()
 {
+	// Remove the old version. Do that before any code path that can return.
+	remove_old_versions();
+
 	json_t *update_list = json_load_file_report("bin\\update.json");
 	if (update_list == nullptr) {
 		return false;
