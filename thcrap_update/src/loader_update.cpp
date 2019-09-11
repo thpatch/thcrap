@@ -498,7 +498,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	state.args = args;
 	state.state = STATE_INIT;
 
-	json_t *config = json_load_file_report("conifg/config.js");
+	json_t *config = json_load_file_report("config/config.js");
 	if (!config) {
 		config = json_object();
 	}
