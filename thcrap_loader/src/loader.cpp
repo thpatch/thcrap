@@ -80,6 +80,8 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		return 1;
 	}
 
+	log_init(0);
+
 	if(argc < 2) {
 		log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 			"This is the command-line loader component of the %s.\n"
