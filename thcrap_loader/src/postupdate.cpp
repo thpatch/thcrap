@@ -21,8 +21,8 @@ static bool create_directory_for_path(const char *path)
 	if (!PathFileExistsU(dir)) {
 		// CreateDirectoryU will create the parent directories if they don't exist.
 		if (!CreateDirectoryU(dir, nullptr)) {
-			log_mboxf(nullptr, MB_OK, "Update: failed to create directory %s.\n"
-				THCRAP_CORRUPTED_MSG, dir);
+			log_mboxf(nullptr, MB_OK, "Update: failed to create directory '%s': %s.\n"
+				THCRAP_CORRUPTED_MSG, dir, lasterror_str());
 			return false;
 		}
 	}
@@ -96,8 +96,8 @@ static bool do_move_file(const char *src, const char *dst)
 	}
 
 	if (!MoveFileU(src, dst)) {
-		log_mboxf(nullptr, MB_OK, "Update: failed to move %s to %s.\n"
-			THCRAP_CORRUPTED_MSG, src, dst);
+		log_mboxf(nullptr, MB_OK, "Update: failed to move '%s' to '%s': %s.\n"
+			THCRAP_CORRUPTED_MSG, src, dst, lasterror_str());
 		return false;
 	}
 
@@ -119,8 +119,8 @@ static bool do_move(const char *src, const char *dst)
 				// Nothing to move
 				return true;
 			} else {
-				log_mboxf(nullptr, MB_OK, "Update: failed to prepare the move of %s.\n"
-					THCRAP_CORRUPTED_MSG, src);
+				log_mboxf(nullptr, MB_OK, "Update: failed to prepare the move of '%s': %s.\n"
+					THCRAP_CORRUPTED_MSG, src, lasterror_str());
 				return false;
 			}
 		}
