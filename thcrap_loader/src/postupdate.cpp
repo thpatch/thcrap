@@ -201,7 +201,7 @@ static bool do_update(json_t *update)
 			do_update_repo_paths(cfg_files, old_path, new_path);
 		}
 		else {
-			VLA(char, run_cfg_dir, strlen(cfg_files));
+			VLA(char, run_cfg_dir, strlen(cfg_files) + 1);
 			strcpy(run_cfg_dir, cfg_files);
 			PathRemoveFileSpecU(run_cfg_dir);
 			PathAddBackslashU(run_cfg_dir);
