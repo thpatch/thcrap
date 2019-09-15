@@ -21,11 +21,10 @@ const char *EXE_HELP =
 
 const char *game_missing = NULL;
 size_t current_dir_len = 0;
-char *current_dir;
 
 bool update_finalize();
 
-const char* game_lookup(const json_t *games_js, const char *game)
+const char* game_lookup(const json_t *games_js, const char *game, const char *base_dir)
 {
 	const json_t *game_path = json_object_get(games_js, game);
 	if (!json_string_length(game_path)) {
@@ -35,7 +34,7 @@ const char* game_lookup(const json_t *games_js, const char *game)
 	const char *game_path_str = json_string_value(game_path);
 	if (PathIsRelativeA(game_path_str)) {
 		char* ret = (char*)malloc(current_dir_len + strlen(game_path_str));
-		strcpy(ret, current_dir);
+		strcpy(ret, base_dir);
 		PathAppendA(ret, game_path_str);
 		return ret;
 	}
@@ -163,7 +162,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			if(!new_exe_fn) {
 				const char *game = json_object_get_string(run_cfg, "game");
 				if(game) {
-					new_exe_fn = game_lookup(games_js, game);
+					new_exe_fn = game_lookup(games_js, game, current_dir);
 				}
 			}
 			if(new_exe_fn) {
@@ -177,7 +176,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			cmd_exe_fn = arg;
 		} else {
 			// Need to set game_missing even if games_js is null.
-			cmd_exe_fn = game_lookup(games_js, arg);
+			cmd_exe_fn = game_lookup(games_js, arg, current_dir);
 			game_id = arg;
 		}
 	}
