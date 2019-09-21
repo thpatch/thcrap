@@ -22,7 +22,7 @@ const char *EXE_HELP =
 const char *game_missing = NULL;
 size_t current_dir_len = 0;
 
-bool update_finalize();
+bool update_finalize(std::vector<std::string>& logs);
 
 const char* game_lookup(const json_t *games_js, const char *game, const char *base_dir)
 {
@@ -75,11 +75,19 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	// If thcrap just updated itself, finalize the update by moving things around if needed.
 	// This can be done before parsing the command line.
-	if (!update_finalize()) {
-		return 1;
-	}
+	// We can't call log_init before this because we might move some log files, but we still want to log things,
+	// so we'll buffer the logs somewhere and display them a bit later.
+	std::vector<std::string> update_finalize_logs;
+	bool update_finalize_ret = update_finalize(update_finalize_logs);
 
 	log_init(0);
+
+	for (auto& it : update_finalize_logs) {
+		log_printf("%s\n", it.c_str());
+	}
+	if (!update_finalize_ret) {
+		return 1;
+	}
 
 	if(argc < 2) {
 		log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,

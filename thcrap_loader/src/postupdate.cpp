@@ -8,12 +8,14 @@
   */
 
 #include "thcrap.h"
+#include <string>
+#include <vector>
 
 #define THCRAP_CORRUPTED_MSG "You thcrap installation may be corrupted. You can try to redownload it from https://www.thpatch.net/wiki/Touhou_Patch_Center:Download"
 
-static bool do_move(const char* src, const char* dst);
+static bool do_move(std::vector<std::string> logs, const char* src, const char* dst);
 
-static bool create_directory_for_path(const char *path)
+static bool create_directory_for_path(std::vector<std::string> logs, const char *path)
 {
 	char dir[MAX_PATH];
 	strcpy(dir, path);
@@ -21,10 +23,15 @@ static bool create_directory_for_path(const char *path)
 	if (!PathFileExistsU(dir)) {
 		// CreateDirectoryU will create the parent directories if they don't exist.
 		if (!CreateDirectoryU(dir, nullptr)) {
+			logs.push_back(std::string("[update] Creating directory ") + dir + " failed: " + std::to_string(GetLastError()));
 			log_mboxf(nullptr, MB_OK, "Update: failed to create directory '%s': %s.\n"
 				THCRAP_CORRUPTED_MSG, dir, lasterror_str());
 			return false;
 		}
+		logs.push_back(std::string("[update] Directory ") + dir + " created.");
+	}
+	else {
+		logs.push_back(std::string("[update] Directory ") + dir + " exists. I don't need to create it.");
 	}
 	return true;
 }
@@ -64,11 +71,12 @@ static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, c
 	return;
 }
 
-static bool do_move_file(const char *src, const char *dst)
+static bool do_move_file(std::vector<std::string> logs, const char *src, const char *dst)
 {
 	char full_dst[MAX_PATH];
 
 	if (!PathFileExistsU(src)) {
+		logs.push_back(std::string("[update] ") + src + " doesn't exist. Ignoring.");
 		// The source file doesn't exist. This is probably an optional file.
 		return true;
 	}
@@ -76,7 +84,8 @@ static bool do_move_file(const char *src, const char *dst)
 	if (strchr(dst, '\\') || strchr(dst, '/')) {
 		// Move to another directory
 
-		if (!create_directory_for_path(dst)) {
+		logs.push_back(std::string("[update] Creating directory for ") + src + "...");
+		if (!create_directory_for_path(logs, dst)) {
 			return false;
 		}
 
@@ -85,6 +94,7 @@ static bool do_move_file(const char *src, const char *dst)
 		str_slash_normalize_win(full_dst);
 		PathAppendU(full_dst, src);
 		dst = full_dst;
+		logs.push_back(std::string("[update] New destination is ") + dst);
 	}
 
 	DWORD src_attr = GetFileAttributesA(src);
@@ -92,10 +102,12 @@ static bool do_move_file(const char *src, const char *dst)
 	if (src_attr != INVALID_FILE_ATTRIBUTES && dst_attr != INVALID_FILE_ATTRIBUTES &&
 		(src_attr & FILE_ATTRIBUTE_DIRECTORY) && (dst_attr & FILE_ATTRIBUTE_DIRECTORY)) {
 		// Source and destination are both directories. Merge them.
-		return do_move((std::string(src) + "/*").c_str(), dst);
+		logs.push_back("[update] Source and destination are both directories. Merge them.");
+		return do_move(logs, (std::string(src) + "/*").c_str(), dst);
 	}
 
 	if (!MoveFileU(src, dst)) {
+		logs.push_back(std::string("[update] Moving ") + src + " to " + dst + " failed: " + std::to_string(GetLastError()));
 		log_mboxf(nullptr, MB_OK, "Update: failed to move '%s' to '%s': %s.\n"
 			THCRAP_CORRUPTED_MSG, src, dst, lasterror_str());
 		return false;
@@ -104,11 +116,12 @@ static bool do_move_file(const char *src, const char *dst)
 	return true;
 }
 
-static bool do_move(const char *src, const char *dst)
+static bool do_move(std::vector<std::string> logs, const char *src, const char *dst)
 {
 	if (strchr(src, '*') == nullptr) {
 		// Simple file
-		return do_move_file(src, dst);
+		logs.push_back(std::string("[update] No wildcard. Moving ") + src + " to " + dst + "...");
+		return do_move_file(logs, src, dst);
 	}
 	else {
 		// Wildcard
@@ -117,15 +130,18 @@ static bool do_move(const char *src, const char *dst)
 		if (hFind == INVALID_HANDLE_VALUE) {
 			if (GetLastError() == ERROR_FILE_NOT_FOUND) {
 				// Nothing to move
+				logs.push_back(std::string("[update] ") + src + " doesn't exist. Ignoring...");
 				return true;
 			} else {
+				logs.push_back(std::string("[update] FindFirstFileU(") + src + ") failed: " + std::to_string(GetLastError()));
 				log_mboxf(nullptr, MB_OK, "Update: failed to prepare the move of '%s': %s.\n"
 					THCRAP_CORRUPTED_MSG, src, lasterror_str());
 				return false;
 			}
 		}
 		do {
-			if (!do_move_file(findData.cFileName, dst)) {
+			logs.push_back(std::string("[update] Moving") + src + " to " + dst + "...");
+			if (!do_move_file(logs, findData.cFileName, dst)) {
 				FindClose(hFind);
 				return false;
 			}
@@ -135,7 +151,7 @@ static bool do_move(const char *src, const char *dst)
 	}
 }
 
-static bool do_update(json_t *update)
+static bool do_update(std::vector<std::string>& logs, json_t *update)
 {
 	json_t *update_detect     = json_object_get(update, "detect");
 	json_t *update_delete     = json_object_get(update, "delete");
@@ -143,14 +159,17 @@ static bool do_update(json_t *update)
 	json_t *update_repo_paths = json_object_get(update, "update_repo_paths");
 
 	if (update_detect) {
+		logs.push_back("[update] detect field present. Running detect test...");
 		json_t *exist = json_object_get(update_detect, "exist");
 		if (exist) {
 			// If all these files are here, we want to perform the update
 			size_t i;
 			json_t *it;
 			json_flex_array_foreach(exist, i, it) {
+				logs.push_back(std::string("[update] Detect test - checking if '") + json_string_value(it) + "' exists.");
 				if (PathFileExistsU(json_string_value(it)) == FALSE) {
 					// File don't exist - cancel the update
+					logs.push_back("[update] File don't exist - cancelling the update.");
 					return true;
 				}
 			}
@@ -159,45 +178,56 @@ static bool do_update(json_t *update)
 	// The detect test passed - apply the update
 
 	if (update_delete) {
+		logs.push_back("[update] delete field present. Running deletion task...");
 		size_t i;
 		json_t *it;
 		json_flex_array_foreach(update_delete, i, it) {
 			// No error checking. Failure to remove a file tend to not be a critical error,
 			// it just keeps some clutter around forever.
 			const char* file = json_string_value(it);
+			logs.push_back(std::string("[update] Trying to delete ") + file + "...");
 			DWORD attr = GetFileAttributesA(file);
+			BOOL ret = FALSE;
 			if (attr != INVALID_FILE_ATTRIBUTES) {
 				if (attr & FILE_ATTRIBUTE_DIRECTORY) {
-					RemoveDirectoryU(file);
+					ret = RemoveDirectoryU(file);
 				}
 				else {
-					DeleteFileU(file);
+					ret = DeleteFileU(file);
 				}
+			}
+			if (ret == FALSE) {
+				logs.push_back(std::string("[update] delete failed. "
+					"attr=") + std::to_string(attr) + ", GetLastError=" + std::to_string(GetLastError()));
 			}
 		}
 	}
 
 	if (update_move) {
+		logs.push_back("[update] move field present. Running move task...");
 		const char *key;
 		json_t *value;
 		json_object_foreach(update_move, key, value) {
-			if (!do_move(key, json_string_value(value))) {
+			if (!do_move(logs, key, json_string_value(value))) {
 				return false;
 			}
 		}
 	}
 
 	if (update_repo_paths) {
+		logs.push_back("[update] update_repo_paths field present. Updating run configurations...");
 		const char *cfg_files = json_object_get_string(update_repo_paths, "cfg_files");
 		const char *old_path = json_object_get_string(update_repo_paths, "old_path");
 		const char *new_path = json_object_get_string(update_repo_paths, "new_path");
 		if (!cfg_files | !old_path | !new_path) {
+			logs.push_back("[update] update_repo_paths is missing one or more parameters.");
 			log_mbox(nullptr, MB_OK, "\"update_repo_paths\" is missing one or more parameters!\n"
 				THCRAP_CORRUPTED_MSG);
 			return false;
 		}
 
 		if (!strchr(cfg_files, '*')) {
+			logs.push_back(std::string("[update] No wildcard. Updating ") + cfg_files);
 			do_update_repo_paths(cfg_files, old_path, new_path);
 		}
 		else {
@@ -213,6 +243,7 @@ static bool do_update(json_t *update)
 				VLA(char, run_cfg_fn, run_cfg_dir_len + 1 + strlen(find_data.cFileName));
 				strcpy(run_cfg_fn, run_cfg_dir);
 				strcat(run_cfg_fn, find_data.cFileName);
+				logs.push_back(std::string("[update] Updating ") + run_cfg_fn);
 				do_update_repo_paths(run_cfg_fn, old_path, new_path);
 				VLA_FREE(run_cfg_fn);
 			} while (FindNextFileU(hFind, &find_data));
@@ -263,17 +294,19 @@ static void remove_old_versions()
 	FindClose(hFind);
 }
 
-bool update_finalize()
+bool update_finalize(std::vector<std::string>& logs)
 {
 	// Remove the old version. Do that before any code path that can return.
 	remove_old_versions();
 
 	json_t *update_list = json_load_file_report("bin\\update.json");
 	if (update_list == nullptr) {
+		logs.push_back("[update] No update file. No update to do.");
 		return false;
 	}
 
 	if (!json_is_array(update_list)) {
+		logs.push_back("[update] bin\\update.json is not an array.");
 		log_mbox(nullptr, MB_OK, "Error: bin\\update.json is not an array.\n"
 			THCRAP_CORRUPTED_MSG);
 		json_decref(update_list);
@@ -283,12 +316,15 @@ bool update_finalize()
 	size_t i;
 	json_t *update;
 	json_array_foreach(update_list, i, update) {
-		if (do_update(update) == false) {
+		logs.push_back("[update] Running update " + std::to_string(i) + "...");
+		if (do_update(logs, update) == false) {
+			logs.push_back("[update] Update " + std::to_string(i) + " failed");
 			log_mbox(nullptr, MB_OK, "An error happened while finalizing the thcrap update!\n"
 				THCRAP_CORRUPTED_MSG);
 			json_decref(update_list);
 			return false;
 		}
+		logs.push_back("[update] Update " + std::to_string(i) + " done.");
 	}
 
 	json_decref(update_list);
