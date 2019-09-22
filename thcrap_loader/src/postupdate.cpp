@@ -176,8 +176,15 @@ static bool do_move(std::vector<std::string>& logs, const char *src, const char 
 			char src_file[MAX_PATH];
 			strcpy(src_file, src);
 			str_slash_normalize_win(src_file);
-			PathRemoveFileSpec(src_file);
-			PathAppend(src_file, findData.cFileName);
+			if (strchr(src, '\\') || strchr(src, '/')) {
+				PathRemoveFileSpec(src_file);
+				PathAppend(src_file, findData.cFileName);
+			}
+			else {
+				// src doesn't contain a path, just a pattern relative to the current directory.
+				// Copy cFileName from the current directory.
+				strcpy(src_file, findData.cFileName);
+			}
 			logs.push_back(std::string("[update] Moving ") + src_file + " to " + dst + "...");
 			if (!do_move_file(logs, src_file, dst)) {
 				FindClose(hFind);
