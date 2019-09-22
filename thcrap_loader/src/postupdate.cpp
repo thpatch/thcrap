@@ -284,15 +284,21 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 			size_t run_cfg_dir_len = strlen(run_cfg_dir);
 			WIN32_FIND_DATAA find_data;
 			HANDLE hFind = FindFirstFileU(cfg_files, &find_data);
-			do {
-				VLA(char, run_cfg_fn, run_cfg_dir_len + 1 + strlen(find_data.cFileName));
-				strcpy(run_cfg_fn, run_cfg_dir);
-				strcat(run_cfg_fn, find_data.cFileName);
-				logs.push_back(std::string("[update] Updating ") + run_cfg_fn);
-				do_update_repo_paths(run_cfg_fn, old_path, new_path);
-				VLA_FREE(run_cfg_fn);
-			} while (FindNextFileU(hFind, &find_data));
-			FindClose(hFind);
+			if (hFind != INVALID_HANDLE_VALUE) {
+				do {
+					if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0) {
+						continue;
+					}
+
+					VLA(char, run_cfg_fn, run_cfg_dir_len + 1 + strlen(find_data.cFileName));
+					strcpy(run_cfg_fn, run_cfg_dir);
+					strcat(run_cfg_fn, find_data.cFileName);
+					logs.push_back(std::string("[update] Updating ") + run_cfg_fn);
+					do_update_repo_paths(run_cfg_fn, old_path, new_path);
+					VLA_FREE(run_cfg_fn);
+				} while (FindNextFileU(hFind, &find_data));
+				FindClose(hFind);
+			}
 		}
 	}
 
