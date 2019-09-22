@@ -13,9 +13,9 @@
 
 #define THCRAP_CORRUPTED_MSG "You thcrap installation may be corrupted. You can try to redownload it from https://www.thpatch.net/wiki/Touhou_Patch_Center:Download"
 
-static bool do_move(std::vector<std::string> logs, const char* src, const char* dst);
+static bool do_move(std::vector<std::string>& logs, const char* src, const char* dst);
 
-static bool create_directory_for_path(std::vector<std::string> logs, const char *path)
+static bool create_directory_for_path(std::vector<std::string>& logs, const char *path)
 {
 	char dir[MAX_PATH];
 	strcpy(dir, path);
@@ -71,7 +71,7 @@ static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, c
 	return;
 }
 
-static bool do_move_file(std::vector<std::string> logs, const char *src, const char *dst)
+static bool do_move_file(std::vector<std::string>& logs, const char *src, const char *dst)
 {
 	char full_dst[MAX_PATH];
 
@@ -84,7 +84,7 @@ static bool do_move_file(std::vector<std::string> logs, const char *src, const c
 	if (strchr(dst, '\\') || strchr(dst, '/')) {
 		// Move to another directory
 
-		logs.push_back(std::string("[update] Creating directory for ") + src + "...");
+		logs.push_back(std::string("[update] Creating directory for ") + dst + "...");
 		if (!create_directory_for_path(logs, dst)) {
 			return false;
 		}
@@ -116,7 +116,7 @@ static bool do_move_file(std::vector<std::string> logs, const char *src, const c
 	return true;
 }
 
-static bool do_move(std::vector<std::string> logs, const char *src, const char *dst)
+static bool do_move(std::vector<std::string>& logs, const char *src, const char *dst)
 {
 	if (strchr(src, '*') == nullptr) {
 		// Simple file
@@ -125,6 +125,7 @@ static bool do_move(std::vector<std::string> logs, const char *src, const char *
 	}
 	else {
 		// Wildcard
+		logs.push_back(std::string("[update] Wildcard. Moving ") + src + " to " + dst + "...");
 		WIN32_FIND_DATAA findData;
 		HANDLE hFind = FindFirstFileU(src, &findData);
 		if (hFind == INVALID_HANDLE_VALUE) {
@@ -174,6 +175,7 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 				}
 			}
 		}
+		logs.push_back("[update] detect field succeeded. Running update...");
 	}
 	// The detect test passed - apply the update
 
@@ -197,8 +199,14 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 				}
 			}
 			if (ret == FALSE) {
-				logs.push_back(std::string("[update] delete failed. "
-					"attr=") + std::to_string(attr) + ", GetLastError=" + std::to_string(GetLastError()));
+				DWORD error = GetLastError();
+				if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) {
+					logs.push_back("[update] File doesn't exist. Ignoring...");
+				}
+				else {
+					logs.push_back(std::string("[update] delete failed. "
+						"attr=") + std::to_string(attr) + ", GetLastError=" + std::to_string(GetLastError()));
+				}
 			}
 		}
 	}
