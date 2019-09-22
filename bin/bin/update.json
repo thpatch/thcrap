@@ -7,6 +7,7 @@
 			"act_nut_lib.dll",
 			"bmpfont_create_gdi.dll",
 			"bmpfont_create_gdiplus.dll",
+			"COPYING",
 			"jansson.dll",
 			"libpng16.dll",
 			"msvcp120.dll",
@@ -26,8 +27,11 @@
 			"thcrap_tsa.dll",
 			"thcrap_update.dll",
 			"UNLICENSE.txt",
+			"win32_utf8.dll",
 			"win32_utf8_dynamic_x86.dll",
-			"zlib-ng.dll"
+			"zlib1.dll",
+			"zlib-ng.dll",
+			"zlibwapi.dll"
 		],
 		"move": {
 			"32th":              "repos/",
