@@ -90,9 +90,29 @@ static bool do_move_file(std::vector<std::string>& logs, const char *src, const 
 		}
 
 		strcpy(full_dst, dst);
+
+		const char* basename = src + strlen(src) - 1;
+		// Skip backslashs at the end
+		while (basename >= src && (*basename == '\\' || *basename == '/')) {
+			basename--;
+		}
+		// Find the last backslash
+		while (basename >= src && (*basename != '\\' && *basename != '/')) {
+			basename--;
+		}
+		if (basename >= src) {
+			// Found a backslash. Go for the character after it.
+			basename++;
+		}
+		else {
+			// Didn't found a backslash.
+			basename = src;
+		}
+		logs.push_back(std::string("[update] Updating destination with basename ") + basename);
+
 		// PathAppendU is too dumb to deal with forward slashes
 		str_slash_normalize_win(full_dst);
-		PathAppendU(full_dst, src);
+		PathAppendU(full_dst, basename);
 		dst = full_dst;
 		logs.push_back(std::string("[update] New destination is ") + dst);
 	}
@@ -103,10 +123,18 @@ static bool do_move_file(std::vector<std::string>& logs, const char *src, const 
 		(src_attr & FILE_ATTRIBUTE_DIRECTORY) && (dst_attr & FILE_ATTRIBUTE_DIRECTORY)) {
 		// Source and destination are both directories. Merge them.
 		logs.push_back("[update] Source and destination are both directories. Merge them.");
-		return do_move(logs, (std::string(src) + "/*").c_str(), dst);
+		bool ret = do_move(logs, (std::string(src) + "\\*").c_str(), dst);
+		logs.push_back(std::string("[update] ") + src + "\\* have been moved to " + dst + ". Removing the old " + src + "...");
+		if (RemoveDirectory(src)) {
+			logs.push_back(std::string("[update] ") + src + " removed.");
+		}
+		else {
+			logs.push_back(std::string("[update] Removing directory ") + src + " failed: " + std::to_string(GetLastError()));
+		}
+		return ret;
 	}
 
-	if (!MoveFileU(src, dst)) {
+	if (!MoveFileExU(src, dst, MOVEFILE_REPLACE_EXISTING)) {
 		logs.push_back(std::string("[update] Moving ") + src + " to " + dst + " failed: " + std::to_string(GetLastError()));
 		log_mboxf(nullptr, MB_OK, "Update: failed to move '%s' to '%s': %s.\n"
 			THCRAP_CORRUPTED_MSG, src, dst, lasterror_str());
@@ -141,8 +169,17 @@ static bool do_move(std::vector<std::string>& logs, const char *src, const char 
 			}
 		}
 		do {
-			logs.push_back(std::string("[update] Moving") + src + " to " + dst + "...");
-			if (!do_move_file(logs, findData.cFileName, dst)) {
+			if (strcmp(findData.cFileName, ".") == 0 || strcmp(findData.cFileName, "..") == 0) {
+				continue;
+			}
+
+			char src_file[MAX_PATH];
+			strcpy(src_file, src);
+			str_slash_normalize_win(src_file);
+			PathRemoveFileSpec(src_file);
+			PathAppend(src_file, findData.cFileName);
+			logs.push_back(std::string("[update] Moving ") + src_file + " to " + dst + "...");
+			if (!do_move_file(logs, src_file, dst)) {
 				FindClose(hFind);
 				return false;
 			}
