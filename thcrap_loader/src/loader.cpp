@@ -174,10 +174,14 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 				}
 			}
 			if(new_exe_fn) {
-				if (PathIsRelativeA(new_exe_fn)) {
-					cfg_exe_fn = (char*)malloc(strlen(rel_start) + strlen(new_exe_fn));
+				if (PathIsRelativeU(new_exe_fn)) {
+					cfg_exe_fn = (char*)malloc(current_dir_len + strlen(new_exe_fn) + 2);
 					strcpy(cfg_exe_fn, rel_start);
-					PathAppendA(cfg_exe_fn, new_exe_fn);
+					PathAppendU(cfg_exe_fn, new_exe_fn);
+				}
+				else {
+					cfg_exe_fn = (char*)malloc(strlen(new_exe_fn) + 1);
+					strcpy(cfg_exe_fn, new_exe_fn);
 				}
 			}
 		} else if(!stricmp(param_ext, ".exe")) {
