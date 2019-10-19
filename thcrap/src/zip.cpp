@@ -510,7 +510,7 @@ int zip_file_unzip(zip_t *zip, const char *fn)
 	int ret = -1;
 	zip_file_info_t file = {0};
 	void* file_buffer = zip_file_decompress(&file, zip, fn);
-	if(file_buffer && !dir_create_for_fn(fn)) {
+	if(file_buffer && dir_create_for_fn(fn) >= 0) {
 		DWORD byte_ret;
 		HANDLE handle = CreateFile(
 			fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
