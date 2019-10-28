@@ -453,8 +453,36 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 static HWND hLogEdit;
 void log_callback(const char* text)
 {
+	// Select the end
 	SendMessageW(hLogEdit, EM_SETSEL, 0, -1);
 	SendMessageW(hLogEdit, EM_SETSEL, -1, -1);
+
+	// Replace every \n with \r\n
+	std::string text_crlf;
+	do {
+		const char* nl = strchr(text, '\n');
+		if (!nl) {
+			// No LF - append everything
+			text_crlf.append(text);
+			text = nl;
+		}
+		else if (nl > text && // There is a character before nl[0]
+			nl[-1] == '\r') {
+			// CRLF - no conversion needed
+			nl++;
+			text_crlf.append(text, nl);
+			text = nl;
+		}
+		else {
+			// LF without CR - add a CR
+			text_crlf.append(text, nl);
+			text_crlf += "\r\n";
+			text = nl + 1;
+		}
+	} while (text != nullptr && text[0] != '\0');
+	text = text_crlf.c_str();
+
+	// Write the text
 	WCHAR_T_DEC(text);
 	WCHAR_T_CONV(text);
 	SendMessageW(hLogEdit, EM_REPLACESEL, 0, (LPARAM)text_w);
