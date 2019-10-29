@@ -102,11 +102,10 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	// Load games.js
 	{
-		size_t games_js_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1 + strlen("games.js") + 1;
+		size_t games_js_fn_len = GetCurrentDirectoryU(0, NULL) + 1 + strlen("games.js") + 1;
 		VLA(char, games_js_fn, games_js_fn_len);
 
-		GetModuleFileNameU(NULL, games_js_fn, games_js_fn_len);
-		PathRemoveFileSpec(games_js_fn);
+		GetCurrentDirectoryU(games_js_fn_len, games_js_fn);
 		PathAddBackslashA(games_js_fn);
 		strcat(games_js_fn, "games.js");
 		games_js = json_load_file_report(games_js_fn);
@@ -133,7 +132,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			if(!new_exe_fn) {
 				const char *game = json_object_get_string(run_cfg, "game");
 				if(game) {
-					new_exe_fn = game_lookup(games_js, game);
+					new_exe_fn = game_lookup(games_js, game, current_dir);
 				}
 			}
 			if(new_exe_fn) {
@@ -143,7 +142,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			cmd_exe_fn = arg;
 		} else {
 			// Need to set game_missing even if games_js is null.
-			cmd_exe_fn = game_lookup(games_js, arg);
+			cmd_exe_fn = game_lookup(games_js, arg, current_dir);
 			game_id = arg;
 		}
 	}
@@ -158,16 +157,18 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			);
 			ret = -2;
 		} else {
-			size_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
-			VLA(char, cur_dir, cur_dir_len);
-			GetCurrentDirectoryU(cur_dir_len, cur_dir);
+			// Since I already have current_dir, I'm going to use that
+			// Restructured version has another version of this logbox
+			// size_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
+			// VLA(char, cur_dir, cur_dir_len);
+			// GetCurrentDirectoryU(cur_dir_len, cur_dir);
 
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"The run configuration file \"%s\" was not found in the current directory (%s).\n",
-				run_cfg_fn, cur_dir
+				run_cfg_fn, current_dir
 			);
 
-			VLA_FREE(cur_dir);
+			// VLA_FREE(cur_dir);
 			ret = -4;
 		}
 		goto end;
