@@ -177,6 +177,7 @@ char* fn_for_patch(const json_t *patch_info, const char *fn)
 	patch_fn = (char*)malloc(patch_fn_len * sizeof(char));
 
 	strncpy(patch_fn, json_string_value(archive), archive_len);
+	PathAddBackslashA(patch_fn);
 	strcat(patch_fn, fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;
@@ -302,9 +303,16 @@ void patches_init(const char *run_cfg_fn)
 	size_t i;
 	json_t *patch_info;
 	json_array_foreach(patches, i, patch_info) {
-		patch_rel_to_abs(patch_info, run_cfg_fn);
+		const char *patch_path = json_object_get_string(patch_info, "archive");
+		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 1;
+		VLA(char, full_patch_path, full_patch_path_len);
+		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
+		strcpy(PathAddBackslashA(full_patch_path), patch_path);
+		str_slash_normalize(full_patch_path);
+		json_object_set(patch_info, "archive", json_string(full_patch_path));
 		patch_info = patch_init(patch_info);
 		json_array_set(patches, i, patch_info);
+		VLA_FREE(full_patch_path);
 		json_decref(patch_info);
 	}
 }
@@ -341,7 +349,10 @@ int patch_rel_to_abs(json_t *patch_info, const char *base_path)
 			PathAppendA(base_dir, base_path);
 		}
 		str_slash_normalize_win(base_dir);
-		PathRemoveFileSpec(base_dir);
+
+		if (!PathIsDirectoryA(base_path)) {
+			PathRemoveFileSpec(base_dir); 
+		}
 
 		size_t archive_len = json_string_length(archive_obj) + 1;
 		size_t abs_archive_len = base_path_len + archive_len;
