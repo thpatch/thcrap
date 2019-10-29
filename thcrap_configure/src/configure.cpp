@@ -127,6 +127,11 @@ int progress_callback(DWORD stack_progress, DWORD stack_total,
 #include "thcrap_i18n/src/thcrap_i18n.h"
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
+	VLA(char, current_dir, MAX_PATH);
+	GetModuleFileNameU(NULL, current_dir, MAX_PATH);
+	PathRemoveFileSpecU(current_dir);
+	SetCurrentDirectoryU(current_dir);
+	VLA_FREE(current_dir);
 	int ret = 0;
 	i18n_lang_init(THCRAP_I18N_APPDOMAIN);
 	// Global URL cache to not download anything twice
