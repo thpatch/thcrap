@@ -450,7 +450,6 @@ json_t* thcrap_init_stage_data(size_t stage_num)
 
 int InitDll(HMODULE hDll)
 {
-	size_t dll_dir_len;
 
 	w32u8_set_fallback_codepage(932);
 
@@ -465,9 +464,8 @@ int InitDll(HMODULE hDll)
 	hThcrap = hDll;
 
 	// Store the DLL's own directory to load plug-ins later
-	dll_dir_len = GetCurrentDirectory(0, NULL) + 1;
-	dll_dir = (char*)malloc(dll_dir_len * sizeof(char));
-	GetCurrentDirectory(dll_dir_len, dll_dir);
+	dll_dir = (char*)malloc(MAX_PATH);
+	GetCurrentDirectory(MAX_PATH, dll_dir);
 	PathAddBackslashA(dll_dir);
 
 	return 0;
