@@ -20,20 +20,40 @@ const char *EXE_HELP =
 	"precedence.";
 
 const char *game_missing = NULL;
+size_t current_dir_len = 0;
 
-const char* game_lookup(const json_t *games_js, const char *game)
+const char* game_lookup(const json_t *games_js, const char *game, const char *base_dir)
 {
-	const json_t *ret = json_object_get(games_js, game);
-	if(!json_string_length(ret)) {
+	const json_t *game_path = json_object_get(games_js, game);
+	if (!json_string_length(game_path)) {
 		game_missing = game;
+		return json_string_value(game_path);
 	}
-	return json_string_value(ret);
+	const char *game_path_str = json_string_value(game_path);
+	if (PathIsRelativeA(game_path_str)) {
+		char* ret = (char*)malloc(current_dir_len + strlen(game_path_str));
+		strcpy(ret, base_dir);
+		PathAppendA(ret, game_path_str);
+		return ret;
+	}
+	return game_path_str;
 }
 
 #include <win32_utf8/entry_winmain.c>
 
 int __cdecl win32_utf8_main(int argc, const char *argv[])
 {
+	size_t rel_start_len = GetCurrentDirectory(0, NULL);
+	VLA(char, rel_start, (rel_start_len + 1));
+	GetCurrentDirectoryU(rel_start_len, rel_start);
+
+	char current_dir[MAX_PATH];
+	GetModuleFileNameU(NULL, current_dir, MAX_PATH);
+	PathRemoveFileSpecU(current_dir);
+	// When restructuring, go down 1 level
+	SetCurrentDirectoryU(current_dir);
+
+	size_t current_dir_len = strlen(current_dir);
 	int ret;
 	json_t *games_js = NULL;
 
