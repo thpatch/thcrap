@@ -177,7 +177,7 @@ char* fn_for_patch(const json_t *patch_info, const char *fn)
 	patch_fn = (char*)malloc(patch_fn_len * sizeof(char));
 
 	strncpy(patch_fn, json_string_value(archive), archive_len);
-	PathAddBackslashA(patch_fn);
+	PathAddBackslashU(patch_fn);
 	strcat(patch_fn, fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;
@@ -307,7 +307,7 @@ void patches_init(const char *run_cfg_fn)
 		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 1;
 		VLA(char, full_patch_path, full_patch_path_len);
 		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
-		strcpy(PathAddBackslashA(full_patch_path), patch_path);
+		strcpy(PathAddBackslashU(full_patch_path), patch_path);
 		str_slash_normalize(full_patch_path);
 		json_object_set(patch_info, "archive", json_string(full_patch_path));
 		patch_info = patch_init(patch_info);

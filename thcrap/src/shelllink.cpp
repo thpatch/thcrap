@@ -76,7 +76,7 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 
 	GetModuleFileNameU(NULL, self_fn, self_fn_len);
 	PathRemoveFileSpec(self_fn);
-	PathAddBackslashA(self_fn);
+	PathAddBackslashU(self_fn);
 
 	// Yay, COM.
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
