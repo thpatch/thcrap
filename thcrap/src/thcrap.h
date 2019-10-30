@@ -19,6 +19,7 @@
 
 #ifdef __cplusplus
 #include <string>
+#include <regex>
 
 extern "C" {
 #endif

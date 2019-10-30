@@ -19,6 +19,8 @@ typedef enum {
 	SELF_NO_SIG,
 	SELF_SIG_FAIL,
 	SELF_REPLACE_ERROR,
+	SELF_NO_NETPATHS,
+	SELF_NO_EXISTING_BRANCH,
 } self_result_t;
 
 // Performs an update of the thcrap installation in [thcrap_dir].
