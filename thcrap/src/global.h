@@ -16,6 +16,7 @@ const char* PROJECT_NAME(void);
 const char* PROJECT_NAME_SHORT(void);
 DWORD PROJECT_VERSION(void);
 const char* PROJECT_VERSION_STRING(void);
+const char* PROJECT_BRANCH(void);
 
 json_t* runconfig_get(void);
 void runconfig_set(json_t *new_run_cfg);

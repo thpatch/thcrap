@@ -31,6 +31,10 @@ const char* PROJECT_VERSION_STRING(void)
 	}
 	return ver_str;
 }
+const char* PROJECT_BRANCH(void)
+{
+	return "stable";
+}
 json_t* runconfig_get(void)
 {
 	return run_cfg;

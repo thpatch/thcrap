@@ -20,6 +20,8 @@ static UINT self_msg_type[] = {
 	MB_ICONERROR, // SELF_NO_SIG
 	MB_ICONERROR, // SELF_SIG_FAIL
 	MB_ICONINFORMATION, // SELF_REPLACE_ERROR
+	MB_ICONEXCLAMATION, // SELF_NO_NETPATHS
+	MB_ICONEXCLAMATION, // SELF_NO_EXISTING_BRANCH
 };
 
 static const char *self_header_failure =
@@ -86,7 +88,24 @@ static const char *self_body[] = {
 	"\n"
 	"For further information about this new release, visit\n"
 	"\n"
-	"\t${desc_url}"
+	"\t${desc_url}",
+	// SELF_NO_NETPATHS
+	"An automatic update is required, but none of the servers is able to "
+	"provide infos regarding its location.\n"
+	"\n"
+	"The latest stable version can be found at\n"
+	"\n"
+	"\t${desc_url}",
+	// SELF_NO_EXISTING_BRANCH
+	"An automatic update is required, but the server doesn't know anything "
+	"about the running version, thus no update has been done.\n"
+	"\n"
+	"The latest stable release can be found at\n"
+	"\n"
+	"\t${desc_url}\n"
+	"\n"
+	"An automatic update will be attempted on the next run, unless "
+	"otherwise specified"
 };
 
 const char *self_sig_error =

@@ -14,6 +14,7 @@
 
 #define TEMP_FN_LEN 41
 
+const char *NETPATHS_FN = "thcrap_uris.js";
 const char *ARC_FN = "thcrap_brliron.zip";
 const char *SIG_FN = "thcrap_brliron.zip.sig";
 const char *PREFIX_BACKUP = "thcrap_old_%s";
@@ -508,6 +509,40 @@ end:
 	return ret;
 }
 
+static const char* self_resolve_netpath(json_t* netpaths_json)
+{
+	const char* netpath = "NO_NETPATH";
+	const char* branch = PROJECT_BRANCH();
+	json_t* branch_json = json_object_get(netpaths_json, branch);
+	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a "fallback on stable" option in config?
+	if (!branch_json)
+	{
+		return netpath;
+	}
+
+	const char* version;
+	const json_t* value;
+	uint32_t min_milestone = MAXDWORD;
+	json_object_foreach(branch_json, version, value)
+	{
+		if (!std::regex_match(version, std::regex("0x\\d{8}")))
+		{
+			continue;
+		}
+		size_t milestone = str_address_value(version, nullptr, nullptr);
+		if (milestone > PROJECT_VERSION() && milestone < min_milestone)
+		{
+			netpath = json_string_value(value);
+			min_milestone = milestone;
+		}
+	}
+	if (min_milestone == MAXDWORD)
+	{
+		netpath = json_object_get_string(branch_json, "latest");
+	}
+	return netpath;
+}
+
 self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 {
 	self_result_t ret;
@@ -548,14 +583,42 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	WaitForSingleObject(window.event_created, INFINITE);
 
 	auto srv = self_servers();
-	auto arc_dl = srv.download(ARC_FN, nullptr);
+
+	auto netpaths = srv.download_valid_json(NETPATHS_FN);
+	if (!netpaths)
+	{
+		return SELF_NO_NETPATHS;
+	}
+	defer(netpaths = json_decref_safe(netpaths));
+
+	const char* base_netpath = self_resolve_netpath(netpaths);
+	if (!strcmp(base_netpath, "NO_NETPATH"))
+	{
+		return SELF_NO_EXISTING_BRANCH;
+	}
+
+	const size_t arc_netpath_len = strlen(base_netpath) + strlen(ARC_FN);
+
+	VLA(char, arc_netpath, arc_netpath_len);
+	defer(VLA_FREE(arc_netpath));
+	strcpy(arc_netpath, base_netpath);
+	strcat(arc_netpath, ARC_FN);
+
+	auto arc_dl = srv.download(arc_netpath, nullptr);
 
 	defer(SAFE_FREE(arc_dl.file_buffer));
 	if(!arc_dl.file_buffer) {
 		return SELF_SERVER_ERROR;
 	}
 
-	auto sig = srv.download_valid_json(SIG_FN);
+	const size_t sig_netpath_len = strlen(base_netpath) + strlen(SIG_FN);
+
+	VLA(char, sig_netpath, sig_netpath_len);
+	defer(VLA_FREE(sig_netpath));
+	strcpy(sig_netpath, base_netpath);
+	strcat(sig_netpath, SIG_FN);
+
+	auto sig = srv.download_valid_json(sig_netpath);
 	if(!sig) {
 		return SELF_NO_SIG;
 	}
