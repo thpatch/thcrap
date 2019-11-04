@@ -97,8 +97,8 @@ static const char *self_body[] = {
 	"\n"
 	"\t${desc_url}",
 	// SELF_NO_EXISTING_BRANCH
-	"An automatic update is required, but no info could be found about "
-	"this specific version of thcrap, thus no update has been done.\n"
+	"An automatic update is required, but the server doesn't know anything "
+	"about the running version, thus no update has been done.\n"
 	"\n"
 	"The latest stable release can be found at\n"
 	"\n"
