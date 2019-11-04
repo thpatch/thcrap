@@ -513,32 +513,27 @@ static const char* self_get_netpath(json_t* netpaths_json)
 	const char* branch = PROJECT_BRANCH();
 	json_t* branch_json = json_object_get(netpaths_json, branch);
 	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a 'fallback on stable' option in config?
-	if (!branch_json)
-	{
+	if (!branch_json) {
 		return netpath;
 	}
 
 	const char* version;
 	const json_t* value;
 	uint32_t min_milestone = MAXDWORD;
-	json_object_foreach(branch_json, version, value)
-	{
+	json_object_foreach(branch_json, version, value) {
 		errno = 0;
 		// Check if the string isn't an hex
-		if (!strtoul(version, NULL, 16) || errno > 0)
-		{
+		if (!strtoul(version, NULL, 16) || errno > 0) {
 			continue;
 		}
 		
 		size_t milestone = str_address_value(version, nullptr, nullptr);
-		if (milestone > PROJECT_VERSION() && milestone < min_milestone)
-		{
+		if (milestone > PROJECT_VERSION() && milestone < min_milestone) {
 			netpath = json_string_value(value);
 			min_milestone = milestone;
 		}
 	}
-	if (min_milestone == MAXDWORD)
-	{
+	if (min_milestone == MAXDWORD) {
 		netpath = json_object_get_string(branch_json, "latest");
 	}
 	return netpath;
@@ -586,15 +581,13 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	auto srv = self_servers();
 
 	auto netpaths = srv.download_valid_json(NETPATHS_FN);
-	if (!netpaths)
-	{
+	if (!netpaths) {
 		return SELF_NO_NETPATHS;
 	}
 	defer(netpaths = json_decref_safe(netpaths));
 
 	const char* netpath = self_get_netpath(netpaths);
-	if (netpath == nullptr)
-	{
+	if (netpath == nullptr) {
 		return SELF_NO_EXISTING_BRANCH;
 	}
 
