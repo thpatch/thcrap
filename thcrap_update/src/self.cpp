@@ -509,9 +509,9 @@ end:
 	return ret;
 }
 
-static const char* self_resolve_netpath(json_t* netpaths_json)
+static const char* self_get_netpath(json_t* netpaths_json)
 {
-	const char* netpath = "NO_NETPATH";
+	const char* netpath = nullptr;
 	const char* branch = PROJECT_BRANCH();
 	json_t* branch_json = json_object_get(netpaths_json, branch);
 	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a "fallback on stable" option in config?
@@ -525,10 +525,13 @@ static const char* self_resolve_netpath(json_t* netpaths_json)
 	uint32_t min_milestone = MAXDWORD;
 	json_object_foreach(branch_json, version, value)
 	{
-		if (!std::regex_match(version, std::regex("0x\\d{8}")))
+		errno = 0;
+		// Check if the string isn't an hex
+		if (!strtoul(version, NULL, 16) || errno > 0)
 		{
 			continue;
 		}
+		
 		size_t milestone = str_address_value(version, nullptr, nullptr);
 		if (milestone > PROJECT_VERSION() && milestone < min_milestone)
 		{
@@ -591,13 +594,13 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	}
 	defer(netpaths = json_decref_safe(netpaths));
 
-	const char* base_netpath = self_resolve_netpath(netpaths);
-	if (!strcmp(base_netpath, "NO_NETPATH"))
+	const char* base_netpath = self_get_netpath(netpaths);
+	if (base_netpath == nullptr)
 	{
 		return SELF_NO_EXISTING_BRANCH;
 	}
 
-	const size_t arc_netpath_len = strlen(base_netpath) + strlen(ARC_FN);
+	const size_t arc_netpath_len = strlen(base_netpath) + strlen(ARC_FN) + 1;
 
 	VLA(char, arc_netpath, arc_netpath_len);
 	defer(VLA_FREE(arc_netpath));
@@ -611,7 +614,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		return SELF_SERVER_ERROR;
 	}
 
-	const size_t sig_netpath_len = strlen(base_netpath) + strlen(SIG_FN);
+	const size_t sig_netpath_len = strlen(base_netpath) + strlen(SIG_FN) + 1;
 
 	VLA(char, sig_netpath, sig_netpath_len);
 	defer(VLA_FREE(sig_netpath));
