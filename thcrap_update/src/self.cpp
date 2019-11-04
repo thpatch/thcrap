@@ -15,8 +15,6 @@
 #define TEMP_FN_LEN 41
 
 const char *NETPATHS_FN = "thcrap_uris.js";
-const char *ARC_FN = "thcrap_brliron.zip";
-const char *SIG_FN = "thcrap_brliron.zip.sig";
 const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
@@ -514,7 +512,7 @@ static const char* self_get_netpath(json_t* netpaths_json)
 	const char* netpath = nullptr;
 	const char* branch = PROJECT_BRANCH();
 	json_t* branch_json = json_object_get(netpaths_json, branch);
-	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a "fallback on stable" option in config?
+	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a 'fallback on stable' option in config?
 	if (!branch_json)
 	{
 		return netpath;
@@ -594,32 +592,25 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	}
 	defer(netpaths = json_decref_safe(netpaths));
 
-	const char* base_netpath = self_get_netpath(netpaths);
-	if (base_netpath == nullptr)
+	const char* netpath = self_get_netpath(netpaths);
+	if (netpath == nullptr)
 	{
 		return SELF_NO_EXISTING_BRANCH;
 	}
 
-	const size_t arc_netpath_len = strlen(base_netpath) + strlen(ARC_FN) + 1;
-
-	VLA(char, arc_netpath, arc_netpath_len);
-	defer(VLA_FREE(arc_netpath));
-	strcpy(arc_netpath, base_netpath);
-	strcat(arc_netpath, ARC_FN);
-
-	auto arc_dl = srv.download(arc_netpath, nullptr);
+	auto arc_dl = srv.download(netpath, nullptr);
 
 	defer(SAFE_FREE(arc_dl.file_buffer));
 	if(!arc_dl.file_buffer) {
 		return SELF_SERVER_ERROR;
 	}
 
-	const size_t sig_netpath_len = strlen(base_netpath) + strlen(SIG_FN) + 1;
+	const size_t sig_netpath_len = strlen(netpath) + strlen(".sig") + 1;
 
 	VLA(char, sig_netpath, sig_netpath_len);
 	defer(VLA_FREE(sig_netpath));
-	strcpy(sig_netpath, base_netpath);
-	strcat(sig_netpath, SIG_FN);
+	strcpy(sig_netpath, netpath);
+	strcat(sig_netpath, ".sig");
 
 	auto sig = srv.download_valid_json(sig_netpath);
 	if(!sig) {
