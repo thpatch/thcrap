@@ -512,33 +512,28 @@ static const char* self_get_netpath(json_t* netpaths_json)
 	const char* netpath = nullptr;
 	const char* branch = PROJECT_BRANCH();
 	json_t* branch_json = json_object_get(netpaths_json, branch);
-	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a "fallback on stable" option in config?
-	if (!branch_json)
-	{
+	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a 'fallback on stable' option in config?
+	if (!branch_json) {
 		return netpath;
 	}
 
 	const char* version;
 	const json_t* value;
 	uint32_t min_milestone = MAXDWORD;
-	json_object_foreach(branch_json, version, value)
-	{
+	json_object_foreach(branch_json, version, value) {
 		errno = 0;
 		// Check if the string isn't an hex
-		if (!strtoul(version, NULL, 16) || errno > 0)
-		{
+		if (!strtoul(version, NULL, 16) || errno > 0) {
 			continue;
 		}
 		
 		size_t milestone = str_address_value(version, nullptr, nullptr);
-		if (milestone > PROJECT_VERSION() && milestone < min_milestone)
-		{
+		if (milestone > PROJECT_VERSION() && milestone < min_milestone) {
 			netpath = json_string_value(value);
 			min_milestone = milestone;
 		}
 	}
-	if (min_milestone == MAXDWORD)
-	{
+	if (min_milestone == MAXDWORD) {
 		netpath = json_object_get_string(branch_json, "latest");
 	}
 	return netpath;
@@ -586,39 +581,30 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	auto srv = self_servers();
 
 	auto netpaths = srv.download_valid_json(NETPATHS_FN);
-	if (!netpaths)
-	{
+	if (!netpaths) {
 		return SELF_NO_NETPATHS;
 	}
 	defer(netpaths = json_decref_safe(netpaths));
 
-	const char* base_netpath = self_get_netpath(netpaths);
-	if (base_netpath == nullptr)
-	{
+	const char* netpath = self_get_netpath(netpaths);
+	if (netpath == nullptr) {
 		return SELF_NO_EXISTING_BRANCH;
 	}
-	
-	const size_t arc_netpath_len = strlen(base_netpath) + strlen(ARC_FN) + 1;
 
-	VLA(char, arc_netpath, arc_netpath_len);
-	defer(VLA_FREE(arc_netpath));
-	strcpy(arc_netpath, base_netpath);
-	strcat(arc_netpath, ARC_FN);
-	
-	auto arc_dl = srv.download(arc_netpath, nullptr);
+	auto arc_dl = srv.download(netpath, nullptr);
 
 	defer(SAFE_FREE(arc_dl.file_buffer));
 	if(!arc_dl.file_buffer) {
 		return SELF_SERVER_ERROR;
 	}
 
-	const size_t sig_netpath_len = strlen(base_netpath) + strlen(SIG_FN) + 1;
+	const size_t sig_netpath_len = strlen(netpath) + strlen(".sig") + 1;
 
 	VLA(char, sig_netpath, sig_netpath_len);
 	defer(VLA_FREE(sig_netpath));
-	strcpy(sig_netpath, base_netpath);
-	strcat(sig_netpath, SIG_FN);
-	
+	strcpy(sig_netpath, netpath);
+	strcat(sig_netpath, ".sig");
+
 	auto sig = srv.download_valid_json(sig_netpath);
 	if(!sig) {
 		return SELF_NO_SIG;
