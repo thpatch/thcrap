@@ -19,6 +19,8 @@ const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
 
+char update_version[11];
+
 static servers_t& self_servers()
 {
 	// Yup, hardcoded download URLs. After all, these should be a property
@@ -507,38 +509,6 @@ end:
 	return ret;
 }
 
-static const char* self_get_netpath(json_t* netpaths_json)
-{
-	const char* netpath = nullptr;
-	const char* branch = PROJECT_BRANCH();
-	json_t* branch_json = json_object_get(netpaths_json, branch);
-	// TODO By default it returns here with a literal that represents an invalid value. Shall I add a 'fallback on stable' option in config?
-	if (!branch_json) {
-		return netpath;
-	}
-
-	const char* version;
-	const json_t* value;
-	uint32_t min_milestone = MAXDWORD;
-	json_object_foreach(branch_json, version, value) {
-		errno = 0;
-		uint32_t milestone = strtoul(version, NULL, 16);
-		// Check if the string isn't an hex
-		if (errno > 0 || !milestone) {
-			continue;
-		}
-		
-		if (milestone > PROJECT_VERSION() && milestone < min_milestone) {
-			netpath = json_string_value(value);
-			min_milestone = milestone;
-		}
-	}
-	if (min_milestone == MAXDWORD) {
-		netpath = json_object_get_string(branch_json, "latest");
-	}
-	return netpath;
-}
-
 self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 {
 	self_result_t ret;
@@ -548,6 +518,63 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	HCRYPTPROV hCryptProv = 0;
 	HCRYPTHASH hHash = 0;
 
+	auto srv = self_servers();
+
+	auto netpaths = srv.download_valid_json(NETPATHS_FN);
+	if (!netpaths) {
+		return SELF_VERSION_CHECK_ERROR;
+	}
+	defer(netpaths = json_decref_safe(netpaths));
+
+	const char* branch = PROJECT_BRANCH();
+	json_t* branch_json = json_object_get(netpaths, branch);
+	if (!branch_json) {
+		return SELF_NO_EXISTING_BRANCH;
+	}
+	defer(branch_json = json_decref_safe(branch_json));
+
+	auto latest_version = json_object_get_hex(branch_json, "version");
+	if (!latest_version) {
+		return SELF_NO_TARGET_VERSION;
+	}
+
+	if (latest_version <= PROJECT_VERSION()) {
+		return SELF_NO_UPDATE;
+	}
+
+	// Since we already have downloaded NETPATHS_FN and we are trying to resolve the
+	// next exact version, we might as well get the right path immediately
+	const char* version_key;
+	const json_t* value;
+	const char* netpath = nullptr;
+	auto target_version = latest_version;
+	json_object_foreach(branch_json, version_key, value) {
+		errno = 0;
+		uint32_t milestone = strtoul(version_key, NULL, 16);
+		// Check if the string isn't an hex
+		if (errno > 0 || !milestone) {
+			continue;
+		}
+
+		if (milestone > PROJECT_VERSION() && milestone < target_version) {
+			netpath = json_string_value(value);
+			target_version = milestone;
+		}
+	}
+
+	if (target_version == latest_version) {
+		netpath = json_object_get_string(branch_json, "latest");
+	}
+
+	// We know for sure which version we need
+	str_hexdate_format(update_version, target_version);
+	
+	if (!netpath) {
+		// If netpath is still null, branch_json is malformed.
+		return SELF_INVALID_NETPATH;
+	}
+
+	// We are now trying an update
 	smartdlg_state_t window;
 	defer(smartdlg_close(&window));
 
@@ -577,19 +604,6 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		nullptr, 0, self_window_create_and_run, &window, 0, &window.thread_id
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
-
-	auto srv = self_servers();
-
-	auto netpaths = srv.download_valid_json(NETPATHS_FN);
-	if (!netpaths) {
-		return SELF_NO_NETPATHS;
-	}
-	defer(netpaths = json_decref_safe(netpaths));
-
-	const char* netpath = self_get_netpath(netpaths);
-	if (netpath == nullptr) {
-		return SELF_NO_EXISTING_BRANCH;
-	}
 
 	auto arc_dl = srv.download(netpath, nullptr);
 
@@ -644,3 +658,9 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	}
 	return ret;
 }
+
+const char* self_get_target_version()
+{
+	return update_version;
+}
+

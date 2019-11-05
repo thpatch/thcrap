@@ -20,8 +20,10 @@ static UINT self_msg_type[] = {
 	MB_ICONERROR, // SELF_NO_SIG
 	MB_ICONERROR, // SELF_SIG_FAIL
 	MB_ICONINFORMATION, // SELF_REPLACE_ERROR
-	MB_ICONEXCLAMATION, // SELF_NO_NETPATHS
+	MB_ICONERROR, // SELF_VERSION_CHECK_ERROR
+	MB_ICONEXCLAMATION, // SELF_INVALID_NETPATH
 	MB_ICONEXCLAMATION, // SELF_NO_EXISTING_BRANCH
+	MB_ICONEXCLAMATION, // SELF_NO_TARGET_VERSION
 };
 
 static const char *self_header_failure =
@@ -89,16 +91,31 @@ static const char *self_body[] = {
 	"For further information about this new release, visit\n"
 	"\n"
 	"\t${desc_url}",
-	// SELF_NO_NETPATHS
-	"An automatic update is required, but none of the servers is able to "
-	"provide infos regarding its location.\n"
+	// SELF_VERSION_CHECK_ERROR
+	"An error occured while looking for an update. No update will be done\n"
+	"\n"
+	"An automatic update will be attempted on the next run, unless "
+	"otherwise specified",
+	// SELF_INVALID_NETPATH
+	"An automatic update was attempted, but something is wrong with the "
+	"infos retrieved from the server.\n"
 	"\n"
 	"The latest stable version can be found at\n"
 	"\n"
 	"\t${desc_url}",
 	// SELF_NO_EXISTING_BRANCH
-	"An automatic update is required, but the server doesn't know anything "
-	"about the running version, thus no update has been done.\n"
+	"The server isn't able to retrieve infos relative to this build, thus "
+	"no update will be done\n"
+	"\n"
+	"The latest stable release can be found at\n"
+	"\n"
+	"\t${desc_url}\n"
+	"\n"
+	"An automatic update will be attempted on the next run, unless "
+	"otherwise specified",
+	// SELF_NO_TARGET_VERSION
+	"An update couldn't be found, since the server doesn't know which is "
+	"the latest version for this build.\n"
 	"\n"
 	"The latest stable release can be found at\n"
 	"\n"
@@ -120,40 +137,41 @@ int update_notify_thcrap(void)
 	self_result_t ret = SELF_NO_UPDATE;
 	json_t *run_cfg = runconfig_get();
 
-	json_t *patches = json_object_get(run_cfg, "patches");
-	size_t i;
-	json_t *patch_info;
-	uint32_t min_build = 0;
-	json_array_foreach(patches, i, patch_info) {
-		auto cur_min_build = json_object_get_hex(patch_info, "thcrap_version_min");
-		min_build = max(min_build, cur_min_build);
+	const char *thcrap_dir = json_object_get_string(run_cfg, "thcrap_dir");
+	
+	char *arc_fn = NULL;
+	const char *self_msg = NULL;
+	ret = self_update(thcrap_dir, &arc_fn);
+	
+	const char* self_header;
+	// Since we don't have the name of the newest version when this kind of values appear,
+	// we don't need to add self_header_failure
+	if (ret == SELF_OK || ret == SELF_VERSION_CHECK_ERROR ||
+			ret == SELF_NO_EXISTING_BRANCH || ret == SELF_NO_TARGET_VERSION) {
+		self_header = "";
+	} else {
+		self_header = self_header_failure;
 	}
-	if(min_build > PROJECT_VERSION()) {
-		ret = SELF_OK;
-		const char *thcrap_dir = json_object_get_string(run_cfg, "thcrap_dir");
-		const char *thcrap_url = json_object_get_string(run_cfg, "thcrap_url");
-		char *arc_fn = NULL;
-		const char *self_msg = NULL;
-		char min_build_str[11];
-		str_hexdate_format(min_build_str, min_build);
-		ret = self_update(thcrap_dir, &arc_fn);
-		strings_sprintf(SELF_MSG_SLOT,
-			"%s%s",
-			ret != SELF_OK ? self_header_failure : "",
-			self_body[ret]
-		);
-		if(ret == SELF_NO_SIG || ret == SELF_SIG_FAIL) {
-			strings_strcat(SELF_MSG_SLOT, self_sig_error);
-		}
-		strings_replace(SELF_MSG_SLOT, "${project}", PROJECT_NAME());
-		strings_replace(SELF_MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
-		strings_replace(SELF_MSG_SLOT, "${build}", min_build_str);
-		strings_replace(SELF_MSG_SLOT, "${thcrap_dir}", thcrap_dir);
-		strings_replace(SELF_MSG_SLOT, "${desc_url}", thcrap_url);
-		self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", arc_fn);
-		log_mboxf(NULL, MB_OK | self_msg_type[ret], self_msg);
-		SAFE_FREE(arc_fn);
+	
+	strings_sprintf(SELF_MSG_SLOT,
+		"%s%s",
+		self_header,
+		self_body[ret]
+	);
+	
+	const char* thcrap_url = json_object_get_string(run_cfg, "thcrap_url");
+	if(ret == SELF_NO_SIG || ret == SELF_SIG_FAIL) {
+		strings_strcat(SELF_MSG_SLOT, self_sig_error);
 	}
+	strings_replace(SELF_MSG_SLOT, "${project}", PROJECT_NAME());
+	strings_replace(SELF_MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
+	strings_replace(SELF_MSG_SLOT, "${build}", self_get_target_version());
+	strings_replace(SELF_MSG_SLOT, "${thcrap_dir}", thcrap_dir);
+	strings_replace(SELF_MSG_SLOT, "${desc_url}", thcrap_url);
+	self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", arc_fn);
+	log_mboxf(NULL, MB_OK | self_msg_type[ret], self_msg);
+	SAFE_FREE(arc_fn);
+	
 	return ret;
 }
 
