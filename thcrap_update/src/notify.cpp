@@ -136,6 +136,16 @@ int update_notify_thcrap(void)
 	const size_t SELF_MSG_SLOT = (size_t)self_body;
 	self_result_t ret = SELF_NO_UPDATE;
 	json_t *run_cfg = runconfig_get();
+	
+	json_t* global_cfg = globalconfig_get();
+	bool skip_check_mbox;
+	json_t* skip_check_mbox_object = json_object_get(global_cfg, "skip_check_mbox");
+	if (skip_check_mbox_object) {
+		skip_check_mbox = json_boolean_value(skip_check_mbox_object);
+	}
+	else {
+		skip_check_mbox = false;
+	}
 
 	const char *thcrap_dir = json_object_get_string(run_cfg, "thcrap_dir");
 	
@@ -144,10 +154,10 @@ int update_notify_thcrap(void)
 	ret = self_update(thcrap_dir, &arc_fn);
 	
 	const char* self_header;
+	const bool vcheck_error = (ret == SELF_VERSION_CHECK_ERROR || ret == SELF_NO_EXISTING_BRANCH || ret == SELF_NO_TARGET_VERSION);
 	// Since we don't have the name of the newest version when this kind of values appear,
 	// we don't need to add self_header_failure
-	if (ret == SELF_OK || ret == SELF_VERSION_CHECK_ERROR ||
-			ret == SELF_NO_EXISTING_BRANCH || ret == SELF_NO_TARGET_VERSION) {
+	if (ret == SELF_OK || vcheck_error) {
 		self_header = "";
 	} else {
 		self_header = self_header_failure;
@@ -169,7 +179,21 @@ int update_notify_thcrap(void)
 	strings_replace(SELF_MSG_SLOT, "${thcrap_dir}", thcrap_dir);
 	strings_replace(SELF_MSG_SLOT, "${desc_url}", thcrap_url);
 	self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", arc_fn);
-	log_mboxf(NULL, MB_OK | self_msg_type[ret], self_msg);
+
+	// Write message
+	if (skip_check_mbox) {
+		log_print("---------------------------\n");
+		log_printf("%s\n", self_msg);
+		log_print("---------------------------\n");
+	}
+	else {
+		log_mboxf(NULL, MB_OK | self_msg_type[ret], self_msg);
+	}
+
+	// Write new skip_check_mbox flag
+	skip_check_mbox = vcheck_error;
+	json_object_set_new(global_cfg, "skip_check_mbox", json_boolean(skip_check_mbox));
+	
 	SAFE_FREE(arc_fn);
 	
 	return ret;
