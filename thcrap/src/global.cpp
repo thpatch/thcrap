@@ -10,6 +10,7 @@
 #include "thcrap.h"
 
 json_t* run_cfg = NULL;
+json_t* global_cfg = NULL;
 
 const char* PROJECT_NAME(void)
 {
@@ -53,4 +54,14 @@ const json_t *runconfig_title_get(void)
 		title = json_object_get(run_cfg, "title");
 	}
 	return title ? title : (id ? id : NULL);
+}
+
+json_t* globalconfig_get(void)
+{
+	return global_cfg;
+}
+void globalconfig_set(json_t* new_global_config)
+{
+	json_decref(global_cfg);
+	global_cfg = json_incref(new_global_config);
 }

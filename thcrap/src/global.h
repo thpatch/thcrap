@@ -10,6 +10,7 @@
 #pragma once
 
 extern json_t *run_cfg;
+extern json_t* global_cfg;
 
 // Project stats
 const char* PROJECT_NAME(void);
@@ -28,6 +29,9 @@ void runconfig_set(json_t *new_run_cfg);
 // • 3. The plain game ID
 // • 4. NULL
 const json_t *runconfig_title_get(void);
+
+json_t* globalconfig_get(void);
+void globalconfig_set(json_t* new_global_cfg);
 
 // Convenience macro for binary file names that differ between Debug and
 // Release builds.
