@@ -529,7 +529,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	const char* branch = PROJECT_BRANCH();
 	json_t* branch_json = json_object_get(netpaths, branch);
 	if (!branch_json) {
-		return SELF_NO_EXISTING_BRANCH;
+		return SELF_NO_UPDATE;
 	}
 	defer(branch_json = json_decref_safe(branch_json));
 

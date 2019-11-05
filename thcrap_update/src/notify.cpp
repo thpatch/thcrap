@@ -22,7 +22,6 @@ static UINT self_msg_type[] = {
 	MB_ICONINFORMATION, // SELF_REPLACE_ERROR
 	MB_ICONERROR, // SELF_VERSION_CHECK_ERROR
 	MB_ICONEXCLAMATION, // SELF_INVALID_NETPATH
-	MB_ICONEXCLAMATION, // SELF_NO_EXISTING_BRANCH
 	MB_ICONEXCLAMATION, // SELF_NO_TARGET_VERSION
 };
 
@@ -103,16 +102,6 @@ static const char *self_body[] = {
 	"The latest stable version can be found at\n"
 	"\n"
 	"\t${desc_url}",
-	// SELF_NO_EXISTING_BRANCH
-	"The server isn't able to retrieve infos relative to this build, thus "
-	"no update will be done\n"
-	"\n"
-	"The latest stable release can be found at\n"
-	"\n"
-	"\t${desc_url}\n"
-	"\n"
-	"An automatic update will be attempted on the next run, unless "
-	"otherwise specified",
 	// SELF_NO_TARGET_VERSION
 	"An update couldn't be found, since the server doesn't know which is "
 	"the latest version for this build.\n"
@@ -157,7 +146,7 @@ int update_notify_thcrap(void)
 	}
 	
 	const char* self_header;
-	const bool vcheck_error = (ret == SELF_VERSION_CHECK_ERROR || ret == SELF_NO_EXISTING_BRANCH || ret == SELF_NO_TARGET_VERSION);
+	const bool vcheck_error = (ret == SELF_VERSION_CHECK_ERROR || ret == SELF_NO_TARGET_VERSION);
 	// Since we don't have the name of the newest version when this kind of values appear,
 	// we don't need to add self_header_failure
 	if (ret == SELF_OK || vcheck_error) {
