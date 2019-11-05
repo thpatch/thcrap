@@ -152,6 +152,9 @@ int update_notify_thcrap(void)
 	char *arc_fn = NULL;
 	const char *self_msg = NULL;
 	ret = self_update(thcrap_dir, &arc_fn);
+	if (ret == SELF_NO_UPDATE) {
+		return ret;
+	}
 	
 	const char* self_header;
 	const bool vcheck_error = (ret == SELF_VERSION_CHECK_ERROR || ret == SELF_NO_EXISTING_BRANCH || ret == SELF_NO_TARGET_VERSION);
