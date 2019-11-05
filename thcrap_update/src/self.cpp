@@ -19,7 +19,7 @@ const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
 
-char update_version[11];
+static char update_version[sizeof("0x20010101")];
 
 static servers_t& self_servers()
 {
