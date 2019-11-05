@@ -14,7 +14,7 @@
 
 #define TEMP_FN_LEN 41
 
-const char *NETPATHS_FN = "thcrap_uris.js";
+const char *NETPATHS_FN = "thcrap_update.js";
 const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
@@ -522,12 +522,12 @@ static const char* self_get_netpath(json_t* netpaths_json)
 	uint32_t min_milestone = MAXDWORD;
 	json_object_foreach(branch_json, version, value) {
 		errno = 0;
+		uint32_t milestone = strtoul(version, NULL, 16);
 		// Check if the string isn't an hex
-		if (!strtoul(version, NULL, 16) || errno > 0) {
+		if (errno > 0 || !milestone) {
 			continue;
 		}
 		
-		size_t milestone = str_address_value(version, nullptr, nullptr);
 		if (milestone > PROJECT_VERSION() && milestone < min_milestone) {
 			netpath = json_string_value(value);
 			min_milestone = milestone;
