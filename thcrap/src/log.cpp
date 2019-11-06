@@ -321,6 +321,7 @@ void log_init(int console)
 
 		fprintf(log_file, "%s\n", line);
 		fprintf(log_file, "%s logfile\n", PROJECT_NAME());
+		fprintf(log_file, "Branch: %s\n", PROJECT_BRANCH());
 		fprintf(log_file, "Version: %s\n", PROJECT_VERSION_STRING());
 		fprintf(log_file, "Build time: "  __DATE__ " " __TIME__ "\n");
 #if defined(BUILDER_NAME_W)
