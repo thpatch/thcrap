@@ -125,16 +125,6 @@ int update_notify_thcrap(void)
 	const size_t SELF_MSG_SLOT = (size_t)self_body;
 	self_result_t ret = SELF_NO_UPDATE;
 	json_t *run_cfg = runconfig_get();
-	
-	json_t* global_cfg = globalconfig_get();
-	bool skip_check_mbox;
-	json_t* skip_check_mbox_object = json_object_get(global_cfg, "skip_check_mbox");
-	if (skip_check_mbox_object) {
-		skip_check_mbox = json_boolean_value(skip_check_mbox_object);
-	}
-	else {
-		skip_check_mbox = false;
-	}
 
 	const char *thcrap_dir = json_object_get_string(run_cfg, "thcrap_dir");
 	
@@ -173,7 +163,8 @@ int update_notify_thcrap(void)
 	self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", arc_fn);
 
 	// Write message
-	if (skip_check_mbox) {
+	// Default is false, and the value is going to be written later anyway. Doing it now would result in a useless IO write
+	if (globalconfig_get_boolean("skip_check_mbox")) {
 		log_print("---------------------------\n");
 		log_printf("%s\n", self_msg);
 		log_print("---------------------------\n");
@@ -182,9 +173,8 @@ int update_notify_thcrap(void)
 		log_mboxf(NULL, MB_OK | self_msg_type[ret], self_msg);
 	}
 
-	// Write new skip_check_mbox flag
-	skip_check_mbox = vcheck_error;
-	json_object_set_new(global_cfg, "skip_check_mbox", json_boolean(skip_check_mbox));
+	// This isn't meant to be used by the user. skip_check_mbox just persists the last vcheck_error
+	globalconfig_set_boolean("skip_check_mbox", vcheck_error);
 	
 	SAFE_FREE(arc_fn);
 	

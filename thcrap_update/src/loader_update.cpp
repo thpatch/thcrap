@@ -526,34 +526,31 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	state.args = args;
 	state.state = STATE_INIT;
 
-	json_t *config = json_load_file_report("config.js");
-	if (!config) {
-		config = json_object();
-	}
-	globalconfig_set(config);
-	json_t *update_at_exit_object = json_object_get(config, "update_at_exit");
-	if (update_at_exit_object) {
-		state.update_at_exit = json_boolean_value(update_at_exit_object);
-	}
-	else {
+	errno = 0;
+	state.update_at_exit = globalconfig_get_boolean("update_at_exit");
+	if (errno > 0) {
+		globalconfig_set_boolean("update_at_exit", false);
 		state.update_at_exit = false;
 	}
-	json_t *background_updates_object = json_object_get(config, "background_updates");
-	if (background_updates_object) {
-		state.background_updates = json_boolean_value(background_updates_object);
-	}
-	else {
+
+	errno = 0;
+	state.background_updates = globalconfig_get_boolean("background_updates");
+	if (errno > 0) {
+		globalconfig_set_boolean("background_updates", true);
 		state.background_updates = true;
 	}
-	state.time_between_updates = (int)json_integer_value(json_object_get(config, "time_between_updates"));
+	
+	state.time_between_updates = (int)globalconfig_get_integer("time_between_updates");
+	
 	if (state.time_between_updates == 0) {
+		globalconfig_set_integer("time_between_updates", 5);
 		state.time_between_updates = 5;
 	}
-	json_t *update_others_object = json_object_get(config, "update_others");
-	if (update_others_object) {
-		state.update_others = json_boolean_value(update_others_object);
-	}
-	else {
+
+	errno = 0;
+	state.update_others = globalconfig_get_boolean("update_others");
+	if (errno > 0) {
+		globalconfig_set_boolean("update_others", true);
 		state.update_others = true;
 	}
 
@@ -685,14 +682,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	}
 
 	end:
-	json_object_set_new(config, "update_at_exit", json_boolean(state.update_at_exit));
-	json_object_set_new(config, "background_updates", json_boolean(state.background_updates));
-	json_object_set_new(config, "time_between_updates", json_integer(state.time_between_updates));
-	json_object_set_new(config, "update_others", json_boolean(state.update_others));
-	json_dump_file(config, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
-	globalconfig_set(NULL);
-	json_decref(config);
-
 	DeleteCriticalSection(&state.cs);
 	CloseHandle(state.hThread);
 	CloseHandle(state.event_created);

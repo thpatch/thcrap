@@ -10,7 +10,6 @@
 #pragma once
 
 extern json_t *run_cfg;
-extern json_t* global_cfg;
 
 // Project stats
 const char* PROJECT_NAME(void);
@@ -30,8 +29,20 @@ void runconfig_set(json_t *new_run_cfg);
 // • 4. NULL
 const json_t *runconfig_title_get(void);
 
-json_t* globalconfig_get(void);
-void globalconfig_set(json_t* new_global_cfg);
+// Returns the value matching key in config converted in bool
+// If key isn't in config it returns false with errno 1
+BOOL globalconfig_get_boolean(char* key);
+// Sets the value in config and then writes the result on disk
+// It returns what json_dump_file returns
+int globalconfig_set_boolean(char* key, BOOL value);
+// Returns the value matching key in config converted in long long
+// If key isn't in config it returns false with errno 1
+long long globalconfig_get_integer(char* key);
+// Sets the value in config and then writes the result on disk
+// It returns what json_dump_file returns
+int globalconfig_set_integer(char* key, long long value);
+// Releases global_cfg
+void globalconfig_release(void);
 
 // Convenience macro for binary file names that differ between Debug and
 // Release builds.

@@ -56,6 +56,69 @@ const json_t *runconfig_title_get(void)
 	return title ? title : (id ? id : NULL);
 }
 
+void globalconfig_init(void)
+{
+	json_decref(global_cfg);
+	global_cfg = json_load_file_report("config.js");
+	if (!global_cfg) {
+		global_cfg = json_object();
+	}
+}
+
+BOOL globalconfig_get_boolean(char* key)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_t* value_json = json_object_get(global_cfg, key);
+	if (!value_json) {
+		errno = 1;
+		return false;
+	}
+	return json_boolean_value(value_json);
+}
+
+int globalconfig_set_boolean(char* key, BOOL value)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_object_set_new(global_cfg, key, json_boolean(value));
+	return json_dump_file(global_cfg, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+}
+
+long long globalconfig_get_integer(char* key)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_t* value_json = json_object_get(global_cfg, key);
+	if (!value_json) {
+		errno = 1;
+		return false;
+	}
+	return json_integer_value(value_json);
+}
+
+int globalconfig_set_integer(char* key, long long value)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_object_set_new(global_cfg, key, json_integer(value));
+	return json_dump_file(global_cfg, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+}
+
+void globalconfig_release(void)
+{
+	json_decref(global_cfg);
+	global_cfg = json_incref(NULL);
+}
+
 json_t* globalconfig_get(void)
 {
 	return global_cfg;

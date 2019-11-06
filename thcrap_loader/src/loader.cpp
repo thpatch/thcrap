@@ -217,5 +217,6 @@ end:
 	json_decref(games_js);
 	json_decref(run_cfg);
 	runconfig_set(NULL);
+	globalconfig_release();
 	return ret;
 }
