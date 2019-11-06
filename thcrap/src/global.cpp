@@ -10,6 +10,7 @@
 #include "thcrap.h"
 
 json_t* run_cfg = NULL;
+json_t* global_cfg = NULL;
 
 const char* PROJECT_NAME(void)
 {
@@ -53,4 +54,72 @@ const json_t *runconfig_title_get(void)
 		title = json_object_get(run_cfg, "title");
 	}
 	return title ? title : (id ? id : NULL);
+}
+
+void globalconfig_init(void)
+{
+	json_decref(global_cfg);
+	global_cfg = json_load_file_report("config/config.js");
+	if (!global_cfg) {
+		global_cfg = json_object();
+	}
+}
+
+int globalconfig_dump(void)
+{
+	return json_dump_file(global_cfg, "config/config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+}
+
+BOOL globalconfig_get_boolean(char* key)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_t* value_json = json_object_get(global_cfg, key);
+	if (!value_json) {
+		errno = 1;
+		return false;
+	}
+	return json_boolean_value(value_json);
+}
+
+int globalconfig_set_boolean(char* key, const BOOL value)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_object_set_new(global_cfg, key, json_boolean(value));
+	return globalconfig_dump();
+}
+
+long long globalconfig_get_integer(char* key)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_t* value_json = json_object_get(global_cfg, key);
+	if (!value_json) {
+		errno = 1;
+		return false;
+	}
+	return json_integer_value(value_json);
+}
+
+int globalconfig_set_integer(char* key, const long long value)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	errno = 0;
+	json_object_set_new(global_cfg, key, json_integer(value));
+	return  globalconfig_dump();
+}
+
+void globalconfig_release(void)
+{
+	json_decref(global_cfg);
+	global_cfg = json_incref(NULL);
 }

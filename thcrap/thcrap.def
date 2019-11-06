@@ -71,6 +71,11 @@ EXPORTS
 	runconfig_get
 	runconfig_set
 	runconfig_title_get
+	globalconfig_get_boolean
+	globalconfig_set_boolean
+	globalconfig_get_integer
+	globalconfig_set_integer
+	globalconfig_release
 
 	; Initialization
 	; --------------
