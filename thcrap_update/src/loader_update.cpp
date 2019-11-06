@@ -526,34 +526,11 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	state.args = args;
 	state.state = STATE_INIT;
 
-	errno = 0;
-	state.update_at_exit = globalconfig_get_boolean("update_at_exit");
-	if (errno > 0) {
-		globalconfig_set_boolean("update_at_exit", false);
-		state.update_at_exit = false;
-	}
-
-	errno = 0;
-	state.background_updates = globalconfig_get_boolean("background_updates");
-	if (errno > 0) {
-		globalconfig_set_boolean("background_updates", true);
-		state.background_updates = true;
-	}
+	state.update_at_exit = globalconfig_get_boolean("update_at_exit", false);
+	state.background_updates = globalconfig_get_boolean("background_updates", true);
+	state.time_between_updates = (int)globalconfig_get_integer("time_between_updates", 5);
+	state.update_others = globalconfig_get_boolean("update_others", true);
 	
-	state.time_between_updates = (int)globalconfig_get_integer("time_between_updates");
-	
-	if (state.time_between_updates == 0) {
-		globalconfig_set_integer("time_between_updates", 5);
-		state.time_between_updates = 5;
-	}
-
-	errno = 0;
-	state.update_others = globalconfig_get_boolean("update_others");
-	if (errno > 0) {
-		globalconfig_set_boolean("update_others", true);
-		state.update_others = true;
-	}
-
 	SetLastError(0);
 	HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), "thcrap update UI");
 	bool mapExists = GetLastError() == ERROR_ALREADY_EXISTS;
@@ -681,7 +658,12 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
 
-	end:
+	end:	
+	globalconfig_set_boolean("update_at_exit", state.update_at_exit);
+	globalconfig_set_boolean("background_updates", state.background_updates);
+	globalconfig_set_integer("time_between_updates", state.time_between_updates);
+	globalconfig_set_boolean("update_others", state.update_others);
+	
 	DeleteCriticalSection(&state.cs);
 	CloseHandle(state.hThread);
 	CloseHandle(state.event_created);

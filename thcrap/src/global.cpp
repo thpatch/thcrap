@@ -70,7 +70,7 @@ int globalconfig_dump(void)
 	return json_dump_file(global_cfg, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 }
 
-BOOL globalconfig_get_boolean(char* key)
+BOOL globalconfig_get_boolean(char* key, const BOOL default_value)
 {
 	if (!global_cfg) {
 		globalconfig_init();
@@ -78,8 +78,8 @@ BOOL globalconfig_get_boolean(char* key)
 	errno = 0;
 	json_t* value_json = json_object_get(global_cfg, key);
 	if (!value_json) {
-		errno = 1;
-		return false;
+		errno = ENOENT;
+		return default_value;
 	}
 	return json_boolean_value(value_json);
 }
@@ -89,12 +89,17 @@ int globalconfig_set_boolean(char* key, const BOOL value)
 	if (!global_cfg) {
 		globalconfig_init();
 	}
-	errno = 0;
-	json_object_set_new(global_cfg, key, json_boolean(value));
+	json_t* j_value = json_boolean(value);
+	if (json_equal(j_value, json_object_get(global_cfg, key))) {
+		json_decref(j_value);
+		return 0;
+	}
+	json_object_set_new(global_cfg, key, j_value);
 	return globalconfig_dump();
+	
 }
 
-long long globalconfig_get_integer(char* key)
+long long globalconfig_get_integer(char* key, const long long default_value)
 {
 	if (!global_cfg) {
 		globalconfig_init();
@@ -102,8 +107,8 @@ long long globalconfig_get_integer(char* key)
 	errno = 0;
 	json_t* value_json = json_object_get(global_cfg, key);
 	if (!value_json) {
-		errno = 1;
-		return false;
+		errno = ENOENT;
+		return default_value;
 	}
 	return json_integer_value(value_json);
 }
@@ -113,8 +118,12 @@ int globalconfig_set_integer(char* key, const long long value)
 	if (!global_cfg) {
 		globalconfig_init();
 	}
-	errno = 0;
-	json_object_set_new(global_cfg, key, json_integer(value));
+	json_t* j_value = json_integer(value);
+	if (json_equal(j_value, json_object_get(global_cfg, key))) {
+		json_decref(j_value);
+		return 0;
+	}
+	json_object_set_new(global_cfg, key, j_value);
 	return globalconfig_dump();
 }
 
