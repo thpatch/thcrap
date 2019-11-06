@@ -123,13 +123,3 @@ void globalconfig_release(void)
 	json_decref(global_cfg);
 	global_cfg = json_incref(NULL);
 }
-
-json_t* globalconfig_get(void)
-{
-	return global_cfg;
-}
-void globalconfig_set(json_t* new_global_config)
-{
-	json_decref(global_cfg);
-	global_cfg = json_incref(new_global_config);
-}
