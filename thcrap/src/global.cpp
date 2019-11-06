@@ -79,7 +79,7 @@ BOOL globalconfig_get_boolean(char* key)
 	return json_boolean_value(value_json);
 }
 
-int globalconfig_set_boolean(char* key, BOOL value)
+int globalconfig_set_boolean(char* key, const BOOL value)
 {
 	if (!global_cfg) {
 		globalconfig_init();
@@ -103,7 +103,7 @@ long long globalconfig_get_integer(char* key)
 	return json_integer_value(value_json);
 }
 
-int globalconfig_set_integer(char* key, long long value)
+int globalconfig_set_integer(char* key, const long long value)
 {
 	if (!global_cfg) {
 		globalconfig_init();

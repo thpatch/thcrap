@@ -34,13 +34,13 @@ const json_t *runconfig_title_get(void);
 BOOL globalconfig_get_boolean(char* key);
 // Sets the value in config and then writes the result on disk
 // It returns what json_dump_file returns
-int globalconfig_set_boolean(char* key, BOOL value);
+int globalconfig_set_boolean(char* key, const BOOL value);
 // Returns the value matching key in config converted in long long
 // If key isn't in config it returns false with errno 1
 long long globalconfig_get_integer(char* key);
 // Sets the value in config and then writes the result on disk
 // It returns what json_dump_file returns
-int globalconfig_set_integer(char* key, long long value);
+int globalconfig_set_integer(char* key, const long long value);
 // Releases global_cfg
 void globalconfig_release(void);
 
