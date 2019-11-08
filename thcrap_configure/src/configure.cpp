@@ -311,6 +311,8 @@ end:
 	json_decref(url_cache);
 	json_decref(id_cache);
 
+	globalconfig_release();
+	
 	thcrap_update_exit_wrapper();
 	con_end();
 	return 0;
