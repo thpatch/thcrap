@@ -14,11 +14,12 @@
 
 #define TEMP_FN_LEN 41
 
-const char *ARC_FN = "thcrap_brliron.zip";
-const char *SIG_FN = "thcrap_brliron.zip.sig";
+const char *NETPATHS_FN = "thcrap_update.js";
 const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
+
+static char update_version[sizeof("0x20010101")];
 
 static servers_t& self_servers()
 {
@@ -517,6 +518,65 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	HCRYPTPROV hCryptProv = 0;
 	HCRYPTHASH hHash = 0;
 
+	log_printf("Checking for engine updates...\n");
+
+	auto srv = self_servers();
+
+	auto netpaths = srv.download_valid_json(NETPATHS_FN);
+	if (!netpaths) {
+		return SELF_VERSION_CHECK_ERROR;
+	}
+	defer(netpaths = json_decref_safe(netpaths));
+
+	const char* branch = PROJECT_BRANCH();
+	json_t* branch_json = json_object_get(netpaths, branch);
+	if (!branch_json) {
+		return SELF_NO_UPDATE;
+	}
+	defer(branch_json = json_decref_safe(branch_json));
+
+	auto latest_version = json_object_get_hex(branch_json, "version");
+	if (!latest_version) {
+		return SELF_NO_TARGET_VERSION;
+	}
+
+	if (latest_version <= PROJECT_VERSION()) {
+		return SELF_NO_UPDATE;
+	}
+
+	// Since we already have downloaded NETPATHS_FN and we are trying to resolve the
+	// next exact version, we might as well get the right path immediately
+	const char* version_key;
+	const json_t* value;
+	const char* netpath = nullptr;
+	auto target_version = latest_version;
+	json_object_foreach(branch_json, version_key, value) {
+		errno = 0;
+		uint32_t milestone = strtoul(version_key, NULL, 16);
+		// Check if the string isn't an hex
+		if (errno > 0 || !milestone) {
+			continue;
+		}
+
+		if (milestone > PROJECT_VERSION() && milestone < target_version) {
+			netpath = json_string_value(value);
+			target_version = milestone;
+		}
+	}
+
+	if (target_version == latest_version) {
+		netpath = json_object_get_string(branch_json, "latest");
+	}
+
+	// We know for sure which version we need
+	str_hexdate_format(update_version, target_version);
+	
+	if (!netpath) {
+		// If netpath is still null, branch_json is malformed.
+		return SELF_INVALID_NETPATH;
+	}
+
+	// We are now trying an update
 	smartdlg_state_t window;
 	defer(smartdlg_close(&window));
 
@@ -547,15 +607,21 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	auto srv = self_servers();
-	auto arc_dl = srv.download(ARC_FN, nullptr);
+	auto arc_dl = srv.download(netpath, nullptr);
 
 	defer(SAFE_FREE(arc_dl.file_buffer));
 	if(!arc_dl.file_buffer) {
 		return SELF_SERVER_ERROR;
 	}
 
-	auto sig = srv.download_valid_json(SIG_FN);
+	const size_t sig_netpath_len = strlen(netpath) + strlen(".sig") + 1;
+
+	VLA(char, sig_netpath, sig_netpath_len);
+	defer(VLA_FREE(sig_netpath));
+	strcpy(sig_netpath, netpath);
+	strcat(sig_netpath, ".sig");
+
+	auto sig = srv.download_valid_json(sig_netpath);
 	if(!sig) {
 		return SELF_NO_SIG;
 	}
@@ -594,3 +660,9 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	}
 	return ret;
 }
+
+const char* self_get_target_version()
+{
+	return update_version;
+}
+

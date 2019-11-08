@@ -8,6 +8,8 @@
   */
 
 #include "thcrap.h"
+#include <io.h>
+#include <fcntl.h>
 
 // -------
 // Globals
@@ -19,7 +21,7 @@ static int console_open = 0;
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
 static const char LOG[] = "thcrap_log.txt";
 static const char LOG_ROTATED[] = "thcrap_log.%d.txt";
-static const int ROTATIONS = 1; // Number of backups to keep
+static const int ROTATIONS = 5; // Number of backups to keep
 static void (*log_print_hook)(const char*) = NULL;
 static void(*log_nprint_hook)(const char*, size_t) = NULL;
 static HWND mbox_owner_hwnd = NULL; // Set by log_mbox_set_owner
@@ -291,7 +293,12 @@ void log_init(int console)
 {
 	log_rotate();
 
-	log_file = fopen(LOG, "wt");
+	// Using CreateFile, _open_osfhandle and _fdopen instead of plain fopen because we need the flag FILE_SHARE_DELETE for log rotation
+	HANDLE log_handle = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (log_handle != INVALID_HANDLE_VALUE) {
+		int fd = _open_osfhandle((intptr_t)log_handle, _O_TEXT);
+		log_file = _fdopen(fd, "wt");
+	}
 #ifdef _DEBUG
 	OpenConsole();
 #else
@@ -313,6 +320,7 @@ void log_init(int console)
 
 		fprintf(log_file, "%s\n", line);
 		fprintf(log_file, "%s logfile\n", PROJECT_NAME());
+		fprintf(log_file, "Branch: %s\n", PROJECT_BRANCH());
 		fprintf(log_file, "Version: %s\n", PROJECT_VERSION_STRING());
 		fprintf(log_file, "Build time: "  __DATE__ " " __TIME__ "\n");
 #if defined(BUILDER_NAME_W)
@@ -326,6 +334,7 @@ void log_init(int console)
 #elif defined(BUILDER_NAME)
 		fprintf(log_file, "Built by: %s\n", BUILDER_NAME);
 #endif
+		fprintf(log_file, "Command line: %s\n", GetCommandLineU());
 		fprintf(log_file, "%s\n\n", line);
 		fflush(log_file);
 		VLA_FREE(line);

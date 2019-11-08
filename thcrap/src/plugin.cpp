@@ -55,7 +55,7 @@ void plugin_load(const char *dir, const char *fn)
 	VLA(char, fn_abs, dir_len + fn_len);
 	defer(VLA_FREE(fn_abs));
 
-	sprintf(fn_abs, "%s/%s", dir, fn);
+	sprintf(fn_abs, "%s\\%s", dir, fn);
 
 	auto plugin = LoadLibraryExU(fn_abs, nullptr,
 		LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS

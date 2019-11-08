@@ -23,9 +23,9 @@
 #include "thcrap.h"
 
 #ifdef _AMD64_
-const stringref_t STEAM_API_DLL_FN = "steam_api64.dll";
+const char *STEAM_API_DLL_FN = "steam_api64.dll";
 #else
-const stringref_t STEAM_API_DLL_FN = "steam_api.dll";
+const char *STEAM_API_DLL_FN = "steam_api.dll";
 #endif
 
 typedef const char* __cdecl steam_appid_func_t(void);
@@ -67,15 +67,14 @@ extern "C" __declspec(dllexport) void steam_mod_post_init(void)
 	}
 
 	// Got steam_api.dll?
-	stringref_t thcrap_dir = json_object_get(runconfig_get(), "thcrap_dir");
+	const char *thcrap_dir = json_object_get_string(runconfig_get(), "thcrap_dir");
+	
 
-	size_t dll_fn_len = thcrap_dir.len + STEAM_API_DLL_FN.len + 1;
+	size_t dll_fn_len = strlen(thcrap_dir) + strlen(STEAM_API_DLL_FN) + 1;
 	VLA(char, dll_fn, dll_fn_len);
 	defer(VLA_FREE(dll_fn));
-	
-	char *p = dll_fn;
-	p = stringref_copy_advance_dst(p, thcrap_dir);
-	p = stringref_copy_advance_dst(p, STEAM_API_DLL_FN);
+	strcpy(dll_fn, thcrap_dir);
+	strcat(dll_fn, STEAM_API_DLL_FN);
 
 	hSteamAPI = LoadLibraryU(dll_fn);
 	if(!hSteamAPI) {

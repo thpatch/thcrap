@@ -67,9 +67,15 @@ EXPORTS
 	PROJECT_NAME_SHORT
 	PROJECT_VERSION
 	PROJECT_VERSION_STRING
+	PROJECT_BRANCH
 	runconfig_get
 	runconfig_set
 	runconfig_title_get
+	globalconfig_get_boolean
+	globalconfig_set_boolean
+	globalconfig_get_integer
+	globalconfig_set_integer
+	globalconfig_release
 
 	; Initialization
 	; --------------

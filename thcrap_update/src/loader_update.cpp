@@ -453,8 +453,36 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 static HWND hLogEdit;
 void log_callback(const char* text)
 {
+	// Select the end
 	SendMessageW(hLogEdit, EM_SETSEL, 0, -1);
 	SendMessageW(hLogEdit, EM_SETSEL, -1, -1);
+
+	// Replace every \n with \r\n
+	std::string text_crlf;
+	do {
+		const char* nl = strchr(text, '\n');
+		if (!nl) {
+			// No LF - append everything
+			text_crlf.append(text);
+			text = nl;
+		}
+		else if (nl > text && // There is a character before nl[0]
+			nl[-1] == '\r') {
+			// CRLF - no conversion needed
+			nl++;
+			text_crlf.append(text, nl);
+			text = nl;
+		}
+		else {
+			// LF without CR - add a CR
+			text_crlf.append(text, nl);
+			text_crlf += "\r\n";
+			text = nl + 1;
+		}
+	} while (text != nullptr && text[0] != '\0');
+	text = text_crlf.c_str();
+
+	// Write the text
 	WCHAR_T_DEC(text);
 	WCHAR_T_CONV(text);
 	SendMessageW(hLogEdit, EM_REPLACESEL, 0, (LPARAM)text_w);
@@ -498,36 +526,11 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	state.args = args;
 	state.state = STATE_INIT;
 
-	json_t *config = json_load_file_report("config.js");
-	if (!config) {
-		config = json_object();
-	}
-	json_t *update_at_exit_object = json_object_get(config, "update_at_exit");
-	if (update_at_exit_object) {
-		state.update_at_exit = json_boolean_value(update_at_exit_object);
-	}
-	else {
-		state.update_at_exit = false;
-	}
-	json_t *background_updates_object = json_object_get(config, "background_updates");
-	if (background_updates_object) {
-		state.background_updates = json_boolean_value(background_updates_object);
-	}
-	else {
-		state.background_updates = true;
-	}
-	state.time_between_updates = (int)json_integer_value(json_object_get(config, "time_between_updates"));
-	if (state.time_between_updates == 0) {
-		state.time_between_updates = 5;
-	}
-	json_t *update_others_object = json_object_get(config, "update_others");
-	if (update_others_object) {
-		state.update_others = json_boolean_value(update_others_object);
-	}
-	else {
-		state.update_others = true;
-	}
-
+	state.update_at_exit = globalconfig_get_boolean("update_at_exit", false);
+	state.background_updates = globalconfig_get_boolean("background_updates", true);
+	state.time_between_updates = (int)globalconfig_get_integer("time_between_updates", 5);
+	state.update_others = globalconfig_get_boolean("update_others", true);
+	
 	SetLastError(0);
 	HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), "thcrap update UI");
 	bool mapExists = GetLastError() == ERROR_ALREADY_EXISTS;
@@ -655,14 +658,12 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
 
-	end:
-	json_object_set_new(config, "update_at_exit", json_boolean(state.update_at_exit));
-	json_object_set_new(config, "background_updates", json_boolean(state.background_updates));
-	json_object_set_new(config, "time_between_updates", json_integer(state.time_between_updates));
-	json_object_set_new(config, "update_others", json_boolean(state.update_others));
-	json_dump_file(config, "config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
-	json_decref(config);
-
+	end:	
+	globalconfig_set_boolean("update_at_exit", state.update_at_exit);
+	globalconfig_set_boolean("background_updates", state.background_updates);
+	globalconfig_set_integer("time_between_updates", state.time_between_updates);
+	globalconfig_set_boolean("update_others", state.update_others);
+	
 	DeleteCriticalSection(&state.cs);
 	CloseHandle(state.hThread);
 	CloseHandle(state.event_created);
