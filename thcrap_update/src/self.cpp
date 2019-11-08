@@ -518,6 +518,8 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	HCRYPTPROV hCryptProv = 0;
 	HCRYPTHASH hHash = 0;
 
+	log_printf("Checking for engine updates...\n");
+
 	auto srv = self_servers();
 
 	auto netpaths = srv.download_valid_json(NETPATHS_FN);
