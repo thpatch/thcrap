@@ -54,6 +54,9 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	// When restructuring, go down 1 level
 	SetCurrentDirectoryU(current_dir);
 
+	runconfig_set(json_object());
+	return loader_update_with_UI_wrapper(NULL, NULL, NULL);
+
 	size_t current_dir_len = strlen(current_dir);
 	int ret;
 	json_t *games_js = NULL;

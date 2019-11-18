@@ -500,6 +500,29 @@ void log_ncallback(const char* text, size_t len)
 
 BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_fallback)
 {
+	// Update the thcrap engine
+	size_t cur_dir_len = GetCurrentDirectory(0, nullptr);
+	VLA(char, cur_dir, cur_dir_len);
+	GetCurrentDirectory(cur_dir_len, cur_dir);
+	json_object_set_new(runconfig_get(), "thcrap_dir", json_string(cur_dir));
+	if (update_notify_thcrap() == SELF_OK) {
+		// Re-run an up-to-date loader
+		LPSTR commandLine = GetCommandLine();
+		STARTUPINFOA sa;
+		PROCESS_INFORMATION pi;
+		memset(&sa, 0, sizeof(sa));
+		memset(&pi, 0, sizeof(pi));
+		sa.cb = sizeof(sa);
+		CreateProcess(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+		return TRUE;
+	}
+	else {
+		log_mbox(nullptr, MB_OK, "Please download the last update from https://www.thpatch.net/wiki/Touhou_Patch_Center:Download");
+		return FALSE;
+	}
+
 	loader_update_state_t state;
 	BOOL ret = 0;
 
@@ -571,25 +594,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	}
 
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
-
-	// Update the thcrap engine
-	size_t cur_dir_len = GetCurrentDirectory(0, nullptr);
-	VLA(char, cur_dir, cur_dir_len);
-	GetCurrentDirectory(cur_dir_len, cur_dir);
-	json_object_set_new(runconfig_get(), "thcrap_dir", json_string(cur_dir));
-	if (update_notify_thcrap() == SELF_OK && state.game_started == false) {
-		// Re-run an up-to-date loader
-		LPSTR commandLine = GetCommandLine();
-		STARTUPINFOA sa;
-		PROCESS_INFORMATION pi;
-		memset(&sa, 0, sizeof(sa));
-		memset(&pi, 0, sizeof(pi));
-		sa.cb = sizeof(sa);
-		CreateProcess(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
-		goto end;
-	}
 
 	{
 		json_t *game_fallback = nullptr;
