@@ -570,8 +570,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		WaitForSingleObject(hProcess, INFINITE);
 	}
 
-	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
-
 	// Update the thcrap engine
 	size_t cur_dir_len = GetCurrentDirectory(0, nullptr);
 	VLA(char, cur_dir, cur_dir_len);
@@ -590,6 +588,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		CloseHandle(pi.hThread);
 		goto end;
 	}
+
+	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 
 	{
 		json_t *game_fallback = nullptr;
