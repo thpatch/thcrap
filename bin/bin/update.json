@@ -1,7 +1,12 @@
 [
 	{
 		"detect": {
-			"exist": "thcrap.dll"
+			"exist": "thcrap.dll",
+			"dont_exist": [
+				"config",
+				"logs",
+				"repos"
+			]
 		},
 		"delete": [
 			"act_nut_lib.dll",
@@ -74,6 +79,54 @@
 			"cfg_files": "config/*.js",
 			"old_path": "/",
 			"new_path": "repos/"
+		}
+	},
+	{
+		"detect": {
+			"exist": [
+				"thcrap.dll",
+				"config",
+				"logs",
+				"repos"
+			]
+		},
+		"delete": [
+			"act_nut_lib.dll",
+			"bmpfont_create_gdi.dll",
+			"bmpfont_create_gdiplus.dll",
+			"COPYING",
+			"jansson.dll",
+			"libpng16.dll",
+			"msvcp120.dll",
+			"msvcr120.dll",
+			"README.md",
+			"scripts\\release_sign.py",
+			"scripts\\repo_update.py",
+			"scripts\\utils.py",
+			"scripts\\__pycache__\\utils.cpython-34.pyc",
+			"scripts\\__pycache__\\utils.cpython-35.pyc",
+			"scripts\\__pycache__\\utils.cpython-36.pyc",
+			"scripts\\__pycache__",
+			"scripts",
+			"steam_api.dll",
+			"thcrap.dll",
+			"thcrap_i18n.dll",
+			"thcrap_tasofro.dll",
+			"thcrap_tsa.dll",
+			"thcrap_update.dll",
+			"UNLICENSE.txt",
+			"win32_utf8.dll",
+			"win32_utf8_dynamic_x86.dll",
+			"zlib1.dll",
+			"zlib-ng.dll",
+			"zlibwapi.dll",
+
+			"thpatch\\repo.js",
+			"thpatch"
+		],
+		"fix_repo_paths_post_restructuring": {
+			"cfg_files": "config/*.js",
+			"broken_prefix": "repos/"
 		}
 	}
 ]

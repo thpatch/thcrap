@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -65,6 +66,37 @@ static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, c
 		}
 		json_object_set(patch_info, "archive", json_string(new_archive));
 		VLA_FREE(new_archive);
+	}
+	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2) | JSON_SORT_KEYS);
+	json_decref(run_cfg);
+	return;
+}
+
+/**
+  * Because of the mess with the restructuring update, some user might have run the do_update_repo_paths several times.
+  * If it happened, we try to fix their config file by removing all the "repos/repos/repos/..." we added, keeping only one of them.
+  */
+static void do_fix_repo_paths_post_restructuring(const char *run_cfg_fn, const char *broken_path) {
+	json_t *run_cfg = json_load_file_report(run_cfg_fn);
+	json_t *patches = json_object_get(run_cfg, "patches");
+
+	if (!json_is_array(patches)) {
+		json_decref(run_cfg);
+		return;
+	}
+
+	size_t broken_path_len = strlen(broken_path);
+	size_t i;
+	json_t *patch_info;
+	json_array_foreach(patches, i, patch_info) {
+		const char *archive = json_object_get_string(patch_info, "archive");
+		const char *new_archive = archive;
+
+		while (strncmp(new_archive, broken_path, broken_path_len) == 0 &&
+			   strncmp(new_archive + broken_path_len, broken_path, broken_path_len) == 0) {
+			new_archive += broken_path_len;
+		}
+		json_object_set(patch_info, "archive", json_string(new_archive));
 	}
 	json_dump_file(run_cfg, run_cfg_fn, JSON_INDENT(2) | JSON_SORT_KEYS);
 	json_decref(run_cfg);
@@ -196,12 +228,46 @@ static bool do_move(std::vector<std::string>& logs, const char *src, const char 
 	}
 }
 
+static void for_each_file(const char *wildcard, std::function<void(const char *file)> fn)
+{
+	if (!strchr(wildcard, '*')) {
+		fn(wildcard);
+		return ;
+	}
+
+	VLA(char, dir, strlen(wildcard) + 1);
+	strcpy(dir, wildcard);
+	PathRemoveFileSpecU(dir);
+	PathAddBackslashU(dir);
+	str_slash_normalize(dir);
+	size_t dir_len = strlen(dir);
+
+	WIN32_FIND_DATAA find_data;
+	HANDLE hFind = FindFirstFileU(wildcard, &find_data);
+	if (hFind != INVALID_HANDLE_VALUE) {
+		do {
+			if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0) {
+				continue;
+			}
+
+			VLA(char, path, dir_len + strlen(find_data.cFileName) + 1);
+			strcpy(path, dir);
+			strcat(path, find_data.cFileName);
+			fn(path);
+			VLA_FREE(path);
+		} while (FindNextFileU(hFind, &find_data));
+		FindClose(hFind);
+	}
+	VLA_FREE(dir);
+}
+
 static bool do_update(std::vector<std::string>& logs, json_t *update)
 {
-	json_t *update_detect     = json_object_get(update, "detect");
-	json_t *update_delete     = json_object_get(update, "delete");
-	json_t *update_move       = json_object_get(update, "move");
-	json_t *update_repo_paths = json_object_get(update, "update_repo_paths");
+	json_t *update_detect                     = json_object_get(update, "detect");
+	json_t *update_delete                     = json_object_get(update, "delete");
+	json_t *update_move                       = json_object_get(update, "move");
+	json_t *update_repo_paths                 = json_object_get(update, "update_repo_paths");
+	json_t *fix_repo_paths_post_restructuring = json_object_get(update, "fix_repo_paths_post_restructuring");
 
 	if (update_detect) {
 		logs.push_back("[update] detect field present. Running detect test...");
@@ -215,6 +281,20 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 				if (PathFileExistsU(json_string_value(it)) == FALSE) {
 					// File don't exist - cancel the update
 					logs.push_back("[update] File don't exist - cancelling the update.");
+					return true;
+				}
+			}
+		}
+		json_t *dont_exist = json_object_get(update_detect, "dont_exist");
+		if (dont_exist) {
+			// If none of these files are here, we want to perform the update
+			size_t i;
+			json_t *it;
+			json_flex_array_foreach(dont_exist, i, it) {
+				logs.push_back(std::string("[update] Detect test - checking if '") + json_string_value(it) + "' doesn't exist.");
+				if (PathFileExistsU(json_string_value(it)) != FALSE) {
+					// File exists - cancel the update
+					logs.push_back("[update] File exists - cancelling the update.");
 					return true;
 				}
 			}
@@ -271,42 +351,34 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 		const char *cfg_files = json_object_get_string(update_repo_paths, "cfg_files");
 		const char *old_path = json_object_get_string(update_repo_paths, "old_path");
 		const char *new_path = json_object_get_string(update_repo_paths, "new_path");
-		if (!cfg_files | !old_path | !new_path) {
+		if (!cfg_files || !old_path || !new_path) {
 			logs.push_back("[update] update_repo_paths is missing one or more parameters.");
 			log_mbox(nullptr, MB_OK, "\"update_repo_paths\" is missing one or more parameters!\n"
 				THCRAP_CORRUPTED_MSG);
 			return false;
 		}
 
-		if (!strchr(cfg_files, '*')) {
-			logs.push_back(std::string("[update] No wildcard. Updating ") + cfg_files);
-			do_update_repo_paths(cfg_files, old_path, new_path);
-		}
-		else {
-			VLA(char, run_cfg_dir, strlen(cfg_files) + 1);
-			strcpy(run_cfg_dir, cfg_files);
-			PathRemoveFileSpecU(run_cfg_dir);
-			PathAddBackslashU(run_cfg_dir);
-			str_slash_normalize(run_cfg_dir);
-			size_t run_cfg_dir_len = strlen(run_cfg_dir);
-			WIN32_FIND_DATAA find_data;
-			HANDLE hFind = FindFirstFileU(cfg_files, &find_data);
-			if (hFind != INVALID_HANDLE_VALUE) {
-				do {
-					if (strcmp(find_data.cFileName, ".") == 0 || strcmp(find_data.cFileName, "..") == 0) {
-						continue;
-					}
+		for_each_file(cfg_files, [&logs, old_path, new_path](const char *cfg_path) {
+			logs.push_back(std::string("[update] Updating ") + cfg_path);
+			do_update_repo_paths(cfg_path, old_path, new_path);
+		});
+	}
 
-					VLA(char, run_cfg_fn, run_cfg_dir_len + 1 + strlen(find_data.cFileName));
-					strcpy(run_cfg_fn, run_cfg_dir);
-					strcat(run_cfg_fn, find_data.cFileName);
-					logs.push_back(std::string("[update] Updating ") + run_cfg_fn);
-					do_update_repo_paths(run_cfg_fn, old_path, new_path);
-					VLA_FREE(run_cfg_fn);
-				} while (FindNextFileU(hFind, &find_data));
-				FindClose(hFind);
-			}
+	if (fix_repo_paths_post_restructuring) {
+		logs.push_back("[update] fix_repo_paths_post_restructuring field present. Fixing run configurations...");
+		const char *cfg_files     = json_object_get_string(fix_repo_paths_post_restructuring, "cfg_files");
+		const char *broken_prefix = json_object_get_string(fix_repo_paths_post_restructuring, "broken_prefix");
+		if (!cfg_files || !broken_prefix) {
+			logs.push_back("[update] fix_repo_paths_post_restructuring is missing one or more parameters.");
+			log_mbox(nullptr, MB_OK, "\"fix_repo_paths_post_restructuring\" is missing one or more parameters!\n"
+				THCRAP_CORRUPTED_MSG);
+			return false;
 		}
+
+		for_each_file(cfg_files, [&logs, broken_prefix](const char *cfg_path) {
+			logs.push_back(std::string("[update] Updating ") + cfg_path);
+			do_fix_repo_paths_post_restructuring(cfg_path, broken_prefix);
+		});
 	}
 
 	return true;
