@@ -84,7 +84,9 @@
 	{
 		"detect": {
 			"exist": [
-				"thcrap.dll",
+				"act_nut_lib.dll",
+				"msvcp120.dll",
+				"msvcr120.dll",
 				"config",
 				"logs",
 				"repos"
