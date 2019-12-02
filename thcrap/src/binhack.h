@@ -51,3 +51,18 @@ size_t hackpoints_count(json_t *hackpoints);
 // Else, they are relative to the main module of the current process.
 // Returns the number of binary hacks that could not be applied.
 int binhacks_apply(json_t *binhacks, HMODULE hMod);
+
+
+// Adds every codecave in [codecaves] on the current process.
+// The codecaves can then be called from binhacks similar to plugin functions. For example:
+// "binhacks": {
+//		"test_hack": {
+//			"code": "e9[codecave:test_cave]"
+//		}
+// }
+// "codecaves": {
+//		"test_cave": {
+//			"code": "somecode"
+//		}
+// }
+int codecaves_apply(json_t *codecaves, HMODULE hMod);

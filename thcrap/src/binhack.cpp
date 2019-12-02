@@ -315,6 +315,44 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 	return failed;
 }
 
+int codecaves_apply(json_t *codecaves, HMODULE hMod) {
+	log_printf("Applying codecaves...\n");
+	log_printf("------------------------\n");
+
+	const char *codecave_name;
+	json_t *hack;
+	size_t codecave_count = 0, sizes = 0;
+
+	json_object_foreach(codecaves, codecave_name, hack) {
+		sizes += binhack_calc_size(json_object_get_string(hack, "code"));
+		codecave_count += 1;
+	}
+
+	size_t codecaves_total_size = sizes + codecave_count * 3;
+	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	BYTE *current_cave = codecave_buf;
+
+	json_object_foreach(codecaves, codecave_name, hack) {
+		const char *code = json_object_get_string(hack, "code");
+		binhack_render(current_cave, (size_t)current_cave, code);
+
+		VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
+		strcpy(codecave_full_name, "codecave:");
+		strcpy(codecave_full_name + 9, codecave_name);
+		func_add(codecave_full_name, (size_t)current_cave);
+
+		current_cave += binhack_calc_size(code);
+		*current_cave = 0xCC; current_cave++;
+		*current_cave = 0xCC; current_cave++;
+		*current_cave = 0xCC; current_cave++;
+	}
+
+	DWORD old_prot;
+	VirtualProtect(codecave_buf, codecaves_total_size, PAGE_EXECUTE_READ, &old_prot);
+
+	return 0;
+}
+
 extern "C" __declspec(dllexport) void binhack_mod_exit()
 {
 	SAFE_CLEANUP(_free_locale, lc_neutral);

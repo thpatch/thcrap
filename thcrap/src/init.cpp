@@ -398,18 +398,23 @@ int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr)
 			stage_num
 		);
 	}
-
+	MessageBoxA(0, "", 0, 0);
 	int ret = 0;
-	auto *run_cfg = runconfig_get();
-	auto stage = thcrap_init_stage_data(stage_num);
+	json_t *run_cfg = runconfig_get();
+	json_t *stage = thcrap_init_stage_data(stage_num);
 
-	auto *binhacks = json_object_get(stage, "binhacks");
-	auto *breakpoints = json_object_get(stage, "breakpoints");
+	json_t *binhacks = json_object_get(stage, "binhacks");
+	json_t *breakpoints = json_object_get(stage, "breakpoints");
+	json_t *codecaves = json_object_get(stage, "codecaves");
 
-	auto hModFromStage = (HMODULE)json_object_get_immediate(
+	HMODULE hModFromStage = (HMODULE)json_object_get_immediate(
 		stage, nullptr, "module"
 	);
-	auto hMod = hModPtr ? *hModPtr : hModFromStage;
+	HMODULE hMod = hModPtr ? *hModPtr : hModFromStage;
+
+	if (json_is_object(codecaves)) {
+		ret += codecaves_apply(codecaves, hMod);
+	}
 
 	ret += binhacks_apply(binhacks, hMod);
 	// FIXME: this workaround is needed, because breakpoints don't check what they overwrite
