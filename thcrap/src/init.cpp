@@ -398,7 +398,6 @@ int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr)
 			stage_num
 		);
 	}
-	MessageBoxA(0, "", 0, 0);
 	int ret = 0;
 	json_t *run_cfg = runconfig_get();
 	json_t *stage = thcrap_init_stage_data(stage_num);

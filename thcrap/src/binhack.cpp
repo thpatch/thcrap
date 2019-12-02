@@ -333,7 +333,10 @@ int codecaves_apply(json_t *codecaves, HMODULE hMod) {
 	BYTE *current_cave = codecave_buf;
 
 	json_object_foreach(codecaves, codecave_name, hack) {
-		const char *code = json_object_get_string(hack, "code");
+		const char *code = json_string_value(hack);
+		if (!code) {
+			continue;
+		}
 		binhack_render(current_cave, (size_t)current_cave, code);
 
 		VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
