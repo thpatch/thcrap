@@ -20,6 +20,10 @@ const char* PROJECT_NAME_SHORT(void)
 {
 	return "thcrap";
 }
+const char* PROJECT_URL(void)
+{
+	return "https://www.thpatch.net/wiki/Touhou_Patch_Center:Download";
+}
 DWORD PROJECT_VERSION(void)
 {
 	return 0x20191005;
