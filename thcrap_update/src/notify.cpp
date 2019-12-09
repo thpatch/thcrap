@@ -163,7 +163,7 @@ int update_notify_thcrap(void)
 
 	// Write message
 	// Default is false, and the value is going to be written later anyway. Doing it now would result in a useless IO write
-	if (globalconfig_get_boolean("skip_check_mbox", false)) {
+	if (ret != SELF_OK && globalconfig_get_boolean("skip_check_mbox", false)) {
 		log_print("---------------------------\n");
 		log_printf("%s\n", self_msg);
 		log_print("---------------------------\n");
