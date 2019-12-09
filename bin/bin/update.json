@@ -32,6 +32,7 @@
 			"thcrap_tsa.dll",
 			"thcrap_update.dll",
 			"UNLICENSE.txt",
+			"version-resolve-installed.dat",
 			"win32_utf8.dll",
 			"win32_utf8_dynamic_x86.dll",
 			"zlib1.dll",
@@ -83,12 +84,10 @@
 	{
 		"detect": {
 			"exist": [
-				"act_nut_lib.dll",
-				"msvcp120.dll",
-				"msvcr120.dll",
 				"config",
 				"logs",
-				"repos"
+				"repos",
+				"version-resolve-installed.dat"
 			]
 		},
 		"delete": [
@@ -116,6 +115,7 @@
 			"thcrap_tsa.dll",
 			"thcrap_update.dll",
 			"UNLICENSE.txt",
+			"version-resolve-installed.dat",
 			"win32_utf8.dll",
 			"win32_utf8_dynamic_x86.dll",
 			"zlib1.dll",
