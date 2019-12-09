@@ -4,8 +4,7 @@
 			"exist": "thcrap.dll",
 			"dont_exist": [
 				"config",
-				"logs",
-				"repos"
+				"logs"
 			]
 		},
 		"delete": [
