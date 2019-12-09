@@ -151,7 +151,6 @@ int update_notify_thcrap(void)
 		self_body[ret]
 	);
 	
-	const char* thcrap_url = json_object_get_string(run_cfg, "thcrap_url");
 	if(ret == SELF_NO_SIG || ret == SELF_SIG_FAIL) {
 		strings_strcat(SELF_MSG_SLOT, self_sig_error);
 	}
@@ -159,7 +158,7 @@ int update_notify_thcrap(void)
 	strings_replace(SELF_MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
 	strings_replace(SELF_MSG_SLOT, "${build}", self_get_target_version());
 	strings_replace(SELF_MSG_SLOT, "${thcrap_dir}", thcrap_dir);
-	strings_replace(SELF_MSG_SLOT, "${desc_url}", thcrap_url);
+	strings_replace(SELF_MSG_SLOT, "${desc_url}", PROJECT_URL());
 	self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", arc_fn);
 
 	// Write message
