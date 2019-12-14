@@ -26,7 +26,7 @@ const char* PROJECT_URL(void)
 }
 DWORD PROJECT_VERSION(void)
 {
-	return 0x20190718;
+	return 0x20191213;
 }
 const char* PROJECT_VERSION_STRING(void)
 {
@@ -38,7 +38,7 @@ const char* PROJECT_VERSION_STRING(void)
 }
 const char* PROJECT_BRANCH(void)
 {
-	return "stable";
+	return "version-resolve-fix";
 }
 json_t* runconfig_get(void)
 {
