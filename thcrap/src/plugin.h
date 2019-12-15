@@ -23,6 +23,9 @@
 // functions. Basically a GetProcAddress across the engine and all plug-ins.
 void* func_get(const char *name);
 
+// Adds a pointer to a function to the list of functions used by func_get
+int func_add(const char *name, size_t addr);
+
 /// Module functions
 /// ================
 /**

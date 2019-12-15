@@ -19,6 +19,10 @@ void* func_get(const char *name)
 	return (void*)json_object_get_hex(funcs, name);
 }
 
+int func_add(const char *name, size_t addr) {
+	return json_object_set(funcs, name, json_integer(addr));
+}
+
 int plugin_init(HMODULE hMod)
 {
 	json_t *funcs_new = json_object();
