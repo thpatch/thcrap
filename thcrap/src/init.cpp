@@ -412,7 +412,7 @@ int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr)
 	HMODULE hMod = hModPtr ? *hModPtr : hModFromStage;
 
 	if (json_is_object(codecaves)) {
-		ret += codecaves_apply(codecaves, hMod);
+		ret += codecaves_apply(codecaves);
 	}
 
 	ret += binhacks_apply(binhacks, hMod);

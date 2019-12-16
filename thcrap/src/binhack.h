@@ -61,8 +61,7 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod);
 //		}
 // }
 // "codecaves": {
-//		"test_cave": {
-//			"code": "somecode"
+//		"test_cave": "somecode"
 //		}
 // }
-int codecaves_apply(json_t *codecaves, HMODULE hMod);
+int codecaves_apply(json_t *codecaves);

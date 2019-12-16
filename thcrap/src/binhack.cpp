@@ -315,7 +315,7 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 	return failed;
 }
 
-int codecaves_apply(json_t *codecaves, HMODULE hMod) {
+int codecaves_apply(json_t *codecaves) {
 	log_printf("Applying codecaves...\n");
 	log_printf("------------------------\n");
 
