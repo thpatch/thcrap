@@ -298,7 +298,7 @@ bool generate_bitmap_font(void *bmpfont, char *chars_list, json_t *patch, BYTE *
 		return false;
 	}
 	std::string plugin_path = thcrap_dir;
-	plugin_path += "\\";
+	plugin_path += "\\bin\\";
 	plugin_path += plugin;
 	plugin_path += DEBUG_OR_RELEASE ".dll";
 	ret &= bmpfont_add_option(bmpfont, "--plugin", plugin_path.c_str());
