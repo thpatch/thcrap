@@ -62,7 +62,7 @@ void plugin_load(const char *dir, const char *fn)
 	sprintf(fn_abs, "%s\\%s", dir, fn);
 
 	auto plugin = LoadLibraryExU(fn_abs, nullptr,
-		LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS
+		LOAD_WITH_ALTERED_SEARCH_PATH
 	);
 	if(!plugin) {
 		log_printf("[Plugin] Error loading %s: %s\n", fn_abs, lasterror_str());
