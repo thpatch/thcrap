@@ -151,11 +151,11 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 					"If you want to enable them again, you will need to run\n"
 					"%s\\thcrap_enable_updates.bat",
 					current_directory) == IDYES) {
-					MoveFile("thcrap_update" DEBUG_OR_RELEASE ".dll", "thcrap_update_disabled" DEBUG_OR_RELEASE ".dll");
+					MoveFile("bin\\thcrap_update" DEBUG_OR_RELEASE ".dll", "bin\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll");
 					const char *bat_file =
 						"@echo off\n"
-						"if not exist \"%~dp0\"\\thcrap_update" DEBUG_OR_RELEASE ".dll (\n"
-						"move \"%~dp0\"\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll \"%~dp0\"\\thcrap_update" DEBUG_OR_RELEASE ".dll\n"
+						"if not exist \"%~dp0\"\\bin\\thcrap_update" DEBUG_OR_RELEASE ".dll (\n"
+						"move \"%~dp0\"\\bin\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll \"%~dp0\"\\bin\\thcrap_update" DEBUG_OR_RELEASE ".dll\n"
 						"echo Updates enabled\n"
 						") else (\n"
 						"echo Updates are already enabled\n"
