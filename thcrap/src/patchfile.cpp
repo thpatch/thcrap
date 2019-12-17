@@ -198,6 +198,9 @@ int patch_file_blacklisted(const json_t *patch_info, const char *fn)
 	size_t i;
 	json_array_foreach(blacklist, i, val) {
 		const char *wildcard = json_string_value(val);
+		if (!wildcard) {
+			continue;
+		}
 		if(PathMatchSpec(fn, wildcard)) {
 			return 1;
 		}
@@ -304,6 +307,9 @@ void patches_init(const char *run_cfg_fn)
 	json_t *patch_info;
 	json_array_foreach(patches, i, patch_info) {
 		const char *patch_path = json_object_get_string(patch_info, "archive");
+		if (!patch_path) {
+			continue;
+		}
 		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 1;
 		VLA(char, full_patch_path, full_patch_path_len);
 		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);

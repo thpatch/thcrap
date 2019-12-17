@@ -818,6 +818,9 @@ void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_u
 	size_t i;
 	json_t *patch_info;
 	json_array_foreach(patch_array, i, patch_info) {
+		if (!patch_info) {
+			continue;
+		}
 		stack_update_param.stack_progress = i;
 		patch_update(patch_info, filter_func, filter_data, stack_update_callback, &stack_update_param);
 	}
@@ -874,6 +877,9 @@ void global_update(stack_update_callback_t callback, void *callback_param)
 	const char *key;
 	json_t *patch_info;
 	json_object_foreach(patches, key, patch_info) {
+		if (!patch_info) {
+			continue;
+		}
 		stack_update_param.stack_progress = i;
 		patch_update(patch_info, update_filter_games, filter, stack_update_callback, &stack_update_param);
 		i++;
