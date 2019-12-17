@@ -26,6 +26,7 @@ void log_print_context(PCONTEXT ctx)
 void log_print_rva_and_module(HMODULE mod, void *addr)
 {
 	if(!mod) {
+		log_print("\n");
 		return;
 	}
 	size_t crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
