@@ -36,6 +36,7 @@ copy /y $(ProjectDir)\jansson\src\jansson.h $(ProjectDir)\jansson.h
     </PreBuildEvent>
     <ClCompile>
       <PreprocessorDefinitions>HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4090;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <ModuleDefinitionFile>jansson\src\jansson.def</ModuleDefinitionFile>

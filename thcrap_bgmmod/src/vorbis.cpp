@@ -130,7 +130,7 @@ std::unique_ptr<pcm_part_t> vorbis_open(HANDLE &&stream)
 
 	assert(vf.vi);
 
-	pcm_format_t pcmf{ (uint32_t)vf.vi->rate, 16, vf.vi->channels };
+	pcm_format_t pcmf{ (uint32_t)vf.vi->rate, 16, (uint16_t)vf.vi->channels };
 	auto bits_per_sample = (pcmf.bitdepth / 8) * pcmf.channels;
 	auto byte_size = (size_t)(sample_length * bits_per_sample);
 

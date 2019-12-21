@@ -317,7 +317,7 @@ const replacer_t REP_HARD_LINE = {
 	4, [] (th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep)
 	{
 		auto* line = (hard_line_data_t*)cmd_out.data;
-		line->linenum = state.cur_line;
+		line->linenum = (uint16_t)state.cur_line;
 		cmd_out.length = rep.len + 4 + 1;
 		replace_line(line->str, &state, rep);
 	}

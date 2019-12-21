@@ -55,7 +55,7 @@
       <AdditionalIncludeDirectories>$(SharedIncludes);$(ProjectDir)libmpg123\src\libmpg123;$(ProjectDir)libmpg123\src\compat;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BasicRuntimeChecks Condition="$(UseDebugLibraries)==true">EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsC</CompileAs>
-      <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4018;4101;4146;4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <PreprocessorDefinitions>$(libmpg123Defines);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <WarningLevel>Level3</WarningLevel>

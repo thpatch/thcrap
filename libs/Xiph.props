@@ -16,7 +16,6 @@
       <FavorSizeOrSpeed Condition="$(UseDebugLibraries)!=true">Speed</FavorSizeOrSpeed>
       <InlineFunctionExpansion Condition="$(UseDebugLibraries)!=true">AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions Condition="$(UseDebugLibraries)!=true">true</IntrinsicFunctions>
-      <MinimalRebuild Condition="$(UseDebugLibraries)==true">true</MinimalRebuild>
       <WarningLevel>Level4</WarningLevel>
     </ClCompile>
     <Midl>

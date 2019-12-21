@@ -27,6 +27,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
+      <DisableSpecificWarnings>4456;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <DisableSpecificWarnings Condition="'$(Platform)'=='x64'">4244;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <Optimization Condition="$(UseDebugLibraries)!=true">MaxSpeed</Optimization>
     </ClCompile>

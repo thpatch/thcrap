@@ -155,7 +155,7 @@ int BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
 	size_t *character = json_object_get_pointer(bp_info, regs, "character");
 	size_t *special_character = json_object_get_pointer(bp_info, regs, "special_character");
 	const char **string = (const char**)json_object_get_pointer(bp_info, regs, "string");
-	BYTE is_in_quote = json_object_get_immediate(bp_info, regs, "is_in_quote");
+	BYTE is_in_quote = (BYTE)json_object_get_immediate(bp_info, regs, "is_in_quote");
 	// ----------
 
 	// We'll keep the th135 parser behavior of escaping quotes only inside quotes, to avoid adding more differences to patch_csv.

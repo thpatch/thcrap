@@ -28,7 +28,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <DisableSpecificWarnings>4244;4100;4267;4189;4305;4127;4706;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4244;4100;4267;4189;4456;4457;4305;4127;4706;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link Condition="'$(ConfigurationType)'=='DynamicLibrary'">
       <ModuleDefinitionFile>libvorbis\win32\vorbis.def</ModuleDefinitionFile>
@@ -45,7 +45,6 @@
     <ClCompile Include="libvorbis\lib\floor0.c" />
     <ClCompile Include="libvorbis\lib\floor1.c" />
     <ClCompile Include="libvorbis\lib\info.c" />
-    <ClCompile Include="libvorbis\lib\lookup.c" />
     <ClCompile Include="libvorbis\lib\lpc.c" />
     <ClCompile Include="libvorbis\lib\lsp.c" />
     <ClCompile Include="libvorbis\lib\mapping0.c" />

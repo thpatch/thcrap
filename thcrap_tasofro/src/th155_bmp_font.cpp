@@ -271,7 +271,7 @@ int bmpfont_add_option_int(void *bmpfont, const char *name, int value)
 int bmpfont_add_option_color(void *bmpfont, const char *name, json_t *value)
 {
 	char s_value[10 * 3 + 3];
-	sprintf(s_value, "%d:%d:%d",
+	sprintf(s_value, "%lld:%lld:%lld",
 		json_integer_value(json_array_get(value, 0)),
 		json_integer_value(json_array_get(value, 1)),
 		json_integer_value(json_array_get(value, 2)));

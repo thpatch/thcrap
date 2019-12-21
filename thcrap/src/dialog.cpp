@@ -359,7 +359,7 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 		DLGTEMPLATEEX_START *dst_header = (DLGTEMPLATEEX_START*)dst_start;
 		stringref_t trans_title = strings_get(json_object_get_string(trans, "title"));
 		stringref_t trans_font = strings_get(json_object_get_string(trans, "font"));
-		WORD trans_font_size = json_object_get_hex(trans, "font_size");
+		WORD trans_font_size = (WORD)json_object_get_hex(trans, "font_size");
 
 		dst += memcpy_advance_src(dst, src, sizeof(DLGTEMPLATEEX_START));
 		dst += sz_or_ord_build(dst, src, NULL); // menu

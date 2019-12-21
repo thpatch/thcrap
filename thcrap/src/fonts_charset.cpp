@@ -26,7 +26,7 @@ static const struct {
 	{RUSSIAN_CHARSET,     1251},
 	{THAI_CHARSET,        874},
 	{ANSI_CHARSET,        1252},
-	{-1,                  0}
+	{UCHAR_MAX,           0}
 };
 
 int font_has_character(HDC hdc, WCHAR c)

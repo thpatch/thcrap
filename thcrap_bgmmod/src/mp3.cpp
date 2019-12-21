@@ -138,7 +138,7 @@ std::unique_ptr<pcm_part_t> mp3_open(HANDLE &&stream)
 
 	auto bytedepth = MPG123_SAMPLESIZE(encoding);
 	size_t byte_size = sample_length * bytedepth * channels;
-	pcm_format_t pcmf = { (uint32_t)samplerate, bytedepth * 8, channels };
+	pcm_format_t pcmf = { (uint32_t)samplerate, (uint16_t)(bytedepth * 8), (uint16_t)channels };
 
 	return std::make_unique<mp3_part_t>(mh, pcm_part_info_t{
 		pcmf, byte_size

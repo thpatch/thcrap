@@ -253,7 +253,7 @@ json_t* SelectPatchStack(json_t *repo_list)
 	const char *key;
 	json_t *json_val;
 	// Total number of required lines in the console buffer
-	SHORT buffer_lines = 0;
+	size_t buffer_lines = 0;
 	size_t list_count = 0;
 
 	if(!json_object_size(repo_list)) {

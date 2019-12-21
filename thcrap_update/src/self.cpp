@@ -153,7 +153,7 @@ DWORD WINAPI self_window_create_and_run(void *param)
 	wnd_rect.top = (screen_rect.bottom / 2) - (wnd_rect.bottom / 2);
 
 	state->hWnd = CreateWindowExU(
-		wnd_style_ex, MAKEINTRESOURCEA(WC_DIALOG), PROJECT_NAME(), wnd_style,
+		wnd_style_ex, (LPSTR)WC_DIALOG, PROJECT_NAME(), wnd_style,
 		RECT_EXPAND(wnd_rect), NULL, NULL, hMod, NULL
 	);
 
