@@ -154,14 +154,13 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 					strcpy(run_cfg_fn, rel_start);
 					strcat(run_cfg_fn, arg);
 				} else {
-					//VLA(char, run_cfg_fn, (current_dir_len + strlen("config\\") + strlen(arg) + 1));
-					run_cfg_fn = (char*)malloc((current_dir_len + strlen("config\\") + strlen(arg)));
+					run_cfg_fn = (char*)malloc((current_dir_len + strlen("config\\") + strlen(arg)) + 1);
 					strcpy(run_cfg_fn, current_dir);
 					strcat(run_cfg_fn, "config\\");
 					strcat(run_cfg_fn, arg);
 				}
 			} else {
-				const char *run_cfg_fn = arg;
+				run_cfg_fn = strdup(arg);
 			}
 
 			run_cfg = json_load_file_report(run_cfg_fn);
@@ -252,6 +251,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 
 	ret = loader_update_with_UI_wrapper(final_exe_fn, NULL, game_id);
 end:
+	free(run_cfg_fn);
 	json_decref(games_js);
 	json_decref(run_cfg);
 	runconfig_set(NULL);
