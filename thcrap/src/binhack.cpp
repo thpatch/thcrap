@@ -348,6 +348,8 @@ int codecaves_apply(json_t *codecaves) {
 		*current_cave = 0xCC; current_cave++;
 		*current_cave = 0xCC; current_cave++;
 		*current_cave = 0xCC; current_cave++;
+
+		VLA_FREE(codecave_full_name);
 	}
 
 	DWORD old_prot;
