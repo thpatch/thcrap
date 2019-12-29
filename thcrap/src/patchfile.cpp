@@ -310,15 +310,17 @@ void patches_init(const char *run_cfg_fn)
 		if (!patch_path) {
 			continue;
 		}
-		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 1;
-		VLA(char, full_patch_path, full_patch_path_len);
-		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
-		strcpy(PathAddBackslashU(full_patch_path), patch_path);
-		str_slash_normalize(full_patch_path);
-		json_object_set(patch_info, "archive", json_string(full_patch_path));
+		if (PathIsRelativeU(patch_path)) {
+			size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 1;
+			VLA(char, full_patch_path, full_patch_path_len);
+			GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
+			strcpy(PathAddBackslashU(full_patch_path), patch_path);
+			str_slash_normalize(full_patch_path);
+			VLA_FREE(full_patch_path);
+			json_object_set(patch_info, "archive", json_string(full_patch_path));
+		}		
 		patch_info = patch_init(patch_info);
 		json_array_set(patches, i, patch_info);
-		VLA_FREE(full_patch_path);
 		json_decref(patch_info);
 	}
 }
