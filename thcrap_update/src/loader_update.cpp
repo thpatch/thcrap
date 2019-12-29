@@ -11,6 +11,7 @@
 #include "update.h"
 #include "notify.h"
 #include "self.h"
+#include "loader_update.h"
 
 enum {
 	HWND_MAIN,

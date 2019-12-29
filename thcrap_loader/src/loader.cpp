@@ -9,6 +9,8 @@
 
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <thcrap.h>
+#include <string>
+#include <vector>
 #include <thcrap_update_wrapper.h>
 
 const char *EXE_HELP =
@@ -29,11 +31,11 @@ const char* game_lookup(const json_t *games_js, const char *game, const char *ba
 	const json_t *game_path = json_object_get(games_js, game);
 	if (!json_string_length(game_path)) {
 		game_missing = game;
-		return json_string_value(game_path);
+		return nullptr;
 	}
 	const char *game_path_str = json_string_value(game_path);
 	if (PathIsRelativeA(game_path_str)) {
-		char* ret = (char*)malloc(current_dir_len + strlen(game_path_str));
+		char* ret = (char*)malloc(strlen(base_dir) + strlen(game_path_str) + 1);
 		strcpy(ret, base_dir);
 		PathAppendA(ret, game_path_str);
 		return ret;
@@ -150,7 +152,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			}
 			if (PathIsRelativeU(arg)) {
 				if (strchr(arg, '\\')) {
-					run_cfg_fn = (char*)malloc(strlen(rel_start) + strlen(arg));
+					run_cfg_fn = (char*)malloc(strlen(rel_start) + strlen(arg) + 1);
 					strcpy(run_cfg_fn, rel_start);
 					strcat(run_cfg_fn, arg);
 				} else {
