@@ -64,8 +64,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	int ret;
 	json_t *games_js = NULL;
 
-	int run_cfg_seen = 0;
-	char *run_cfg_fn = NULL;
+	std::string run_cfg_fn;
 	json_t *run_cfg = NULL;
 
 	const char *game_id = nullptr;
@@ -138,6 +137,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	}
 
 	// Parse command line
+	log_print("Parsing command line...\n");
 	for(int i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 		const char *param_ext = PathFindExtensionA(arg);
@@ -145,27 +145,24 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		if(!stricmp(param_ext, ".js")) {
 			const char *new_exe_fn = NULL;
 
-			run_cfg_seen = 1;
 			// Sorry guys, no run configuration stacking yet
 			if(json_is_object(run_cfg)) {
+				log_print("Several run configurations found on the command line, overwriting previous ones\n");
 				json_decref(run_cfg);
 			}
 			if (PathIsRelativeU(arg)) {
 				if (strchr(arg, '\\')) {
-					run_cfg_fn = (char*)malloc(strlen(rel_start) + strlen(arg) + 1);
-					strcpy(run_cfg_fn, rel_start);
-					strcat(run_cfg_fn, arg);
+					run_cfg_fn = std::string(rel_start) + arg;
 				} else {
-					run_cfg_fn = (char*)malloc((current_dir_len + strlen("config\\") + strlen(arg)) + 1);
-					strcpy(run_cfg_fn, current_dir);
-					strcat(run_cfg_fn, "config\\");
-					strcat(run_cfg_fn, arg);
+					run_cfg_fn = std::string(current_dir) + "config\\" + arg;
 				}
 			} else {
-				run_cfg_fn = strdup(arg);
+				run_cfg_fn = arg;
 			}
 
-			run_cfg = json_load_file_report(run_cfg_fn);
+			log_printf("Loading run configuration %s... ", run_cfg_fn.c_str());
+			run_cfg = json_load_file_report(run_cfg_fn.c_str());
+			log_print(run_cfg != nullptr ? "found\n" : "not found\n");
 
 			new_exe_fn = json_object_get_string(run_cfg, "exe");
 			if(!new_exe_fn) {
@@ -195,7 +192,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	}
 
 	if(!run_cfg) {
-		if(!run_cfg_seen) {
+		if(run_cfg_fn.empty()) {
 			log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"No run configuration .js file given.\n"
 				"\n"
@@ -206,7 +203,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		} else {
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"The run configuration file \"%s\" was not found.\n",
-				run_cfg_fn
+				run_cfg_fn.c_str()
 			);
 
 			ret = -4;
@@ -215,6 +212,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	}
 	// Command-line arguments take precedence over run configuration values
 	final_exe_fn = cmd_exe_fn ? cmd_exe_fn : cfg_exe_fn;
+	log_printf("Using exe %s\n", final_exe_fn);
 
 	/*
 	// Recursively apply the passed runconfigs
@@ -248,12 +246,12 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
+	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn.c_str()));
 	runconfig_set(run_cfg);
 
+	log_print("Command-line parsing finished\n");
 	ret = loader_update_with_UI_wrapper(final_exe_fn, NULL, game_id);
 end:
-	free(run_cfg_fn);
 	json_decref(games_js);
 	json_decref(run_cfg);
 	runconfig_set(NULL);
