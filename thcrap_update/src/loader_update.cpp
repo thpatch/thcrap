@@ -150,7 +150,8 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 				GetCurrentDirectory(len + 1, current_directory);
 				if (log_mboxf(NULL, MB_YESNO, "Do you really want to completely disable updates?\n\n"
 					"If you want to enable them again, you will need to run\n"
-					"%s\\thcrap_enable_updates.bat",
+					"%s\\thcrap_enable_updates.bat\n"
+					"(this file will be created after you click ok)",
 					current_directory) == IDYES) {
 					MoveFile("bin\\thcrap_update" DEBUG_OR_RELEASE ".dll", "bin\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll");
 					const char *bat_file =
