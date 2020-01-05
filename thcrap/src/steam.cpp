@@ -77,7 +77,7 @@ extern "C" __declspec(dllexport) void steam_mod_post_init(void)
 	strcat(dll_fn, "\\bin\\");
 	strcat(dll_fn, STEAM_API_DLL_FN);
 
-	hSteamAPI = LoadLibraryU(dll_fn);
+	hSteamAPI = LoadLibraryExU(dll_fn, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 	if(!hSteamAPI) {
 		log_printf(
 			"[Steam] Couldn't load %s (%s), no integration possible\n",
