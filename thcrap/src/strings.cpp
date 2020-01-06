@@ -13,6 +13,7 @@
 /// Detour chains
 /// -------------
 W32U8_DETOUR_CHAIN_DEF(MessageBox);
+W32U8_DETOUR_CHAIN_DEF(FindFirstFile);
 /// -------------
 
 // Since we can't use the jsondata module to make this repatchable,
@@ -292,6 +293,14 @@ int WINAPI strings_MessageBoxA(
 	lpCaption = strings_lookup(lpCaption, NULL);
 	return chain_MessageBoxU(hWnd, lpText, lpCaption, uType);
 }
+
+HANDLE WINAPI strings_FindFirstFileA(
+	LPCSTR lpFileName,
+	LPWIN32_FIND_DATAA lpFindFileData
+)
+{
+	return chain_FindFirstFileU(strings_lookup(lpFileName, NULL), lpFindFileData);
+}
 /// -------------------
 
 void strings_mod_init(void)
@@ -304,6 +313,10 @@ void strings_mod_detour(void)
 {
 	detour_chain("user32.dll", 1,
 		"MessageBoxA", strings_MessageBoxA, &chain_MessageBoxU,
+		NULL
+	);
+	detour_chain("kernel32.dll", 1,
+		"FindFirstFileA", strings_FindFirstFileA, &chain_FindFirstFileU,
 		NULL
 	);
 }
