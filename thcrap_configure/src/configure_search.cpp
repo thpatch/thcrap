@@ -191,8 +191,8 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			"You don't have a %s yet.\n"
 			"\n"
 			"Thus, I now need to search for patchable games installed on your system.\n"
-			"This only has to be done once - unless, of course, you later move the games to\n"
-			"different directories.\n"
+			"This only has to be done once - unless, of course, you later move the games\n"
+			"to different directories.\n"
 			"\n"
 			"Depending on the number of drives and your directory structure,\n"
 			"this may take a while. You can speed up this process by giving me a\n"
@@ -212,6 +212,10 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			"\n"
 			"... unless, of course, your Touhou games are spread out all over your drives -\n"
 			"in which case there's no way around a complete search.\n"
+			"\n"
+			"Furthermore, please note that you may experience issues with\n"
+			"static English-patched versions of the games,\n"
+			"as such the originals are recommended.\n"
 			"\n"
 			"\n",
 			games_js_fn
