@@ -14,6 +14,8 @@
 /// -------------
 W32U8_DETOUR_CHAIN_DEF(MessageBox);
 W32U8_DETOUR_CHAIN_DEF(FindFirstFile);
+W32U8_DETOUR_CHAIN_DEF(CreateFile);
+
 /// -------------
 
 // Since we can't use the jsondata module to make this repatchable,
@@ -301,6 +303,27 @@ HANDLE WINAPI strings_FindFirstFileA(
 {
 	return chain_FindFirstFileU(strings_lookup(lpFileName, NULL), lpFindFileData);
 }
+
+HANDLE WINAPI strings_CreateFileA(
+	LPCSTR                lpFileName,
+	DWORD                 dwDesiredAccess,
+	DWORD                 dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD                 dwCreationDisposition,
+	DWORD                 dwFlagsAndAttributes,
+	HANDLE                hTemplateFile
+)
+{
+	return chain_CreateFileU(
+		strings_lookup(lpFileName, NULL),
+		dwDesiredAccess,
+		dwShareMode,
+		lpSecurityAttributes,
+		dwCreationDisposition,
+		dwFlagsAndAttributes,
+		hTemplateFile
+	);
+}
 /// -------------------
 
 void strings_mod_init(void)
@@ -315,8 +338,9 @@ void strings_mod_detour(void)
 		"MessageBoxA", strings_MessageBoxA, &chain_MessageBoxU,
 		NULL
 	);
-	detour_chain("kernel32.dll", 1,
+	detour_chain("kernel32.dll", 2,
 		"FindFirstFileA", strings_FindFirstFileA, &chain_FindFirstFileU,
+		"CreateFileA", strings_CreateFileA, &chain_CreateFileU,
 		NULL
 	);
 }
