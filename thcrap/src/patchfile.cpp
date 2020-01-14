@@ -316,8 +316,8 @@ void patches_init(const char *run_cfg_fn)
 			GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
 			strcpy(PathAddBackslashU(full_patch_path), patch_path);
 			str_slash_normalize(full_patch_path);
-			VLA_FREE(full_patch_path);
 			json_object_set(patch_info, "archive", json_string(full_patch_path));
+			VLA_FREE(full_patch_path);
 		}		
 		patch_info = patch_init(patch_info);
 		json_array_set(patches, i, patch_info);
