@@ -38,7 +38,7 @@ extern "C" {
 // or [in] itself if no translation is available.
 // Optionally returns the length of the returned string in [out_len], without
 // the terminating \0, if [out_len] is not a nullptr.
-const char* strings_lookup(const char *in, size_t *out_len);
+const char* __cdecl strings_lookup(const char *in, size_t *out_len);
 
 // String lookup for variable argument lists. Parses [format] and calls
 // [strings_lookup] for every string parameter in [va].

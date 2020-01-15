@@ -106,7 +106,7 @@ stringref_t strings_get_fallback(const string_named_t& sn)
 	return ret;
 }
 
-const char* strings_lookup(const char *in, size_t *out_len)
+const char* __cdecl strings_lookup(const char *in, size_t *out_len)
 {
 	const char *ret = in;
 
