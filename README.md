@@ -53,7 +53,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 
 A ready-made Visual Studio build configuration, covering all modules and their dependencies, is provided as part of this repository. To set up the build:
 
-* Install [Visual Studio Community 2013](https://visualstudio.microsoft.com/vs/older-downloads/).
+* Install [Visual Studio Community 2017](https://visualstudio.microsoft.com/vs/older-downloads/).
 * Make sure that you've pulled all Git submodules together with this repo:
 
 		git clone --recursive https://github.com/thpatch/thcrap.git
@@ -85,7 +85,7 @@ First, convert `cert.pvk` to a .pem file using OpenSSL, then use this file toget
 
 ### Using different compilers ###
 
-Visual Studio Community 2013 is recommended for building, and the build configuration references the Visual Studio 2013 platform toolset with Windows XP targeting support by default. However, the project should generally build under every version since Visual C++ 2010 Express after changing the `<PlatformToolset>` value in `Base.props`. For a list of all platform toolsets available on your system, open the `Properties` dialog for any included project and refer to the drop-down menu at *Configuration Properties → General → Platform Toolset*.
+Visual Studio Community 2017 is recommended for building, and the build configuration references the Visual Studio 2017 platform toolset with Windows XP targeting support by default. However, the project should generally build under every version since Visual C++ 2010 Express after changing the `<PlatformToolset>` value in `Base.props`. For a list of all platform toolsets available on your system, open the `Properties` dialog for any included project and refer to the drop-down menu at *Configuration Properties → General → Platform Toolset*.
 
 Compilation with MinGW is currently not supported. This is not likely to change in the foreseeable future as we don't see much value in it.
 
