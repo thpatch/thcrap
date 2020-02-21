@@ -1,6 +1,6 @@
 /**
   * Touhou Community Reliant Automatic Patcher
-  * Cheap command-line patch stack configuration tool
+  * wxWidgets-based patch stack configuration tool
   */
 
 #include <thcrap.h>
