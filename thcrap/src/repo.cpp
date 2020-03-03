@@ -10,10 +10,10 @@
 #include <thcrap.h>
 #include "thcrap_update_wrapper.h"
 
-json_t* RepoGetLocalFN(const char *id)
+std::string RepoGetLocalFN(const char *id)
 {
 	const char *repo_fn = "repo.js";
-	return json_pack("s+++", "repos/", id, "/", repo_fn);
+	return std::string("repos/") + id + "/" + repo_fn;
 }
 
 json_t* RepoLocalNext(HANDLE *hFind)
@@ -36,9 +36,8 @@ json_t* RepoLocalNext(HANDLE *hFind)
 			&& strcmp(w32fd.cFileName, ".")
 			&& strcmp(w32fd.cFileName, "..")
 		) {
-			json_t *repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
-			repo_js = json_load_file_report(json_string_value(repo_local_fn));
-			json_decref(repo_local_fn);
+			std::string repo_local_fn = RepoGetLocalFN(w32fd.cFileName);
+			repo_js = json_load_file_report(repo_local_fn.c_str());
 			if(repo_js) {
 				return repo_js;
 			}
