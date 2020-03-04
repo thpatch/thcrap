@@ -1,0 +1,21 @@
+NAME = netcode
+
+CXXFLAGS = -std=c++17 -g
+
+LDFLAGS = -lcurl -ljansson -lpthread
+
+SRCS = main.cpp \
+	repo.cpp \
+	repo_discovery.cpp \
+	server.cpp \
+	http.cpp \
+
+OBJS = $(SRCS:.cpp=.o)
+
+all: $(NAME)
+
+$(NAME): $(OBJS)
+	g++ $(OBJS) -o $(NAME) $(LDFLAGS)
+
+clean:
+	rm -f $(OBJS)
