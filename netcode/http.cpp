@@ -29,18 +29,9 @@ CURL *HttpHandle::operator*()
     return this->curl;
 }
 
-File::File(std::string name)
-    : name(std::move(name)), status(FileStatus::TODO)
-{
-    if (this->name[0] == '/') {
-        this->name.erase(0, 1);
-    }
-}
-
-const std::string& File::getName() const
-{
-    return this->name;
-}
+File::File(std::list<DownloadUrl>&& urls)
+    : status(FileStatus::TODO), urls(urls), threadsLeft(urls.size())
+{}
 
 const std::vector<uint8_t>& File::getData() const
 {
@@ -50,6 +41,19 @@ const std::vector<uint8_t>& File::getData() const
 FileStatus File::getStatus() const
 {
     return this->status;
+}
+
+unsigned int File::getThreadsLeft() const
+{
+    return this->threadsLeft;
+}
+
+void File::decrementThreadsLeft()
+{
+    if (this->threadsLeft == 0) {
+        throw std::logic_error("Trying to decrement File::threadsLeft, but it is already 0");
+    }
+    this->threadsLeft--;
 }
 
 size_t File::writeCallback(FileDownloading& fileDownloading, uint8_t *data, size_t size)
@@ -92,11 +96,12 @@ size_t File::writeCallbackStatic(char *ptr, size_t size, size_t nmemb, void *use
     return fileDownloading->file.writeCallback(*fileDownloading, reinterpret_cast<uint8_t*>(ptr), size * nmemb);
 };
 
-bool File::download(HttpHandle& http, const std::string& baseUrl)
+bool File::download(HttpHandle& http, const std::string& url)
 {
     if (!this->setDownloading()) {
         return true;
     }
+    printf("Starting %s...\n", url.c_str());
 
     FileDownloading fileDownloading = {
         .file = *this,
@@ -109,8 +114,6 @@ bool File::download(HttpHandle& http, const std::string& baseUrl)
     char errbuf[CURL_ERROR_SIZE];
     curl_easy_setopt(*http, CURLOPT_ERRORBUFFER, errbuf);
     errbuf[0] = 0;
-
-    std::string url = baseUrl + this->name;
     curl_easy_setopt(*http, CURLOPT_URL, url.c_str());
 
     CURLcode res = curl_easy_perform(*http);
@@ -141,7 +144,7 @@ bool File::download(HttpHandle& http, const std::string& baseUrl)
     }
 
     {
-        std::lock_guard<std::mutex> lock(this->data_mutex);
+        std::lock_guard<std::mutex> lock(this->mutex);
         if (this->status == FileStatus::DOWNLOADING || // We're the first thread to finish downloading the file
             this->status == FileStatus::FAILED) {      // Another thread failed to download the file, but this thread succeeded
             this->data = std::move(fileDownloading.local_data);
@@ -150,4 +153,25 @@ bool File::download(HttpHandle& http, const std::string& baseUrl)
         // else, do nothing. Another thread finished before us.
     }
     return true;
+}
+
+DownloadUrl File::pickUrl()
+{
+    std::scoped_lock<std::mutex> lock(this->mutex);
+    // TODO: srand (actually we don't really care about having a good random source)
+    int n = rand() % this->urls.size();
+    auto it = this->urls.begin();
+    std::advance(it, n);
+    DownloadUrl url = *it;
+    this->urls.erase(it);
+    return url;
+}
+
+void File::download()
+{
+    DownloadUrl url = this->pickUrl();
+    BorrowedHttpHandle handle = url.server.borrowHandle();
+    if (!this->download(*handle, url.server.getUrl() + url.url)) {
+        url.server.fail();
+    }
 }

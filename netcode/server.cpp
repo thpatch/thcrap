@@ -1,8 +1,63 @@
 #include <functional>
 #include <stdexcept>
 #include "netcode.h"
-#include <unistd.h>
 #include <iostream>
+
+std::unique_ptr<ServerCache> ServerCache::instance;
+
+ServerCache& ServerCache::get()
+{
+    if (!ServerCache::instance) {
+        ServerCache::instance = std::make_unique<ServerCache>();
+    }
+    return *ServerCache::instance;
+}
+
+std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
+{
+    size_t pos = url.find("://");
+    if (pos != std::string::npos) {
+        pos += 3;
+    }
+    else {
+        pos = 0;
+    }
+    pos = url.find('/', pos);
+
+    std::string origin;
+    std::string path;
+    if (pos != std::string::npos) {
+        origin = url.substr(0, pos + 1);
+        if (url.length() > pos + 1) {
+            path = url.substr(pos + 1, std::string::npos);
+        }
+    }
+    else {
+        origin = url;
+    }
+
+    {
+        std::scoped_lock<std::mutex> lock(this->mutex);
+        auto it = this->cache.find(origin);
+        if (it == this->cache.end()) {
+            it = this->cache.emplace(origin, origin).first;
+        }
+        Server& server = it->second;
+        return std::pair<Server&, std::string>(server, path);
+    }
+}
+
+std::unique_ptr<File> ServerCache::downloadFile(const std::string& url)
+{
+    auto [server, path] = this->urlToServer(url);
+    return server.downloadFile(path);
+}
+
+json_t *ServerCache::downloadJsonFile(const std::string& url)
+{
+    auto [server, path] = this->urlToServer(url);
+    return server.downloadJsonFile(path);
+}
 
 Server::Server(std::string baseUrl)
     : baseUrl(std::move(baseUrl))
@@ -12,57 +67,28 @@ Server::Server(std::string baseUrl)
     }
 }
 
-Server::Server(Server&& src)
-    : baseUrl(std::move(src.baseUrl)),
-      threads(std::move(src.threads))
-{}
-
-void Server::startDownload(Repo &repo, unsigned int nbThreads)
+bool Server::isAlive() const
 {
-    if (this->threads.empty()) {
-        throw std::logic_error("can't start a new download when a download is already running");
-    }
-
-    for (unsigned int i = 0; i < nbThreads; i++) {
-        this->threads.emplace_back([this, &repo]() { this->downloadThread(repo); });
-    }
+    return this->alive;
 }
 
-void Server::join()
+void Server::fail()
 {
-    for (std::thread& it : this->threads) {
-        if (it.joinable()) {
-            it.join();
-        }
-    }
-    this->threads.clear();
+    this->alive = false;
 }
 
-void Server::downloadThread(Repo& repo)
+const std::string& Server::getUrl() const
 {
-    HttpHandle http;
-    File *file;
-    while ((file = repo.takeFile()) != nullptr) {
-        if (file->download(http, this->baseUrl) == false) {
-            // File::download will print more details on the failure
-            printf("%s: download failed. Closing download thread.\n", this->baseUrl.c_str());
-            return ;
-        }
-        repo.markFileAsDone(file);
-    }
-    sleep(1);
-    // TODO: write that function (otherwise we may hang on a slow or dead server).
-    // It must never give the same file twice to the same server.
-    //while (this->repo.takeDownloadingFile(this, &file)) {
-    //    this->download(file);
-    //}
+    return this->baseUrl;
 }
 
 std::unique_ptr<File> Server::downloadFile(const std::string& name)
 {
-    HttpHandle http;
-    auto file = std::make_unique<File>(name);
-    file->download(http, this->baseUrl);
+    std::list<DownloadUrl> urls {
+        DownloadUrl(*this, name)
+    };
+    auto file = std::make_unique<File>(std::move(urls));
+    file->download();
     return file;
 }
 
@@ -73,4 +99,44 @@ json_t *Server::downloadJsonFile(const std::string& name)
         return nullptr;
     }
     return json_loadb(reinterpret_cast<const char*>(file->getData().data()), file->getData().size(), 0, nullptr);
+}
+
+BorrowedHttpHandle Server::borrowHandle()
+{
+    std::scoped_lock<std::mutex> lock(this->mutex);
+    if (!this->httpHandles.empty()) {
+        BorrowedHttpHandle handle(std::move(this->httpHandles.front()), *this);
+        this->httpHandles.pop_front();
+        return std::move(handle);
+    }
+
+    return BorrowedHttpHandle(std::move(HttpHandle()), *this);
+}
+
+void Server::giveBackHandle(HttpHandle&& handle)
+{
+    std::scoped_lock<std::mutex> lock(this->mutex);
+    this->httpHandles.push_back(std::move(handle));
+}
+
+BorrowedHttpHandle::BorrowedHttpHandle(HttpHandle&& handle, Server& server)
+    : handle(std::move(handle)), server(server), valid(true)
+{}
+
+BorrowedHttpHandle::BorrowedHttpHandle(BorrowedHttpHandle&& src)
+    : handle(std::move(src.handle)), server(src.server), valid(src.valid)
+{
+    src.valid = false;
+}
+
+BorrowedHttpHandle::~BorrowedHttpHandle()
+{
+    if (this->valid) {
+        this->server.giveBackHandle(std::move(this->handle));
+    }
+}
+
+HttpHandle& BorrowedHttpHandle::operator*()
+{
+    return this->handle;
 }

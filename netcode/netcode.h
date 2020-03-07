@@ -4,6 +4,7 @@
 
 #include <atomic>
 #include <list>
+#include <map>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -11,6 +12,7 @@
 #include <cstdint>
 #include <jansson.h>
 #include <curl/curl.h>
+#include "ThreadPool.h"
 
 enum class FileStatus
 {
@@ -34,6 +36,37 @@ public:
     CURL *operator*();
 };
 
+class Server;
+class BorrowedHttpHandle
+{
+private:
+    HttpHandle handle;
+    Server& server;
+    bool valid;
+
+public:
+    BorrowedHttpHandle(HttpHandle&& handle, Server& server);
+    BorrowedHttpHandle(BorrowedHttpHandle&& src);
+    ~BorrowedHttpHandle();
+    BorrowedHttpHandle(const BorrowedHttpHandle& src) = delete;
+    BorrowedHttpHandle& operator=(const BorrowedHttpHandle& src) = delete;
+
+    HttpHandle& operator*();
+};
+
+struct DownloadUrl
+{
+    Server& server;
+    std::string url;
+    DownloadUrl(Server& server, std::string url)
+        : server(server), url(std::move(url))
+    {}
+    DownloadUrl(const DownloadUrl& src)
+        : server(src.server), url(src.url)
+    {}
+};
+
+// TODO: move the cURL code to HttpHandle
 class FileDownloading;
 class File
 {
@@ -42,10 +75,17 @@ private:
     // Moving from a vector to another isn't guaranteed to be atomic, so we should rather use
     // a lock to move the thread-local vector to the shared one. This is done once per file,
     // when the download is complete, so this isn't performance-critical.
-    std::string name;
-    std::mutex data_mutex;
+    //std::string name;
+    std::mutex mutex;
     std::vector<uint8_t> data;
     std::atomic<FileStatus> status;
+    // Number of threads left to enqueue into the thread pool.
+    // It is tightly coupled with the number of servers, but may be lower.
+    // threadsLeft will decrease when we enqueue a download into the thread pool,
+    // but servers.size() will decrease only when the thread pool picks our download
+    // and starts it.
+    std::list<DownloadUrl> urls;
+    unsigned int threadsLeft;
 
     static size_t writeCallbackStatic(char *ptr, size_t size, size_t nmemb, void *userdata);
     size_t writeCallback(FileDownloading& fileDownloading, uint8_t *data, size_t size);
@@ -53,19 +93,22 @@ private:
     bool setDownloading();
     // Set the File as failed. Do nothing if another thread succeeded.
     void setFailed();
+    DownloadUrl pickUrl();
+    // If this function fails, the server is dead.
+    bool download(HttpHandle& http, const std::string& url);
 
 public:
-    File(std::string name);
+    // TODO
+    File(std::list<DownloadUrl>&& urls);
     File(const File&) = delete;
     File& operator=(const File&) = delete;
 
-    const std::string& getName() const;
     const std::vector<uint8_t>& getData() const;
     FileStatus getStatus() const;
+    unsigned int getThreadsLeft() const;
+    void decrementThreadsLeft();
 
-    // If this function fails, the server is dead and should stop downloading files
-    // (we'll fall back on another server).
-    bool download(HttpHandle& http, const std::string& baseUrl);
+    void download();
 };
 
 class Repo;
@@ -74,65 +117,78 @@ class Server
 {
 private:
     std::string baseUrl;
-    std::vector<std::thread> threads;
+    //std::vector<std::thread> threads;
+    // false if the server have proven to be unreliable or dead
+    // (network timeout, a file doesn't match its CRC, etc).
+    // TODO: set to false on failure
+    std::atomic<bool> alive = true;
+    std::mutex mutex;
+    std::list<HttpHandle> httpHandles;
 
     void downloadThread(Repo& repo);
 
 public:
     Server(std::string baseUrl);
     Server(const Server& src) = delete;
-    Server(Server&& src);
+    Server(Server&& src) = delete;
     Server& operator=(const Server& src) = delete;
 
-    // Download every file from the repo.
-    // This function is asynchronous and will spawn between 1 and nbThreads threads.
-    // After calling it, you must call the join() function.
-    void startDownload(Repo& repo, unsigned int nbThreads);
-    // Wait until the download session is finished.
-    void join();
+    // TODO
+    bool isAlive() const;
+    // Set this server as failed
+    void fail();
+    const std::string& getUrl() const;
+
     // Download a single file from this server.
     std::unique_ptr<File> downloadFile(const std::string& name);
     // Download a single json file from this server.
     json_t *downloadJsonFile(const std::string& name);
+
+    // Borrow a HttpHandle from the server.
+    // You own it until the BorrowedHttpHandle is destroyed.
+    BorrowedHttpHandle borrowHandle();
+    // Give the HttpHandle back to the server.
+    // You should not call it, it is called automatically when the BorrowedHttpHandle
+    // is destroyed.
+    void giveBackHandle(HttpHandle&& handle);
 };
 
-class Repo
+// Singleton
+class ServerCache
 {
 private:
+    static std::unique_ptr<ServerCache> instance;
+
+    std::map<std::string, Server> cache;
     std::mutex mutex;
 
-    std::vector<Server> servers;
+public:
+    static ServerCache& get();
 
+    // Split an URL into an 'origin' part (protocol and domain name) and a 'path' part
+    // (everything after the domain name).
+    // The 'origin' part will be shared between every URL from the same server.
+    std::pair<Server&, std::string> urlToServer(const std::string& url);
+
+    // Find the server for url and call downloadFile/downloadJsonFile on it
+    std::unique_ptr<File> downloadFile(const std::string& url);
+    json_t *downloadJsonFile(const std::string& url);
+};
+
+class Downloader
+{
+private:
+    ThreadPool pool;
     std::list<File> files;
-    std::list<File*> todo;
-    std::list<File*> downloading;
-    std::list<File*> done;
+    std::vector<std::future<void>> futuresList;
+
+    void addToQueue(File& file);
 
 public:
-    // TODO: add a constructor that takes a repo.js and/or a files.js?
-    Repo();
-    // Create a repo from a single server.
-    // Used during discovery.
-    Repo(std::string serverUrl);
-    ~Repo();
-    Repo(const Repo& src) = delete;
-    Repo& operator=(const Repo& src) = delete;
-
-    // Download files.js for every patch in this repo
-    // TODO (if we need it. I don't think we do.)
-    json_t *downloadFilesJs();
-    // Update every file for every patch in this repo.
-    // TODO: add a version with a filter
-    void download();
-
-    // Take a file from the todo list.
-    // The file is moved to the downloading list.
-    File *takeFile();
-    // Move a file from the downloading list to the done list.
-    // If the file is already in the done list, nothing is done.
-    // If the file isn't in the downloading list or in the done list,
-    // this function throws an exception.
-    void markFileAsDone(File *file);
+    Downloader();
+    ~Downloader();
+    const File* addFile(std::list<std::string> servers, std::string filename);
+    void wait();
 };
 
 extern "C" {

@@ -5,7 +5,7 @@ CXXFLAGS = -std=c++17 -g
 LDFLAGS = -lcurl -ljansson -lpthread
 
 SRCS = main.cpp \
-	repo.cpp \
+	downloader.cpp \
 	repo_discovery.cpp \
 	server.cpp \
 	http.cpp \

@@ -97,7 +97,7 @@ void RepoDiscover::addServer(const std::string& url)
 
     this->downloading.insert(url);
     std::thread([this, url]() {
-        json_t *repo_js = Server(url).downloadJsonFile("repo.js");
+        json_t *repo_js = ServerCache::get().downloadJsonFile(url + "/repo.js");
         if (!repo_js) {
             return ;
         }
@@ -122,6 +122,8 @@ void RepoDiscover::addServer(const std::string& url)
 
 bool RepoDiscover::wait()
 {
+    // TODO: this blocks if any download faild. investigate.
+    // TODO: the start_url is downloaded twice
     std::unique_lock<std::mutex> lock(this->mutex);
     while (!this->downloading.empty()) {
         this->condVar.wait(lock);
