@@ -8,6 +8,7 @@ SRCS = main.cpp \
 	downloader.cpp \
 	repo_discovery.cpp \
 	server.cpp \
+	file.cpp \
 	http.cpp \
 
 OBJS = $(SRCS:.cpp=.o)

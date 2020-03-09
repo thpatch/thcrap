@@ -27,13 +27,16 @@ class HttpHandle
 private:
     CURL *curl;
 
+    static size_t writeCallbackStatic(char *ptr, size_t size, size_t nmemb, void *userdata);
+
 public:
     HttpHandle();
     HttpHandle(HttpHandle&& other);
     HttpHandle(HttpHandle& other) = delete;
     HttpHandle& operator=(HttpHandle& other) = delete;
     ~HttpHandle();
-    CURL *operator*();
+
+    bool download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback);
 };
 
 class Server;
@@ -87,8 +90,7 @@ private:
     std::list<DownloadUrl> urls;
     unsigned int threadsLeft;
 
-    static size_t writeCallbackStatic(char *ptr, size_t size, size_t nmemb, void *userdata);
-    size_t writeCallback(FileDownloading& fileDownloading, uint8_t *data, size_t size);
+    size_t writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size);
     // Set the File as downloading. Fails if the file is already downloaded.
     bool setDownloading();
     // Set the File as failed. Do nothing if another thread succeeded.
