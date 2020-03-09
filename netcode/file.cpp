@@ -1,11 +1,5 @@
-#include "netcode.h"
-
-// Structure for thread-local download data
-struct FileDownloading
-{
-    File& file;
-    std::vector<uint8_t> local_data;
-};
+#include "server.h"
+#include "file.h"
 
 File::File(std::list<DownloadUrl>&& urls)
     : status(FileStatus::TODO), urls(urls), threadsLeft(urls.size())
@@ -36,6 +30,7 @@ void File::decrementThreadsLeft()
 
 size_t File::writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size)
 {
+    // If another thread already finished to download this file, we don't need to continue.
     if (this->status == FileStatus::DONE) {
         // Any value different from size signals an error to libcurl
         return 0;
@@ -44,6 +39,8 @@ size_t File::writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, si
     return size;
 }
 
+// Set the File as downloading. Fails if the file is already downloaded
+// (telling the caller to not bother downloading it again).
 bool File::setDownloading()
 {
     FileStatus todo = FileStatus::TODO;
@@ -58,6 +55,7 @@ bool File::setDownloading()
     }
 }
 
+// Set the File as failed. Do nothing if another thread succeeded.
 void File::setFailed()
 {
     // We can't be in todo because we alreadu started a download.

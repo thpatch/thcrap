@@ -1,6 +1,10 @@
 #include <filesystem>
 #include <fstream>
+#include <map>
+#include <jansson.h>
 #include "netcode.h"
+#include "downloader.h"
+#include "server.h"
 
 int main()
 {

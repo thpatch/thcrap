@@ -1,5 +1,5 @@
-#include <functional>
-#include "netcode.h"
+#include "downloader.h"
+#include "server.h"
 
 Downloader::Downloader()
     : pool(8)

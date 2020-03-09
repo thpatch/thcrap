@@ -1,63 +1,30 @@
-#include <functional>
-#include <stdexcept>
-#include "netcode.h"
-#include <iostream>
+#include "server.h"
 
 std::unique_ptr<ServerCache> ServerCache::instance;
 
-ServerCache& ServerCache::get()
+
+BorrowedHttpHandle::BorrowedHttpHandle(HttpHandle&& handle, Server& server)
+    : handle(std::move(handle)), server(server), valid(true)
+{}
+
+BorrowedHttpHandle::BorrowedHttpHandle(BorrowedHttpHandle&& src)
+    : handle(std::move(src.handle)), server(src.server), valid(src.valid)
 {
-    if (!ServerCache::instance) {
-        ServerCache::instance = std::make_unique<ServerCache>();
-    }
-    return *ServerCache::instance;
+    src.valid = false;
 }
 
-std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
+BorrowedHttpHandle::~BorrowedHttpHandle()
 {
-    size_t pos = url.find("://");
-    if (pos != std::string::npos) {
-        pos += 3;
-    }
-    else {
-        pos = 0;
-    }
-    pos = url.find('/', pos);
-
-    std::string origin;
-    std::string path;
-    if (pos != std::string::npos) {
-        origin = url.substr(0, pos + 1);
-        if (url.length() > pos + 1) {
-            path = url.substr(pos + 1, std::string::npos);
-        }
-    }
-    else {
-        origin = url;
-    }
-
-    {
-        std::scoped_lock<std::mutex> lock(this->mutex);
-        auto it = this->cache.find(origin);
-        if (it == this->cache.end()) {
-            it = this->cache.emplace(origin, origin).first;
-        }
-        Server& server = it->second;
-        return std::pair<Server&, std::string>(server, path);
+    if (this->valid) {
+        this->server.giveBackHandle(std::move(this->handle));
     }
 }
 
-std::unique_ptr<File> ServerCache::downloadFile(const std::string& url)
+HttpHandle& BorrowedHttpHandle::operator*()
 {
-    auto [server, path] = this->urlToServer(url);
-    return server.downloadFile(path);
+    return this->handle;
 }
 
-json_t *ServerCache::downloadJsonFile(const std::string& url)
-{
-    auto [server, path] = this->urlToServer(url);
-    return server.downloadJsonFile(path);
-}
 
 Server::Server(std::string baseUrl)
     : baseUrl(std::move(baseUrl))
@@ -119,24 +86,57 @@ void Server::giveBackHandle(HttpHandle&& handle)
     this->httpHandles.push_back(std::move(handle));
 }
 
-BorrowedHttpHandle::BorrowedHttpHandle(HttpHandle&& handle, Server& server)
-    : handle(std::move(handle)), server(server), valid(true)
-{}
 
-BorrowedHttpHandle::BorrowedHttpHandle(BorrowedHttpHandle&& src)
-    : handle(std::move(src.handle)), server(src.server), valid(src.valid)
+ServerCache& ServerCache::get()
 {
-    src.valid = false;
+    if (!ServerCache::instance) {
+        ServerCache::instance = std::make_unique<ServerCache>();
+    }
+    return *ServerCache::instance;
 }
 
-BorrowedHttpHandle::~BorrowedHttpHandle()
+std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
 {
-    if (this->valid) {
-        this->server.giveBackHandle(std::move(this->handle));
+    size_t pos = url.find("://");
+    if (pos != std::string::npos) {
+        pos += 3;
+    }
+    else {
+        pos = 0;
+    }
+    pos = url.find('/', pos);
+
+    std::string origin;
+    std::string path;
+    if (pos != std::string::npos) {
+        origin = url.substr(0, pos + 1);
+        if (url.length() > pos + 1) {
+            path = url.substr(pos + 1, std::string::npos);
+        }
+    }
+    else {
+        origin = url;
+    }
+
+    {
+        std::scoped_lock<std::mutex> lock(this->mutex);
+        auto it = this->cache.find(origin);
+        if (it == this->cache.end()) {
+            it = this->cache.emplace(origin, origin).first;
+        }
+        Server& server = it->second;
+        return std::pair<Server&, std::string>(server, path);
     }
 }
 
-HttpHandle& BorrowedHttpHandle::operator*()
+std::unique_ptr<File> ServerCache::downloadFile(const std::string& url)
 {
-    return this->handle;
+    auto [server, path] = this->urlToServer(url);
+    return server.downloadFile(path);
+}
+
+json_t *ServerCache::downloadJsonFile(const std::string& url)
+{
+    auto [server, path] = this->urlToServer(url);
+    return server.downloadJsonFile(path);
 }
