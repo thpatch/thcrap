@@ -10,6 +10,7 @@ SRCS = main.cpp \
 	server.cpp \
 	file.cpp \
 	http.cpp \
+	random.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 

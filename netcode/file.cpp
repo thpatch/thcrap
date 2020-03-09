@@ -1,3 +1,4 @@
+#include "random.h"
 #include "server.h"
 #include "file.h"
 
@@ -96,8 +97,7 @@ bool File::download(HttpHandle& http, const std::string& url)
 DownloadUrl File::pickUrl()
 {
     std::scoped_lock<std::mutex> lock(this->mutex);
-    // TODO: srand (actually we don't really care about having a good random source)
-    int n = rand() % this->urls.size();
+    int n = Random::get() % this->urls.size();
     auto it = this->urls.begin();
     std::advance(it, n);
     DownloadUrl url = *it;
