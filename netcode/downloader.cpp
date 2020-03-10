@@ -10,25 +10,33 @@ Downloader::~Downloader()
     this->wait();
 }
 
-const File* Downloader::addFile(std::list<std::string> serversUrl, std::string filePath)
+std::list<DownloadUrl> Downloader::serversListToDownloadUrlList(const std::list<std::string>& serversUrl, const std::string& filePath)
 {
     std::list<DownloadUrl> urls;
     std::transform(serversUrl.begin(), serversUrl.end(), std::back_inserter(urls), [&filePath](const std::string& url) {
         auto [server, urlPath] = ServerCache::get().urlToServer(url + filePath);
         return DownloadUrl { .server = server, .url = urlPath };
     });
-    
-    this->files.emplace_back(std::move(urls));
-    File& file = this->files.back();
-    this->addToQueue(file);
-    return &file;
+    return urls;
 }
 
-void Downloader::addToQueue(File& file)
+const File* Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath, Downloader::callback_t successCallback)
 {
-    file.decrementThreadsLeft();
+    std::list<DownloadUrl> urls = this->serversListToDownloadUrlList(serversUrl, filePath);
+    this->files.emplace_back(std::move(urls), successCallback);
+    auto& file = this->files.back();
+    this->addToQueue(file);
+    return &file.first;
+}
+
+void Downloader::addToQueue(std::pair<File, callback_t>& file)
+{
+    file.first.decrementThreadsLeft();
     this->futuresList.push_back(this->pool.enqueue([&file]() {
-        file.download();
+        if (file.first.download()) {
+            // TODO: fail somewhere if this returns false
+            file.second(file.first);
+        }
     }));
 }
 
@@ -39,9 +47,10 @@ void Downloader::wait()
     bool loop = false;
     do {
         loop = false;
-        for (File& file : this->files) {
+        for (auto& it : this->files) {
+            File& file = it.first;
             if (file.getThreadsLeft() > 0) {
-                this->addToQueue(file);
+                this->addToQueue(it);
             }
             if (file.getThreadsLeft() > 0) {
                 loop = true;
@@ -54,3 +63,8 @@ void Downloader::wait()
     }
     this->futuresList.clear();
 }
+
+// TODO
+//void Downloader::addFilesJs(const std::list<std::string>& serversUrl)
+//{
+//}

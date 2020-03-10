@@ -31,13 +31,18 @@ void File::decrementThreadsLeft()
 
 size_t File::writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size)
 {
-    // If another thread already finished to download this file, we don't need to continue.
-    if (this->status == FileStatus::DONE) {
-        // Any value different from size signals an error to libcurl
-        return 0;
-    }
     buffer.insert(buffer.end(), data, data + size);
     return size;
+}
+
+bool File::progressCallback(const DownloadUrl& url, size_t /*dlnow*/, size_t /*dltotal*/)
+{
+    if (this->status == FileStatus::DONE || // If another thread already finished to download this file, we don't need to continue.
+        !url.getServer().isAlive()) { // Don't waste time if the server is dead
+        return false;
+    }
+    // TODO: call a user-written callback
+    return true;
 }
 
 // Set the File as downloading. Fails if the file is already downloaded
@@ -57,7 +62,7 @@ bool File::setDownloading()
 }
 
 // Set the File as failed. Do nothing if another thread succeeded.
-void File::setFailed()
+void File::setFailed(const DownloadUrl& url)
 {
     // We can't be in todo because we alreadu started a download.
     // If we're already in failed, we don't need to change the status.
@@ -65,20 +70,36 @@ void File::setFailed()
     // So we only need to change from downloading to failed.
     FileStatus downloading = FileStatus::DOWNLOADING;
     this->status.compare_exchange_strong(downloading, FileStatus::FAILED);
+
+    url.getServer().fail();
 }
 
-bool File::download(HttpHandle& http, const std::string& url)
+bool File::download(HttpHandle& http, const DownloadUrl& url)
 {
+    bool ret = false;
+
     if (!this->setDownloading()) {
-        return true;
+        return false;
     }
-    printf("Starting %s...\n", url.c_str());
+    // Fail early if the server is dead
+    if (!url.getServer().isAlive()) {
+        printf("%s: server is dead\n", url.getUrl().c_str());
+        this->setFailed(url);
+        return false;
+    }
+    printf("Starting %s...\n", url.getUrl().c_str());
 
     std::vector<uint8_t> localData;
-    if (!http.download(url, [this, &localData](const uint8_t *data, size_t size) {
-        return this->writeCallback(localData, data, size);
-    })) {
-        this->setFailed();
+    if (!http.download(url.getUrl(),
+        [this, &localData](const uint8_t *data, size_t size) {
+            return this->writeCallback(localData, data, size);
+        },
+        [this, &url](size_t dlnow, size_t dltotal) {
+            return this->progressCallback(url, dlnow, dltotal);
+        }
+    )) {
+        // TODO: do not mark the server as failed if the download was cancelled
+        this->setFailed(url);
         return false;
     }
 
@@ -88,10 +109,11 @@ bool File::download(HttpHandle& http, const std::string& url)
             this->status == FileStatus::FAILED) {      // Another thread failed to download the file, but this thread succeeded
             this->data = std::move(localData);
             this->status = FileStatus::DONE;
+            ret = true;
         }
         // else, do nothing. Another thread finished before us.
     }
-    return true;
+    return ret;
 }
 
 DownloadUrl File::pickUrl()
@@ -105,11 +127,9 @@ DownloadUrl File::pickUrl()
     return url;
 }
 
-void File::download()
+bool File::download()
 {
     DownloadUrl url = this->pickUrl();
-    BorrowedHttpHandle handle = url.server.borrowHandle();
-    if (!this->download(*handle, url.server.getUrl() + url.url)) {
-        url.server.fail();
-    }
+    BorrowedHttpHandle handle = url.getServer().borrowHandle();
+    return this->download(*handle, url);
 }

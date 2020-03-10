@@ -5,19 +5,7 @@
 #include <mutex>
 #include <vector>
 #include "http.h"
-
-class Server;
-struct DownloadUrl
-{
-    Server& server;
-    std::string url;
-    DownloadUrl(Server& server, std::string url)
-        : server(server), url(std::move(url))
-    {}
-    DownloadUrl(const DownloadUrl& src)
-        : server(src.server), url(src.url)
-    {}
-};
+#include "download_url.h"
 
 enum class FileStatus
 {
@@ -42,11 +30,11 @@ private:
     unsigned int threadsLeft;
 
     size_t writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size);
+    bool progressCallback(const DownloadUrl& url, size_t dlnow, size_t dltotal);
     bool setDownloading();
-    void setFailed();
+    void setFailed(const DownloadUrl& url);
     DownloadUrl pickUrl();
-    // If this function fails, the server is dead.
-    bool download(HttpHandle& http, const std::string& url);
+    bool download(HttpHandle& http, const DownloadUrl& url);
 
 public:
     File(std::list<DownloadUrl>&& urls);
@@ -58,5 +46,11 @@ public:
     unsigned int getThreadsLeft() const;
     void decrementThreadsLeft();
 
-    void download();
+    // True if the file have been downloaded by this thread, false otherwise.
+    // Note that if the file have been successfully downloaded by another thread,
+    // this function still returns false (the rationale is that the caller will call
+    // a completion callback if it returns true. If the completion callback have already
+    // be run by another thread, we don't want to run it again. Use getStatus() after
+    // all the download threads are finished to get the real status.
+    bool download();
 };
