@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <filesystem>
 #include <list>
 #include <mutex>
 #include <vector>
@@ -53,4 +54,8 @@ public:
     // be run by another thread, we don't want to run it again. Use getStatus() after
     // all the download threads are finished to get the real status.
     bool download();
+    // Write the file to the disk.
+    // If any directory in the path doesn't exist, it is created.
+    // Throws an exception on error.
+    void write(const std::filesystem::path& path) const;
 };

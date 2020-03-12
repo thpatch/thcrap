@@ -1,3 +1,4 @@
+#include <fstream>
 #include "random.h"
 #include "server.h"
 #include "file.h"
@@ -132,4 +133,19 @@ bool File::download()
     DownloadUrl url = this->pickUrl();
     BorrowedHttpHandle handle = url.getServer().borrowHandle();
     return this->download(*handle, url);
+}
+
+void File::write(const std::filesystem::path& path) const
+{
+    if (this->status != FileStatus::DONE) {
+        throw std::logic_error("Calling File::write but the file isn't downloaded.");
+    }
+
+    std::filesystem::path dir = std::filesystem::path(path).remove_filename();
+    std::filesystem::create_directories(dir);
+
+    std::ofstream f;
+    f.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+    f.open(path, std::ofstream::binary);
+    f.write(reinterpret_cast<const char*>(this->data.data()), this->data.size());
 }
