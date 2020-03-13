@@ -23,6 +23,3 @@ public:
     const File* addFile(const std::list<std::string>& servers, std::string filename, callback_t successCallback = callback_t());
     void wait();
 };
-
-// TODO: filters
-bool patches_update(const std::list<std::string>& patchPaths);

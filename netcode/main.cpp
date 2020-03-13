@@ -1,9 +1,5 @@
-#include <filesystem>
-#include <fstream>
-#include <map>
-#include <jansson.h>
 #include "netcode.h"
-#include "downloader.h"
+#include "update.h"
 #include "server.h"
 
 int main()
@@ -27,4 +23,7 @@ int main()
     patches_update({
         "lang_en"
     });
+
+    // stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, NULL);
+    // stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
 }

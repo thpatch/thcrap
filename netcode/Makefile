@@ -6,11 +6,12 @@ LDFLAGS = -lcurl -ljansson -lpthread
 
 SRCS = main.cpp \
 	downloader.cpp \
+	update.cpp \
 	repo_discovery.cpp \
 	server.cpp \
 	file.cpp \
 	http.cpp \
-    download_url.cpp \
+	download_url.cpp \
 	random.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
