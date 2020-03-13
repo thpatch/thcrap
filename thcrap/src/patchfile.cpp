@@ -311,9 +311,10 @@ void patches_init(const char *run_cfg_fn)
 			continue;
 		}
 		if (PathIsRelativeU(patch_path)) {
-			size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 1;
+			size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 2;
 			VLA(char, full_patch_path, full_patch_path_len);
 			GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
+			PathAddBackslashU(full_patch_path);
 			strcpy(PathAddBackslashU(full_patch_path), patch_path);
 			str_slash_normalize(full_patch_path);
 			json_object_set(patch_info, "archive", json_string(full_patch_path));
