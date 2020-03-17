@@ -279,6 +279,7 @@ void music_mod_exit(void);
 /// ---------------
 int patch_msg_dlg(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 int patch_msg_end(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 /// ---------------
 

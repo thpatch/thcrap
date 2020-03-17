@@ -153,6 +153,7 @@ int __stdcall thcrap_plugin_init()
 
 	// th06_msg
 	patchhook_register("msg*.dat", patch_msg_dlg, NULL); // th06-08
+	patchhook_register("*.end", patch_end_th06, NULL); // th06 endings
 	patchhook_register("p*.msg", patch_msg_dlg, NULL); // th09
 	patchhook_register("s*.msg", patch_msg_dlg, NULL); // lowest common denominator for th10+
 	patchhook_register("msg*.msg", patch_msg_dlg, NULL); // th143

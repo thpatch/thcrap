@@ -696,6 +696,89 @@ int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	return 1;
 }
 
+int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch) {
+	if (!patch) {
+		return -1;
+	}
+
+	size_t lc = 0;
+	size_t advanced_bytes = 0;
+
+	char *orig_file = (char*)file_inout;
+	void *new_file = malloc(size_out);
+	char *new_end = (char*)new_file;
+	ZeroMemory(new_end, size_out);
+
+	for (;;) {
+		if (orig_file[0] != '@' && !(orig_file[1] & 0x80)) {
+			json_t *lines = json_object_get(json_object_numkey_get(patch, lc), "lines");
+			if (!lines) {
+				while (orig_file[0] != '@' && !(orig_file[1] & 0x80)) {
+					size_t orig_line_len = strlen(orig_file);
+					strcpy(new_end, orig_file);
+					orig_file += orig_line_len + 2;
+					new_end += orig_line_len + 1;
+					*new_end = '\n';
+					new_end++;
+
+					lc++;
+					advanced_bytes += orig_line_len + 2;
+				}
+				continue;
+			}
+			size_t line_i;
+			json_t *line;
+			json_array_foreach(lines, line_i, line) {
+				const char *line_str = json_string_value(line);
+				if (line_str) {
+					if (game_id == TH06) {
+						strcpy_s(new_end, 63, line_str);
+					}
+					else {
+						strcpy(new_end, line_str);
+					}
+					size_t new_line_len = strlen(line_str);
+					new_end[new_line_len] = '\x00';
+					new_end[new_line_len + 1] = '\n';
+					new_end += new_line_len + 2;
+				}
+			}
+
+			char *orig_advanced = orig_file;
+			for (;;) {
+				char *orig_advanced_new = (char*)memchr(orig_advanced, '@', size_in - advanced_bytes);
+				advanced_bytes += orig_advanced_new - orig_advanced;
+				orig_advanced = orig_advanced_new;
+				if (!(orig_advanced[-1] & 0x80)) {
+					break;
+				}
+				orig_advanced++;
+				advanced_bytes++;
+			}
+			for (; orig_file < orig_advanced; orig_file++) {
+				if (*orig_file == '\n') {
+					lc++;
+				}
+			}
+		}
+		else {
+			char *orig_advanced = (char*)memchr((void*)orig_file, '\n', size_in - advanced_bytes) + 1;
+			memcpy(new_end, orig_file, orig_advanced - orig_file);
+			new_end += orig_advanced - orig_file;
+			orig_file = orig_advanced;
+			advanced_bytes = orig_file - (char*)file_inout;
+			lc++;
+			if (new_end[-2] == 'z') {
+				*new_end = '\x00';
+				new_end[1] = '\n';
+				break;
+			}
+		}
+	}
+	memcpy(file_inout, new_file, size_out);
+	return 0;
+}
+
 /// Game formats
 /// ------------
 // In-game dialog
