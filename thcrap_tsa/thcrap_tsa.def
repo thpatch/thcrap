@@ -12,6 +12,8 @@ EXPORTS
 	BP_th06_file_size
 	BP_th06_file_load
 	BP_th06_file_loaded
+	BP_th06_end_cmd
+	BP_th06_end_print_line
 
 	; Generic text
 	; ------------

@@ -711,7 +711,8 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 
 	for (;;) {
 		if (orig_file[0] != '@' && !(orig_file[1] & 0x80)) {
-			json_t *lines = json_object_get(json_object_numkey_get(patch, lc), "lines");
+			json_t *patched = json_object_numkey_get(patch, lc);
+			json_t *lines = json_object_get(patched, "lines");
 			if (!lines) {
 				while (orig_file[0] != '@' && !(orig_file[1] & 0x80)) {
 					size_t orig_line_len = strlen(orig_file);
@@ -728,6 +729,24 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			}
 			size_t line_i;
 			json_t *line;
+			json_t *offset = json_object_get(patched, "offset");
+			if (offset) {
+				switch (json_typeof(offset)) {
+				case JSON_STRING:
+					sprintf(new_end, "%s%s", "@o", json_string_value(offset));
+					break;
+				case JSON_INTEGER:
+					sprintf(new_end, "%s%d", "@o", json_integer_value(offset));
+					break;
+				case JSON_REAL:
+					sprintf(new_end, "%s%f", "@o", json_real_value(offset));
+					break;
+				}
+				new_end += strlen(new_end) + 1;
+				*new_end = '\n';
+				new_end++;
+				
+			}
 			json_array_foreach(lines, line_i, line) {
 				const char *line_str = json_string_value(line);
 				if (line_str) {
@@ -777,6 +796,42 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 	}
 	memcpy(file_inout, new_file, size_out);
 	return 0;
+}
+
+float th06_end_offset = 0;
+
+/*
+ * Custom command: @o, offset in pixels of the x position of the next lines
+ * Syntax: "@oX" where X is the X offset of the line to be printed
+ * Example: "@o20"
+ */
+int BP_th06_end_cmd(x86_reg_t *regs, json_t *bp_info) {
+	const char *cmd = (const char*)json_object_get_immediate(bp_info, regs, "cmd");
+
+	switch (*cmd) {
+	case 'o':
+		th06_end_offset = atof(cmd + 1);
+		break;
+	}
+	
+	return 1;
+}
+
+int BP_th06_end_print_line(x86_reg_t *regs, json_t *bp_info) {
+	static float default_x_pos = 0;
+
+	float *x_pos = (float*)json_object_get_pointer(bp_info, regs, "x");
+
+	if (default_x_pos >= 0) {
+		default_x_pos = *x_pos;
+	}
+
+	if (th06_end_offset > 0) {
+		*x_pos = th06_end_offset;
+	} else {
+		*x_pos = default_x_pos;
+	}
+	return 1;
 }
 
 /// Game formats
