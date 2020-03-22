@@ -704,10 +704,12 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 	size_t lc = 0;
 	size_t advanced_bytes = 0;
 
-	char *orig_file = (char*)file_inout;
-	void *new_file = malloc(size_out);
-	char *new_end = (char*)new_file;
-	ZeroMemory(new_end, size_out);
+	void *orig_file_copy = malloc(size_in);
+	memcpy(orig_file_copy, file_inout, size_in);
+
+	char *orig_file = (char*)orig_file_copy;
+	char *new_end = (char*)file_inout;
+	ZeroMemory(file_inout, size_out);
 
 	for (;;) {
 		if (orig_file[0] != '@' && !(orig_file[1] & 0x80)) {
@@ -785,7 +787,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			memcpy(new_end, orig_file, orig_advanced - orig_file);
 			new_end += orig_advanced - orig_file;
 			orig_file = orig_advanced;
-			advanced_bytes = orig_file - (char*)file_inout;
+			advanced_bytes = orig_file - (char*)orig_file_copy;
 			lc++;
 			if (new_end[-2] == 'z') {
 				*new_end = '\x00';
@@ -794,7 +796,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			}
 		}
 	}
-	memcpy(file_inout, new_file, size_out);
+	free(orig_file_copy);
 	return 0;
 }
 
