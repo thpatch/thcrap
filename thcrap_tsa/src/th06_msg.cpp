@@ -731,30 +731,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			}
 			size_t line_i;
 			json_t *line;
-			json_t *offsets = json_object_get(patched, "offsets");
-			if (offsets && json_is_array(offsets)) {
-				*new_end = '@';
-				new_end++;
-				*new_end = 'o';
-				new_end++;
-				size_t offset_i;
-				json_t *offset;
-				json_array_foreach(offsets, offset_i, offset) {
-					if (json_is_string(offset)) {
-						const char *offset_str = json_string_value(offset);
-						switch (*offset_str) {
-						case 'l': case 'r': case 'c':
-							strcpy(new_end, offset_str);
-							new_end += strlen(offset_str);
-							break;
-						}
-					}
-				}
-				new_end++;
-				*new_end = '\n';
-				new_end++;
-			}
-
+			
 			json_array_foreach(lines, line_i, line) {
 				const char *line_str = json_string_value(line);
 				if (line_str) {
@@ -804,68 +781,6 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 	}
 	free(orig_file_copy);
 	return 0;
-}
-
-const char *th06_end_cmd_o = NULL;
-
-/*
- * Custom command: @o, offset in pixels of the x position of the next lines
- * Syntax: "@oX" where X is the X offset of the line to be printed
- * Example: "@o20"
- */
-int BP_th06_end_cmd(x86_reg_t *regs, json_t *bp_info) {
-	const char *cmd = (const char*)json_object_get_immediate(bp_info, regs, "cmd");
-
-	switch (*cmd) {
-	case 'o':
-		th06_end_cmd_o = cmd + 1;
-		break;
-	}
-	
-	return 1;
-}
-
-int BP_th06_end_print_line(x86_reg_t *regs, json_t *bp_info) {
-	static float default_x_pos = 0;
-
-	float *x_pos = (float*)json_object_get_pointer(bp_info, regs, "x");
-	if (!x_pos) {
-		return 1;
-	}
-
-	const char *str = (const char*)json_object_get_immediate(bp_info, regs, "str");
-	if (default_x_pos <= 0) {
-		default_x_pos = *x_pos;
-	}
-
-	if (!th06_end_cmd_o || *th06_end_cmd_o == 0 || !str) {
-		*x_pos = default_x_pos;
-		return 1;
-	}
-	
-	const char *cmd_o_advanced = th06_end_cmd_o;
-	for (;;) {
-		cmd_o_advanced++;
-		if (*cmd_o_advanced == 'l' || *cmd_o_advanced == 'r' || *cmd_o_advanced == 'c' || *cmd_o_advanced == 0) {
-			break;
-		}
-	}
-
-	VLA(char, offset_str, cmd_o_advanced - th06_end_cmd_o);
-	strncpy(offset_str, th06_end_cmd_o + 1, cmd_o_advanced - th06_end_cmd_o - 1);
-	offset_str[cmd_o_advanced - th06_end_cmd_o - 1] = 0;
-	float new_x_pos = atof(offset_str);
-	switch (*th06_end_cmd_o) {
-	case 'l':
-		*x_pos = new_x_pos;
-	case 'r':
-		*x_pos = new_x_pos - GetTextExtentForFontID(str, 0);
-	case 'c':
-		*x_pos = new_x_pos - (GetTextExtentForFontID(str, 0) / 2);
-	}
-	th06_end_cmd_o = cmd_o_advanced;
-	VLA_FREE(offset_str);
-	return 1;
 }
 
 /// Game formats
