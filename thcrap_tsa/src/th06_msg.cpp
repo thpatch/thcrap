@@ -735,13 +735,8 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			json_array_foreach(lines, line_i, line) {
 				const char *line_str = json_string_value(line);
 				if (line_str) {
-					if (game_id == TH06) {
-						strcpy_s(new_end, 63, line_str);
-					}
-					else {
-						strcpy(new_end, line_str);
-					}
 					size_t new_line_len = strlen(line_str);
+					strcpy(new_end, line_str);
 					new_end[new_line_len] = '\x00';
 					new_end[new_line_len + 1] = '\n';
 					new_end += new_line_len + 2;
