@@ -126,7 +126,6 @@ EXPORTS
 	json_object_merge
 	json_object_get_keys_sorted
 	json_xywh_value
-	json_loadb_report
 	json_load_file_report
 	json_dump_log
 

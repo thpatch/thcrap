@@ -234,14 +234,15 @@ int patch_file_store(const json_t *patch_info, const char *fn, const void *file_
 
 json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_size)
 {
-	size_t json_size;
-	char *file_buffer = (char *)patch_file_load(patch_info, fn, &json_size);
-	json_t *file_json = json_loadb_report(file_buffer, json_size, JSON_DISABLE_EOF_CHECK, fn);
+	char *_fn = fn_for_patch(patch_info, fn);
+	json_t *file_json = json_load_file_report(_fn);
 
 	if(file_size) {
-		*file_size = json_size;
+		HANDLE fn_stream = file_stream(_fn);
+		*file_size = GetFileSize(fn_stream, NULL);
+		CloseHandle(fn_stream);
 	}
-	SAFE_FREE(file_buffer);
+	SAFE_FREE(_fn);
 	return file_json;
 }
 
