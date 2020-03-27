@@ -17,7 +17,7 @@ FileStatus File::getStatus() const
     return this->status;
 }
 
-unsigned int File::getThreadsLeft() const
+size_t File::getThreadsLeft() const
 {
     return this->threadsLeft;
 }

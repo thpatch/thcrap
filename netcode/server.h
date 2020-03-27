@@ -7,7 +7,14 @@
 #include <string>
 #include <jansson.h>
 #include "file.h"
-#include "http.h"
+
+#ifdef USE_HTTP_CURL
+# include "http_curl.h"
+#elif defined(USE_HTTP_WININET)
+# include "http_wininet.h"
+#else
+# error "Unknown http library. Please define either USE_HTTP_CURL or USE_HTTP_WININET"
+#endif
 
 class Server;
 class BorrowedHttpHandle

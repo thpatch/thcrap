@@ -15,7 +15,7 @@ std::list<DownloadUrl> Downloader::serversListToDownloadUrlList(const std::list<
     std::list<DownloadUrl> urls;
     std::transform(serversUrl.begin(), serversUrl.end(), std::back_inserter(urls), [&filePath](const std::string& url) {
         auto [server, urlPath] = ServerCache::get().urlToServer(url + filePath);
-        return DownloadUrl { .server = server, .url = urlPath };
+        return DownloadUrl(server, urlPath);
     });
     return urls;
 }

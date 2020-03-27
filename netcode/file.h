@@ -5,8 +5,15 @@
 #include <list>
 #include <mutex>
 #include <vector>
-#include "http.h"
 #include "download_url.h"
+
+#ifdef USE_HTTP_CURL
+# include "http_curl.h"
+#elif defined(USE_HTTP_WININET)
+# include "http_wininet.h"
+#else
+# error "Unknown http library. Please define either USE_HTTP_CURL or USE_HTTP_WININET"
+#endif
 
 enum class FileStatus
 {
@@ -28,7 +35,7 @@ private:
     // but urls.size() will decrease only when the thread pool picks our download
     // and starts it.
     std::list<DownloadUrl> urls;
-    unsigned int threadsLeft;
+    size_t threadsLeft;
 
     size_t writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size);
     bool progressCallback(const DownloadUrl& url, size_t dlnow, size_t dltotal);
@@ -44,7 +51,7 @@ public:
 
     const std::vector<uint8_t>& getData() const;
     FileStatus getStatus() const;
-    unsigned int getThreadsLeft() const;
+    size_t getThreadsLeft() const;
     void decrementThreadsLeft();
 
     // True if the file have been downloaded by this thread, false otherwise.
