@@ -1,6 +1,6 @@
 NAME = netcode
 
-CXXFLAGS = -std=c++17 -g
+CXXFLAGS = -DUSE_HTTP_CURL -std=c++17 -g
 
 LDFLAGS = -lcurl -ljansson -lpthread
 

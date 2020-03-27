@@ -5,7 +5,9 @@
 int main()
 {
     // TODO: move into thcrap
-    //curl_global_init(CURL_GLOBAL_DEFAULT);
+#ifdef USE_HTTP_CURL
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+#endif
 
     //RepoDiscoverAtURL("https://mirrors.thpatch.net/nmlgc/"); // TODO: why is it the default??
     //if (RepoDiscoverAtURL("https://srv.thpatch.net/") != 0) {
