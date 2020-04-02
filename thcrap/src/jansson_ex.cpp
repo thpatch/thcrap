@@ -271,11 +271,13 @@ json_t* json_load_file_report(const char *json_fn)
 	json_error_t error;
 	json_t *ret;
 	int msgbox_ret;
+	void* file_buffer;
 	char *json_buffer;
 
 start:
 	msgbox_ret = 0;
-	json_buffer = (char*)file_read(json_fn, &json_size);
+	file_buffer = file_read(json_fn, &json_size);
+	json_buffer = (char*)file_buffer;
 
 	if (!json_buffer || !json_size) {
 		return NULL;
@@ -320,7 +322,7 @@ start:
 		);
 	}
 	SAFE_FREE(converted_buffer);
-	SAFE_FREE(json_buffer);
+	SAFE_FREE(file_buffer);
 
 	if (msgbox_ret == IDRETRY) {
 		goto start;
