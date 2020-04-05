@@ -321,15 +321,17 @@ int codecaves_apply(json_t *codecaves) {
 
 	const char *codecave_name;
 	json_t *hack;
-	size_t codecave_count = 0, sizes = 0;
+	size_t codecave_sep_size = 3;
+	size_t codecave_count = 0, codecaves_total_size = 0;
 
 	json_object_foreach(codecaves, codecave_name, hack) {
-		sizes += binhack_calc_size(json_object_get_string(hack, "code"));
-		codecave_count += 1;
+		codecaves_total_size += binhack_calc_size(json_object_get_string(hack, "code"));
+		codecaves_total_size += codecave_sep_size;
 	}
 
-	size_t codecaves_total_size = sizes + codecave_count * 3;
 	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+	// First pass: Gather the addresses, so that codecaves can refer to each other.
 	BYTE *current_cave = codecave_buf;
 
 	json_object_foreach(codecaves, codecave_name, hack) {
@@ -337,19 +339,31 @@ int codecaves_apply(json_t *codecaves) {
 		if (!code) {
 			continue;
 		}
-		binhack_render(current_cave, (size_t)current_cave, code);
 
 		VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
 		strcpy(codecave_full_name, "codecave:");
 		strcpy(codecave_full_name + 9, codecave_name);
 		func_add(codecave_full_name, (size_t)current_cave);
 
-		current_cave += binhack_calc_size(code);
-		*current_cave = 0xCC; current_cave++;
-		*current_cave = 0xCC; current_cave++;
-		*current_cave = 0xCC; current_cave++;
+		current_cave += binhack_calc_size(code) + codecave_sep_size;
 
 		VLA_FREE(codecave_full_name);
+	}
+
+	// Second pass: Write all of the code
+	current_cave = codecave_buf;
+
+	json_object_foreach(codecaves, codecave_name, hack) {
+		const char* code = json_string_value(hack);
+		if (!code) {
+			continue;
+		}
+		binhack_render(current_cave, (size_t)current_cave, code);
+
+		current_cave += binhack_calc_size(code);
+		for (size_t i = 0; i < codecave_sep_size; i++) {
+			*current_cave = 0xCC; current_cave++;
+		}
 	}
 
 	DWORD old_prot;
