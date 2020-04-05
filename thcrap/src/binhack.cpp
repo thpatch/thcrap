@@ -325,7 +325,12 @@ int codecaves_apply(json_t *codecaves) {
 	size_t codecave_count = 0, codecaves_total_size = 0;
 
 	json_object_foreach(codecaves, codecave_name, hack) {
-		codecaves_total_size += binhack_calc_size(json_object_get_string(hack, "code"));
+		const char* code = json_string_value(hack);
+		if (!code) {
+			continue;
+		}
+
+		codecaves_total_size += binhack_calc_size(code);
 		codecaves_total_size += codecave_sep_size;
 	}
 
