@@ -239,8 +239,13 @@ json_t* patch_json_load(const json_t *patch_info, const char *fn, size_t *file_s
 
 	if(file_size) {
 		HANDLE fn_stream = file_stream(_fn);
-		*file_size = GetFileSize(fn_stream, NULL);
-		CloseHandle(fn_stream);
+		if (fn_stream != INVALID_HANDLE_VALUE) {
+			*file_size = GetFileSize(fn_stream, NULL);
+			CloseHandle(fn_stream);
+		}
+		else {
+			*file_size = 0;
+		}
 	}
 	SAFE_FREE(_fn);
 	return file_json;
