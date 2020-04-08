@@ -325,6 +325,9 @@ int codecaves_apply(json_t *codecaves) {
 	size_t codecave_count = 0, codecaves_total_size = 0;
 
 	json_object_foreach(codecaves, codecave_name, hack) {
+		if (strcmp(codecave_name, "protection") == 0) {
+			continue;
+		}
 		const char* code = json_string_value(hack);
 		if (!code) {
 			continue;
@@ -340,6 +343,10 @@ int codecaves_apply(json_t *codecaves) {
 	BYTE *current_cave = codecave_buf;
 
 	json_object_foreach(codecaves, codecave_name, hack) {
+		if (strcmp(codecave_name, "protection") == 0) {
+			continue;
+		}
+
 		const char *code = json_string_value(hack);
 		if (!code) {
 			continue;
@@ -358,7 +365,14 @@ int codecaves_apply(json_t *codecaves) {
 	// Second pass: Write all of the code
 	current_cave = codecave_buf;
 
+	DWORD codecave_protection = 0;
+
 	json_object_foreach(codecaves, codecave_name, hack) {
+		if (strcmp(codecave_name, "protection") == 0) {
+			codecave_protection = json_object_get_hex(codecaves, codecave_name);
+			continue;
+		}
+
 		const char* code = json_string_value(hack);
 		if (!code) {
 			continue;
@@ -372,7 +386,11 @@ int codecaves_apply(json_t *codecaves) {
 	}
 
 	DWORD old_prot;
-	VirtualProtect(codecave_buf, codecaves_total_size, PAGE_EXECUTE_READ, &old_prot);
+	if (codecave_protection == 0) {
+		codecave_protection = PAGE_EXECUTE_READ;
+	}
+
+	VirtualProtect(codecave_buf, codecaves_total_size, codecave_protection, &old_prot);
 
 	return 0;
 }
