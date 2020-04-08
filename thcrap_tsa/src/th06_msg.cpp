@@ -711,7 +711,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 	char *new_end = (char*)file_inout;
 	ZeroMemory(file_inout, size_out);
 
-	for (;;) {
+	while (advanced_bytes < size_in) {
 		if (*orig_file != '@') {
 			json_t *patched = json_object_numkey_get(patch, lc);
 			json_t *lines = json_object_get(patched, "lines");
@@ -767,11 +767,6 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			orig_file = orig_advanced;
 			advanced_bytes = orig_file - (char*)orig_file_copy;
 			lc++;
-			if (new_end[-2] == 'z') {
-				*new_end = '\x00';
-				new_end[1] = '\n';
-				break;
-			}
 		}
 	}
 	free(orig_file_copy);
