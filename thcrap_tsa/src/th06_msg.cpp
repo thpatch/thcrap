@@ -696,6 +696,18 @@ int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	return 1;
 }
 
+// Check if *file_pos is an @ sign, while ensuring it isn't part of a 2-bytes shift-jis character.
+// file_begin is uses only for bounds check.
+static bool is_at_sign(const char *file_pos, const void *file_begin)
+{
+	if (file_pos > file_begin) {
+		return file_pos[0] == '@' && (file_pos[-1] & 0x80) == 0;
+	}
+	else {
+		return file_pos[0] == '@';
+	}
+}
+
 int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch) {
 	if (!patch) {
 		return -1;
@@ -712,11 +724,11 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 	ZeroMemory(file_inout, size_out);
 
 	while (advanced_bytes < size_in) {
-		if (*orig_file != '@') {
+		if (!is_at_sign(orig_file, orig_file_copy)) {
 			json_t *patched = json_object_numkey_get(patch, lc);
 			json_t *lines = json_object_get(patched, "lines");
 			if (!lines) {
-				while (orig_file[0] != '@' && !(orig_file[-1] & 0x80)) {
+				while (!is_at_sign(orig_file, orig_file_copy)) {
 					size_t orig_line_len = strlen(orig_file);
 					strcpy(new_end, orig_file);
 					orig_file += orig_line_len + 2;
