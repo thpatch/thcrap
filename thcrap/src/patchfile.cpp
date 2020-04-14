@@ -132,7 +132,12 @@ void patch_print_fn(const json_t *patch_info, const char *fn)
 		}
 	}
 	archive = json_object_get_string(patch_info, "archive");
-	log_printf("\n%*s+ %s%s", (level + 1), " ", archive, fn);
+	char archive_final_char = archive[strlen(archive) - 1];
+	if (archive_final_char != '/' && archive_final_char != '\\') {
+		log_printf("\n%*s+ %s/%s", (level + 1), " ", archive, fn);
+	} else {
+		log_printf("\n%*s+ %s%s", (level + 1), " ", archive, fn);
+	}
 }
 
 int dir_create_for_fn(const char *fn)
