@@ -728,7 +728,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			json_t *patched = json_object_numkey_get(patch, lc);
 			json_t *lines = json_object_get(patched, "lines");
 			if (!lines) {
-				while (!is_at_sign(orig_file, orig_file_copy)) {
+				while (!is_at_sign(orig_file, orig_file_copy) && advanced_bytes < size_in) {
 					size_t orig_line_len = strlen(orig_file);
 					strcpy(new_end, orig_file);
 					orig_file += orig_line_len + 2;
