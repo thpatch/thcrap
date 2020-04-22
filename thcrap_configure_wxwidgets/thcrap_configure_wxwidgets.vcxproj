@@ -39,7 +39,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClInclude Include="src\wxconfigure.h" />
-    <ResourceCompile Include="thcrap_configure.rc" />
+    <ResourceCompile Include="thcrap_configure_wxwidgets.rc" />
     <ClInclude Include="src\resource.h" />
   </ItemGroup>
   <ItemGroup>
