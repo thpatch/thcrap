@@ -3,6 +3,7 @@ Touhou Community Reliant Automatic Patcher
 
 [![Join the chat at http://discord.thpatch.net](https://discordapp.com/api/guilds/213769640852193282/widget.png)](http://discord.thpatch.net/)
 [![Backers on Open Collective](https://opencollective.com/thpatch/backers/badge.svg)](#backers)
+[![GitHub Release](https://img.shields.io/github/release/thpatch/thcrap.svg)](https://github.com/thpatch/thcrap/releases)
 
 ## Description ##
 
