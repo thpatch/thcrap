@@ -8,6 +8,7 @@ DATE="$(date)"
 MSBUILD_PATH=
 MSBUILD_USER="$USER"
 GITHUB_LOGIN=
+# Authentication with Github tokens: https://developer.github.com/v3/auth/#basic-authentication
 GITHUB_TOKEN=
 THPATCH_LOGIN=
 # Yes, plaintext password authentication. There is probably a better way to do it, but I'm lazy...
@@ -110,7 +111,7 @@ cd git_thcrap
 	grep -v -e 'Number of'
 cd ..
 
-# Create the zip and its signature
+# Prepare the release directory
 if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/*.exe bin/*.dll bin/*.json))" != "$FILES_LIST" ]; then
 	echo "The list of files to copy doesn't match. Files list:"
 	cd git_thcrap/bin
@@ -140,6 +141,7 @@ explorer.exe .
 cd ..
 confirm "Time to test the release! Press y if everything works fine."
 
+# Create the zip and its signature
 rm -f thcrap.zip
 cd thcrap
 7z a ../thcrap.zip *
@@ -180,7 +182,6 @@ notepad.exe commit_github.txt &
 notepad.exe commit_mediawiki.txt &
 confirm "Did you remove non-visible commits and include non-thcrap commits?"
 
-# Authenticating with Github tokens: https://developer.github.com/v3/auth/#basic-authentication
 echo "Uploading the release on github..."
 upload_url=$(jq -n --arg msg "$(cat commit_github.txt)" --arg date "$(date -d "$DATE" +%Y-%m-%d)" '{ "tag_name": $date, "name": $date, "body": $msg }' | \
 curl -s 'https://api.github.com/repos/thpatch/thcrap/releases' -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/json' -d@- | \
@@ -218,10 +219,15 @@ ret=$(curl -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -d "acti
 if [ "$ret" != "Success" ]; then echo "Updating changelog failed."; fi
 
 
+echo "Uploading the release on thcrap.thpatch.net..."
+ZIP_NAME=thcrap-$(date -d "$DATE" +%Y-%m-%d)
+scp thcrap.zip     root@kosuzu.thpatch.net:/var/www/thcrap/stable/"${ZIP_NAME}".zip
+scp thcrap.zip.sig root@kosuzu.thpatch.net:/var/www/thcrap/stable/"${ZIP_NAME}".zip.sig
+
 # Push update
-scp root@kosuzu.thpatch.net:/var/www/thcrap_update.js .
-jq ".stable.version = \"0x$(date -d "$DATE" +%Y%m%d)\"" thcrap_update.js > tmp.js
+scp root@kosuzu.thpatch.net:/var/www/thcrap/thcrap_update.js .
+jq --arg version "0x$(date -d "$DATE" +%Y%m%d)" --arg zip_fn "stable/${ZIP_NAME}.zip" '.stable.version = $version | .stable.latest = $zip_fn' thcrap_update.js > tmp.js
 mv tmp.js thcrap_update.js
-scp thcrap_update.js root@kosuzu.thpatch.net:/var/www/thcrap_update.js
+scp thcrap_update.js root@kosuzu.thpatch.net:/var/www/thcrap/thcrap_update.js
 
 echo "Releasing finished!"
