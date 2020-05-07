@@ -15,10 +15,10 @@
 	url = https://github.com/thpatch/thtypes.git
 [submodule "libs/vorbis"]
 	path = libs/libvorbis
-	url = https://git.xiph.org/vorbis.git
+	url = https://github.com/xiph/vorbis.git
 [submodule "libs/ogg"]
 	path = libs/libogg
-	url = https://git.xiph.org/ogg.git
+	url = https://github.com/xiph/ogg.git
 [submodule "libs/dr_libs"]
 	path = libs/dr_libs
 	url = https://github.com/mackron/dr_libs/
