@@ -35,7 +35,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\external_deps\;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Sync</ExceptionHandling>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <WarningLevel>Level3</WarningLevel>
@@ -46,7 +46,7 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)libs\external_deps\bin\;$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <PostBuildEvent Condition="'$(ConfigurationType)'!='StaticLibrary'">
@@ -59,10 +59,13 @@
       </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  <PropertyGroup>
+    <GASPath>$(SolutionDir)libs\external_deps\</GASPath>
+  </PropertyGroup>
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="gas.props" />
+    <Import Project="libs\external_deps\gas.props" />
   </ImportGroup>
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="gas.targets" />
+    <Import Project="libs\external_deps\gas.targets" />
   </ImportGroup>
 </Project>
