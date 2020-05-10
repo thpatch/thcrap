@@ -10,7 +10,7 @@
 #include <thcrap.h>
 #include "bgmmod.hpp"
 
-#include <libmpg123/ports/MSVC++/mpg123.h>
+#include <mpg123.h>
 
 #pragma comment(lib, "libmpg123" DEBUG_OR_RELEASE)
 

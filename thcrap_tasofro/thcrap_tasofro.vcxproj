@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -28,7 +28,7 @@
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tasofro.def</ModuleDefinitionFile>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;gdiplus.lib;thcrap_d.lib;libpng16_d.lib;act_nut_lib_d.lib;bmpfont_create_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;gdiplus.lib;thcrap_d.lib;libpng16d.lib;act_nut_lib_d.lib;bmpfont_create_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;gdiplus.lib;thcrap.lib;libpng16.lib;act_nut_lib.lib;bmpfont_create.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
