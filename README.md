@@ -92,7 +92,7 @@ Compilation with MinGW is currently not supported. This is not likely to change 
 
 ### Dependencies ###
 
-All required third-party libraries for the C/C++ code are included as Git submodules. These are:
+All required third-party libraries for the C/C++ code are included as Git submodules in the [thcrap_external_dependencies](https://github.com/thpatch/thcrap_external_dependencies) submodule, which also contains pre-built DLLs, .lib files, export definitions and PDBs. These are:
 
 * [Jansson](http://www.digip.org/jansson/), required for every module apart from `win32_utf8`.
 
