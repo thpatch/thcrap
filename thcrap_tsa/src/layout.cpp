@@ -96,8 +96,7 @@ Option<HFONT> font_block_get(int id)
 			(id * 2) - ((game_id == TH07 || game_id == TH08) ? 2 : 0)
 		));
 	}
-	const json_t *run_cfg = runconfig_get();
-	json_t *font_block = json_object_get(run_cfg, "tsa_font_block");
+	json_t *font_block = json_object_get(runconfig_json_get(), "tsa_font_block");
 	json_int_t min = 0, max = 0;
 	if(json_is_object(font_block)) {
 		size_t addr = json_object_get_hex(font_block, "addr");

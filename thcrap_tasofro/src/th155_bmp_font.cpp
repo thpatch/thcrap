@@ -157,31 +157,15 @@ int fill_chars_list(char *chars_list, void *file_inout, size_t size_in, json_t *
 		}
 		else if (strcmp(fn, "*") == 0) {
 			log_print("(Font) Searching in every js file for characters...\n");
-			json_t *patches = json_object_get(runconfig_get(), "patches");
-			json_incref(patches);
-			json_t *subtitles = json_object_get(runconfig_get(), "subtitles");
-			if (subtitles) {
-				json_t *all_patches = json_copy(patches);
-				json_array_extend(all_patches, subtitles);
-				json_decref(patches);
-				patches = all_patches;
-			}
-
-			size_t i;
-			json_t *patch_info;
-			json_array_foreach(patches, i, patch_info) {
-				const json_t *archive = json_object_get(patch_info, "archive");
-				const json_t *game = json_object_get(runconfig_get(), "game");
-				if (json_is_string(archive)) {
-					std::string archive_path = json_string_value(archive);
-					add_files_in_directory(chars_list, chars_list_count, archive_path, false);
-					if (json_is_string(game)) {
-						add_files_in_directory(chars_list, chars_list_count, archive_path + "\\" + json_string_value(game), true);
+			stack_foreach_cpp([&](const patch_t *patch) {
+				if (patch->archive) {
+					add_files_in_directory(chars_list, chars_list_count, patch->archive, false);
+					const char *game = runconfig_game_get();
+					if (game) {
+						add_files_in_directory(chars_list, chars_list_count, std::string(patch->archive) + "\\" + game, true);
 					}
 				}
-			}
-
-			json_decref(patches);
+			});
 		}
 		/* else if (strchr(fn, '*') != nullptr) {
 			// TODO: pattern matching
@@ -210,9 +194,9 @@ void bmpfont_update_cache(std::string fn, char *chars_list, int chars_count, BYT
 	std::string full_path;
 	{
 		std::string fn_jdiff = fn + ".jdiff";
-		json_t *chain = resolve_chain_game(fn_jdiff.c_str());
+		char **chain = resolve_chain_game(fn_jdiff.c_str());
 		char *c_full_path = stack_fn_resolve_chain(chain);
-		json_decref(chain);
+		chain_free(chain);
 		full_path.assign(c_full_path, strlen(c_full_path) - strlen(".jdiff")); // Remove ".jdiff"
 		free(c_full_path);
 	}
@@ -291,7 +275,7 @@ bool generate_bitmap_font(void *bmpfont, char *chars_list, json_t *patch, BYTE *
 	ret &= bmpfont_add_option_int(bmpfont, "--cp", CP_UTF8);
 
 	// Plugin
-	const char *thcrap_dir = json_object_get_string(runconfig_get(), "thcrap_dir");
+	const char *thcrap_dir = runconfig_thcrap_dir_get();
 	const char *plugin     = json_object_get_string(patch, "plugin");
 	if (plugin == nullptr) {
 		log_print("[Bmpfont] Jdiff file must have a 'plugin' entry\n");
@@ -331,14 +315,14 @@ bool generate_bitmap_font(void *bmpfont, char *chars_list, json_t *patch, BYTE *
 	}
 
 	// Font
-	json_t *chain = resolve_chain(json_string_value(json_object_get(patch, "font_file")));
-  	if (json_array_size(chain)) {
+	char **chain = resolve_chain(json_string_value(json_object_get(patch, "font_file")));
+	if (chain && chain[0]) {
 		size_t font_file_size;
-		log_printf("(Data) Resolving %s... ", json_array_get_string(chain, 0));
+		log_printf("(Data) Resolving %s... ", chain[0]);
 		font_file = file_stream_read(stack_file_resolve_chain(chain), &font_file_size);
 		ret &= bmpfont_add_option_binary(bmpfont, "--font-memory", font_file, font_file_size);
 	}
-	json_decref(chain);
+	chain_free(chain);
 	if ((json_value = json_object_get(patch, "font_name"))) {
 		ret &= bmpfont_add_option(bmpfont, "--font-name", json_string_value(json_value));
 	}

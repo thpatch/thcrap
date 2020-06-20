@@ -149,17 +149,8 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 		});
 	}
 	else {
-		static json_t *subtitles_support = nullptr;
-		static json_t *subtitles_config = nullptr;
-		if (subtitles_support == nullptr) {
-			subtitles_support = json_object_get(runconfig_get(), "subtitles_support");
-		}
-		if (subtitles_config == nullptr) {
-			subtitles_config = json_object_get(runconfig_get(), "subtitles");
-		}
-		bool line_is_subtitle = json_is_true(json_object_get(patch_row, "is_subtitle"));
-
-		auto patch_balloon_func = [](std::vector<std::string>& line, TasofroPl::ALine* rep, size_t index) {
+		patch_win_message(line, patch_row, 9,
+			[](std::vector<std::string>& line, TasofroPl::ALine* rep, size_t index) {
 			if (index == 3) {
 				log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
 				return false;
@@ -167,29 +158,7 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 			line[9 + 4 * index + 3] = rep->get(0);
 			line[9 + 4 * index + 2] = rep->get(1);
 			return true;
-		};
-
-		auto patch_subtitles_func = [](std::vector<std::string>& line, TasofroPl::ALine* rep, size_t index) {
-			if (index == 2) {
-				log_print("TFCS: warning: trying to put more than 2 subtitles in a win line.\n");
-				return false;
-			}
-			line[21 + index] = rep->get(0);
-			return true;
-		};
-
-		if (line_is_subtitle) {
-			patch_win_message(line, patch_row, 9, patch_subtitles_func);
-		}
-		else if (json_is_true(subtitles_support) && json_is_true(subtitles_config)) {
-			// If subtitles_config is true (which means it is NOT a patch stack, just the "true" value),
-			// we don't have user-provided subtitles and we need to patch the subtitles with the main stack,
-			// and to keep the balloon in Japanese.
-			patch_win_message(line, patch_row, 9, patch_subtitles_func);
-		}
-		else {
-			patch_win_message(line, patch_row, 9, patch_balloon_func);
-		}
+		});
 	}
 
 	// Patch each column independently
@@ -301,26 +270,6 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 	return 1;
 }
 
-int patch_tfcs_subtitles(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *)
-{
-	json_t *patch = custom_stack_game_json_resolve(fn, nullptr, json_object_get(runconfig_get(), "subtitles"));
-	if (patch == nullptr) {
-		return 0;
-	}
-
-	const char *key;
-	json_t *value;
-	json_object_foreach(patch, key, value) {
-		if (json_is_object(value)) {
-			json_object_set_new(value, "is_subtitle", json_true());
-		}
-	}
-
-	int ret = patch_tfcs(file_inout, size_out, size_in, fn, patch);
-	json_decref(patch);
-	return ret;
-}
-
 size_t get_tfcs_size(const char*, json_t*, size_t patch_size)
 {
 	// Because a lot of these files are zipped, guessing their exact patched size is hard. We'll add a few more bytes.
@@ -330,16 +279,4 @@ size_t get_tfcs_size(const char*, json_t*, size_t patch_size)
 	else {
 		return 0;
 	}
-}
-
-size_t get_tfcs_subtitles_size(const char *fn, json_t*, size_t)
-{
-	size_t patch_size;
-	json_t *patch = custom_stack_game_json_resolve(fn, &patch_size, json_object_get(runconfig_get(), "subtitles"));
-	if (patch == nullptr) {
-		return 0;
-	}
-	json_decref(patch);
-
-	return get_tfcs_size(fn, nullptr, patch_size);
 }

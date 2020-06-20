@@ -417,14 +417,13 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 /// ---------------------------------------
 
 
-int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param)
+int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, const patch_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param)
 {
 	loader_update_state_t *state = (loader_update_state_t*)param;
 	const char *format1 = "Updating %s (%d/%d)...";
 	const char *format2 = "Updating file %d/%d...";
 	const char *format3 = "%s (%d B / %d B)";
-	const char *patch_name = json_object_get_string(patch, "id");
-	const unsigned int format1_len = strlen(format1) + strlen(patch_name) + 2 * 10 + 1;
+	const unsigned int format1_len = strlen(format1) + strlen(patch->id) + 2 * 10 + 1;
 	const unsigned int format2_len = strlen(format2) + 2 * 10 + 1;
 	const unsigned int format3_len = strlen(format3) + strlen(fn) + 2 * 10 + 1;
 	VLA(char, buffer, max(format1_len, max(format2_len, format3_len)));
@@ -434,7 +433,7 @@ int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, con
 		state->state = STATE_CORE_UPDATE;
 	}
 
-	sprintf(buffer, format1, patch_name, stack_progress + 1, stack_total);
+	sprintf(buffer, format1, patch->id, stack_progress + 1, stack_total);
 	SetWindowTextU(state->hwnd[HWND_PROGRESS1], buffer);
 	sprintf(buffer, format2, patch_progress, patch_total);
 	SetWindowTextU(state->hwnd[HWND_PROGRESS2], buffer);
@@ -506,15 +505,12 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	BOOL ret = 0;
 
 	log_print("Updates are enabled. Initializing update UI\n");
-	patches_init(json_object_get_string(runconfig_get(), "run_cfg_fn"));
 	stack_show_missing();
 
 	{
 		json_t *game = identify(exe_fn);
 		if (game) {
-			json_t *old_cfg = runconfig_get();
-			json_object_merge(game, old_cfg);
-			runconfig_set(game);
+			runconfig_load(game, RUNCONFIG_NO_OVERWRITE);
 			json_decref(game);
 		}
 	}
@@ -585,7 +581,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	size_t cur_dir_len = GetCurrentDirectory(0, nullptr);
 	VLA(char, cur_dir, cur_dir_len);
 	GetCurrentDirectory(cur_dir_len, cur_dir);
-	json_object_set_new(runconfig_get(), "thcrap_dir", json_string(cur_dir));
+	runconfig_thcrap_dir_set(cur_dir);
 	if (update_notify_thcrap() == SELF_OK && state.game_started == false) {
 		// Re-run an up-to-date loader
 		LPSTR commandLine = GetCommandLine();
@@ -608,20 +604,19 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	log_print("Stack update done.\n");
 
 	{
-		json_t *game_fallback = nullptr;
-		json_t *game = json_object_get(runconfig_get(), "game");
+		const char *game = runconfig_game_get();
 		if (!game) {
-			game_fallback = json_string(game_id_fallback);
-			game = game_fallback;
+			game = game_id_fallback;
 		}
 		if (game) {
+			json_t *filter = json_string(game);
 			log_print("Updating patches with game-specific filter...\n");
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
 			progress_bars_set_marquee(&state, true, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
 			state.state = STATE_PATCHES_UPDATE;
-			stack_update(update_filter_games, game, loader_update_progress_callback, &state);
-			json_decref(game_fallback);
+			stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
+			json_decref(filter);
 			log_print("Stack update done.\n");
 		}
 	}
@@ -652,12 +647,13 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 				log_print("Global update done.\n");
 			}
 			else {
-				json_t *game = json_object_get(runconfig_get(), "game");
+				const char *game = runconfig_game_get();
 				if (game) {
+					json_t *filter = json_string(game);
 					log_print("Updating patches with game-specific filter...\n");
 					SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
 					state.state = STATE_PATCHES_UPDATE;
-					stack_update(update_filter_games, game, loader_update_progress_callback, &state);
+					stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
 					log_print("Stack update done.\n");
 				}
 			}

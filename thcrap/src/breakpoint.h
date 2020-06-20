@@ -46,19 +46,41 @@ typedef struct {
   */
 typedef int (*BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
 
+// Represents a breakpoint.
 typedef struct {
-	// Address where the breakpoint is written
-	uint8_t *addr;
+	/**
+	  * These variables are set by the caller
+	  */
+
+	// Name of the breakpoint
+	char *name;
+
+	// Address as string from run configuration
+	char *addr_str;
 
 	// Size of the original code sliced out at [addr].
 	// Must be inside BP_SourceCave_Limits.
 	size_t cavesize;
 
-	BreakpointFunc_t func;
+	// Json variables associated with the breakpoint. Usually comes from
+	// global.js, game_id.js and game_id.build_id.js.
+	// This object is never accessed directly by the breakpoints engine,
+	// it is only passed back to your breakpoint function.
+	// You are free to put anything in it.
 	json_t *json_obj;
+
+	/**
+	  * These variables are use internaly by the breakpoints engine
+	  */
+
+	// Function to be called when the breakpoint is hit
+	BreakpointFunc_t func;
 
 	// First byte of the code cave for this breakpoint.
 	uint8_t *cave;
+
+	// Address where the breakpoint is written
+	uint8_t *addr;
 } breakpoint_local_t;
 
 typedef struct {
@@ -107,7 +129,7 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.
-int breakpoints_apply(breakpoint_set_t *set, json_t *breakpoints, HMODULE hMod);
+int breakpoints_apply(breakpoint_local_t *breakpoints, size_t breakpoints_count, HMODULE hMod);
 
 // Removes all breakpoints in the given set.
 // TODO: Implement!

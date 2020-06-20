@@ -1,4 +1,4 @@
-﻿/**
+/**
   * Touhou Community Reliant Automatic Patcher
   * Tasogare Frontier support plugin
   *
@@ -60,7 +60,7 @@ int __stdcall thcrap_plugin_init()
 		return 1;
 	}
 
-	const char *game = json_object_get_string(runconfig_get(), "game");
+	const char *game = runconfig_game_get();
 	game_id = game_id_from_string(game);
 
 	if(base_tasofro_removed == -1) {

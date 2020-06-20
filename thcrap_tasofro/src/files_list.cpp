@@ -28,8 +28,8 @@ void register_filename(const char *path)
 	DWORD hash = ICrypt::instance->SpecialFNVHash(path, path + strlen(path));
 	strcpy(fileHashToName[hash].path, path);
 
-	json_t *dat_dump = json_object_get(runconfig_get(), "dat_dump");
-	if (!json_is_false(dat_dump)) {
+	const char *dat_dump = runconfig_dat_dump_get();
+	if (dat_dump) {
 		if (!full_files_list) {
 			full_files_list = json_array();
 		}
@@ -46,13 +46,9 @@ void register_filename(const char *path)
 		json_array_append_new(full_files_list, json_string(path_u));
 		SAFE_FREE(path_u);
 
-		const char *dir = json_string_value(dat_dump);
-		if (!dir) {
-			dir = "dat";
-		}
-		size_t fn_len = strlen(dir) + 1 + strlen("fileslist.js") + 1;
+		size_t fn_len = strlen(dat_dump) + 1 + strlen("fileslist.js") + 1;
 		VLA(char, fn, fn_len);
-		sprintf(fn, "%s/fileslist.js", dir);
+		sprintf(fn, "%s/fileslist.js", dat_dump);
 		json_dump_file(full_files_list, fn, JSON_INDENT(2));
 		VLA_FREE(fn);
 	}
@@ -108,7 +104,7 @@ void register_utf8_filename(const char* file)
 }
 
 // Convert fileslist.txt to fileslist.js:
-// iconv -f sjis fileslist.txt | sed -e 'y|¥/|\\\\|' | jq -Rs '. | split("\n") | sort' > fileslist.js
+// iconv -f sjis fileslist.txt | sed -e 'y|Â¥/|\\\\|' | jq -Rs '. | split("\n") | sort' > fileslist.js
 int LoadFileNameListFromJson(json_t *fileslist)
 {
 	size_t i;

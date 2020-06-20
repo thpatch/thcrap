@@ -48,7 +48,7 @@ json_t* bgm_generator(std::unordered_map<std::string, json_t*> in_data, const st
 	json_t *value;
 
 	// Extract music names
-	const char *game = json_object_get_string(runconfig_get(), "game");
+	const char *game = runconfig_game_get();
 	json_object_foreach(themes, key, value) {
 		if (!game || strncmp(key, game, strlen(game)) != 0 || key[strlen(game)] != '_') {
 			continue;

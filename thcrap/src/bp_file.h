@@ -18,7 +18,7 @@ typedef struct {
 	json_t *patch;
 	size_t patch_size;
 	// JSON array of hook functions to be run on this file
-	json_t *hooks;
+	struct patchhook_t *hooks;
 
 	// File name. Enforced to be in UTF-8
 	char *name;
@@ -88,10 +88,10 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   * function call, after the final buffer has been allocated.
   *
   * Returns:
-  * • 0 if the file was fully replaced, skipping execution of the
+  * â€¢ 0 if the file was fully replaced, skipping execution of the
   *   breakpoint's code cave. Since we're done with the file at
   *   this point, the file replacement state is cleared in that case.
-  * • 1 if either some of the mandatory parameters are missing, or if
+  * â€¢ 1 if either some of the mandatory parameters are missing, or if
   *   there is no full replacement file in the stack. A later call to
   *   BP_file_loaded() should then apply a potential JSON patch on top
   *   of the original file.

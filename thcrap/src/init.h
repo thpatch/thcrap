@@ -29,13 +29,11 @@ int thcrap_init(const char *setup_fn);
 // Second part of thcrap_init(), applies any sort of binary change to the
 // current process, using the binary hacks and breakpoints from the stage
 // with the given number.
-// [*hModPtr] is used as the base for relative addresses. If this is a
-// nullptr (which is the case for all calls that didn't come from
-// BP_init_next_stage), the "module" value from the init stage data is used.
-int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr);
-
-// Returns the configuration for the given stage.
-json_t* thcrap_init_stage_data(size_t stage_num);
+// If use_module is true, module is used as the base for relative addresses.
+// If it is false (which is the case for all calls that didn't come from
+// BP_init_next_stage), the module parameter is ignored and
+// the "module" value from the init stage data is used.
+int thcrap_init_binary(size_t stage_num, bool use_module, HMODULE module);
 
 /**
   * Sets up the binary hacks and breakpoints of the next stage.

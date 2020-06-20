@@ -10,15 +10,15 @@
 #include "thcrap.h"
 #include "sha256.h"
 #include "win32_detour.h"
+#include <vector>
 
 /// Static global variables
 /// -----------------------
 // Required to get the exported functions of thcrap.dll.
 static HMODULE hThcrap = NULL;
 static char *dll_dir = NULL;
-breakpoint_set_t *bp_set = nullptr; // One per stage
-size_t stage_cur = 0;
-size_t stages_total = 0; // Including the run configuration, therefore >= 1
+static size_t stage_cur = 0;
+static std::vector<bool> bp_set; // One per stage
 /// -----------------------
 
 /// Old game build message
@@ -44,36 +44,17 @@ const char *oldbuild_url =
 	"\n"
 	"(Press Ctrl+C to copy the text of this message box and the URL)";
 
-int IsLatestBuild(json_t *build, json_t **latest)
+void oldbuild_show()
 {
-	json_t *json_latest = json_object_get(runconfig_get(), "latest");
-	size_t i;
-	if(!json_is_string(build) || !latest || !json_latest) {
-		return -1;
-	}
-	json_flex_array_foreach(json_latest, i, *latest) {
-		if(json_equal(build, *latest)) {
-			return 1;
-		}
-	}
-	return 0;
-}
+	const char *title = runconfig_title_get();
 
-int oldbuild_show(json_t *run_cfg)
-{
-	const json_t *title = runconfig_title_get();
-	json_t *build = json_object_get(run_cfg, "build");
-	json_t *latest = NULL;
-	int ret;
-
-	if(!json_is_string(build) || !json_is_string(title)) {
-		return -1;
+	if(!title) {
+		return;
 	}
-	ret = IsLatestBuild(build, &latest) == 0 && json_is_string(latest);
-	if(ret) {
+	if(runconfig_latest_check() == false) {
 		const size_t MSG_SLOT = (size_t)oldbuild_header;
 		unsigned int msg_type = MB_ICONINFORMATION;
-		auto *url_update = json_object_get_string(run_cfg, "url_update");
+		const char *url_update = runconfig_update_url_get();
 
 		// Try to find out whether this version actually is supported or
 		// not, by looking for a <game>.<version>.js file in the stack.
@@ -84,16 +65,18 @@ int oldbuild_show(json_t *run_cfg)
 		//   this older version, but others don't?
 		// • Stringlocs are also part of support. -.-
 		const auto *BUILD_JS_FORMAT = "%s.%s.js";
-		auto *game_str = json_object_get_string(run_cfg, "game");
-		auto *build_str = json_string_value(build);
+		auto *game_str = runconfig_game_get();
+		auto *build_str = runconfig_build_get();
 		auto build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
 		VLA(char, build_js_fn, build_js_fn_len);
 		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
-		auto *build_js_chain = json_pack("[s]", build_js_fn);
-		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr, nullptr);
+		char *build_js_chain[] = {
+			build_js_fn,
+			nullptr
+		};
+		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
 		auto supported = build_js != nullptr;
 		json_decref_safe(build_js);
-		json_decref_safe(build_js_chain);
 		VLA_FREE(build_js_fn);
 
 		strings_strclr(MSG_SLOT);
@@ -109,15 +92,14 @@ int oldbuild_show(json_t *run_cfg)
 			strings_strcat(MSG_SLOT, oldbuild_url);
 		}
 
-		strings_replace(MSG_SLOT, "${game_title}", json_string_value(title));
-		strings_replace(MSG_SLOT, "${build_running}", json_string_value(build));
-		strings_replace(MSG_SLOT, "${build_latest}", json_string_value(latest));
+		strings_replace(MSG_SLOT, "${game_title}", title);
+		strings_replace(MSG_SLOT, "${build_running}", build_str);
+		strings_replace(MSG_SLOT, "${build_latest}", runconfig_latest_get());
 		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
 		auto *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
 
 		log_mbox(oldbuild_title, MB_OK | msg_type, msg);
 	}
-	return ret;
 }
 /// -------------------
 
@@ -151,13 +133,18 @@ json_t* identify_by_size(size_t file_size, json_t *versions)
 json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 {
 	json_t *ret = NULL;
-	json_t *chain = resolve_chain(fn);
-	if(json_array_size(chain)) {
-		json_array_insert_new(chain, 0, json_string("global.js"));
+	char **chain = resolve_chain(fn);
+	if(chain && chain[0]) {
+		std::vector<char*> new_chain;
+		new_chain.push_back("global.js");
+		for (size_t i = 0; chain[i]; i++) {
+			new_chain.push_back(chain[i]);
+		}
+		new_chain.push_back(nullptr);
 		log_printf("(JSON) Resolving configuration for %s... ", fn);
-		ret = stack_json_resolve_chain(chain, file_size, nullptr);
+		ret = stack_json_resolve_chain(new_chain.data(), file_size);
 	}
-	json_decref(chain);
+	chain_free(chain);
 	return ret;
 }
 
@@ -218,7 +205,7 @@ json_t* identify(const char *exe_fn)
 	// Store build in the runconfig to be recalled later for version-
 	// dependent patch file resolving. Needs to be directly written to
 	// run_cfg because we already require it down below to resolve ver_fn.
-	json_object_set(run_cfg, "build", build_obj);
+	runconfig_build_set(build);
 
 	// More robust than putting the UTF-8 character here directly,
 	// who knows which locale this might be compiled under...
@@ -289,7 +276,6 @@ void thcrap_detour(HMODULE hProc)
 
 int thcrap_init(const char *run_cfg_fn)
 {
-	json_t *user_cfg = NULL;
 	HMODULE hProc = GetModuleHandle(NULL);
 
 	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
@@ -302,31 +288,21 @@ int thcrap_init(const char *run_cfg_fn)
 	PathAppendU(dll_dir, "..");
 	SetCurrentDirectory(dll_dir);
 
-	user_cfg = json_load_file_report(run_cfg_fn);
-	runconfig_set(user_cfg);
+	runconfig_load_from_file(run_cfg_fn);
+	runconfig_thcrap_dir_set(dll_dir);
 
-	{
-		json_t *console_val = json_object_get(run_cfg, "console");
-		log_init(json_is_true(console_val));
-	}
-
-	json_object_set_new(run_cfg, "thcrap_dir", json_string(dll_dir));
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn));
+	log_init(runconfig_console_get());
 	log_printf("Run configuration file: %s\n\n", run_cfg_fn);
-
-	log_printf("Initializing patches...\n");
-	patches_init(run_cfg_fn);
 	stack_show_missing();
 
 	log_printf("EXE file name: %s\n", exe_fn);
 	{
 		json_t *full_cfg = identify(exe_fn);
 		if(full_cfg) {
-			json_object_merge(full_cfg, user_cfg);
-			runconfig_set(full_cfg);
+			runconfig_load(full_cfg, RUNCONFIG_NO_OVERWRITE);
 			json_decref(full_cfg);
 
-			oldbuild_show(full_cfg);
+			oldbuild_show();
 		}
 	}
 
@@ -362,18 +338,11 @@ int thcrap_init(const char *run_cfg_fn)
 	// having any test cases right now...
 	thcrap_detour(hProc);
 
-	// Init stages
-	// -----------
-	auto init_stages = json_object_get(run_cfg, "init_stages");
-	stages_total = json_array_size(init_stages) + 1;
-	*(void **)(&bp_set) = calloc(stages_total, sizeof(breakpoint_set_t));
-	// -----------
-
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
-	json_decref(user_cfg);
-	return thcrap_init_binary(0, nullptr);
+	bp_set.resize(runconfig_stage_count(), false);
+	return thcrap_init_binary(0, false, nullptr);
 }
 
 int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
@@ -382,14 +351,15 @@ int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	auto module = (HMODULE)json_object_get_immediate(bp_info, regs, "module");
 	// ----------
-	thcrap_init_binary(++stage_cur, &module);
+	thcrap_init_binary(++stage_cur, true, module);
 	return 1;
 }
 
-int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr)
+int thcrap_init_binary(size_t stage_num, bool use_module, HMODULE module)
 {
-	assert(bp_set);
+	size_t stages_total = runconfig_stage_count();
 	assert(stage_num < stages_total);
+	assert(bp_set.size() == stages_total);
 
 	if(stages_total >= 2) {
 		log_printf(
@@ -398,60 +368,26 @@ int thcrap_init_binary(size_t stage_num, HMODULE *hModPtr)
 			stage_num
 		);
 	}
-	int ret = 0;
-	json_t *run_cfg = runconfig_get();
-	json_t *stage = thcrap_init_stage_data(stage_num);
 
-	json_t *binhacks = json_object_get(stage, "binhacks");
-	json_t *breakpoints = json_object_get(stage, "breakpoints");
-	json_t *codecaves = json_object_get(stage, "codecaves");
-
-	HMODULE hModFromStage = (HMODULE)json_object_get_immediate(
-		stage, nullptr, "module"
-	);
-	HMODULE hMod = hModPtr ? *hModPtr : hModFromStage;
-
-	if (json_is_object(codecaves)) {
-		ret += codecaves_apply(codecaves);
-	}
-
-	ret += binhacks_apply(binhacks, hMod);
-	// FIXME: this workaround is needed, because breakpoints don't check what they overwrite
-	if (!(ret != 0 && stage_num == 0 && stages_total >= 2)){
-		ret += breakpoints_apply(&bp_set[stage_num], breakpoints, hMod);
-	}
+	bool ret = runconfig_stage_apply(stage_num,
+		RUNCFG_STAGE_USE_MODULE | (bp_set[stage_num] ? RUNCFG_STAGE_SKIP_BREAKPOINTS : 0),
+		module);
 
 	if(stages_total >= 2) {
-		if(ret != 0 && stage_num == 0 && stages_total >= 2) {
+		if(ret == false && stage_num == 0 && stages_total >= 2) {
 			log_printf(
 				"Failed. Jumping to last stage...\n"
 				"-------------------------\n"
 			);
-			return thcrap_init_binary(stages_total - 1, nullptr);
-		} else {
-			log_printf("-----------------------\n");
+			return thcrap_init_binary(stages_total - 1, false, nullptr);
 		}
 	}
 
-	if(stage == run_cfg) {
-		log_printf("---------------------------\n");
-		log_printf("Complete run configuration:\n");
-		log_printf("---------------------------\n");
-		json_dump_log(run_cfg, JSON_INDENT(2));
-		log_printf("---------------------------\n");
+	if(stage_num + 1 == stages_total) {
+		runconfig_print();
 		mod_func_run_all("post_init", NULL);
 	}
 	return 0;
-}
-
-json_t* thcrap_init_stage_data(size_t stage_num)
-{
-	auto run_cfg = runconfig_get();
-	auto init_stages = json_object_get(run_cfg, "init_stages");
-	if(stage_num < json_array_size(init_stages)) {
-		return json_array_get(init_stages, stage_num);
-	}
-	return run_cfg;
 }
 
 int InitDll(HMODULE hDll)
@@ -483,8 +419,7 @@ void ExitDll(HMODULE hDll)
 	mod_func_run_all("thread_exit", NULL);
 	mod_func_run_all("exit", NULL);
 	plugins_close();
-	SAFE_FREE(bp_set);
-	run_cfg = json_decref_safe(run_cfg);
+	runconfig_free();
 
 	SAFE_FREE(dll_dir);
 	detour_exit();

@@ -1,4 +1,4 @@
-﻿/**
+/**
   * Touhou Community Reliant Automatic Patcher
   * Tasogare Frontier support plugin
   *
@@ -25,8 +25,13 @@ int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
 
 	if (cur_patch) {
 		json_t *binhacks = json_object_get(cur_patch, "binhacks");
-		if (binhacks) {
-			binhacks_apply(binhacks, *plugin);
+		const char *key;
+		json_t *value;
+		json_object_foreach(binhacks, key, value) {
+			binhack_t binhack;
+			if (binhack_from_json(key, value, &binhack)) {
+				binhacks_apply(&binhack, 1, *plugin);
+			}
 		}
 		json_decref(cur_patch);
 		cur_patch = nullptr;

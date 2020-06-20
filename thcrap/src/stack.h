@@ -18,13 +18,14 @@ typedef enum {
 // Iteration state. [patch_info] and [fn] hold the current patch and chain
 // file name after each call to stack_chain_iterate().
 typedef struct {
-	const json_t *patches;
+	const patch_t *patches;
+	size_t nb_patches;
 	int step;
-	json_t *patch_info;
+	const patch_t *patch_info;
 	const char *fn;
 } stack_chain_iterate_t;
 
-typedef json_t* (*resolve_chain_t)(const char *fn);
+typedef char** (*resolve_chain_t)(const char *fn);
 
 /// File resolution
 /// ---------------
@@ -33,20 +34,23 @@ typedef json_t* (*resolve_chain_t)(const char *fn);
 // name returned by fn_for_build().
 // All resolving functions that take a chain parameter (instead of a file
 // name) should use the chain created by this function.
-json_t* resolve_chain(const char *fn);
+char **resolve_chain(const char *fn);
+
+// Free a chain created by resolve_chain
+void chain_free(char **chain);
 
 // Set a user-defined function used to create the chain returned by resolve_chain.
 void set_resolve_chain(resolve_chain_t function);
 
 // Builds a chain for a game-local file name.
-json_t* resolve_chain_game(const char *fn);
+char **resolve_chain_game(const char *fn);
 
 // Set a user-defined function used to create the chain returned by resolve_chain_game.
 void set_resolve_chain_game(resolve_chain_t function);
 
 // Repeatedly iterate through the stack using the given resolving [chain].
 // [sci] keeps the iteration state.
-int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir_t direction, json_t *patches);
+int stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t direction);
 
 // Walks through the given patch stack, merging every file with the filename
 // [fn] into a single JSON object.
@@ -55,15 +59,14 @@ int stack_chain_iterate(stack_chain_iterate_t *sci, const json_t *chain, sci_dir
 // If given, [file_size] receives the maximum number of bytes required to store
 // the final merged JSON data.
 // If [patch] is NULL, the current patch stack is used instead.
-json_t* stack_json_resolve_chain(const json_t *chain, size_t *file_size, json_t *patches);
-json_t* stack_json_resolve_ex(const char *fn, size_t *file_size, json_t *patches);
+json_t* stack_json_resolve_chain(char **chain, size_t *file_size);
 // Uses the current patch stack
 json_t* stack_json_resolve(const char *fn, size_t *file_size);
 
 // Generic file resolver. Returns a stream of the file matching the [chain]
 // with the highest priority inside the patch stack, or INVALID_HANDLE_VALUE
 // if there is no such file in the stack.
-HANDLE stack_file_resolve_chain(const json_t *chain);
+HANDLE stack_file_resolve_chain(char **chain);
 
 // Searches the current patch stack for a replacement for the game data file
 // [fn] and returns either a stream or a newly created buffer, analogous to
@@ -77,7 +80,7 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 
 // Generic file name resolver. Returns the file name of the existing file
 // matching the [chain] with the highest priority inside the patch stack.
-char* stack_fn_resolve_chain(const json_t *chain);
+char* stack_fn_resolve_chain(char **chain);
 
 /// Information
 /// -----------
@@ -87,10 +90,33 @@ void stack_show_missing(void);
 
 // Shows the MOTD of each individual patch.
 void stack_show_motds(void);
+
+// Print the content of the stack to the logs
+void stack_print(void);
 /// -----------
 
-/// Manipulation
+/// Iteration and Manipulation
 /// ------------
+// Add a patch to the stack from a patch_t.
+void stack_add_patch(patch_t *patch);
+
+// Add a patch to the stack from a json description.
+void stack_add_patch_from_json(json_t *patch);
+
+// Remove the patch patch_id from the stack.
+void stack_remove_patch(const char *patch_id);
+
+// Get the number of patches in the stack
+size_t stack_get_size();
+
+// Iterate over the patches in the stack
+void stack_foreach(void (*callback)(const patch_t *patch, void *userdata), void *userdata);
+
+#ifdef __cplusplus
+// Alternative version of stack_foreach that support a C++ lambda as parameter
+void stack_foreach_cpp(std::function<void (const patch_t*)> callback);
+#endif
+
 // Returns:
 // •  0 if the current patch stack contains a patch with the given name, and
 //      if that patch in turn contains a .js file or directory for the current
@@ -113,4 +139,7 @@ void stack_show_motds(void);
 // plugins, or a completely different solution that avoids having every base_*
 // patch ever as an explicit, upfront dependency of every stack ever.
 int stack_remove_if_unneeded(const char *patch_id);
+
+// Clear the stack and free its patches
+void stack_free();
 /// ------------

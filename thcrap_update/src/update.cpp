@@ -8,6 +8,8 @@
   */
 
 #include <thcrap.h>
+#include <algorithm>
+#include <string>
 #include <unordered_map>
 #include <wininet.h>
 #include <zlib.h>
@@ -444,17 +446,9 @@ json_t* servers_t::download_valid_json(
 	return nullptr;
 }
 
-void servers_t::from(const json_t *servers)
+void servers_t::from(const char * const *servers)
 {
-	auto validate = [] (size_t pos, json_t *server) {
-		if(!json_is_string(server)) {
-			char *val_str = json_dumps(server, JSON_ENCODE_ANY);
-			log_printf(
-				"ERROR: Expected a server string at array position %u, got \"%s\"\n",
-				pos + 1, val_str
-			);
-			return false;
-		}
+	auto validate = [] (size_t pos, const char *server) {
 		const stringref_t url = server;
 		const stringref_t PROTOCOL = "://";
 		int check_len = url.len - PROTOCOL.len;
@@ -471,12 +465,10 @@ void servers_t::from(const json_t *servers)
 		return true;
 	};
 
-	auto servers_len = json_array_size(servers);
-	for(size_t i = 0; i < servers_len; i++) {
-		json_t *val = json_array_get(servers, i);
-		if(validate(i, val)) {
+	for(size_t i = 0; servers[i]; i++) {
+		if(validate(i, servers[i])) {
 			server_t server_new;
-			server_new.url = json_string_value(val);
+			server_new.url = servers[i];
 			server_new.new_session();
 			this->push_back(server_new);
 		}
@@ -489,9 +481,9 @@ void servers_t::from(const json_t *servers)
 // called servers_cache() at roughly the same time.
 // And yes, that lock is necessary.
 SRWLOCK cache_srwlock = {SRWLOCK_INIT};
-std::unordered_map<const json_t *, servers_t> patch_servers;
+std::unordered_map<const char * const *, servers_t> patch_servers;
 
-servers_t& servers_cache(const json_t *servers)
+servers_t& servers_cache(const char * const *servers)
 {
 	AcquireSRWLockExclusive(&cache_srwlock);
 	servers_t &srvs = patch_servers[servers];
@@ -504,7 +496,7 @@ servers_t& servers_cache(const json_t *servers)
 /// ---------------------------------------
 
 void* ServerDownloadFile(
-	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
+	const char * const *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
 )
 {
 	assert(file_size);
@@ -514,7 +506,7 @@ void* ServerDownloadFile(
 	return ret.file_buffer;
 }
 
-int PatchFileRequiresUpdate(const json_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)
+int PatchFileRequiresUpdate(const patch_t *patch_info, const char *fn, json_t *local_val, json_t *remote_val)
 {
 	// Remove if the remote specifies a JSON null,
 	// but skip if the file doesn't exit locally
@@ -556,21 +548,21 @@ int update_filter_games(const char *fn, json_t *games)
 	return update_filter_global(fn, NULL);
 }
 
-json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
+patch_t patch_bootstrap(const patch_desc_t *sel, const char * const *repo_servers)
 {
 	const char *main_fn = "patch.js";
 	void *patch_js_buffer;
 	DWORD patch_js_size;
-	json_t *patch_info = patch_build(sel);
-	const json_t *patch_id = json_array_get(sel, 1);
-	size_t patch_len = json_string_length(patch_id) + 1;
+	patch_t patch_info = patch_build(sel);
+	const char *patch_id = sel->patch_id;
+	size_t patch_len = strlen(patch_id) + 1;
 
 	size_t remote_patch_fn_len = patch_len + 1 + strlen(main_fn) + 1;
 	VLA(char, remote_patch_fn, remote_patch_fn_len);
-	sprintf(remote_patch_fn, "%s/%s", json_string_value(patch_id), main_fn);
+	sprintf(remote_patch_fn, "%s/%s", patch_id, main_fn);
 
 	patch_js_buffer = ServerDownloadFile(repo_servers, remote_patch_fn, &patch_js_size, NULL, NULL, NULL);
-	patch_file_store(patch_info, main_fn, patch_js_buffer, patch_js_size);
+	patch_file_store(&patch_info, main_fn, patch_js_buffer, patch_js_size);
 	// TODO: Nice, friendly error
 
 	VLA_FREE(remote_patch_fn);
@@ -579,7 +571,7 @@ json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers)
 }
 
 typedef struct {
-	json_t *patch;
+	const patch_t *patch;
 	DWORD patch_progress;
 	DWORD patch_total;
 	patch_update_callback_t callback;
@@ -589,7 +581,7 @@ int patch_update_callback(const char *fn, get_result_t ret, DWORD file_progress,
 {
 	patch_update_callback_param_t *param = (patch_update_callback_param_t*)param_;
 	if (param->callback) {
-		auto &servers = servers_cache(json_object_get(param->patch, "servers"));
+		auto &servers = servers_cache(const_cast<const char**>(param->patch->servers));
 		for (auto& server : servers) {
 			if (strncmp(server.url, fn, strlen(server.url)) == 0) {
 				fn += strlen(server.url);
@@ -601,7 +593,7 @@ int patch_update_callback(const char *fn, get_result_t ret, DWORD file_progress,
 	return 0;
 }
 
-int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param)
+int patch_update(const patch_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param)
 {
 	const char *files_fn = "files.js";
 
@@ -623,7 +615,7 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 	patch_update_callback_param.callback_param = callback_param;
 
 	const char *key;
-	const char *patch_name = json_object_get_string(patch_info, "id");
+	const char *patch_name = patch_info->id;
 
 	auto finish = [&] (int ret) {
 		if(ret == 3) {
@@ -657,12 +649,12 @@ int patch_update(json_t *patch_info, update_filter_func_t filter_func, json_t *f
 		}
 		return finish(1);
 	}
-	if(json_is_false(json_object_get(patch_info, "update"))) {
+	if(patch_info->update == false) {
 		// Updating manually deactivated on this patch
 		return finish(1);
 	}
 
-	auto &servers = servers_cache(json_object_get(patch_info, "servers"));
+	auto &servers = servers_cache(const_cast<const char**>(patch_info->servers));
 	if(servers.size() == 0) {
 		// No servers for this patch
 		return finish(2);
@@ -799,7 +791,7 @@ typedef struct {
 	stack_update_callback_t callback;
 	void *callback_param;
 } stack_update_callback_param_t;
-int stack_update_callback(const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param_)
+int stack_update_callback(const patch_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param_)
 {
 	stack_update_callback_param_t *param = (stack_update_callback_param_t*)param_;
 	if (param->callback) {
@@ -810,81 +802,85 @@ int stack_update_callback(const json_t *patch, DWORD patch_progress, DWORD patch
 
 void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param)
 {
-	json_t *patch_array = json_object_get(runconfig_get(), "patches");
+	// Prepare callback param
 	stack_update_callback_param_t stack_update_param;
 	stack_update_param.callback = callback;
 	stack_update_param.callback_param = callback_param;
-	stack_update_param.stack_total = json_array_size(patch_array);
-	size_t i;
-	json_t *patch_info;
-	json_array_foreach(patch_array, i, patch_info) {
-		if (!patch_info) {
-			continue;
-		}
-		stack_update_param.stack_progress = i;
-		patch_update(patch_info, filter_func, filter_data, stack_update_callback, &stack_update_param);
-	}
+	stack_update_param.stack_total = stack_get_size();
+
+	// Do the update
+	stack_foreach_cpp([filter_func, filter_data, &stack_update_param](const patch_t *patch) {
+		stack_update_param.stack_progress++;
+		patch_update(patch, filter_func, filter_data, stack_update_callback, &stack_update_param);
+	});
 }
 
 void global_update(stack_update_callback_t callback, void *callback_param)
 {
-	json_t *patches = json_object();
-
-	size_t i;
-	json_t *patch;
-	json_array_foreach(json_object_get(runconfig_get(), "patches"), i, patch) {
-		const char *archive = json_object_get_string(patch, "archive");
-		if (archive) {
-			json_object_set(patches, archive, patch);
+	std::vector<const patch_t*> patches;
+	std::vector<patch_t> patches_storage;
+	auto clear_patches_storage = [&patches_storage]() {
+		for (patch_t &it : patches_storage) {
+			patch_free(&it);
 		}
-	}
+	};
 
+	// Get the patches from the stack
+	stack_foreach_cpp([&patches](const patch_t *patch) {
+		if (patch->archive) {
+			patches.push_back(patch);
+		}
+	});
+
+	// Add all the patches we can find in config files
 	WIN32_FIND_DATAA data;
-	HANDLE hFind = FindFirstFile("*.js", &data);
-	if (hFind == INVALID_HANDLE_VALUE) {
-		return;
-	}
-	do {
-		json_t *config = json_load_file(data.cFileName, 0, nullptr);
-		if (!config) {
-			continue;
-		}
-		json_array_foreach(json_object_get(config, "patches"), i, patch) {
-			patch_rel_to_abs(patch, data.cFileName);
-			patch = patch_init(patch);
-			const char *archive = json_object_get_string(patch, "archive");
-			if (archive && json_object_get(patches, archive) == nullptr) {
-				json_object_set(patches, archive, patch);
+	HANDLE hFind = FindFirstFile("config/*.js", &data);
+	if (hFind != INVALID_HANDLE_VALUE) {
+		do {
+			std::string path = std::string("config/") + data.cFileName;
+			json_t *config = json_load_file(path.c_str(), 0, nullptr);
+			if (!config) {
+				continue;
 			}
-		}
-		json_decref(config);
-	} while (FindNextFile(hFind, &data));
+			size_t i;
+			json_t *patch_info;
+			json_array_foreach(json_object_get(config, "patches"), i, patch_info) {
+				patch_t patch = patch_init(json_object_get_string(patch_info, "archive"), patch_info, 0);
+				patch_rel_to_abs(&patch, path.c_str());
+				if (patch.archive && !std::any_of(patches.begin(), patches.end(), [&patch](const patch_t *it) {
+						return strcmp(patch.archive, it->archive) != 0;
+					})) {
+					patches_storage.push_back(patch);
+					patches.push_back(&patches_storage.back());
+				}
+				else {
+					patch_free(&patch);
+				}
+			}
+			json_decref(config);
+		} while (FindNextFile(hFind, &data));
+	}
 
 	stack_update_callback_param_t stack_update_param;
 	stack_update_param.callback = callback;
 	stack_update_param.callback_param = callback_param;
-	stack_update_param.stack_total = json_object_size(patches);
+	stack_update_param.stack_total = patches.size();
 
 	json_t *games = json_load_file("games.js", 0, nullptr);
 	if (!games) {
-		json_decref(patches);
+		clear_patches_storage();
 		return;
 	}
 	json_t *filter = json_object_get_keys_sorted(games);
 	json_decref(games);
 
-	i = 0;
-	const char *key;
-	json_t *patch_info;
-	json_object_foreach(patches, key, patch_info) {
-		if (!patch_info) {
-			continue;
-		}
+	size_t i = 0;
+	for (const patch_t *it : patches) {
 		stack_update_param.stack_progress = i;
-		patch_update(patch_info, update_filter_games, filter, stack_update_callback, &stack_update_param);
+		patch_update(it, update_filter_games, filter, stack_update_callback, &stack_update_param);
 		i++;
 	}
 
 	json_decref(filter);
-	json_decref(patches);
+	clear_patches_storage();
 }

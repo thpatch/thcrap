@@ -19,16 +19,19 @@
 
 #ifdef __cplusplus
 #include <string>
+#include <functional>
 
 extern "C" {
 #endif
 
 #include <win32_utf8.h>
+#include <stdbool.h>
 #include <jansson.h>
 #include "exception.h"
 #include "util.h"
 #include "jansson_ex.h"
 #include "global.h"
+#include "runconfig.h"
 #include "log.h"
 #include "patchfile.h"
 #include "stack.h"

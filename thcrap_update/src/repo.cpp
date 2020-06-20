@@ -12,16 +12,12 @@
 #include "update.h"
 
 
-int RepoDiscoverNeighbors(json_t *repo_js, json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
+int RepoDiscoverNeighbors(repo_t *repo, json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
 {
 	int ret = 0;
-	json_t *neighbors = json_object_get(repo_js, "neighbors");
-	size_t i;
-	json_t *neighbor;
-	json_array_foreach(neighbors, i, neighbor) {
-		const char *neighbor_str = json_string_value(neighbor);
+	for (size_t i = 0; repo->neighbors && repo->neighbors[i]; i++) {
 		// Recursion!
-		ret = RepoDiscoverAtURL(neighbor_str, id_cache, url_cache, fwe_callback);
+		ret = RepoDiscoverAtURL(repo->neighbors[i], id_cache, url_cache, fwe_callback);
 		if(ret) {
 			break;
 		}
@@ -34,9 +30,7 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 	int ret = 0;
 	const char *repo_fn = "repo.js";
 	download_ret_t repo_dl;
-	const char *id = NULL;
-	json_t *repo_fn_local = NULL;
-	const char *repo_fn_local_str;
+	char *repo_fn_local = NULL;
 
 	url_cache = json_is_object(url_cache) ? json_incref(url_cache) : json_object();
 	id_cache = json_is_object(id_cache) ? json_incref(id_cache) : json_object();
@@ -49,7 +43,11 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 			it++;
 		}
 	}
+	if (servers.empty()) {
+		return 0;
+	}
 	auto repo_js = servers.download_valid_json(repo_fn, &repo_dl);
+	repo_t *repo = RepoLoadJson(repo_js);
 
 	// Cache all servers that have been visited
 	for(auto it : servers) {
@@ -59,30 +57,32 @@ int RepoDiscoverAtServers(servers_t servers, json_t *id_cache, json_t *url_cache
 	}
 
 	// That's all the error checking we need
-	id = json_object_get_string(repo_js, "id");
-	if(id) {
-		const json_t *old_server = json_object_get(id_cache, id);
+	if (!repo) {
+		return 0;
+	}
+	if (repo->id) {
+		const json_t *old_server = json_object_get(id_cache, repo->id);
 		if(!old_server) {
-			repo_fn_local = RepoGetLocalFN(id);
-			repo_fn_local_str = json_string_value(repo_fn_local);
-			ret = file_write(repo_fn_local_str, repo_dl.file_buffer, repo_dl.file_size);
-			json_object_set(id_cache, id, json_true());
+			repo_fn_local = RepoGetLocalFN(repo->id);
+			ret = file_write(repo_fn_local, repo_dl.file_buffer, repo_dl.file_size);
+			json_object_set(id_cache, repo->id, json_true());
 			if(ret) {
-				if(fwe_callback && !fwe_callback(repo_fn_local_str)) {
+				if(fwe_callback && !fwe_callback(repo_fn_local)) {
 					goto end;
 				}
 			}
 		} else {
-			log_printf("Already got a repository named '%s', ignoring...\n", id);
+			log_printf("Already got a repository named '%s', ignoring...\n", repo->id);
 		}
-	} else if(json_is_object(repo_js)) {
+	} else if(repo) {
 		log_printf("Repository file does not specify an ID!\n");
 	}
 
-	ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache, fwe_callback);
+	ret = RepoDiscoverNeighbors(repo, id_cache, url_cache, fwe_callback);
 end:
-	json_decref(repo_fn_local);
+	SAFE_FREE(repo_fn_local);
 	SAFE_FREE(repo_dl.file_buffer);
+	RepoFree(repo);
 	json_decref(repo_js);
 	json_decref(url_cache);
 	json_decref(id_cache);
@@ -99,15 +99,15 @@ int RepoDiscoverFromLocal(json_t *id_cache, json_t *url_cache, file_write_error_
 {
 	int ret = 0;
 	HANDLE hFind = NULL;
-	json_t *repo_js;
-	while(repo_js = RepoLocalNext(&hFind)) {
+	repo_t *repo;
+	while (repo = RepoLocalNext(&hFind)) {
 		servers_t servers;
-		servers.from(json_object_get(repo_js, "servers"));
+		servers.from(repo->servers);
 		ret = RepoDiscoverAtServers(servers, id_cache, url_cache, fwe_callback);
 		if(!ret) {
-			ret = RepoDiscoverNeighbors(repo_js, id_cache, url_cache, fwe_callback);
+			ret = RepoDiscoverNeighbors(repo, id_cache, url_cache, fwe_callback);
 		}
-		json_decref(repo_js);
+		RepoFree(repo);
 	}
 	return ret;
 }

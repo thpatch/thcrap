@@ -9,11 +9,6 @@
 #include "repo.h"
 #include "console.h"
 
-typedef enum {
-	RUN_CFG_FN,
-	RUN_CFG_FN_JS
-} configure_slot_t;
-
 int file_write_error(const char *fn)
 {
 	static int error_nag = 0;
@@ -43,64 +38,58 @@ int file_write_text(const char *fn, const char *str)
 	return ret;
 }
 
-const char* run_cfg_fn_build(const size_t slot, const json_t *sel_stack)
+std::string run_cfg_fn_build(const patch_sel_stack_t& sel_stack)
 {
-	const char *ret = NULL;
-	size_t i;
-	json_t *sel;
-	int skip = 0;
-
-	ret = strings_strclr(slot);
+	bool skip = false;
+	std::string ret;
 
 	// If we have any translation patch, skip everything below that
-	json_array_foreach(sel_stack, i, sel) {
-		const char *patch_id = json_array_get_string(sel, 1);
-		if (!strnicmp(patch_id, "lang_", 5)) {
-			skip = 1;
+	for (const patch_desc_t& sel : sel_stack) {
+		if (strnicmp(sel.patch_id, "lang_", 5) == 0) {
+			skip = true;
 			break;
 		}
 	}
 
-	json_array_foreach(sel_stack, i, sel) {
-		const char *patch_id = json_array_get_string(sel, 1);
-		if (!patch_id) {
-			continue;
+	for (const patch_desc_t& sel : sel_stack) {
+		std::string patch_id;
+
+		if (strnicmp(sel.patch_id, "lang_", 5) == 0) {
+			patch_id = sel.patch_id + 5;
+			skip = false;;
+		}
+		else {
+			patch_id = sel.patch_id;
 		}
 
-		if (ret && ret[0]) {
-			ret = strings_strcat(slot, "-");
-		}
-
-		if (!strnicmp(patch_id, "lang_", 5)) {
-			patch_id += 5;
-			skip = 0;
-		}
 		if (!skip) {
-			ret = strings_strcat(slot, patch_id);
+			if (!ret.empty()) {
+				ret += "-";
+			}
+			ret += patch_id;
 		}
 	}
+
 	return ret;
 }
 
-const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
+std::string EnterRunCfgFN(std::string& run_cfg_fn)
 {
 	int ret = 0;
-	const char* run_cfg_fn = strings_storage_get(slot_fn, 0);
 	char run_cfg_fn_new[MAX_PATH];
-	const char *run_cfg_fn_js;
+	std::string run_cfg_fn_js;
 	do {
 		log_printf(
 			"\n"
 			"Enter a custom name for this configuration, or leave blank to use the default\n"
-			" (%s): ", run_cfg_fn
+			" (%s): ", run_cfg_fn.c_str()
 		);
 		console_read(run_cfg_fn_new, sizeof(run_cfg_fn_new));
 		if (run_cfg_fn_new[0]) {
-			run_cfg_fn = strings_sprintf(slot_fn, "%s", run_cfg_fn_new);
+			run_cfg_fn = run_cfg_fn_new;
 		}
-		run_cfg_fn_js = strings_sprintf(slot_js, "%s.js", run_cfg_fn);
-		if (PathFileExists(run_cfg_fn_js)) {
-			log_printf("\"%s\" already exists. ", run_cfg_fn_js);
+		if (PathFileExists(run_cfg_fn_js.c_str())) {
+			log_printf("\"%s\" already exists. ", run_cfg_fn_js.c_str());
 			ret = console_ask_yn("Overwrite?") == 'n';
 		}
 		else {
@@ -111,7 +100,7 @@ const char* EnterRunCfgFN(configure_slot_t slot_fn, configure_slot_t slot_js)
 }
 
 int progress_callback(DWORD stack_progress, DWORD stack_total,
-	const json_t *patch, DWORD patch_progress, DWORD patch_total,
+	const patch_t *patch, DWORD patch_progress, DWORD patch_total,
 	const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total,
 	void *param)
 {
@@ -142,18 +131,19 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	// than one repository with the same name is discovered in the network
 	json_t *id_cache = json_object();
 
-	json_t *repo_list = NULL;
+	repo_t **repo_list = nullptr;
 
 	const char *start_repo = "https://mirrors.thpatch.net/nmlgc/";
 
-	json_t *sel_stack = NULL;
+	patch_sel_stack_t sel_stack;
 	json_t *new_cfg = json_pack("{s[]}", "patches");
 
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
 	json_t *games = NULL;
 
-	const char *run_cfg_fn = NULL;
+	std::string run_cfg_fn;
+	std::string run_cfg_fn_js;
 	char *run_cfg_str = NULL;
 
 	strings_mod_init();
@@ -228,23 +218,21 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 	repo_list = RepoLoad();
-	if (!json_object_size(repo_list)) {
+	if (!repo_list[0]) {
 		log_printf(_A("No patch repositories available...\n"));
 		pause();
 		goto end;
 	}
 	sel_stack = SelectPatchStack(repo_list);
-	if (json_array_size(sel_stack)) {
-		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
-		size_t i;
-		json_t *sel;
-
+	if (!sel_stack.empty()) {
 		log_printf(_A("Downloading game-independent data...\n"));
 		stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, NULL);
 
 		/// Build the new run configuration
-		json_array_foreach(sel_stack, i, sel) {
-			json_array_append_new(new_cfg_patches, patch_build(sel));
+		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
+		for (patch_desc_t& sel : sel_stack) {
+			patch_t patch = patch_build(&sel);
+			json_array_append_new(new_cfg_patches, patch_to_runconfig_json(&patch));
 		}
 	}
 
@@ -253,31 +241,26 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	json_object_set_new(new_cfg, "console", json_false());
 	json_object_set_new(new_cfg, "dat_dump", json_false());
 
-	run_cfg_fn = run_cfg_fn_build(RUN_CFG_FN, sel_stack);
-	run_cfg_fn = EnterRunCfgFN(RUN_CFG_FN, RUN_CFG_FN_JS);
-	size_t run_cfg_fn_size = strlen("config") + 1 + strlen(run_cfg_fn) + strlen(".js") + 1;
+	run_cfg_fn = run_cfg_fn_build(sel_stack);
+	run_cfg_fn = EnterRunCfgFN(run_cfg_fn);
+	run_cfg_fn_js = std::string("config/") + run_cfg_fn + ".js";
 
-	VLA(char, run_cfg_fn_js, run_cfg_fn_size);
-	strcpy(run_cfg_fn_js, "config/");
-	strcat(run_cfg_fn_js, run_cfg_fn);
-	strcat(run_cfg_fn_js, ".js");
 
 	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
-	if (!file_write_text(run_cfg_fn_js, run_cfg_str)) {
-		log_printf(_A("\n\nThe following run configuration has been written to %s:\n"), run_cfg_fn_js);
+	if (!file_write_text(run_cfg_fn_js.c_str(), run_cfg_str)) {
+		log_printf(_A("\n\nThe following run configuration has been written to %s:\n"), run_cfg_fn_js.c_str());
 		log_printf(run_cfg_str);
 		log_printf("\n\n");
 		pause();
 	}
-	else if (!file_write_error(run_cfg_fn_js)) {
+	else if (!file_write_error(run_cfg_fn_js.c_str())) {
 		goto end;
 	}
-	VLA_FREE(run_cfg_fn_js);
 
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
 
-	if (json_object_size(games) > 0 && (console_ask_yn(_A("Create shortcuts? (required for first run)")) == 'n' || !CreateShortcuts(run_cfg_fn, games))) {
+	if (json_object_size(games) > 0 && (console_ask_yn(_A("Create shortcuts? (required for first run)")) == 'n' || !CreateShortcuts(run_cfg_fn.c_str(), games))) {
 		json_t *filter = json_object_get_keys_sorted(games);
 		log_printf(_A("\nDownloading data specific to the located games...\n"));
 		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
@@ -303,15 +286,19 @@ end:
 	con_can_close = true;
 	SAFE_FREE(run_cfg_str);
 	json_decref(new_cfg);
-	json_decref(sel_stack);
 	json_decref(games);
 
 	VLA_FREE(cur_dir);
-	json_decref(repo_list);
+	stack_free();
+	for (size_t i = 0; repo_list[i]; i++) {
+		RepoFree(repo_list[i]);
+	}
+	free(repo_list);
 	json_decref(url_cache);
 	json_decref(id_cache);
 
 	globalconfig_release();
+	runconfig_free();
 	
 	thcrap_update_exit_wrapper();
 	con_end();

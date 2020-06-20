@@ -24,8 +24,8 @@ typedef enum {
 
 // These callbacks should return TRUE if the download is allowed to continue and FALSE to cancel it.
 typedef int (*file_callback_t)(const char *fn, get_result_t ret, DWORD file_progress, DWORD file_size, void *param);
-typedef int (*patch_update_callback_t)(const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
-typedef int (*stack_update_callback_t)(DWORD stack_progress, DWORD stack_total, const json_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
+typedef int (*patch_update_callback_t)(const patch_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
+typedef int (*stack_update_callback_t)(DWORD stack_progress, DWORD stack_total, const patch_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
 
 void http_mod_exit(void);
 
@@ -35,7 +35,7 @@ void http_mod_exit(void);
 // certain checksum. If it doesn't match for one server, another one is tried,
 // until none are left. To disable this check, simply pass NULL.
 void* ServerDownloadFile(
-	json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
+	const char * const *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
 );
 
 // High-level patch and stack updates.
@@ -51,10 +51,10 @@ int update_filter_games(const char *fn, json_t *games);
 
 // Bootstraps the patch selection [sel] by building a patch object, downloading
 // patch.js from [repo_servers], and storing it inside the returned object.
-json_t* patch_bootstrap(const json_t *sel, json_t *repo_servers);
+patch_t patch_bootstrap(const patch_desc_t *sel, const char * const *repo_servers);
 
 int patch_update(
-	json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param
+	const patch_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param
 );
 void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param);
 void global_update(stack_update_callback_t callback, void *callback_param);
@@ -89,7 +89,7 @@ struct download_ret_t {
 };
 
 struct server_t {
-	// This either comes from a JSON object with a lifetime longer than any
+	// This either comes from a patch_t with a lifetime longer than any
 	// instance of this structure, or a hardcoded string, so no need to use
 	// std::string here.
 	// TODO: Turn this into a std::string_view once we've migrated to a C++17
@@ -160,9 +160,9 @@ struct servers_t : std::vector<server_t> {
 		const char *fn, download_ret_t *dl = nullptr, file_callback_t callback = nullptr, void *callback_param = nullptr
 	);
 
-	// Fills this instance with data from a JSON "servers" array as used
+	// Fills this instance with data from a "servers" array as used
 	// in repo.js and patch.js.
-	void from(const json_t *servers);
+	void from(const char * const *servers);
 
 	servers_t() {
 	}

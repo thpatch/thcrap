@@ -124,9 +124,7 @@ int update_notify_thcrap(void)
 {
 	const size_t SELF_MSG_SLOT = (size_t)self_body;
 	self_result_t ret = SELF_NO_UPDATE;
-	json_t *run_cfg = runconfig_get();
-
-	const char *thcrap_dir = json_object_get_string(run_cfg, "thcrap_dir");
+	const char *thcrap_dir = runconfig_thcrap_dir_get();
 	
 	char *arc_fn = NULL;
 	const char *self_msg = NULL;

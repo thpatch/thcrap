@@ -157,6 +157,47 @@ size_t binhack_calc_size(const char *binhack_str)
 	return size;
 }
 
+bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
+{
+	if (!json_is_object(in)) {
+		log_printf("binhack %s: not an object\n", name);
+		return false;
+	}
+
+	json_t *addr = json_object_get(in, "addr");
+	const char *title = json_object_get_string(in, "title");;
+	const char *code = json_object_get_string(in, "code");
+	const char *expected = json_object_get_string(in, "expected");
+	bool ignore = json_is_true(json_object_get(in, "ignore"));
+
+	if (ignore) {
+		log_printf("binhack %s: ignored\n", name);
+		return false;
+	}
+	if (!code || json_flex_array_size(addr) == 0) {
+		// Ignore binhacks with missing fields
+		// It usually means the binhack doesn't apply for this game or game version.
+		return false;
+	}
+
+	out->name = strdup(name);
+	out->title = strdup(title);
+	out->code = strdup(code);
+	out->expected = strdup(expected);
+	out->addr = new char*[(json_flex_array_size(addr) + 1)];
+
+	size_t i;
+	json_t *it;
+	json_flex_array_foreach(addr, i, it) {
+		if (json_is_string(it)) {
+			out->addr[i] = strdup(json_string_value(it));
+		}
+	}
+	out->addr[i] = nullptr;
+
+	return true;
+}
+
 int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str)
 {
 	const char *c = binhack_str;
@@ -231,27 +272,25 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	return ret;
 }
 
-size_t hackpoints_count(json_t *hackpoints)
+// Returns the number of all individual instances of binary hacks in [binhacks].
+static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_count)
 {
 	int ret = 0;
-	const char *key;
-	json_t *obj;
-	json_object_foreach(hackpoints, key, obj) {
-		json_t *addr = json_object_get(obj, "addr");
-		ret += json_flex_array_size(addr);
+	for (size_t i = 0; i < binhacks_count; i++) {
+		for (size_t j = 0; binhacks[i].addr[j]; j++) {
+			ret++;
+		}
 	}
 	return ret;
 }
 
-int binhacks_apply(json_t *binhacks, HMODULE hMod)
+int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
 {
-	const char *key;
-	json_t *hack;
-	size_t binhack_count = hackpoints_count(binhacks);
 	size_t c = 0;
-	int failed = binhack_count;
+	size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
+	int failed = binhacks_total;
 
-	if(!binhack_count) {
+	if(!binhacks_count) {
 		log_printf("No binary hacks to apply.\n");
 		return 0;
 	}
@@ -259,46 +298,36 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 	log_printf("Applying binary hacks...\n");
 	log_printf("------------------------\n");
 
-	json_object_foreach(binhacks, key, hack) {
-		auto ignore = json_object_get(hack, "ignore");
-		if(json_is_true(ignore)) {
-			continue;
-		}
-		const char *title = json_object_get_string(hack, "title");
-		const char *code = json_object_get_string(hack, "code");
-		const char *expected = json_object_get_string(hack, "expected");
-		// Addresses can be an array, too
-		json_t *json_addr = json_object_get(hack, "addr");
-		size_t i;
-		json_t *addr_val;
+	for(size_t i = 0; i < binhacks_count; i++) {
+		const binhack_t& cur = binhacks[i];
 
 		// calculated byte size of the hack
-		size_t asm_size = binhack_calc_size(code);
-		size_t exp_size = binhack_calc_size(expected);
+		size_t asm_size = binhack_calc_size(cur.code);
+		size_t exp_size = binhack_calc_size(cur.expected);
 		if(!asm_size) {
 			continue;
 		}
 
 		VLA(BYTE, asm_buf, asm_size);
 		VLA(BYTE, exp_buf, exp_size);
-		json_flex_array_foreach(json_addr, i, addr_val) {
-			auto addr = str_address_value(json_string_value(addr_val), hMod, NULL);
+		for(size_t j = 0; cur.addr[j]; j++) {
+			auto addr = str_address_value(cur.addr[j], hMod, NULL);
 			if(!addr) {
 				continue;
 			}
-			log_printf("(%2d/%2d) 0x%p ", ++c, binhack_count, addr);
-			if(title) {
-				log_printf("%s (%s)... ", title, key);
+			log_printf("(%2d/%2d) 0x%p ", ++c, binhacks_total, addr);
+			if(cur.title) {
+				log_printf("%s (%s)... ", cur.title, cur.name);
 			} else {
-				log_printf("%s...", key);
+				log_printf("%s...", cur.name);
 			}
-			if(binhack_render(asm_buf, addr, code)) {
+			if(binhack_render(asm_buf, addr, cur.code)) {
 				continue;
 			}
 			if(exp_size > 0 && exp_size != asm_size) {
 				log_printf("different sizes for expected and new code, skipping verification... ");
 				exp_size = 0;
-			} else if(binhack_render(exp_buf, addr, expected)) {
+			} else if(binhack_render(exp_buf, addr, cur.expected)) {
 				exp_size = 0;
 			}
 			if(PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
@@ -315,68 +344,46 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod)
 	return failed;
 }
 
-int codecaves_apply(json_t *codecaves) {
+int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count, DWORD protection) {
+	if (codecaves_count == 0) {
+		return 0;
+	}
+
 	log_printf("Applying codecaves...\n");
 	log_printf("------------------------\n");
 
-	const char *codecave_name;
-	json_t *hack;
-	size_t codecave_sep_size = 3;
-	size_t codecave_count = 0, codecaves_total_size = 0;
+	const size_t codecave_sep_size = 3;
+	size_t codecaves_total_size = 0;
 
-	json_object_foreach(codecaves, codecave_name, hack) {
-		if (strcmp(codecave_name, "protection") == 0) {
-			continue;
-		}
-		const char* code = json_string_value(hack);
-		if (!code) {
-			continue;
-		}
-
-		codecaves_total_size += binhack_calc_size(code);
+	// First pass: calc the complete codecave size
+	for (size_t i = 0; i < codecaves_count; i++) {
+		codecaves_total_size += binhack_calc_size(codecaves[i].code);
 		codecaves_total_size += codecave_sep_size;
 	}
 
 	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
-	// First pass: Gather the addresses, so that codecaves can refer to each other.
+	// Second pass: Gather the addresses, so that codecaves can refer to each other.
 	BYTE *current_cave = codecave_buf;
 
-	json_object_foreach(codecaves, codecave_name, hack) {
-		if (strcmp(codecave_name, "protection") == 0) {
-			continue;
-		}
-
-		const char *code = json_string_value(hack);
-		if (!code) {
-			continue;
-		}
-
+	for (size_t i = 0; i < codecaves_count; i++) {
+		const char *codecave_name = codecaves[i].name;
+		
 		VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
 		strcpy(codecave_full_name, "codecave:");
 		strcpy(codecave_full_name + 9, codecave_name);
 		func_add(codecave_full_name, (size_t)current_cave);
 
-		current_cave += binhack_calc_size(code) + codecave_sep_size;
+		current_cave += binhack_calc_size(codecaves[i].code) + codecave_sep_size;
 
 		VLA_FREE(codecave_full_name);
 	}
 
-	// Second pass: Write all of the code
+	// Third pass: Write all of the code
 	current_cave = codecave_buf;
 
-	DWORD codecave_protection = 0;
-
-	json_object_foreach(codecaves, codecave_name, hack) {
-		if (strcmp(codecave_name, "protection") == 0) {
-			codecave_protection = json_object_get_hex(codecaves, codecave_name);
-			continue;
-		}
-
-		const char* code = json_string_value(hack);
-		if (!code) {
-			continue;
-		}
+	for (size_t i = 0; i < codecaves_count; i++) {
+		const char* code = codecaves[i].code;
 		binhack_render(current_cave, (size_t)current_cave, code);
 
 		current_cave += binhack_calc_size(code);
@@ -386,11 +393,11 @@ int codecaves_apply(json_t *codecaves) {
 	}
 
 	DWORD old_prot;
-	if (codecave_protection == 0) {
-		codecave_protection = PAGE_EXECUTE_READ;
+	if (protection == 0) {
+		protection = PAGE_EXECUTE_READ;
 	}
 
-	VirtualProtect(codecave_buf, codecaves_total_size, codecave_protection, &old_prot);
+	VirtualProtect(codecave_buf, codecaves_total_size, protection, &old_prot);
 
 	return 0;
 }
