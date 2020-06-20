@@ -111,6 +111,12 @@ extern "C" __declspec(dllexport) const char* steam_appid(void)
 {
 	int trial = game_is_trial();
 	switch(game_id) {
+	case TH10:
+		return "1100140";
+	case TH11:
+		return "1100150";
+	case TH12:
+		return "1100160";
 	case TH125:
 		return "1100170";
 	case TH128:
