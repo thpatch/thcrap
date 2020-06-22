@@ -1,33 +1,9 @@
+#include "thcrap.h"
 #include <filesystem>
 #include <functional>
 #include <thread>
 #include "server.h"
 #include "repo_discovery.h"
-
-// TODO: remove
-char *RepoGetLocalFN(const char *id)
-{
-    const char *repo_fn = "repo.js";
-    std::string repo = std::string("repos/") + id + "/" + repo_fn;
-    return strdup(repo.c_str());
-}
-
-// TODO: move to thcrap/src/repo.cpp, or rework the code using it here
-// to use the new APIs
-void repo_foreach(std::function<void(json_t*)> callback)
-{
-    for (auto& it : std::filesystem::directory_iterator("repos/")) {
-        if (!it.is_directory()) {
-            continue;
-        }
-        std::string repo_local_fn = RepoGetLocalFN(it.path().filename().u8string().c_str());
-        json_t *repo_js = json_load_file(repo_local_fn.c_str(), 0, nullptr);
-        if (repo_js) {
-            callback(repo_js);
-        }
-        json_decref(repo_js);
-    }
-}
 
 RepoDiscover::RepoDiscover()
 {}
@@ -61,10 +37,13 @@ void RepoDiscover::discoverNeighbors(json_t *repo_js)
     }
 }
 
-void RepoDiscover::addServer(const std::string& url)
+void RepoDiscover::addServer(std::string url)
 {
     std::scoped_lock<std::mutex> lock(this->mutex);
 
+    if (url.back() != '/') {
+        url += "/";
+    }
     if (this->downloading.count(url) > 0 ||
         this->done.count(url) > 0) {
         return ;
@@ -73,7 +52,7 @@ void RepoDiscover::addServer(const std::string& url)
 
     this->downloading.insert(url);
     std::thread([this, url]() {
-        json_t *repo_js = ServerCache::get().downloadJsonFile(url + "/repo.js");
+        json_t *repo_js = ServerCache::get().downloadJsonFile(url + "repo.js");
         if (!repo_js) {
             return ;
         }
@@ -100,6 +79,10 @@ bool RepoDiscover::wait()
 {
     // TODO: this blocks if any download faild. investigate.
     // TODO: the start_url is downloaded twice
+    // TODO: if a file fails on a server, the server is thought as dead and every
+    // other download is aborted. This is fine for patch download, not for repo discovery.
+    // Actually, even on patch download, we don't want to invalidate the whole
+    // Github servers for only one failing patch.
     std::unique_lock<std::mutex> lock(this->mutex);
     while (!this->downloading.empty()) {
         this->condVar.wait(lock);
@@ -118,10 +101,14 @@ int RepoDiscoverFromLocal()
 {
     RepoDiscover discover;
 
-    repo_foreach([&discover](json_t *repo) {
-        json_t *servers = json_object_get(repo, "servers");
-        // TODO: support several servers
-        discover.addServer(json_string_value(json_array_get(servers, 0)));
-    });
+    repo_t **repo_list = RepoLoad();
+    for (size_t i = 0; repo_list[i]; i++) {
+        for (size_t j = 0; repo_list[i]->servers && repo_list[i]->servers[j]; j++) {
+            discover.addServer(repo_list[i]->servers[j]);
+        }
+        RepoFree(repo_list[i]);
+    }
+    free(repo_list);
+
     return discover.wait() ? 0 : 1;
 }

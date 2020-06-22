@@ -1,5 +1,9 @@
 #pragma once
 
+#include <jansson.h>
+
+#ifdef __cplusplus
+
 #include <condition_variable>
 #include <mutex>
 #include <set>
@@ -23,7 +27,7 @@ public:
     // Start a discovery from url.
     // The discovery runs on another thread.
     // If this server is already known, do nothing.
-    void addServer(const std::string& url);
+    void addServer(std::string url);
     // Start a discovery for every neighbor in repo.
     void discoverNeighbors(json_t *repo_js);
     // Wait until all running discoveries are finished.
@@ -32,3 +36,13 @@ public:
     bool wait();
 };
 
+extern "C" {
+#endif // __cplusplus
+
+// TODO: file write error callback
+int RepoDiscoverAtURL(const char *start_url/*, file_write_error_t *fwe_callback*/);
+int RepoDiscoverFromLocal(/*file_write_error_t *fwe_callback*/);
+
+#ifdef __cplusplus
+}
+#endif
