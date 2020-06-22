@@ -91,19 +91,18 @@ int game_is_trial(void)
 {
 	static int trial = -2;
 	if(trial == -2) {
-		json_t *build = json_object_get(runconfig_get(), "build");
-		const char *build_str = json_string_value(build);
-		size_t build_len = json_string_length(build);
+		const char *build = runconfig_build_get();
+		size_t build_len = strlen(build);
 
-		if(!build_str || build_len < 2) {
+		if(!build || build_len < 2) {
 			return trial = -1;
 		}
 		assert(
-			(build_str[0] == 'v' && (build_str[1] == '0' || build_str[1] == '1'))
+			(build[0] == 'v' && (build[1] == '0' || build[1] == '1'))
 			|| !"invalid build format?"
 		);
 
-		trial = build_str[1] == '0';
+		trial = build[1] == '0';
 	}
 	return trial;
 }
@@ -112,6 +111,12 @@ extern "C" __declspec(dllexport) const char* steam_appid(void)
 {
 	int trial = game_is_trial();
 	switch(game_id) {
+	case TH10:
+		return "1100140";
+	case TH11:
+		return "1100150";
+	case TH12:
+		return "1100160";
 	case TH125:
 		return "1100170";
 	case TH128:
@@ -148,11 +153,12 @@ int __stdcall thcrap_plugin_init()
 		return 1;
 	}
 
-	const char *game = json_object_get_string(runconfig_get(), "game");
+	const char *game = runconfig_game_get();
 	game_id = game_id_from_string(game);
 
 	// th06_msg
 	patchhook_register("msg*.dat", patch_msg_dlg, NULL); // th06-08
+	patchhook_register("*.end", patch_end_th06, NULL); // th06 endings
 	patchhook_register("p*.msg", patch_msg_dlg, NULL); // th09
 	patchhook_register("s*.msg", patch_msg_dlg, NULL); // lowest common denominator for th10+
 	patchhook_register("msg*.msg", patch_msg_dlg, NULL); // th143

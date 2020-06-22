@@ -734,9 +734,8 @@ int BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info)
 
 void textimage_mod_repatch(json_t *files_changed)
 {
-	auto game = json_object_get(runconfig_get(), "game");
-	auto game_str = json_string_value(game);
-	auto game_len = json_string_length(game);
+	auto game = runconfig_game_get();
+	auto game_len = strlen(game);
 	size_t check_basename_len = 0;
 
 	for(auto image : Images) {
@@ -747,7 +746,7 @@ void textimage_mod_repatch(json_t *files_changed)
 	VLA(char, check_fn, game_len + 1 + check_basename_len);
 	char *check_basename = memcpy_advance_dst(
 		memcpy_advance_dst(
-			check_fn, game_str, game_len
+			check_fn, game, game_len
 		), "/", 1
 	);
 

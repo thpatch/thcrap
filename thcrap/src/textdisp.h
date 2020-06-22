@@ -115,7 +115,7 @@
 
 #pragma once
 
-void patch_fonts_load(const json_t *patch_info);
+void patch_fonts_load(const patch_t *patch_info);
 
 // Parses a font rule string according to the syntax above, fills [lf] with
 // the parameters given, and returns the amount of parameters (the "score")

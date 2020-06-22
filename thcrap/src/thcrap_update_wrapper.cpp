@@ -43,7 +43,7 @@ if (cached_func) { \
 
 
 
-void* ServerDownloadFile_wrapper(json_t *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param)
+void* ServerDownloadFile_wrapper(const char * const *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param)
 {
 	CALL_WRAPPED_FUNCTION(ServerDownloadFile, servers, fn, file_size, exp_crc, callback, callback_param)
 	return NULL;
@@ -62,7 +62,7 @@ int update_filter_games_wrapper(const char *fn, json_t *games)
 	return 0;
 }
 ASSERT_FUNCTION_PROTO(update_filter_games);
-int patch_update_wrapper(json_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param)
+int patch_update_wrapper(const patch_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param)
 {
 	CALL_WRAPPED_FUNCTION(patch_update, patch_info, filter_func, filter_data, callback, callback_param)
 	return 3;
@@ -94,7 +94,7 @@ int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache, file_writ
 }
 ASSERT_FUNCTION_PROTO(RepoDiscoverFromLocal);
 
-json_t *patch_bootstrap_wrapper(const json_t *sel, json_t *repo_servers)
+patch_t patch_bootstrap_wrapper(const patch_desc_t *sel, const char * const *repo_servers)
 {
 	CALL_WRAPPED_FUNCTION(patch_bootstrap, sel, repo_servers)
 	return patch_build(sel);

@@ -46,22 +46,22 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 	BYTE *file_buffer = nullptr;
 	file_buffer_t file = { 0 };
 
-	json_t *chain = resolve_chain_game(fn);
+	char **chain = resolve_chain_game(fn);
 
-	if (json_array_size(chain)) {
-		log_printf("(PNG) Resolving %s...", json_array_get_string(chain, 0));
-		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr) != 0) {
+	if (chain && chain[0]) {
+		log_printf("(PNG) Resolving %s...", chain[0]);
+		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS) != 0) {
 			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
 		}
 	}
 	if (!file_buffer) {
 		log_print("not found\n");
-		json_decref(chain);
+		free(chain);
 		return nullptr;
 	}
 	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
-	json_decref(chain);
+	free(chain);
 	file.buffer = file_buffer;
 	
 	if (!png_check_sig(file.buffer, 8)) {
@@ -118,22 +118,22 @@ bool png_image_get_IHDR(const char *fn, uint32_t *width, uint32_t *height, uint8
 	BYTE *file_buffer = nullptr;
 	file_buffer_t file = { 0 };
 
-	json_t *chain = resolve_chain_game(fn);
+	char **chain = resolve_chain_game(fn);
 
-	if (json_array_size(chain)) {
-		log_printf("(PNG) Resolving %s...", json_array_get_string(chain, 0));
-		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr) != 0) {
+	if (chain && chain[0]) {
+		log_printf("(PNG) Resolving %s...", chain[0]);
+		while (file_buffer == nullptr && stack_chain_iterate(&sci, chain, SCI_BACKWARDS) != 0) {
 			file_buffer = (BYTE*)patch_file_load(sci.patch_info, sci.fn, &file.size);
 		}
 	}
 	if (!file_buffer) {
 		log_print("not found\n");
-		json_decref(chain);
+		free(chain);
 		return false;
 	}
 	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
-	json_decref(chain);
+	free(chain);
 	file.buffer = file_buffer;
 
 	if (!png_check_sig(file.buffer, 8)) {

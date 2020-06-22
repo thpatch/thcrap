@@ -316,7 +316,7 @@ TasofroPl::AText *TasofroPl::AText::createText(const std::vector<std::string>& f
 			return new StoryText(fields, comment);
 		}
 		else {
-			bool strict_eol = json_boolean_value(json_object_get(runconfig_get(), "pl_parsing_strict_eol"));
+			bool strict_eol = json_boolean_value(json_object_get(runconfig_json_get(), "pl_parsing_strict_eol"));
 			if (strict_eol) {
 				return new Th155_110StoryText(fields, comment);
 			}
@@ -712,7 +712,7 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char *fn, 
 	std::list<TasofroPl::ALine*> lines;
 	const char *file_in = (const char*)file_inout;
 	char *file_out = (char*)file_inout;
-	bool strict_eol = json_boolean_value(json_object_get(runconfig_get(), "pl_parsing_strict_eol"));
+	bool strict_eol = json_boolean_value(json_object_get(runconfig_json_get(), "pl_parsing_strict_eol"));
 
 	while (size_in > 0) {
 		if (strict_eol) {

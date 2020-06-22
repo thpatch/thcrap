@@ -1,30 +1,12 @@
 [submodule "win32_utf8"]
 	path = libs/win32_utf8
 	url = https://github.com/thpatch/win32_utf8.git
-[submodule "jansson"]
-	path = libs/jansson
-	url = https://github.com/akheron/jansson.git
-[submodule "libpng"]
-	path = libs/libpng
-	url = https://github.com/glennrp/libpng.git
-[submodule "zlib-ng"]
-	path = libs/zlib-ng
-	url = https://github.com/Dead2/zlib-ng
 [submodule "thtypes"]
 	path = thtypes
 	url = https://github.com/thpatch/thtypes.git
-[submodule "libs/vorbis"]
-	path = libs/libvorbis
-	url = https://git.xiph.org/vorbis.git
-[submodule "libs/ogg"]
-	path = libs/libogg
-	url = https://git.xiph.org/ogg.git
-[submodule "libs/dr_libs"]
-	path = libs/dr_libs
-	url = https://github.com/mackron/dr_libs/
-[submodule "libs/mpg123"]
-	path = libs/libmpg123
-	url = https://github.com/nmlgc/libmpg123.git
 [submodule "libs/135tk"]
 	path = libs/135tk
 	url = https://github.com/brliron/135tk
+[submodule "libs/external_deps"]
+	path = libs/external_deps
+	url = https://github.com/thpatch/thcrap_external_dependencies.git

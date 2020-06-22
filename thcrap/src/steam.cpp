@@ -67,7 +67,7 @@ extern "C" __declspec(dllexport) void steam_mod_post_init(void)
 	}
 
 	// Got steam_api.dll?
-	const char *thcrap_dir = json_object_get_string(runconfig_get(), "thcrap_dir");
+	const char *thcrap_dir = runconfig_thcrap_dir_get();
 	
 
 	size_t dll_fn_len = strlen(thcrap_dir) + strlen("\\bin\\") + strlen(STEAM_API_DLL_FN) + 1;

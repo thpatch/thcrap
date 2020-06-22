@@ -903,7 +903,7 @@ static void inject_CreateProcess_helper(
 )
 {
 	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
-		const char *run_cfg_fn = json_object_get_string(run_cfg, "run_cfg_fn");
+		const char *run_cfg_fn = runconfig_runcfg_fn_get();
 		thcrap_inject_into_running(lpPI->hProcess, run_cfg_fn);
 	}
 	if(~dwCreationFlags & CREATE_SUSPENDED) {

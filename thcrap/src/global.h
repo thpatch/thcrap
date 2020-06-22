@@ -9,8 +9,6 @@
 
 #pragma once
 
-extern json_t *run_cfg;
-
 // Project stats
 const char* PROJECT_NAME(void);
 const char* PROJECT_NAME_SHORT(void);
@@ -18,17 +16,6 @@ const char* PROJECT_URL(void);
 DWORD PROJECT_VERSION(void);
 const char* PROJECT_VERSION_STRING(void);
 const char* PROJECT_BRANCH(void);
-
-json_t* runconfig_get(void);
-void runconfig_set(json_t *new_run_cfg);
-
-// Returns the prettiest representation of a game title available,
-// in this order:
-// • 1. Localized game title from the string table
-// • 2. "title" value from the run configuration
-// • 3. The plain game ID
-// • 4. NULL
-const json_t *runconfig_title_get(void);
 
 // Returns the value matching key in config converted in bool
 // If key isn't in config it returns default_value with errno ENOENT

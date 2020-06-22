@@ -44,29 +44,48 @@ static char* fn_for_th105(const char *fn)
 	return full_fn;
 }
 
-json_t *th123_resolve_chain_game(const char *fn)
+size_t get_chain_size(char **chain)
 {
-	json_t *ret = nullptr;
+	size_t i;
+	for (i = 0; chain && chain[i]; i++) {
+	}
+	return i;
+}
 
+char **th123_resolve_chain_game(const char *fn)
+{
 	// First, th105
+	char **th105_chain = nullptr;
+	defer(free(th105_chain));
 	if (game_fallback_ignore_list.find(fn) == game_fallback_ignore_list.end()) {
 		char *fn_game = fn_for_th105(fn);
-		ret = resolve_chain(fn_game);
+		th105_chain = resolve_chain(fn_game);
 		SAFE_FREE(fn_game);
 	}
 
+	// Then, th123
 	char *fn_common = fn_for_game(fn);
 	const char *fn_common_ptr = fn_common ? fn_common : fn;
-	json_t *th123_ret = resolve_chain(fn_common_ptr);
-	if (ret && th123_ret) {
-		json_array_extend(ret, th123_ret);
-		json_decref(th123_ret);
-	}
-	else if (!ret && th123_ret) {
-		ret = th123_ret;
-	}
+	char **th123_chain = resolve_chain(fn_common_ptr);
+	defer(free(th123_chain));
 	SAFE_FREE(fn_common);
-	return ret;
+
+	// Merge the 2 chains
+	size_t chain_size = get_chain_size(th105_chain) + get_chain_size(th123_chain);
+	if (chain_size == 0) {
+		return nullptr;
+	}
+	char **chain = (char**)malloc(sizeof(char*) * (chain_size + 1));
+	size_t i = 0;
+	for (size_t j = 0; th105_chain && th105_chain[j]; i++, j++) {
+		chain[i] = th105_chain[j];
+	}
+	for (size_t j = 0; th123_chain && th123_chain[j]; i++, j++) {
+		chain[i] = th123_chain[j];
+	}
+	chain[i] = nullptr;
+
+	return chain;
 }
 
 int nsml_init()

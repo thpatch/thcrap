@@ -549,7 +549,7 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 json_t* font_dialog_id(void)
 {
 	// Yeah, I know, kinda horrible.
-	json_t *breakpoints = json_object_get(runconfig_get(), "breakpoints");
+	json_t *breakpoints = json_object_get(runconfig_json_get(), "breakpoints");
 	json_t *ruby_offset_info = json_object_get(breakpoints, "ruby_offset");
 	return json_object_get(ruby_offset_info, "font_dialog");
 }
@@ -694,6 +694,95 @@ int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 #endif
 	HeapFree(GetProcessHeap(), 0, msg_in);
 	return 1;
+}
+
+// Check if *file_pos is an @ sign, while ensuring it isn't part of a 2-bytes shift-jis character.
+// file_begin is uses only for bounds check.
+static bool is_at_sign(const char *file_pos, const void *file_begin)
+{
+	if (file_pos > file_begin) {
+		return file_pos[0] == '@' && (file_pos[-1] & 0x80) == 0;
+	}
+	else {
+		return file_pos[0] == '@';
+	}
+}
+
+int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch) {
+	if (!patch) {
+		return -1;
+	}
+
+	size_t lc = 0;
+	size_t advanced_bytes = 0;
+
+	void *orig_file_copy = malloc(size_in);
+	memcpy(orig_file_copy, file_inout, size_in);
+
+	char *orig_file = (char*)orig_file_copy;
+	char *new_end = (char*)file_inout;
+	ZeroMemory(file_inout, size_out);
+
+	while (advanced_bytes < size_in) {
+		if (!is_at_sign(orig_file, orig_file_copy)) {
+			json_t *patched = json_object_numkey_get(patch, lc);
+			json_t *lines = json_object_get(patched, "lines");
+			if (!lines) {
+				while (!is_at_sign(orig_file, orig_file_copy) && advanced_bytes < size_in) {
+					size_t orig_line_len = strlen(orig_file);
+					strcpy(new_end, orig_file);
+					orig_file += orig_line_len + 2;
+					new_end += orig_line_len + 1;
+					*new_end = '\n';
+					new_end++;
+
+					lc++;
+					advanced_bytes += orig_line_len + 2;
+				}
+				continue;
+			}
+			size_t line_i;
+			json_t *line;
+			
+			json_array_foreach(lines, line_i, line) {
+				const char *line_str = json_string_value(line);
+				if (line_str) {
+					size_t new_line_len = strlen(line_str);
+					strcpy(new_end, line_str);
+					new_end[new_line_len] = '\x00';
+					new_end[new_line_len + 1] = '\n';
+					new_end += new_line_len + 2;
+				}
+			}
+
+			char *orig_advanced = orig_file;
+			for (;;) {
+				char *orig_advanced_new = (char*)memchr(orig_advanced, '@', size_in - advanced_bytes);
+				advanced_bytes += orig_advanced_new - orig_advanced;
+				orig_advanced = orig_advanced_new;
+				if (!(orig_advanced[-1] & 0x80)) {
+					break;
+				}
+				orig_advanced++;
+				advanced_bytes++;
+			}
+			for (; orig_file < orig_advanced; orig_file++) {
+				if (*orig_file == '\n') {
+					lc++;
+				}
+			}
+		}
+		else {
+			char *orig_advanced = (char*)memchr((void*)orig_file, '\n', size_in - advanced_bytes) + 1;
+			memcpy(new_end, orig_file, orig_advanced - orig_file);
+			new_end += orig_advanced - orig_file;
+			orig_file = orig_advanced;
+			advanced_bytes = orig_file - (char*)orig_file_copy;
+			lc++;
+		}
+	}
+	free(orig_file_copy);
+	return 0;
 }
 
 /// Game formats

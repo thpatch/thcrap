@@ -59,6 +59,19 @@ void plugin_load(const char *dir, const char *fn)
 	VLA(char, fn_abs, dir_len + fn_len);
 	defer(VLA_FREE(fn_abs));
 
+	const bool is_debug_plugin = strlen(fn) >= strlen("_d.dll") && strcmp(fn + strlen(fn) - strlen("_d.dll"), "_d.dll") == 0;
+#ifdef _DEBUG
+	if (!is_debug_plugin) {
+		log_printf("[Plugin] %s: release plugin ignored in debug mode (or this dll is not a plugin)\n", fn);
+		return;
+	}
+#else
+	if (is_debug_plugin) {
+		log_printf("[Plugin] %s: debug plugin ignored in release mode\n", fn);
+		return;
+	}
+#endif
+
 	sprintf(fn_abs, "%s\\%s", dir, fn);
 
 	auto plugin = LoadLibraryExU(fn_abs, nullptr,

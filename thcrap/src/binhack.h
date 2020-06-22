@@ -29,11 +29,35 @@
 
 #pragma once
 
+typedef struct {
+	// Binhack name
+	char *name;
+	// Binhack description
+	char *title;
+	// Binhack code
+	char *code;
+	// Expected code at the binhack address
+	char *expected;
+	// Binhack addresses (NULL-terminated array)
+	// They are passed as strings and resolved by binhacks_apply.
+	char **addr;
+} binhack_t;
+
+typedef struct {
+	// Codecave name
+	char *name;
+	// Codecave code
+	char *code;
+} codecave_t;
+
 // Returns whether [c] is a valid hexadecimal character
 int is_valid_hex(char c);
 
 // Shared error message for nonexistent functions.
 int hackpoints_error_function_not_found(const char *func_name, int retval);
+
+// Parses a json binhack entry and returns a binhack object
+bool binhack_from_json(const char *name, json_t *in, binhack_t *out);
 
 // Calculate the rendered length in bytes of [binhack_str], the JSON representation of a binary hack
 size_t binhack_calc_size(const char *binhack_str);
@@ -42,15 +66,11 @@ size_t binhack_calc_size(const char *binhack_str);
 // [target_addr] is used as the basis to resolve relative pointers.
 int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str);
 
-// Returns the number of all individual instances of binary hacks or
-// breakpoints in [hackpoints].
-size_t hackpoints_count(json_t *hackpoints);
-
 // Applies every binary hack in [binhacks] irreversibly on the current process.
 // If HMODULE is not null, relative addresses are relative to this module.
 // Else, they are relative to the main module of the current process.
 // Returns the number of binary hacks that could not be applied.
-int binhacks_apply(json_t *binhacks, HMODULE hMod);
+int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod);
 
 
 // Adds every codecave in [codecaves] on the current process.
@@ -64,4 +84,4 @@ int binhacks_apply(json_t *binhacks, HMODULE hMod);
 //		"test_cave": "somecode"
 //		}
 // }
-int codecaves_apply(json_t *codecaves);
+int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count, DWORD protection);

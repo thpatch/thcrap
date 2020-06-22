@@ -104,7 +104,7 @@ int gentext_mod_init(void)
 	// Resolve all necessary files in advance
 	const char *prefix = "gentext";
 	size_t prefix_len = strlen(prefix);
-	json_t *breakpoints = json_object_get(runconfig_get(), "breakpoints");
+	json_t *breakpoints = json_object_get(runconfig_json_get(), "breakpoints");
 	const char *key;
 	json_t *val;
 	json_object_foreach(breakpoints, key, val) {

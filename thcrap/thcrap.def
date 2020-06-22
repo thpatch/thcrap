@@ -3,8 +3,8 @@ EXPORTS
 	; -------------
 	is_valid_hex
 	binhack_calc_size
+	binhack_from_json
 	binhack_render
-	hackpoints_count
 	binhacks_apply
 
 	; File breakpoints
@@ -69,9 +69,25 @@ EXPORTS
 	PROJECT_VERSION
 	PROJECT_VERSION_STRING
 	PROJECT_BRANCH
-	runconfig_get
-	runconfig_set
+	runconfig_load
+	runconfig_load_from_file
+	runconfig_free
+	runconfig_print
+	runconfig_json_get
+	runconfig_thcrap_dir_get
+	runconfig_thcrap_dir_set
+	runconfig_runcfg_fn_get
+	runconfig_runcfg_fn_set
+	runconfig_console_get
+	runconfig_game_get
+	runconfig_build_get
 	runconfig_title_get
+	runconfig_update_url_get
+	runconfig_dat_dump_get
+	runconfig_latest_check
+	runconfig_latest_get
+	runconfig_stage_count
+	runconfig_stage_apply
 	globalconfig_get_boolean
 	globalconfig_set_boolean
 	globalconfig_get_integer
@@ -126,7 +142,6 @@ EXPORTS
 	json_object_merge
 	json_object_get_keys_sorted
 	json_xywh_value
-	json_loadb_report
 	json_load_file_report
 	json_dump_log
 
@@ -201,10 +216,12 @@ EXPORTS
 	patch_json_store
 	patch_file_delete
 
-	patch_build
 	patch_init
-	patches_init
+	patch_to_runconfig_json
+	patch_free
+	patch_build
 	patch_rel_to_abs
+	patch_dep_to_desc
 
 	; Hooks
 	; -----
@@ -243,9 +260,11 @@ EXPORTS
 
 	; Repository handling
 	; -------------------
+	RepoLoadJson
 	RepoLoad
 	RepoLocalNext
 	RepoGetLocalFN
+	RepoFree
 
 	; Search on disk
 	; --------------
@@ -266,13 +285,13 @@ EXPORTS
 	; -----
 	resolve_chain
 	resolve_chain_game
+	chain_free
 	set_resolve_chain
 	set_resolve_chain_game
 	stack_chain_iterate
 
 	stack_json_resolve_chain
 	stack_json_resolve
-	stack_json_resolve_ex
 	stack_file_resolve_chain
 	stack_fn_resolve_chain
 	stack_game_file_stream
@@ -281,7 +300,14 @@ EXPORTS
 
 	stack_show_missing
 
+	stack_add_patch
+	stack_add_patch_from_json
+	stack_remove_patch
+	stack_get_size
+	stack_foreach
+	stack_foreach_cpp
 	stack_remove_if_unneeded
+	stack_free
 
 	; Hardcoded string translation
 	; ----------------------------

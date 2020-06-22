@@ -9,17 +9,30 @@
 
 #pragma once
 
-// Returns the local file name of a repository file as a JSON string.
-json_t* RepoGetLocalFN(const char *id);
+typedef struct {
+	char *patch_id;
+	char *title;
+} repo_patch_t;
 
-json_t* RepoLocalNext(HANDLE *hFind);
+typedef struct {
+	char *id;
+	char *title;
+	char *contact;
+	char **servers;
+	char **neighbors;
+	repo_patch_t *patches;
+} repo_t;
+
+// Returns the local file name of a repository file.
+char *RepoGetLocalFN(const char *id);
+
+repo_t *RepoLocalNext(HANDLE *hFind);
+
+// Loads a repository from a repo.js.
+repo_t *RepoLoadJson(json_t *repo_js);
 
 // Loads repository files from all subdirectories of the current directory.
-// Returns a JSON object in the following format:
-// {
-//	"<repository ID>": {
-//		<contents of repo.js>
-//	},
-//	...
-// }
-json_t* RepoLoad(void);
+repo_t **RepoLoad(void);
+
+// Free a repo returned by RepoLoad, RepoLoadJson or RepoLocalNext.
+void RepoFree(repo_t *repo);

@@ -183,21 +183,14 @@ DWORD WINAPI repatch_watcher(void *param)
 int repatch_mod_init(void)
 {
 	DWORD thread_id;
-	const json_t *patches = json_object_get(runconfig_get(), "patches");
-	size_t i;
-	json_t *patch_info;
-	size_t patches_num = json_array_size(patches);
-	if(!patches_num) {
-		return 1;
-	}
-	dir_handles = (HANDLE *)calloc(sizeof(HANDLE), patches_num);
+	dir_handles = (HANDLE *)calloc(sizeof(HANDLE), stack_get_size());
 	if(!dir_handles) {
 		return 2;
 	}
-	json_array_foreach(patches, i, patch_info) {
-		const char *archive = json_object_get_string(patch_info, "archive");
+	stack_foreach([](const patch_t *patch, void*) {
+		const char *archive = patch->archive;
 		HANDLE hDir = INVALID_HANDLE_VALUE;
-		if(GetFileAttributes(archive) & FILE_ATTRIBUTE_DIRECTORY) {
+		if (GetFileAttributes(archive) & FILE_ATTRIBUTE_DIRECTORY) {
 			hDir = CreateFile(archive, FILE_LIST_DIRECTORY,
 				FILE_SHARE_READ | FILE_SHARE_WRITE
 				// Yes. This would otherwise prevent *files* in the
@@ -208,7 +201,7 @@ int repatch_mod_init(void)
 			);
 		}
 		dir_handles[dir_handles_num++] = hDir;
-	}
+	}, nullptr);
 	InitializeCriticalSection(&cs_changed);
 	files_changed = json_object();
 	event_shutdown = CreateEvent(NULL, TRUE, FALSE, NULL);

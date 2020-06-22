@@ -937,7 +937,7 @@ void anm_entry_clear(anm_entry_t &entry)
 }
 /// -------------
 
-int patch_png_load_for_thtx(png_image_ex &image, const json_t *patch_info, const char *fn, thtx_header_t *thtx)
+int patch_png_load_for_thtx(png_image_ex &image, const patch_t *patch_info, const char *fn, thtx_header_t *thtx)
 {
 	void *file_buffer = NULL;
 	size_t file_size;
@@ -976,7 +976,7 @@ int patch_png_load_for_thtx(png_image_ex &image, const json_t *patch_info, const
 }
 
 // Helper function for stack_game_png_apply.
-int patch_png_apply(anm_entry_t &entry, const json_t *patch_info, const char *fn)
+int patch_png_apply(anm_entry_t &entry, const patch_t *patch_info, const char *fn)
 {
 	int ret = -1;
 	if(patch_info && fn) {
@@ -1001,18 +1001,18 @@ int stack_game_png_apply(anm_entry_t &entry)
 	int ret = -1;
 	if(entry.thtx && entry.name) {
 		stack_chain_iterate_t sci = {0};
-		json_t *chain = resolve_chain_game(entry.name);
+		char **chain = resolve_chain_game(entry.name);
 		ret = 0;
-		if(json_array_size(chain)) {
-			log_printf("(PNG) Resolving %s... ", json_array_get_string(chain, 0));
+		if(chain && chain[0]) {
+			log_printf("(PNG) Resolving %s... ", chain[0]);
 		}
-		while(stack_chain_iterate(&sci, chain, SCI_FORWARDS, NULL)) {
+		while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
 			if(!patch_png_apply(entry, sci.patch_info, sci.fn)) {
 				ret = 1;
 			}
 		}
 		log_printf(ret ? "\n" : "not found\n");
-		json_decref(chain);
+		free(chain);
 	}
 	return ret;
 }
@@ -1020,7 +1020,7 @@ int stack_game_png_apply(anm_entry_t &entry)
 int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	(void)fn;
-	json_t *dat_dump = json_object_get(runconfig_get(), "dat_dump");
+	const char *dat_dump = runconfig_dat_dump_get();
 
 	// Some ANMs reference the same file name multiple times in a row
 	const char *name_prev = NULL;
@@ -1042,7 +1042,7 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 		}
 		if(entry.hasdata) {
 			if(!name_prev || strcmp(entry.name, name_prev)) {
-				if(!json_is_false(dat_dump)) {
+				if (dat_dump) {
 					bounds_store(name_prev, bounds);
 					bounds_init(bounds, entry.w, entry.h, entry.name);
 				}

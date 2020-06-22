@@ -55,6 +55,7 @@
     <ClCompile Include="src\promote.cpp" />
     <ClCompile Include="src\repatch.cpp" />
     <ClCompile Include="src\repo.cpp" />
+    <ClCompile Include="src\runconfig.cpp" />
     <ClCompile Include="src\search.cpp" />
     <ClCompile Include="src\sha256.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -91,6 +92,7 @@
     <ClInclude Include="src\promote.h" />
     <ClInclude Include="src\repatch.h" />
     <ClInclude Include="src\repo.h" />
+    <ClInclude Include="src\runconfig.h" />
     <ClInclude Include="src\search.h" />
     <ClInclude Include="src\sha256.h" />
     <ClInclude Include="src\inject.h" />

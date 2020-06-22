@@ -30,7 +30,7 @@ void bounds_init(png_image_ex &image, png_uint_32 w, png_uint_32 h, const char *
 
 char* fn_for_bounds(const char *fn)
 {
-	const char *dir = json_object_get_string(runconfig_get(), "dat_dump");
+	const char *dir = runconfig_dat_dump_get();
 	const char *prefix = "bounds-";
 	size_t ret_len;
 	char *ret = NULL;

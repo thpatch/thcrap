@@ -164,7 +164,7 @@ bool tlnote_env_from_runconfig(tlnote_env_t &env)
 		env.var = (float)parsed; \
 	});
 
-	auto cfg = json_object_get(runconfig_get(), "tlnotes");
+	auto cfg = json_object_get(runconfig_json_get(), "tlnotes");
 	if(!cfg) {
 		return true;
 	}

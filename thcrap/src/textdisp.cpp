@@ -198,7 +198,7 @@ int fontrule_apply(LOGFONTA *dst, const LOGFONTA *rep, int priority)
 // Returns 1 if a font rule was applied, 0 otherwise.
 int fontrules_apply(LOGFONTA *lf)
 {
-	json_t *fontrules = json_object_get(runconfig_get(), "fontrules");
+	json_t *fontrules = json_object_get(runconfig_json_get(), "fontrules");
 	LOGFONTA rep_full = {0};
 	rep_full.lfQuality = UNSPECIFIED_QUALITY;
 	int rep_score = 0;
@@ -262,7 +262,7 @@ HFONT WINAPI textdisp_CreateFontA(
 	if(string_font != pszFaceName) {
 		pszFaceName = string_font;
 	} else {
-		json_t *run_font = json_object_get(run_cfg, "font");
+		json_t *run_font = json_object_get(runconfig_json_get(), "font");
 		if(json_is_string(run_font)) {
 			pszFaceName = json_string_value(run_font);
 		}
@@ -315,18 +315,15 @@ HFONT WINAPI textdisp_CreateFontIndirectExA(
 	return chain_CreateFontIndirectExU(lpelfe);
 }
 
-void patch_fonts_load(const json_t *patch_info)
+void patch_fonts_load(const patch_t *patch_info)
 {
-	json_t *fonts = json_object_get(patch_info, "fonts");
-	const char *font_fn;
-	json_t *val;
-	json_object_foreach(fonts, font_fn, val) {
+	for (size_t i = 0; patch_info->fonts && patch_info->fonts[i]; i++) {
 		size_t font_size;
-		void *font_buffer = patch_file_load(patch_info, font_fn, &font_size);
+		void *font_buffer = patch_file_load(patch_info, patch_info->fonts[i], &font_size);
 
 		if(font_buffer) {
 			DWORD ret;
-			log_printf("(Font) Loading %s (%d bytes)...\n", font_fn, font_size);
+			log_printf("(Font) Loading %s (%d bytes)...\n", patch_info->fonts[i], font_size);
 			AddFontMemResourceEx(font_buffer, font_size, NULL, &ret);
 			SAFE_FREE(font_buffer);
 			/**
@@ -349,10 +346,7 @@ void textdisp_mod_detour(void)
 
 void textdisp_mod_init(void)
 {
-	json_t *patches = json_object_get(runconfig_get(), "patches");
-	size_t i;
-	json_t *patch_info;
-	json_array_foreach(patches, i, patch_info) {
-		patch_fonts_load(patch_info);
-	}
+	stack_foreach([](const patch_t *patch, void*) {
+		patch_fonts_load(patch);
+	}, nullptr);
 }

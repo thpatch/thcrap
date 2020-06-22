@@ -46,7 +46,7 @@ int file_rep_clear(file_rep_t *fr)
 	SAFE_FREE(fr->rep_buffer);
 	fr->game_buffer = nullptr;
 	fr->patch = json_decref_safe(fr->patch);
-	fr->hooks = json_decref_safe(fr->hooks);
+	SAFE_FREE(fr->hooks);
 	fr->patch_size = 0;
 	fr->pre_json_size = 0;
 	fr->offset = -1;
@@ -159,9 +159,6 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 	if(!fr || !fr->game_buffer || !fr->name) {
 		return -1;
 	}
-	if(!dir) {
-		dir = "dat";
-	}
 	{
 		size_t fn_len = strlen(dir) + 1 + strlen(fr->name) + 1;
 		VLA(char, fn, fn_len);
@@ -181,9 +178,6 @@ int DumpDatFragmentedFile(const char *dir, file_rep_t *fr, HANDLE hFile, fragmen
 {
 	if (!fr || !hFile || hFile == INVALID_HANDLE_VALUE || !fr->name || fr->offset != -1) {
 		return -1;
-	}
-	if (!dir) {
-		dir = "dat";
 	}
 	{
 		size_t fn_len = strlen(dir) + 1 + strlen(fr->name) + 1;
@@ -213,7 +207,7 @@ int DumpDatFragmentedFile(const char *dir, file_rep_t *fr, HANDLE hFile, fragmen
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
-	json_t *dat_dump;
+	const char *dat_dump;
 
 	// Other breakpoints
 	// -----------------
@@ -223,9 +217,9 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	if(!fr->game_buffer) {
 		return 1;
 	}
-	dat_dump = json_object_get(run_cfg, "dat_dump");
-	if(!json_is_false(dat_dump)) {
-		DumpDatFile(json_string_value(dat_dump), fr);
+	dat_dump = runconfig_dat_dump_get();
+	if(dat_dump) {
+		DumpDatFile(dat_dump, fr);
 	}
 
 	file_rep_hooks_run(fr);
@@ -309,8 +303,8 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 		fr->rep_buffer = realloc(fr->rep_buffer, POST_JSON_SIZE(fr));
 	}
 
-	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
-	if (fr->rep_buffer != NULL || fr->patch != NULL || fr->hooks != NULL || !json_is_false(dat_dump)) {
+	const char* dat_dump = runconfig_dat_dump_get();
+	if (fr->rep_buffer != NULL || fr->patch != NULL || fr->hooks != NULL || dat_dump) {
 		fr->orig_size = *size;
 		*size = max(*size, fr->pre_json_size) + fr->patch_size;
 	}
@@ -392,9 +386,9 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
-	json_t *dat_dump = json_object_get(run_cfg, "dat_dump");
-	if (!json_is_false(dat_dump)) {
-		DumpDatFragmentedFile(json_string_value(dat_dump), fr, hFile, (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_read"));
+	const char *dat_dump = runconfig_dat_dump_get();
+	if (dat_dump) {
+		DumpDatFragmentedFile(dat_dump, fr, hFile, (fragmented_read_file_hook_t)json_object_get_immediate(bp_info, regs, "post_read"));
 	}
 
 	if (!fr->rep_buffer && !fr->patch && !fr->hooks) {

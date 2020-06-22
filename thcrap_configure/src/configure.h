@@ -6,14 +6,19 @@
 #pragma once
 
 #include <array>
+#include <list>
+#include <map>
+#include <vector>
 #include "console.h"
+
+typedef std::list<patch_desc_t> patch_sel_stack_t;
 
 // Writes [str] to a new file name [fn] in text mode.
 int file_write_text(const char *fn, const char *str);
 
 // Returns an array of patch selections. The engine's run configuration will
 // contain all selected patches in a fully initialized state.
-json_t* SelectPatchStack(json_t *repo_list);
+patch_sel_stack_t SelectPatchStack(repo_t **repo_list);
 
 // Shows a file write error and asks the user if they want to continue
 int file_write_error(const char *fn);

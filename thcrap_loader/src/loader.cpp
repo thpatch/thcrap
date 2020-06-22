@@ -246,15 +246,15 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 
-	json_object_set_new(run_cfg, "run_cfg_fn", json_string(run_cfg_fn.c_str()));
-	runconfig_set(run_cfg);
+	runconfig_load(run_cfg, 0);
+	runconfig_runcfg_fn_set(run_cfg_fn.c_str());
 
 	log_print("Command-line parsing finished\n");
 	ret = loader_update_with_UI_wrapper(final_exe_fn, NULL, game_id);
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);
-	runconfig_set(NULL);
+	runconfig_free();
 	globalconfig_release();
 	return ret;
 }

@@ -4,13 +4,16 @@
 #include "server.h"
 #include "repo_discovery.h"
 
-// TODO: move these 2 functions to thcrap/src/repo.cpp
-std::string RepoGetLocalFN(const char *id)
+// TODO: remove
+char *RepoGetLocalFN(const char *id)
 {
     const char *repo_fn = "repo.js";
-    return std::string("repos/") + id + "/" + repo_fn;
+    std::string repo = std::string("repos/") + id + "/" + repo_fn;
+    return strdup(repo.c_str());
 }
 
+// TODO: move to thcrap/src/repo.cpp, or rework the code using it here
+// to use the new APIs
 void repo_foreach(std::function<void(json_t*)> callback)
 {
     for (auto& it : std::filesystem::directory_iterator("repos/")) {

@@ -119,11 +119,8 @@ extern "C" {
 #endif
 /// --------------
 
-// Wrapper around json_loadb and json_load_file with indirect UTF-8 filename
+// Wrapper around json_load_file with indirect UTF-8 filename
 // support and nice error reporting.
-// [source] can be specified to show the source of the JSON buffer in case of
-// an error (since json_error_t::source would just say "<buffer>").
-json_t* json_loadb_report(const char *buffer, size_t buflen, size_t flags, const char *source);
 json_t* json_load_file_report(const char *json_fn);
 
 // log_print for json_dump

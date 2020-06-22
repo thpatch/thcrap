@@ -9,6 +9,7 @@
   */
 
 #include <thcrap.h>
+#include <vector>
 #include "bgmmod.hpp"
 
 /// String constants
@@ -145,7 +146,7 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 		longest_codec_len = max(longest_codec_len, codec.ext.len);
 	}
 
-	const stringref_t game = json_object_get(runconfig_get(), "game");
+	const stringref_t game = runconfig_game_get();
 	auto mod_fn_len =
 		game.len + 1 + basename.len + LOOP_INFIX.len + longest_codec_len + 1;
 
@@ -157,25 +158,25 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 		mod_fn_p = stringref_copy_advance_dst(mod_fn_p, game);
 		*(mod_fn_p++) = '/';
 	}
-	const auto *mod_fn_basename = mod_fn_p;
+	auto *mod_fn_basename = mod_fn_p;
 	mod_fn_p = stringref_copy_advance_dst(mod_fn_p, basename);
 
-	auto chain = json_array();
-	defer({ json_decref(chain); });
+	std::vector<char*> chain;
 
 	// Patch root
 	for(const auto &codec : CODECS) {
 		stringref_copy_advance_dst(mod_fn_p, codec.ext);
-		json_array_append_new(chain, json_string(mod_fn_basename));
+		chain.push_back(mod_fn_basename);
 	}
 	// Game directory
 	for(const auto &codec : CODECS) {
 		stringref_copy_advance_dst(mod_fn_p, codec.ext);
-		json_array_append_new(chain, json_string(mod_fn));
+		chain.push_back(mod_fn);
 	}
+	chain.push_back(nullptr);
 
 	stack_chain_iterate_t sci = { 0 };
-	while(stack_chain_iterate(&sci, chain, SCI_BACKWARDS, nullptr)) {
+	while(stack_chain_iterate(&sci, chain.data(), SCI_BACKWARDS)) {
 		auto intro = patch_file_stream(sci.patch_info, sci.fn);
 		auto loop = INVALID_HANDLE_VALUE;
 		if(intro != INVALID_HANDLE_VALUE) {

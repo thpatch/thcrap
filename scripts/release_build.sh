@@ -8,10 +8,8 @@ DATE="$(date)"
 MSBUILD_PATH=
 MSBUILD_USER="$USER"
 GITHUB_LOGIN=
+# Authentication with Github tokens: https://developer.github.com/v3/auth/#basic-authentication
 GITHUB_TOKEN=
-THPATCH_LOGIN=
-# Yes, plaintext password authentication. There is probably a better way to do it, but I'm lazy...
-THPATCH_PWD=
 
 function parse_input
 {
@@ -28,8 +26,6 @@ function parse_input
                 echo '  --github-login:  Username for Github'
                 echo '  --github-token:  Token for Github'
                 echo '                   To get a token, see https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line'
-                echo '  --thpatch-login: Login for thpatch.net'
-                echo '  --thpatch-pwd:   Password for thpatch'
                 exit 0
                 ;;
             --date )
@@ -52,14 +48,6 @@ function parse_input
                 GITHUB_TOKEN=$2
                 shift 2
                 ;;
-            --thpatch-login )
-                THPATCH_LOGIN=$2
-                shift 2
-                ;;
-            --thpatch-pwd )
-                THPATCH_PWD=$2
-                shift 2
-                ;;
             * )
                 echo "Unknown argument $1"
                 exit 1
@@ -71,8 +59,6 @@ function parse_input
     if [ -z "$MSBUILD_USER" ];  then echo "--msbuild-user is required"  ; exit 1; fi
     if [ -z "$GITHUB_LOGIN" ];  then echo "--github-login is required"  ; exit 1; fi
     if [ -z "$GITHUB_TOKEN" ];  then echo "--github-token is required"  ; exit 1; fi
-    if [ -z "$THPATCH_LOGIN" ]; then echo "--thpatch-login is required" ; exit 1; fi
-    if [ -z "$THPATCH_PWD" ];   then echo "--thpatch-pwd is required"   ; exit 1; fi
 }
 
 function	confirm
@@ -110,7 +96,7 @@ cd git_thcrap
 	grep -v -e 'Number of'
 cd ..
 
-# Create the zip and its signature
+# Prepare the release directory
 if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/*.exe bin/*.dll bin/*.json))" != "$FILES_LIST" ]; then
 	echo "The list of files to copy doesn't match. Files list:"
 	cd git_thcrap/bin
@@ -140,6 +126,7 @@ explorer.exe .
 cd ..
 confirm "Time to test the release! Press y if everything works fine."
 
+# Create the zip and its signature
 rm -f thcrap.zip
 cd thcrap
 7z a ../thcrap.zip *
@@ -163,24 +150,10 @@ Add a release comment if you want to.
 ##### \`module_name\`
 $(echo "$commits" | sed -e 's/^\([0-9a-fA-F]\+\) \(.*\)/- \2 (\1)/')
 EOF
-cat > commit_mediawiki.txt <<EOF
-
-=== $(date +%F) ===
-
-Add a release comment if you want to.
-
-==== Module name ====
-$(echo "$commits" | sed -e 's/^\([0-9a-fA-F]\+\) \(.*\)/* \2 ({{GitHub commit|thcrap|\1}})/')
-----
-
-EOF
 unix2dos commit_github.txt
-unix2dos commit_mediawiki.txt
 notepad.exe commit_github.txt &
-notepad.exe commit_mediawiki.txt &
 confirm "Did you remove non-visible commits and include non-thcrap commits?"
 
-# Authenticating with Github tokens: https://developer.github.com/v3/auth/#basic-authentication
 echo "Uploading the release on github..."
 upload_url=$(jq -n --arg msg "$(cat commit_github.txt)" --arg date "$(date -d "$DATE" +%Y-%m-%d)" '{ "tag_name": $date, "name": $date, "body": $msg }' | \
 curl -s 'https://api.github.com/repos/thpatch/thcrap/releases' -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/json' -d@- | \
@@ -194,33 +167,9 @@ if [ "$ret" != "uploaded" ]; then echo "thcrap.zip.sig upload on GitHub failed."
 ret=$(curl -s "$upload_url?name=thcrap_symbols.zip" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/zip' --data-binary @thcrap_symbols.zip | jq -r '.state')
 if [ "$ret" != "uploaded" ]; then echo "thcrap_symbols.zip upload on GitHub failed."; fi
 
-echo "Uploading the release on thpatch.net..."
-# login
-lgtoken=$(curl -s -c cookies 'https://www.thpatch.net/w/api.php' -d "action=login&lgname=$THPATCH_LOGIN&format=json" | jq -r .login.token)
-ret=$(curl -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -d "action=login&lgname=$THPATCH_LOGIN&lgpassword=$THPATCH_PWD&lgtoken=$lgtoken&format=json" | jq -r '.login.result')
-if [ "$ret" != "Success" ]; then echo "Mediawiki login failed."; exit 1; fi
-edittoken=$(curl -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -d "action=tokens&type=edit&format=json" | jq -r .tokens.edittoken)
-
-# upload
-ret=$(curl --http1.1 -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -F "action=upload" -F "filename=thcrap.zip" -F "comment=$(date -d "$DATE" +%Y-%m-%d) release" -F "token=$edittoken" -F "ignorewarnings=true" -F "format=json" -F "file=@thcrap.zip" | jq -r '.upload.result')
-if [ "$ret" != "Success" ]; then confirm "thcrap.zip upload on MediaWiki failed. Upload it manually, then press y."; fi
-ret=$(curl -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -F "action=upload" -F "filename=thcrap.zip.sig" -F "comment=$(date -d "$DATE" +%Y-%m-%d) release" -F "token=$edittoken" -F "ignorewarnings=true" -F "format=json" -F "file=@thcrap.zip.sig" | jq -r '.upload.result')
-if [ "$ret" != "Success" ]; then confirm "thcrap.zip.sig upload on MediaWiki failed. Upload it manually, then press y."; fi
-
-# update files comment
-ret=$(curl -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -d "action=edit&title=File:thcrap.zip&nocreate=true&format=json" --data-urlencode "text=<noinclude>[[Touhou Community Reliant Automatic Patcher]] builds released by brliron. Latest one: (</noinclude>$(date -d "$DATE" +%Y-%m-%d)<noinclude>)" --data-urlencode "token=$edittoken" | jq -r '.edit.result')
-if [ "$ret" != "Success" ]; then echo "Updating thcrap.zip comment failed."; exit 1; fi
-ret=$(curl -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -d "action=edit&title=File:thcrap.zip.sig&nocreate=true&format=json" --data-urlencode "text=$(date -d "$DATE" +%Y-%m-%d) release" --data-urlencode "token=$edittoken" | jq -r '.edit.result')
-if [ "$ret" != "Success" ]; then echo "Updating thcrap.zip.sig comment failed."; exit 1; fi
-
-# update changelog
-ret=$(curl -s -b cookies -c cookies 'https://www.thpatch.net/w/api.php' -d "action=edit&title=Touhou_Patch_Center:Download/Changelog&nocreate=true&section=0&contentformat=text/x-wiki&format=json" --data-urlencode "appendtext@commit_mediawiki.txt" --data-urlencode "token=$edittoken" | jq -r '.edit.result')
-if [ "$ret" != "Success" ]; then echo "Updating changelog failed."; fi
-
-
 # Push update
 scp root@kosuzu.thpatch.net:/var/www/thcrap_update.js .
-jq ".stable.version = \"0x$(date -d "$DATE" +%Y%m%d)\"" thcrap_update.js > tmp.js
+jq --arg version "0x$(date -d "$DATE" +%Y%m%d)" --arg zip_fn "stable/thcrap.zip" '.stable.version = $version | .stable.latest = $zip_fn' thcrap_update.js > tmp.js
 mv tmp.js thcrap_update.js
 scp thcrap_update.js root@kosuzu.thpatch.net:/var/www/thcrap_update.js
 

@@ -8,143 +8,150 @@
 #include "configure.h"
 #include "search.h"
 
-json_t *dep_to_sel(const char *dep_str)
-{
-	if(dep_str) {
-		const char *slash = strrchr(dep_str, '/');
-		if(slash) {
-			return json_pack("[s#s]", dep_str, slash - dep_str, slash + 1);
-		} else {
-			return json_pack("[ns]", dep_str);
-		}
-	}
-	return NULL;
-}
-
 // Returns 1 if the selectors [a] and [b] refer to the same patch.
-// The repository IDs can be JSON NULLs to ignore them.
-int sel_match(const json_t *a, const json_t *b)
+// The repository IDs can be NULLs to ignore them.
+bool sel_match(const patch_desc_t& a, const patch_desc_t& b)
 {
-	json_t *a_r = json_array_get(a, 0);
-	json_t *a_p = json_array_get(a, 1);
-	json_t *b_r = json_array_get(b, 0);
-	json_t *b_p = json_array_get(b, 1);
-	int absolute = json_is_string(a_r) && json_is_string(b_r);
-	return (absolute ? json_equal(a_r, b_r) : 1) && json_equal(a_p, b_p);
+	bool absolute;
+	bool repo_match;
+	bool patch_match;
+
+	absolute = a.repo_id && b.repo_id;
+
+	if (absolute) {
+		repo_match = (strcmp(a.repo_id, b.repo_id) == 0);
+	}
+	else {
+		repo_match = true;
+	}
+
+	patch_match = (strcmp(a.patch_id, b.patch_id) == 0);
+
+	return repo_match && patch_match;
 }
 
-int IsSelected(json_t *sel_stack, const json_t *sel)
+bool IsSelected(const patch_sel_stack_t& sel_stack, const patch_desc_t& sel)
 {
-	json_t *cmp;
-	size_t i;
-	json_array_foreach(sel_stack, i, cmp) {
-		if(sel_match(sel, cmp)) {
-			return 1;
+	for (const patch_desc_t& it : sel_stack) {
+		if (sel_match(sel, it)) {
+			return true;
 		}
 	}
-	return 0;
+	return false;
+}
+
+repo_t *find_repo_in_list(repo_t **repo_list, const char *repo_id)
+{
+	for (size_t i = 0; repo_list[i]; i++) {
+		if (strcmp(repo_list[i]->id, repo_id) == 0) {
+			return repo_list[i];
+		}
+	}
+	return nullptr;
+}
+
+const repo_patch_t *find_patch_in_repo(const repo_t *repo, const char *patch_id)
+{
+	for (size_t i = 0; repo->patches[i].patch_id; i++) {
+		if (strcmp(repo->patches[i].patch_id, patch_id) == 0) {
+			return &repo->patches[i];
+		}
+	}
+	return nullptr;
 }
 
 // Locates a repository for [sel] in [repo_list], starting from [orig_repo_id].
-const char* SearchPatch(json_t *repo_list, const char *orig_repo_id, const json_t *sel)
+std::string SearchPatch(repo_t **repo_list, const char *orig_repo_id, const patch_desc_t& sel)
 {
-	const char *repo_id = json_array_get_string(sel, 0);
-	const char *patch_id = json_array_get_string(sel, 1);
-	const json_t *orig_repo = json_object_get(repo_list, orig_repo_id);
-	const json_t *patches = json_object_get(orig_repo, "patches");
-	const json_t *remote_repo;
-	const char *key;
+	const repo_t *orig_repo = find_repo_in_list(repo_list, orig_repo_id);
 
 	// Absolute dependency
 	// In fact, just a check to see whether [sel] is available.
-	if(repo_id) {
-		remote_repo = json_object_get(repo_list, repo_id);
-		patches = json_object_get(remote_repo, "patches");
-		return json_object_get(patches, patch_id) ? repo_id : NULL;
+	if(sel.repo_id) {
+		repo_t *remote_repo = find_repo_in_list(repo_list, sel.repo_id);
+		if (remote_repo) {
+			const repo_patch_t *patch = find_patch_in_repo(remote_repo, sel.patch_id);
+			if (patch) {
+				return remote_repo->id;
+			}
+		}
+		return "";
 	}
 
 	// Relative dependency
-	if(json_object_get(patches, patch_id)) {
+	if (find_patch_in_repo(orig_repo, sel.patch_id)) {
 		return orig_repo_id;
 	}
 
-	json_object_foreach(repo_list, key, remote_repo) {
-		patches = json_object_get(remote_repo, "patches");
-		if(json_object_get(patches, patch_id)) {
-			return key;
+	for (size_t i = 0; repo_list[i]; i++) {
+		if (find_patch_in_repo(repo_list[i], sel.patch_id)) {
+			return repo_list[i]->id;
 		}
 	}
+
 	// Not found...
-	return NULL;
+	return "";
 }
 
 // Adds a patch and, recursively, all of its required dependencies. These are
 // resolved first on the repository the patch originated, then globally.
 // Returns the number of missing dependencies.
-int AddPatch(json_t *sel_stack, json_t *repo_list, json_t *sel)
+int AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
 {
 	int ret = 0;
-	json_t *patches = json_object_get(runconfig_get(), "patches");
-	const char *repo_id = json_array_get_string(sel, 0);
-	const char *patch_id = json_array_get_string(sel, 1);
-	const json_t *repo = json_object_get(repo_list, repo_id);
-	json_t *repo_servers = json_object_get(repo, "servers");
-	json_t *patch_info = patch_bootstrap_wrapper(sel, repo_servers);
-	json_t *patch_full = patch_init(patch_info);
-	json_t *dependencies = json_object_get(patch_full, "dependencies");
-	json_t *dep_array = json_array();
-	size_t i;
-	json_t *dep;
+	const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
+	patch_t patch_info = patch_bootstrap_wrapper(&sel, repo->servers);
+	patch_t patch_full = patch_init(patch_info.archive, nullptr, 0);
+	patch_desc_t *dependencies = patch_full.dependencies;
 
-	json_flex_array_foreach(dependencies, i, dep) {
-		const char *dep_str = json_string_value(dep);
-		json_t *dep_sel = dep_to_sel(dep_str);
+	for (size_t i = 0; dependencies && dependencies[i].patch_id; i++) {
+		patch_desc_t dep_sel = dependencies[i];
 
 		if(!IsSelected(sel_stack, dep_sel)) {
-			const char *target_repo = SearchPatch(repo_list, repo_id, dep_sel);
-			if(!target_repo) {
-				log_printf("ERROR: Dependency '%s' of patch '%s' not met!\n", dep_str, patch_id);
+			std::string target_repo = SearchPatch(repo_list, sel.repo_id, dep_sel);
+			if(target_repo.empty()) {
+				log_printf("ERROR: Dependency '%s/%s' of patch '%s' not met!\n", dep_sel.repo_id, dep_sel.patch_id, sel.patch_id);
 				ret++;
 			} else {
-				json_array_set_new(dep_sel, 0, json_string(target_repo));
+				free(dep_sel.repo_id);
+				dep_sel.repo_id = strdup(target_repo.c_str());
+				dependencies[i] = dep_sel;
 				ret += AddPatch(sel_stack, repo_list, dep_sel);
 			}
 		}
-		json_array_append_new(dep_array, dep_sel);
 	}
-	json_object_set_new(patch_full, "dependencies", dep_array);
-	json_array_append(patches, patch_full);
-	json_array_append(sel_stack, sel);
-	json_decref(patch_full);
-	json_decref(patch_info);
+
+	stack_add_patch(&patch_full);
+	sel_stack.push_back(sel);
+	patch_free(&patch_info);
 	return ret;
 }
 
 // Returns the number of patches removed.
-int RemovePatch(json_t *sel_stack, size_t rem_id)
+int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 {
-	int ret = 0;
-	json_t *patches = json_object_get(runconfig_get(), "patches");
-	json_t *sel = json_array_get(sel_stack, rem_id);
-	size_t dep_id;
-	json_t *patch_info;
+	auto& match = [patch_id](const patch_desc_t& desc) {
+		return strcmp(desc.patch_id, patch_id) == 0;
+	};
 
-	json_array_remove(patches, rem_id);
-	json_array_remove(sel_stack, rem_id);
+	std::vector<patch_desc_t> deps;
+	patch_desc_t sel = *std::find_if(sel_stack.begin(), sel_stack.end(), match);
 
-	json_array_foreach(patches, dep_id, patch_info) {
-		json_t *dependencies = json_object_get(patch_info, "dependencies");
-		size_t j;
-		json_t *dep;
+	stack_remove_patch(patch_id);
+	sel_stack.remove_if(match);
 
-		json_flex_array_foreach(dependencies, j, dep) {
-			if(sel_match(dep, sel)) {
-				ret += RemovePatch(sel_stack, dep_id);
-				dep_id--;
-				break;
+	stack_foreach_cpp([&deps, &sel](const patch_t *patch) {
+		for (size_t i = 0; patch->dependencies[i].patch_id; i++) {
+			if (sel_match(patch->dependencies[i], sel)) {
+				deps.push_back(patch->dependencies[i]);
 			}
 		}
+	});
+
+	for (const patch_desc_t& it : deps) {
+		RemovePatch(sel_stack, it.patch_id);
 	}
+
 	return 1;
 }
 
@@ -157,41 +164,34 @@ int PrettyPrintPatch(const char *patch, const char *title)
 // Prints all patches of [repo_js] that are not part of the [sel_stack],
 // filling [list_order] with the order they appear in.
 // Returns the final array size of [list_order].
-int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
+int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_sel_stack_t& sel_stack)
 {
-	json_t *patch_id;
-	size_t i;
-	json_t *patches = json_object_get(repo_js, "patches");
-	json_t *patches_sorted = json_object_get(repo_js, "patches_sorted");
-	json_t *repo_id = json_object_get(repo_js, "id");
-	const char *repo_id_str = json_string_value(repo_id);
-	const char *repo_title = json_object_get_string(repo_js, "title");
-	size_t list_count = json_array_size(list_order);
-	int print_header = 1;
+	size_t list_count = list_order.size();
+	bool print_header = true;
 
-	json_array_foreach(patches_sorted, i, patch_id) {
-		const char *patch_id_str = json_string_value(patch_id);
-		const char *patch_title = json_object_get_string(patches, patch_id_str);
-		json_t *sel = json_pack("[ss]", repo_id_str, patch_id_str);
+	for (size_t i = 0; repo->patches[i].patch_id; i++) {
+		repo_patch_t& patch = repo->patches[i];
+		patch_desc_t sel = {
+			repo->id,
+			patch.patch_id
+		};
 
 		if(!IsSelected(sel_stack, sel)) {
-			json_array_append(list_order, sel);
+			list_order.push_back(sel);
 
 			if(print_header) {
-				const char *contact = json_object_get_string(repo_js, "contact");
                 con_printf(
 					"Patches from [%s] (%s):\n"
 					"\t(Contact: %s)\n"
-					"\n", repo_title, repo_id_str, contact
+					"\n", repo->title, repo->id, repo->contact
 				);
-				print_header = 0;
+				print_header = false;
 			}
 			++list_count;
 			con_clickable(list_count);
             con_printf(" [%2d] ", list_count);
-			PrettyPrintPatch(patch_id_str, patch_title);
+			PrettyPrintPatch(patch.patch_id, patch.title);
 		}
-		json_decref(sel);
 	}
 	if(!print_header) {
         con_printf("\n");
@@ -199,11 +199,9 @@ int RepoPrintPatches(json_t *list_order, json_t *repo_js, json_t *sel_stack)
 	return list_count;
 }
 
-int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
+int PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, patch_sel_stack_t& sel_stack)
 {
-	size_t list_count = json_array_size(list_order);
-	size_t i;
-	json_t *sel;
+	size_t list_count = list_order.size();
 
 	int width = console_width();
 	VLA(char, hr, width + 1);
@@ -214,7 +212,7 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 	// the next line, so we don't need to add a separate \n after the string.
     con_printf("%s",hr);
 
-	if(!json_array_size(sel_stack)) {
+	if(sel_stack.empty()) {
 		goto end;
 	}
     con_printf(
@@ -222,21 +220,17 @@ int PrintSelStack(json_t *list_order, json_t *repo_list, json_t *sel_stack)
 		"Selected patches (in ascending order of priority):\n"
 		"\n"
 	);
-	json_array_foreach(sel_stack, i, sel) {
-		const char *repo_id = json_array_get_string(sel, 0);
-		const char *patch_id = json_array_get_string(sel, 1);
-		const json_t *repo = json_object_get(repo_list, repo_id);
-		const json_t *patches = json_object_get(repo, "patches");
-		const char *patch_title = json_object_get_string(patches, patch_id);
-		json_t *full_id = json_pack("s++", repo_id, "/", patch_id);
+	for (patch_desc_t& sel : sel_stack) {
+		const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
+		const repo_patch_t *patch = find_patch_in_repo(repo, sel.patch_id);
+		std::string full_id = std::string(sel.repo_id) + "/" + sel.patch_id;
 
 		++list_count;
 		con_clickable(list_count);
         con_printf("  %2d. ", list_count);
-		PrettyPrintPatch(json_string_value(full_id), patch_title);
+		PrettyPrintPatch(full_id.c_str(), patch->title);
 
-		json_array_append(list_order, sel);
-		json_decref(full_id);
+		list_order.push_back(sel);
 	}
     con_printf("\n%s", hr);
 
@@ -245,42 +239,58 @@ end:
 	return list_count;
 }
 
-json_t* SelectPatchStack(json_t *repo_list)
+size_t repo_sort_patches(repo_t *repo)
 {
-	json_t *list_order = json_array();
-	json_t *internal_cfg = json_pack("{s[]}", "patches");
-	json_t *sel_stack = json_array();
-	const char *key;
-	json_t *json_val;
-	// Total number of required lines in the console buffer
-	size_t buffer_lines = 0;
-	size_t list_count = 0;
+	size_t i = 0;
+	while (repo->patches[i].patch_id) {
+		i++;
+	}
 
-	if(!json_object_size(repo_list)) {
+	std::sort(&repo->patches[0], &repo->patches[i], [](const repo_patch_t& a, const repo_patch_t& b) {
+		return strcmp(a.patch_id, b.patch_id) < 0;
+	});
+
+	return i;
+}
+
+size_t get_stack_size(patch_sel_stack_t sel_stack)
+{
+	size_t i = 0;
+
+	for (auto& it : sel_stack) {
+		i++;
+	}
+	return i;
+}
+
+patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
+{
+	patch_sel_stack_t sel_stack;
+	// Total number of required lines in the console buffer
+	size_t patches_count = 0;
+
+	if(!repo_list[0]) {
 		log_printf("\nNo repositories available -.-\n");
 		goto end;
 	}
 	// Sort patches
-	json_object_foreach(repo_list, key, json_val) {
-		json_t *patches = json_object_get(json_val, "patches");
-		json_t *patches_sorted = json_object_get_keys_sorted(patches);
-		json_object_set_new(json_val, "patches_sorted", patches_sorted);
-		buffer_lines += json_array_size(patches_sorted) + 4;
+	for (size_t i = 0; repo_list[i]; i++) {
+		patches_count += repo_sort_patches(repo_list[i]);
 	}
-	if(!buffer_lines) {
+	if(patches_count == 0) {
 		log_printf("\nNo patches available -.-\n");
 		goto end;
 	}
 
-	runconfig_set(internal_cfg);
+	stack_free();
 	while(1) {
 		char buf[16];
 		size_t list_pick;
-		size_t stack_size = json_array_size(sel_stack);
+		size_t stack_size = get_stack_size(sel_stack);
 		size_t stack_offset;
+		size_t list_count = 0;
 
-		list_count = 0;
-		json_array_clear(list_order);
+		std::vector<patch_desc_t> list_order;
 
 		cls(0);
         console_prepare_prompt();
@@ -293,13 +303,13 @@ json_t* SelectPatchStack(json_t *repo_list)
 			"\n"
 		);
 
-		json_object_foreach(repo_list, key, json_val) {
-			list_count = RepoPrintPatches(list_order, json_val, sel_stack);
+		for (size_t i = 0; repo_list[i]; i++) {
+			list_count = RepoPrintPatches(list_order, repo_list[i], sel_stack);
 		}
 		list_count = PrintSelStack(list_order, repo_list, sel_stack);
         con_printf("\n");
 
-		stack_offset = json_array_size(list_order) - stack_size;
+		stack_offset = list_order.size() - stack_size;
 
 		int still_picking = 1;
 		do {
@@ -329,12 +339,10 @@ json_t* SelectPatchStack(json_t *repo_list)
 			break;
 		}
 		list_pick--;
+		patch_desc_t sel = list_order[list_pick];
 		if(list_pick < stack_offset) {
 			int ret;
-			json_t *sel = json_array_get(list_order, list_pick);
-			const char *repo_id = json_array_get_string(sel, 0);
-			const char *patch_id = json_array_get_string(sel, 1);
-			log_printf("Resolving dependencies for %s/%s...\n", repo_id, patch_id);
+			log_printf("Resolving dependencies for %s/%s...\n", sel.repo_id, sel.patch_id);
 			ret = AddPatch(sel_stack, repo_list, sel);
 			if(ret) {
 				log_printf(
@@ -345,11 +353,9 @@ json_t* SelectPatchStack(json_t *repo_list)
 				pause();
 			}
 		} else {
-			RemovePatch(sel_stack, list_pick - stack_offset);
+			RemovePatch(sel_stack, sel.patch_id);
 		}
 	}
 end:
-	json_decref(list_order);
-	json_decref(internal_cfg);
 	return sel_stack;
 }
