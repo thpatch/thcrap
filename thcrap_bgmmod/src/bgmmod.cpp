@@ -166,12 +166,12 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 	// Patch root
 	for(const auto &codec : CODECS) {
 		stringref_copy_advance_dst(mod_fn_p, codec.ext);
-		chain.push_back(mod_fn_basename);
+		chain.push_back(strdup(mod_fn_basename));
 	}
 	// Game directory
 	for(const auto &codec : CODECS) {
 		stringref_copy_advance_dst(mod_fn_p, codec.ext);
-		chain.push_back(mod_fn);
+		chain.push_back(strdup(mod_fn));
 	}
 	chain.push_back(nullptr);
 
@@ -203,6 +203,10 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 				patch_print_fn(sci.patch_info, mod_fn);
 			}
 			log_print("\n");
+
+			for (char *&chain_entry : chain) {
+				SAFE_FREE(chain_entry);
+			}
 
 			return pcm_open(codec.open, std::move(intro), std::move(loop));
 		}
