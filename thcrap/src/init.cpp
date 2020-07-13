@@ -358,8 +358,14 @@ int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
 int thcrap_init_binary(size_t stage_num, bool use_module, HMODULE module)
 {
 	size_t stages_total = runconfig_stage_count();
+
+	if (!stages_total) {
+		return 0;
+	}
+
 	assert(stage_num < stages_total);
 	assert(bp_set.size() == stages_total);
+
 
 	if(stages_total >= 2) {
 		log_printf(
