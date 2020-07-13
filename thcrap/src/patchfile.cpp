@@ -605,7 +605,7 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 		return -1;
 	}
 	ret = 0;
-	for (size_t i = 0; hook_array[i].wildcard; i++) {
+	for (size_t i = 0; hook_array && hook_array[i].wildcard; i++) {
 		func_patch_t func = hook_array[i].patch_func;
 		if(func) {
 			if (func(file_inout, size_out, size_in, fn, patch) > 0) {
