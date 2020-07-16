@@ -269,15 +269,14 @@ void stack_add_patch(patch_t *patch)
 
 void stack_remove_patch(const char *patch_id)
 {
+
 	auto check = [patch_id](const patch_t& patch) {
 		return strcmp(patch.id, patch_id) == 0;
 	};
-	std::for_each(stack.begin(), stack.end(), [check](patch_t& patch) {
-		if (check(patch)) {
-			patch_free(&patch);
-		}
-	});
-	std::remove_if(stack.begin(), stack.end(), check);
+
+	std::vector<patch_t>::iterator patch = std::find_if(stack.begin(), stack.end(), check);
+	patch_free(&*patch);
+	stack.erase(patch);
 }
 
 size_t stack_get_size()
