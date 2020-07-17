@@ -172,6 +172,7 @@ void runconfig_load(json_t *file, int flags)
 	set_string_if_exist("game",  run_cfg.game);
 	set_string_if_exist("build", run_cfg.build);
 	set_string_if_exist("title", run_cfg.title);
+	set_string_if_exist("url_update", run_cfg.update_url);
 
 	value = json_object_get(file, "console");
 	if (value) {
@@ -265,7 +266,8 @@ void runconfig_print()
 void runconfig_free()
 {
 	stack_free();
-	json_decref_safe(run_cfg.json);
+	json_decref(run_cfg.json);
+	run_cfg.json = nullptr;
 	run_cfg.console = false;
 	run_cfg.thcrap_dir.clear();
 	run_cfg.runcfg_fn.clear();
@@ -314,7 +316,7 @@ bool runconfig_console_get()
 
 const char *runconfig_thcrap_dir_get()
 {
-	return run_cfg.thcrap_dir.c_str();
+	return run_cfg.thcrap_dir.empty() == false ? run_cfg.thcrap_dir.c_str() : nullptr;
 }
 
 void runconfig_thcrap_dir_set(const char *thcrap_dir)
@@ -324,7 +326,7 @@ void runconfig_thcrap_dir_set(const char *thcrap_dir)
 
 const char *runconfig_runcfg_fn_get()
 {
-	return run_cfg.runcfg_fn.c_str();
+	return run_cfg.runcfg_fn.empty() == false ? run_cfg.runcfg_fn.c_str() : nullptr;
 }
 
 void runconfig_runcfg_fn_set(const char *runcfg_fn)
@@ -334,12 +336,12 @@ void runconfig_runcfg_fn_set(const char *runcfg_fn)
 
 const char *runconfig_game_get()
 {
-	return run_cfg.game.c_str();
+	return run_cfg.game.empty() == false ? run_cfg.game.c_str() : nullptr;
 }
 
 const char *runconfig_build_get()
 {
-	return run_cfg.build.c_str();
+	return run_cfg.build.empty() == false ? run_cfg.build.c_str() : nullptr;
 }
 
 void runconfig_build_set(const char *build)
@@ -373,12 +375,12 @@ const char *runconfig_title_get()
 
 const char *runconfig_update_url_get()
 {
-	return run_cfg.update_url.c_str();
+	return run_cfg.update_url.empty() == false ? run_cfg.update_url.c_str() : nullptr;
 }
 
 const char *runconfig_dat_dump_get()
 {
-	return run_cfg.dat_dump.c_str();
+	return run_cfg.dat_dump.empty() == false ? run_cfg.dat_dump.c_str() : nullptr;
 }
 
 bool runconfig_latest_check()
