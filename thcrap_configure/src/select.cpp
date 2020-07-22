@@ -137,10 +137,14 @@ int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 	std::vector<patch_desc_t> deps;
 	patch_sel_stack_t::iterator sel = std::find_if(sel_stack.begin(), sel_stack.end(), match);
 
-	stack_foreach_cpp([&deps, &sel](const patch_t *patch) {
+	stack_foreach_cpp([&](const patch_t *patch) {
 		for (size_t i = 0; patch->dependencies && patch->dependencies[i].patch_id; i++) {
 			if (sel_match(patch->dependencies[i], *sel)) {
-				deps.push_back(patch->dependencies[i]);
+				for (patch_desc_t &stack_patch : sel_stack) {
+					if (strcmp(patch->id, stack_patch.patch_id) == 0) {
+						deps.push_back(stack_patch);
+					}
+				}
 			}
 		}
 	});
