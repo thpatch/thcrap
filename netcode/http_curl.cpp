@@ -36,6 +36,8 @@ int HttpHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_
 
 bool HttpHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
+    curl_easy_setopt(this->curl, CURLOPT_FOLLOWLOCATION, 1);
+
     curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, HttpHandle::writeCallbackStatic);
     curl_easy_setopt(this->curl, CURLOPT_WRITEDATA, &writeCallback);
 
