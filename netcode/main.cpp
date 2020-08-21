@@ -32,14 +32,13 @@ patch_t patch_bootstrap(const patch_desc_t *sel, const char * const *repo_server
 int do_thcrap_configure()
 {
     // Discover repos
-	//const char *start_repo = "https://mirrors.thpatch.net/nmlgc/";
-    //RepoDiscoverAtURL(start_repo); // TODO: why is it the default??
-    if (RepoDiscoverAtURL("https://srv.thpatch.net/") != 0) {
-        // TODO: log_printf (on every file)
+	//const char *start_repo = "https://mirrors.thpatch.net/nmlgc/"; // TODO: why is it the default??
+	const char *start_repo = "https://srv.thpatch.net/";
+    if (RepoDiscoverAtURL(start_repo) != 0) {
+        // TODO on the whole netcode: printf => log_printf
         printf("Discovery from URL failed\n");
         return 1;
     }
-    // TODO: uncomment
     if (RepoDiscoverFromLocal() != 0) {
         printf("Discovery from local failed\n");
         return 1;

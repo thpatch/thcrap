@@ -1,7 +1,7 @@
+#include "thcrap.h"
 #include <cstring>
 #include "update.h"
 #include "server.h"
-#include "scoped_json.h"
 #include "strings_array.h"
 
 PatchUpdate::PatchUpdate(Update& update, const patch_t *patch, std::list<std::string> servers)

@@ -13,9 +13,9 @@ RepoDiscover::~RepoDiscover()
     this->wait();
 }
 
-bool RepoDiscover::writeRepoFile(json_t *repo_js)
+bool RepoDiscover::writeRepoFile(ScopedJson repo_js)
 {
-    const char *id = json_string_value(json_object_get(repo_js, "id"));
+    const char *id = json_string_value(json_object_get(*repo_js, "id"));
     if (!id) {
         printf("Repository file does not specify an ID!\n");
         return true;
@@ -23,12 +23,12 @@ bool RepoDiscover::writeRepoFile(json_t *repo_js)
 
     std::string repo_fn_local = RepoGetLocalFN(id);
     std::filesystem::create_directories(std::filesystem::u8path(repo_fn_local).remove_filename());
-    return json_dump_file(repo_js, repo_fn_local.c_str(), JSON_INDENT(4)) == 0;
+    return json_dump_file(*repo_js, repo_fn_local.c_str(), JSON_INDENT(4)) == 0;
 }
 
-void RepoDiscover::discoverNeighbors(json_t *repo_js)
+void RepoDiscover::discoverNeighbors(ScopedJson repo_js)
 {
-    json_t *neighbors = json_object_get(repo_js, "neighbors");
+    json_t *neighbors = json_object_get(*repo_js, "neighbors");
     size_t i;
     json_t *neighbor;
     json_array_foreach(neighbors, i, neighbor) {
@@ -52,10 +52,20 @@ void RepoDiscover::addServer(std::string url)
 
     this->downloading.insert(url);
     std::thread([this, url]() {
-        json_t *repo_js = ServerCache::get().downloadJsonFile(url + "repo.js");
-        if (!repo_js) {
-            return ;
+        ScopedJson repo_js = ServerCache::get().downloadJsonFile(url + "repo.js");
+        if (repo_js) {
+            if (repo_js && this->writeRepoFile(repo_js)) {
+                this->discoverNeighbors(repo_js);
+            }
+            else {
+                this->success = false;
+            }
         }
+        // If repo_js is false (the download failed), we don't want to report the failure.
+        // Failing to write to the config directory is a failure of the user's computer and
+        // thcrap_configure should stop if it happens, but when we fail to download a repo.js,
+        // it's quite likely that we have only one repo dead and the others will work.
+        // And even if it doesn't, the user still has the local cache.
 
         {
             std::scoped_lock<std::mutex> lock(this->mutex);
@@ -63,14 +73,6 @@ void RepoDiscover::addServer(std::string url)
             this->done.insert(url);
         }
 
-        if (this->writeRepoFile(repo_js)) {
-            this->discoverNeighbors(repo_js);
-        }
-        else {
-            this->success = false;
-        }
-
-        json_decref(repo_js);
         this->condVar.notify_one();
     }).detach();
 }
