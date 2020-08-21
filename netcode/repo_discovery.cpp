@@ -79,12 +79,7 @@ void RepoDiscover::addServer(std::string url)
 
 bool RepoDiscover::wait()
 {
-    // TODO: this blocks if any download faild. investigate.
     // TODO: the start_url is downloaded twice
-    // TODO: if a file fails on a server, the server is thought as dead and every
-    // other download is aborted. This is fine for patch download, not for repo discovery.
-    // Actually, even on patch download, we don't want to invalidate the whole
-    // Github servers for only one failing patch.
     std::unique_lock<std::mutex> lock(this->mutex);
     while (!this->downloading.empty()) {
         this->condVar.wait(lock);

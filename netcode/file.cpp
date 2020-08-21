@@ -96,16 +96,23 @@ bool File::download(HttpHandle& http, const DownloadUrl& url)
     printf("Starting %s...\n", url.getUrl().c_str());
 
     std::vector<uint8_t> localData;
-    if (!http.download(url.getUrl(),
+    HttpHandle::Status status = http.download(url.getUrl(),
         [this, &localData](const uint8_t *data, size_t size) {
             return this->writeCallback(localData, data, size);
         },
         [this, &url](size_t dlnow, size_t dltotal) {
             return this->progressCallback(url, dlnow, dltotal);
         }
-    )) {
+    );
+    if (status != HttpHandle::Status::Ok) {
         // TODO: do not mark the server as failed if the download was cancelled
-        this->setFailed(url);
+        if (status == HttpHandle::Status::ServerError || status == HttpHandle::Status::Error) {
+            // If the server is dead, we don't want to continue using it.
+            // If the library returned an error, future downloads to the
+            // same server are also likely to fail.
+            // If it's only a 404, other downloads might work.
+            this->setFailed(url);
+        }
         return false;
     }
 
