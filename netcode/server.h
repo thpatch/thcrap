@@ -39,9 +39,7 @@ class Server
 {
 private:
     std::string baseUrl;
-    // false if the server have proven to be unreliable or dead
-    // (network timeout, a file doesn't match its CRC, etc).
-    // TODO: set to false on failure
+    // false if the server is dead (network timeout, 5XX error code, etc).
     std::atomic<bool> alive = true;
     std::mutex mutex;
     std::list<HttpHandle> httpHandles;
