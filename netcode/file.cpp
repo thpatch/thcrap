@@ -1,3 +1,4 @@
+#include <stdexcept>
 #include <fstream>
 #include "random.h"
 #include "server.h"
@@ -5,7 +6,11 @@
 
 File::File(std::list<DownloadUrl>&& urls)
     : status(FileStatus::TODO), urls(urls), threadsLeft(urls.size())
-{}
+{
+    if (urls.empty()) {
+        throw new std::invalid_argument("Input URL list must not be empty");
+    }
+}
 
 const std::vector<uint8_t>& File::getData() const
 {

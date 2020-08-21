@@ -15,6 +15,10 @@ SRCS = main.cpp \
 	download_url.cpp \
 	random.cpp \
 	thcrap_stuff/repo.cpp \
+	thcrap_stuff/patchfile.cpp \
+	thcrap_stuff/stack.cpp \
+	thcrap_stuff/jansson_ex.cpp \
+	thcrap_stuff/strings_array.cpp \
 
 OBJS = $(SRCS:.cpp=.o)
 

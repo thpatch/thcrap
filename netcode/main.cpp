@@ -18,14 +18,16 @@ int main()
     //    printf("Discovery from local failed\n");
     //}
 
-    std::unique_ptr<File> file = ServerCache::get().downloadFile("https://srv.thpatch.net/lang_en/patch.js");
-    std::filesystem::create_directories("lang_en");
-    file->write("lang_en/patch.js");
+    //std::unique_ptr<File> file = ServerCache::get().downloadFile("https://srv.thpatch.net/lang_en/patch.js");
+    //std::filesystem::create_directories("lang_en");
+    //file->write("lang_en/patch.js");
 
-    patches_update({
-        "lang_en"
-    });
+    //patches_update({
+    //    "lang_en"
+    //});
 
     // stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, NULL);
     // stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
+    // TODO: test stack_update
+    global_update(nullptr, nullptr);
 }

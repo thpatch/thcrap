@@ -124,7 +124,6 @@ void repo_foreach(std::function<void(repo_t*)> callback)
 repo_t **RepoLoad(void)
 {
 	std::vector<repo_t*> repo_vector;
-	repo_t *repo;
 
 	repo_foreach([&repo_vector](repo_t *repo) {
 		repo_vector.push_back(repo);
