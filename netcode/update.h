@@ -18,7 +18,7 @@ typedef enum {
 // This callbacks should return TRUE if the download is allowed to continue and FALSE to cancel it.
 typedef int (*progress_callback_t)(const char *patch_id, const char *fn, get_result_t ret, size_t file_progress, size_t file_total, size_t nb_files_current, size_t nb_files_total, void *param);
 
-typedef int (*update_filter_func_t)(const char *fn, json_t *filter_data);
+typedef int (*update_filter_func_t)(const char *fn, void *filter_data);
 
 // Returns 1 for all global file names, i.e. those without a slash.
 int update_filter_global(const char *fn, void*);
@@ -80,5 +80,5 @@ public:
     bool run(const std::list<const patch_t*>& patchs);
 };
 
-void stack_update(json_t *stack, update_filter_func_t filter_func, json_t *filter_data, progress_callback_t progress_callback, void *progress_param);
+void stack_update(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param);
 void global_update(progress_callback_t progress_callback, void *progress_param);

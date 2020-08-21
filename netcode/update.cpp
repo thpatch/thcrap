@@ -143,7 +143,7 @@ int update_filter_games(const char *fn, void *param)
 //}
 
 // TODO (in caller), initialize the stack;
-void stack_update(update_filter_func_t filter_func, json_t *filter_data, progress_callback_t progress_callback, void *progress_param)
+void stack_update(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param)
 {
     auto filter_lambda =
         [filter_func, filter_data](const std::string& fn) -> bool {
@@ -222,37 +222,39 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
 	});
 
 	// Add all the patches we can find in config files
-    for (auto& dir_entry : std::filesystem::directory_iterator("config")) {
-        std::filesystem::path path = dir_entry.path();
-        if (path.extension() != ".js") {
-            continue;
-        }
-
-		ScopedJson config = json_load_file(path.u8string().c_str(), 0, nullptr);
-		if (!*config) {
-			continue;
-		}
-
-		size_t i;
-		json_t *patch_info;
-		json_array_foreach(json_object_get(*config, "patches"), i, patch_info) {
-			patch_t patch = patch_init(json_object_get_string(patch_info, "archive"), patch_info, 0);
-            if (patch.id == nullptr) {
-                printf("Error loading %s/patch.js\n", json_object_get_string(patch_info, "archive"));
+    if (std::filesystem::is_directory("config")) {
+        for (auto& dir_entry : std::filesystem::directory_iterator("config")) {
+            std::filesystem::path path = dir_entry.path();
+            if (path.extension() != ".js") {
                 continue;
             }
-			patch_rel_to_abs(&patch, path.c_str());
-			if (patch.archive && !std::any_of(patches.begin(), patches.end(), [&patch](const patch_t *it) {
-					return strcmp(patch.archive, it->archive) != 0;
-				})) {
-				patches_storage.push_back(patch);
-				patches.push_back(patches_storage.back());
-			}
-			else {
-				patch_free(&patch);
-			}
-		}
-	}
+
+	    	ScopedJson config = json_load_file(path.u8string().c_str(), 0, nullptr);
+	    	if (!*config) {
+	    		continue;
+	    	}
+
+	    	size_t i;
+	    	json_t *patch_info;
+	    	json_array_foreach(json_object_get(*config, "patches"), i, patch_info) {
+	    		patch_t patch = patch_init(json_object_get_string(patch_info, "archive"), patch_info, 0);
+                if (patch.id == nullptr) {
+                    printf("Error loading %s/patch.js\n", json_object_get_string(patch_info, "archive"));
+                    continue;
+                }
+	    		patch_rel_to_abs(&patch, path.c_str());
+	    		if (patch.archive && !std::any_of(patches.begin(), patches.end(), [&patch](const patch_t *it) {
+	    				return strcmp(patch.archive, it->archive) != 0;
+	    			})) {
+	    			patches_storage.push_back(patch);
+	    			patches.push_back(patches_storage.back());
+	    		}
+	    		else {
+	    			patch_free(&patch);
+	    		}
+	    	}
+	    }
+    }
 
     char **games = strings_array_create();
     {
