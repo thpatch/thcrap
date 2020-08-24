@@ -18,7 +18,7 @@ bool PatchUpdate::onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, co
 
     ScopedJson filesJs = patch_json_load(this->patch, "files.js", nullptr);
     if (*filesJs == nullptr) {
-        printf("%s: files.js isn't a valid json file!\n", this->patch->id);
+        log_printf("%s: files.js isn't a valid json file!\n", this->patch->id);
         return false;
     }
 
@@ -76,7 +76,7 @@ bool Update::startPatchUpdate(const patch_t *patch)
     }
 
     if (servers.empty()) {
-        printf("Empty server list in %s/patch.js\n", patch->archive);
+        log_printf("Empty server list in %s/patch.js\n", patch->archive);
         return false;
     }
 
@@ -93,7 +93,7 @@ bool Update::run(const std::list<const patch_t*>& patchs)
             // TODO:
             // - If we end up not needing the patch_init call in startPatchUpdate, this message is wrong.
             // - Even if we end up using it, we have the other failure case where patchUpdateObj->start() failed.
-            printf("Could not load %s/%s\n", patch->archive, "patch.js");
+            log_printf("Could not load %s/%s\n", patch->archive, "patch.js");
             ret = false;
             // Continue and update the other patches
         }
@@ -250,7 +250,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
 	    	json_array_foreach(json_object_get(*config, "patches"), i, patch_info) {
 	    		patch_t patch = patch_init(json_object_get_string(patch_info, "archive"), patch_info, 0);
                 if (patch.id == nullptr) {
-                    printf("Error loading %s/patch.js\n", json_object_get_string(patch_info, "archive"));
+                    log_printf("Error loading %s/patch.js\n", json_object_get_string(patch_info, "archive"));
                     continue;
                 }
 	    		patch_rel_to_abs(&patch, path.c_str());

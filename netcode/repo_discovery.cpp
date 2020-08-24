@@ -17,7 +17,7 @@ bool RepoDiscover::writeRepoFile(ScopedJson repo_js)
 {
     const char *id = json_string_value(json_object_get(*repo_js, "id"));
     if (!id) {
-        printf("Repository file does not specify an ID!\n");
+        log_printf("Repository file does not specify an ID!\n");
         return true;
     }
 

@@ -1,3 +1,4 @@
+#include "thcrap.h"
 #include <stdexcept>
 #include <fstream>
 #include "random.h"
@@ -89,11 +90,11 @@ bool File::download(HttpHandle& http, const DownloadUrl& url)
     }
     // Fail early if the server is dead
     if (!url.getServer().isAlive()) {
-        printf("%s: server is dead\n", url.getUrl().c_str());
+        log_printf("%s: server is dead\n", url.getUrl().c_str());
         this->setFailed(url);
         return false;
     }
-    printf("Starting %s...\n", url.getUrl().c_str());
+    log_printf("Starting %s...\n", url.getUrl().c_str());
 
     std::vector<uint8_t> localData;
     HttpHandle::Status status = http.download(url.getUrl(),

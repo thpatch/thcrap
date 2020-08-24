@@ -7,6 +7,8 @@
 #include "patchfile.h"
 #include "stack.h"
 
+#define log_printf printf
+
 // Automatically decref a json when leaving the current scope
 class ScopedJson
 {

@@ -68,19 +68,19 @@ bool HttpHandle::download(const std::string& url, std::function<size_t(const uin
 		DWORD inet_ret = GetLastError();
 		switch (inet_ret) {
 		case ERROR_INTERNET_NAME_NOT_RESOLVED:
-			printf("Could not resolve hostname\n");
+			log_printf("Could not resolve hostname\n");
 			return false;
 		case ERROR_INTERNET_CANNOT_CONNECT:
-			printf("Connection refused\n");
+			log_printf("Connection refused\n");
 			return false;
 		case ERROR_INTERNET_TIMEOUT:
-			printf("timed out\n");
+			log_printf("timed out\n");
 			return false;
 		case ERROR_INTERNET_UNRECOGNIZED_SCHEME:
-			printf("Unknown protocol\n");
+			log_printf("Unknown protocol\n");
 			return false;
 		default:
-			printf("WinInet error %d\n", inet_ret);
+			log_printf("WinInet error %d\n", inet_ret);
 			return false;
 		}
 	}
@@ -88,7 +88,7 @@ bool HttpHandle::download(const std::string& url, std::function<size_t(const uin
 	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_STATUS_CODE,
 		&http_stat, &byte_ret, 0
 	);
-	printf("%d ", http_stat);
+	log_printf("%d ", http_stat);
 	if (http_stat != 200) {
 		InternetCloseHandle(hFile);
 		return false;
@@ -111,7 +111,7 @@ bool HttpHandle::download(const std::string& url, std::function<size_t(const uin
 			read_size = rem_size;
 		}
 		if (read_size == 0) {
-			printf("disconnected\n");
+			log_printf("disconnected\n");
 			InternetCloseHandle(hFile);
 			return false;
 		}
@@ -124,7 +124,7 @@ bool HttpHandle::download(const std::string& url, std::function<size_t(const uin
 			}
 		}
 		else {
-			printf("\nReading error #%d! ", GetLastError());
+			log_printf("\nReading error #%d! ", GetLastError());
 			InternetCloseHandle(hFile);
 			return false;
 		}

@@ -35,19 +35,18 @@ int do_thcrap_configure()
 	//const char *start_repo = "https://mirrors.thpatch.net/nmlgc/"; // TODO: why is it the default??
 	const char *start_repo = "https://srv.thpatch.net/";
     if (RepoDiscoverAtURL(start_repo) != 0) {
-        // TODO on the whole netcode: printf => log_printf
-        printf("Discovery from URL failed\n");
+        log_printf("Discovery from URL failed\n");
         return 1;
     }
     if (RepoDiscoverFromLocal() != 0) {
-        printf("Discovery from local failed\n");
+        log_printf("Discovery from local failed\n");
         return 1;
     }
 
     // Load repos
 	repo_t **repo_list = RepoLoad();
 	if (!repo_list[0]) {
-		printf("No patch repositories available...\n");
+		log_printf("No patch repositories available...\n");
         return 1;
 	}
 
@@ -103,29 +102,5 @@ int main()
     curl_global_init(CURL_GLOBAL_DEFAULT);
 #endif
 
-    //RepoDiscoverAtURL("https://mirrors.thpatch.net/nmlgc/"); // TODO: why is it the default??
-    //if (RepoDiscoverAtURL("https://srv.thpatch.net/") != 0) {
-    //    // TODO: log_printf (on every file)
-    //    printf("Discovery from URL failed\n");
-    //}
-    //if (RepoDiscoverFromLocal() != 0) {
-    //    printf("Discovery from local failed\n");
-    //}
-
-    //std::unique_ptr<File> file = ServerCache::get().downloadFile("https://srv.thpatch.net/lang_en/patch.js");
-    //std::filesystem::create_directories("lang_en");
-    //file->write("lang_en/patch.js");
-
-    //patches_update({
-    //    "lang_en"
-    //});
-
-    // stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, NULL);
-    // stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
-    // TODO: test stack_update
-    //global_update(nullptr, nullptr);
-
-
-    // thcrap_configure.cpp
     return do_thcrap_configure();
 }

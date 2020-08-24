@@ -1,3 +1,4 @@
+#include "thcrap.h"
 #include "http_curl.h"
 
 HttpHandle::HttpHandle()
@@ -58,10 +59,10 @@ HttpHandle::Status HttpHandle::download(const std::string& url, std::function<si
     std::string error;
     if (res != CURLE_OK) {
         if (errbuf[0]) {
-            printf("%s: %s\n", url.c_str(), errbuf);
+            log_printf("%s: %s\n", url.c_str(), errbuf);
         }
         else {
-            printf("%s: %s\n", url.c_str(), curl_easy_strerror(res));
+            log_printf("%s: %s\n", url.c_str(), curl_easy_strerror(res));
         }
         curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, nullptr);
         if (res == CURLE_ABORTED_BY_CALLBACK) {
@@ -76,7 +77,7 @@ HttpHandle::Status HttpHandle::download(const std::string& url, std::function<si
     long response_code = 0;
     curl_easy_getinfo(this->curl, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code != 200) {
-        printf("%s: HTTP error code %ld\n", url.c_str(), response_code);
+        log_printf("%s: HTTP error code %ld\n", url.c_str(), response_code);
         if (300 <= response_code && response_code <= 499) {
             return Status::ClientError;
         }
