@@ -26,7 +26,8 @@ bool PatchUpdate::onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, co
     json_t *value;
     json_object_foreach(*filesJs, key, value) {
         if (json_is_null(value)) {
-            // TODO: delete file
+            // Delete file
+            patch_file_delete(this->patch, key);
             continue;
         }
         if (this->update.filterCallback(key) == false) {
