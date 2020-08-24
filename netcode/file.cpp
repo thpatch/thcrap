@@ -105,7 +105,6 @@ bool File::download(HttpHandle& http, const DownloadUrl& url)
         }
     );
     if (status != HttpHandle::Status::Ok) {
-        // TODO: do not mark the server as failed if the download was cancelled
         if (status == HttpHandle::Status::ServerError || status == HttpHandle::Status::Error) {
             // If the server is dead, we don't want to continue using it.
             // If the library returned an error, future downloads to the
