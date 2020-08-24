@@ -64,12 +64,6 @@ Update::Update(Update::filter_t filterCallback,
 
 bool Update::startPatchUpdate(const patch_t *patch)
 {
-    // TODO: see if we need to call patch_init of whatever function loads patch.js
-    //ScopedJson patch = patch_json_load("patch.js", nullptr);
-    //if (*patch == nullptr) {
-    //    return false;
-    //}
-
     std::list<std::string> servers;
     for (size_t i = 0; patch->servers && patch->servers[i]; i++) {
         servers.push_back(patch->servers[i]);
@@ -90,10 +84,7 @@ bool Update::run(const std::list<const patch_t*>& patchs)
 
     for (const patch_t* patch : patchs) {
         if (!this->startPatchUpdate(patch)) {
-            // TODO:
-            // - If we end up not needing the patch_init call in startPatchUpdate, this message is wrong.
-            // - Even if we end up using it, we have the other failure case where patchUpdateObj->start() failed.
-            log_printf("Could not load %s/%s\n", patch->archive, "patch.js");
+            log_printf("Update of patch %s failed.\n", patch->id);
             ret = false;
             // Continue and update the other patches
         }
@@ -145,15 +136,6 @@ int update_filter_games(const char *fn, void *param)
 	return update_filter_global(fn, NULL);
 }
 
-// TODO: remove this function. Instead, these call must work:
-// stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, NULL);
-// stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, NULL);
-//bool patches_update(const std::list<std::string>& patchPaths)
-//{
-//    return Update().run(patchPaths);
-//}
-
-// TODO (in caller), initialize the stack;
 void stack_update(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param)
 {
     auto filter_lambda =
