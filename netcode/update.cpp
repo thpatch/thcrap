@@ -99,9 +99,20 @@ bool Update::run(const std::list<const patch_t*>& patchs)
         }
     }
 
-    this->filesJsDownloader.wait();
+    if (!this->filesJsDownloader.wait()) {
+        if (this->mainDownloader.count() > 0) {
+            // At least one files.js download succeeded, use it
+            ret = false;
+        }
+        else {
+            // Nothing to download.
+            return false;
+        }
+    }
     // At this point, dlPatchFiles have been fully populated
-    this->mainDownloader.wait();
+    if (!this->mainDownloader.wait()) {
+        ret = false;
+    }
     return ret;
 }
 

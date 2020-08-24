@@ -34,13 +34,18 @@ void Downloader::addToQueue(std::pair<File, callback_t>& file)
     file.first.decrementThreadsLeft();
     this->futuresList.push_back(this->pool.enqueue([&file]() {
         if (file.first.download()) {
-            // TODO: fail somewhere if this returns false
-            file.second(file.first);
+            return file.second(file.first);
         }
+        return false;
     }));
 }
 
-void Downloader::wait()
+size_t Downloader::count() const
+{
+    return this->files.size();
+}
+
+bool Downloader::wait()
 {
     // For every file, run as many download threads as there is servers available.
     // The 2nd thread for a file will run only after every file have started once.
@@ -58,8 +63,12 @@ void Downloader::wait()
         }
     } while (loop == true);
 
+    bool ret = true;
     for (auto& it : this->futuresList) {
-        it.get();
+        if (it.get() == false) {
+            ret = false;
+        }
     }
     this->futuresList.clear();
+    return ret;
 }
