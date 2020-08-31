@@ -9,18 +9,20 @@
 class Downloader
 {
 private:
-    typedef std::function<bool(const File&)> callback_t;
     ThreadPool pool;
-    std::list<std::pair<File, callback_t>> files;
-    std::vector<std::future<bool>> futuresList;
+    std::list<File> files;
+    std::vector<std::future<void>> futuresList;
 
     std::list<DownloadUrl> serversListToDownloadUrlList(const std::list<std::string>& serversUrl, const std::string& filePath);
-    void addToQueue(std::pair<File, callback_t>& file);
+    void addToQueue(File& file);
 
 public:
     Downloader();
     ~Downloader();
-    const File* addFile(const std::list<std::string>& servers, std::string filename, callback_t successCallback = callback_t());
+    const File* addFile(const std::list<std::string>& servers, std::string filename,
+                        File::success_t successCallback = File::defaultSuccessFunction,
+                        File::failure_t failureCallback = File::defaultFailureFunction,
+                        File::progress_t progressCallback = File::defaultProgressFunction);
     size_t count() const;
-    bool wait();
+    void wait();
 };

@@ -49,23 +49,19 @@ const std::string& Server::getUrl() const
     return this->baseUrl;
 }
 
-std::unique_ptr<File> Server::downloadFile(const std::string& name)
+json_t *Server::downloadJsonFile(const std::string& name)
 {
     std::list<DownloadUrl> urls {
         DownloadUrl(*this, name)
     };
-    auto file = std::make_unique<File>(std::move(urls));
-    file->download();
-    return file;
-}
+    json_t *json = nullptr;
 
-json_t *Server::downloadJsonFile(const std::string& name)
-{
-    auto file = this->downloadFile(name);
-    if (file->getStatus() == FileStatus::FAILED) {
-        return nullptr;
-    }
-    return json_loadb(reinterpret_cast<const char*>(file->getData().data()), file->getData().size(), 0, nullptr);
+    File file(std::move(urls), [&json](const DownloadUrl&, std::vector<uint8_t>& data) {
+        json = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
+    });
+    file.download();
+
+    return json;
 }
 
 BorrowedHttpHandle Server::borrowHandle()
@@ -127,12 +123,6 @@ std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
         Server& server = it->second;
         return std::pair<Server&, std::string>(server, path);
     }
-}
-
-std::unique_ptr<File> ServerCache::downloadFile(const std::string& url)
-{
-    auto [server, path] = this->urlToServer(url);
-    return server.downloadFile(path);
 }
 
 json_t *ServerCache::downloadJsonFile(const std::string& url)

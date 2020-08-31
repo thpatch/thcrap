@@ -8,18 +8,57 @@ PatchUpdate::PatchUpdate(Update& update, const patch_t *patch, std::list<std::st
     : update(update), patch(patch), servers(std::move(servers))
 {}
 
-bool PatchUpdate::onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, const File& file)
+get_status_t PatchUpdate::httpStatusToGetStatus(HttpHandle::Status status)
+{
+    switch (status) {
+        case HttpHandle::Status::Ok:
+            return GET_OK;
+        case HttpHandle::Status::ClientError:
+            return GET_CLIENT_ERROR;
+        case HttpHandle::Status::ServerError:
+            return GET_SERVER_ERROR;
+        case HttpHandle::Status::Cancelled:
+            return GET_CANCELLED;
+        case HttpHandle::Status::Error:
+            return GET_SYSTEM_ERROR;
+        default:
+            throw std::invalid_argument("Invalid status");
+    }
+}
+
+bool PatchUpdate::callProgressCallback(const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
+                                       size_t file_progress, size_t file_size)
+{
+    if (this->update.progressCallback == nullptr) {
+        return true;
+    }
+
+    progress_callback_status_t status;
+
+    status.patch = this->patch;
+    status.fn = fn.c_str();
+    status.url = url.getUrl().c_str();
+    status.status = getStatus;
+    status.file_progress = file_progress;
+    status.file_size = file_size;
+    status.nb_files_downloaded = 0; // TODO
+    status.nb_files_total = 0; // TODO
+
+    return this->update.progressCallback(&status, this->update.progressData);
+}
+
+void PatchUpdate::onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, const std::vector<uint8_t>& data)
 {
     if (thisStorage.get() != this) {
         throw std::logic_error("PatchUpdate::onFilesJsComplete: this and thisStorage must be identical");
     }
 
-    patch_file_store(this->patch, "files.js", file.getData().data(), file.getData().size());
+    patch_file_store(this->patch, "files.js", data.data(), data.size());
 
     ScopedJson filesJs = patch_json_load(this->patch, "files.js", nullptr);
     if (*filesJs == nullptr) {
         log_printf("%s: files.js isn't a valid json file!\n", this->patch->id);
-        return false;
+        return ;
     }
 
     const char *key;
@@ -30,40 +69,51 @@ bool PatchUpdate::onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, co
             patch_file_delete(this->patch, key);
             continue;
         }
-        if (this->update.filterCallback(key) == false) {
+        if (this->update.filterCallback != nullptr && this->update.filterCallback(key) == false) {
             // We don't want to download this file
             continue;
         }
         // TODO: do not redownload if the CRC32 didn't change
 
         // TODO: check CRC32
-        this->update.mainDownloader.addFile(this->servers, key, [thisStorage, key = std::string(key)](const File& file) {
-            patch_file_store(thisStorage->patch, key.c_str(), file.getData().data(), file.getData().size());
-            return true;
-        });
+        this->update.mainDownloader.addFile(this->servers, key,
+            [thisStorage, key = std::string(key)](const DownloadUrl& url, std::vector<uint8_t>& data) {
+                patch_file_store(thisStorage->patch, key.c_str(), data.data(), data.size());
+                thisStorage->callProgressCallback(key, url, GET_OK, data.size(), data.size());
+            },
+            [thisStorage, key = std::string(key)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
+                get_status_t getStatus = thisStorage->httpStatusToGetStatus(httpStatus);
+                thisStorage->callProgressCallback(key, url, getStatus, 0, 0);
+            },
+            [thisStorage, key = std::string(key)](const DownloadUrl& url, size_t file_progress, size_t file_size) {
+                return thisStorage->callProgressCallback(key, url, GET_DOWNLOADING, file_progress, file_size);
+            }
+        );
     }
-
-    return true;
 }
 
-bool PatchUpdate::start(std::shared_ptr<PatchUpdate> thisStorage)
+void PatchUpdate::start(std::shared_ptr<PatchUpdate> thisStorage)
 {
     if (thisStorage.get() != this) {
         throw std::logic_error("PatchUpdate::onFilesJsComplete: this and thisStorage must be identical");
     }
 
-    this->update.filesJsDownloader.addFile(this->servers, "files.js", [thisStorage](const File& file) {
-        return thisStorage->onFilesJsComplete(thisStorage, file);
-    });
-    return true;
+    this->update.filesJsDownloader.addFile(this->servers, "files.js",
+        [thisStorage](const DownloadUrl&, std::vector<uint8_t>& data) {
+            thisStorage->onFilesJsComplete(thisStorage, data);
+        },
+        [patch_id = std::string(this->patch->id)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
+            log_printf("%s files.js download from %s failed\n", patch_id.c_str(), url.getUrl().c_str());
+        }
+    );
 }
 
 Update::Update(Update::filter_t filterCallback,
-               Update::progress_t progressCallback)
-    : filterCallback(filterCallback), progressCallback(progressCallback)
+               progress_callback_t progressCallback, void *progressData)
+    : filterCallback(filterCallback), progressCallback(progressCallback), progressData(progressData)
 {}
 
-bool Update::startPatchUpdate(const patch_t *patch)
+void Update::startPatchUpdate(const patch_t *patch)
 {
     std::list<std::string> servers;
     for (size_t i = 0; patch->servers && patch->servers[i]; i++) {
@@ -72,40 +122,22 @@ bool Update::startPatchUpdate(const patch_t *patch)
 
     if (servers.empty()) {
         log_printf("Empty server list in %s/patch.js\n", patch->archive);
-        return false;
+        return ;
     }
 
     auto patchUpdateObj = std::make_shared<PatchUpdate>(*this, patch, std::move(servers));
-    return patchUpdateObj->start(patchUpdateObj);
+    patchUpdateObj->start(patchUpdateObj);
 }
 
-bool Update::run(const std::list<const patch_t*>& patchs)
+void Update::run(const std::list<const patch_t*>& patchs)
 {
-    bool ret;
-
     for (const patch_t* patch : patchs) {
-        if (!this->startPatchUpdate(patch)) {
-            log_printf("Update of patch %s failed.\n", patch->id);
-            ret = false;
-            // Continue and update the other patches
-        }
+        this->startPatchUpdate(patch);
     }
 
-    if (!this->filesJsDownloader.wait()) {
-        if (this->mainDownloader.count() > 0) {
-            // At least one files.js download succeeded, use it
-            ret = false;
-        }
-        else {
-            // Nothing to download.
-            return false;
-        }
-    }
+    this->filesJsDownloader.wait();
     // At this point, dlPatchFiles have been fully populated
-    if (!this->mainDownloader.wait()) {
-        ret = false;
-    }
-    return ret;
+    this->mainDownloader.wait();
 }
 
 int update_filter_global(const char *fn, void*)
@@ -143,14 +175,7 @@ void stack_update(update_filter_func_t filter_func, void *filter_data, progress_
         [filter_func, filter_data](const std::string& fn) -> bool {
             return filter_func(fn.c_str(), filter_data) != 0;
         };
-    auto progress_lambda =
-        [progress_callback, progress_param]
-            (const std::string& patchId, const std::string& fn, get_result_t ret,
-             size_t dlCur, size_t dlTotal, size_t nbFilesCur, size_t nbFilesTotal) -> bool {
-            return progress_callback(patchId.c_str(), fn.c_str(), ret, dlCur, dlTotal, nbFilesCur, nbFilesTotal, progress_param);
-        };
-    Update update(filter_lambda, progress_lambda);
-    // TODO: use the filter and progress functions
+    Update update(filter_lambda, progress_callback, progress_param);
 
     std::list<const patch_t*> patches;
     stack_foreach_cpp([&patches](const patch_t *patch) {
@@ -264,14 +289,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
         [games](const std::string& fn) -> bool {
             return update_filter_games(fn.c_str(), games);
         };
-    // TODO: sync with the stack_update one if it changes
-    auto progress_lambda =
-        [progress_callback, progress_param]
-            (const std::string& patchId, const std::string& fn, get_result_t ret,
-             size_t dlCur, size_t dlTotal, size_t nbFilesCur, size_t nbFilesTotal) -> bool {
-            return progress_callback(patchId.c_str(), fn.c_str(), ret, dlCur, dlTotal, nbFilesCur, nbFilesTotal, progress_param);
-        };
-    Update update(filter_lambda, progress_lambda);
+    Update update(filter_lambda, progress_callback, progress_param);
     update.run(patches);
 
     strings_array_free(games);

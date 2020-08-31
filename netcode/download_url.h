@@ -14,5 +14,5 @@ public:
 
     Server& getServer() const;
     // Return the full URL
-    std::string getUrl() const;
+    const std::string& getUrl() const;
 };

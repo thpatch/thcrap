@@ -55,8 +55,6 @@ public:
     void fail();
     const std::string& getUrl() const;
 
-    // Download a single file from this server.
-    std::unique_ptr<File> downloadFile(const std::string& name);
     // Download a single json file from this server.
     json_t *downloadJsonFile(const std::string& name);
 
@@ -86,7 +84,6 @@ public:
     // The 'origin' part will be shared between every URL from the same server.
     std::pair<Server&, std::string> urlToServer(const std::string& url);
 
-    // Find the server for url and call downloadFile/downloadJsonFile on it
-    std::unique_ptr<File> downloadFile(const std::string& url);
+    // Find the server for url and call downloadJsonFile on it
     json_t *downloadJsonFile(const std::string& url);
 };

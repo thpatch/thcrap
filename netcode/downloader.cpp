@@ -20,23 +20,21 @@ std::list<DownloadUrl> Downloader::serversListToDownloadUrlList(const std::list<
     return urls;
 }
 
-const File* Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath, Downloader::callback_t successCallback)
+const File* Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath,
+                                File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
 {
     std::list<DownloadUrl> urls = this->serversListToDownloadUrlList(serversUrl, filePath);
-    this->files.emplace_back(std::move(urls), successCallback);
+    this->files.emplace_back(std::move(urls), successCallback, failureCallback, progressCallback);
     auto& file = this->files.back();
     this->addToQueue(file);
-    return &file.first;
+    return &file;
 }
 
-void Downloader::addToQueue(std::pair<File, callback_t>& file)
+void Downloader::addToQueue(File& file)
 {
-    file.first.decrementThreadsLeft();
+    file.decrementThreadsLeft();
     this->futuresList.push_back(this->pool.enqueue([&file]() {
-        if (file.first.download()) {
-            return file.second(file.first);
-        }
-        return false;
+        file.download();
     }));
 }
 
@@ -45,17 +43,16 @@ size_t Downloader::count() const
     return this->files.size();
 }
 
-bool Downloader::wait()
+void Downloader::wait()
 {
     // For every file, run as many download threads as there is servers available.
     // The 2nd thread for a file will run only after every file have started once.
     bool loop = false;
     do {
         loop = false;
-        for (auto& it : this->files) {
-            File& file = it.first;
+        for (File& file : this->files) {
             if (file.getThreadsLeft() > 0) {
-                this->addToQueue(it);
+                this->addToQueue(file);
             }
             if (file.getThreadsLeft() > 0) {
                 loop = true;
@@ -63,12 +60,8 @@ bool Downloader::wait()
         }
     } while (loop == true);
 
-    bool ret = true;
     for (auto& it : this->futuresList) {
-        if (it.get() == false) {
-            ret = false;
-        }
+        it.get();
     }
     this->futuresList.clear();
-    return ret;
 }

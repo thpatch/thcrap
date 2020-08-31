@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstring>
 #include "repo_discovery.h"
 #include "update.h"
@@ -19,13 +20,54 @@ patch_t patch_bootstrap(const patch_desc_t *sel, const char * const *repo_server
     std::string url = repo_servers[0];
     url += sel->patch_id;
     url += "/patch.js";
-    std::unique_ptr<File> file = ServerCache::get().downloadFile(url);
+    json_t *patch_js = ServerCache::get().downloadJsonFile(url);
 
 	patch_t patch_info = patch_build(sel);
-	patch_file_store(&patch_info, "patch.js", file->getData().data(), file->getData().size());
+	patch_json_store(&patch_info, "patch.js", patch_js);
 	// TODO: Nice, friendly error
 
 	return patch_info;
+}
+
+bool progress_callback(progress_callback_status_t *status, void *param)
+{
+    using namespace std::literals;
+    auto& files = *reinterpret_cast<std::map<std::string, std::chrono::steady_clock::time_point>*>(param);
+
+    switch (status->status) {
+        case GET_DOWNLOADING: {
+            auto& file_time = files[status->url];
+            auto now = std::chrono::steady_clock::now();
+            if (file_time.time_since_epoch() == 0ms) {
+                file_time = now;
+            }
+            else if (now - file_time > 5s) {
+                log_printf("%s: in progress (%ub/%ub)...\n", status->url, status->file_progress, status->file_size);
+                file_time = now;
+            }
+            return true;
+        }
+
+        case GET_OK:
+            log_printf("%s: OK (%ub)\n", status->fn, status->file_size);
+            return true;
+
+        case GET_CLIENT_ERROR:
+            log_printf("%s: file not available\n", status->url);
+            return true;
+        case GET_SERVER_ERROR:
+            log_printf("%s: server error\n", status->url);
+            return true;
+        case GET_CANCELLED:
+            log_printf("%s: cancelled\n", status->url);
+            return true;
+        case GET_SYSTEM_ERROR:
+            log_printf("%s: system error\n", status->url);
+            return true;
+        default:
+            log_printf("%s: unknown status\n", status->url);
+            return true;
+    }
 }
 
 // Test reproducing the thcrap_configure behavior
@@ -66,7 +108,8 @@ int do_thcrap_configure()
     }
 
     // Download global data
-	stack_update(update_filter_global, nullptr, /* TODO progress_callback */ nullptr, nullptr);
+    std::map<std::string, std::chrono::steady_clock::time_point> files;
+	stack_update(update_filter_global, nullptr, progress_callback, &files);
 
 	/// Build the new run configuration
 	json_t *new_cfg = json_pack("{s[]}", "patches");
@@ -88,7 +131,8 @@ int do_thcrap_configure()
     char **games = strings_array_create_and_fill(2, "th06", "th07");
 
     // Download games data
-	stack_update(update_filter_games, games, /* TODO progress_callback */ nullptr, nullptr);
+    files.clear();
+	stack_update(update_filter_games, games, progress_callback, &files);
 
     json_dump_file(games_js, "config/games.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 

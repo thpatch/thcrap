@@ -5,22 +5,16 @@
 #include "server.h"
 #include "file.h"
 
-File::File(std::list<DownloadUrl>&& urls)
-    : status(FileStatus::TODO), urls(urls), threadsLeft(urls.size())
+File::File(std::list<DownloadUrl>&& urls,
+           success_t successCallback,
+           failure_t failureCallback,
+           progress_t progressCallback)
+    : status(Status::Todo), urls(urls), threadsLeft(urls.size()),
+    userSuccessCallback(successCallback), userFailureCallback(failureCallback), userProgressCallback(progressCallback)
 {
     if (urls.empty()) {
         throw new std::invalid_argument("Input URL list must not be empty");
     }
-}
-
-const std::vector<uint8_t>& File::getData() const
-{
-    return this->data;
-}
-
-FileStatus File::getStatus() const
-{
-    return this->status;
 }
 
 size_t File::getThreadsLeft() const
@@ -42,59 +36,34 @@ size_t File::writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, si
     return size;
 }
 
-bool File::progressCallback(const DownloadUrl& url, size_t /*dlnow*/, size_t /*dltotal*/)
+bool File::progressCallback(const DownloadUrl& url, size_t dlnow, size_t dltotal)
 {
-    if (this->status == FileStatus::DONE || // If another thread already finished to download this file, we don't need to continue.
+    if (this->status == Status::Done || // If another thread already finished to download this file, we don't need to continue.
         !url.getServer().isAlive()) { // Don't waste time if the server is dead
         return false;
     }
-    // TODO: call a user-written callback
-    return true;
+    return userProgressCallback(url, dlnow, dltotal);
 }
 
-// Set the File as downloading. Fails if the file is already downloaded
-// (telling the caller to not bother downloading it again).
-bool File::setDownloading()
+void File::download(HttpHandle& http, const DownloadUrl& url)
 {
-    FileStatus todo = FileStatus::TODO;
-    if (this->status.compare_exchange_strong(todo, FileStatus::DOWNLOADING)) {
-        return true;
+    if (this->status == Status::Done) {
+        return ;
     }
-    else if (this->status == FileStatus::DOWNLOADING) {
-        return true;
-    }
-    else {
-        return false;
-    }
-}
+    // If the status was Todo, we need to change it.
+    // If the status was Downloading, we don't care whether we change it or not.
+    // If the status changed to Done since the if above, we must not change it.
+    File::Status status_todo = File::Status::Todo;
+    this->status.compare_exchange_strong(status_todo, Status::Downloading);
 
-// Set the File as failed. Do nothing if another thread succeeded.
-void File::setFailed(const DownloadUrl& url)
-{
-    // We can't be in todo because we alreadu started a download.
-    // If we're already in failed, we don't need to change the status.
-    // If we're in done, we don't *want* to change the status.
-    // So we only need to change from downloading to failed.
-    FileStatus downloading = FileStatus::DOWNLOADING;
-    this->status.compare_exchange_strong(downloading, FileStatus::FAILED);
-
-    url.getServer().fail();
-}
-
-bool File::download(HttpHandle& http, const DownloadUrl& url)
-{
-    bool ret = false;
-
-    if (!this->setDownloading()) {
-        return false;
+    if (userProgressCallback(url, 0, 0) == false) {
+        return ;
     }
     // Fail early if the server is dead
     if (!url.getServer().isAlive()) {
-        log_printf("%s: server is dead\n", url.getUrl().c_str());
-        this->setFailed(url);
-        return false;
+        userFailureCallback(url, HttpHandle::Status::Cancelled);
+        return ;
     }
-    log_printf("Starting %s...\n", url.getUrl().c_str());
 
     std::vector<uint8_t> localData;
     HttpHandle::Status status = http.download(url.getUrl(),
@@ -111,22 +80,21 @@ bool File::download(HttpHandle& http, const DownloadUrl& url)
             // If the library returned an error, future downloads to the
             // same server are also likely to fail.
             // If it's only a 404, other downloads might work.
-            this->setFailed(url);
+            url.getServer().fail();
         }
-        return false;
+        userFailureCallback(url, status);
+        return ;
     }
 
     {
-        std::lock_guard<std::mutex> lock(this->mutex);
-        if (this->status == FileStatus::DOWNLOADING || // We're the first thread to finish downloading the file
-            this->status == FileStatus::FAILED) {      // Another thread failed to download the file, but this thread succeeded
-            this->data = std::move(localData);
-            this->status = FileStatus::DONE;
-            ret = true;
+        File::Status status_downloading = File::Status::Downloading;
+        if (this->status.compare_exchange_strong(status_downloading, Status::Done)) {
+            // We changed the status from Downloading to Done,
+            // so we're the first thread to finish downloading the file
+            userSuccessCallback(url, localData);
         }
         // else, do nothing. Another thread finished before us.
     }
-    return ret;
 }
 
 DownloadUrl File::pickUrl()
@@ -140,24 +108,9 @@ DownloadUrl File::pickUrl()
     return url;
 }
 
-bool File::download()
+void File::download()
 {
     DownloadUrl url = this->pickUrl();
     BorrowedHttpHandle handle = url.getServer().borrowHandle();
-    return this->download(*handle, url);
-}
-
-void File::write(const std::filesystem::path& path) const
-{
-    if (this->status != FileStatus::DONE) {
-        throw std::logic_error("Calling File::write but the file isn't downloaded.");
-    }
-
-    std::filesystem::path dir = std::filesystem::path(path).remove_filename();
-    std::filesystem::create_directories(dir);
-
-    std::ofstream f;
-    f.exceptions(std::ofstream::failbit | std::ofstream::badbit);
-    f.open(path, std::ofstream::binary);
-    f.write(reinterpret_cast<const char*>(this->data.data()), this->data.size());
+    this->download(*handle, url);
 }

@@ -2,7 +2,7 @@
 #include "download_url.h"
 
 DownloadUrl::DownloadUrl(Server& server, std::string url)
-    : server(server), url(std::move(url))
+    : server(server), url(server.getUrl() + url)
 {}
 
 DownloadUrl::DownloadUrl(const DownloadUrl& src)
@@ -14,7 +14,7 @@ Server& DownloadUrl::getServer() const
     return this->server;
 }
 
-std::string DownloadUrl::getUrl() const
+const std::string& DownloadUrl::getUrl() const
 {
-    return this->server.getUrl() + this->url;
+    return this->url;
 }
