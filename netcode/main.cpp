@@ -50,7 +50,7 @@ bool progress_callback(progress_callback_status_t *status, void *param)
         }
 
         case GET_OK:
-            log_printf("[%u/%u] %s: OK (%ub)\n", status->nb_files_downloaded, status->nb_files_total, status->fn, status->file_size);
+            log_printf("[%u/%u] %s/%s: OK (%ub)\n", status->nb_files_downloaded, status->nb_files_total, status->patch->id, status->fn, status->file_size);
             return true;
 
         case GET_CLIENT_ERROR:

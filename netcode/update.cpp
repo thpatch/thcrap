@@ -102,7 +102,19 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
 
 void Update::startPatchUpdate(const patch_t *patch)
 {
-    // TODO: skip patches backed by a git repo
+	// Assuming the repo/patch hierarchy here, but if we ever support
+	// repository-less Git patches, they won't be using the files.js
+	// protocol anyway.
+    if (patch_file_exists(patch, "../.git")) {
+		log_printf("(%s is under revision control, not updating.)\n", patch->id);
+        return ;
+    }
+    if (patch->update == false) {
+		// Updating manually deactivated on this patch
+		log_printf("(%s has updates disabled, not updating.)\n", patch->id);
+        return ;
+    }
+
     this->filesJsDownloader.addFile(patch->servers, "files.js",
         [this, patch](const DownloadUrl&, std::vector<uint8_t>& data) {
             this->onFilesJsComplete(patch, data);

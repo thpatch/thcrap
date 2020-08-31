@@ -191,7 +191,7 @@ char* fn_for_patch(const patch_t *patch_info, const char *fn)
 int patch_file_exists(const patch_t *patch_info, const char *fn)
 {
 	char *patch_fn = fn_for_patch(patch_info, fn);
-	bool ret = std::filesystem::is_regular_file(patch_fn);
+	bool ret = std::filesystem::exists(patch_fn);
 	free(patch_fn);
 	return ret;
 }
