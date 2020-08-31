@@ -68,41 +68,8 @@ int update_filter_global(const char *fn, void*);
 // in the strings array [games].
 int update_filter_games(const char *fn, void *games);
 
-class Update;
-
-class PatchUpdate
-{
-private:
-    // Reference to the Update class. Used for downloaders, filters etc.
-    Update& update;
-
-    // Patch object
-    const patch_t *patch;
-    // List of patch servers
-    std::list<std::string> servers;
-
-    void onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, const std::vector<uint8_t>& file);
-    bool callProgressCallback(const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
-                              size_t file_progress, size_t file_size);
-    get_status_t httpStatusToGetStatus(HttpHandle::Status status);
-
-public:
-    PatchUpdate(Update& update, const patch_t *path, std::list<std::string> servers);
-    // We shouldn't need to copy or delete it
-    PatchUpdate(const PatchUpdate& src) = delete;
-    PatchUpdate(PatchUpdate&& src) = delete;
-    PatchUpdate& operator=(const PatchUpdate& src) = delete;
-    PatchUpdate& operator=(PatchUpdate&& src) = delete;
-
-    // Some functions take a shared_ptr to a PatchUpdate.
-    // It *must* point to this. It is used to keep this alive through the callbacks.
-    void start(std::shared_ptr<PatchUpdate> thisStorage);
-};
-
 class Update
 {
-friend PatchUpdate;
-
 private:
     typedef std::function<bool(const std::string&)> filter_t;
 
@@ -119,6 +86,10 @@ private:
     void *progressData;
 
     void startPatchUpdate(const patch_t *patch);
+    void onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& file);
+    bool callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
+                              size_t file_progress, size_t file_size);
+    get_status_t httpStatusToGetStatus(HttpHandle::Status status);
 
 public:
     Update(filter_t filterCallback, progress_callback_t progressCallback, void *progressData);

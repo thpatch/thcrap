@@ -4,11 +4,12 @@
 #include "server.h"
 #include "strings_array.h"
 
-PatchUpdate::PatchUpdate(Update& update, const patch_t *patch, std::list<std::string> servers)
-    : update(update), patch(patch), servers(std::move(servers))
+Update::Update(Update::filter_t filterCallback,
+               progress_callback_t progressCallback, void *progressData)
+    : filterCallback(filterCallback), progressCallback(progressCallback), progressData(progressData)
 {}
 
-get_status_t PatchUpdate::httpStatusToGetStatus(HttpHandle::Status status)
+get_status_t Update::httpStatusToGetStatus(HttpHandle::Status status)
 {
     switch (status) {
         case HttpHandle::Status::Ok:
@@ -26,16 +27,16 @@ get_status_t PatchUpdate::httpStatusToGetStatus(HttpHandle::Status status)
     }
 }
 
-bool PatchUpdate::callProgressCallback(const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
-                                       size_t file_progress, size_t file_size)
+bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
+                                  size_t file_progress, size_t file_size)
 {
-    if (this->update.progressCallback == nullptr) {
+    if (this->progressCallback == nullptr) {
         return true;
     }
 
     progress_callback_status_t status;
 
-    status.patch = this->patch;
+    status.patch = patch;
     status.fn = fn.c_str();
     status.url = url.getUrl().c_str();
     status.status = getStatus;
@@ -44,20 +45,16 @@ bool PatchUpdate::callProgressCallback(const std::string& fn, const DownloadUrl&
     status.nb_files_downloaded = 0; // TODO
     status.nb_files_total = 0; // TODO
 
-    return this->update.progressCallback(&status, this->update.progressData);
+    return this->progressCallback(&status, this->progressData);
 }
 
-void PatchUpdate::onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, const std::vector<uint8_t>& data)
+void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& data)
 {
-    if (thisStorage.get() != this) {
-        throw std::logic_error("PatchUpdate::onFilesJsComplete: this and thisStorage must be identical");
-    }
+    patch_file_store(patch, "files.js", data.data(), data.size());
 
-    patch_file_store(this->patch, "files.js", data.data(), data.size());
-
-    ScopedJson filesJs = patch_json_load(this->patch, "files.js", nullptr);
+    ScopedJson filesJs = patch_json_load(patch, "files.js", nullptr);
     if (*filesJs == nullptr) {
-        log_printf("%s: files.js isn't a valid json file!\n", this->patch->id);
+        log_printf("%s: files.js isn't a valid json file!\n", patch->id);
         return ;
     }
 
@@ -66,67 +63,42 @@ void PatchUpdate::onFilesJsComplete(std::shared_ptr<PatchUpdate> thisStorage, co
     json_object_foreach(*filesJs, key, value) {
         if (json_is_null(value)) {
             // Delete file
-            patch_file_delete(this->patch, key);
+            patch_file_delete(patch, key);
             continue;
         }
-        if (this->update.filterCallback != nullptr && this->update.filterCallback(key) == false) {
+        if (this->filterCallback != nullptr && this->filterCallback(key) == false) {
             // We don't want to download this file
             continue;
         }
         // TODO: do not redownload if the CRC32 didn't change
 
         // TODO: check CRC32
-        this->update.mainDownloader.addFile(this->servers, key,
-            [thisStorage, key = std::string(key)](const DownloadUrl& url, std::vector<uint8_t>& data) {
-                patch_file_store(thisStorage->patch, key.c_str(), data.data(), data.size());
-                thisStorage->callProgressCallback(key, url, GET_OK, data.size(), data.size());
+        this->mainDownloader.addFile(patch->servers, key,
+            [this, patch, key = std::string(key)](const DownloadUrl& url, std::vector<uint8_t>& data) {
+                patch_file_store(patch, key.c_str(), data.data(), data.size());
+                this->callProgressCallback(patch, key, url, GET_OK, data.size(), data.size());
             },
-            [thisStorage, key = std::string(key)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
-                get_status_t getStatus = thisStorage->httpStatusToGetStatus(httpStatus);
-                thisStorage->callProgressCallback(key, url, getStatus, 0, 0);
+            [this, patch, key = std::string(key)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
+                get_status_t getStatus = this->httpStatusToGetStatus(httpStatus);
+                this->callProgressCallback(patch, key, url, getStatus, 0, 0);
             },
-            [thisStorage, key = std::string(key)](const DownloadUrl& url, size_t file_progress, size_t file_size) {
-                return thisStorage->callProgressCallback(key, url, GET_DOWNLOADING, file_progress, file_size);
+            [this, patch, key = std::string(key)](const DownloadUrl& url, size_t file_progress, size_t file_size) {
+                return this->callProgressCallback(patch, key, url, GET_DOWNLOADING, file_progress, file_size);
             }
         );
     }
 }
 
-void PatchUpdate::start(std::shared_ptr<PatchUpdate> thisStorage)
+void Update::startPatchUpdate(const patch_t *patch)
 {
-    if (thisStorage.get() != this) {
-        throw std::logic_error("PatchUpdate::onFilesJsComplete: this and thisStorage must be identical");
-    }
-
-    this->update.filesJsDownloader.addFile(this->servers, "files.js",
-        [thisStorage](const DownloadUrl&, std::vector<uint8_t>& data) {
-            thisStorage->onFilesJsComplete(thisStorage, data);
+    this->filesJsDownloader.addFile(patch->servers, "files.js",
+        [this, patch](const DownloadUrl&, std::vector<uint8_t>& data) {
+            this->onFilesJsComplete(patch, data);
         },
-        [patch_id = std::string(this->patch->id)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
+        [patch_id = std::string(patch->id)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
             log_printf("%s files.js download from %s failed\n", patch_id.c_str(), url.getUrl().c_str());
         }
     );
-}
-
-Update::Update(Update::filter_t filterCallback,
-               progress_callback_t progressCallback, void *progressData)
-    : filterCallback(filterCallback), progressCallback(progressCallback), progressData(progressData)
-{}
-
-void Update::startPatchUpdate(const patch_t *patch)
-{
-    std::list<std::string> servers;
-    for (size_t i = 0; patch->servers && patch->servers[i]; i++) {
-        servers.push_back(patch->servers[i]);
-    }
-
-    if (servers.empty()) {
-        log_printf("Empty server list in %s/patch.js\n", patch->archive);
-        return ;
-    }
-
-    auto patchUpdateObj = std::make_shared<PatchUpdate>(*this, patch, std::move(servers));
-    patchUpdateObj->start(patchUpdateObj);
 }
 
 void Update::run(const std::list<const patch_t*>& patchs)

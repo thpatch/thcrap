@@ -20,14 +20,24 @@ std::list<DownloadUrl> Downloader::serversListToDownloadUrlList(const std::list<
     return urls;
 }
 
-const File* Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath,
-                                File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
+void Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath,
+                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
 {
     std::list<DownloadUrl> urls = this->serversListToDownloadUrlList(serversUrl, filePath);
     this->files.emplace_back(std::move(urls), successCallback, failureCallback, progressCallback);
     auto& file = this->files.back();
     this->addToQueue(file);
-    return &file;
+}
+
+void Downloader::addFile(char** serversUrl, std::string filePath,
+                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
+{
+    std::list<std::string> serversList;
+
+    for (size_t i = 0; serversUrl && serversUrl[i]; i++) {
+        serversList.push_back(serversUrl[i]);
+    }
+    this->addFile(serversList, filePath, successCallback, failureCallback, progressCallback);
 }
 
 void Downloader::addToQueue(File& file)

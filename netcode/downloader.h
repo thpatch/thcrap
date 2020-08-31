@@ -19,10 +19,14 @@ private:
 public:
     Downloader();
     ~Downloader();
-    const File* addFile(const std::list<std::string>& servers, std::string filename,
-                        File::success_t successCallback = File::defaultSuccessFunction,
-                        File::failure_t failureCallback = File::defaultFailureFunction,
-                        File::progress_t progressCallback = File::defaultProgressFunction);
+    void addFile(const std::list<std::string>& servers, std::string filename,
+                 File::success_t successCallback = File::defaultSuccessFunction,
+                 File::failure_t failureCallback = File::defaultFailureFunction,
+                 File::progress_t progressCallback = File::defaultProgressFunction);
+    void addFile(char** servers, std::string filename,
+                 File::success_t successCallback = File::defaultSuccessFunction,
+                 File::failure_t failureCallback = File::defaultFailureFunction,
+                 File::progress_t progressCallback = File::defaultProgressFunction);
     size_t count() const;
     void wait();
 };
