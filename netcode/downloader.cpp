@@ -2,7 +2,7 @@
 #include "server.h"
 
 Downloader::Downloader()
-    : pool(8)
+    : pool(8), current_(0)
 {}
 
 Downloader::~Downloader()
@@ -43,12 +43,18 @@ void Downloader::addFile(char** serversUrl, std::string filePath,
 void Downloader::addToQueue(File& file)
 {
     file.decrementThreadsLeft();
-    this->futuresList.push_back(this->pool.enqueue([&file]() {
+    this->futuresList.push_back(this->pool.enqueue([&file, &current_ = this->current_]() {
         file.download();
+        current_++;
     }));
 }
 
-size_t Downloader::count() const
+size_t Downloader::current() const
+{
+    return this->current_;
+}
+
+size_t Downloader::total() const
 {
     return this->files.size();
 }

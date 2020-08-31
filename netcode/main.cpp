@@ -42,14 +42,15 @@ bool progress_callback(progress_callback_status_t *status, void *param)
                 file_time = now;
             }
             else if (now - file_time > 5s) {
-                log_printf("%s: in progress (%ub/%ub)...\n", status->url, status->file_progress, status->file_size);
+                log_printf("[%u/%u] %s: in progress (%ub/%ub)...\n", status->nb_files_downloaded, status->nb_files_total,
+                           status->url, status->file_progress, status->file_size);
                 file_time = now;
             }
             return true;
         }
 
         case GET_OK:
-            log_printf("%s: OK (%ub)\n", status->fn, status->file_size);
+            log_printf("[%u/%u] %s: OK (%ub)\n", status->nb_files_downloaded, status->nb_files_total, status->fn, status->file_size);
             return true;
 
         case GET_CLIENT_ERROR:

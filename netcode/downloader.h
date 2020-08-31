@@ -3,6 +3,7 @@
 #include <list>
 #include <string>
 #include <vector>
+#include <atomic>
 #include "ThreadPool.h"
 #include "file.h"
 
@@ -12,6 +13,7 @@ private:
     ThreadPool pool;
     std::list<File> files;
     std::vector<std::future<void>> futuresList;
+    std::atomic<size_t> current_;
 
     std::list<DownloadUrl> serversListToDownloadUrlList(const std::list<std::string>& serversUrl, const std::string& filePath);
     void addToQueue(File& file);
@@ -27,6 +29,7 @@ public:
                  File::success_t successCallback = File::defaultSuccessFunction,
                  File::failure_t failureCallback = File::defaultFailureFunction,
                  File::progress_t progressCallback = File::defaultProgressFunction);
-    size_t count() const;
+    size_t current() const;
+    size_t total() const;
     void wait();
 };

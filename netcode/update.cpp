@@ -42,8 +42,19 @@ bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, c
     status.status = getStatus;
     status.file_progress = file_progress;
     status.file_size = file_size;
-    status.nb_files_downloaded = 0; // TODO
-    status.nb_files_total = 0; // TODO
+
+    status.nb_files_downloaded = this->mainDownloader.current();
+    if (getStatus == GET_OK) {
+        // The number of downloaded files is updated after this callback returns.
+        status.nb_files_downloaded++;
+    }
+
+    if (this->filesJsDownloader.current() == this->filesJsDownloader.total()) {
+        status.nb_files_total = this->mainDownloader.total();
+    }
+    else {
+        status.nb_files_total = 0;
+    }
 
     return this->progressCallback(&status, this->progressData);
 }
@@ -91,6 +102,7 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
 
 void Update::startPatchUpdate(const patch_t *patch)
 {
+    // TODO: skip patches backed by a git repo
     this->filesJsDownloader.addFile(patch->servers, "files.js",
         [this, patch](const DownloadUrl&, std::vector<uint8_t>& data) {
             this->onFilesJsComplete(patch, data);
