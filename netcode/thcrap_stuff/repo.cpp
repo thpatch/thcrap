@@ -71,6 +71,55 @@ repo_t *RepoLoadJson(json_t *repo_js)
 	return repo;
 }
 
+bool RepoWrite(const repo_t *repo)
+{
+    if (!repo || !repo->id) {
+        return false;
+    }
+
+    ScopedJson repo_js = json_object();
+
+    // Prepare json file
+    json_object_set_new(*repo_js, "id", json_string(repo->id));
+    if (repo->title) {
+        json_object_set_new(*repo_js, "title", json_string(repo->title));
+    }
+    if (repo->contact) {
+        json_object_set_new(*repo_js, "title", json_string(repo->contact));
+    }
+    if (repo->servers) {
+        json_t *servers = json_array();
+        for (size_t i = 0; repo->servers[i]; i++) {
+            json_array_append_new(servers, json_string(repo->servers[i]));
+        }
+        json_object_set_new(*repo_js, "servers", servers);
+    }
+    if (repo->neighbors) {
+        json_t *neighbors = json_array();
+        for (size_t i = 0; repo->neighbors[i]; i++) {
+            json_array_append_new(neighbors, json_string(repo->neighbors[i]));
+        }
+        json_object_set_new(*repo_js, "neighbors", neighbors);
+    }
+    if (repo->patches) {
+        json_t *patches = json_object();
+        for (size_t i = 0; repo->patches[i].patch_id; i++) {
+            json_object_set(patches, repo->patches[i].patch_id, json_string(repo->patches[i].title));
+        }
+        json_object_set_new(*repo_js, "patches", patches);
+    }
+
+    // Write json file
+    char *repo_fn_local = RepoGetLocalFN(repo->id);
+    auto repo_path = std::filesystem::u8path(repo_fn_local);
+    auto repo_dir = repo_path;
+    repo_dir.remove_filename();
+    free(repo_fn_local);
+
+    std::filesystem::create_directories(repo_dir);
+    return json_dump_file(*repo_js, repo_path.u8string().c_str(), JSON_INDENT(4)) == 0;
+}
+
 void RepoFree(repo_t *repo)
 {
 	if (repo) {
@@ -106,6 +155,9 @@ void RepoFree(repo_t *repo)
 
 void repo_foreach(std::function<void(repo_t*)> callback)
 {
+    if (!std::filesystem::is_directory("repos/")) {
+        return ;
+    }
     for (auto& it : std::filesystem::directory_iterator("repos/")) {
         if (!it.is_directory()) {
             continue;

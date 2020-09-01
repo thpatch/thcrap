@@ -15,13 +15,14 @@ repo_t *find_repo_in_list(repo_t **repo_list, const char *repo_id)
 	return nullptr;
 }
 
-patch_t patch_bootstrap(const patch_desc_t *sel, const char * const *repo_servers)
+patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
 {
-    std::string url = repo_servers[0];
+    std::string url = repo->servers[0];
     url += sel->patch_id;
     url += "/patch.js";
     json_t *patch_js = ServerCache::get().downloadJsonFile(url);
 
+    RepoWrite(repo);
 	patch_t patch_info = patch_build(sel);
 	patch_json_store(&patch_info, "patch.js", patch_js);
 	// TODO: Nice, friendly error
@@ -74,24 +75,14 @@ bool progress_callback(progress_callback_status_t *status, void *param)
 // Test reproducing the thcrap_configure behavior
 int do_thcrap_configure()
 {
-    // Discover repos
+    // Discover and load repos
 	//const char *start_repo = "https://mirrors.thpatch.net/nmlgc/"; // TODO: why is it the default??
 	const char *start_repo = "https://srv.thpatch.net/";
-    if (RepoDiscoverAtURL(start_repo) != 0) {
-        log_printf("Discovery from URL failed\n");
+    repo_t **repo_list = RepoDiscover(start_repo);
+    if (repo_list == nullptr) {
+	 	log_printf("No patch repositories available...\n");
         return 1;
     }
-    if (RepoDiscoverFromLocal() != 0) {
-        log_printf("Discovery from local failed\n");
-        return 1;
-    }
-
-    // Load repos
-	repo_t **repo_list = RepoLoad();
-	if (!repo_list[0]) {
-		log_printf("No patch repositories available...\n");
-        return 1;
-	}
 
     // Select patches
 	std::list<patch_desc_t> sel_stack = {
@@ -102,7 +93,7 @@ int do_thcrap_configure()
     };
     for (auto& sel : sel_stack) {
         const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
-        patch_t patch_info = patch_bootstrap(&sel, repo->servers);
+        patch_t patch_info = patch_bootstrap(&sel, repo);
         patch_t patch_full = patch_init(patch_info.archive, nullptr, 0);
 	    stack_add_patch(&patch_full);
 	    patch_free(&patch_info);
@@ -125,7 +116,7 @@ int do_thcrap_configure()
 	json_dump_file(new_cfg, "config/en.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 
     // Locate games
-    json_t *games_js = json_pack("{s:s,s:s}",
+    ScopedJson games_js = json_pack("{s:s,s:s}",
         "th06", "/some/path",
         "th07", "/some/other/path"
     );
@@ -135,7 +126,13 @@ int do_thcrap_configure()
     files.clear();
 	stack_update(update_filter_games, games, progress_callback, &files);
 
-    json_dump_file(games_js, "config/games.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+    json_dump_file(*games_js, "config/games.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+
+    stack_free();
+    for (size_t i = 0; repo_list[i]; i++) {
+        RepoFree(repo_list[i]);
+    }
+    free(repo_list);
 
     return 0;
 }

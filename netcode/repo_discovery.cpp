@@ -5,107 +5,120 @@
 #include "server.h"
 #include "repo_discovery.h"
 
-RepoDiscover::RepoDiscover()
+RepoDiscovery::RepoDiscovery()
+    : downloading(0)
 {}
 
-RepoDiscover::~RepoDiscover()
+RepoDiscovery::~RepoDiscovery()
 {
     this->wait();
-}
-
-bool RepoDiscover::writeRepoFile(ScopedJson repo_js)
-{
-    const char *id = json_string_value(json_object_get(*repo_js, "id"));
-    if (!id) {
-        log_printf("Repository file does not specify an ID!\n");
-        return true;
-    }
-
-    std::string repo_fn_local = RepoGetLocalFN(id);
-    std::filesystem::create_directories(std::filesystem::u8path(repo_fn_local).remove_filename());
-    return json_dump_file(*repo_js, repo_fn_local.c_str(), JSON_INDENT(4)) == 0;
-}
-
-void RepoDiscover::discoverNeighbors(ScopedJson repo_js)
-{
-    json_t *neighbors = json_object_get(*repo_js, "neighbors");
-    size_t i;
-    json_t *neighbor;
-    json_array_foreach(neighbors, i, neighbor) {
-        const char *neighborUrl = json_string_value(neighbor);
-        this->addServer(neighborUrl);
+    for (auto& it : this->repos) {
+        RepoFree(it.second);
     }
 }
 
-void RepoDiscover::addServer(std::string url)
+void RepoDiscovery::addRepo(repo_t *repo)
+{
+    {
+        std::scoped_lock<std::mutex> lock(this->mutex);
+        if (this->repos[repo->id] != nullptr) {
+            // We already know this repo
+            RepoFree(repo);
+            return ;
+        }
+        this->repos[repo->id] = repo;
+        log_printf("%s\n", repo->id);
+    }
+    // Unlock the mutex. The addServer function will relock it.
+
+    for (size_t i = 0; repo->servers && repo->servers[i]; i++) {
+        this->addServer(repo->servers[i]);
+    }
+    for (size_t i = 0; repo->neighbors && repo->neighbors[i]; i++) {
+        this->addServer(repo->neighbors[i]);
+    }
+}
+
+bool RepoDiscovery::addRepo(ScopedJson repo_js)
+{
+    repo_t *repo = RepoLoadJson(*repo_js);
+    if (!repo) {
+        return false;
+    }
+
+    this->addRepo(repo);
+    return true;
+}
+
+void RepoDiscovery::addServer(std::string url)
 {
     std::scoped_lock<std::mutex> lock(this->mutex);
 
     if (url.back() != '/') {
         url += "/";
     }
-    if (this->downloading.count(url) > 0 ||
-        this->done.count(url) > 0) {
+    if (this->urls.count(url) > 0) {
+        // We already downloaded repo.js repo from this URL
         return ;
     }
-    // TODO: abort download if repo.js already exists. Or not. See the comments in thcrap_configure and think about it.
+    this->urls.insert(url);
+    this->downloading++;
 
-    this->downloading.insert(url);
     std::thread([this, url]() {
         ScopedJson repo_js = ServerCache::get().downloadJsonFile(url + "repo.js");
         if (repo_js) {
-            if (repo_js && this->writeRepoFile(repo_js)) {
-                this->discoverNeighbors(repo_js);
-            }
-            else {
-                this->success = false;
+            if (!this->addRepo(repo_js)) {
+                log_printf("%s: invalid repo!\n", url.c_str());
             }
         }
-        // If repo_js is false (the download failed), we don't want to report the failure.
-        // Failing to write to the config directory is a failure of the user's computer and
-        // thcrap_configure should stop if it happens, but when we fail to download a repo.js,
-        // it's quite likely that we have only one repo dead and the others will work.
-        // And even if it doesn't, the user still has the local cache.
 
-        {
-            std::scoped_lock<std::mutex> lock(this->mutex);
-            this->downloading.erase(url);
-            this->done.insert(url);
-        }
-
+        this->downloading--;
         this->condVar.notify_one();
     }).detach();
 }
 
-bool RepoDiscover::wait()
+void RepoDiscovery::wait()
 {
-    // TODO: the start_url is downloaded twice
     std::unique_lock<std::mutex> lock(this->mutex);
-    while (!this->downloading.empty()) {
+    while (this->downloading > 0) {
         this->condVar.wait(lock);
     }
-    return this->success;
 }
 
-int RepoDiscoverAtURL(const char *start_url)
+repo_t **RepoDiscovery::transferRepoList()
 {
-    RepoDiscover discover;
-    discover.addServer(start_url);
-    return discover.wait() ? 0 : 1;
-}
+    std::unique_lock<std::mutex> lock(this->mutex);
+    repo_t **repo_list = (repo_t**)malloc((this->repos.size()) * sizeof(repo_t*));
 
-int RepoDiscoverFromLocal()
-{
-    RepoDiscover discover;
-
-    repo_t **repo_list = RepoLoad();
-    for (size_t i = 0; repo_list[i]; i++) {
-        for (size_t j = 0; repo_list[i]->servers && repo_list[i]->servers[j]; j++) {
-            discover.addServer(repo_list[i]->servers[j]);
-        }
-        RepoFree(repo_list[i]);
+    size_t i = 0;
+    for (auto& it : this->repos) {
+        repo_list[i] = it.second;
+        i++;
     }
-    free(repo_list);
+    repo_list[i] = nullptr;
 
-    return discover.wait() ? 0 : 1;
+    this->repos.clear();
+    return repo_list;
+}
+
+repo_t **RepoDiscover(const char *start_url)
+{
+    RepoDiscovery discover;
+
+    // Start with the remote discovery
+    discover.addServer(start_url);
+    discover.wait();
+
+    // If we have any local repo which isn't part of the thpatch network,
+    // add it and its neighbors here.
+    repo_t **repo_list = RepoLoad();
+    if (repo_list) {
+        for (size_t i = 0; repo_list[i]; i++) {
+            discover.addRepo(repo_list[i]);
+        }
+        free(repo_list);
+        discover.wait();
+    }
+
+    return discover.transferRepoList();
 }

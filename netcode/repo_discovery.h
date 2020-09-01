@@ -5,44 +5,48 @@
 
 #ifdef __cplusplus
 
+#include <atomic>
 #include <condition_variable>
+#include <map>
 #include <mutex>
 #include <set>
 #include <string>
 
-class RepoDiscover
+class RepoDiscovery
 {
 private:
     std::condition_variable condVar;
     std::mutex mutex;
-    std::set<std::string> downloading;
-    std::set<std::string> done;
-    bool success = true;
-
-    bool writeRepoFile(ScopedJson repo_js);
+    std::atomic<size_t> downloading;
+    std::set<std::string> urls;
+    std::map<std::string, repo_t*> repos;
 
 public:
-    RepoDiscover();
-    ~RepoDiscover();
+    RepoDiscovery();
+    ~RepoDiscovery();
 
-    // Start a discovery from url.
+    // Start a discovery from an url.
     // The discovery runs on another thread.
     // If this server is already known, do nothing.
     void addServer(std::string url);
-    // Start a discovery for every neighbor in repo.
-    void discoverNeighbors(ScopedJson repo_js);
+    // Add a repo to the known repos, and start a discovery
+    // on its servers and neighbors.
+    // The ownership of repo is transfered to RepoDiscovery.
+    void addRepo(repo_t *repo);
+    // Parse repo_js and call addRepo() on the resulting repo_t.
+    // Return false if the json file is not a valid repo.
+    bool addRepo(ScopedJson repo_js);
     // Wait until all running discoveries are finished.
-    // Return false if a repo couldn't be written because of a file write error,
-    // true otherwise. It is not an error if a server can't be accessed.
-    bool wait();
+    void wait();
+    // Return the repos found by this discovery.
+    // The ownership of the repos is transfered to the caller.
+    repo_t **transferRepoList();
 };
 
 extern "C" {
 #endif // __cplusplus
 
-// TODO: file write error callback
-int RepoDiscoverAtURL(const char *start_url/*, file_write_error_t *fwe_callback*/);
-int RepoDiscoverFromLocal(/*file_write_error_t *fwe_callback*/);
+repo_t **RepoDiscover(const char *start_url);
 
 #ifdef __cplusplus
 }
