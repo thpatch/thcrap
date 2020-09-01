@@ -59,42 +59,89 @@ bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, c
     return this->progressCallback(&status, this->progressData);
 }
 
+class AutoWriteJson
+{
+private:
+    json_t *json;
+    const patch_t *patch;
+    const char *fn;
+
+public:
+    AutoWriteJson(const patch_t *patch, const char *fn)
+        : json(patch_json_load(patch, fn, nullptr)), patch(patch), fn(fn)
+    {
+        if (!this->json) {
+            this->json = json_object();
+        }
+    }
+    ~AutoWriteJson()
+    {
+        patch_json_store(this->patch, fn, this->json);
+        json_decref(this->json);
+    }
+    operator json_t*() {
+        return this->json;
+    }
+
+    AutoWriteJson(const AutoWriteJson&) = delete;
+    AutoWriteJson(AutoWriteJson&&) = delete;
+    AutoWriteJson& operator=(const AutoWriteJson&) = delete;
+    AutoWriteJson& operator=(AutoWriteJson&&) = delete;
+};
+
 void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& data)
 {
-    patch_file_store(patch, "files.js", data.data(), data.size());
+    auto localFilesJs = std::make_shared<AutoWriteJson>(patch, "files.js");
+    ScopedJson remoteFilesJs = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
 
-    ScopedJson filesJs = patch_json_load(patch, "files.js", nullptr);
-    if (*filesJs == nullptr) {
+    if (*remoteFilesJs == nullptr) {
         log_printf("%s: files.js isn't a valid json file!\n", patch->id);
         return ;
     }
 
-    const char *key;
+    const char *fn;
     json_t *value;
-    json_object_foreach(*filesJs, key, value) {
-        if (json_is_null(value)) {
-            // Delete file
-            patch_file_delete(patch, key);
+    json_object_foreach(*remoteFilesJs, fn, value) {
+        json_t *localValue = json_object_get(*localFilesJs, fn);
+        if (localValue && json_equal(value, localValue)) {
+            // The file didn't change since our last update, no need to update or delete it
             continue;
         }
-        if (this->filterCallback != nullptr && this->filterCallback(key) == false) {
+        if (this->filterCallback != nullptr && this->filterCallback(fn) == false) {
             // We don't want to download this file
             continue;
         }
-        // TODO: do not redownload if the CRC32 didn't change
+        if (json_is_null(value)) {
+            // Delete file
+            patch_file_delete(patch, fn);
+            json_object_set(*localFilesJs, fn, json_null());
+            continue;
+        }
 
         // TODO: check CRC32
-        this->mainDownloader.addFile(patch->servers, key,
-            [this, patch, key = std::string(key)](const DownloadUrl& url, std::vector<uint8_t>& data) {
-                patch_file_store(patch, key.c_str(), data.data(), data.size());
-                this->callProgressCallback(patch, key, url, GET_OK, data.size(), data.size());
+        this->mainDownloader.addFile(patch->servers, fn,
+
+            // Success callback
+            [this, patch, fn = std::string(fn), localFilesJs, value = ScopedJson(json_incref(value))]
+            (const DownloadUrl& url, std::vector<uint8_t>& data) {
+                if (patch_file_store(patch, fn.c_str(), data.data(), data.size()) == 0) {
+                    this->callProgressCallback(patch, fn, url, GET_OK, data.size(), data.size());
+                    json_object_set(*localFilesJs, fn.c_str(), *value);
+                }
+                else {
+                    this->callProgressCallback(patch, fn, url, GET_SYSTEM_ERROR, 0, 0);
+                }
             },
-            [this, patch, key = std::string(key)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
+
+            // Failure callback
+            [this, patch, fn = std::string(fn)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
                 get_status_t getStatus = this->httpStatusToGetStatus(httpStatus);
-                this->callProgressCallback(patch, key, url, getStatus, 0, 0);
+                this->callProgressCallback(patch, fn, url, getStatus, 0, 0);
             },
-            [this, patch, key = std::string(key)](const DownloadUrl& url, size_t file_progress, size_t file_size) {
-                return this->callProgressCallback(patch, key, url, GET_DOWNLOADING, file_progress, file_size);
+
+            // Progress callback
+            [this, patch, fn = std::string(fn)](const DownloadUrl& url, size_t file_progress, size_t file_size) {
+                return this->callProgressCallback(patch, fn, url, GET_DOWNLOADING, file_progress, file_size);
             }
         );
     }

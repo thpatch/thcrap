@@ -47,7 +47,7 @@ public:
         }
     }
 
-    json_t *operator*()
+    json_t *operator*() const
     {
         return this->obj;
     }
