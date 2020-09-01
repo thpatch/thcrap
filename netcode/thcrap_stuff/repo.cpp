@@ -104,7 +104,7 @@ bool RepoWrite(const repo_t *repo)
     if (repo->patches) {
         json_t *patches = json_object();
         for (size_t i = 0; repo->patches[i].patch_id; i++) {
-            json_object_set(patches, repo->patches[i].patch_id, json_string(repo->patches[i].title));
+            json_object_set_new(patches, repo->patches[i].patch_id, json_string(repo->patches[i].title));
         }
         json_object_set_new(*repo_js, "patches", patches);
     }

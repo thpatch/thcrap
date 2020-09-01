@@ -20,11 +20,11 @@ patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
     std::string url = repo->servers[0];
     url += sel->patch_id;
     url += "/patch.js";
-    json_t *patch_js = ServerCache::get().downloadJsonFile(url);
+    ScopedJson patch_js = ServerCache::get().downloadJsonFile(url);
 
     RepoWrite(repo);
 	patch_t patch_info = patch_build(sel);
-	patch_json_store(&patch_info, "patch.js", patch_js);
+	patch_json_store(&patch_info, "patch.js", *patch_js);
 	// TODO: Nice, friendly error
 
 	return patch_info;
@@ -104,16 +104,20 @@ int do_thcrap_configure()
 	stack_update(update_filter_global, nullptr, progress_callback, &files);
 
 	/// Build the new run configuration
-	json_t *new_cfg = json_pack("{s[]}", "patches");
-	json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
+	ScopedJson new_cfg = json_pack("{s[]}", "patches");
+	json_t *new_cfg_patches = json_object_get(*new_cfg, "patches");
 	for (patch_desc_t& sel : sel_stack) {
 		patch_t patch = patch_build(&sel);
 		json_array_append_new(new_cfg_patches, patch_to_runconfig_json(&patch));
+        patch_free(&patch);
+        free(sel.repo_id);
+        free(sel.patch_id);
 	}
+    sel_stack.clear();
 
     // Write config
     std::filesystem::create_directory("config");
-	json_dump_file(new_cfg, "config/en.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+	json_dump_file(*new_cfg, "config/en.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 
     // Locate games
     ScopedJson games_js = json_pack("{s:s,s:s}",
@@ -128,6 +132,7 @@ int do_thcrap_configure()
 
     json_dump_file(*games_js, "config/games.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 
+    strings_array_free(games);
     stack_free();
     for (size_t i = 0; repo_list[i]; i++) {
         RepoFree(repo_list[i]);

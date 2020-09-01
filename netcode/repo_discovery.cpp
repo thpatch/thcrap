@@ -88,7 +88,7 @@ void RepoDiscovery::wait()
 repo_t **RepoDiscovery::transferRepoList()
 {
     std::unique_lock<std::mutex> lock(this->mutex);
-    repo_t **repo_list = (repo_t**)malloc((this->repos.size()) * sizeof(repo_t*));
+    repo_t **repo_list = (repo_t**)malloc((this->repos.size() + 1) * sizeof(repo_t*));
 
     size_t i = 0;
     for (auto& it : this->repos) {
