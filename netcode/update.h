@@ -13,7 +13,9 @@ typedef enum {
     // Download completed successfully
     GET_OK,
     // Error with the file (4XX error codes)
-    GET_CLIENT_ERROR, // 404, 502, etc.
+    GET_CLIENT_ERROR,
+    // The downloaded file doesn't match the CRC32 in files.js
+    GET_CRC32_ERROR,
     // Error with the server (timeout, 5XX error code etc)
     GET_SERVER_ERROR,
     // Download cancelled. You will see this if you return
@@ -84,6 +86,8 @@ private:
     filter_t filterCallback;
     progress_callback_t progressCallback;
     void *progressData;
+
+    uint32_t crc32Table[256];
 
     void startPatchUpdate(const patch_t *patch);
     void onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& file);

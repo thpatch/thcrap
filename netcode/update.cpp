@@ -3,11 +3,14 @@
 #include "update.h"
 #include "server.h"
 #include "strings_array.h"
+#include "crc32.h"
 
 Update::Update(Update::filter_t filterCallback,
                progress_callback_t progressCallback, void *progressData)
     : filterCallback(filterCallback), progressCallback(progressCallback), progressData(progressData)
-{}
+{
+    crc32::generate_table(this->crc32Table);
+}
 
 get_status_t Update::httpStatusToGetStatus(HttpHandle::Status status)
 {
@@ -118,19 +121,22 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
             continue;
         }
 
-        // TODO: check CRC32
+        // TODO: append CRC32 to URL
         this->mainDownloader.addFile(patch->servers, fn,
 
             // Success callback
             [this, patch, fn = std::string(fn), localFilesJs, value = ScopedJson(json_incref(value))]
             (const DownloadUrl& url, std::vector<uint8_t>& data) {
-                if (patch_file_store(patch, fn.c_str(), data.data(), data.size()) == 0) {
-                    this->callProgressCallback(patch, fn, url, GET_OK, data.size(), data.size());
-                    json_object_set(*localFilesJs, fn.c_str(), *value);
+                if (crc32::update(this->crc32Table, 0, data.data(), data.size()) != json_integer_value(*value)) {
+                    this->callProgressCallback(patch, fn, url, GET_CRC32_ERROR, 0, 0);
+                    return ;
                 }
-                else {
+                if (patch_file_store(patch, fn.c_str(), data.data(), data.size()) != 0) {
                     this->callProgressCallback(patch, fn, url, GET_SYSTEM_ERROR, 0, 0);
+                    return ;
                 }
+                this->callProgressCallback(patch, fn, url, GET_OK, data.size(), data.size());
+                json_object_set(*localFilesJs, fn.c_str(), *value);
             },
 
             // Failure callback
