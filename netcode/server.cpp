@@ -49,18 +49,25 @@ const std::string& Server::getUrl() const
     return this->baseUrl;
 }
 
-json_t *Server::downloadJsonFile(const std::string& name)
+std::vector<uint8_t> Server::downloadFile(const std::string& name)
 {
     std::list<DownloadUrl> urls {
         DownloadUrl(*this, name)
     };
-    json_t *json = nullptr;
+    std::vector<uint8_t> ret;
 
-    File file(std::move(urls), [&json](const DownloadUrl&, std::vector<uint8_t>& data) {
-        json = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
+    File file(std::move(urls), [&ret](const DownloadUrl&, std::vector<uint8_t>& data) {
+        ret = std::move(data);
     });
     file.download();
 
+    return ret;
+}
+
+json_t *Server::downloadJsonFile(const std::string& name)
+{
+    std::vector<uint8_t> data = this->downloadFile(name);
+    json_t *json = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
     return json;
 }
 
@@ -123,6 +130,12 @@ std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
         Server& server = it->second;
         return std::pair<Server&, std::string>(server, path);
     }
+}
+
+std::vector<uint8_t> ServerCache::downloadFile(const std::string& url)
+{
+    auto [server, path] = this->urlToServer(url);
+    return server.downloadFile(path);
 }
 
 json_t *ServerCache::downloadJsonFile(const std::string& url)
