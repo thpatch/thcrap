@@ -55,6 +55,8 @@ HttpHandle::Status HttpHandle::download(const std::string& url, std::function<si
 
     curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, nullptr);
     curl_easy_setopt(this->curl, CURLOPT_WRITEDATA, nullptr);
+    curl_easy_setopt(this->curl, CURLOPT_XFERINFOFUNCTION, nullptr);
+    curl_easy_setopt(this->curl, CURLOPT_XFERINFODATA, nullptr);
 
     std::string error;
     if (res != CURLE_OK) {

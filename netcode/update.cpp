@@ -113,6 +113,17 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
     json_t *value;
     json_object_foreach(*remoteFilesJs, fn, value) {
         json_t *localValue = json_object_get(*localFilesJs, fn);
+        // Did someone simply drop a full files.js into a standalone
+        // package that doesn't actually come with the files for
+        // every game?
+        // (Necessary in case this patch installation should later
+        // cover more games. If the remote files haven't changed by
+        // then, they wouldn't be downloaded if files.js pretends
+        // that these versions already exist locally.)
+        if (localValue && !patch_file_exists(patch, fn)) {
+            json_object_del(*localFilesJs, fn);
+            localValue = nullptr;
+        }
         if (localValue && json_equal(value, localValue)) {
             // The file didn't change since our last update, no need to update or delete it
             continue;
@@ -123,7 +134,10 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
         }
         if (json_is_null(value)) {
             // Delete file
-            patch_file_delete(patch, fn);
+            if (patch_file_exists(patch, fn)) {
+                log_printf("Deleting %s/%s\n", patch->id, fn);
+                patch_file_delete(patch, fn);
+            }
             json_object_set(*localFilesJs, fn, json_null());
             continue;
         }
