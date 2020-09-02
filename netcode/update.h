@@ -94,6 +94,7 @@ private:
     bool callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
                               size_t file_progress, size_t file_size);
     get_status_t httpStatusToGetStatus(HttpHandle::Status status);
+    std::string appendCrc32(const std::string& url, uint32_t crc32);
 
 public:
     Update(filter_t filterCallback, progress_callback_t progressCallback, void *progressData);

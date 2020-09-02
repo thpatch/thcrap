@@ -92,6 +92,13 @@ public:
     AutoWriteJson& operator=(AutoWriteJson&&) = delete;
 };
 
+std::string Update::appendCrc32(const std::string& url, uint32_t crc32)
+{
+    std::ostringstream ss;
+    ss << url << "?crc32=" << std::hex << std::setw(8) << std::setfill('0') << crc32;
+    return ss.str();
+}
+
 void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& data)
 {
     auto localFilesJs = std::make_shared<AutoWriteJson>(patch, "files.js");
@@ -121,8 +128,7 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
             continue;
         }
 
-        // TODO: append CRC32 to URL
-        this->mainDownloader.addFile(patch->servers, fn,
+        this->mainDownloader.addFile(patch->servers, this->appendCrc32(fn, json_integer_value(value)),
 
             // Success callback
             [this, patch, fn = std::string(fn), localFilesJs, value = ScopedJson(json_incref(value))]
