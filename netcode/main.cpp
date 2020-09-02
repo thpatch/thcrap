@@ -15,21 +15,6 @@ repo_t *find_repo_in_list(repo_t **repo_list, const char *repo_id)
 	return nullptr;
 }
 
-patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
-{
-    std::string url = repo->servers[0];
-    url += sel->patch_id;
-    url += "/patch.js";
-    ScopedJson patch_js = ServerCache::get().downloadJsonFile(url);
-
-    RepoWrite(repo);
-	patch_t patch_info = patch_build(sel);
-	patch_json_store(&patch_info, "patch.js", *patch_js);
-	// TODO: Nice, friendly error
-
-	return patch_info;
-}
-
 bool progress_callback(progress_callback_status_t *status, void *param)
 {
     using namespace std::literals;

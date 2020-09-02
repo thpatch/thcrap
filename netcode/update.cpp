@@ -209,6 +209,21 @@ void Update::run(const std::list<const patch_t*>& patchs)
     this->mainDownloader.wait();
 }
 
+patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
+{
+    std::string url = repo->servers[0];
+    url += sel->patch_id;
+    url += "/patch.js";
+    ScopedJson patch_js = ServerCache::get().downloadJsonFile(url);
+
+    RepoWrite(repo);
+	patch_t patch_info = patch_build(sel);
+	patch_json_store(&patch_info, "patch.js", *patch_js);
+	// TODO: Nice, friendly error
+
+	return patch_info;
+}
+
 int update_filter_global(const char *fn, void*)
 {
 	return strchr(fn, '/') == NULL;

@@ -70,6 +70,10 @@ int update_filter_global(const char *fn, void*);
 // in the strings array [games].
 int update_filter_games(const char *fn, void *games);
 
+// Bootstraps the patch selection [sel] by building a patch object, downloading
+// patch.js from [repo_servers], and storing it inside the returned object.
+patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo);
+
 class Update
 {
 private:
