@@ -94,6 +94,8 @@ EXPORTS
 	globalconfig_get_integer
 	globalconfig_set_integer
 	globalconfig_release
+	thcrap_alloc
+	thcrap_free
 
 	; Initialization
 	; --------------
