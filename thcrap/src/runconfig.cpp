@@ -266,7 +266,7 @@ void runconfig_print()
 void runconfig_free()
 {
 	stack_free();
-	json_decref(run_cfg.json);
+	json_decref_safe(run_cfg.json);
 	run_cfg.json = nullptr;
 	run_cfg.console = false;
 	run_cfg.thcrap_dir.clear();

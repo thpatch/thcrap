@@ -9,45 +9,44 @@
 
 #include "thcrap.h"
 #include <vector>
+#include <unordered_map>
+#include <string_view>
 
-static json_t *funcs = NULL;
-static json_t *mod_funcs = NULL;
+static std::unordered_map<std::string_view, size_t> funcs = {};
+static mod_funcs_t mod_funcs = {};
 static json_t *plugins = NULL;
 
 void* func_get(const char *name)
 {
-	return (void*)json_object_get_hex(funcs, name);
+	return (void*)funcs[name];
 }
 
 int func_add(const char *name, size_t addr) {
-	return json_object_set(funcs, name, json_integer(addr));
+	funcs[name] = addr;
+	return 0;
 }
 
 int plugin_init(HMODULE hMod)
 {
-	json_t *funcs_new = json_object();
-	int ret = GetExportedFunctions(funcs_new, hMod);
-	if(!funcs) {
-		funcs = json_object();
-	}
-	if(!mod_funcs) {
-		mod_funcs = json_object();
-	}
-	if(!ret) {
-		json_t *mod_funcs_new = mod_func_build(funcs_new);
-		const char *key;
-		json_t *val;
+	exported_func_t *funcs_new;
+	int func_count = GetExportedFunctions(&funcs_new, hMod);
+	if(func_count > 0) {
+		mod_funcs_t *mod_funcs_new = mod_func_build(funcs_new);
 		mod_func_run(mod_funcs_new, "init", NULL);
 		mod_func_run(mod_funcs_new, "detour", NULL);
-		json_object_foreach(mod_funcs_new, key, val) {
-			json_t *funcs_old = json_object_get_create(mod_funcs, key, JSON_ARRAY);
-			json_array_extend(funcs_old, val);
+		for (mod_func_pair_t pair : *mod_funcs_new) {
+			std::string_view key = pair.first;
+			std::vector<mod_call_type> arr = pair.second;
+
+			mod_funcs[key].insert(mod_funcs[key].end(), arr.begin(), arr.end());
 		}
-		json_decref(mod_funcs_new);
+		for (int i = 0; funcs_new[i].func != 0 && funcs_new[i].name != nullptr; i++) {
+			funcs[funcs_new[i].name] = funcs_new[i].func;
+		}
+		delete mod_funcs_new;
+		func_count = 0;
 	}
-	json_object_merge(funcs, funcs_new);
-	json_decref(funcs_new);
-	return ret;
+	return func_count;
 }
 
 void plugin_load(const char *dir, const char *fn)
@@ -132,9 +131,6 @@ int plugins_close(void)
 	const char *key;
 	json_t *val;
 
-	funcs = json_decref_safe(funcs);
-	mod_funcs = json_decref_safe(mod_funcs);
-
 	log_printf("Removing plug-ins...\n");
 	json_object_foreach(plugins, key, val) {
 		HINSTANCE hInst = (HINSTANCE)json_integer_value(val);
@@ -146,35 +142,26 @@ int plugins_close(void)
 	return 0;
 }
 
-json_t* mod_func_build(json_t *funcs)
+mod_funcs_t* mod_func_build(exported_func_t *funcs)
 {
-	json_t *ret = NULL;
+	// This function is not exported
+	mod_funcs_t *ret = new mod_funcs_t;
 	const char *infix = "_mod_";
 	size_t infix_len = strlen(infix);
-	const char *key;
-	json_t *val;
-	json_object_foreach(funcs, key, val) {
-		const char *p = strstr(key, infix);
+	for (int i = 0; funcs[i].name != nullptr && funcs[i].func != 0; i++) {
+		const char *p = strstr(funcs[i].name, infix);
 		if(p) {
-			json_t *arr = NULL;
 			p += infix_len;
-			if(!ret) {
-				ret = json_object();
-			}
-			arr = json_object_get_create(ret, p, JSON_ARRAY);
-			json_array_append(arr, val);
+			(*ret)[p].push_back((mod_call_type)funcs[i].func);
 		}
 	}
 	return ret;
 }
 
-void mod_func_run(json_t *mod_funcs, const char *pattern, void *param)
+void mod_func_run(mod_funcs_t *mod_funcs, const char *pattern, void *param)
 {
-	json_t *func_array = json_object_get(mod_funcs, pattern);
-	size_t i;
-	json_t *val;
-	json_array_foreach(func_array, i, val) {
-		mod_call_type func = (mod_call_type)json_integer_value(val);
+	std::vector<mod_call_type> func_array = (*mod_funcs)[pattern];
+	for(mod_call_type &func : func_array) {
 		if(func) {
 			func(param);
 		}
@@ -183,5 +170,5 @@ void mod_func_run(json_t *mod_funcs, const char *pattern, void *param)
 
 void mod_func_run_all(const char *pattern, void *param)
 {
-	mod_func_run(mod_funcs, pattern, param);
+	mod_func_run(&mod_funcs, pattern, param);
 }

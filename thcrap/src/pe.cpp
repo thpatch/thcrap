@@ -106,7 +106,7 @@ PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 	return NULL;
 }
 
-int GetExportedFunctions(json_t *funcs, HMODULE hDll)
+int GetExportedFunctions(exported_func_t **funcs, HMODULE hDll)
 {
 	IMAGE_EXPORT_DIRECTORY *ExportDesc;
 	DWORD *func_ptrs = NULL;
@@ -128,6 +128,8 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 	name_ptrs = (DWORD*)(ExportDesc->AddressOfNames + dll_base);
 	name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
 
+	*funcs = (exported_func_t*)malloc((ExportDesc->NumberOfFunctions + 1) * sizeof(exported_func_t));
+
 	for(i = 0; i < ExportDesc->NumberOfFunctions; i++) {
 		DWORD name_ptr = 0;
 		const char *name;
@@ -145,9 +147,11 @@ int GetExportedFunctions(json_t *funcs, HMODULE hDll)
 			itoa(i + ExportDesc->Base, auto_name, 10);
 			name = auto_name;
 		}
-		json_object_set_new(funcs, name, json_integer(dll_base + func_ptrs[i]));
+		(*funcs)[i].name = name;
+		(*funcs)[i].func = dll_base + func_ptrs[i];
 	}
-	return 0;
+	(*funcs)[ExportDesc->NumberOfFunctions] = {};
+	return ExportDesc->NumberOfFunctions;
 }
 
 HMODULE GetModuleContaining(void *addr)

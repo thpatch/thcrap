@@ -61,7 +61,11 @@ int func_add(const char *name, size_t addr);
 // Module function type.
 typedef void (*mod_call_type)(void *param);
 
-// Builds a JSON object mapping the suffixes of all module hook functions
+#ifdef __cplusplus
+typedef std::unordered_map<std::string_view, std::vector<mod_call_type>> mod_funcs_t;
+typedef std::pair<std::string_view, std::vector<mod_call_type>> mod_func_pair_t;
+
+// Builds an unordered map mapping the suffixes of all module hook functions
 // occurring in [funcs] to an array of pointers to all the functions in
 // [funcs] with that suffix:
 // {
@@ -70,16 +74,18 @@ typedef void (*mod_call_type)(void *param);
 //	],
 //	...
 // }
-json_t* mod_func_build(json_t *funcs);
+mod_funcs_t* mod_func_build(exported_func_t *funcs);
+
 
 // Runs every module hook function for [suffix] in [mod_funcs]. The execution
 // order of the hook functions follows the order their DLLs were originally
 // loaded in, but is undefined within the functions of a single DLL.
-void mod_func_run(json_t *funcs, const char *suffix, void *param);
+void mod_func_run(mod_funcs_t *funcs, const char *suffix, void *param);
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.
 void mod_func_run_all(const char *suffix, void *param);
 /// ===================
+#endif
 
 // Initializes a plug-in DLL at [hMod]. This means registering all of its
 // exports, and calling its "init" and "detour" module functions.
