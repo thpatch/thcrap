@@ -12,6 +12,10 @@
 #include "win32_detour.h"
 #include <vector>
 
+// Both thcrap_ExitProcess and DllMain will call ExitDll,
+// which will cause a crash without this workaround
+static bool dll_exited = false;
+
 /// Static global variables
 /// -----------------------
 // Required to get the exported functions of thcrap.dll.
@@ -421,6 +425,7 @@ int InitDll(HMODULE hDll)
 
 void ExitDll(HMODULE hDll)
 {
+	dll_exited = true;
 	// Yes, the main thread does not receive a DLL_THREAD_DETACH message
 	mod_func_run_all("thread_exit", NULL);
 	mod_func_run_all("exit", NULL);
@@ -452,7 +457,9 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 			InitDll(hDll);
 			break;
 		case DLL_PROCESS_DETACH:
-			ExitDll(hDll);
+			if (!dll_exited) {
+				ExitDll(hDll);
+			}
 			break;
 		case DLL_THREAD_DETACH:
 			mod_func_run_all("thread_exit", NULL);
