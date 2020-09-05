@@ -11,7 +11,7 @@
 
 typedef struct {
 	const char *name;
-	DWORD func;
+	UINT_PTR func;
 } exported_func_t;
 
 /// Local

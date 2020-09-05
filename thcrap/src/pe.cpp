@@ -27,7 +27,7 @@ PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 		return 0;
 	}
 	// Find the NT Header by using the offset of e_lfanew from hMod
-	pNTH = (PIMAGE_NT_HEADERS)((DWORD)pDosH + (DWORD)pDosH->e_lfanew);
+	pNTH = (PIMAGE_NT_HEADERS)((UINT_PTR)pDosH + (UINT_PTR)pDosH->e_lfanew);
 
 	if(
 		!VirtualCheckRegion(pNTH, sizeof(IMAGE_NT_HEADERS))
@@ -46,7 +46,7 @@ void *GetNtDataDirectory(HMODULE hMod, BYTE directory)
 
 	pNTH = GetNtHeader(hMod);
 	if(pNTH) {
-		DWORD DirVA = pNTH->OptionalHeader.DataDirectory[directory].VirtualAddress;
+		UINT_PTR DirVA = pNTH->OptionalHeader.DataDirectory[directory].VirtualAddress;
 		if(DirVA) {
 			return (BYTE*)hMod + DirVA;
 		}
@@ -63,7 +63,7 @@ PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *dll_name)
 		return NULL;
 	}
 	while(pImportDesc->Name) {
-		char *name = (char*)((DWORD)hMod + (DWORD)pImportDesc->Name);
+		char *name = (char*)((UINT_PTR)hMod + (UINT_PTR)pImportDesc->Name);
 		if(stricmp(name, dll_name) == 0) {
 			return pImportDesc;
 		}
@@ -91,7 +91,7 @@ PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 		return NULL;
 	}
 	// OptionalHeader position + SizeOfOptionalHeader = Section headers
-	pSH = (PIMAGE_SECTION_HEADER)((DWORD)(&pNTH->OptionalHeader) + (DWORD)pNTH->FileHeader.SizeOfOptionalHeader);
+	pSH = (PIMAGE_SECTION_HEADER)((UINT_PTR)(&pNTH->OptionalHeader) + (UINT_PTR)pNTH->FileHeader.SizeOfOptionalHeader);
 
 	if(!VirtualCheckRegion(pSH, sizeof(IMAGE_SECTION_HEADER) * pNTH->FileHeader.NumberOfSections)) {
 		return 0;
@@ -109,10 +109,10 @@ PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 int GetExportedFunctions(exported_func_t **funcs, HMODULE hDll)
 {
 	IMAGE_EXPORT_DIRECTORY *ExportDesc;
-	DWORD *func_ptrs = NULL;
-	DWORD *name_ptrs = NULL;
+	UINT_PTR *func_ptrs = NULL;
+	UINT_PTR *name_ptrs = NULL;
 	WORD *name_indices = NULL;
-	DWORD dll_base = (DWORD)hDll; // All this type-casting is annoying
+	UINT_PTR dll_base = (UINT_PTR)hDll; // All this type-casting is annoying
 	WORD i, j; // can only ever be 16-bit values
 
 	if(!funcs) {
@@ -124,16 +124,16 @@ int GetExportedFunctions(exported_func_t **funcs, HMODULE hDll)
 		return -2;
 	}
 
-	func_ptrs = (DWORD*)(ExportDesc->AddressOfFunctions + dll_base);
-	name_ptrs = (DWORD*)(ExportDesc->AddressOfNames + dll_base);
+	func_ptrs = (UINT_PTR*)(ExportDesc->AddressOfFunctions + dll_base);
+	name_ptrs = (UINT_PTR*)(ExportDesc->AddressOfNames + dll_base);
 	name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
 
 	*funcs = (exported_func_t*)malloc((ExportDesc->NumberOfFunctions + 1) * sizeof(exported_func_t));
 
 	for(i = 0; i < ExportDesc->NumberOfFunctions; i++) {
-		DWORD name_ptr = 0;
+		UINT_PTR name_ptr = 0;
 		const char *name;
-		char auto_name[DECIMAL_DIGITS_BOUND(DWORD) + 1];
+		char auto_name[DECIMAL_DIGITS_BOUND(UINT_PTR) + 1];
 
 		// Look up name
 		for(j = 0; (j < ExportDesc->NumberOfNames && !name_ptr); j++) {
@@ -234,7 +234,7 @@ void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod)
 	void *ret = NULL;
 	IMAGE_NT_HEADERS NTH;
 	if(!GetRemoteModuleNtHeader(&NTH, hProcess, hMod)) {
-		ret = (void*)(NTH.OptionalHeader.AddressOfEntryPoint + (DWORD)hMod);
+		ret = (void*)(NTH.OptionalHeader.AddressOfEntryPoint + (UINT_PTR)hMod);
 	}
 	return ret;
 }
@@ -284,11 +284,11 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 	IMAGE_NT_HEADERS NTH;
 	PIMAGE_DATA_DIRECTORY pExportPos;
 	IMAGE_EXPORT_DIRECTORY ExportDesc;
-	DWORD *func_ptrs = NULL;
-	DWORD *name_ptrs = NULL;
+	UINT_PTR *func_ptrs = NULL;
+	UINT_PTR *name_ptrs = NULL;
 	WORD *name_indices = NULL;
-	DWORD i;
-	DWORD ordinal = (DWORD)lpProcName;
+	UINT_PTR i;
+	UINT_PTR ordinal = (UINT_PTR)lpProcName;
 
 	if(!lpProcName) {
 		goto end;
@@ -307,12 +307,12 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 		void *func_ptrs_pos = addr + ExportDesc.AddressOfFunctions;
 		void *name_ptrs_pos = addr + ExportDesc.AddressOfNames;
 		void *name_indices_pos = addr + ExportDesc.AddressOfNameOrdinals;
-		size_t func_ptrs_size = ExportDesc.NumberOfFunctions * sizeof(DWORD);
-		size_t name_ptrs_size = ExportDesc.NumberOfNames * sizeof(DWORD);
+		size_t func_ptrs_size = ExportDesc.NumberOfFunctions * sizeof(UINT_PTR);
+		size_t name_ptrs_size = ExportDesc.NumberOfNames * sizeof(UINT_PTR);
 		size_t name_indices_size = ExportDesc.NumberOfNames * sizeof(WORD);
 
-		func_ptrs = (DWORD *)malloc(func_ptrs_size);
-		name_ptrs = (DWORD *)malloc(name_ptrs_size);
+		func_ptrs = (UINT_PTR *)malloc(func_ptrs_size);
+		name_ptrs = (UINT_PTR *)malloc(name_ptrs_size);
 		name_indices = (WORD *)malloc(name_indices_size);
 		if(
 			!func_ptrs || !name_ptrs || !name_indices
@@ -327,7 +327,7 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 	}
 
 	for(i = 0; i < ExportDesc.NumberOfFunctions && !ret; i++) {
-		DWORD name_ptr = 0;
+		UINT_PTR name_ptr = 0;
 		WORD j;
 		for(j = 0; j < ExportDesc.NumberOfNames && !name_ptr; j++) {
 			if(name_indices[j] == i) {
