@@ -23,10 +23,11 @@ void* func_get(const char *name)
 }
 
 void func_add(const char *name, size_t addr) {
-	funcs[name] = addr;
+	funcs[strdup(name)] = addr;
 }
 
 void func_remove(const char *name) {
+	//TODO(32th): memory leak
 	funcs.erase(name);
 }
 

@@ -16,7 +16,6 @@ struct stage_t
 	HMODULE module;
 	std::vector<binhack_t> binhacks;
 	std::vector<codecave_t> codecaves;
-	DWORD codecaves_protection;
 	std::vector<breakpoint_local_t> breakpoints;
 };
 
@@ -119,11 +118,9 @@ static void runconfig_stage_load(json_t *stage_json)
 		}
 	}
 
-	stage.codecaves_protection = 0;
 	json_t *codecaves = json_object_get(stage_json, "codecaves");
 	json_object_foreach(codecaves, key, value) {
 		if (strcmp(key, "protection") == 0) {
-			stage.codecaves_protection = json_hex_value(value);
 			continue;
 		}
 
@@ -427,7 +424,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 		hMod = stage.module;
 	}
 
-	ret += codecaves_apply(stage.codecaves.data(), stage.codecaves.size(), stage.codecaves_protection);
+	ret += codecaves_apply(stage.codecaves.data(), stage.codecaves.size());
 	ret += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), hMod);
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
 		// FIXME: this workaround is needed, because breakpoints don't check what they overwrite

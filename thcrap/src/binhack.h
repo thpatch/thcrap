@@ -84,4 +84,4 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 //		"test_cave": "somecode"
 //		}
 // }
-int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count, DWORD protection);
+int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
