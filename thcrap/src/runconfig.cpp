@@ -180,7 +180,7 @@ void runconfig_load(json_t *file, int flags)
 	if (value) {
 		run_cfg.console = json_is_true(value);
 	}
-	run_cfg.msgbox_invalid_func = json_is_true(json_object_get(file, "msgbox_invalid_func"));
+	run_cfg.msgbox_invalid_func = json_is_true(json_object_get(run_cfg.json, "msgbox_invalid_func"));
 	value = json_object_get(file, "dat_dump");
 	if (value && (run_cfg.dat_dump.empty() || can_overwrite)) {
 		if (json_is_string(value)) {
