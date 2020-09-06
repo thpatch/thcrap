@@ -8,11 +8,12 @@
   */
 
 #include "thcrap.h"
+#include <algorithm>
 #include <vector>
 #include <unordered_map>
 #include <string_view>
 
-static std::unordered_map<std::string_view, size_t> funcs = {};
+static std::unordered_map<std::string_view, UINT_PTR> funcs = {};
 static mod_funcs_t mod_funcs = {};
 static json_t *plugins = NULL;
 
@@ -21,9 +22,12 @@ void* func_get(const char *name)
 	return (void*)funcs[name];
 }
 
-int func_add(const char *name, size_t addr) {
+void func_add(const char *name, size_t addr) {
 	funcs[name] = addr;
-	return 0;
+}
+
+void func_remove(const char *name) {
+	funcs.erase(name);
 }
 
 int plugin_init(HMODULE hMod)
@@ -45,7 +49,7 @@ int plugin_init(HMODULE hMod)
 		}
 		delete mod_funcs_new;
 		func_count = 0;
-	}
+	}	
 	return func_count;
 }
 
@@ -171,4 +175,11 @@ void mod_func_run(mod_funcs_t *mod_funcs, const char *pattern, void *param)
 void mod_func_run_all(const char *pattern, void *param)
 {
 	mod_func_run(&mod_funcs, pattern, param);
+}
+
+void mod_func_remove(const char *pattern, mod_call_type func) {
+	std::vector<mod_call_type> func_array = mod_funcs[pattern];
+	std::remove_if(func_array.begin(), func_array.end(), [&func](mod_call_type func_in_array) {
+		return func_in_array == func;
+	});
 }

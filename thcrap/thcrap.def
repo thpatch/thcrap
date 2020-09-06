@@ -249,8 +249,11 @@ EXPORTS
 	; Plugins
 	; -------
 	func_get
+	func_add
+	func_remove
 	plugins_load
 	plugins_close
+	mod_func_remove
 
 	; Detour promotion
 	; ----------------

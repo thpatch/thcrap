@@ -24,7 +24,11 @@
 void* func_get(const char *name);
 
 // Adds a pointer to a function to the list of functions used by func_get
-int func_add(const char *name, size_t addr);
+void func_add(const char *name, size_t addr);
+
+// Removes a function from the list of functions used by func_get
+// This function is nessesairy for plugins to be able to unload themselves
+void func_remove(const char *name)
 
 /// Module functions
 /// ================
@@ -61,6 +65,10 @@ int func_add(const char *name, size_t addr);
 // Module function type.
 typedef void (*mod_call_type)(void *param);
 
+// Removes a module hook function from the unordered map of module hook function
+// This function is nessesairy for plugins to be able to unload themselves
+void mod_func_remove(const char *pattern, mod_call_type func);
+
 #ifdef __cplusplus
 typedef std::unordered_map<std::string_view, std::vector<mod_call_type>> mod_funcs_t;
 typedef std::pair<std::string_view, std::vector<mod_call_type>> mod_func_pair_t;
@@ -75,7 +83,6 @@ typedef std::pair<std::string_view, std::vector<mod_call_type>> mod_func_pair_t;
 //	...
 // }
 mod_funcs_t* mod_func_build(exported_func_t *funcs);
-
 
 // Runs every module hook function for [suffix] in [mod_funcs]. The execution
 // order of the hook functions follows the order their DLLs were originally
