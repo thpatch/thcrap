@@ -28,7 +28,7 @@ void func_add(const char *name, size_t addr);
 
 // Removes a function from the list of functions used by func_get
 // This function is nessesairy for plugins to be able to unload themselves
-void func_remove(const char *name)
+void func_remove(const char *name);
 
 /// Module functions
 /// ================
