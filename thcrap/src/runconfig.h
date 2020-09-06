@@ -55,6 +55,9 @@ const char *runconfig_latest_get();
 // Return the number of stages
 size_t runconfig_stage_count();
 
+// Return true if the binhack parser if it should show a message box, should it fail to find a function
+bool runconfig_msgbox_invalid_func();
+
 #define RUNCFG_STAGE_USE_MODULE 1
 #define RUNCFG_STAGE_SKIP_BREAKPOINTS 2
 // Apply the binhacks, codecaves and breakpoints of a stage.

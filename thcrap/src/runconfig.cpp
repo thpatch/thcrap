@@ -45,6 +45,8 @@ struct runconfig_t
 	// Hackpoints (breakpoints, codecaves and binhacks) for stages (from game_id.js and game_id.build.js).
 	// The global hackpoints (those not in a stage) are put in the last stage.
 	std::vector<stage_t> stages;
+	// Boolean flag that tells the binhack parser if it should show a message box, should it fail to find a function
+	bool msgbox_invalid_func;
 };
 
 static runconfig_t run_cfg;
@@ -178,7 +180,7 @@ void runconfig_load(json_t *file, int flags)
 	if (value) {
 		run_cfg.console = json_is_true(value);
 	}
-
+	run_cfg.msgbox_invalid_func = json_is_true(json_object_get(file, "msgbox_invalid_func"));
 	value = json_object_get(file, "dat_dump");
 	if (value && (run_cfg.dat_dump.empty() || can_overwrite)) {
 		if (json_is_string(value)) {
@@ -400,6 +402,10 @@ const char *runconfig_latest_get()
 		return nullptr;
 	}
 	return run_cfg.latest.back().c_str();
+}
+
+bool runconfig_msgbox_invalid_func() {
+	return run_cfg.msgbox_invalid_func;
 }
 
 size_t runconfig_stage_count()

@@ -22,14 +22,20 @@ _locale_t lc_neutral = nullptr;
 
 int hackpoints_error_function_not_found(const char *func_name, int retval)
 {
-	log_printf("ERROR: function '%s' not found! "
+	if (runconfig_msgbox_invalid_func()) {
+		if (log_mboxf("Binary Hack error", MB_OKCANCEL | MB_ICONERROR, "ERROR: function '%s' not found! ", func_name) == IDCANCEL) {
+			thcrap_ExitProcess(0);
+		}
+	} else {
+		log_printf("ERROR: function '%s' not found! "
 #ifdef _DEBUG
-		"(implementation not exported or still missing?)"
+			"(implementation not exported or still missing?)"
 #else
-		"(outdated or corrupt %s installation, maybe?)"
+			"(outdated or corrupt %s installation, maybe?)"
 #endif
-		"\n", func_name, PROJECT_NAME_SHORT()
-	);
+			"\n", func_name, PROJECT_NAME_SHORT()
+		);
+	}
 	return retval;
 }
 
