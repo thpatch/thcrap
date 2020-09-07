@@ -12,18 +12,18 @@ Update::Update(Update::filter_t filterCallback,
     crc32::generate_table(this->crc32Table);
 }
 
-get_status_t Update::httpStatusToGetStatus(HttpHandle::Status status)
+get_status_t Update::httpStatusToGetStatus(IHttpHandle::Status status)
 {
     switch (status) {
-        case HttpHandle::Status::Ok:
+        case IHttpHandle::Status::Ok:
             return GET_OK;
-        case HttpHandle::Status::ClientError:
+        case IHttpHandle::Status::ClientError:
             return GET_CLIENT_ERROR;
-        case HttpHandle::Status::ServerError:
+        case IHttpHandle::Status::ServerError:
             return GET_SERVER_ERROR;
-        case HttpHandle::Status::Cancelled:
+        case IHttpHandle::Status::Cancelled:
             return GET_CANCELLED;
-        case HttpHandle::Status::Error:
+        case IHttpHandle::Status::Error:
             return GET_SYSTEM_ERROR;
         default:
             throw std::invalid_argument("Invalid status");
@@ -160,7 +160,7 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
             },
 
             // Failure callback
-            [this, patch, fn = std::string(fn)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
+            [this, patch, fn = std::string(fn)](const DownloadUrl& url, IHttpHandle::Status httpStatus) {
                 get_status_t getStatus = this->httpStatusToGetStatus(httpStatus);
                 this->callProgressCallback(patch, fn, url, getStatus, 0, 0);
             },
@@ -192,7 +192,7 @@ void Update::startPatchUpdate(const patch_t *patch)
         [this, patch](const DownloadUrl&, std::vector<uint8_t>& data) {
             this->onFilesJsComplete(patch, data);
         },
-        [patch_id = std::string(patch->id)](const DownloadUrl& url, HttpHandle::Status httpStatus) {
+        [patch_id = std::string(patch->id)](const DownloadUrl& url, IHttpHandle::Status httpStatus) {
             log_printf("%s files.js download from %s failed\n", patch_id.c_str(), url.getUrl().c_str());
         }
     );

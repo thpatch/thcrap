@@ -19,10 +19,10 @@ class File
 {
 public:
     typedef std::function<void (const DownloadUrl& url, std::vector<uint8_t>& data)> success_t;
-    typedef std::function<void (const DownloadUrl& url, HttpHandle::Status status)> failure_t;
+    typedef std::function<void (const DownloadUrl& url, IHttpHandle::Status status)> failure_t;
     typedef std::function<bool (const DownloadUrl& url, size_t file_progress, size_t file_size)> progress_t;
     static void defaultSuccessFunction(const DownloadUrl&, std::vector<uint8_t>&) {}
-    static void defaultFailureFunction(const DownloadUrl& url, HttpHandle::Status status) {}
+    static void defaultFailureFunction(const DownloadUrl& url, IHttpHandle::Status status) {}
     static bool defaultProgressFunction(const DownloadUrl& url, size_t file_progress, size_t file_size) { return true; }
 
 private:
@@ -51,7 +51,7 @@ private:
     size_t writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size);
     bool progressCallback(const DownloadUrl& url, size_t dlnow, size_t dltotal);
     DownloadUrl pickUrl();
-    void download(HttpHandle& http, const DownloadUrl& url);
+    void download(IHttpHandle& http, const DownloadUrl& url);
 
 public:
     File(std::list<DownloadUrl>&& urls,

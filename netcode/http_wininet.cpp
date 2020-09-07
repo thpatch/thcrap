@@ -3,7 +3,7 @@
 #include <vector>
 #include "http_wininet.h"
 
-HttpHandle::HttpHandle()
+HttpWininet::HttpWininet()
 {
     DWORD ignore = 1;
     // DWORD timeout = 500;
@@ -31,13 +31,13 @@ HttpHandle::HttpHandle()
     InternetSetOption(this->internet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
 }
 
-HttpHandle::HttpHandle(HttpHandle&& other)
+HttpWininet::HttpWininet(HttpWininet&& other)
     : internet(other.internet)
 {
     other.internet = nullptr;
 }
 
-HttpHandle::~HttpHandle()
+HttpWininet::~HttpWininet()
 {
     if (this->internet) {
         InternetCloseHandle(this->internet);
@@ -70,7 +70,7 @@ public:
     const ScopedHInternet& operator=(HInternet&& src) = delete;
 }
 
-Status HttpHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
+Status HttpWininet::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;

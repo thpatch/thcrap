@@ -20,7 +20,7 @@ BorrowedHttpHandle::~BorrowedHttpHandle()
     }
 }
 
-HttpHandle& BorrowedHttpHandle::operator*()
+IHttpHandle& BorrowedHttpHandle::operator*()
 {
     return this->handle;
 }

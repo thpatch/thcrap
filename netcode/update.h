@@ -97,7 +97,7 @@ private:
     void onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& file);
     bool callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
                               size_t file_progress, size_t file_size);
-    get_status_t httpStatusToGetStatus(HttpHandle::Status status);
+    get_status_t httpStatusToGetStatus(IHttpHandle::Status status);
     std::string appendCrc32(const std::string& url, uint32_t crc32);
 
 public:

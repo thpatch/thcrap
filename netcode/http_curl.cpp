@@ -1,30 +1,30 @@
 #include "thcrap.h"
 #include "http_curl.h"
 
-HttpHandle::HttpHandle()
+CurlHandle::CurlHandle()
     : curl(curl_easy_init())
 {}
 
-HttpHandle::HttpHandle(HttpHandle&& other)
+CurlHandle::CurlHandle(CurlHandle&& other)
     : curl(other.curl)
 {
     other.curl = nullptr;
 }
 
-HttpHandle::~HttpHandle()
+CurlHandle::~CurlHandle()
 {
     if (this->curl) {
         curl_easy_cleanup(this->curl);
     }
 }
 
-size_t HttpHandle::writeCallbackStatic(char *ptr, size_t size, size_t nmemb, void *userdata)
+size_t CurlHandle::writeCallbackStatic(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
     auto callback = *static_cast<std::function<size_t(const uint8_t*, size_t)>*>(userdata);
     return callback(reinterpret_cast<const uint8_t*>(ptr), size * nmemb);
 };
 
-int HttpHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t /* ultotal */, curl_off_t /* ulnow */)
+int CurlHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t /* ultotal */, curl_off_t /* ulnow */)
 {
     auto callback = *static_cast<std::function<bool(size_t, size_t)>*>(userdata);
     if (callback(dlnow, dltotal)) {
@@ -35,15 +35,15 @@ int HttpHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_
     }
 };
 
-HttpHandle::Status HttpHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
+IHttpHandle::Status CurlHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
     curl_easy_setopt(this->curl, CURLOPT_FOLLOWLOCATION, 1);
 
-    curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, HttpHandle::writeCallbackStatic);
+    curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, CurlHandle::writeCallbackStatic);
     curl_easy_setopt(this->curl, CURLOPT_WRITEDATA, &writeCallback);
 
     curl_easy_setopt(this->curl, CURLOPT_NOPROGRESS, 0);
-    curl_easy_setopt(this->curl, CURLOPT_XFERINFOFUNCTION, HttpHandle::progressCallbackStatic);
+    curl_easy_setopt(this->curl, CURLOPT_XFERINFOFUNCTION, CurlHandle::progressCallbackStatic);
     curl_easy_setopt(this->curl, CURLOPT_XFERINFODATA, &progressCallback);
 
     char errbuf[CURL_ERROR_SIZE];

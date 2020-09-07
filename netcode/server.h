@@ -10,8 +10,10 @@
 
 #ifdef USE_HTTP_CURL
 # include "http_curl.h"
+typedef CurlHandle HttpHandle;
 #elif defined(USE_HTTP_WININET)
 # include "http_wininet.h"
+typedef WininetHandle HttpHandle;
 #else
 # error "Unknown http library. Please define either USE_HTTP_CURL or USE_HTTP_WININET"
 #endif
@@ -31,7 +33,7 @@ public:
     BorrowedHttpHandle(const BorrowedHttpHandle& src) = delete;
     BorrowedHttpHandle& operator=(const BorrowedHttpHandle& src) = delete;
 
-    HttpHandle& operator*();
+    IHttpHandle& operator*();
 };
 
 
