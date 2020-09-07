@@ -83,6 +83,9 @@ TEST(RunconfigTest, ThcrapDir)
 {
     EXPECT_EQ(runconfig_thcrap_dir_get(), nullptr);
 
+    runconfig_thcrap_dir_set(nullptr);
+    EXPECT_EQ(runconfig_thcrap_dir_get(), nullptr);
+
     {
         ScopedRunconfig runconfig(json_pack("{s:s}",
             "thcrap_dir", "C:\\somewhere\\"
@@ -99,6 +102,9 @@ TEST(RunconfigTest, ThcrapDir)
 
 TEST(RunconfigTest, RuncfgFn)
 {
+    EXPECT_EQ(runconfig_runcfg_fn_get(), nullptr);
+
+    runconfig_runcfg_fn_set(nullptr);
     EXPECT_EQ(runconfig_runcfg_fn_get(), nullptr);
 
     {
@@ -161,6 +167,9 @@ TEST(RunconfigTest, Game)
 
 TEST(RunconfigTest, Build)
 {
+    EXPECT_EQ(runconfig_build_get(), nullptr);
+
+    runconfig_build_set(nullptr);
     EXPECT_EQ(runconfig_build_get(), nullptr);
 
     {
@@ -274,6 +283,9 @@ TEST(RunconfigTest, DatDump)
 TEST(RunconfigTest, Latest)
 {
     EXPECT_EQ(runconfig_latest_check(), false);
+    EXPECT_EQ(runconfig_latest_get(), nullptr);
+
+    runconfig_build_set(nullptr);
     EXPECT_EQ(runconfig_latest_get(), nullptr);
 
     {

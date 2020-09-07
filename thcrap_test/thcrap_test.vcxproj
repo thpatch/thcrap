@@ -43,5 +43,6 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\runconfig.cpp" />
+    <ClCompile Include="src\patchfile.cpp" />
   </ItemGroup>
 </Project>

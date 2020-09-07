@@ -320,7 +320,12 @@ const char *runconfig_thcrap_dir_get()
 
 void runconfig_thcrap_dir_set(const char *thcrap_dir)
 {
-	run_cfg.thcrap_dir = thcrap_dir;
+	if (thcrap_dir != nullptr) {
+		run_cfg.thcrap_dir = thcrap_dir;
+	}
+	else {
+		run_cfg.thcrap_dir.clear();
+	}
 }
 
 const char *runconfig_runcfg_fn_get()
@@ -330,7 +335,12 @@ const char *runconfig_runcfg_fn_get()
 
 void runconfig_runcfg_fn_set(const char *runcfg_fn)
 {
-	run_cfg.runcfg_fn = runcfg_fn;
+	if (runcfg_fn != nullptr) {
+		run_cfg.runcfg_fn = runcfg_fn;
+	}
+	else {
+		run_cfg.runcfg_fn.clear();
+	}
 }
 
 const char *runconfig_game_get()
@@ -345,7 +355,12 @@ const char *runconfig_build_get()
 
 void runconfig_build_set(const char *build)
 {
-	run_cfg.build = build;
+	if (build != nullptr) {
+		run_cfg.build = build;
+	}
+	else {
+		run_cfg.build.clear();
+	}
 }
 
 const char *runconfig_title_get()
