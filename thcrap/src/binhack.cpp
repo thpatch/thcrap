@@ -364,7 +364,6 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	struct codecave_local_state_t {
 		size_t size;
 		size_t size_full;
-		size_t offset;
 	};
 
 	VLA(codecave_local_state_t, codecaves_local_state, (codecaves_count + 1) * sizeof(codecave_local_state_t));
@@ -378,7 +377,6 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		codecaves_local_state[i].size_full = temp - (temp % 16) + 16;
 
 		codecaves_total_size += codecaves_local_state[i].size_full;
-		codecaves_local_state[i].offset = codecaves_total_size;
 	}
 
 	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
