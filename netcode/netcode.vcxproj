@@ -66,6 +66,7 @@
       <PreprocessorDefinitions>USE_HTTP_WININET;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)thcrap_stuff/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -102,6 +103,11 @@
     <ClCompile Include="http_wininet.cpp" />
     <ClCompile Include="download_url.cpp" />
     <ClCompile Include="random.cpp" />
+    <ClCompile Include="thcrap_stuff\repo.cpp" />
+    <ClCompile Include="thcrap_stuff\patchfile.cpp" />
+    <ClCompile Include="thcrap_stuff\stack.cpp" />
+    <ClCompile Include="thcrap_stuff\jansson_ex.cpp" />
+    <ClCompile Include="thcrap_stuff\strings_array.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
