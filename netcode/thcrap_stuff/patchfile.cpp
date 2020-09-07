@@ -65,7 +65,7 @@ void* file_read(const char *fn, size_t *file_size)
     std::streamsize size = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    void *buffer = malloc(size);
+    void *buffer = malloc((size_t)size);
     if (buffer == nullptr) {
         return nullptr;
     }
@@ -75,7 +75,7 @@ void* file_read(const char *fn, size_t *file_size)
     }
 
     if (file_size) {
-        *file_size = size;
+        *file_size = (size_t)size;
     }
     return buffer;
 }
@@ -83,7 +83,7 @@ void* file_read(const char *fn, size_t *file_size)
 int file_write(const char *fn, const void *file_buffer, const size_t file_size)
 {
 	dir_create_for_fn(fn);
-    std::ofstream file(fn);
+    std::ofstream file(fn, std::ios::binary);
     file.write((const char*)file_buffer, file_size);
     return file ? 0 : 1;
 }

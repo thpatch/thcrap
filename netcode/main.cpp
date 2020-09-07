@@ -136,6 +136,7 @@ int main()
 #ifdef USE_HTTP_CURL
     curl_global_init(CURL_GLOBAL_DEFAULT);
 #endif
+    json_set_alloc_funcs(malloc, free);
 
     return do_thcrap_configure();
 }

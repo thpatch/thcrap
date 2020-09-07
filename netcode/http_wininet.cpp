@@ -1,9 +1,10 @@
+#include "thcrap.h"
 #include <Windows.h>
 #include <stdexcept>
 #include <vector>
 #include "http_wininet.h"
 
-HttpWininet::HttpWininet()
+WininetHandle::WininetHandle()
 {
     DWORD ignore = 1;
     // DWORD timeout = 500;
@@ -31,13 +32,13 @@ HttpWininet::HttpWininet()
     InternetSetOption(this->internet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
 }
 
-HttpWininet::HttpWininet(HttpWininet&& other)
+WininetHandle::WininetHandle(WininetHandle&& other)
     : internet(other.internet)
 {
     other.internet = nullptr;
 }
 
-HttpWininet::~HttpWininet()
+WininetHandle::~WininetHandle()
 {
     if (this->internet) {
         InternetCloseHandle(this->internet);
@@ -47,30 +48,30 @@ HttpWininet::~HttpWininet()
 class ScopedHInternet
 {
 private:
-    HINTERNET hInternet;
+	HINTERNET hInternet;
 
 public:
-    ScopedHInternet(HINTERNET hInternet)
-        : hInternet(hInternet)
-    {}
-    ~ScopedHInternet()
-    {
-        if (this->hInternet) {
-	        InternetCloseHandle(this->hInternet);
-        }
-    }
-    operator HINTERNET()
-    {
-        return this->hInternet;
-    }
+	ScopedHInternet(HINTERNET hInternet)
+		: hInternet(hInternet)
+	{}
+	~ScopedHInternet()
+	{
+		if (this->hInternet) {
+			InternetCloseHandle(this->hInternet);
+		}
+	}
+	operator HINTERNET()
+	{
+		return this->hInternet;
+	}
 
-    ScopedHInternet(const HInternet& src) = delete;
-    ScopedHInternet(HInternet&& src) = delete;
-    const ScopedHInternet& operator=(const HInternet& src) = delete;
-    const ScopedHInternet& operator=(HInternet&& src) = delete;
-}
+	ScopedHInternet(const ScopedHInternet& src) = delete;
+	ScopedHInternet(ScopedHInternet&& src) = delete;
+	const ScopedHInternet& operator=(const ScopedHInternet& src) = delete;
+	const ScopedHInternet& operator=(ScopedHInternet&& src) = delete;
+};
 
-Status HttpWininet::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
+IHttpHandle::Status WininetHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;
@@ -139,7 +140,7 @@ Status HttpWininet::download(const std::string& url, std::function<size_t(const 
 		buffer.resize(read_size);
 		if (InternetReadFile(hFile, buffer.data(), read_size, &byte_ret) == FALSE) {
 			log_printf("%s: reading error #%d\n", url.c_str(), GetLastError());
-			return return Status::SystemError;
+			return Status::Error;
 		}
 		rem_size -= byte_ret;
 		if (progressCallback(file_size - rem_size, file_size) == false) {
@@ -147,7 +148,7 @@ Status HttpWininet::download(const std::string& url, std::function<size_t(const 
         }
         if (writeCallback(buffer.data(), read_size) != read_size) {
 		    log_printf("%s: writing error #%d\n", url.c_str(), GetLastError());
-			return Status::SystemError;
+			return Status::Error;
 		}
 	}
 
