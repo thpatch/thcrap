@@ -24,7 +24,10 @@ void Downloader::addFile(const std::list<std::string>& serversUrl, std::string f
                          File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
 {
     std::list<DownloadUrl> urls = this->serversListToDownloadUrlList(serversUrl, filePath);
-    this->files.emplace_back(std::move(urls), successCallback, failureCallback, progressCallback);
+    this->files.emplace_back(std::move(urls), [successCallback, &current_ = this->current_](const DownloadUrl& url, std::vector<uint8_t>& data) {
+        current_++;
+        return successCallback(url, data);
+    }, failureCallback, progressCallback);
     auto& file = this->files.back();
     this->addToQueue(file);
 }
@@ -43,9 +46,8 @@ void Downloader::addFile(char** serversUrl, std::string filePath,
 void Downloader::addToQueue(File& file)
 {
     file.decrementThreadsLeft();
-    this->futuresList.push_back(this->pool.enqueue([&file, &current_ = this->current_]() {
+    this->futuresList.push_back(this->pool.enqueue([&file]() {
         file.download();
-        current_++;
     }));
 }
 

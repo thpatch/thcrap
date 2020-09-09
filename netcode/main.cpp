@@ -49,7 +49,7 @@ bool progress_callback(progress_callback_status_t *status, void *param)
             log_printf("%s: server error\n", status->url);
             return true;
         case GET_CANCELLED:
-            log_printf("%s: cancelled\n", status->url);
+            // Another copy of the file have been downloader earlier. Ignore.
             return true;
         case GET_SYSTEM_ERROR:
             log_printf("%s: system error\n", status->url);

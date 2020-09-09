@@ -65,16 +65,17 @@ IHttpHandle::Status CurlHandle::download(const std::string& url, std::function<s
     std::string error;
     if (res != CURLE_OK) {
         if (errbuf[0]) {
-            log_printf("%s: %s\n", url.c_str(), errbuf);
+            error = errbuf;
         }
         else {
-            log_printf("%s: %s\n", url.c_str(), curl_easy_strerror(res));
+            error = curl_easy_strerror(res);
         }
         curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, nullptr);
         if (res == CURLE_ABORTED_BY_CALLBACK) {
             return Status::Cancelled;
         }
         else {
+            log_printf("%s: %s\n", url.c_str(), error.c_str());
             return Status::Error;
         }
     }

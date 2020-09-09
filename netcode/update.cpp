@@ -48,11 +48,6 @@ bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, c
     status.file_size = file_size;
 
     status.nb_files_downloaded = this->mainDownloader.current();
-    if (getStatus == GET_OK) {
-        // The number of downloaded files is updated after this callback returns.
-        status.nb_files_downloaded++;
-    }
-
     if (this->filesJsDownloader.current() == this->filesJsDownloader.total()) {
         status.nb_files_total = this->mainDownloader.total();
     }
@@ -225,7 +220,11 @@ void Update::startPatchUpdate(const patch_t *patch)
             this->onFilesJsComplete(patch, data);
         },
         [patch_id = std::string(patch->id)](const DownloadUrl& url, IHttpHandle::Status httpStatus) {
-            log_printf("%s files.js download from %s failed\n", patch_id.c_str(), url.getUrl().c_str());
+            if (httpStatus == IHttpHandle::Status::Cancelled) {
+                // Another file finished before
+                return ;
+            }
+            log_printf("Downloading files.js from %s failed\n", url.getUrl().c_str());
         }
     );
 }
