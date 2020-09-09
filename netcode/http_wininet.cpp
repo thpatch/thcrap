@@ -10,15 +10,15 @@ WininetHandle::WininetHandle()
     // DWORD timeout = 500;
 
     // Format according to RFC 7231, section 5.5.3
-    auto self_name = L"thcrap netcode";
-    auto self_version = L"0.0.1";
-    auto os = L"Windows 10 (hardcoded string)";
-    std::wstring agent = std::wstring(self_name) + L"/" + self_version + L" (" + os + L")";
+    auto self_name = PROJECT_NAME_SHORT();
+    auto self_version = PROJECT_VERSION_STRING();
+    auto os = windows_version();
+    std::string agent = std::string(self_name) + "/" + self_version + " (" + os + ")";
 
-    this->internet = InternetOpenW(agent.c_str(), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    this->internet = InternetOpenU(agent.c_str(), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
     if (this->internet == nullptr) {
-        // No internet access...?
-        throw std::runtime_error("InternetOpen failed");
+		log_printf("Could not initialize HTTP library. No internet access?\n");
+        return ;
     }
     /*
     InternetSetOption(ret, INTERNET_OPTION_CONNECT_TIMEOUT, &timeout, sizeof(DWORD));
@@ -75,6 +75,14 @@ IHttpHandle::Status WininetHandle::download(const std::string& url, std::functio
 {
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;
+
+    if (this->internet == nullptr) {
+        // Could be an invalid argument, using an HttpWininet which
+        // have been moved into another object.
+        // But most probably the InternetOpen in the constructor failed,
+        // so we already displayed an error and we just want to leave.
+        return Status::Error;
+    }
 
 	ScopedHInternet hFile = InternetOpenUrlA(
 		this->internet, url.c_str(), NULL, 0,

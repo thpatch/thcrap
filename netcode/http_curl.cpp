@@ -39,6 +39,10 @@ IHttpHandle::Status CurlHandle::download(const std::string& url, std::function<s
 {
     curl_easy_setopt(this->curl, CURLOPT_FOLLOWLOCATION, 1);
 
+    // Format according to RFC 7231, section 5.5.3
+    std::string userAgent = std::string(PROJECT_NAME_SHORT()) + "/" + PROJECT_VERSION_STRING() + " (" + windows_version() + ")";
+    curl_easy_setopt(this->curl, CURLOPT_USERAGENT, userAgent.c_str());
+
     curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, CurlHandle::writeCallbackStatic);
     curl_easy_setopt(this->curl, CURLOPT_WRITEDATA, &writeCallback);
 

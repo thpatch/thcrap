@@ -8,6 +8,11 @@
 #include "stack.h"
 
 #define log_printf printf
+#define InternetOpenU InternetOpenA
+
+#define PROJECT_NAME_SHORT() "thcrap netcode"
+#define PROJECT_VERSION_STRING() "0.0.2"
+#define windows_version() "Windows 10 (hardcoded string)"
 
 // Automatically decref a json when leaving the current scope
 class ScopedJson
