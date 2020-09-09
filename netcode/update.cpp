@@ -93,10 +93,41 @@ public:
     AutoWriteJson& operator=(AutoWriteJson&&) = delete;
 };
 
-std::string Update::appendCrc32(const std::string& url, uint32_t crc32)
+std::string Update::fnToUrl(const std::string& url, uint32_t crc32)
 {
+    // Formatting with streams is trash. Hopefully we can replace this
+    // with the C++20 std::format.
     std::ostringstream ss;
-    ss << url << "?crc32=" << std::hex << std::setw(8) << std::setfill('0') << crc32;
+    ss << std::hex << std::setfill('0');
+
+    auto is_valid_for_uri = [](unsigned char c) {
+        if ('A' <= c && c <= 'Z') {
+            return true;
+        }
+        if ('a' <= c && c <= 'z') {
+            return true;
+        }
+        if ('0' <= c && c <= '9') {
+            return true;
+        }
+        if (c == '-' || c == '_' || c == '.' || c == '~') {
+            return true;
+        }
+        return false;
+    };
+
+    // Escape illegal characters
+    for (unsigned char c : url) {
+        if (is_valid_for_uri(c) || c == '/') {
+            ss.put(c);
+        }
+        else {
+            ss << '%'<< std::setw(2) << static_cast<unsigned int>(c) << std::setw(0);
+        }
+    }
+
+    // Append CRC32 in order to get the correct version from the CDN
+    ss << "?crc32=" << std::setw(8) << crc32 << std::setw(0);
     return ss.str();
 }
 
@@ -143,7 +174,7 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
             continue;
         }
 
-        this->mainDownloader.addFile(patch->servers, this->appendCrc32(fn, (uint32_t)json_integer_value(value)),
+        this->mainDownloader.addFile(patch->servers, this->fnToUrl(fn, (uint32_t)json_integer_value(value)),
 
             // Success callback
             [this, patch, fn = std::string(fn), localFilesJs, value = ScopedJson(json_incref(value))]
