@@ -5,8 +5,6 @@ EXPORTS
 	; TODO: Rename and remove after moving to a separate updater process
 	http_mod_exit
 
-	ServerDownloadFile
-
 	update_filter_global
 	update_filter_games
 	patch_bootstrap

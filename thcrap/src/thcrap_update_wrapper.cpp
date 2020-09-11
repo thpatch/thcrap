@@ -43,13 +43,6 @@ if (cached_func) { \
 
 
 
-void* ServerDownloadFile_wrapper(const char * const *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param)
-{
-	CALL_WRAPPED_FUNCTION(ServerDownloadFile, servers, fn, file_size, exp_crc, callback, callback_param)
-	return NULL;
-}
-ASSERT_FUNCTION_PROTO(ServerDownloadFile);
-
 int update_filter_global_wrapper(const char *fn, json_t *null)
 {
 	CALL_WRAPPED_FUNCTION(update_filter_global, fn, null)
