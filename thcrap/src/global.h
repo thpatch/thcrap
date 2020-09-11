@@ -32,6 +32,10 @@ int globalconfig_set_integer(char* key, const long long value);
 // Releases global_cfg
 void globalconfig_release(void);
 
+// Memory management
+void* __cdecl thcrap_alloc(size_t size);
+void  __cdecl thcrap_free(void *mem);
+
 // Convenience macro for binary file names that differ between Debug and
 // Release builds.
 #ifdef _DEBUG

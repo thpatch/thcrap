@@ -832,8 +832,9 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	WriteProcessMemory(hProcess, addr, entry_asm_delay, sizeof(entry_asm_delay), &byte_ret);
 	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_delay));
 
+	// 32 bit assumption
 	context.ContextFlags = CONTEXT_CONTROL;
-	while(context.Eip != (DWORD)addr) {
+	while(context.Eip != (UINT_PTR)addr) {
 		ResumeThread(hThread);
 		Sleep(10);
 		SuspendThread(hThread);

@@ -81,6 +81,7 @@ EXPORTS
 	runconfig_console_get
 	runconfig_game_get
 	runconfig_build_get
+	runconfig_build_set
 	runconfig_title_get
 	runconfig_update_url_get
 	runconfig_dat_dump_get
@@ -93,6 +94,8 @@ EXPORTS
 	globalconfig_get_integer
 	globalconfig_set_integer
 	globalconfig_release
+	thcrap_alloc
+	thcrap_free
 
 	; Initialization
 	; --------------
@@ -246,8 +249,11 @@ EXPORTS
 	; Plugins
 	; -------
 	func_get
+	func_add
+	func_remove
 	plugins_load
 	plugins_close
+	mod_func_remove
 
 	; Detour promotion
 	; ----------------

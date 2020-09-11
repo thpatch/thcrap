@@ -52,7 +52,7 @@ repo_t *find_repo_in_list(repo_t **repo_list, const char *repo_id)
 
 const repo_patch_t *find_patch_in_repo(const repo_t *repo, const char *patch_id)
 {
-	for (size_t i = 0; repo->patches[i].patch_id; i++) {
+	for (size_t i = 0; repo && repo->patches[i].patch_id; i++) {
 		if (strcmp(repo->patches[i].patch_id, patch_id) == 0) {
 			return &repo->patches[i];
 		}
@@ -122,7 +122,7 @@ int AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
 	}
 
 	stack_add_patch(&patch_full);
-	sel_stack.push_back(sel);
+	sel_stack.push_back({strdup(sel.repo_id), strdup(sel.patch_id)});
 	patch_free(&patch_info);
 	return ret;
 }
@@ -135,15 +135,16 @@ int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 	};
 
 	std::vector<patch_desc_t> deps;
-	patch_desc_t sel = *std::find_if(sel_stack.begin(), sel_stack.end(), match);
+	patch_sel_stack_t::iterator sel = std::find_if(sel_stack.begin(), sel_stack.end(), match);
 
-	stack_remove_patch(patch_id);
-	sel_stack.remove_if(match);
-
-	stack_foreach_cpp([&deps, &sel](const patch_t *patch) {
-		for (size_t i = 0; patch->dependencies[i].patch_id; i++) {
-			if (sel_match(patch->dependencies[i], sel)) {
-				deps.push_back(patch->dependencies[i]);
+	stack_foreach_cpp([&](const patch_t *patch) {
+		for (size_t i = 0; patch->dependencies && patch->dependencies[i].patch_id; i++) {
+			if (sel_match(patch->dependencies[i], *sel)) {
+				for (patch_desc_t &stack_patch : sel_stack) {
+					if (strcmp(patch->id, stack_patch.patch_id) == 0) {
+						deps.push_back(stack_patch);
+					}
+				}
 			}
 		}
 	});
@@ -151,6 +152,12 @@ int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 	for (const patch_desc_t& it : deps) {
 		RemovePatch(sel_stack, it.patch_id);
 	}
+
+	
+	stack_remove_patch(patch_id);
+	free(sel->patch_id);
+	free(sel->repo_id);
+	sel_stack.erase(sel);
 
 	return 1;
 }

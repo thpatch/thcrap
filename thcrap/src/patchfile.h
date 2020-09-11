@@ -73,7 +73,7 @@ typedef struct
 	char *title;
 	// Servers list (NULL-terminated) (from patch.js)
 	char **servers;
-	// List of dependencies (from run configuration)
+	// List of dependencies (from patch.js)
 	patch_desc_t *dependencies;
 	// List of font files to load (from patch.js)
 	char **fonts;

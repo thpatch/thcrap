@@ -55,6 +55,9 @@ const char *runconfig_latest_get();
 // Return the number of stages
 size_t runconfig_stage_count();
 
+// Return true if the binhack parser if it should show a message box, should it fail to find a function
+bool runconfig_msgbox_invalid_func();
+
 #define RUNCFG_STAGE_USE_MODULE 1
 #define RUNCFG_STAGE_SKIP_BREAKPOINTS 2
 // Apply the binhacks, codecaves and breakpoints of a stage.
@@ -82,11 +85,7 @@ void runconfig_load(json_t *file, int flags);
 void runconfig_load_from_file(const char *path);
 
 // Free the run configuration.
-// Note that this function doesn't clear all the fields,
-// only the dynamically-allocated ones. If you call runconfig_load after this,
-// the runconfig *will* contain leftover values from the previous runconfig.
-// If you need to free a runconfig and reload another one,
-// go and change the runconfig_free implementation (and this comment).
+// You can load a new run configuration after calling this function.
 void runconfig_free();
 
 

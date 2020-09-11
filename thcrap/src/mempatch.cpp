@@ -78,8 +78,8 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 	if(!VirtualCheckCode(detour->new_ptr)) {
 		return -2;
 	}
-	auto pOT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->OriginalFirstThunk);
-	auto pIT = (PIMAGE_THUNK_DATA)((DWORD)hMod + pImpDesc->FirstThunk);
+	auto pOT = (PIMAGE_THUNK_DATA)((UINT_PTR)hMod + pImpDesc->OriginalFirstThunk);
+	auto pIT = (PIMAGE_THUNK_DATA)((UINT_PTR)hMod + pImpDesc->FirstThunk);
 
 	// We generally detour by comparing exported names. This has the advantage
 	// that we can override any existing patches, and that it works on Win9x
@@ -91,7 +91,7 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 		for(; pOT->u1.Function; pOT++, pIT++) {
 			PIMAGE_IMPORT_BY_NAME pByName;
 			if(!(pOT->u1.Ordinal & IMAGE_ORDINAL_FLAG)) {
-				pByName = (PIMAGE_IMPORT_BY_NAME)((DWORD)hMod + pOT->u1.AddressOfData);
+				pByName = (PIMAGE_IMPORT_BY_NAME)((UINT_PTR)hMod + pOT->u1.AddressOfData);
 				if(pByName->Name[0] == '\0') {
 					return 0;
 				}
@@ -190,7 +190,7 @@ int iat_detour_apply(HMODULE hMod)
 	while(pImpDesc->Name) {
 		json_t *funcs;
 		size_t func_count;
-		char *dll_name = (char*)((DWORD)hMod + (DWORD)pImpDesc->Name);
+		char *dll_name = (char*)((UINT_PTR)hMod + (UINT_PTR)pImpDesc->Name);
 		HMODULE hDll = GetModuleHandleA(dll_name);
 		STRLWR_DEC(dll_name);
 

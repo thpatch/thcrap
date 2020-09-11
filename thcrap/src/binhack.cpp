@@ -22,14 +22,20 @@ _locale_t lc_neutral = nullptr;
 
 int hackpoints_error_function_not_found(const char *func_name, int retval)
 {
-	log_printf("ERROR: function '%s' not found! "
+	if (runconfig_msgbox_invalid_func()) {
+		if (log_mboxf("Binary Hack error", MB_OKCANCEL | MB_ICONERROR, "ERROR: function '%s' not found! ", func_name) == IDCANCEL) {
+			thcrap_ExitProcess(0);
+		}
+	} else {
+		log_printf("ERROR: function '%s' not found! "
 #ifdef _DEBUG
-		"(implementation not exported or still missing?)"
+			"(implementation not exported or still missing?)"
 #else
-		"(outdated or corrupt %s installation, maybe?)"
+			"(outdated or corrupt %s installation, maybe?)"
 #endif
-		"\n", func_name, PROJECT_NAME_SHORT()
-	);
+			"\n", func_name, PROJECT_NAME_SHORT()
+		);
+	}
 	return retval;
 }
 
@@ -344,7 +350,7 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 	return failed;
 }
 
-int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count, DWORD protection) {
+int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	if (codecaves_count == 0) {
 		return 0;
 	}
@@ -352,16 +358,28 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count, DWORD p
 	log_printf("Applying codecaves...\n");
 	log_printf("------------------------\n");
 
-	const size_t codecave_sep_size = 3;
+	const size_t codecave_sep_size_min = 3;
 	size_t codecaves_total_size = 0;
+
+	struct codecave_local_state_t {
+		size_t size;
+		size_t size_full;
+	};
+
+	VLA(codecave_local_state_t, codecaves_local_state, (codecaves_count + 1) * sizeof(codecave_local_state_t));
+	codecaves_local_state[codecaves_count] = {};
 
 	// First pass: calc the complete codecave size
 	for (size_t i = 0; i < codecaves_count; i++) {
-		codecaves_total_size += binhack_calc_size(codecaves[i].code);
-		codecaves_total_size += codecave_sep_size;
+		codecaves_local_state[i].size = binhack_calc_size(codecaves[i].code);
+
+		size_t temp = codecaves_local_state[i].size + codecave_sep_size_min;
+		codecaves_local_state[i].size_full = temp - (temp % 16) + 16;
+
+		codecaves_total_size += codecaves_local_state[i].size_full;
 	}
 
-	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 
 	// Second pass: Gather the addresses, so that codecaves can refer to each other.
 	BYTE *current_cave = codecave_buf;
@@ -374,7 +392,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count, DWORD p
 		strcpy(codecave_full_name + 9, codecave_name);
 		func_add(codecave_full_name, (size_t)current_cave);
 
-		current_cave += binhack_calc_size(codecaves[i].code) + codecave_sep_size;
+		current_cave += codecaves_local_state[i].size_full;
 
 		VLA_FREE(codecave_full_name);
 	}
@@ -386,18 +404,13 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count, DWORD p
 		const char* code = codecaves[i].code;
 		binhack_render(current_cave, (size_t)current_cave, code);
 
-		current_cave += binhack_calc_size(code);
-		for (size_t i = 0; i < codecave_sep_size; i++) {
+		current_cave += codecaves_local_state[i].size;
+		for (size_t j = 0; j < codecaves_local_state[i].size_full - codecaves_local_state[i].size; j++) {
 			*current_cave = 0xCC; current_cave++;
 		}
 	}
 
-	DWORD old_prot;
-	if (protection == 0) {
-		protection = PAGE_EXECUTE_READ;
-	}
-
-	VirtualProtect(codecave_buf, codecaves_total_size, protection, &old_prot);
+	VLA_FREE(codecaves_local_state);
 
 	return 0;
 }

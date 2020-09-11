@@ -24,7 +24,11 @@
 void* func_get(const char *name);
 
 // Adds a pointer to a function to the list of functions used by func_get
-int func_add(const char *name, size_t addr);
+void func_add(const char *name, size_t addr);
+
+// Removes a function from the list of functions used by func_get
+// This function is nessesairy for plugins to be able to unload themselves
+void func_remove(const char *name);
 
 /// Module functions
 /// ================
@@ -61,7 +65,15 @@ int func_add(const char *name, size_t addr);
 // Module function type.
 typedef void (*mod_call_type)(void *param);
 
-// Builds a JSON object mapping the suffixes of all module hook functions
+// Removes a module hook function from the unordered map of module hook function
+// This function is nessesairy for plugins to be able to unload themselves
+void mod_func_remove(const char *pattern, mod_call_type func);
+
+#ifdef __cplusplus
+typedef std::unordered_map<std::string_view, std::vector<mod_call_type>> mod_funcs_t;
+typedef std::pair<std::string_view, std::vector<mod_call_type>> mod_func_pair_t;
+
+// Builds an unordered map mapping the suffixes of all module hook functions
 // occurring in [funcs] to an array of pointers to all the functions in
 // [funcs] with that suffix:
 // {
@@ -70,16 +82,17 @@ typedef void (*mod_call_type)(void *param);
 //	],
 //	...
 // }
-json_t* mod_func_build(json_t *funcs);
+mod_funcs_t* mod_func_build(exported_func_t *funcs);
 
 // Runs every module hook function for [suffix] in [mod_funcs]. The execution
 // order of the hook functions follows the order their DLLs were originally
 // loaded in, but is undefined within the functions of a single DLL.
-void mod_func_run(json_t *funcs, const char *suffix, void *param);
+void mod_func_run(mod_funcs_t *funcs, const char *suffix, void *param);
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.
 void mod_func_run_all(const char *suffix, void *param);
 /// ===================
+#endif
 
 // Initializes a plug-in DLL at [hMod]. This means registering all of its
 // exports, and calling its "init" and "detour" module functions.

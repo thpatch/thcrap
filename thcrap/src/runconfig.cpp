@@ -16,7 +16,6 @@ struct stage_t
 	HMODULE module;
 	std::vector<binhack_t> binhacks;
 	std::vector<codecave_t> codecaves;
-	DWORD codecaves_protection;
 	std::vector<breakpoint_local_t> breakpoints;
 };
 
@@ -45,6 +44,8 @@ struct runconfig_t
 	// Hackpoints (breakpoints, codecaves and binhacks) for stages (from game_id.js and game_id.build.js).
 	// The global hackpoints (those not in a stage) are put in the last stage.
 	std::vector<stage_t> stages;
+	// Boolean flag that tells the binhack parser if it should show a message box, should it fail to find a function
+	bool msgbox_invalid_func;
 };
 
 static runconfig_t run_cfg;
@@ -117,11 +118,9 @@ static void runconfig_stage_load(json_t *stage_json)
 		}
 	}
 
-	stage.codecaves_protection = 0;
 	json_t *codecaves = json_object_get(stage_json, "codecaves");
 	json_object_foreach(codecaves, key, value) {
 		if (strcmp(key, "protection") == 0) {
-			stage.codecaves_protection = json_hex_value(value);
 			continue;
 		}
 
@@ -172,12 +171,13 @@ void runconfig_load(json_t *file, int flags)
 	set_string_if_exist("game",  run_cfg.game);
 	set_string_if_exist("build", run_cfg.build);
 	set_string_if_exist("title", run_cfg.title);
+	set_string_if_exist("url_update", run_cfg.update_url);
 
 	value = json_object_get(file, "console");
 	if (value) {
 		run_cfg.console = json_is_true(value);
 	}
-
+	run_cfg.msgbox_invalid_func = json_is_true(json_object_get(run_cfg.json, "msgbox_invalid_func"));
 	value = json_object_get(file, "dat_dump");
 	if (value && (run_cfg.dat_dump.empty() || can_overwrite)) {
 		if (json_is_string(value)) {
@@ -266,6 +266,7 @@ void runconfig_free()
 {
 	stack_free();
 	json_decref_safe(run_cfg.json);
+	run_cfg.json = nullptr;
 	run_cfg.console = false;
 	run_cfg.thcrap_dir.clear();
 	run_cfg.runcfg_fn.clear();
@@ -314,37 +315,52 @@ bool runconfig_console_get()
 
 const char *runconfig_thcrap_dir_get()
 {
-	return run_cfg.thcrap_dir.c_str();
+	return run_cfg.thcrap_dir.empty() == false ? run_cfg.thcrap_dir.c_str() : nullptr;
 }
 
 void runconfig_thcrap_dir_set(const char *thcrap_dir)
 {
-	run_cfg.thcrap_dir = thcrap_dir;
+	if (thcrap_dir != nullptr) {
+		run_cfg.thcrap_dir = thcrap_dir;
+	}
+	else {
+		run_cfg.thcrap_dir.clear();
+	}
 }
 
 const char *runconfig_runcfg_fn_get()
 {
-	return run_cfg.runcfg_fn.c_str();
+	return run_cfg.runcfg_fn.empty() == false ? run_cfg.runcfg_fn.c_str() : nullptr;
 }
 
 void runconfig_runcfg_fn_set(const char *runcfg_fn)
 {
-	run_cfg.runcfg_fn = runcfg_fn;
+	if (runcfg_fn != nullptr) {
+		run_cfg.runcfg_fn = runcfg_fn;
+	}
+	else {
+		run_cfg.runcfg_fn.clear();
+	}
 }
 
 const char *runconfig_game_get()
 {
-	return run_cfg.game.c_str();
+	return run_cfg.game.empty() == false ? run_cfg.game.c_str() : nullptr;
 }
 
 const char *runconfig_build_get()
 {
-	return run_cfg.build.c_str();
+	return run_cfg.build.empty() == false ? run_cfg.build.c_str() : nullptr;
 }
 
 void runconfig_build_set(const char *build)
 {
-	run_cfg.build = build;
+	if (build != nullptr) {
+		run_cfg.build = build;
+	}
+	else {
+		run_cfg.build.clear();
+	}
 }
 
 const char *runconfig_title_get()
@@ -373,12 +389,12 @@ const char *runconfig_title_get()
 
 const char *runconfig_update_url_get()
 {
-	return run_cfg.update_url.c_str();
+	return run_cfg.update_url.empty() == false ? run_cfg.update_url.c_str() : nullptr;
 }
 
 const char *runconfig_dat_dump_get()
 {
-	return run_cfg.dat_dump.c_str();
+	return run_cfg.dat_dump.empty() == false ? run_cfg.dat_dump.c_str() : nullptr;
 }
 
 bool runconfig_latest_check()
@@ -400,6 +416,10 @@ const char *runconfig_latest_get()
 	return run_cfg.latest.back().c_str();
 }
 
+bool runconfig_msgbox_invalid_func() {
+	return run_cfg.msgbox_invalid_func;
+}
+
 size_t runconfig_stage_count()
 {
 	return run_cfg.stages.size();
@@ -419,7 +439,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 		hMod = stage.module;
 	}
 
-	ret += codecaves_apply(stage.codecaves.data(), stage.codecaves.size(), stage.codecaves_protection);
+	ret += codecaves_apply(stage.codecaves.data(), stage.codecaves.size());
 	ret += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), hMod);
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
 		// FIXME: this workaround is needed, because breakpoints don't check what they overwrite

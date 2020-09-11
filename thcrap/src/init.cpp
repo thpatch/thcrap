@@ -12,6 +12,10 @@
 #include "win32_detour.h"
 #include <vector>
 
+// Both thcrap_ExitProcess and DllMain will call ExitDll,
+// which will cause a crash without this workaround
+static bool dll_exited = false;
+
 /// Static global variables
 /// -----------------------
 // Required to get the exported functions of thcrap.dll.
@@ -358,8 +362,14 @@ int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
 int thcrap_init_binary(size_t stage_num, bool use_module, HMODULE module)
 {
 	size_t stages_total = runconfig_stage_count();
+
+	if (!stages_total) {
+		return 0;
+	}
+
 	assert(stage_num < stages_total);
 	assert(bp_set.size() == stages_total);
+
 
 	if(stages_total >= 2) {
 		log_printf(
@@ -415,6 +425,7 @@ int InitDll(HMODULE hDll)
 
 void ExitDll(HMODULE hDll)
 {
+	dll_exited = true;
 	// Yes, the main thread does not receive a DLL_THREAD_DETACH message
 	mod_func_run_all("thread_exit", NULL);
 	mod_func_run_all("exit", NULL);
@@ -446,7 +457,9 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 			InitDll(hDll);
 			break;
 		case DLL_PROCESS_DETACH:
-			ExitDll(hDll);
+			if (!dll_exited) {
+				ExitDll(hDll);
+			}
 			break;
 		case DLL_THREAD_DETACH:
 			mod_func_run_all("thread_exit", NULL);

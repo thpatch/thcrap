@@ -9,6 +9,11 @@
 
 #pragma once
 
+typedef struct {
+	const char *name;
+	UINT_PTR func;
+} exported_func_t;
+
 /// Local
 /// -----
 // Returns the IMAGE_NT_HEADERS structure of [hMod]
@@ -29,7 +34,7 @@ PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name);
 
 // Adds the names and function pointers of all exported functions in the DLL
 // at [hDll] to the JSON object [funcs].
-int GetExportedFunctions(json_t *funcs, HMODULE hDll);
+int GetExportedFunctions(exported_func_t **funcs, HMODULE hDll);
 
 // Shorthand for GetModuleHandleEx() with GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS.
 // Returns a nullptr on failure.

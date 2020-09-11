@@ -169,7 +169,7 @@ char* fn_for_patch(const patch_t *patch_info, const char *fn)
 	size_t patch_fn_len;
 	char *patch_fn = NULL;
 
-	if(!patch_info->archive) {
+	if(!patch_info || !patch_info->archive || !fn) {
 		return NULL;
 	}
 	/*
@@ -191,6 +191,10 @@ char* fn_for_patch(const patch_t *patch_info, const char *fn)
 
 int patch_file_exists(const patch_t *patch_info, const char *fn)
 {
+	if (patch_file_blacklisted(patch_info, fn)) {
+		return false;
+	}
+
 	char *patch_fn = fn_for_patch(patch_info, fn);
 	BOOL ret = PathFileExists(patch_fn);
 	SAFE_FREE(patch_fn);
@@ -391,7 +395,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	set_array_if_exist( "servers",    patch.servers);
 	set_array_if_exist( "ignore",     patch.ignore);
 	set_string_if_exist("motd",       patch.motd);
-	set_string_if_exist("motd_title", patch.title);
+	set_string_if_exist("motd_title", patch.motd_title);
 	patch.level = level;
 
 	patch.update = true;
@@ -605,7 +609,7 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 		return -1;
 	}
 	ret = 0;
-	for (size_t i = 0; hook_array[i].wildcard; i++) {
+	for (size_t i = 0; hook_array && hook_array[i].wildcard; i++) {
 		func_patch_t func = hook_array[i].patch_func;
 		if(func) {
 			if (func(file_inout, size_out, size_in, fn, patch) > 0) {
