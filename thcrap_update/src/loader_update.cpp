@@ -8,6 +8,8 @@
   */
 
 #include <thcrap.h>
+#include <map>
+#include <sstream>
 #include "update.h"
 #include "notify.h"
 #include "self.h"
@@ -16,9 +18,7 @@
 enum {
 	HWND_MAIN,
 	HWND_LABEL_STATUS,
-	HWND_PROGRESS1,
-	HWND_PROGRESS2,
-	HWND_PROGRESS3,
+	HWND_PROGRESS,
 	HWND_CHECKBOX_UPDATE_AT_EXIT,
 	HWND_STATIC_UPDATE_AT_EXIT,
 	HWND_CHECKBOX_KEEP_UPDATER,
@@ -35,7 +35,7 @@ enum {
 };
 
 enum update_state_t {
-	STATE_INIT,           // Downloading files.js etc
+	STATE_SELF,           // Checking for thcrap updates
 	STATE_CORE_UPDATE,    // Downloading game-independant files for selected patches
 	STATE_PATCHES_UPDATE, // Downloading files for the selected game in the selected patches
 	STATE_GLOBAL_UPDATE,  // Downloading files for all games and all patches
@@ -56,6 +56,10 @@ typedef struct {
 	bool update_others;
 	int time_between_updates;
 	bool cancel_update;
+    // false when a patch update is downloading the files.js files,
+    // true when all the files.js downloads are done.
+    bool files_js_done;
+	std::map<std::string, std::chrono::steady_clock::time_point> files;
 
 	const char *exe_fn;
 	char *args;
@@ -176,12 +180,12 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 			if (HIWORD(wParam) == BN_CLICKED) {
 				if (state->settings_visible) {
 					// Hide log window
-					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 165, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 115, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
 					state->settings_visible = false;
 				}
 				else {
 					// Show log window
-					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 435, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+					SetWindowPos(state->hwnd[HWND_MAIN], 0, 0, 0, 500, 385, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
 					state->settings_visible = true;
 				}
 			}
@@ -264,8 +268,14 @@ static LRESULT CALLBACK progress_bar_with_text_proc(HWND hWnd, UINT uMsg, WPARAM
 	return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
-void progress_bar_set_marquee(HWND hwnd, bool marquee, bool clear_text)
+/*
+** state: global window state.
+** marquee: true to enable PBS_MARQUEE, false to disable it.
+** clear_text: true to clear the text, false to keep it.
+*/
+void progress_bar_set_marquee(loader_update_state_t *state, bool marquee, bool clear_text)
 {
+    HWND hwnd = state->hwnd[HWND_PROGRESS];
 	LONG_PTR old_style = GetWindowLongPtrW(hwnd, GWL_STYLE);
 	if (marquee == true && (old_style & PBS_MARQUEE) == 0) {
 		SetWindowLongPtrW(hwnd, GWL_STYLE, old_style | PBS_MARQUEE);
@@ -279,18 +289,6 @@ void progress_bar_set_marquee(HWND hwnd, bool marquee, bool clear_text)
 	if (clear_text) {
 		SetWindowTextW(hwnd, L"");
 	}
-}
-
-/*
-** state: global window state.
-** marquee: true to enable PBS_MARQUEE, false to disable it.
-** clear_text: true to clear the text, false to keep it.
-*/
-void progress_bars_set_marquee(loader_update_state_t *state, bool marquee, bool clear_text)
-{
-	progress_bar_set_marquee(state->hwnd[HWND_PROGRESS1], marquee, clear_text);
-	progress_bar_set_marquee(state->hwnd[HWND_PROGRESS2], marquee, clear_text);
-	progress_bar_set_marquee(state->hwnd[HWND_PROGRESS3], marquee, clear_text);
 }
 
 // param should point to a loader_update_state_t object
@@ -324,51 +322,45 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	// Main window
 	state->hwnd[HWND_MAIN] = CreateWindowW(L"LoaderUpdateWindow", L"Touhou Community Reliant Automatic Patcher",
 		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-		CW_USEDEFAULT, 0, 500, 165, NULL, NULL, hMod, state);
+		CW_USEDEFAULT, 0, 500, 115, NULL, NULL, hMod, state);
 
 	// Update UI
-	state->hwnd[HWND_LABEL_STATUS] = CreateWindowW(L"Static", L"Checking for updates...", WS_CHILD | WS_VISIBLE,
+	state->hwnd[HWND_LABEL_STATUS] = CreateWindowW(L"Static", L"Checking for thcrap updates...", WS_CHILD | WS_VISIBLE,
 		5, 5, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_LABEL_STATUS, hMod, NULL);
-	state->hwnd[HWND_PROGRESS1] = CreateWindowW(PROGRESS_CLASSW, L"", WS_CHILD | WS_VISIBLE,
-		5, 30, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS1, hMod, NULL);
-	state->hwnd[HWND_PROGRESS2] = CreateWindowW(PROGRESS_CLASSW, L"", WS_CHILD | WS_VISIBLE,
-		5, 55, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS2, hMod, NULL);
-	state->hwnd[HWND_PROGRESS3] = CreateWindowW(PROGRESS_CLASSW, L"", WS_CHILD | WS_VISIBLE,
-		5, 80, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS3, hMod, NULL);
-	progress_bars_set_marquee(state, true, false);
-	SetWindowSubclass(state->hwnd[HWND_PROGRESS1], progress_bar_with_text_proc, 1, (DWORD_PTR)new ProgressBarWithText(L""));
-	SetWindowSubclass(state->hwnd[HWND_PROGRESS2], progress_bar_with_text_proc, 2, (DWORD_PTR)new ProgressBarWithText(L""));
-	SetWindowSubclass(state->hwnd[HWND_PROGRESS3], progress_bar_with_text_proc, 3, (DWORD_PTR)new ProgressBarWithText(L""));
+	state->hwnd[HWND_PROGRESS] = CreateWindowW(PROGRESS_CLASSW, L"", WS_CHILD | WS_VISIBLE,
+		5, 30, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_PROGRESS, hMod, NULL);
+	progress_bar_set_marquee(state, true, false);
+	SetWindowSubclass(state->hwnd[HWND_PROGRESS], progress_bar_with_text_proc, 1, (DWORD_PTR)new ProgressBarWithText(L""));
 
 	// Buttons
 	state->hwnd[HWND_BUTTON_EXPAND_LOGS] = CreateWindowW(L"Button", L"Settings and logs...", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		5, 105, 153, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_EXPAND_LOGS, hMod, NULL);
+		5, 55, 153, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_EXPAND_LOGS, hMod, NULL);
 	state->hwnd[HWND_BUTTON_UPDATE] = CreateWindowW(L"Button", L"Check for updates", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
-		168, 105, 153, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_UPDATE, hMod, NULL);
+		168, 55, 153, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_UPDATE, hMod, NULL);
 	state->hwnd[HWND_BUTTON_RUN] = CreateWindowW(L"Button", L"Run the game", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | WS_DISABLED,
-		331, 105, 153, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_RUN, hMod, NULL);
+		331, 55, 153, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_RUN, hMod, NULL);
 
 	// Settings and logs
 	state->hwnd[HWND_CHECKBOX_UPDATE_AT_EXIT] = CreateWindowW(L"Button", L"Install updates after running the game (requires a restart)",
 		WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-		5, 145, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_UPDATE_AT_EXIT, hMod, NULL);
+		5, 95, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_UPDATE_AT_EXIT, hMod, NULL);
 	if (state->update_at_exit) {
 		CheckDlgButton(state->hwnd[HWND_MAIN], HWND_CHECKBOX_UPDATE_AT_EXIT, BST_CHECKED);
 	}
 	state->hwnd[HWND_STATIC_UPDATE_AT_EXIT] = CreateWindowW(L"Static",
 		L"If it isn't checked, the updates are installed before running the game, ensuring it is fully up to date.", WS_CHILD | WS_VISIBLE,
-		5, 163, 480, 30, state->hwnd[HWND_MAIN], (HMENU)HWND_STATIC_UPDATE_AT_EXIT, hMod, NULL);
+		5, 113, 480, 30, state->hwnd[HWND_MAIN], (HMENU)HWND_STATIC_UPDATE_AT_EXIT, hMod, NULL);
 	// If it isn't checked, the updates are installed before running the game, ensuring it is fully up to date.
 	state->hwnd[HWND_CHECKBOX_KEEP_UPDATER] = CreateWindowW(L"Button", L"Keep the updater running in background", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-		5, 200, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_KEEP_UPDATER, hMod, NULL);
+		5, 150, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_KEEP_UPDATER, hMod, NULL);
 	if (state->background_updates) {
 		CheckDlgButton(state->hwnd[HWND_MAIN], HWND_CHECKBOX_KEEP_UPDATER, BST_CHECKED);
 	}
 	state->hwnd[HWND_STATIC_UPDATES_INTERVAL] = CreateWindowW(L"Static", L"Check for updates every                    minutes",
 		WS_CHILD | WS_VISIBLE | (state->background_updates ? 0 : WS_DISABLED),
-		5, 218, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_STATIC_UPDATES_INTERVAL, hMod, NULL);
+		5, 168, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_STATIC_UPDATES_INTERVAL, hMod, NULL);
 	state->hwnd[HWND_EDIT_UPDATES_INTERVAL] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | ES_NUMBER | (state->background_updates ? 0 : WS_DISABLED),
-		155, 218, 35, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_UPDATES_INTERVAL, hMod, NULL);
+		155, 168, 35, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_UPDATES_INTERVAL, hMod, NULL);
 	state->hwnd[HWND_UPDOWN] = CreateWindowW(UPDOWN_CLASSW, NULL,
 		WS_CHILD | WS_VISIBLE | UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_NOTHOUSANDS | UDS_ARROWKEYS | (state->background_updates ? 0 : WS_DISABLED),
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, state->hwnd[HWND_MAIN], (HMENU)HWND_UPDOWN, hMod, NULL);
@@ -376,14 +368,14 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
 	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETRANGE, 0, MAKELPARAM(UD_MAXVAL, 0));
 	state->hwnd[HWND_CHECKBOX_UPDATE_OTHERS] = CreateWindowW(L"Button", L"Update other games and patches", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
-		5, 245, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_UPDATE_OTHERS, hMod, NULL);
+		5, 195, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_UPDATE_OTHERS, hMod, NULL);
 	if (state->update_others) {
 		CheckDlgButton(state->hwnd[HWND_MAIN], HWND_CHECKBOX_UPDATE_OTHERS, BST_CHECKED);
 	}
 	state->hwnd[HWND_BUTTON_DISABLE_UPDATES] = CreateWindowW(L"Button", L"Completely disable updates (not recommended)", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-		5, 270, 480, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_DISABLE_UPDATES, hMod, NULL);
+		5, 220, 480, 23, state->hwnd[HWND_MAIN], (HMENU)HWND_BUTTON_DISABLE_UPDATES, hMod, NULL);
 	state->hwnd[HWND_EDIT_LOGS] = CreateWindowW(L"Edit", L"", WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
-		5, 300, 480, 100, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_LOGS, hMod, NULL);
+		5, 250, 480, 100, state->hwnd[HWND_MAIN], (HMENU)HWND_EDIT_LOGS, hMod, NULL);
 	SendMessageW(state->hwnd[HWND_EDIT_LOGS], EM_LIMITTEXT, -1, 0);
 
 	// Font
@@ -417,38 +409,105 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 /// ---------------------------------------
 
 
-int loader_update_progress_callback(DWORD stack_progress, DWORD stack_total, const patch_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param)
+void loader_update_progress_init(loader_update_state_t *state, update_state_t new_state)
 {
+	SetWindowTextW(state->hwnd[HWND_LABEL_STATUS], L"Downloading files list...");
+	progress_bar_set_marquee(state, true, true);
+	state->files_js_done = false;
+	state->state = new_state;
+}
+
+bool loader_update_progress_callback(progress_callback_status_t *status, void *param)
+{
+	using namespace std::literals;
 	loader_update_state_t *state = (loader_update_state_t*)param;
-	const char *format1 = "Updating %s (%d/%d)...";
-	const char *format2 = "Updating file %d/%d...";
-	const char *format3 = "%s (%d B / %d B)";
-	const unsigned int format1_len = strlen(format1) + strlen(patch->id) + 2 * 10 + 1;
-	const unsigned int format2_len = strlen(format2) + 2 * 10 + 1;
-	const unsigned int format3_len = strlen(format3) + strlen(fn) + 2 * 10 + 1;
-	VLA(char, buffer, max(format1_len, max(format2_len, format3_len)));
+	EnterCriticalSection(&state->cs);
 
-	if (state->state == STATE_INIT && ret == GET_OK) {
-		SetWindowTextW(state->hwnd[HWND_LABEL_STATUS], L"Updating core files...");
-		state->state = STATE_CORE_UPDATE;
+
+    if (status->nb_files_total > 0 && state->files_js_done == false) {
+        switch (state->state) {
+            case STATE_CORE_UPDATE:
+		        SetWindowTextW(state->hwnd[HWND_LABEL_STATUS], L"Updating core files...");
+                break;
+
+            case STATE_PATCHES_UPDATE:
+		        SetWindowTextW(state->hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
+                break;
+
+            case STATE_GLOBAL_UPDATE:
+		        SetWindowTextW(state->hwnd[HWND_LABEL_STATUS], L"Updating other patches and games...");
+                break;
+
+            case STATE_SELF:
+            case STATE_WAITING:
+            default:
+                // Shouldn't happen
+                break;
+        }
+		progress_bar_set_marquee(state, false, false);
+		SendMessage(state->hwnd[HWND_PROGRESS], PBM_SETPOS, 0, 0);
+		state->files_js_done = true;
+    }
+
+	switch (status->status) {
+	case GET_DOWNLOADING: {
+		// Using the URL instead of the filename is important, because we may
+		// be downloading the same file from 2 different URLs, and the UI
+		// could quickly become very confusing, with progress going backwards etc.
+		auto& file_time = state->files[status->url];
+		auto now = std::chrono::steady_clock::now();
+		if (file_time.time_since_epoch() == 0ms) {
+			file_time = now;
+		}
+		else if (now - file_time > 5s) {
+			log_printf("[%u/%u] %s: in progress (%ub/%ub)...\n", status->nb_files_downloaded, status->nb_files_total,
+				status->url, status->file_progress, status->file_size);
+			file_time = now;
+		}
+		break;
 	}
 
-	sprintf(buffer, format1, patch->id, stack_progress + 1, stack_total);
-	SetWindowTextU(state->hwnd[HWND_PROGRESS1], buffer);
-	sprintf(buffer, format2, patch_progress, patch_total);
-	SetWindowTextU(state->hwnd[HWND_PROGRESS2], buffer);
-	sprintf(buffer, format3, fn, file_progress, file_total);
-	SetWindowTextU(state->hwnd[HWND_PROGRESS3], buffer);
+	case GET_OK: {
+		log_printf("[%u/%u] %s/%s: OK (%ub)\n", status->nb_files_downloaded, status->nb_files_total, status->patch->id, status->fn, status->file_size);
+		std::ostringstream ss;
+		ss << status->nb_files_downloaded << "/";
+		if (status->nb_files_total != 0) {
+			ss << status->nb_files_total;
+			SendMessage(state->hwnd[HWND_PROGRESS], PBM_SETPOS, status->nb_files_downloaded * 100 / status->nb_files_total, 0);
+		}
+		else {
+			ss << "???";
+		}
+		SetWindowTextU(state->hwnd[HWND_PROGRESS], ss.str().c_str());
+		break;
+	}
 
-	progress_bars_set_marquee(state, false, false);
-	SendMessage(state->hwnd[HWND_PROGRESS1], PBM_SETPOS, stack_total ? stack_progress * 100 / stack_total : 0, 0);
-	SendMessage(state->hwnd[HWND_PROGRESS2], PBM_SETPOS, patch_total ? patch_progress * 100 / patch_total : 0, 0);
-	SendMessage(state->hwnd[HWND_PROGRESS3], PBM_SETPOS, file_total  ? file_progress  * 100 / file_total  : 0, 0);
+	case GET_CLIENT_ERROR:
+		log_printf("%s: file not available\n", status->url);
+		break;
+	case GET_CRC32_ERROR:
+		log_printf("%s: CRC32 error\n", status->url);
+		break;
+	case GET_SERVER_ERROR:
+		log_printf("%s: server error\n", status->url);
+		break;
+	case GET_CANCELLED:
+		// Another copy of the file have been downloader earlier. Ignore.
+		break;
+	case GET_SYSTEM_ERROR:
+		log_printf("%s: system error\n", status->url);
+		break;
+	default:
+		log_printf("%s: unknown status\n", status->url);
+		break;
+	}
 
+
+	LeaveCriticalSection(&state->cs);
 	if (state->cancel_update) {
-		return FALSE;
+		return false;
 	}
-	return TRUE;
+	return true;
 }
 
 static HWND hLogEdit;
@@ -523,7 +582,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	state.cancel_update = false;
 	state.exe_fn = exe_fn;
 	state.args = args;
-	state.state = STATE_INIT;
+	state.state = STATE_SELF;
 
 	state.update_at_exit = globalconfig_get_boolean("update_at_exit", false);
 	state.background_updates = globalconfig_get_boolean("background_updates", true);
@@ -600,6 +659,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	log_print("thcrap is up to date.\n");
 
 	log_print("Updating patches with global filter (don't download game-specific files)...\n");
+	loader_update_progress_init(&state, STATE_CORE_UPDATE);
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 	log_print("Stack update done.\n");
 
@@ -609,14 +669,14 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 			game = game_id_fallback;
 		}
 		if (game) {
-			json_t *filter = json_string(game);
+            const char *filter[] = {
+                game,
+                nullptr
+            };
 			log_print("Updating patches with game-specific filter...\n");
-			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
-			progress_bars_set_marquee(&state, true, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_RUN], TRUE);
-			state.state = STATE_PATCHES_UPDATE;
+			loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
 			stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
-			json_decref(filter);
 			log_print("Stack update done.\n");
 		}
 	}
@@ -637,22 +697,23 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		handles[1] = state.event_require_update;
 		DWORD wait_ret;
 		do {
-			progress_bars_set_marquee(&state, true, true);
+			progress_bar_set_marquee(&state, true, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], FALSE);
 			if (state.update_others) {
 				log_print("Updating every patches with no filter...\n");
-				SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating other patches and games...");
-				state.state = STATE_GLOBAL_UPDATE;
+				loader_update_progress_init(&state, STATE_GLOBAL_UPDATE);
 				global_update(loader_update_progress_callback, &state);
 				log_print("Global update done.\n");
 			}
 			else {
 				const char *game = runconfig_game_get();
 				if (game) {
-					json_t *filter = json_string(game);
+                    const char *filter[] = {
+                        game,
+                        nullptr
+                    };
 					log_print("Updating patches with game-specific filter...\n");
-					SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Updating patch files...");
-					state.state = STATE_PATCHES_UPDATE;
+					loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
 					stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
 					log_print("Stack update done.\n");
 				}
@@ -665,10 +726,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], TRUE);
 			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
 			state.state = STATE_WAITING;
-			progress_bars_set_marquee(&state, false, true);
-			SendMessage(state.hwnd[HWND_PROGRESS1], PBM_SETPOS, 100, 0);
-			SendMessage(state.hwnd[HWND_PROGRESS2], PBM_SETPOS, 100, 0);
-			SendMessage(state.hwnd[HWND_PROGRESS3], PBM_SETPOS, 100, 0);
+			progress_bar_set_marquee(&state, false, true);
+			SendMessage(state.hwnd[HWND_PROGRESS], PBM_SETPOS, 100, 0);
 
 			// Wait until the next update
 			log_printf("Update finished. Waiting until next update (%d min)... ", time_between_updates);

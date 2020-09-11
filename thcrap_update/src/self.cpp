@@ -10,27 +10,18 @@
 #include <thcrap.h>
 #include <wincrypt.h>
 #include "update.h"
+#include "server.h"
 #include "self.h"
 
 #define TEMP_FN_LEN 41
 
+const std::string SELF_SERVER = "http://thcrap.thpatch.net/";
 const char *NETPATHS_FN = "thcrap_update.js";
 const char *PREFIX_BACKUP = "thcrap_old_%s";
 const char *PREFIX_NEW = "thcrap_new_";
 const char *EXT_NEW = ".zip";
 
 static char update_version[sizeof("0x20010101")];
-
-static servers_t& self_servers()
-{
-	// Yup, hardcoded download URLs. After all, these should be a property
-	// of the engine, and now that it is capable of updating itself,
-	// there's no need to include these in any patch.
-	static servers_t self_server(
-		"http://thcrap.thpatch.net/"
-	);
-	return self_server;
-}
 
 /// Download notification window
 /// ----------------------------
@@ -520,9 +511,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 
 	log_printf("Checking for engine updates...\n");
 
-	auto srv = self_servers();
-
-	auto netpaths = srv.download_valid_json(NETPATHS_FN);
+	auto netpaths = ServerCache::get().downloadJsonFile(SELF_SERVER + NETPATHS_FN);
 	if (!netpaths) {
 		return SELF_VERSION_CHECK_ERROR;
 	}
@@ -607,27 +596,18 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	auto arc_dl = srv.download(netpath, nullptr);
-
-	defer(SAFE_FREE(arc_dl.file_buffer));
-	if(!arc_dl.file_buffer) {
+	auto arc_dl = ServerCache::get().downloadFile(SELF_SERVER + netpath);
+	if(arc_dl.empty()) {
 		return SELF_SERVER_ERROR;
 	}
 
-	const size_t sig_netpath_len = strlen(netpath) + strlen(".sig") + 1;
-
-	VLA(char, sig_netpath, sig_netpath_len);
-	defer(VLA_FREE(sig_netpath));
-	strcpy(sig_netpath, netpath);
-	strcat(sig_netpath, ".sig");
-
-	auto sig = srv.download_valid_json(sig_netpath);
+	auto sig = ServerCache::get().downloadJsonFile(SELF_SERVER + netpath + ".sig");
 	if(!sig) {
 		return SELF_NO_SIG;
 	}
 	defer(sig = json_decref_safe(sig));
 
-	ret = self_verify(hCryptProv, &hHash, arc_dl.file_buffer, arc_dl.file_size, sig, context);
+	ret = self_verify(hCryptProv, &hHash, arc_dl.data(), arc_dl.size(), sig, context);
 	defer(CryptDestroyHash(hHash));
 	if(ret != SELF_OK) {
 		return ret;
@@ -645,7 +625,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	}
 	memcpy(ext, EXT_NEW, ext_new_len);
 
-	if(file_write(arc_fn, arc_dl.file_buffer, arc_dl.file_size)) {
+	if(file_write(arc_fn, arc_dl.data(), arc_dl.size())) {
 		return SELF_DISK_ERROR;
 	}
 	if(arc_fn_ptr) {

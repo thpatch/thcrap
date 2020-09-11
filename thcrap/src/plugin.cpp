@@ -180,7 +180,8 @@ void mod_func_run_all(const char *pattern, void *param)
 
 void mod_func_remove(const char *pattern, mod_call_type func) {
 	std::vector<mod_call_type> &func_array = mod_funcs[pattern];
-	std::remove_if(func_array.begin(), func_array.end(), [&func](mod_call_type func_in_array) {
+	auto elem = std::find_if(func_array.begin(), func_array.end(), [&func](mod_call_type func_in_array) {
 		return func_in_array == func;
 	});
+	func_array.erase(elem);
 }

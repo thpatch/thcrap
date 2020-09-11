@@ -100,7 +100,7 @@ int AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
 {
 	int ret = 0;
 	const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
-	patch_t patch_info = patch_bootstrap_wrapper(&sel, repo->servers);
+	patch_t patch_info = patch_bootstrap_wrapper(&sel, repo);
 	patch_t patch_full = patch_init(patch_info.archive, nullptr, 0);
 	patch_desc_t *dependencies = patch_full.dependencies;
 

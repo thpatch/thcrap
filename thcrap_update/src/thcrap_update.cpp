@@ -7,7 +7,10 @@
   * Plugin setup
   */
 
-extern "C" void http_mod_exit(void);
+extern "C" void http_mod_exit(void)
+{
+	// TODO: cleanup
+}
 
 void thcrap_update_exit(void)
 {

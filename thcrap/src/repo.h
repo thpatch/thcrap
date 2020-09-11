@@ -34,5 +34,8 @@ repo_t *RepoLoadJson(json_t *repo_js);
 // Loads repository files from all subdirectories of the current directory.
 repo_t **RepoLoad(void);
 
+// Write the repo.js for repo to repos/[repo_name]/repo.js
+bool RepoWrite(const repo_t *repo);
+
 // Free a repo returned by RepoLoad, RepoLoadJson or RepoLocalNext.
 void RepoFree(repo_t *repo);

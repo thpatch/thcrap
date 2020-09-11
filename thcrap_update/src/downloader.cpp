@@ -1,3 +1,4 @@
+#include "thcrap.h"
 #include "downloader.h"
 #include "server.h"
 

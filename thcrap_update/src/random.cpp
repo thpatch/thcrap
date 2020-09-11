@@ -1,3 +1,4 @@
+#include "thcrap.h"
 #include "random.h"
 
 std::unique_ptr<Random> Random::instance;

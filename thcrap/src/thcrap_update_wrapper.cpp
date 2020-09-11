@@ -43,27 +43,21 @@ if (cached_func) { \
 
 
 
-int update_filter_global_wrapper(const char *fn, json_t *null)
+int update_filter_global_wrapper(const char *fn, void *null)
 {
 	CALL_WRAPPED_FUNCTION(update_filter_global, fn, null)
 	return 0;
 }
 ASSERT_FUNCTION_PROTO(update_filter_global);
-int update_filter_games_wrapper(const char *fn, json_t *games)
+int update_filter_games_wrapper(const char *fn, void *games)
 {
 	CALL_WRAPPED_FUNCTION(update_filter_games, fn, games)
 	return 0;
 }
 ASSERT_FUNCTION_PROTO(update_filter_games);
-int patch_update_wrapper(const patch_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param)
+void stack_update_wrapper(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param)
 {
-	CALL_WRAPPED_FUNCTION(patch_update, patch_info, filter_func, filter_data, callback, callback_param)
-	return 3;
-}
-ASSERT_FUNCTION_PROTO(patch_update);
-void stack_update_wrapper(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param)
-{
-	CALL_WRAPPED_FUNCTION(stack_update, filter_func, filter_data, callback, callback_param)
+	CALL_WRAPPED_FUNCTION(stack_update, filter_func, filter_data, progress_callback, progress_param)
 }
 ASSERT_FUNCTION_PROTO(stack_update);
 BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *game_id_fallback)
@@ -73,23 +67,16 @@ BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *g
 }
 ASSERT_FUNCTION_PROTO(loader_update_with_UI);
 
-int RepoDiscoverAtURL_wrapper(const char *start_url, json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
+repo_t **RepoDiscover_wrapper(const char *start_url)
 {
-	CALL_WRAPPED_FUNCTION(RepoDiscoverAtURL, start_url, id_cache, url_cache, fwe_callback)
-	return 0;
+	CALL_WRAPPED_FUNCTION(RepoDiscover, start_url)
+	return RepoLoad();
 }
-ASSERT_FUNCTION_PROTO(RepoDiscoverAtURL);
+ASSERT_FUNCTION_PROTO(RepoDiscover);
 
-int RepoDiscoverFromLocal_wrapper(json_t *id_cache, json_t *url_cache, file_write_error_t *fwe_callback)
+patch_t patch_bootstrap_wrapper(const patch_desc_t *sel, const repo_t *repo)
 {
-	CALL_WRAPPED_FUNCTION(RepoDiscoverFromLocal, id_cache, url_cache, fwe_callback)
-	return 0;
-}
-ASSERT_FUNCTION_PROTO(RepoDiscoverFromLocal);
-
-patch_t patch_bootstrap_wrapper(const patch_desc_t *sel, const char * const *repo_servers)
-{
-	CALL_WRAPPED_FUNCTION(patch_bootstrap, sel, repo_servers)
+	CALL_WRAPPED_FUNCTION(patch_bootstrap, sel, repo)
 	return patch_build(sel);
 }
 ASSERT_FUNCTION_PROTO(patch_bootstrap);

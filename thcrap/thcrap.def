@@ -268,6 +268,7 @@ EXPORTS
 	; -------------------
 	RepoLoadJson
 	RepoLoad
+	RepoWrite
 	RepoLocalNext
 	RepoGetLocalFN
 	RepoFree
@@ -335,6 +336,14 @@ EXPORTS
 	strings_mod_repatch
 	strings_mod_exit
 
+	; Strings array
+	; -------------
+	strings_array_create
+	strings_array_add
+	strings_array_size
+	strings_array_create_and_fill
+	strings_array_free
+
 	; Text display
 	; ------------
 	patch_fonts_load
@@ -358,11 +367,9 @@ EXPORTS
 
 	update_filter_global_wrapper
 	update_filter_games_wrapper
-	patch_update_wrapper
 	stack_update_wrapper
 	loader_update_with_UI_wrapper
-	RepoDiscoverAtURL_wrapper
-	RepoDiscoverFromLocal_wrapper
+	RepoDiscover_wrapper
 	patch_bootstrap_wrapper
 	thcrap_update_exit_wrapper
 

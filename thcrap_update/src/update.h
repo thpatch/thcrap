@@ -1,63 +1,87 @@
-/**
-  * Touhou Community Reliant Automatic Patcher
-  * Update module
-  *
-  * ----
-  *
-  * Main updating functionality.
-  */
-
 #pragma once
+
+#include <list>
+#include <string>
+#include <jansson.h>
+#include "downloader.h"
+
+#include "thcrap.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef enum {
-	GET_CANCELLED = -3,
-	GET_OUT_OF_MEMORY = -2,
-	GET_INVALID_PARAMETER = -1,
-	GET_OK = 0,
-	GET_SERVER_ERROR,
-	GET_NOT_AVAILABLE, // 404, 502, etc.
-} get_result_t;
+    // Download in progress. file_size may be 0 if it isn't known yet.
+    GET_DOWNLOADING,
+    // Download completed successfully
+    GET_OK,
+    // Error with the file (4XX error codes)
+    GET_CLIENT_ERROR,
+    // The downloaded file doesn't match the CRC32 in files.js
+    GET_CRC32_ERROR,
+    // Error with the server (timeout, 5XX error code etc)
+    GET_SERVER_ERROR,
+    // Download cancelled. You will see this if you return
+    // false to the progress callback, or if we tried to
+    // download a file from 2 different URLs at the same time.
+    GET_CANCELLED,
+    // Internal error in the download library or when
+    // writing the file
+    GET_SYSTEM_ERROR,
+} get_status_t;
 
-// These callbacks should return TRUE if the download is allowed to continue and FALSE to cancel it.
-typedef int (*file_callback_t)(const char *fn, get_result_t ret, DWORD file_progress, DWORD file_size, void *param);
-typedef int (*patch_update_callback_t)(const patch_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
-typedef int (*stack_update_callback_t)(DWORD stack_progress, DWORD stack_total, const patch_t *patch, DWORD patch_progress, DWORD patch_total, const char *fn, get_result_t ret, DWORD file_progress, DWORD file_total, void *param);
+typedef struct {
+    // Patch containing the file in download
+    const patch_t *patch;
+    // File name
+    const char *fn;
+    // Download URL
+    const char *url;
+    // File download status or result
+    get_status_t status;
 
-void http_mod_exit(void);
+    // Bytes downloaded for the current file
+    size_t file_progress;
+    // Size of the current file
+    size_t file_size;
 
-// Tries to download the given [fn] from any server in [servers].
-// If successful, [file_size] receives the size of the downloaded file.
-// [exp_crc] can be optionally given to enforce the downloaded file to have a
-// certain checksum. If it doesn't match for one server, another one is tried,
-// until none are left. To disable this check, simply pass NULL.
-void* ServerDownloadFile(
-	const char * const *servers, const char *fn, DWORD *file_size, const DWORD *exp_crc, file_callback_t callback, void *callback_param
-);
+    // Number of files downloaded in the current session
+    size_t nb_files_downloaded;
+    // Number of files to download. Note that it will be 0 if
+    // all the files.js haven't been downloaded yet.
+    size_t nb_files_total;
+} progress_callback_status_t;
 
-// High-level patch and stack updates.
-// These can optionally take a filter function to limit the number of files
-// downloaded.
-typedef int (*update_filter_func_t)(const char *fn, json_t *filter_data);
+// Callback called when the download progresses.
+// This callback will always be called at least twice per file:
+// - A first time with GET_DOWNLOADING, file_progress=0 and file_size=0
+// - Between 0 and many times with GET_DOWNLOADING
+// - A last time with either GET_OK or a GET_ error code.
+// Note that several files from several patches can be downloaded
+// at the same time. Never assume 2 consecutive calls to the callback
+// have the same patch or fn parameter.
+// If status is GET_START or GET_DOWNLOADING, this callbacks should
+// return true if the download is allowed to continue, or false to cancel it.
+// If status is GET_OK or a GET_ error code, the return value is ignored.
+typedef bool (*progress_callback_t)(progress_callback_status_t *status, void *param);
+
+typedef int (*update_filter_func_t)(const char *fn, void *filter_data);
 
 // Returns 1 for all global file names, i.e. those without a slash.
-int update_filter_global(const char *fn, json_t *null);
+int update_filter_global(const char *fn, void*);
 // Returns 1 for all global file names and those that are specific to a game
-// in the flexible JSON array [games].
-int update_filter_games(const char *fn, json_t *games);
+// in the strings array [games].
+int update_filter_games(const char *fn, void *games);
 
 // Bootstraps the patch selection [sel] by building a patch object, downloading
 // patch.js from [repo_servers], and storing it inside the returned object.
-patch_t patch_bootstrap(const patch_desc_t *sel, const char * const *repo_servers);
+patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo);
 
-int patch_update(
-	const patch_t *patch_info, update_filter_func_t filter_func, json_t *filter_data, patch_update_callback_t callback, void *callback_param
-);
-void stack_update(update_filter_func_t filter_func, json_t *filter_data, stack_update_callback_t callback, void *callback_param);
-void global_update(stack_update_callback_t callback, void *callback_param);
+void stack_update(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param);
+void global_update(progress_callback_t progress_callback, void *progress_param);
+
+void http_mod_exit(void);
 
 // Performs all cleanup that wouldn't have been safe to do inside DllMain().
 void thcrap_update_exit(void);
@@ -65,110 +89,35 @@ void thcrap_update_exit(void);
 #ifdef __cplusplus
 }
 
-/// Internal C++ server connection handling
-/// ---------------------------------------
-#include <vector>
+class Update
+{
+private:
+    typedef std::function<bool(const std::string&)> filter_t;
 
-struct server_t;
+    // Downloader used for the files.js downloads
+    Downloader filesJsDownloader;
+    // Downloader used for every other files.
+    // We need a separate downloader because the wait() function tells to the downloader
+    // the files list is complete. And the patches files list is complete when every
+    // files.js is downloaded.
+    Downloader mainDownloader;
 
-struct download_ret_t {
-	get_result_t result = GET_INVALID_PARAMETER;
+    filter_t filterCallback;
+    progress_callback_t progressCallback;
+    void *progressData;
 
-	// Server that delivered this specific file.
-	// Can be a nullptr in case there are no servers left.
-	server_t *origin = nullptr;
+    uint32_t crc32Table[256];
 
-	// Must be free()d by the caller.
-	BYTE *file_buffer = nullptr;
-	DWORD file_size = 0;
+    void startPatchUpdate(const patch_t *patch);
+    void onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& file);
+    bool callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
+                              size_t file_progress, size_t file_size);
+    get_status_t httpStatusToGetStatus(IHttpHandle::Status status);
+    std::string fnToUrl(const std::string& url, uint32_t crc32);
 
-	// Absolute timestamps.
-	LONGLONG time_start = 0;
-	LONGLONG time_ping = 0;
-	LONGLONG time_end = 0;
-};
-
-struct server_t {
-	// This either comes from a patch_t with a lifetime longer than any
-	// instance of this structure, or a hardcoded string, so no need to use
-	// std::string here.
-	// TODO: Turn this into a std::string_view once we've migrated to a C++17
-	// compiler.
-	const char *url = NULL;
-
-	// Last 5 ping times of this server.
-	// The raw counter value is enough for our purposes, no need to lose
-	// precision by dividing through the frequency.
-	LONGLONG ping[5];
-
-	LONGLONG ping_average() const;
-	void ping_push(LONGLONG newval);
-
-	bool  active() const { return this->ping_average() >= 0; }
-	bool  unused() const { return this->ping_average() == 0; }
-	bool visited() const { return this->ping_average()  > 0; }
-
-	void disable() {
-		for(auto& i : this->ping) {
-			i = -1;
-		}
-	}
-
-	void new_session() {
-		for(auto& i : this->ping) {
-			i = 0;
-		}
-	}
-
-	// Single-server part of servers_t::download().
-	download_ret_t download(
-		const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr
-	);
-
-	server_t() {
-	}
-
-	server_t(const char *_url) : url(_url) {
-		// TODO: For consistency, ping should be initialized with {0},
-		// but Visual Studio 2013 doesn't implement explicit
-		// initializers for arrays.
-		new_session();
- 	}
-};
-
-struct servers_t : std::vector<server_t> {
-	// Returns the index of the first server to try. This selects the fastest
-	// server based on the measurements of previous download times.
-	int get_first() const;
-
-	// Returns the number of active servers.
-	int num_active() const;
-
-	// Internal version of ServerDownloadFile().
-	download_ret_t download(
-		const char *fn, const DWORD *exp_crc, file_callback_t callback = nullptr, void *callback_param = nullptr
-	);
-
-	// Tries to download [fn] from the servers, repeating the process until
-	// a valid JSON object has been downloaded or none of the remaining active
-	// servers managed to send one. Used for bootstrapping repositories and
-	// updates, where we don't have checksums yet and JSON validity can (for
-	// now) be the only criterion for a successful, non-MITM'd download.
-	// Also fills out [dl] if it's not a nullptr. In that case, [dl->buffer]
-	// must be free()d by the caller.
-	json_t* download_valid_json(
-		const char *fn, download_ret_t *dl = nullptr, file_callback_t callback = nullptr, void *callback_param = nullptr
-	);
-
-	// Fills this instance with data from a "servers" array as used
-	// in repo.js and patch.js.
-	void from(const char * const *servers);
-
-	servers_t() {
-	}
-
-	servers_t(const char *url) : std::vector<server_t>({url}) {
-	}
+public:
+    Update(filter_t filterCallback, progress_callback_t progressCallback, void *progressData);
+    void run(const std::list<const patch_t*>& patchs);
 };
 /// ---------------------------------------
 #endif

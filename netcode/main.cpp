@@ -64,7 +64,6 @@ bool progress_callback(progress_callback_status_t *status, void *param)
 int do_thcrap_configure()
 {
     // Discover and load repos
-	//const char *start_repo = "https://mirrors.thpatch.net/nmlgc/"; // TODO: why is it the default??
 	const char *start_repo = "https://srv.thpatch.net/";
     repo_t **repo_list = RepoDiscover(start_repo);
     if (repo_list == nullptr) {

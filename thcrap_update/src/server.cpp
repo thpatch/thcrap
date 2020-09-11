@@ -1,3 +1,4 @@
+#include "thcrap.h"
 #include "server.h"
 
 std::unique_ptr<ServerCache> ServerCache::instance;

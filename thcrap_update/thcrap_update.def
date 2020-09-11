@@ -8,10 +8,8 @@ EXPORTS
 	update_filter_global
 	update_filter_games
 	patch_bootstrap
-	patch_update
 	stack_update
 
-	RepoDiscoverAtURL
-	RepoDiscoverFromLocal
+	RepoDiscover
 
 	loader_update_with_UI

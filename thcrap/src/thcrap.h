@@ -41,6 +41,7 @@ extern "C" {
 #include "pe.h"
 #include "plugin.h"
 #include "strings.h"
+#include "strings_array.h"
 #include "inject.h"
 #include "init.h"
 #include "jsondata.h"
@@ -123,6 +124,7 @@ public:
     ScopedJson& operator=(const ScopedJson& src)
     {
         this->obj = json_incref(src.obj);
+        return *this;
     }
     ScopedJson(ScopedJson&& src)
         : obj(src.obj)
@@ -133,6 +135,7 @@ public:
     {
         this->obj = src.obj;
         src.obj = nullptr;
+        return *this;
     }
 
     ~ScopedJson()
@@ -145,6 +148,14 @@ public:
     json_t *operator*()
     {
         return this->obj;
+    }
+    const json_t *operator*() const
+    {
+        return this->obj;
+    }
+    operator bool()
+    {
+        return this->obj != nullptr;
     }
 };
 #endif

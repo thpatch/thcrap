@@ -1,4 +1,3 @@
-// TODO: move to thcrap
 #pragma once
 
 // Simple (and inefficient) API around an array of NULL-terminated strings
