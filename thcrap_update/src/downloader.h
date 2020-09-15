@@ -13,6 +13,7 @@ private:
     ThreadPool pool;
     std::list<File> files;
     std::vector<std::future<void>> futuresList;
+    std::recursive_mutex mutex;
     std::atomic<size_t> current_;
 
     std::list<DownloadUrl> serversListToDownloadUrlList(const std::list<std::string>& serversUrl, const std::string& filePath);

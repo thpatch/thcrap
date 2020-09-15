@@ -24,6 +24,7 @@ std::list<DownloadUrl> Downloader::serversListToDownloadUrlList(const std::list<
 void Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath,
                          File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
 {
+    std::scoped_lock lock(this->mutex);
     std::list<DownloadUrl> urls = this->serversListToDownloadUrlList(serversUrl, filePath);
     this->files.emplace_back(std::move(urls), [successCallback, &current_ = this->current_](const DownloadUrl& url, std::vector<uint8_t>& data) {
         current_++;
@@ -46,6 +47,7 @@ void Downloader::addFile(char** serversUrl, std::string filePath,
 
 void Downloader::addToQueue(File& file)
 {
+    std::scoped_lock lock(this->mutex);
     file.decrementThreadsLeft();
     this->futuresList.push_back(this->pool.enqueue([&file]() {
         file.download();
