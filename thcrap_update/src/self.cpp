@@ -316,7 +316,7 @@ char* self_sprint_hash(char *buf, size_t len, HCRYPTHASH hHash)
 	VLA(BYTE, hash_val, hash_len);
 	if(!crypt_get_hash_param(HP_HASHVAL, hash_val, &hash_len)) {
 		size_t bytes_in_suffix = (len - 1) / 2;
-		size_t copy_len = min(bytes_in_suffix, hash_len) & ~1;
+		size_t copy_len = MIN(bytes_in_suffix, hash_len) & ~1;
 		for(size_t i = 0; i < copy_len; i++) {
 			p += sprintf(p, "%02x", hash_val[i]);
 		}
@@ -415,8 +415,6 @@ static self_result_t self_verify(
 
 	const json_t *sig_sig = json_object_get(sig, "sig");
 	const char *sig_alg = json_object_get_string(sig, "alg");
-	const char *key = NULL;
-	json_t *val = NULL;
 	ALG_ID hash_alg = self_alg_from_str(sig_alg);
 	HCRYPTKEY hPubKey = 0;
 

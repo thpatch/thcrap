@@ -224,7 +224,7 @@ struct ProgressBarWithText
 	{}
 };
 
-static LRESULT CALLBACK progress_bar_with_text_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR uIdSubClass, DWORD_PTR dwRefData)
+static LRESULT CALLBACK progress_bar_with_text_proc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR dwRefData)
 {
 	ProgressBarWithText *self = (ProgressBarWithText*)dwRefData;
 
@@ -557,6 +557,7 @@ void log_ncallback(const char* text, size_t len)
 BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_fallback)
 {
 	loader_update_state_t state;
+	bool game_started;
 	BOOL ret = 0;
 
 	log_print("Updates are enabled. Initializing update UI\n");
@@ -678,7 +679,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	}
 
 	EnterCriticalSection(&state.cs);
-	bool game_started = state.game_started;
+	game_started = state.game_started;
 	state.game_started = true;
 	LeaveCriticalSection(&state.cs);
 	if (game_started == false) {

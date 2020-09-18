@@ -7,6 +7,9 @@ HttpStatus::HttpStatus(Status status, unsigned int code, std::string text)
     : status(status), code(code), text(text)
 {}
 
+HttpStatus::~HttpStatus()
+{}
+
 HttpStatus HttpStatus::makeOk()
 {
     return HttpStatus(Ok, 0, "success");

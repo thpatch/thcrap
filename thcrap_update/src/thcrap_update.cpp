@@ -12,7 +12,7 @@ extern "C" void http_mod_exit(void)
 	// TODO: cleanup
 }
 
-void thcrap_update_exit(void)
+extern "C" void thcrap_update_exit(void)
 {
 	http_mod_exit();
 }

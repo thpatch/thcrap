@@ -7,6 +7,7 @@
 #include <string>
 #include <jansson.h>
 #include "file.h"
+#include "thcrap_update_api.h"
 
 class Server;
 class BorrowedHttpHandle
@@ -75,18 +76,20 @@ private:
     Server::HttpHandleFactory httpHandleFactory = defaultHttpHandleFactory;
 
 public:
-    static ServerCache& get();
+    static THCRAP_UPDATE_API ServerCache& get();
+
+    THCRAP_UPDATE_API ~ServerCache();
 
     // Clear the cache and free the objects in it.
-    void clear();
+    THCRAP_UPDATE_API void clear();
     // Set the HttpHandleFactory used for future servers.
     // The default factory should be fine for normal use, it defaults
     // to the factory defined in the build flags.
     // This is used for testing, to set fakes HttpHandles that will
     // test various success and error cases.
-    void setHttpHandleFactory(Server::HttpHandleFactory factory);
+    THCRAP_UPDATE_API void setHttpHandleFactory(Server::HttpHandleFactory factory);
     // Default HttpHandleFactory for new servers.
-    static std::unique_ptr<IHttpHandle> defaultHttpHandleFactory();
+    static THCRAP_UPDATE_API std::unique_ptr<IHttpHandle> defaultHttpHandleFactory();
 
     // Split an URL into an 'origin' part (protocol and domain name) and a 'path' part
     // (everything after the domain name).

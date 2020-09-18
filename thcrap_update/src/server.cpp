@@ -116,6 +116,9 @@ std::unique_ptr<IHttpHandle> ServerCache::defaultHttpHandleFactory()
 #endif
 }
 
+ServerCache::~ServerCache()
+{}
+
 void ServerCache::setHttpHandleFactory(Server::HttpHandleFactory factory)
 {
     this->httpHandleFactory = factory;

@@ -2,7 +2,7 @@
 
 #include <functional>
 #include <string>
-#include <Windows.h>
+#include <windows.h>
 #include <wininet.h>
 #include "http_interface.h"
 

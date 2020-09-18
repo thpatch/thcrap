@@ -1,5 +1,5 @@
 #include "thcrap.h"
-#include <Windows.h>
+#include <windows.h>
 #include <stdexcept>
 #include <vector>
 #include "http_wininet.h"

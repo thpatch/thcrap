@@ -37,6 +37,7 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_test", "thcrap_test\thcrap_test.vcxproj", "{D2469D49-0844-4FC5-ABCD-42BDB49B3C3E}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8D7455CC-BE95-4F59-9047-D390454C7261} = {8D7455CC-BE95-4F59-9047-D390454C7261}
+		{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942} = {8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_tasofro", "thcrap_tasofro\thcrap_tasofro.vcxproj", "{7833FCCF-C3EA-46ED-8D38-5CAB478AB041}"

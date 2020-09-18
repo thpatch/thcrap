@@ -100,19 +100,48 @@ bin/bin/thcrap.dll: bin/bin/win32_utf8.dll bin/bin/jansson.dll bin/bin/zlib-ng.d
 
 
 
+THCRAP_UPDATE_SRCS = \
+	thcrap_update/src/downloader.cpp \
+	thcrap_update/src/download_url.cpp \
+	thcrap_update/src/file.cpp \
+	thcrap_update/src/http_status.cpp \
+	thcrap_update/src/http_wininet.cpp \
+	thcrap_update/src/loader_update.cpp \
+	thcrap_update/src/notify.cpp \
+	thcrap_update/src/random.cpp \
+	thcrap_update/src/repo_discovery.cpp \
+	thcrap_update/src/self.cpp \
+	thcrap_update/src/server.cpp \
+	thcrap_update/src/thcrap_update.cpp \
+	thcrap_update/src/update.cpp \
+
+THCRAP_UPDATE_OBJS = $(THCRAP_UPDATE_SRCS:.cpp=.o)
+$(THCRAP_UPDATE_OBJS): CXXFLAGS += -DTHCRAP_UPDATE_EXPORTS -DUSE_HTTP_WININET
+
+THCRAP_UPDATE_LDFLAGS = -shared -lgdi32 -lcrypt32 -lwininet -lshlwapi -lcomctl32 -Lbin/bin -lwin32_utf8 -lthcrap -ljansson
+
+bin/bin/thcrap_update.dll: bin/bin/thcrap.dll $(THCRAP_UPDATE_OBJS) thcrap_update/thcrap_update.def
+	$(CXX) $(THCRAP_UPDATE_OBJS) thcrap_update/thcrap_update.def -o bin/bin/thcrap_update.dll $(THCRAP_UPDATE_LDFLAGS)
+
+
+
 THCRAP_TEST_SRCS = \
 	libs/external_deps/googletest/googletest/src/gtest-all.cc \
 	libs/external_deps/googletest/googletest/src/gtest_main.cc \
 	thcrap_test/src/repo.cpp \
+	thcrap_test/src/repo_discovery.cpp \
 	thcrap_test/src/runconfig.cpp \
 	thcrap_test/src/patchfile.cpp \
 
 THCRAP_TEST_OBJS := $(THCRAP_TEST_SRCS:.cpp=.o)
 THCRAP_TEST_OBJS := $(THCRAP_TEST_OBJS:.cc=.o)
-$(THCRAP_TEST_OBJS): CXXFLAGS += -Ilibs/external_deps/googletest/googletest -Ilibs/external_deps/googletest/googletest/include
+$(THCRAP_TEST_OBJS): CXXFLAGS += \
+	-Ilibs/external_deps/googletest/googletest \
+	-Ilibs/external_deps/googletest/googletest/include \
+	-Ithcrap_update/src
 
-bin/bin/thcrap_test.exe: bin/bin/thcrap.dll $(THCRAP_TEST_OBJS)
-	$(CXX) $(THCRAP_TEST_OBJS) -o bin/bin/thcrap_test.exe -Lbin/bin -ljansson -lthcrap -Wl,-subsystem,console
+bin/bin/thcrap_test.exe: bin/bin/thcrap.dll bin/bin/thcrap_update.dll $(THCRAP_TEST_OBJS)
+	$(CXX) $(THCRAP_TEST_OBJS) -o bin/bin/thcrap_test.exe -Lbin/bin -ljansson -lthcrap -lthcrap_update -Wl,-subsystem,console
 
 
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "thcrap_update_api.h"
 
 class HttpStatus
 {
@@ -28,12 +29,13 @@ private:
     HttpStatus(Status status, unsigned int code = 0, std::string text = "");
 
 public:
+    THCRAP_UPDATE_API ~HttpStatus();
     // Keep the copy constructors etc
 
-    static HttpStatus makeOk();
-    static HttpStatus makeCancelled();
-    static HttpStatus makeNetworkError(unsigned int httpCode);
-    static HttpStatus makeSystemError(unsigned int systemCode, std::string text);
+    static THCRAP_UPDATE_API HttpStatus makeOk();
+    static THCRAP_UPDATE_API HttpStatus makeCancelled();
+    static THCRAP_UPDATE_API HttpStatus makeNetworkError(unsigned int httpCode);
+    static THCRAP_UPDATE_API HttpStatus makeSystemError(unsigned int systemCode, std::string text);
 
     Status get() const;
     operator bool() const;

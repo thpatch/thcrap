@@ -25,7 +25,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>USE_HTTP_WININET;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>USE_HTTP_WININET;THCRAP_UPDATE_EXPORTS;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -65,6 +65,7 @@
     <ClInclude Include="src\repo_discovery.h" />
     <ClInclude Include="src\self.h" />
     <ClInclude Include="src\server.h" />
+    <ClInclude Include="src\thcrap_update_api.h" />
     <ClInclude Include="src\update.h" />
     <None Include="thcrap_update.def" />
   </ItemGroup>
