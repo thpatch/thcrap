@@ -28,7 +28,11 @@ public:
 
 class Server
 {
+public:
+    typedef std::function<std::unique_ptr<IHttpHandle> (void)> HttpHandleFactory;
+
 private:
+    HttpHandleFactory handleFactory;
     std::string baseUrl;
     // false if the server is dead (network timeout, 5XX error code, etc).
     std::atomic<bool> alive = true;
@@ -36,7 +40,7 @@ private:
     std::list<std::unique_ptr<IHttpHandle>> httpHandles;
 
 public:
-    Server(std::string baseUrl);
+    Server(HttpHandleFactory handleFactory, std::string baseUrl);
     Server(const Server& src) = delete;
     Server(Server&& src) = delete;
     Server& operator=(const Server& src) = delete;
@@ -68,12 +72,21 @@ private:
 
     std::map<std::string, Server> cache;
     std::mutex mutex;
+    Server::HttpHandleFactory httpHandleFactory = defaultHttpHandleFactory;
 
 public:
     static ServerCache& get();
 
-    // Clear the cache and free the objects in it
+    // Clear the cache and free the objects in it.
     void clear();
+    // Set the HttpHandleFactory used for future servers.
+    // The default factory should be fine for normal use, it defaults
+    // to the factory defined in the build flags.
+    // This is used for testing, to set fakes HttpHandles that will
+    // test various success and error cases.
+    void setHttpHandleFactory(Server::HttpHandleFactory factory);
+    // Default HttpHandleFactory for new servers.
+    static std::unique_ptr<IHttpHandle> defaultHttpHandleFactory();
 
     // Split an URL into an 'origin' part (protocol and domain name) and a 'path' part
     // (everything after the domain name).

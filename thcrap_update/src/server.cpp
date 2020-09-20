@@ -1,12 +1,10 @@
 #include "thcrap.h"
 #include "server.h"
 
-#ifdef USE_HTTP_CURL
+#if defined(USE_HTTP_CURL)
 # include "http_curl.h"
-typedef CurlHandle DefaultHttpHandle;
 #elif defined(USE_HTTP_WININET)
 # include "http_wininet.h"
-typedef WininetHandle DefaultHttpHandle;
 #else
 # error "Unknown http library. Please define either USE_HTTP_CURL or USE_HTTP_WININET"
 #endif
@@ -35,8 +33,8 @@ IHttpHandle& BorrowedHttpHandle::operator*()
 }
 
 
-Server::Server(std::string baseUrl)
-    : baseUrl(std::move(baseUrl))
+Server::Server(HttpHandleFactory handleFactory, std::string baseUrl)
+    : handleFactory(handleFactory), baseUrl(std::move(baseUrl))
 {
     if (this->baseUrl[this->baseUrl.length() - 1] != '/') {
         this->baseUrl.append("/");
@@ -89,7 +87,7 @@ BorrowedHttpHandle Server::borrowHandle()
         return handle;
     }
 
-    return BorrowedHttpHandle(std::make_unique<DefaultHttpHandle>(), *this);
+    return BorrowedHttpHandle(this->handleFactory(), *this);
 }
 
 void Server::giveBackHandle(std::unique_ptr<IHttpHandle> handle)
@@ -98,6 +96,20 @@ void Server::giveBackHandle(std::unique_ptr<IHttpHandle> handle)
     this->httpHandles.push_back(std::move(handle));
 }
 
+
+std::unique_ptr<IHttpHandle> ServerCache::defaultHttpHandleFactory()
+{
+#ifdef USE_HTTP_CURL
+    return std::make_unique<CurlHandle>();
+#elif defined(USE_HTTP_WININET)
+    return std::make_unique<WininetHandle>();
+#endif
+}
+
+void ServerCache::setHttpHandleFactory(Server::HttpHandleFactory factory)
+{
+    this->httpHandleFactory = factory;
+}
 
 ServerCache& ServerCache::get()
 {
@@ -139,7 +151,9 @@ std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
         std::scoped_lock<std::mutex> lock(this->mutex);
         auto it = this->cache.find(origin);
         if (it == this->cache.end()) {
-            it = this->cache.emplace(origin, origin).first;
+            it = this->cache.emplace(std::piecewise_construct,
+                                     std::forward_as_tuple(origin),
+                                     std::forward_as_tuple(this->httpHandleFactory, origin)).first;
         }
         Server& server = it->second;
         return std::pair<Server&, std::string>(server, path);
