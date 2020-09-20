@@ -8,26 +8,15 @@
 #include <jansson.h>
 #include "file.h"
 
-#ifdef USE_HTTP_CURL
-# include "http_curl.h"
-typedef CurlHandle HttpHandle;
-#elif defined(USE_HTTP_WININET)
-# include "http_wininet.h"
-typedef WininetHandle HttpHandle;
-#else
-# error "Unknown http library. Please define either USE_HTTP_CURL or USE_HTTP_WININET"
-#endif
-
 class Server;
 class BorrowedHttpHandle
 {
 private:
-    HttpHandle handle;
+    std::unique_ptr<IHttpHandle> handle;
     Server& server;
-    bool valid;
 
 public:
-    BorrowedHttpHandle(HttpHandle&& handle, Server& server);
+    BorrowedHttpHandle(std::unique_ptr<IHttpHandle> handle, Server& server);
     BorrowedHttpHandle(BorrowedHttpHandle&& src);
     ~BorrowedHttpHandle();
     BorrowedHttpHandle(const BorrowedHttpHandle& src) = delete;
@@ -44,7 +33,7 @@ private:
     // false if the server is dead (network timeout, 5XX error code, etc).
     std::atomic<bool> alive = true;
     std::mutex mutex;
-    std::list<HttpHandle> httpHandles;
+    std::list<std::unique_ptr<IHttpHandle>> httpHandles;
 
 public:
     Server(std::string baseUrl);
@@ -68,7 +57,7 @@ public:
     // Give the HttpHandle back to the server.
     // You should not call it, it is called automatically when the BorrowedHttpHandle
     // is destroyed.
-    void giveBackHandle(HttpHandle&& handle);
+    void giveBackHandle(std::unique_ptr<IHttpHandle> handle);
 };
 
 // Singleton
@@ -82,6 +71,9 @@ private:
 
 public:
     static ServerCache& get();
+
+    // Clear the cache and free the objects in it
+    void clear();
 
     // Split an URL into an 'origin' part (protocol and domain name) and a 'path' part
     // (everything after the domain name).

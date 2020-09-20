@@ -1,29 +1,37 @@
 #include "thcrap.h"
 #include "server.h"
 
+#ifdef USE_HTTP_CURL
+# include "http_curl.h"
+typedef CurlHandle DefaultHttpHandle;
+#elif defined(USE_HTTP_WININET)
+# include "http_wininet.h"
+typedef WininetHandle DefaultHttpHandle;
+#else
+# error "Unknown http library. Please define either USE_HTTP_CURL or USE_HTTP_WININET"
+#endif
+
 std::unique_ptr<ServerCache> ServerCache::instance;
 
 
-BorrowedHttpHandle::BorrowedHttpHandle(HttpHandle&& handle, Server& server)
-    : handle(std::move(handle)), server(server), valid(true)
+BorrowedHttpHandle::BorrowedHttpHandle(std::unique_ptr<IHttpHandle> handle, Server& server)
+    : handle(std::move(handle)), server(server)
 {}
 
 BorrowedHttpHandle::BorrowedHttpHandle(BorrowedHttpHandle&& src)
-    : handle(std::move(src.handle)), server(src.server), valid(src.valid)
-{
-    src.valid = false;
-}
+    : handle(std::move(src.handle)), server(src.server)
+{}
 
 BorrowedHttpHandle::~BorrowedHttpHandle()
 {
-    if (this->valid) {
+    if (this->handle) {
         this->server.giveBackHandle(std::move(this->handle));
     }
 }
 
 IHttpHandle& BorrowedHttpHandle::operator*()
 {
-    return this->handle;
+    return *this->handle;
 }
 
 
@@ -78,13 +86,13 @@ BorrowedHttpHandle Server::borrowHandle()
     if (!this->httpHandles.empty()) {
         BorrowedHttpHandle handle(std::move(this->httpHandles.front()), *this);
         this->httpHandles.pop_front();
-        return std::move(handle);
+        return handle;
     }
 
-    return BorrowedHttpHandle(std::move(HttpHandle()), *this);
+    return BorrowedHttpHandle(std::make_unique<DefaultHttpHandle>(), *this);
 }
 
-void Server::giveBackHandle(HttpHandle&& handle)
+void Server::giveBackHandle(std::unique_ptr<IHttpHandle> handle)
 {
     std::scoped_lock<std::mutex> lock(this->mutex);
     this->httpHandles.push_back(std::move(handle));
@@ -97,6 +105,11 @@ ServerCache& ServerCache::get()
         ServerCache::instance = std::make_unique<ServerCache>();
     }
     return *ServerCache::instance;
+}
+
+void ServerCache::clear()
+{
+    this->cache.clear();
 }
 
 std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)

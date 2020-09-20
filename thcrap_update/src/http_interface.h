@@ -19,6 +19,6 @@ public:
         Error
     };
 
-    ~IHttpHandle() {}
+    virtual ~IHttpHandle() {}
     virtual Status download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback) = 0;
 };
