@@ -511,18 +511,17 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 
 	log_printf("Checking for engine updates...\n");
 
-	auto netpaths = ServerCache::get().downloadJsonFile(SELF_SERVER + NETPATHS_FN);
-	if (!netpaths) {
+	auto [netpaths, netpaths_status] = ServerCache::get().downloadJsonFile(SELF_SERVER + NETPATHS_FN);
+	if (!netpaths_status || !netpaths) {
+		log_printf("%s%s: %s\n", SELF_SERVER.c_str(), NETPATHS_FN, netpaths_status.toString().c_str());
 		return SELF_VERSION_CHECK_ERROR;
 	}
-	defer(netpaths = json_decref_safe(netpaths));
 
 	const char* branch = PROJECT_BRANCH();
-	json_t* branch_json = json_object_get(netpaths, branch);
+	json_t* branch_json = json_object_get(*netpaths, branch);
 	if (!branch_json) {
 		return SELF_NO_UPDATE;
 	}
-	defer(branch_json = json_decref_safe(branch_json));
 
 	auto latest_version = json_object_get_hex(branch_json, "version");
 	if (!latest_version) {
@@ -596,18 +595,19 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	auto arc_dl = ServerCache::get().downloadFile(SELF_SERVER + netpath);
-	if(arc_dl.empty()) {
+	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(SELF_SERVER + netpath);
+	if(!arc_dl_status || arc_dl.empty()) {
+		log_printf("%s%s: %s\n", SELF_SERVER.c_str(), netpath, arc_dl_status.toString().c_str());
 		return SELF_SERVER_ERROR;
 	}
 
-	auto sig = ServerCache::get().downloadJsonFile(SELF_SERVER + netpath + ".sig");
-	if(!sig) {
+	auto [sig, sig_status] = ServerCache::get().downloadJsonFile(SELF_SERVER + netpath + ".sig");
+	if(!sig_status || !sig) {
+		log_printf("%s%s%s: %s\n", SELF_SERVER.c_str(), netpath, ".sig", sig_status.toString().c_str());
 		return SELF_NO_SIG;
 	}
-	defer(sig = json_decref_safe(sig));
 
-	ret = self_verify(hCryptProv, &hHash, arc_dl.data(), arc_dl.size(), sig, context);
+	ret = self_verify(hCryptProv, &hHash, arc_dl.data(), arc_dl.size(), *sig, context);
 	defer(CryptDestroyHash(hHash));
 	if(ret != SELF_OK) {
 		return ret;

@@ -71,7 +71,7 @@ public:
 	const ScopedHInternet& operator=(ScopedHInternet&& src) = delete;
 };
 
-IHttpHandle::Status WininetHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
+HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;
@@ -81,7 +81,7 @@ IHttpHandle::Status WininetHandle::download(const std::string& url, std::functio
         // have been moved into another object.
         // But most probably the InternetOpen in the constructor failed,
         // so we already displayed an error and we just want to leave.
-        return Status::Error;
+        return HttpStatus::makeSystemError(0, "Wininet is not initialized");
     }
 
 	ScopedHInternet hFile = InternetOpenUrlA(
@@ -94,36 +94,32 @@ IHttpHandle::Status WininetHandle::download(const std::string& url, std::functio
 		// So let's wait with that until this code is used in conjunction
 		// with a GUI, if at all.
 		DWORD inet_ret = GetLastError();
+		const char *msg;
 		switch (inet_ret) {
 		case ERROR_INTERNET_NAME_NOT_RESOLVED:
-			log_printf("%s: could not resolve hostname\n", url.c_str());
-			return Status::ServerError;
+			msg = "could not resolve hostname";
+			break;
 		case ERROR_INTERNET_CANNOT_CONNECT:
-			log_printf("%s: connection refused\n", url.c_str());
-			return Status::ServerError;
+			msg = "connection refused";
+			break;
 		case ERROR_INTERNET_TIMEOUT:
-			log_printf("%s: timed out\n", url.c_str());
-			return Status::ServerError;
+			msg = "timed out";
+			break;
 		case ERROR_INTERNET_UNRECOGNIZED_SCHEME:
-			log_printf("%s: unknown protocol\n", url.c_str());
-			return Status::ServerError;
+			msg = "unknown protocol";
+			break;
 		default:
-			log_printf("%s: WinInet error %d\n", url.c_str(), inet_ret);
-			return Status::Error;
+			msg = "WinInet error";
+			break;
 		}
+		return HttpStatus::makeSystemError(inet_ret, msg);
 	}
 
 	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_STATUS_CODE,
 		&http_stat, &byte_ret, 0
 	);
 	if (http_stat != 200) {
-		log_printf("%s: HTTP error code %d\n", url.c_str(), http_stat);
-        if (300 <= http_stat && http_stat <= 499) {
-            return Status::ClientError;
-        }
-        else {
-            return Status::ServerError;
-        }
+		return HttpStatus::makeNetworkError(http_stat);
 	}
 
 	DWORD file_size;
@@ -132,7 +128,7 @@ IHttpHandle::Status WininetHandle::download(const std::string& url, std::functio
 	);
 	std::vector<uint8_t> buffer;
 	if (!progressCallback(0, file_size)) {
-		return Status::Cancelled;
+		return HttpStatus::makeCancelled();
 	}
 	auto rem_size = file_size;
 
@@ -142,23 +138,20 @@ IHttpHandle::Status WininetHandle::download(const std::string& url, std::functio
 			read_size = rem_size;
 		}
 		if (read_size == 0) {
-			log_printf("%s: disconnected\n", url.c_str());
-			return Status::ServerError;
+			return HttpStatus::makeSystemError(0, "disconnected");
 		}
 		buffer.resize(read_size);
 		if (InternetReadFile(hFile, buffer.data(), read_size, &byte_ret) == FALSE) {
-			log_printf("%s: reading error #%d\n", url.c_str(), GetLastError());
-			return Status::Error;
+			return HttpStatus::makeSystemError(GetLastError(), "reading error");
 		}
 		rem_size -= byte_ret;
 		if (progressCallback(file_size - rem_size, file_size) == false) {
-            return Status::Cancelled;
-        }
+			return HttpStatus::makeCancelled();
+		}
         if (writeCallback(buffer.data(), read_size) != read_size) {
-		    log_printf("%s: writing error #%d\n", url.c_str(), GetLastError());
-			return Status::Error;
+			return HttpStatus::makeSystemError(GetLastError(), "writing error");
 		}
 	}
 
-	return Status::Ok;
+	return HttpStatus::makeOk();
 }

@@ -13,25 +13,25 @@ Update::Update(Update::filter_t filterCallback,
     crc32::generate_table(this->crc32Table);
 }
 
-get_status_t Update::httpStatusToGetStatus(IHttpHandle::Status status)
+get_status_t Update::httpStatusToGetStatus(HttpStatus status)
 {
-    switch (status) {
-        case IHttpHandle::Status::Ok:
+    switch (status.get()) {
+        case HttpStatus::Ok:
             return GET_OK;
-        case IHttpHandle::Status::ClientError:
-            return GET_CLIENT_ERROR;
-        case IHttpHandle::Status::ServerError:
-            return GET_SERVER_ERROR;
-        case IHttpHandle::Status::Cancelled:
+        case HttpStatus::Cancelled:
             return GET_CANCELLED;
-        case IHttpHandle::Status::Error:
+        case HttpStatus::ClientError:
+            return GET_CLIENT_ERROR;
+        case HttpStatus::ServerError:
+            return GET_SERVER_ERROR;
+        case HttpStatus::SystemError:
             return GET_SYSTEM_ERROR;
         default:
             throw std::invalid_argument("Invalid status");
     }
 }
 
-bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
+bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus, std::string error,
                                   size_t file_progress, size_t file_size)
 {
     if (this->progressCallback == nullptr) {
@@ -43,9 +43,16 @@ bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, c
     status.patch = patch;
     status.fn = fn.c_str();
     status.url = url.getUrl().c_str();
-    status.status = getStatus;
     status.file_progress = file_progress;
     status.file_size = file_size;
+
+    status.status = getStatus;
+    if (getStatus == GET_CLIENT_ERROR || getStatus == GET_SERVER_ERROR || getStatus == GET_SYSTEM_ERROR) {
+        status.error = error.c_str();
+    }
+    else {
+        status.error = nullptr;
+    }
 
     status.nb_files_downloaded = this->mainDownloader.current();
     if (this->filesJsDownloader.current() == this->filesJsDownloader.total()) {
@@ -175,26 +182,26 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
             [this, patch, fn = std::string(fn), localFilesJs, value = ScopedJson(json_incref(value))]
             (const DownloadUrl& url, std::vector<uint8_t>& data) mutable {
                 if (crc32::update(this->crc32Table, 0, data.data(), data.size()) != json_integer_value(*value)) {
-                    this->callProgressCallback(patch, fn, url, GET_CRC32_ERROR, 0, 0);
+                    this->callProgressCallback(patch, fn, url, GET_CRC32_ERROR);
                     return ;
                 }
                 if (patch_file_store(patch, fn.c_str(), data.data(), data.size()) != 0) {
-                    this->callProgressCallback(patch, fn, url, GET_SYSTEM_ERROR, 0, 0);
+                    this->callProgressCallback(patch, fn, url, GET_SYSTEM_ERROR, "file write failed");
                     return ;
                 }
-                this->callProgressCallback(patch, fn, url, GET_OK, data.size(), data.size());
+                this->callProgressCallback(patch, fn, url, GET_OK, "", data.size(), data.size());
                 json_object_set(*localFilesJs, fn.c_str(), *value);
             },
 
             // Failure callback
-            [this, patch, fn = std::string(fn)](const DownloadUrl& url, IHttpHandle::Status httpStatus) {
+            [this, patch, fn = std::string(fn)](const DownloadUrl& url, HttpStatus httpStatus) {
                 get_status_t getStatus = this->httpStatusToGetStatus(httpStatus);
-                this->callProgressCallback(patch, fn, url, getStatus, 0, 0);
+                this->callProgressCallback(patch, fn, url, getStatus, httpStatus.toString());
             },
 
             // Progress callback
             [this, patch, fn = std::string(fn)](const DownloadUrl& url, size_t file_progress, size_t file_size) {
-                return this->callProgressCallback(patch, fn, url, GET_DOWNLOADING, file_progress, file_size);
+                return this->callProgressCallback(patch, fn, url, GET_DOWNLOADING, "", file_progress, file_size);
             }
         );
     }
@@ -223,8 +230,8 @@ void Update::startPatchUpdate(const patch_t *patch)
         [this, patch](const DownloadUrl&, std::vector<uint8_t>& data) {
             this->onFilesJsComplete(patch, data);
         },
-        [patch_id = std::string(patch->id)](const DownloadUrl& url, IHttpHandle::Status httpStatus) {
-            if (httpStatus == IHttpHandle::Status::Cancelled) {
+        [patch_id = std::string(patch->id)](const DownloadUrl& url, HttpStatus httpStatus) {
+            if (httpStatus.get() == HttpStatus::Cancelled) {
                 // Another file finished before
                 return ;
             }
@@ -254,7 +261,7 @@ patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
     std::string url = repo->servers[0];
     url += sel->patch_id;
     url += "/patch.js";
-    ScopedJson patch_js = ServerCache::get().downloadJsonFile(url);
+    auto [patch_js, _] = ServerCache::get().downloadJsonFile(url);
 
     RepoWrite(repo);
 	patch_t patch_info = patch_build(sel);

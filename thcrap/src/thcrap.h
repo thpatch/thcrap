@@ -111,45 +111,71 @@ public:
 class ScopedJson
 {
 private:
-    json_t *obj;
+    json_t *obj = nullptr;
+
+    void clear()
+    {
+        if (this->obj) {
+            json_decref(this->obj);
+        }
+        this->obj = nullptr;
+    }
+
+    void assign(json_t *new_obj)
+    {
+        this->clear();
+        if (new_obj) {
+            this->obj = json_incref(new_obj);
+        }
+    }
+
+    void steal(json_t *new_obj)
+    {
+        this->clear();
+        this->obj = new_obj;
+    }
 
 public:
-    ScopedJson(json_t *obj)
-        : obj(obj)
+    ScopedJson()
     {}
 
+    ScopedJson(json_t *obj)
+    {
+        this->steal(obj);
+    }
+
     ScopedJson(const ScopedJson& src)
-        : obj(json_incref(src.obj))
-    {}
+    {
+        this->assign(src.obj);
+    }
+    ScopedJson& operator=(json_t *obj)
+    {
+        this->steal(obj);
+        return *this;
+    }
     ScopedJson& operator=(const ScopedJson& src)
     {
-        this->obj = json_incref(src.obj);
+        this->assign(src.obj);
         return *this;
     }
     ScopedJson(ScopedJson&& src)
-        : obj(src.obj)
     {
+        this->steal(src.obj);
         src.obj = nullptr;
     }
     ScopedJson& operator=(ScopedJson&& src)
     {
-        this->obj = src.obj;
+        this->steal(src.obj);
         src.obj = nullptr;
         return *this;
     }
 
     ~ScopedJson()
     {
-        if (obj) {
-            json_decref(obj);
-        }
+        this->clear();
     }
 
-    json_t *operator*()
-    {
-        return this->obj;
-    }
-    const json_t *operator*() const
+    json_t *operator*() const
     {
         return this->obj;
     }

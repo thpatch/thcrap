@@ -41,6 +41,10 @@ void RepoDiscovery::addRepo(repo_t *repo)
 
 bool RepoDiscovery::addRepo(ScopedJson repo_js)
 {
+    if (!repo_js) {
+        return false;
+    }
+
     repo_t *repo = RepoLoadJson(*repo_js);
     if (!repo) {
         return false;
@@ -65,11 +69,14 @@ void RepoDiscovery::addServer(std::string url)
     this->downloading++;
 
     std::thread([this, url]() {
-        ScopedJson repo_js = ServerCache::get().downloadJsonFile(url + "repo.js");
-        if (repo_js) {
+        auto [repo_js, status] = ServerCache::get().downloadJsonFile(url + "repo.js");
+        if (status) {
             if (!this->addRepo(repo_js)) {
                 log_printf("%s: invalid repo!\n", url.c_str());
             }
+        }
+        else {
+            log_printf("%s: %s\n", url.c_str(), status.toString().c_str());
         }
 
         this->downloading--;

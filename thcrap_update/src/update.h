@@ -40,6 +40,10 @@ typedef struct {
     const char *url;
     // File download status or result
     get_status_t status;
+    // Human-readable error message if status is
+    // GET_CLIENT_ERROR, GET_SERVER_ERROR or
+    // GET_SYSTEM_ERROR, nullptr otherwise.
+    const char *error;
 
     // Bytes downloaded for the current file
     size_t file_progress;
@@ -110,9 +114,10 @@ private:
 
     void startPatchUpdate(const patch_t *patch);
     void onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& file);
-    bool callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus,
-                              size_t file_progress, size_t file_size);
-    get_status_t httpStatusToGetStatus(IHttpHandle::Status status);
+    bool callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url,
+                              get_status_t getStatus, std::string error = "",
+                              size_t file_progress = 0, size_t file_size = 0);
+    get_status_t httpStatusToGetStatus(HttpStatus status);
     std::string fnToUrl(const std::string& url, uint32_t crc32);
 
 public:

@@ -12,11 +12,11 @@ class File
 {
 public:
     typedef std::function<void (const DownloadUrl& url, std::vector<uint8_t>& data)> success_t;
-    typedef std::function<void (const DownloadUrl& url, IHttpHandle::Status status)> failure_t;
+    typedef std::function<void (const DownloadUrl& url, HttpStatus status)> failure_t;
     typedef std::function<bool (const DownloadUrl& url, size_t file_progress, size_t file_size)> progress_t;
     static void defaultSuccessFunction(const DownloadUrl&, std::vector<uint8_t>&) {}
-    static void defaultFailureFunction(const DownloadUrl& url, IHttpHandle::Status status) {}
-    static bool defaultProgressFunction(const DownloadUrl& url, size_t file_progress, size_t file_size) { return true; }
+    static void defaultFailureFunction(const DownloadUrl&, HttpStatus) {}
+    static bool defaultProgressFunction(const DownloadUrl&, size_t, size_t) { return true; }
 
 private:
     enum class Status

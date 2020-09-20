@@ -18,7 +18,7 @@ public:
     WininetHandle& operator=(WininetHandle& other) = delete;
     ~WininetHandle();
 
-    Status download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback) override;
+    HttpStatus download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback) override;
 };
 
 

@@ -35,7 +35,7 @@ int CurlHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_
     }
 };
 
-IHttpHandle::Status CurlHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
+HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
     curl_easy_setopt(this->curl, CURLOPT_FOLLOWLOCATION, 1);
 
@@ -72,11 +72,10 @@ IHttpHandle::Status CurlHandle::download(const std::string& url, std::function<s
         }
         curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, nullptr);
         if (res == CURLE_ABORTED_BY_CALLBACK) {
-            return Status::Cancelled;
+            return HttpStatus::makeCancelled();
         }
         else {
-            log_printf("%s: %s\n", url.c_str(), error.c_str());
-            return Status::Error;
+            return HttpStatus::makeSystemError(res, error);
         }
     }
     curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, nullptr);
@@ -84,14 +83,8 @@ IHttpHandle::Status CurlHandle::download(const std::string& url, std::function<s
     long response_code = 0;
     curl_easy_getinfo(this->curl, CURLINFO_RESPONSE_CODE, &response_code);
     if (response_code != 200) {
-        log_printf("%s: HTTP error code %ld\n", url.c_str(), response_code);
-        if (300 <= response_code && response_code <= 499) {
-            return Status::ClientError;
-        }
-        else {
-            return Status::ServerError;
-        }
+        return HttpStatus::makeNetworkError(response_code);
     }
 
-    return Status::Ok;
+    return HttpStatus::makeOk();
 }

@@ -39,6 +39,7 @@
     <ClCompile Include="src\downloader.cpp" />
     <ClCompile Include="src\download_url.cpp" />
     <ClCompile Include="src\file.cpp" />
+    <ClCompile Include="src\http_status.cpp" />
     <ClCompile Include="src\http_wininet.cpp" />
     <ClCompile Include="src\loader_update.cpp" />
     <ClCompile Include="src\notify.cpp" />
@@ -55,6 +56,7 @@
     <ClInclude Include="src\downloader.h" />
     <ClInclude Include="src\download_url.h" />
     <ClInclude Include="src\file.h" />
+    <ClInclude Include="src\http_status.h" />
     <ClInclude Include="src\http_interface.h" />
     <ClInclude Include="src\http_wininet.h" />
     <ClInclude Include="src\loader_update.h" />

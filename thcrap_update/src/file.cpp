@@ -61,12 +61,12 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
     }
     // Fail early if the server is dead
     if (!url.getServer().isAlive()) {
-        userFailureCallback(url, IHttpHandle::Status::Cancelled);
+        userFailureCallback(url, HttpStatus::makeCancelled());
         return ;
     }
 
     std::vector<uint8_t> localData;
-    IHttpHandle::Status status = http.download(url.getUrl(),
+    HttpStatus status = http.download(url.getUrl(),
         [this, &localData](const uint8_t *data, size_t size) {
             return this->writeCallback(localData, data, size);
         },
@@ -74,8 +74,8 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
             return this->progressCallback(url, dlnow, dltotal);
         }
     );
-    if (status != IHttpHandle::Status::Ok) {
-        if (status == IHttpHandle::Status::ServerError || status == IHttpHandle::Status::Error) {
+    if (!status) {
+        if (status.get() == HttpStatus::ServerError || status.get() == HttpStatus::SystemError) {
             // If the server is dead, we don't want to continue using it.
             // If the library returned an error, future downloads to the
             // same server are also likely to fail.

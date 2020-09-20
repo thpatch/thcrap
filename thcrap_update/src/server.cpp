@@ -56,26 +56,36 @@ const std::string& Server::getUrl() const
     return this->baseUrl;
 }
 
-std::vector<uint8_t> Server::downloadFile(const std::string& name)
+std::pair<std::vector<uint8_t>, HttpStatus> Server::downloadFile(const std::string& name)
 {
     std::list<DownloadUrl> urls {
         DownloadUrl(*this, name)
     };
     std::vector<uint8_t> ret;
+    HttpStatus status = HttpStatus::makeOk();
 
-    File file(std::move(urls), [&ret](const DownloadUrl&, std::vector<uint8_t>& data) {
-        ret = std::move(data);
-    });
+    File file(std::move(urls),
+        [&ret](const DownloadUrl&, std::vector<uint8_t>& data) {
+            ret = std::move(data);
+        },
+        [&status](const DownloadUrl&, HttpStatus error) {
+            status = error;
+        }
+    );
     file.download();
 
-    return ret;
+    return std::make_pair(std::move(ret), status);
 }
 
-json_t *Server::downloadJsonFile(const std::string& name)
+std::pair<ScopedJson, HttpStatus> Server::downloadJsonFile(const std::string& name)
 {
-    std::vector<uint8_t> data = this->downloadFile(name);
-    json_t *json = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
-    return json;
+    auto [data, status] = this->downloadFile(name);
+    if (!status) {
+        return std::make_pair(nullptr, status);
+    }
+
+    ScopedJson json = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
+    return std::make_pair(json, status);
 }
 
 BorrowedHttpHandle Server::borrowHandle()
@@ -160,13 +170,13 @@ std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
     }
 }
 
-std::vector<uint8_t> ServerCache::downloadFile(const std::string& url)
+std::pair<std::vector<uint8_t>, HttpStatus> ServerCache::downloadFile(const std::string& url)
 {
     auto [server, path] = this->urlToServer(url);
     return server.downloadFile(path);
 }
 
-json_t *ServerCache::downloadJsonFile(const std::string& url)
+std::pair<ScopedJson, HttpStatus> ServerCache::downloadJsonFile(const std::string& url)
 {
     auto [server, path] = this->urlToServer(url);
     return server.downloadJsonFile(path);

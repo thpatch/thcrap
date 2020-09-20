@@ -135,19 +135,15 @@ bool progress_callback(progress_callback_status_t *status, void *param)
             return true;
 
         case GET_CLIENT_ERROR:
-            log_printf("%s: file not available\n", status->url);
+		case GET_SERVER_ERROR:
+		case GET_SYSTEM_ERROR:
+			log_printf("%s: %s\n", status->url, status->error);
             return true;
         case GET_CRC32_ERROR:
             log_printf("%s: CRC32 error\n", status->url);
             return true;
-        case GET_SERVER_ERROR:
-            log_printf("%s: server error\n", status->url);
-            return true;
         case GET_CANCELLED:
             // Another copy of the file have been downloader earlier. Ignore.
-            return true;
-        case GET_SYSTEM_ERROR:
-            log_printf("%s: system error\n", status->url);
             return true;
         default:
             log_printf("%s: unknown status\n", status->url);

@@ -51,9 +51,9 @@ public:
     const std::string& getUrl() const;
 
     // Download a single file from this server.
-    std::vector<uint8_t> downloadFile(const std::string& name);
+    std::pair<std::vector<uint8_t>, HttpStatus> downloadFile(const std::string& name);
     // Download a single json file from this server.
-    json_t *downloadJsonFile(const std::string& name);
+    std::pair<ScopedJson, HttpStatus> downloadJsonFile(const std::string& name);
 
     // Borrow a HttpHandle from the server.
     // You own it until the BorrowedHttpHandle is destroyed.
@@ -94,7 +94,7 @@ public:
     std::pair<Server&, std::string> urlToServer(const std::string& url);
 
     // Find the server for url and call downloadFile on it
-    std::vector<uint8_t> downloadFile(const std::string& url);
+    std::pair<std::vector<uint8_t>, HttpStatus> downloadFile(const std::string& url);
     // Find the server for url and call downloadJsonFile on it
-    json_t *downloadJsonFile(const std::string& url);
+    std::pair<ScopedJson, HttpStatus> downloadJsonFile(const std::string& url);
 };
