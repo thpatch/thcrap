@@ -27,6 +27,7 @@ IDI_ICON1 ICON "..\\gfx\\abstractcactus\\icon_01.ico"
 
 IDD_DIALOG1 DIALOGEX 0, 0, 274, 143
 STYLE DS_SETFONT | WS_POPUP | WS_OVERLAPPEDWINDOW | WS_VISIBLE
+EXSTYLE WS_EX_COMPOSITED
 CAPTION "Touhou Community Reliant Automatic Patcher - Patch configuration tool"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
