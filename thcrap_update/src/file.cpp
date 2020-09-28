@@ -5,29 +5,18 @@
 #include "server.h"
 #include "file.h"
 
+using namespace std::string_literals;
+
 File::File(std::list<DownloadUrl>&& urls,
            success_t successCallback,
            failure_t failureCallback,
            progress_t progressCallback)
-    : status(Status::Todo), urls(urls), threadsLeft(urls.size()),
+    : status(Status::Todo), urls(urls),
     userSuccessCallback(successCallback), userFailureCallback(failureCallback), userProgressCallback(progressCallback)
 {
     if (urls.empty()) {
         throw new std::invalid_argument("Input URL list must not be empty");
     }
-}
-
-size_t File::getThreadsLeft() const
-{
-    return this->threadsLeft;
-}
-
-void File::decrementThreadsLeft()
-{
-    if (this->threadsLeft == 0) {
-        throw std::logic_error("Trying to decrement File::threadsLeft, but it is already 0");
-    }
-    this->threadsLeft--;
 }
 
 size_t File::writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size)
@@ -38,8 +27,8 @@ size_t File::writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, si
 
 bool File::progressCallback(const DownloadUrl& url, size_t dlnow, size_t dltotal)
 {
-    if (this->status == Status::Done || // If another thread already finished to download this file, we don't need to continue.
-        !url.getServer().isAlive()) { // Don't waste time if the server is dead
+    if (!url.getServer().isAlive()) {
+        // Don't waste time if the server is dead
         return false;
     }
     return userProgressCallback(url, dlnow, dltotal);
@@ -48,15 +37,13 @@ bool File::progressCallback(const DownloadUrl& url, size_t dlnow, size_t dltotal
 void File::download(IHttpHandle& http, const DownloadUrl& url)
 {
     if (this->status == Status::Done) {
-        return ;
+        throw std::logic_error("Downloading an already downloaded file "s + url.getUrl());
     }
-    // If the status was Todo, we need to change it.
-    // If the status was Downloading, we don't care whether we change it or not.
-    // If the status changed to Done since the if above, we must not change it.
-    File::Status status_todo = File::Status::Todo;
-    this->status.compare_exchange_strong(status_todo, Status::Downloading);
+    this->status = Status::Downloading;
 
     if (userProgressCallback(url, 0, 0) == false) {
+        // User-requested cancel
+        userFailureCallback(url, HttpStatus::makeCancelled());
         return ;
     }
     // Fail early if the server is dead
@@ -65,10 +52,10 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
         return ;
     }
 
-    std::vector<uint8_t> localData;
+    std::vector<uint8_t> out;
     HttpStatus status = http.download(url.getUrl(),
-        [this, &localData](const uint8_t *data, size_t size) {
-            return this->writeCallback(localData, data, size);
+        [this, &out](const uint8_t *in, size_t size) {
+            return this->writeCallback(out, in, size);
         },
         [this, &url](size_t dlnow, size_t dltotal) {
             return this->progressCallback(url, dlnow, dltotal);
@@ -86,20 +73,12 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
         return ;
     }
 
-    {
-        File::Status status_downloading = File::Status::Downloading;
-        if (this->status.compare_exchange_strong(status_downloading, Status::Done)) {
-            // We changed the status from Downloading to Done,
-            // so we're the first thread to finish downloading the file
-            userSuccessCallback(url, localData);
-        }
-        // else, do nothing. Another thread finished before us.
-    }
+    this->status = Status::Done;
+    userSuccessCallback(url, out);
 }
 
 DownloadUrl File::pickUrl()
 {
-    std::scoped_lock<std::mutex> lock(this->mutex);
     int n = Random::get() % this->urls.size();
     auto it = this->urls.begin();
     std::advance(it, n);
@@ -110,7 +89,9 @@ DownloadUrl File::pickUrl()
 
 void File::download()
 {
-    DownloadUrl url = this->pickUrl();
-    BorrowedHttpHandle handle = url.getServer().borrowHandle();
-    this->download(*handle, url);
+    do {
+        DownloadUrl url = this->pickUrl();
+        BorrowedHttpHandle handle = url.getServer().borrowHandle();
+        this->download(*handle, url);
+    } while (this->status != Status::Done && this->urls.size() > 0);
 }

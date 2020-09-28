@@ -26,15 +26,13 @@ private:
         Done,
     };
 
-    std::mutex mutex;
     std::atomic<Status> status;
-    // threadsLeft is the number of threads left to enqueue into the thread pool.
-    // It is tightly coupled with urls.size(), but may be lower.
-    // threadsLeft will decrease when we enqueue a download into the thread pool,
-    // but urls.size() will decrease only when the thread pool picks our download
-    // and starts it.
+    // List of URLs we can download this file from.
+    // The end of the URL should always be the same, and the beginning should
+    // always be different - the different URLs point to the same file on
+    // different servers.
+    // When starting a download, we remove the corresponding URL from the list.
     std::list<DownloadUrl> urls;
-    size_t threadsLeft;
 
     // User-provided callbacks
     success_t userSuccessCallback;
@@ -52,11 +50,9 @@ public:
          failure_t failureCallback = defaultFailureFunction,
          progress_t progressCallback = defaultProgressFunction);
     File(const File&) = delete;
+    File(File&&) = delete;
     File& operator=(const File&) = delete;
-
-    // Used by the Downloader class
-    size_t getThreadsLeft() const;
-    void decrementThreadsLeft();
+    File& operator=(File&&) = delete;
 
     // Start a download thread.
     // The status of the download will be returned in the callbacks given

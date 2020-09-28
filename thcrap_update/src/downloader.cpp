@@ -3,7 +3,7 @@
 #include "server.h"
 
 Downloader::Downloader()
-    : pool(8), current_(0)
+    : pool(8), current_(0), total_(0)
 {}
 
 Downloader::~Downloader()
@@ -25,13 +25,19 @@ void Downloader::addFile(const std::list<std::string>& serversUrl, std::string f
                          File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
 {
     std::scoped_lock lock(this->mutex);
+
     std::list<DownloadUrl> urls = this->serversListToDownloadUrlList(serversUrl, filePath);
-    this->files.emplace_back(std::move(urls), [successCallback, &current_ = this->current_](const DownloadUrl& url, std::vector<uint8_t>& data) {
+    auto successLambda = [successCallback, &current_ = this->current_](const DownloadUrl& url, std::vector<uint8_t>& data) {
         current_++;
         return successCallback(url, data);
-    }, failureCallback, progressCallback);
-    auto& file = this->files.back();
-    this->addToQueue(file);
+    };
+    std::unique_ptr<File> file = std::make_unique<File>(std::move(urls), successLambda, failureCallback, progressCallback);
+
+    this->futuresList.push_back(this->pool.enqueue([file = std::move(file)]() {
+        file->download();
+    }));
+
+    this->total_++;
 }
 
 void Downloader::addFile(char** serversUrl, std::string filePath,
@@ -45,15 +51,6 @@ void Downloader::addFile(char** serversUrl, std::string filePath,
     this->addFile(serversList, filePath, successCallback, failureCallback, progressCallback);
 }
 
-void Downloader::addToQueue(File& file)
-{
-    std::scoped_lock lock(this->mutex);
-    file.decrementThreadsLeft();
-    this->futuresList.push_back(this->pool.enqueue([&file]() {
-        file.download();
-    }));
-}
-
 size_t Downloader::current() const
 {
     return this->current_;
@@ -61,26 +58,11 @@ size_t Downloader::current() const
 
 size_t Downloader::total() const
 {
-    return this->files.size();
+    return this->total_;
 }
 
 void Downloader::wait()
 {
-    // For every file, run as many download threads as there is servers available.
-    // The 2nd thread for a file will run only after every file have started once.
-    bool loop = false;
-    do {
-        loop = false;
-        for (File& file : this->files) {
-            if (file.getThreadsLeft() > 0) {
-                this->addToQueue(file);
-            }
-            if (file.getThreadsLeft() > 0) {
-                loop = true;
-            }
-        }
-    } while (loop == true);
-
     for (auto& it : this->futuresList) {
         it.get();
     }
