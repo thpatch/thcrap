@@ -403,6 +403,7 @@ int thcrap_init_binary(size_t stage_num, bool use_module, HMODULE module)
 int InitDll(HMODULE hDll)
 {
 
+	json_set_alloc_funcs(malloc, free);
 	w32u8_set_fallback_codepage(932);
 
 	exception_init();
