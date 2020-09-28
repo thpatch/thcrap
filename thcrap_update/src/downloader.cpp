@@ -31,9 +31,9 @@ void Downloader::addFile(const std::list<std::string>& serversUrl, std::string f
         current_++;
         return successCallback(url, data);
     };
-    std::unique_ptr<File> file = std::make_unique<File>(std::move(urls), successLambda, failureCallback, progressCallback);
+    std::shared_ptr<File> file = std::make_unique<File>(std::move(urls), successLambda, failureCallback, progressCallback);
 
-    this->futuresList.push_back(this->pool.enqueue([file = std::move(file)]() {
+    this->futuresList.push_back(this->pool.enqueue([file]() {
         file->download();
     }));
 
