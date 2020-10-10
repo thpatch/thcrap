@@ -28,6 +28,7 @@ int file_rep_init(file_rep_t *fr, const char *file_name)
 	if (fr->hooks) {
 		fr->patch = patchhooks_load_diff(fr->hooks, fr->name, &fr->patch_size);
 	}
+	InitializeCriticalSection(&fr->cs);
 	return 1;
 }
 
@@ -52,6 +53,7 @@ int file_rep_clear(file_rep_t *fr)
 	fr->offset = -1;
 	fr->orig_size = 0;
 	fr->object = NULL;
+	DeleteCriticalSection(&fr->cs);
 	SAFE_FREE(fr->name);
 	return 0;
 }
@@ -400,6 +402,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
+	EnterCriticalSection(&fr->cs);
 	bool has_rep = fr->rep_buffer != nullptr;
 	if (fr->offset == -1) {
 		fr->offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT);
@@ -432,6 +435,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		}
 	}
 	if (!fr->rep_buffer) {
+		LeaveCriticalSection(&fr->cs);
 		return 1;
 	}
 
@@ -451,6 +455,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 		*fr_ptr_tls_get() = nullptr;
 	}
 
+	LeaveCriticalSection(&fr->cs);
 	regs->eax = 1;
 	regs->esp += 5 * sizeof(DWORD);
 	return 0;

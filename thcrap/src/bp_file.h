@@ -41,6 +41,14 @@ typedef struct {
 
 	// Offset of the file in the archive.
 	size_t offset;
+
+	// Used to mitigate a race condition in BP_fragmented_read_file where
+	// the game opens the same file simultaneously from 2 threads.
+	// The real fix would be to make more state thread-local (instead of
+	// just a pointer), but at least for HM-style games, I probably want
+	// to do that after removing the loading of every file when the game
+	// parse its header.
+	CRITICAL_SECTION cs;
 } file_rep_t;
 
 // Initialize a file_rep_t object, and loads the replacement file and patch for file_name.
