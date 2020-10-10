@@ -566,6 +566,11 @@ patchhook_t *patchhooks_build(const char *fn)
 	});
 	last->wildcard = nullptr;
 	VLA_FREE(fn_normalized);
+
+	if (hooks[0].wildcard == nullptr) {
+		free(hooks);
+		return nullptr;
+	}
 	return hooks;
 }
 
