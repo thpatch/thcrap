@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Have to be in the same order as the output of `ls *.exe bin/*.exe bin/*.dll bin/*.json`
-FILES_LIST="bin/act_nut_lib.dll bin/bmpfont_create_gdi.dll bin/bmpfont_create_gdiplus.dll bin/jansson.dll bin/libpng16.dll bin/steam_api.dll bin/thcrap_configure.exe bin/thcrap.dll bin/thcrap_i18n.dll bin/thcrap_loader.exe bin/thcrap_tasofro.dll bin/thcrap_tsa.dll bin/thcrap_update.dll bin/update.json bin/vc_redist.x86.exe bin/win32_utf8.dll bin/zlib-ng.dll thcrap_configure.exe thcrap_loader.exe"
+FILES_LIST="bin/act_nut_lib.dll bin/bmpfont_create_gdi.dll bin/bmpfont_create_gdiplus.dll bin/jansson.dll bin/libpng16.dll bin/steam_api.dll bin/thcrap_configure.exe bin/thcrap.dll bin/thcrap_i18n.dll bin/thcrap_loader.exe bin/thcrap_tasofro.dll bin/thcrap_test.exe bin/thcrap_tsa.dll bin/thcrap_update.dll bin/update.json bin/vc_redist.x86.exe bin/win32_utf8.dll bin/zlib-ng.dll thcrap_configure.exe thcrap_loader.exe"
 
 # Arguments. Every argument without a default value is mandatory.
 DATE="$(date)"
@@ -77,7 +77,7 @@ parse_input "$@"
 # Pull changes
 cd git_thcrap
 git pull
-git submodule update
+git submodule update --init --recursive
 git status
 confirm "Continue?"
 
@@ -97,10 +97,10 @@ cd git_thcrap
 cd ..
 
 # Prepare the release directory
-if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/*.exe bin/*.dll bin/*.json))" != "$FILES_LIST" ]; then
+if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))" != "$FILES_LIST" ]; then
 	echo "The list of files to copy doesn't match. Files list:"
 	cd git_thcrap/bin
-	ls *.exe bin/*.exe bin/*.dll bin/*.json
+	ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'
 	cd -
 	confirm "Continue anuway?"
 fi
