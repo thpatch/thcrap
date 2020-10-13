@@ -133,7 +133,7 @@ DWORD WINAPI repatch_watcher(void *param)
 	}
 	while(!ret_queue && ret_shutdown == WAIT_TIMEOUT) {
 		DWORD byte_ret = 0;
-		DWORD key;
+		ULONG_PTR key;
 		OVERLAPPED *ol = NULL;
 
 		// IMPORTANT. If we don't use a completion routine and this is not NULL,

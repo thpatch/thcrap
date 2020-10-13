@@ -187,7 +187,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 
 	// Old protection on page we are writing to in the process and the bytes written
 	DWORD oldProtect = 0;
-	DWORD byte_ret = 0;
+	size_t byte_ret = 0;
 
 	// Return code of injection function
 	DWORD injRet;
@@ -809,7 +809,11 @@ void* entry_from_context(HANDLE hThread)
 	CONTEXT context = {0};
 	context.ContextFlags = CONTEXT_FULL;
 	if(GetThreadContext(hThread, &context)) {
+#ifdef __x86_64__
+		return (void*)context.Rax;
+#else
 		return (void*)context.Eax;
+#endif
 	}
 	return NULL;
 }
@@ -821,7 +825,7 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	BYTE entry_asm_orig[2];
 	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
 	MEMORY_BASIC_INFORMATION mbi;
-	DWORD byte_ret;
+	size_t byte_ret;
 	DWORD old_prot;
 
 	if(!VirtualQueryEx(hProcess, addr, &mbi, sizeof(mbi))) {
@@ -832,13 +836,20 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	WriteProcessMemory(hProcess, addr, entry_asm_delay, sizeof(entry_asm_delay), &byte_ret);
 	FlushInstructionCache(hProcess, addr, sizeof(entry_asm_delay));
 
-	// 32 bit assumption
-	context.ContextFlags = CONTEXT_CONTROL;
-	while(context.Eip != (UINT_PTR)addr) {
+	while (true) {
+		context.ContextFlags = CONTEXT_CONTROL;
+		GetThreadContext(hThread, &context);
+#ifdef __x86_64__
+		UINT_PTR ip = context.Rip;
+#else
+		UINT_PTR ip = context.Eip;
+#endif
+		if (ip != (UINT_PTR)addr) {
+			break ;
+		}
 		ResumeThread(hThread);
 		Sleep(10);
 		SuspendThread(hThread);
-		GetThreadContext(hThread, &context);
 	}
 
 	// Write back the original code

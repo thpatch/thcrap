@@ -14,6 +14,15 @@ void log_print_context(PCONTEXT ctx)
 	if(!ctx) {
 		return;
 	}
+#ifdef __x86_64__
+	log_printf(
+		"\nRegisters:\n"
+		"RAX: 0x%p RCX: 0x%p RDX: 0x%p RBX: 0x%p\n"
+		"RSP: 0x%p RBP: 0x%p RSI: 0x%p RDI: 0x%p\n",
+		ctx->Rax, ctx->Rcx, ctx->Rdx, ctx->Rbx,
+		ctx->Rsp, ctx->Rbp, ctx->Rsi, ctx->Rdi
+	);
+#else
 	log_printf(
 		"\nRegisters:\n"
 		"EAX: 0x%p ECX: 0x%p EDX: 0x%p EBX: 0x%p\n"
@@ -21,6 +30,7 @@ void log_print_context(PCONTEXT ctx)
 		ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx,
 		ctx->Esp, ctx->Ebp, ctx->Esi, ctx->Edi
 	);
+#endif
 }
 
 void log_print_rva_and_module(HMODULE mod, void *addr)
