@@ -486,13 +486,13 @@ int BP_fragmented_close_file(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int file_mod_init()
+extern "C" int file_mod_init()
 {
 	InitializeCriticalSection(&cs);
 	return 0;
 }
 
-void file_mod_exit()
+extern "C" void file_mod_exit()
 {
 	DeleteCriticalSection(&cs);
 }

@@ -29,7 +29,7 @@ struct string_named_t {
 	const stringref_t &fallback;
 };
 
-stringref_t strings_get_fallback(const string_named_t& sn);
+THCRAP_API stringref_t strings_get_fallback(const string_named_t& sn);
 
 extern "C" {
 #endif

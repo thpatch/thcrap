@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include "win32_detour.h"
 
 void win32_detour(void)
 {

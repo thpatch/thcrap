@@ -115,7 +115,9 @@
 
 #pragma once
 
-void patch_fonts_load(const patch_t *patch_info);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Parses a font rule string according to the syntax above, fills [lf] with
 // the parameters given, and returns the amount of parameters (the "score")
@@ -124,3 +126,7 @@ THCRAP_API int fontrule_parse(LOGFONTA *lf, const char *str);
 
 void textdisp_mod_init(void);
 void textdisp_mod_detour(void);
+
+#ifdef __cplusplus
+}
+#endif

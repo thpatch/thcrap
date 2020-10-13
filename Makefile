@@ -82,7 +82,7 @@ THCRAP_DLL_SRCS = \
 THCRAP_DLL_OBJS = $(THCRAP_DLL_SRCS:.cpp=.o)
 $(THCRAP_DLL_OBJS): CXXFLAGS += -DTHCRAP_EXPORTS
 
-THCRAP_DLL_LDFLAGS = -shared -Lbin/bin -lwin32_utf8 -ljansson -lzlib-ng -lgdi32 -lshlwapi -luuid -lole32 -lpsapi -lwinmm
+THCRAP_DLL_LDFLAGS = -shared -Lbin/bin -lwin32_utf8 -ljansson -lzlib-ng -lgdi32 -lshlwapi -luuid -lole32 -lpsapi -lwinmm --enable-stdcall-fixup
 
 ifneq ($(BUILD64),1)
 THCRAP_DLL_OBJS += thcrap/src/bp_entry.o

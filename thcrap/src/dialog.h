@@ -9,6 +9,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Translates the Win32 dialog [lpTemplateName] in [hInstance].
 // The patch stack is also searched for a binary replacement resource
 // ("<game>/dialog_[lpTemplateName].bin") to be used instead of the original.
@@ -16,3 +20,7 @@
 DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName);
 
 void dialog_mod_detour(void);
+
+#ifdef __cplusplus
+}
+#endif

@@ -44,21 +44,6 @@ EXPORTS
 
 	; Win32 dialogs
 	; -------------
-	dialog_adjust_init
-	dialog_adjust
-	dialog_adjust_clear
-
-	sz_or_ord_size
-	sz_or_ord_build
-
-	dialog_template_ex_size
-	dialog_template_ex_build
-
-	dialog_item_template_ex_size
-	dialog_item_template_ex_build
-
-	dialog_translate
-
 	dialog_mod_detour
 
 	; Globals
@@ -144,7 +129,6 @@ EXPORTS
 	json_object_get_hex
 	json_object_merge
 	json_object_get_keys_sorted
-	json_xywh_value
 	json_load_file_report
 	json_dump_log
 
@@ -277,12 +261,6 @@ EXPORTS
 	; --------------
 	SearchForGames
 
-	; SHA-256
-	; -------
-	sha256_init
-	sha256_update
-	sha256_final
-
 	; Shortcuts
 	; ---------
 	CreateLink
@@ -320,7 +298,6 @@ EXPORTS
 	; ----------------------------
 	strings_id
 	strings_get
-	strings_get_fallback
 	strings_lookup
 	strings_va_lookup
 	strings_storage_get
@@ -346,8 +323,6 @@ EXPORTS
 
 	; Text display
 	; ------------
-	patch_fonts_load
-
 	textdisp_mod_init
 	textdisp_mod_detour
 

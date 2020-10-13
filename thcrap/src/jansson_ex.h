@@ -113,7 +113,7 @@ struct json_xywh_t : public json_custom_value_t {
 
 // Parses a [X, Y, width, height] JSON array, returning an error if [arr]
 // doesn't match this format. Currently only accepting positive integers!
-json_xywh_t json_xywh_value(const json_t *arr);
+THCRAP_API json_xywh_t json_xywh_value(const json_t *arr);
 
 extern "C" {
 #endif
