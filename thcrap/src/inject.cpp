@@ -187,7 +187,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 
 	// Old protection on page we are writing to in the process and the bytes written
 	DWORD oldProtect = 0;
-	size_t byte_ret = 0;
+	SIZE_T byte_ret = 0;
 
 	// Return code of injection function
 	DWORD injRet;
@@ -825,7 +825,7 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	BYTE entry_asm_orig[2];
 	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
 	MEMORY_BASIC_INFORMATION mbi;
-	size_t byte_ret;
+	SIZE_T byte_ret;
 	DWORD old_prot;
 
 	if(!VirtualQueryEx(hProcess, addr, &mbi, sizeof(mbi))) {
