@@ -45,8 +45,26 @@ typedef struct stringref_t {
 	// No default constructor = no potential uninitialized
 	// string pointer = good
 
-	stringref_t(const char *str) : str(str), len(strlen(str)) {}
-	stringref_t(const char *str, int len) : str(str), len(len) {}
+	stringref_t(const char *i_str) {
+		if (i_str) {
+			str = i_str;
+			len = strlen(i_str);
+		}
+		else {
+			str = nullptr;
+			len = 0;
+		}
+	}
+	stringref_t(const char *i_str, int i_len) {
+		if (i_str) {
+			str = i_str;
+			len = i_len;
+		}
+		else {
+			str = nullptr;
+			len = 0;
+		}
+	}
 
 	stringref_t(const json_t *json)
 		: str(json_string_value(json)), len(json_string_length(json)) {

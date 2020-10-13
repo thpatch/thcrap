@@ -329,7 +329,12 @@ void stack_print()
 
 int stack_remove_if_unneeded(const char *patch_id)
 {
-	std::string game = runconfig_game_get();
+	const char *c_game = runconfig_game_get();
+	std::string game;
+	if (c_game) {
+		game = c_game;
+	}
+
 	const char *build = runconfig_build_get();
 
 	// (No early return if we have no game name, since we want

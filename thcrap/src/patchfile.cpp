@@ -110,6 +110,9 @@ char* fn_for_build(const char *fn)
 char* fn_for_game(const char *fn)
 {
 	const char *game_id = runconfig_game_get();
+	if (!game_id) {
+		return NULL;
+	}
 	size_t game_id_len = strlen(game_id) + 1;
 	char *full_fn;
 
@@ -119,10 +122,8 @@ char* fn_for_game(const char *fn)
 	full_fn = (char*)malloc(game_id_len + strlen(fn) + 1);
 
 	full_fn[0] = 0; // Because strcat
-	if(game_id) {
-		strncpy(full_fn, game_id, game_id_len);
-		strcat(full_fn, "/");
-	}
+	strncpy(full_fn, game_id, game_id_len);
+	strcat(full_fn, "/");
 	strcat(full_fn, fn);
 	return full_fn;
 }

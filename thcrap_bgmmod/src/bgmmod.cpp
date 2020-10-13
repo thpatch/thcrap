@@ -147,6 +147,10 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 	}
 
 	const stringref_t game = runconfig_game_get();
+	if (game.str == nullptr) {
+		return nullptr;
+	}
+	
 	auto mod_fn_len =
 		game.len + 1 + basename.len + LOOP_INFIX.len + longest_codec_len + 1;
 
