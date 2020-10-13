@@ -365,7 +365,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 		auto tex_col = ((d3d_pixel_t *)tex_bits) + outline_radius;
 
 		for(LONG x = 0; x < gdi_rect.right; x++) {
-			auto alpha = max(max(dib_col->r, dib_col->g), dib_col->b);
+			auto alpha = MAX(MAX(dib_col->r, dib_col->g), dib_col->b);
 			tex_col->r = dib_col->r;
 			tex_col->g = dib_col->g;
 			tex_col->b = dib_col->b;
@@ -378,7 +378,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 						auto *outline_p = (d3d_pixel_t*)(
 							((uint8_t*)tex_col) - (lockedrect.Pitch * oy)
 						) + ox;
-						outline_p->a = max(outline_p->a, alpha);
+						outline_p->a = MAX(outline_p->a, alpha);
 					}
 				}
 			}
@@ -699,8 +699,8 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 		auto region_h_half = (region_unscaled.h / 2);
 		auto y_cur_center = y_cur - region_h_half;
 		auto scroll = y_cur_center / (tlr->tex_h - region_unscaled.h);
-		scroll = min(scroll, 1.0f);
-		scroll = max(scroll, 0.0f);
+		scroll = MIN(scroll, 1.0f);
+		scroll = MAX(scroll, 0.0f);
 		texcoord_h = (float)region_unscaled.h / tlr->tex_h;
 		texcoord_y = scroll * (1.0f - texcoord_h);
 	} else {
@@ -717,7 +717,7 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 		region_unscaled.h = (float)tlr->tex_h;
 	}
 
-	float alpha = min((age / env.fade_ms), 1.0f);
+	float alpha = MIN((age / env.fade_ms), 1.0f);
 
 	vector2_t res = { (float)viewport.Width, (float)viewport.Height };
 #ifdef _DEBUG

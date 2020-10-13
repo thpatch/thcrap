@@ -254,8 +254,8 @@ int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
 	size_t highest = 0;
 
 	for(i = 0; i < det_count; i++) {
-		lowest = min(lowest, det[i].index);
-		highest = max(highest, det[i].index);
+		lowest = MIN(lowest, det[i].index);
+		highest = MAX(highest, det[i].index);
 	}
 
 	size_t bytes_to_lock = ((highest + 1) - lowest) * sizeof(void*);

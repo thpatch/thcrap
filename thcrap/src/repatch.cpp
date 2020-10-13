@@ -155,7 +155,7 @@ DWORD WINAPI repatch_watcher(void *param)
 				&byte_ret, &ol_changes, NULL
 			));
 			if(byte_ret) {
-				byte_ret_max = max(byte_ret_max, byte_ret);
+				byte_ret_max = MAX(byte_ret_max, byte_ret);
 			}
 			if(!ret_queue && ol) {
 				ol->hEvent = (HANDLE)key;

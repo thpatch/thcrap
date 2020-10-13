@@ -229,7 +229,7 @@ int fontrules_apply(LOGFONTA *lf)
 			key, rep_str, priority ? " (priority)" : ""
 		);
 		fontrule_apply(&rep_full, &rule, priority);
-		rep_score = max(rule_score, rep_score);
+		rep_score = MAX(rule_score, rep_score);
 	}
 	return fontrule_apply(lf, &rep_full, 1);
 }

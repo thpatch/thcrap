@@ -185,8 +185,8 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	json_object_foreach(sizes, key, val) {
 		size_t cur_size = atoi(key);
 
-		state.size_min = min(cur_size, state.size_min);
-		state.size_max = max(cur_size, state.size_max);
+		state.size_min = MIN(cur_size, state.size_min);
+		state.size_max = MAX(cur_size, state.size_max);
 	}
 
 	if(dir && dir[0]) {

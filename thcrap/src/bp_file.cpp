@@ -308,7 +308,7 @@ int BP_file_header(x86_reg_t *regs, json_t *bp_info)
 	const char* dat_dump = runconfig_dat_dump_get();
 	if (fr->rep_buffer != NULL || fr->patch != NULL || fr->hooks != NULL || dat_dump) {
 		fr->orig_size = *size;
-		*size = max(*size, fr->pre_json_size) + fr->patch_size;
+		*size = MAX(*size, fr->pre_json_size) + fr->patch_size;
 	}
 	else {
 		file_rep_clear(fr);
@@ -353,7 +353,7 @@ int BP_fragmented_open_file(x86_reg_t *regs, json_t *bp_info)
 
 	if (fr && file_size) {
 		fr->orig_size = *file_size;
-		*file_size = max(*file_size, fr->pre_json_size) + fr->patch_size;
+		*file_size = MAX(*file_size, fr->pre_json_size) + fr->patch_size;
 	}
 
 	return 1;
@@ -442,7 +442,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 	log_printf("Patching %s\n", fr->name);
 	DWORD offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT) - fr->offset;
 	if (offset <= POST_JSON_SIZE(fr)) {
-		*lpNumberOfBytesRead = min(POST_JSON_SIZE(fr) - offset, nNumberOfBytesToRead);
+		*lpNumberOfBytesRead = MIN(POST_JSON_SIZE(fr) - offset, nNumberOfBytesToRead);
 	}
 	else {
 		*lpNumberOfBytesRead = 0;

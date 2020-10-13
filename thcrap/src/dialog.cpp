@@ -278,10 +278,10 @@ void dialog_adjust(
 	} else if(button_style == BS_PUSHBUTTON || button_style == BS_DEFPUSHBUTTON) {
 		rect.right += 3;
 	}
-	item->cx = (short)max(rect.right, item->cx);
-	item->cy = (short)max(rect.bottom, item->cy);
-	adj->dst_header->cx = max(item->x + item->cx, adj->dst_header->cx);
-	adj->dst_header->cy = max(item->y + item->cy, adj->dst_header->cy);
+	item->cx = (short)MAX(rect.right, item->cx);
+	item->cy = (short)MAX(rect.bottom, item->cy);
+	adj->dst_header->cx = MAX(item->x + item->cx, adj->dst_header->cx);
+	adj->dst_header->cy = MAX(item->y + item->cy, adj->dst_header->cy);
 }
 
 void dialog_adjust_clear(dialog_adjust_t *adj)

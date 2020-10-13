@@ -395,7 +395,7 @@ static size_t zip_dir_end_prepare(zip_dir_end_t *dir_end, zip_t *zip)
 	}
 	zip_size = SetFilePointer(zip->hArc, 0, NULL, FILE_END);
 	// ZIP comments have a maximum size of 64K
-	CMT_MAX = min(zip_size, 0xffff);
+	CMT_MAX = MIN(zip_size, 0xffff);
 	do {
 		DWORD byte_ret;
 		BYTE test[sizeof(zip_dir_end_t) * 2];

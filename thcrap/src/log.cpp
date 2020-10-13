@@ -75,7 +75,7 @@ void log_fn_for_rotation(char *fn, int rotnum)
 
 void log_rotate(void)
 {
-	size_t rot_fn_len = max(sizeof(LOG_ROTATED), sizeof(LOG));
+	size_t rot_fn_len = MAX(sizeof(LOG_ROTATED), sizeof(LOG));
 	VLA(char, rot_from, rot_fn_len);
 	VLA(char, rot_to, rot_fn_len);
 
