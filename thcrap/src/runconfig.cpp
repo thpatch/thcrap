@@ -399,6 +399,10 @@ const char *runconfig_dat_dump_get()
 
 bool runconfig_latest_check()
 {
+	if (run_cfg.latest.empty()) {
+		return true;
+	}
+
 	for (const std::string& it : run_cfg.latest) {
 		if (run_cfg.build == it) {
 			return true;
