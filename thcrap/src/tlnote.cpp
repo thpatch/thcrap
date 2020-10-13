@@ -16,7 +16,7 @@
 #pragma comment(lib, "winmm.lib")
 
 #define COM_ERR_WRAP(func, ...) { \
-	HRESULT d3d_ret = func(##__VA_ARGS__); \
+	HRESULT d3d_ret = func(__VA_ARGS__); \
 	if(FAILED(d3d_ret)) { \
 		return fail(#func, d3d_ret); \
 	} \

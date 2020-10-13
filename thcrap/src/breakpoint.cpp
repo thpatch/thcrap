@@ -367,7 +367,7 @@ int breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
 
 		/// Cave assembly
 		// Copy old code to cave
-		memcpy(bp->cave, UlongToPtr(bp->addr), bp->cavesize);
+		memcpy(bp->cave, (void*)bp->addr, bp->cavesize);
 		cave_fix(bp->cave, bp->addr);
 
 		// JMP addr

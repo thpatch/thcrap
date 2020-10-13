@@ -9,7 +9,7 @@
 
 #include "thcrap.h"
 #include "thcrap_update_wrapper.h"
-#include <thcrap_update\src\loader_update.h>
+#include <thcrap_update/src/loader_update.h>
 
 HMODULE thcrap_update_module(void)
 {
