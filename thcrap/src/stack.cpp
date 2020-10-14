@@ -330,7 +330,7 @@ void stack_print()
 int stack_remove_if_unneeded(const char *patch_id)
 {
 	const char *c_game = runconfig_game_get();
-	std::string game;
+	std::string game = "";
 	if (c_game) {
 		game = c_game;
 	}
