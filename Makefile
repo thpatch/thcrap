@@ -15,8 +15,22 @@ endif
 CFLAGS =  -DBUILDER_NAME_W=L\"$(USER)\"
 CFLAGS += -municode
 CFLAGS += -Wall -Wextra
+# We want to ignore these warnings.
+# -Wno-unknown-pragmas: our main build platform is still MSVC, we want
+# to keep the pragmas on MSVC and deal with it on gcc.
+# -Wunused-local-typedefs: in win32_utf8, we want to keep all the typedef
+# declarations, even if we don't use them, in order to match how they
+# were originally declared in Windows.
+CFLAGS += -Wno-unknown-pragmas -Wno-unused-local-typedefs
 CFLAGS += -I. -Ilibs -Ilibs/external_deps -Ithcrap/src -Ilibs/win32_utf8
+
+# TODO: remove
+CFLAGS += -Wno-missing-field-initializers -Wno-parentheses -Wno-cast-function-type -Wno-unused-parameter -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-sign-compare -Wno-type-limits -Wno-int-to-pointer-cast -Wno-write-strings -Wno-format -Wno-switch -Wno-unused-variable -Wno-narrowing
+
 CXXFLAGS = $(CFLAGS) -std=c++17
+
+# TODO: remove
+CXXFLAGS += -fpermissive -Wno-conversion-null -Wno-reorder
 
 %.o : %.asm
 	$(AS) -o $@ $<
@@ -40,7 +54,6 @@ THCRAP_DLL_SRCS = \
 	thcrap/src/log.cpp \
 	thcrap/src/global.cpp \
 	thcrap/src/jansson_ex.cpp \
-	thcrap/src/motd.cpp \
 	thcrap/src/minid3d.cpp \
 	thcrap/src/patchfile.cpp \
 	thcrap/src/pe.cpp \

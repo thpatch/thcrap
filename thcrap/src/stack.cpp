@@ -10,6 +10,7 @@
 #include "thcrap.h"
 #include "vfs.h"
 #include <algorithm>
+#include <list>
 #include <vector>
 
 std::vector<patch_t> stack;
