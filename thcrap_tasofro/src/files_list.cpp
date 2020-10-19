@@ -10,7 +10,7 @@
 #include <thcrap.h>
 #include <unordered_map>
 #include "thcrap_tasofro.h"
-#include "th135.h"
+#include "files_list.h"
 #include "crypt.h"
 
 std::unordered_map<DWORD, FileHeader> fileHashToName;

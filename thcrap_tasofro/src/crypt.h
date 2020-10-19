@@ -48,3 +48,14 @@ public:
 	virtual DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C9DC5u);
 	virtual void convertKey(DWORD *key);
 };
+
+class CryptTh175 : public ICrypt
+{
+public:
+	CryptTh175();
+	~CryptTh175();
+	virtual DWORD cryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
+	virtual void uncryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
+	virtual DWORD SpecialFNVHash(const char *begin, const char *end = nullptr, DWORD initHash = 0);
+	virtual void convertKey(DWORD *key);
+};

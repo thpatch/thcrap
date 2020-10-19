@@ -9,7 +9,6 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
-#include "th135.h"
 
 tasofro_game_t game_id;
 
@@ -39,6 +38,9 @@ static tasofro_game_t game_id_from_string(const char *game)
 	}
 	else if (!strcmp(game, "th155")) {
 		return TH155;
+	}
+	else if (!strcmp(game, "th175")) {
+		return TH175;
 	}
 	return TH_FUTURE;
 }
@@ -77,7 +79,10 @@ int __stdcall thcrap_plugin_init()
 		}
 	}
 
-	if (game_id >= TH135) {
+	if (game_id >= TH175) {
+		return th175_init();
+	}
+	else if (game_id >= TH135) {
 		return th135_init();
 	}
 	else {

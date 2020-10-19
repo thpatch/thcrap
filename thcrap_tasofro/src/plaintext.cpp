@@ -9,7 +9,6 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
-#include "th135.h"
 
 int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const char*fn, json_t *patch)
 {

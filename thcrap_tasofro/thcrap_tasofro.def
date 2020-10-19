@@ -21,3 +21,6 @@ EXPORTS
 	BP_th105_cv0_escape_comma
 
 	tasofro_CharNextA
+
+	BP_th175_file_desc
+	BP_th175_read_file

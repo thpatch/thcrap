@@ -152,3 +152,41 @@ void CryptTh145::convertKey(DWORD* key)
 	key[2] = key[2] *-1;
 	key[3] = key[3] *-1;
 }
+
+
+
+CryptTh175::CryptTh175()
+{}
+
+CryptTh175::~CryptTh175()
+{}
+
+DWORD CryptTh175::cryptBlock(BYTE*, DWORD, const DWORD*)
+{
+	// For now, we work directly with the uncrypted files
+	return 0;
+}
+
+void CryptTh175::uncryptBlock(BYTE*, DWORD, const DWORD*)
+{
+	// For now, we work directly with the uncrypted files
+}
+
+DWORD CryptTh175::SpecialFNVHash(const char *filename, const char *, DWORD)
+{
+	if (strcmp(filename, "game.exe") == 0) {
+		// I don't know the filename for this hash, but I need to have one, so I arbitrarily decide it's "game.exe".
+		return 0x1f47c0c8;
+	}
+
+	uint64_t hash = 0x811C9DC5;
+	for (int i = 0; filename[i]; i++) {
+		hash = ((hash ^ filename[i]) * 0x1000193) & 0xFFFFFFFF;
+	}
+	return (uint32_t)hash;
+}
+
+void CryptTh175::convertKey(DWORD*)
+{
+	// Nothing to do for th175
+}
