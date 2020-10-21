@@ -8,6 +8,12 @@
   */
 
 #include <thcrap.h>
+#include <condition_variable>
+#include <filesystem>
+#include <mutex>
+#include <queue>
+#include <set>
+#include <thread>
 #include <unordered_map>
 #include "thcrap_tasofro.h"
 #include "files_list.h"
@@ -17,7 +23,89 @@ std::unordered_map<DWORD, FileHeader> fileHashToName;
 
 // Used if dat_dump != false.
 // Contains fileslist.js plus all the files found while the game was running.
-static json_t *full_files_list = nullptr;
+
+class FileslistDump
+{
+private:
+	static FileslistDump *instance;
+
+	std::filesystem::path fileslist_path;
+	std::set<std::string> files_list;
+	std::mutex mutex;
+	std::queue<std::string> queue;
+	std::condition_variable cv;
+
+	FileslistDump()
+	{
+		const char *dat_dump = runconfig_dat_dump_get();
+
+		if (dat_dump) {
+			std::filesystem::path dir = std::filesystem::absolute(dat_dump);
+			std::filesystem::create_directories(dir);
+			this->fileslist_path = dir / "fileslist.js";
+
+			new std::thread([this]() { this->threadProc(); });
+		}
+	}
+
+	void threadProc()
+	{
+		Sleep(1000);
+
+		std::unique_lock lock(this->mutex, std::defer_lock);
+		while (true) {
+			lock.lock();
+			while (queue.empty()) {
+				this->cv.wait(lock);
+			}
+			std::string fn = this->queue.front();
+			this->queue.pop();
+			lock.unlock();
+
+			this->files_list.insert(fn);
+			// Filenames tend to arrive in the queue in bursts.
+			// We want to convert the filenames list to json and dump
+			// it to the disk only then the burst is finished.
+			if (this->queue.empty()) {
+				Sleep(200);
+			}
+			if (!this->queue.empty()) {
+				continue;
+			}
+
+			// Save files list
+			ScopedJson files_list_json = json_array();
+			for (auto& it : this->files_list) {
+				char *path_u = EnsureUTF8(it.c_str(), it.length());
+				str_slash_normalize_win(path_u);
+				json_array_append_new(*files_list_json, json_string(path_u));
+				free(path_u);
+			}
+			json_dump_file(*files_list_json, this->fileslist_path.generic_u8string().c_str(), JSON_INDENT(2));
+		}
+	}
+
+	void add_(const std::string& fn)
+	{
+		if (this->fileslist_path.empty()) {
+			return;
+		}
+
+		std::scoped_lock lock(this->mutex);
+		this->queue.push(fn);
+		this->cv.notify_one();
+	}
+
+public:
+	static void add(std::string fn)
+	{
+		if (instance == nullptr) {
+			instance = new FileslistDump();
+		}
+		instance->add_(fn);
+	}
+};
+FileslistDump *FileslistDump::instance;
 
 void register_filename(const char *path)
 {
@@ -28,31 +116,7 @@ void register_filename(const char *path)
 	DWORD hash = ICrypt::instance->SpecialFNVHash(path, path + strlen(path));
 	strcpy(fileHashToName[hash].path, path);
 
-	const char *dat_dump = runconfig_dat_dump_get();
-	if (dat_dump) {
-		if (!full_files_list) {
-			full_files_list = json_array();
-		}
-		char *path_u = EnsureUTF8(path, strlen(path));
-		str_slash_normalize_win(path_u);
-		size_t i;
-		json_t *val;
-		json_array_foreach(full_files_list, i, val) {
-			if (strcmp(path_u, json_string_value(val)) == 0) {
-				free(path_u);
-				return;
-			}
-		}
-		json_array_append_new(full_files_list, json_string(path_u));
-		SAFE_FREE(path_u);
-
-		size_t fn_len = strlen(dat_dump) + 1 + strlen("fileslist.js") + 1;
-		VLA(char, fn, fn_len);
-		sprintf(fn, "%s/fileslist.js", dat_dump);
-		json_dump_file(full_files_list, fn, JSON_INDENT(2));
-		VLA_FREE(fn);
-	}
-
+	FileslistDump::add(path);
 }
 
 int LoadFileNameList(const char* FileName)
