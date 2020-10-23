@@ -14,13 +14,21 @@ static json_t *detours = NULL;
 BOOL VirtualCheckRegion(const void *ptr, const size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;
-	if(VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
-		auto page_end = (size_t)mbi.BaseAddress + mbi.RegionSize;
-		return
-			(~mbi.Protect & PAGE_NOACCESS)
-			&& (page_end >= ((size_t)ptr + len));
+	if (VirtualQuery(ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION)) == 0) {
+		return FALSE;
 	}
-	return FALSE;
+
+	auto ptr_end = (size_t)ptr + len;
+	auto page_end = (size_t)mbi.BaseAddress + mbi.RegionSize;
+	if (page_end < (ptr_end)) {
+		return FALSE;
+	}
+
+	if (mbi.Protect == 0 || (mbi.Protect & PAGE_NOACCESS)) {
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 BOOL VirtualCheckCode(const void *ptr)
