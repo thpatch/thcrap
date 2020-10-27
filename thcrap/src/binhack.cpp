@@ -211,6 +211,9 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	size_t written = 0;
 	int func_rel = 0; // Relative function pointer flag
 	int ret = 0;
+	int func_name_len = 0;
+	UINT_PTR func_user_offset = 0;
+	char func_name_end = ']';
 
 	if(!binhack_buf || !binhack_str) {
 		return -1;
@@ -223,18 +226,24 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				return 0;
 			}
 			func_rel = (*c == '[');
+			if (func_rel) {
+				func_name_end = ']';
+			} else {
+				func_name_end = '>';
+			}
 			fs = c + 1;
 			c++;
 		} else if(fs && (*c == ']' || *c == '>')) {
-			VLA(char, function, (c - fs) + 1);
+			VLA(char, function, func_name_len + 1);
 			defer({ VLA_FREE(function); });
 			size_t fp = 0;
 
-			strncpy(function, fs, c - fs);
-			function[c - fs] = 0;
+			strncpy(function, fs, func_name_len);
+			function[func_name_len] = 0;
 
 			fp = (size_t)func_get(function);
 			if(fp) {
+				fp += func_user_offset;
 				if(func_rel) {
 					fp -= target_addr + written + sizeof(void*);
 				}
@@ -248,9 +257,24 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			if(ret) {
 				break;
 			}
+			func_name_len = 0;
 			c++;
+		} else if(fs && *c == '+') {
+			const char *user_offset_end = strchr(c, func_name_end);
+			int offset_str_len = user_offset_end - c - 1;
+			if (offset_str_len > sizeof(UINT_PTR) * 2) {
+				c = user_offset_end;
+				continue;
+			}
+			char offset_str[sizeof(UINT_PTR) * 2 + 4];
+			strncpy(offset_str, c + 1, offset_str_len);
+			offset_str[offset_str_len] = 0;
+			char *_endptr;
+			func_user_offset = strtol(offset_str, &_endptr, 16);
+			c = user_offset_end;
 		} else if(fs) {
 			c++;
+			func_name_len++;
 		} else {
 			value_t val;
 			if(!consume_value(val, &c)) {
