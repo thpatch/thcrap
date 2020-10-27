@@ -124,6 +124,11 @@ static void runconfig_stage_load(json_t *stage_json)
 			continue;
 		}
 
+		if (strchr(key, '+')) {
+			log_printf("Codecave %s contains illegal character +", key);
+			continue;
+		}
+
 		if (!json_is_string(value)) {
 			// Don't print an error, this can be used for comments
 			continue;
