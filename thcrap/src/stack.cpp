@@ -133,9 +133,18 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 		}
 	}
 
-	while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
-		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
+	ret = ret ? ret : json_object();
+
+	for (patch_t &patch : stack) {
+		json_t *json_new = json_object();
+		for (int i = 0; chain[i]; i++) {
+			json_size += patch_json_merge(&json_new, &patch, chain[i]);
+		}
+		json_object_merge(json_new, patch.config);
+		json_object_merge(ret, json_new);
+		json_decref(json_new);
 	}
+
 	log_printf(ret ? "\n" : "not found\n");
 	if(file_size) {
 		*file_size = json_size;

@@ -83,6 +83,8 @@ typedef struct
 	bool update;
 	// Patch index in the stack, used for pretty-printing
 	size_t level;
+	// User set patch configuration
+	json_t *config;
 
 	// MOTD: message that can be displayed by a patch on startup (from patch.js)
 	// Message content

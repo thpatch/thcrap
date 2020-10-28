@@ -365,7 +365,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	else {
 		patch.archive = strdup(patch_path);
 	}
-
+	patch.config = json_object_get(patch_info, "config");
 	// Merge the runconfig patch array and the patch.js
 	json_t *runconfig_js = json_deep_copy(patch_info);
 	json_t *patch_js = patch_json_load(&patch, "patch.js", NULL);
