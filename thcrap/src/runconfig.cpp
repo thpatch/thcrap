@@ -110,6 +110,11 @@ static void runconfig_stage_load(json_t *stage_json)
 		stage.module = nullptr;
 	}
 
+	json_t *options = json_object_get(stage_json, "options");
+	if (options) {
+		patch_opts_from_json(options);
+	}
+
 	json_t *binhacks = json_object_get(stage_json, "binhacks");
 	json_object_foreach(binhacks, key, value) {
 		binhack_t binhack;

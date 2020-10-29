@@ -241,6 +241,20 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			strncpy(function, fs, func_name_len);
 			function[func_name_len] = 0;
 
+			if (!func_rel) {
+				if (strncmp(function, "option:", 7) == 0) { // strlen("option:") = 7
+					patch_opt_val_t *option = patch_opt_get(function + 7);
+					if (!option) {
+						log_printf("ERROR: option %s not found\n", function + 7);
+						continue;
+					}
+					memcpy(binhack_buf, option->val.byte_array, option->size);
+					binhack_buf += option->size;
+					fs = 0; func_name_len = 0; c++;
+					continue;
+				}
+			}
+
 			fp = (size_t)func_get(function);
 			if(fp) {
 				fp += func_user_offset;
@@ -257,8 +271,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			if(ret) {
 				break;
 			}
-			func_name_len = 0;
-			c++;
+			func_name_len = 0; c++;
 		} else if(fs && *c == '+') {
 			const char *user_offset_end = strchr(c, func_name_end);
 			int offset_str_len = user_offset_end - c - 1;

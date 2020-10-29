@@ -625,3 +625,81 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 	}
 	return ret;
 }
+
+static std::unordered_map<std::string_view, patch_opt_val_t> patch_options;
+
+void patch_opts_from_json(json_t *opts) {
+	const char *key;
+	json_t *j_val;
+	json_object_foreach(opts, key, j_val) {
+		if (!json_is_object(j_val)) {
+			log_printf("ERROR: invalid parameter for option %s\n", key);
+			continue;
+		}
+		json_t *j_val_val = json_object_get(j_val, "val");
+		if (!(json_is_number(j_val_val) || json_is_string(j_val_val))) {
+			log_printf("ERROR: invalid format for value of option %s\n", key);
+			continue;
+		}
+		const char *tname = json_object_get_string(j_val, "type");
+		char *_endptr;
+		patch_opt_val_t entry = {};
+		entry.size = strtol(tname + 1, &_endptr, 10) / 8;
+		switch (tname[0]) {
+		case 'i': {
+			if (json_is_real(j_val_val)) {
+				log_printf("ERROR: float value specified for integer option %s\n", key);
+				continue;
+			}
+			entry.val.dword = json_hex_value(j_val_val);
+			switch (entry.size) {
+			case 1: entry.t = PATCH_OPT_VAL_BYTE;  break;
+			case 2: entry.t = PATCH_OPT_VAL_WORD;  break;
+			case 4: entry.t = PATCH_OPT_VAL_DWORD; break;
+			default:
+				log_printf("ERROR: invalid integer type %s for option %s\n", tname, key);
+				continue;
+			}
+			break;
+		}
+		case 'f': {
+			double real_val;
+			switch (json_typeof(j_val_val)) {
+			case JSON_STRING: {
+				real_val = atof(json_string_value(j_val_val));
+				break;
+			}
+			case JSON_INTEGER: {
+				real_val = json_integer_value(j_val_val);
+				break;
+			}
+			case JSON_REAL: {
+				real_val = json_real_value(j_val_val);
+				break;
+			}
+			}
+			switch (entry.size) {
+			case 4: {
+				entry.t = PATCH_OPT_VAL_FLOAT;
+				entry.val.f = real_val;
+				break;
+			}
+			case 8: {
+				entry.t = PATCH_OPT_VAL_DOUBLE;
+				entry.val.d = real_val;
+				break;
+			}
+			}
+		}
+		}
+		patch_options[strdup(key)] = entry;
+	}
+}
+
+patch_opt_val_t* patch_opt_get(const char *name) {
+	auto val = patch_options.find(name);
+	if (val == patch_options.end()) {
+		return NULL;
+	}
+	return &val->second;
+}
