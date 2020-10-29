@@ -547,12 +547,7 @@ int BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 		textimage_log.errorf("Text images are not supported for this game.");
 		return 1;
 	}
-	if(
-		D3DXCreateTextureFromFileInMemoryEx ||
-		pD3DDevice || TextureSlots || SpriteSpecs || SpriteScripts
-	) {
-		return 1;
-	}
+
 	// Parameters
 	// ----------
 	Initialized = true;
@@ -570,6 +565,11 @@ int BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 	P(SpriteScripts);
 #undef P
 	// ----------
+
+	groups_clear();
+	SpriteRuntimeMap.clear();
+	Images.clear();
+
 	return BP_textimage_load(regs, bp_info);
 }
 
