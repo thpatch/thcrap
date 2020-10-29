@@ -568,7 +568,6 @@ int BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 
 	groups_clear();
 	SpriteRuntimeMap.clear();
-	Images.clear();
 
 	return BP_textimage_load(regs, bp_info);
 }
