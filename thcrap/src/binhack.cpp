@@ -221,6 +221,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 
 	while(*c) {
 		if(*c == '[' || *c == '<') {
+			func_user_offset = 0;
 			if(fs) {
 				log_printf("ERROR: Nested function pointers near %s!\n", c);
 				return 0;
