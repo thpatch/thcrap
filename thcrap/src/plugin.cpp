@@ -17,18 +17,39 @@ static std::unordered_map<std::string_view, UINT_PTR> funcs = {};
 static mod_funcs_t mod_funcs = {};
 static json_t *plugins = NULL;
 
-void* func_get(const char *name)
+UINT_PTR func_get(const char *name)
 {
-	return (void*)funcs[name];
+	auto existing = funcs.find(name);
+	if (existing == funcs.end()) {
+		return 0;
+	} else {
+		return existing->second;
+	}
 }
 
-void func_add(const char *name, size_t addr) {
-	funcs[strdup(name)] = addr;
+int func_add(const char *name, size_t addr) {
+	auto existing = funcs.find(name);
+	if (existing == funcs.end()) {
+		funcs[strdup(name)] = addr;
+		return 0;
+	}
+	else {
+		log_printf("Overwriting function/codecave %s\n");
+		existing->second = addr;
+		return 1;
+	}
+	
 }
 
-void func_remove(const char *name) {
-	//TODO(32th): memory leak
-	funcs.erase(name);
+bool func_remove(const char *name) {
+	auto existing = funcs.find(name);
+	if (existing != funcs.end()) {
+		std::string_view a = existing->first;
+		funcs.erase(existing);
+		free((void*)a.data());
+		return true;
+	}
+	return false;
 }
 
 int plugin_init(HMODULE hMod)

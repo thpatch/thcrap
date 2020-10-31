@@ -282,7 +282,7 @@ TEST(RunconfigTest, DatDump)
 
 TEST(RunconfigTest, Latest)
 {
-    EXPECT_EQ(runconfig_latest_check(), false);
+    EXPECT_EQ(runconfig_latest_check(), true);
     EXPECT_EQ(runconfig_latest_get(), nullptr);
 
     runconfig_build_set(nullptr);

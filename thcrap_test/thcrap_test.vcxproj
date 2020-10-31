@@ -44,5 +44,6 @@
     </ClCompile>
     <ClCompile Include="src\runconfig.cpp" />
     <ClCompile Include="src\patchfile.cpp" />
+	<ClCompile Include="src\plugin.cpp" />
   </ItemGroup>
 </Project>

@@ -21,14 +21,14 @@
 
 // Returns a pointer to a function with the given name in the list of exported
 // functions. Basically a GetProcAddress across the engine and all plug-ins.
-void* func_get(const char *name);
+UINT_PTR func_get(const char *name);
 
 // Adds a pointer to a function to the list of functions used by func_get
-void func_add(const char *name, size_t addr);
+int func_add(const char *name, size_t addr);
 
 // Removes a function from the list of functions used by func_get
 // This function is nessesairy for plugins to be able to unload themselves
-void func_remove(const char *name);
+bool func_remove(const char *name);
 
 /// Module functions
 /// ================
