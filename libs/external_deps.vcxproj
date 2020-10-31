@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x86">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x86">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <!-- Keep the designer happy -->
+  <PropertyGroup Label="Configuration" Condition="'$(_ImportMicrosoftCppDesignTime)' != 'false'">
+    <PlatformToolset>v141_xp</PlatformToolset>
+  </PropertyGroup>
+  <ImportGroup Condition="'$(_ImportMicrosoftCppDesignTime)' != 'false'">
+     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  </ImportGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8B0918FE-10DA-4DDB-81F8-0137C7C52747}</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup>
+    <InDir>$(ProjectDir)external_deps\</InDir>
+    <OutDir>$(SolutionDir)bin\bin\</OutDir>
+    <Debug Condition="'$(Configuration)' == 'Debug'">_d</Debug>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InputFiles Include="$(InDir)bin\jansson$(Debug).dll"/>
+    <InputFiles Include="$(InDir)bin\jansson$(Debug).pdb"/>
+
+    <InputFiles Include="$(InDir)bin\libmpg123$(Debug).lib"/>
+    <InputFiles Include="$(InDir)obj\libmpg123 $(Configuration) Static $(PlatformShortName)\libmpg123.pdb"/>
+
+    <InputFiles Include="$(InDir)bin\libogg$(Debug).lib"/>
+    <InputFiles Include="$(InDir)obj\libogg $(Configuration) Static $(PlatformShortName)\libogg.pdb"/>
+
+    <InputFiles Include="$(InDir)bin\libpng16$(Debug).dll"/>
+    <InputFiles Include="$(InDir)bin\libpng16$(Debug).pdb"/>
+
+    <InputFiles Include="$(InDir)bin\libvorbis$(Debug).lib"/>
+    <InputFiles Include="$(InDir)obj\libvorbis $(Configuration) Static $(PlatformShortName)\libvorbis_decode.pdb"/>
+
+    <InputFiles Include="$(InDir)bin\zlib-ng$(Debug).dll"/>
+    <InputFiles Include="$(InDir)bin\zlib-ng$(Debug).pdb"/>
+  </ItemGroup>
+  <ItemGroup>
+    <OutputFiles Include="@(InputFiles->'$(OutDir)%(Filename)%(Extension)')" />
+  </ItemGroup>
+
+  <Target Name="Build">
+    <Copy SourceFiles="@(InputFiles)" DestinationFiles="@(OutputFiles)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="Clean">
+    <Delete Files="@(OutputFiles)" />
+  </Target>
+</Project>
