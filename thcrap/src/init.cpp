@@ -136,7 +136,7 @@ json_t* identify_by_size(size_t file_size, json_t *versions)
 
 json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 {
-	json_t *ret = NULL;
+	json_t *ret = json_object();
 	char **chain = resolve_chain(fn);
 	if(chain && chain[0]) {
 		std::vector<char*> new_chain;
@@ -144,9 +144,20 @@ json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 		for (size_t i = 0; chain[i]; i++) {
 			new_chain.push_back(chain[i]);
 		}
-		new_chain.push_back(nullptr);
+
 		log_printf("(JSON) Resolving configuration for %s... ", fn);
-		ret = stack_json_resolve_chain(new_chain.data(), file_size);
+		size_t tmp_file_size = 0;
+		stack_foreach_cpp([&new_chain, &ret, &tmp_file_size](const patch_t *patch) {
+			json_t *json_new = json_object();
+			for (char *&file : new_chain) {
+				tmp_file_size += patch_json_merge(&json_new, patch, file);
+			}
+			json_object_merge(json_new, patch->config);
+			json_object_merge(ret, json_new);
+			json_decref(json_new);
+		});
+		log_printf(tmp_file_size ? "\n" : "not found\n");
+		if (file_size) *file_size = tmp_file_size;
 	}
 	chain_free(chain);
 	return ret;
