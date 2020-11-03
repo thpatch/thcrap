@@ -181,7 +181,11 @@ DWORD CryptTh175::SpecialFNVHash(const char *filename, const char *, DWORD)
 
 	uint64_t hash = 0x811C9DC5;
 	for (int i = 0; filename[i]; i++) {
-		hash = ((hash ^ filename[i]) * 0x1000193) & 0xFFFFFFFF;
+		char c = filename[i];
+		if (c == '\\') {
+			c = '/';
+		}
+		hash = ((hash ^ c) * 0x1000193) & 0xFFFFFFFF;
 	}
 	return (uint32_t)hash;
 }
