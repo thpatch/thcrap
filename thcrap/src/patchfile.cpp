@@ -625,7 +625,7 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 	return ret;
 }
 
-static std::unordered_map<std::string_view, patch_opt_val_t> patch_options;
+static std::unordered_map<std::string, patch_opt_val_t> patch_options;
 
 void patch_opts_from_json(json_t *opts) {
 	const char *key;
@@ -641,13 +641,12 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		const char *tname = json_object_get_string(j_val, "type");
-		char *_endptr;
 		patch_opt_val_t entry = {};
-		entry.size = strtol(tname + 1, &_endptr, 10) / 8;
+		entry.size = strtol(tname + 1, nullptr, 10) / 8;
 		switch (tname[0]) {
 		case 'i': {
-			if (json_is_real(j_val_val)) {
-				log_printf("ERROR: float value specified for integer option %s\n", key);
+			if (!json_is_integer(j_val_val)) {
+				log_printf("ERROR: invalid value specified for integer option %s\n", key);
 				continue;
 			}
 			entry.val.dword = json_hex_value(j_val_val);
@@ -664,34 +663,38 @@ void patch_opts_from_json(json_t *opts) {
 		case 'f': {
 			double real_val;
 			switch (json_typeof(j_val_val)) {
-			case JSON_STRING: {
+			case JSON_STRING:
 				real_val = atof(json_string_value(j_val_val));
 				break;
-			}
-			case JSON_INTEGER: {
-				real_val = json_integer_value(j_val_val);
+
+			case JSON_INTEGER:
+			case JSON_REAL:
+				real_val = json_number_value(j_val_val);
 				break;
-			}
-			case JSON_REAL: {
-				real_val = json_real_value(j_val_val);
-				break;
-			}
+
+			default:
+				log_printf("ERROR: invalid value specified for integer option %s\n", key);
+				continue;
 			}
 			switch (entry.size) {
 			case 4: {
 				entry.t = PATCH_OPT_VAL_FLOAT;
-				entry.val.f = real_val;
+				entry.val.f = (float)real_val;
 				break;
 			}
 			case 8: {
 				entry.t = PATCH_OPT_VAL_DOUBLE;
 				entry.val.d = real_val;
 				break;
+
+			default:
+				log_printf("ERROR: invalid float type %s for option %s\n", tname, key);
+				continue;
 			}
 			}
 		}
 		}
-		patch_options[strdup(key)] = entry;
+		patch_options[key] = entry;
 	}
 }
 
