@@ -213,6 +213,10 @@ void Update::startPatchUpdate(const patch_t *patch)
         log_printf("Invalid patch at %s\n", patch->archive);
         return ;
     }
+    if (patch->servers == nullptr || patch->servers[0] == nullptr) {
+        log_printf("(%s doesn't have any servers, not updating.)\n", patch->id);
+        return;
+    }
     // Assuming the repo/patch hierarchy here, but if we ever support
 	// repository-less Git patches, they won't be using the files.js
 	// protocol anyway.
