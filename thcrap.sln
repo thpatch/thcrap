@@ -66,9 +66,13 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_bgmmod", "thcrap_bgmmod\thcrap_bgmmod.vcxproj", "{B55C529E-B1A6-460E-8E3A-F750FC835A73}"
 	ProjectSection(ProjectDependencies) = postProject
 		{8B0918FE-10DA-4DDB-81F8-0137C7C52747} = {8B0918FE-10DA-4DDB-81F8-0137C7C52747}
+		{A185D5A7-3E03-4C87-9774-65C014631F5B} = {A185D5A7-3E03-4C87-9774-65C014631F5B}
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_i18n", "thcrap_i18n\thcrap_i18n.vcxproj", "{4F1C381C-5220-4411-A27B-A7D0731B8099}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A185D5A7-3E03-4C87-9774-65C014631F5B} = {A185D5A7-3E03-4C87-9774-65C014631F5B}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "external_deps", "libs\external_deps.vcxproj", "{8B0918FE-10DA-4DDB-81F8-0137C7C52747}"
 EndProject
