@@ -25,7 +25,7 @@ const char* PROJECT_URL(void)
 }
 DWORD PROJECT_VERSION(void)
 {
-	return 0x20201005;
+	return 0x20201105;
 }
 const char* PROJECT_VERSION_STRING(void)
 {
