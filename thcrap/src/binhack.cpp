@@ -144,8 +144,25 @@ size_t binhack_calc_size(const char *binhack_str)
 			c++;
 		} else if(fs) {
 			if((*c == ']' || *c == '>')) {
-				size += sizeof(void*);
-				fs = nullptr;
+				if (strncmp(fs, "option:", 7) == 0) {
+					fs += 7;
+					size_t opt_name_len = c - fs;
+					VLA(char, opt_name, opt_name_len + 1);
+					defer(VLA_FREE(opt_name));
+					strncpy(opt_name, fs, opt_name_len);
+					opt_name[opt_name_len] = 0;
+					patch_opt_val_t *opt = patch_opt_get(opt_name);
+					fs = nullptr;
+					if (opt) {
+						size += opt->size;
+					} else {
+						log_printf("ERROR: option %s does not exist\n", opt_name);
+						return 0;
+					}
+				} else {
+					size += sizeof(void*);
+					fs = nullptr;
+				}
 			}
 			c++;
 		} else {
