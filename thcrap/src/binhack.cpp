@@ -264,7 +264,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					patch_opt_val_t *option = patch_opt_get(function + 7);
 					if (!option) {
 						log_printf("ERROR: option %s not found\n", function + 7);
-						continue;
+						return 3;
 					}
 					memcpy(binhack_buf, option->val.byte_array, option->size);
 					binhack_buf += option->size;
