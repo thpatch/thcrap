@@ -645,7 +645,7 @@ void patch_opts_from_json(json_t *opts) {
 		entry.size = strtol(tname + 1, nullptr, 10) / 8;
 		switch (tname[0]) {
 		case 'i': {
-			if (!json_is_integer(j_val_val)) {
+			if (!json_is_integer(j_val_val) && !json_is_string(j_val_val)) {
 				log_printf("ERROR: invalid value specified for integer option %s\n", key);
 				continue;
 			}
