@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <filesystem>
 
 typedef struct {
 	DWORD size_min;
@@ -55,7 +56,14 @@ int SearchCheckExe(wchar_t *local_dir, WIN32_FIND_DATAW *w32fd)
 		}
 
 		// Alright, found a game!
-		// Add it into the result object
+		// Check if it has a vpatch
+		auto vpatch_fn = std::filesystem::path(local_dir) / L"vpatch.exe";
+		bool use_vpatch = false;
+		if (strstr(key, "_custom") == nullptr && std::filesystem::is_regular_file(vpatch_fn)) {
+			use_vpatch = true;
+		}
+
+		// Add the game into the result object
 		game_val = json_object_get_create(state.found, key, JSON_OBJECT);
 
 		EnterCriticalSection(&state.cs_result);
@@ -70,6 +78,14 @@ int SearchCheckExe(wchar_t *local_dir, WIN32_FIND_DATAW *w32fd)
 			);
 
 			json_object_set_new(game_val, exe_fn_a, id_str);
+
+			if (use_vpatch) {
+				json_object_set_new(
+					game_val,
+					vpatch_fn.generic_u8string().c_str(),
+					json_string("using vpatch")
+				);
+			}
 		}
 		LeaveCriticalSection(&state.cs_result);
 		VLA_FREE(exe_fn_a);
