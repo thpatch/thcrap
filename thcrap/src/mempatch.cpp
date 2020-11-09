@@ -218,8 +218,8 @@ int iat_detour_apply(HMODULE hMod)
 				int local_ret;
 
 				detour.old_func = func_name;
-				detour.old_ptr = GetProcAddress(hDll, detour.old_func);
-				detour.new_ptr = (FARPROC)json_integer_value(ptr);
+				detour.old_ptr = (void*)GetProcAddress(hDll, detour.old_func);
+				detour.new_ptr = (void*)json_integer_value(ptr);
 
 				local_ret = iat_detour_func(hMod, pImpDesc, &detour);
 

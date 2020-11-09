@@ -853,10 +853,10 @@ THCRAP_API tlnote_encoded_index_t tlnote_removal_index()
 extern "C" __declspec(dllexport) void tlnote_mod_detour(void)
 {
 	vtable_detour_t d3d8[] = {
-		{ 35, tlnote_d3dd8_EndScene, (void**)&chain_d3dd8_EndScene },
+		{ 35, (void*)tlnote_d3dd8_EndScene, (void**)&chain_d3dd8_EndScene },
 	};
 	vtable_detour_t d3d9[] = {
-		{ 42, tlnote_d3dd9_EndScene, (void**)&chain_d3dd9_EndScene },
+		{ 42, (void*)tlnote_d3dd9_EndScene, (void**)&chain_d3dd9_EndScene },
 	};
 	d3d8_device_detour(d3d8, elementsof(d3d8));
 	d3d9_device_detour(d3d9, elementsof(d3d9));

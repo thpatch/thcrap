@@ -220,7 +220,7 @@ static char* self_tempname(char *fn, size_t len, const char *prefix)
 static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 {
 	int ret = -1;
-	HMODULE self_mod = GetModuleContaining(self_pubkey_from_signer);
+	HMODULE self_mod = GetModuleContaining((void*)(uintptr_t)self_pubkey_from_signer);
 	HCERTSTORE hStore = NULL;
 	HCRYPTMSG hMsg = NULL;
 	DWORD msg_type = 0;

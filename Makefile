@@ -30,7 +30,7 @@ CFLAGS += -Wno-missing-field-initializers -Wno-parentheses -Wno-cast-function-ty
 CXXFLAGS = $(CFLAGS) -std=c++17
 
 # TODO: remove
-CXXFLAGS += -fpermissive -Wno-conversion-null -Wno-reorder
+CXXFLAGS += -Wno-conversion-null -Wno-reorder
 
 %.o : %.asm
 	$(AS) -o $@ $<

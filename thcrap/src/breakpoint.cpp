@@ -426,7 +426,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 		if (!breakpoint_local_init(
 			bp, addr, cave_source + (i * BP_Offset)
 		)) {
-			memcpy(callcave_p, bp_entry, call_size);
+			memcpy(callcave_p, (uint8_t*)bp_entry, call_size);
 			auto callcave_localptr = (breakpoint_local_t **)(callcave_p + localptr_offset);
 			*callcave_localptr = bp;
 

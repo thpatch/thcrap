@@ -46,7 +46,7 @@ void*** __stdcall d3ddd_Direct3DCreate(
 	auto ret = c_orig(Direct3DCreate_(VARNAMES));
 	if(ret) {
 		vtable_detour_t my[] = {
-			{ vtable_index, cd_new, (void**)cd_old }
+			{ vtable_index, (void*)cd_new, (void**)cd_old }
 		};
 		vtable_detour(*ret, my, elementsof(my));
 	}

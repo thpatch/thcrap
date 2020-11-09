@@ -102,9 +102,13 @@ unsigned char* memcpy_advance_dst(unsigned char *dst, const void *src, size_t nu
 	return dst + num;
 }
 
-unsigned char* ptrcpy_advance_dst(unsigned char *dst, const void *src)
+// The C++ standard doesn't allow converting from a function to a void*.
+// So we can't take a generic void*, we need to take either a void*
+// or a function pointer of any type.
+template<typename T>
+unsigned char* ptrcpy_advance_dst(unsigned char *dst, T *src)
 {
-	*((size_t*)dst) = (size_t)src;
+	*((uintptr_t*)dst) = (uintptr_t)src;
 	return dst + sizeof(void*);
 }
 
@@ -705,7 +709,7 @@ int Inject(HANDLE hProcess, const char *dll_dir, const char *dll_fn, const char 
 int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 {
 	int ret = -1;
-	HMODULE inj_mod = GetModuleContaining(thcrap_inject_into_running);
+	HMODULE inj_mod = GetModuleContaining((void*)(uintptr_t)thcrap_inject_into_running);
 	if(inj_mod) {
 		size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 		size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
