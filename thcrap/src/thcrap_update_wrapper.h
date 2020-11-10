@@ -19,20 +19,16 @@ extern "C" {
 // Can be used to check if thcrap_update is available.
 HMODULE thcrap_update_module(void);
 
-#define DECLARE_WRAPPER(ret, func, ...) typedef ret (*func##_type)(__VA_ARGS__); ret func##_wrapper(__VA_ARGS__);
+int update_filter_global_wrapper(const char *fn, void*);
+int update_filter_games_wrapper(const char *fn, void *games);
+void stack_update_wrapper(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param);
+BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *game_id_fallback);
 
-DECLARE_WRAPPER(int, update_filter_global, const char *fn, void*);
-DECLARE_WRAPPER(int, update_filter_games, const char *fn, void *games);
-DECLARE_WRAPPER(void, stack_update, update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param);
-DECLARE_WRAPPER(BOOL, loader_update_with_UI, const char *exe_fn, char *args, const char *game_id_fallback);
+repo_t ** RepoDiscover_wrapper(const char *start_url);
 
-DECLARE_WRAPPER(repo_t **, RepoDiscover, const char *start_url);
+patch_t patch_bootstrap_wrapper(const patch_desc_t *sel, const repo_t *repo);
 
-DECLARE_WRAPPER(patch_t, patch_bootstrap, const patch_desc_t *sel, const repo_t *repo);
-
-DECLARE_WRAPPER(void, thcrap_update_exit);
-
-#undef DECLARE_WRAPPER
+void thcrap_update_exit_wrapper();
 
 #ifdef __cplusplus
 }

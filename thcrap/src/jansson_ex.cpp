@@ -109,6 +109,9 @@ json_t* json_object_get_create(json_t *object, const char *key, json_type type)
 			case JSON_ARRAY:
 				new_obj = json_array();
 				break;
+			default:
+				new_obj = json_null();
+				break;
 		}
 		json_object_set_new(object, key, new_obj);
 		return new_obj;
@@ -331,7 +334,7 @@ start:
 	return ret;
 }
 
-static int __cdecl dump_to_log(const char *buffer, size_t size, void *data)
+static int __cdecl dump_to_log(const char *buffer, size_t size, void*)
 {
 	log_nprint(buffer, size);
 	return 0;

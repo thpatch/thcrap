@@ -70,7 +70,7 @@ size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr)
 static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 {
 	const char *expr = *expr_ptr;
-	size_t value = NULL;
+	size_t value = 0;
 	unsigned char op = '+';
 
 	enum twochar_op_t : unsigned char {

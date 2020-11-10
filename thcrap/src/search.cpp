@@ -10,7 +10,7 @@
 #include <thcrap.h>
 #include <filesystem>
 
-typedef struct {
+typedef struct alignas(16) {
 	DWORD size_min;
 	DWORD size_max;
 	json_t *versions;
@@ -21,7 +21,7 @@ typedef struct {
 	CRITICAL_SECTION cs_result;
 } search_state_t;
 
-static search_state_t __declspec(align(16)) state;
+static search_state_t state;
 
 int SearchCheckExe(wchar_t *local_dir, WIN32_FIND_DATAW *w32fd)
 {

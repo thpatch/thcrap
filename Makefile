@@ -21,16 +21,15 @@ CFLAGS += -Wall -Wextra
 # -Wunused-local-typedefs: in win32_utf8, we want to keep all the typedef
 # declarations, even if we don't use them, in order to match how they
 # were originally declared in Windows.
-CFLAGS += -Wno-unknown-pragmas -Wno-unused-local-typedefs
+# -Wno-cast-function-type: it tends to deny FARPROC casts, which are
+# needed in a lot of cases
+CFLAGS += -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-cast-function-type
 CFLAGS += -I. -Ilibs -Ilibs/external_deps -Ithcrap/src -Ilibs/win32_utf8
 
 # TODO: remove
-CFLAGS += -Wno-missing-field-initializers -Wno-parentheses -Wno-cast-function-type -Wno-unused-parameter -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-sign-compare -Wno-type-limits -Wno-int-to-pointer-cast -Wno-write-strings -Wno-format -Wno-switch -Wno-unused-variable -Wno-narrowing
+CFLAGS += -Wno-missing-field-initializers -Wno-parentheses -Wno-unused-but-set-variable -Wno-sign-compare -Wno-type-limits -Wno-int-to-pointer-cast -Wno-write-strings -Wno-format -Wno-switch
 
 CXXFLAGS = $(CFLAGS) -std=c++17
-
-# TODO: remove
-CXXFLAGS += -Wno-conversion-null -Wno-reorder
 
 %.o : %.asm
 	$(AS) -o $@ $<

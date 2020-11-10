@@ -624,8 +624,8 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 		float left, top, right, bottom;
 
 		quad_t(const xywh_t &xywh)
-			: left(xywh.x), right(xywh.x + xywh.w),
-			  top(xywh.y), bottom(xywh.y + xywh.h) {
+			: left(xywh.x), top(xywh.y),
+			  right(xywh.x + xywh.w), bottom(xywh.y + xywh.h) {
 		}
 	};
 	auto render_textured_quad = [&] (
@@ -681,7 +681,6 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 	auto tlr = &rendered[id_active];
 	auto region_unscaled = env.region();
 	float margin_x = (region_unscaled.w - tlr->tex_w);
-	float margin_y = (region_unscaled.h - tlr->tex_h);
 	region_unscaled.x += margin_x / 2.0f;
 	region_unscaled.w -= margin_x;
 

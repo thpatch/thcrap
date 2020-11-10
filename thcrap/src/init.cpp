@@ -357,7 +357,7 @@ int thcrap_init(const char *run_cfg_fn)
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	bp_set.resize(runconfig_stage_count(), false);
-	return thcrap_init_binary(0, false, nullptr);
+	return thcrap_init_binary(0, nullptr);
 }
 
 int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
@@ -366,11 +366,11 @@ int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	auto module = (HMODULE)json_object_get_immediate(bp_info, regs, "module");
 	// ----------
-	thcrap_init_binary(++stage_cur, true, module);
+	thcrap_init_binary(++stage_cur, module);
 	return 1;
 }
 
-int thcrap_init_binary(size_t stage_num, bool use_module, HMODULE module)
+int thcrap_init_binary(size_t stage_num, HMODULE module)
 {
 	size_t stages_total = runconfig_stage_count();
 
@@ -400,7 +400,7 @@ int thcrap_init_binary(size_t stage_num, bool use_module, HMODULE module)
 				"Failed. Jumping to last stage...\n"
 				"-------------------------\n"
 			);
-			return thcrap_init_binary(stages_total - 1, false, nullptr);
+			return thcrap_init_binary(stages_total - 1, nullptr);
 		}
 	}
 
@@ -435,7 +435,7 @@ int InitDll(HMODULE hDll)
 	return 0;
 }
 
-void ExitDll(HMODULE hDll)
+void ExitDll()
 {
 	dll_exited = true;
 	// Yes, the main thread does not receive a DLL_THREAD_DETACH message
@@ -455,14 +455,14 @@ void ExitDll(HMODULE hDll)
 
 VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
 {
-	ExitDll(NULL);
+	ExitDll();
 	// The detour cache is already freed at this point, and this will
 	// always be the final detour in the chain, so detour_next() doesn't
 	// make any sense here (and would leak memory as well).
 	ExitProcess(uExitCode);
 }
 
-BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
+BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID)
 {
 	switch(ulReasonForCall) {
 		case DLL_PROCESS_ATTACH:
@@ -470,7 +470,7 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
 			break;
 		case DLL_PROCESS_DETACH:
 			if (!dll_exited) {
-				ExitDll(hDll);
+				ExitDll();
 			}
 			break;
 		case DLL_THREAD_DETACH:

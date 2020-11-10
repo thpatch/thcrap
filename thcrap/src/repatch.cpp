@@ -95,7 +95,7 @@ void repatch_add(OVERLAPPED *ol)
 	} while(next_offset);
 }
 
-DWORD WINAPI repatch_collector(void *param)
+DWORD WINAPI repatch_collector(void*)
 {
 	while(WaitForSingleObject(event_shutdown, COLLECT_THRESHOLD) == WAIT_TIMEOUT) {
 		if(json_object_size(files_changed) > 0) {
@@ -113,7 +113,7 @@ DWORD WINAPI repatch_collector(void *param)
 	return 0;
 }
 
-DWORD WINAPI repatch_watcher(void *param)
+DWORD WINAPI repatch_watcher(void*)
 {
 	DWORD ret_changes = TRUE;
 	DWORD ret_queue = FALSE;

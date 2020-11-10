@@ -30,7 +30,7 @@ void jsonvfs_add(const std::string out_pattern, std::unordered_set<std::string> 
 	size_t i = handler.out_pattern.find('\\');
 	while (i != std::string::npos) {
 		handler.out_pattern[i] = '/';
-		size_t i = out_pattern.find('\\');
+		i = out_pattern.find('\\');
 	}
 	for (auto& s : in_fns) {
 		jsondata_add(s.c_str());
