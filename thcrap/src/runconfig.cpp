@@ -171,6 +171,11 @@ void runconfig_load(json_t *file, int flags)
 		run_cfg.json = tmp;
 	}
 
+	value = json_object_get(run_cfg.json, "options");
+	if (value) {
+		json_object_set(file, "options", value);
+	}
+
 	auto set_string_if_exist = [file, can_overwrite](const char* key, std::string& out) {
 		json_t *value = json_object_get(file, key);
 		if (value && (out.empty() || can_overwrite)) {
