@@ -439,7 +439,7 @@ int layout_process(layout_state_t *lay, layout_func_t func, const char *str, siz
 		str = strings_lookup(str, &len);
 	}
 
-	auto tln = tlnote_find({ str, (int)len }, false);
+	auto tln = tlnote_find({ str, len }, false);
 	str = tln.regular.str;
 	len = tln.regular.len;
 	lay->tlnote = tln.tlnote;

@@ -143,7 +143,7 @@ struct patch_line_t {
 	patch_line_t()
 		: line({ nullptr, 0 }) {
 	}
-	patch_line_t(const char *str, int len, const tlnote_encoded_index_t &tli)
+	patch_line_t(const char *str, size_t len, const tlnote_encoded_index_t &tli)
 		: line({ str,len }), tli(tli) {
 	}
 };
@@ -223,7 +223,7 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 	// Trim the line to the last full codepoint that would still fit
 	// into the original opcode after including the terminating '\0'
 	// and the TL note.
-	int len_trimmed = 0;
+	size_t len_trimmed = 0;
 	auto limit = 0xFF - 1 - extra_param_len - tli.len();
 	while(len_trimmed < line.len) {
 		auto old_len_trimmed = len_trimmed;
@@ -318,7 +318,7 @@ const replacer_t REP_HARD_LINE = {
 	{
 		auto* line = (hard_line_data_t*)cmd_out.data;
 		line->linenum = (uint16_t)state.cur_line;
-		cmd_out.length = rep.len + 4 + 1;
+		cmd_out.length = (uint8_t)rep.len + 4 + 1;
 		replace_line(line->str, &state, rep);
 	}
 };
@@ -326,7 +326,7 @@ const replacer_t REP_HARD_LINE = {
 const replacer_t REP_AUTO_LINE = {
 	0, [] (th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep)
 	{
-		cmd_out.length = rep.len + 1;
+		cmd_out.length = (uint8_t)rep.len + 1;
 		replace_line((char *)cmd_out.data, &state, rep);
 	}
 };

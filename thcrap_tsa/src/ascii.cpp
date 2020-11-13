@@ -305,7 +305,7 @@ void ascii_repatch()
 
 	// TH165: Recreate the Replay format strings
 	if(game_id == TH165) {
-		int day_width_max = 0;
+		size_t day_width_max = 0;
 		const string_named_t TH165_DAYS[] = {
 			{ "th165_ascii_replay_sun", "Sun" },
 			{ "th165_ascii_replay_mon", "Mon" },
@@ -337,7 +337,7 @@ void ascii_repatch()
 		const int USERNAME_LEN = 4;
 		auto number = strings_get_fallback({ "th06_ascii_2_digit_number_format", "No.%.2d" });
 		auto user = strings_get_fallback({ "th06_ascii_replay_user", "User" });
-		auto number_printed_len = _scprintf(number.str, 25);
+		size_t number_printed_len = _scprintf(number.str, 25);
 		// The save menu shouldn't be made larger depending on the User translation
 		auto replay_col1_len = max(max(number_printed_len, user.len), USERNAME_LEN);
 		auto number_save = std::string(number.str, number.len);

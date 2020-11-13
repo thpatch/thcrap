@@ -445,7 +445,7 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	thbgm_mods = std::make_unique<std::unique_ptr<track_t>[]>(bgm_count);
 	for(decltype(bgm_count) i = 0; i < bgm_count; i++) {
 		auto &fmt_ingame = bgm_fmt[i];
-		auto basename_len = strchr(fmt_ingame.fn, '.') - fmt_ingame.fn;
+		size_t basename_len = (size_t)(strchr(fmt_ingame.fn, '.') - fmt_ingame.fn);
 		const stringref_t basename = { fmt_ingame.fn, basename_len };
 
 		auto mod = stack_bgm_resolve(basename);

@@ -141,7 +141,7 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 		basename.len, basename.str
 	);
 
-	int longest_codec_len = 0;
+	size_t longest_codec_len = 0;
 	for(const auto &codec : CODECS) {
 		longest_codec_len = max(longest_codec_len, codec.ext.len);
 	}

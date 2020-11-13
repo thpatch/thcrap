@@ -158,7 +158,7 @@ HMMIO WINAPI bgmmod_mmioOpenA(LPSTR pszFileName, LPMMIOINFO pmmioinfo, DWORD fdw
 		return fallback();
 	}
 
-	auto basename_len = (ext - basename);
+	size_t basename_len = (size_t)(ext - basename);
 	auto modtrack = stack_bgm_resolve({ basename, basename_len });
 	if(modtrack == nullptr) {
 		return fallback();
