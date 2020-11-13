@@ -276,7 +276,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 		return tex;
 	}
 
-	const stringref_t formatted_note = { note.c_str(), (int)note.length() };
+	const stringref_t formatted_note = { note.c_str(), note.length() };
 
 	auto fail = [formatted_note] (const char *func, HRESULT ret) {
 		log_printf(
@@ -811,16 +811,16 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 			unsigned char byte_len;
 			auto index = index_from_utf8(byte_len, p + 1);
 			FAIL_IF(index < 0);
-			auto tlp_len = byte_len + 1;
+			size_t tlp_len = byte_len + 1;
 			FAIL_IF(text.len < i + tlp_len);
-			auto at_end = text.len - (i + tlp_len);
+			size_t at_end = text.len - (i + tlp_len);
 			FAIL_IF(index - RENDERED_OFFSET >= (int)rendered.size());
 
 			tlnote_t tlp = { { p, tlp_len } };
 			if(i == 0) {
 				return { { p + tlp_len, text.len - tlp_len }, tlp };
 			} else if(at_end == 0) {
-				return { { text.str, p - text.str }, tlp };
+				return { { text.str, (size_t)(p - text.str) }, tlp };
 			} else {
 				FAIL_IF(1);
 			}
@@ -829,8 +829,8 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 		p++;
 	}
 	if(sepchar_ptr) {
-		tlnote_t tlnote = { { sepchar_ptr, p - sepchar_ptr } };
-		return { { text.str, sepchar_ptr - text.str }, tlnote };
+		tlnote_t tlnote = { { sepchar_ptr, (size_t)(p - sepchar_ptr) } };
+		return { { text.str, (size_t)(sepchar_ptr - text.str) }, tlnote };
 	}
 	return { text, {} };
 }

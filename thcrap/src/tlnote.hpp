@@ -114,7 +114,7 @@ public:
 	}
 	tlnote_encoded_index_t(int32_t index);
 
-	int len() const {
+	size_t len() const {
 		return (type != '\0') ? (1 + index_len) : 0;
 	}
 
@@ -135,7 +135,7 @@ typedef struct {
 struct tlnote_t {
 	const tlnote_string_t *str;
 	// *Not* including the type character.
-	int len;
+	size_t len;
 
 	operator bool() const { return str != nullptr; }
 

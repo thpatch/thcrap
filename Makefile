@@ -27,7 +27,7 @@ CFLAGS += -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-cast-function-typ
 CFLAGS += -I. -Ilibs -Ilibs/external_deps -Ithcrap/src -Ilibs/win32_utf8
 
 # TODO: fix and remove
-CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare -Wno-narrowing
+CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare
 
 CXXFLAGS = $(CFLAGS) -std=c++17
 
