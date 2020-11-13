@@ -113,7 +113,7 @@ int stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t dire
 json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 {
 	json_t *ret = NULL;
-	stack_chain_iterate_t sci = {0};
+	stack_chain_iterate_t sci = {};
 	size_t json_size = 0;
 
 	for (size_t n = 0; chain[n]; n++) {
@@ -158,7 +158,7 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 
 HANDLE stack_file_resolve_chain(char **chain)
 {
-	stack_chain_iterate_t sci = {0};
+	stack_chain_iterate_t sci = {};
 
 	// Both the patch stack and the chain have to be traversed backwards: Later
 	// patches take priority over earlier ones, and build-specific files are
@@ -177,7 +177,7 @@ HANDLE stack_file_resolve_chain(char **chain)
 
 char* stack_fn_resolve_chain(char **chain)
 {
-	stack_chain_iterate_t sci = { 0 };
+	stack_chain_iterate_t sci = {};
 
 	// Both the patch stack and the chain have to be traversed backwards: Later
 	// patches take priority over earlier ones, and build-specific files are

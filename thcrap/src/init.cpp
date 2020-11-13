@@ -139,7 +139,7 @@ json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 	json_t *ret = json_object();
 	char **chain = resolve_chain(fn);
 	if(chain && chain[0]) {
-		std::vector<char*> new_chain;
+		std::vector<const char*> new_chain;
 		new_chain.push_back("global.js");
 		for (size_t i = 0; chain[i]; i++) {
 			new_chain.push_back(chain[i]);
@@ -149,7 +149,7 @@ json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 		size_t tmp_file_size = 0;
 		stack_foreach_cpp([&new_chain, &ret, &tmp_file_size](const patch_t *patch) {
 			json_t *json_new = json_object();
-			for (char *&file : new_chain) {
+			for (const char *&file : new_chain) {
 				tmp_file_size += patch_json_merge(&json_new, patch, file);
 			}
 			json_object_merge(json_new, patch->config);

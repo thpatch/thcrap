@@ -367,7 +367,7 @@ int zip_file_add_from_dir(zip_t *zip)
 {
 	int ret = -1;
 	if(zip) {
-		zip_dir_t dir = {0};
+		zip_dir_t dir = {};
 		DWORD byte_ret = 0;
 		json_int_t offset = TellFilePointer(zip->hArc);
 		ret = 1;
@@ -391,7 +391,7 @@ static size_t zip_dir_end_prepare(zip_dir_end_t *dir_end, zip_t *zip)
 	DWORD zip_size;
 	size_t CMT_MAX;
 	if(!zip) {
-		return -1;
+		return SIZE_MAX;
 	}
 	zip_size = SetFilePointer(zip->hArc, 0, NULL, FILE_END);
 	// ZIP comments have a maximum size of 64K
@@ -419,7 +419,7 @@ static size_t zip_dir_end_prepare(zip_dir_end_t *dir_end, zip_t *zip)
 				size_t end_pos = zip_size - read_back + i;
 				if(end->disk_num != 0 || end->dir_start_disk != 0) {
 					log_func_printf("Multi-part archives are unsupported\n");
-					return -1;
+					return SIZE_MAX;
 				}
 				if(dir_end) {
 					memcpy(dir_end, end, ZDE_SIZE);
@@ -438,7 +438,7 @@ static size_t zip_dir_end_prepare(zip_dir_end_t *dir_end, zip_t *zip)
 		}
 		SetFilePointer(zip->hArc, -step, NULL, FILE_CURRENT);
 	} while(read_back < CMT_MAX);
-	return -1;
+	return SIZE_MAX;
 }
 
 // Fills [zip->files] with pointers to all the files in the archive.
@@ -452,7 +452,7 @@ static int zip_prepare(zip_t *zip)
 	}
 	json_object_clear(zip->files);
 	end_pos = zip_dir_end_prepare(&dir_end, zip);
-	if(end_pos == -1) {
+	if(end_pos == SIZE_MAX) {
 		log_func_printf(
 			"End of central directory record could not be located\n"
 		);
@@ -496,7 +496,7 @@ const BYTE* zip_comment(zip_t *zip, size_t *cmt_len)
 
 void* zip_file_load(zip_t *zip, const char *fn, size_t *file_size)
 {
-	zip_file_info_t file = {0};
+	zip_file_info_t file = {};
 	void *ret = NULL;
 	if(file_size) {
 		ret = zip_file_decompress(&file, zip, fn);
@@ -508,7 +508,7 @@ void* zip_file_load(zip_t *zip, const char *fn, size_t *file_size)
 int zip_file_unzip(zip_t *zip, const char *fn)
 {
 	int ret = -1;
-	zip_file_info_t file = {0};
+	zip_file_info_t file = {};
 	void* file_buffer = zip_file_decompress(&file, zip, fn);
 	if(file_buffer && dir_create_for_fn(fn) >= 0) {
 		DWORD byte_ret;

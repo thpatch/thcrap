@@ -32,7 +32,7 @@ static const char *QUALITY_STRINGS[] = {
 
 const char* quality_to_string(BYTE quality)
 {
-	if(quality >= 0 && quality < elementsof(QUALITY_STRINGS)) {
+	if(quality < elementsof(QUALITY_STRINGS)) {
 		return QUALITY_STRINGS[quality];
 	}
 	return "(quality out of range)";
@@ -199,7 +199,7 @@ int fontrule_apply(LOGFONTA *dst, const LOGFONTA *rep, int priority)
 int fontrules_apply(LOGFONTA *lf)
 {
 	json_t *fontrules = json_object_get(runconfig_json_get(), "fontrules");
-	LOGFONTA rep_full = {0};
+	LOGFONTA rep_full = {};
 	rep_full.lfQuality = UNSPECIFIED_QUALITY;
 	int rep_score = 0;
 	int log_header = 0;
@@ -209,7 +209,7 @@ int fontrules_apply(LOGFONTA *lf)
 		return -1;
 	}
 	json_object_foreach(fontrules, key, val) {
-		LOGFONTA rule = {0};
+		LOGFONTA rule = {};
 		int rule_score = fontrule_parse(&rule, key);
 		int priority = rule_score >= rep_score;
 		const char *rep_str = json_string_value(val);

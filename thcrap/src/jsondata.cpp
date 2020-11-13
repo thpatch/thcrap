@@ -36,12 +36,11 @@
 
 json_t *jsondata = NULL;
 
-typedef int (*jsondata_func_t)(const char *fn);
-
-int jsondata_game_func(const char *fn, jsondata_func_t func)
+template<typename T>
+T jsondata_game_func(const char *fn, T (*func)(const char *fn))
 {
 	char *game_fn = fn_for_game(fn);
-	int ret = func(game_fn);
+	T ret = func(game_fn);
 	SAFE_FREE(game_fn);
 	return ret;
 }
@@ -72,7 +71,7 @@ json_t* jsondata_get(const char *fn)
 
 json_t* jsondata_game_get(const char *fn)
 {
-	return (json_t*)jsondata_game_func(fn, (jsondata_func_t)jsondata_get);
+	return jsondata_game_func(fn, jsondata_get);
 }
 
 void jsondata_mod_repatch(const json_t *files_changed)

@@ -40,7 +40,7 @@ __inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 // TODO: Rip out and change to std::string_view once C++17 is more widespread.
 typedef struct stringref_t {
 	const char *str;
-	int len;
+	size_t len;
 
 	// No default constructor = no potential uninitialized
 	// string pointer = good
@@ -55,7 +55,7 @@ typedef struct stringref_t {
 			len = 0;
 		}
 	}
-	stringref_t(const char *i_str, int i_len) {
+	stringref_t(const char *i_str, size_t i_len) {
 		if (i_str) {
 			str = i_str;
 			len = i_len;

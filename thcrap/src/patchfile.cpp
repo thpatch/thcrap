@@ -316,7 +316,7 @@ void patch_show_motd(const patch_t *patch_info)
 patch_t patch_build(const patch_desc_t *desc)
 {
 	std::string archive;
-	patch_t patch = { 0 };
+	patch_t patch = {};
 
 	archive = std::string("repos/") + desc->repo_id + "/" + desc->patch_id + "/";
 	patch.archive = strdup(archive.c_str());
@@ -325,7 +325,7 @@ patch_t patch_build(const patch_desc_t *desc)
 
 patch_desc_t patch_dep_to_desc(const char *dep_str)
 {
-	patch_desc_t desc = { 0 };
+	patch_desc_t desc = {};
 
 	if (!dep_str) {
 		return desc;
@@ -347,7 +347,7 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 
 patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t level)
 {
-	patch_t patch = { 0 };
+	patch_t patch = {};
 
 	if (patch_path == nullptr) {
 		return patch;

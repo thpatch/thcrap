@@ -21,13 +21,13 @@ CFLAGS += -Wall -Wextra
 # -Wunused-local-typedefs: in win32_utf8, we want to keep all the typedef
 # declarations, even if we don't use them, in order to match how they
 # were originally declared in Windows.
-# -Wno-cast-function-type: it tends to deny FARPROC casts, which are
+# -Wno-cast-function-type: it tends to warn on FARPROC casts, which are
 # needed in a lot of cases
 CFLAGS += -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-cast-function-type
 CFLAGS += -I. -Ilibs -Ilibs/external_deps -Ithcrap/src -Ilibs/win32_utf8
 
-# TODO: remove
-CFLAGS += -Wno-missing-field-initializers -Wno-parentheses -Wno-unused-but-set-variable -Wno-sign-compare -Wno-type-limits -Wno-int-to-pointer-cast -Wno-write-strings -Wno-format -Wno-switch
+# TODO: fix and remove
+CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare -Wno-narrowing
 
 CXXFLAGS = $(CFLAGS) -std=c++17
 
@@ -80,8 +80,14 @@ THCRAP_DLL_SRCS = \
 
 THCRAP_DLL_OBJS = $(THCRAP_DLL_SRCS:.cpp=.o)
 $(THCRAP_DLL_OBJS): CXXFLAGS += -DTHCRAP_EXPORTS
+# It casts a "DWORD token value" to a pointer, which seems weird
+# and have no chances to work on 64-bits. We will need to look
+# at it for 64-bits support... which isn't a priority right now.
+# And minid3d.h is included by tlnote.cpp.
+thcrap/src/minid3d.o: CXXFLAGS += -Wno-int-to-pointer-cast
+thcrap/src/tlnote.o:  CXXFLAGS += -Wno-int-to-pointer-cast
 
-THCRAP_DLL_LDFLAGS = -shared -Lbin/bin -lwin32_utf8 -ljansson -lzlib-ng -lgdi32 -lshlwapi -luuid -lole32 -lpsapi -lwinmm --enable-stdcall-fixup
+THCRAP_DLL_LDFLAGS = -shared -Lbin/bin -lwin32_utf8 -ljansson -lzlib-ng -lgdi32 -lshlwapi -luuid -lole32 -lpsapi -lwinmm -Wl,--enable-stdcall-fixup
 
 ifneq ($(BUILD64),1)
 THCRAP_DLL_OBJS += thcrap/src/bp_entry.o

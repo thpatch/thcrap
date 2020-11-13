@@ -148,7 +148,7 @@ int detour_chain(const char *dll_name, int return_old_ptrs, ...)
 	va_list va;
 
 	va_start(va, return_old_ptrs);
-	while(func_name = va_arg(va, const char*)) {
+	while((func_name = va_arg(va, const char*))) {
 		FARPROC *old_ptr = NULL;
 		FARPROC chain_ptr;
 		const void *func_ptr = va_arg(va, const void*);

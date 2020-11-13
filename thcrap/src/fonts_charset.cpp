@@ -55,13 +55,13 @@ BYTE character_to_charset(WCHAR c)
 			return charset_to_codepage[i].charset;
 		}
 	}
-	return -1;
+	return UCHAR_MAX;
 }
 
 HFONT font_create_for_character(const LOGFONTW *lplf, WORD c)
 {
 	BYTE charset = character_to_charset(c);
-	if (charset == -1) {
+	if (charset == UCHAR_MAX) {
 		return NULL;
 	}
 

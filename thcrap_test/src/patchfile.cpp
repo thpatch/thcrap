@@ -16,7 +16,7 @@ TEST(PatchFile, FileRead)
     file_size = 0x12345678;
     buffer = file_read("invalid_file.txt", &file_size);
     EXPECT_EQ(buffer, nullptr);
-    EXPECT_EQ(file_size, 0);
+    EXPECT_EQ(file_size, 0u);
 
     {
         std::ofstream f(fn);
@@ -38,7 +38,7 @@ TEST(PatchFile, FileRead)
     // malloc doesn't offer any guarantee for malloc(0),
     // only that the pointer can be safely passed to free().
     // It can return a NULL pointer or a pointer to a 0-byte buffer.
-    EXPECT_EQ(file_size, 0);
+    EXPECT_EQ(file_size, 0u);
     free(buffer);
 
     std::filesystem::remove(fn);
@@ -56,7 +56,7 @@ TEST(PatchFile, FileWrite)
     size_t size;
     void *file = file_read("test.txt", &size);
     ASSERT_NE(file, nullptr);
-    EXPECT_EQ(size, 5);
+    EXPECT_EQ(size, 5u);
     EXPECT_STREQ((char*)file, "data");
 
     std::filesystem::remove("test.txt");
@@ -95,20 +95,22 @@ TEST(PatchFile, FnForBuild)
 TEST(PatchFile, FnForPatch)
 {
     char *fn;
-    patch_t patch = { 0 };
+    patch_t patch = {};
 
     fn = fn_for_patch(nullptr, "test.js");
     EXPECT_EQ(fn, nullptr);
 
-    patch.archive = "C:/Path/to/thcrap/repos/repo_name/patch_name";
+    patch.archive = strdup("C:/Path/to/thcrap/repos/repo_name/patch_name");
     fn = fn_for_patch(&patch, "test.js");
     EXPECT_STREQ(fn, "C:/Path/to/thcrap/repos/repo_name/patch_name/test.js");
     free(fn);
+    free(patch.archive);
 
-    patch.archive = "C:/Path/to/thcrap/repos/repo_name/patch_name/";
+    patch.archive = strdup("C:/Path/to/thcrap/repos/repo_name/patch_name/");
     fn = fn_for_patch(&patch, "test.js");
     EXPECT_STREQ(fn, "C:/Path/to/thcrap/repos/repo_name/patch_name/test.js");
     free(fn);
+    free(patch.archive);
 }
 
 TEST(PatchFile, DirCreateForFn)
@@ -197,7 +199,7 @@ TEST_F(PatchFileTest, PatchInit)
 
     EXPECT_STREQ(patch.motd, "This is a message");
     EXPECT_STREQ(patch.motd_title, "Title for motd");
-    EXPECT_EQ(patch.motd_type, 12);
+    EXPECT_EQ(patch.motd_type, 12u);
 
     // TODO: test invalid parameters
 }
@@ -245,11 +247,11 @@ TEST_F(PatchFileTest, PatchFileLoad)
     file.close();
     buffer = (char*)patch_file_load(&patch, "test_exist.txt", &file_size);
     EXPECT_STREQ(buffer, "abcde");
-    EXPECT_EQ(file_size, 6);
+    EXPECT_EQ(file_size, 6u);
     free(buffer);
 
     EXPECT_EQ(patch_file_load(&patch, "test_missing.txt", &file_size), nullptr);
-    EXPECT_EQ(file_size, 0);
+    EXPECT_EQ(file_size, 0u);
 
     std::filesystem::create_directory("testdir/subdir");
     file.open("testdir/subdir/test_exist.txt");
@@ -257,7 +259,7 @@ TEST_F(PatchFileTest, PatchFileLoad)
     file.close();
     buffer = (char*)patch_file_load(&patch, "subdir/test_exist.txt", &file_size);
     EXPECT_STREQ(buffer, "abcde");
-    EXPECT_EQ(file_size, 6);
+    EXPECT_EQ(file_size, 6u);
     free(buffer);
 
     // Test blacklist
@@ -265,7 +267,7 @@ TEST_F(PatchFileTest, PatchFileLoad)
     file.write("abcde", 6);
     file.close();
     EXPECT_EQ(patch_file_load(&patch, "test_blacklist.bmp", &file_size), nullptr);
-    EXPECT_EQ(file_size, 0);
+    EXPECT_EQ(file_size, 0u);
 
     // Test without size
     buffer = (char*)patch_file_load(&patch, "test_exist.txt", nullptr);
@@ -301,11 +303,13 @@ TEST_F(PatchFileTest, PatchRelToAbs)
 TEST(PatchFile, PatchBuild)
 {
     patch_desc_t desc = {
-        "repo_name",
-        "patch_name"
+        strdup("repo_name"),
+        strdup("patch_name")
     };
     patch_t patch = patch_build(&desc);
     EXPECT_STREQ(patch.archive, "repos/repo_name/patch_name/");
+    free(desc.repo_id);
+    free(desc.patch_id);
     patch_free(&patch);
 }
 

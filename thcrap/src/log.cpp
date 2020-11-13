@@ -48,7 +48,7 @@ const char* lasterror_str_for(DWORD err)
 		static lasterror_t lasterror_static;
 		str = &lasterror_static;
 	}
-	snprintf(str->str, sizeof(str->str), "%u", err);
+	snprintf(str->str, sizeof(str->str), "%lu", err);
 	return str->str;
 }
 

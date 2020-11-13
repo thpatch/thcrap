@@ -247,7 +247,7 @@ void dialog_adjust(
 	const stringref_t rep
 )
 {
-	RECT rect = {0};
+	RECT rect = {};
 	UINT draw_flags;
 	BYTE button_style;
 
@@ -498,7 +498,7 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 		if(dlg_in->dlgVer == 1 && dlg_in->signature == 0xffff) {
 			const BYTE *src = (BYTE*)hDlg;
 			BYTE *dst;
-			dialog_adjust_t adj = {0};
+			dialog_adjust_t adj = {};
 			size_t i;
 			size_t dlg_out_len = hDlg_len;
 

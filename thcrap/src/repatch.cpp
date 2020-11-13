@@ -52,7 +52,7 @@ static int dir_handles_num = 0;
 // A JSON object that receives the names of all changed files as the changes
 // are detected.
 static json_t *files_changed = NULL;
-static CRITICAL_SECTION cs_changed = {0};
+static CRITICAL_SECTION cs_changed = {};
 static HANDLE event_shutdown = NULL;
 static HANDLE thread_watch = NULL;
 static HANDLE thread_collect = NULL;
@@ -122,7 +122,7 @@ DWORD WINAPI repatch_watcher(void*)
 	int i;
 	DWORD byte_ret_max = 0;
 
-	OVERLAPPED ol_changes = {0};
+	OVERLAPPED ol_changes = {};
 	HANDLE hIOCompPort = CreateIoCompletionPort(
 		INVALID_HANDLE_VALUE, NULL, PROJECT_VERSION(), 0
 	);

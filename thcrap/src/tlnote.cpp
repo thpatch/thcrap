@@ -184,7 +184,7 @@ bool tlnote_env_from_runconfig(tlnote_env_t &env)
 	PARSE(font, json_string_value, (parsed == nullptr), {
 		fail("font", "Must be a font rule string.");
 	}, {
-		LOGFONTA lf = {0};
+		LOGFONTA lf = {};
 		fontrule_parse(&lf, parsed);
 		ret &= env.font_set(lf);
 	});
@@ -298,7 +298,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 	// We obviously want 24-bit for ClearType in case the font supports it.
 	// No need to waste the extra 8 bits for an "alpha channel" that GDI
 	// doesn't support and sets to 0 on every rendering call anyway, though.
-	BITMAPINFOHEADER bmi = { 0 };
+	BITMAPINFOHEADER bmi = {};
 	bmi.biSize = sizeof(bmi);
 	bmi.biBitCount = 24;
 	bmi.biWidth = gdi_rect.right;
@@ -654,6 +654,7 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 		);
 	};
 
+#ifdef _DEBUG
 	auto render_colored_quad = [&] (quad_t q, uint32_t col_diffuse) {
 		d3dd_SetFVF(ver, d3dd, D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
 		d3dd_SetRenderState(ver, d3dd, D3DRS_ALPHABLENDENABLE, false);
@@ -675,6 +676,7 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 			elementsof(verts) - 1, verts, sizeof(verts[0])
 		);
 	};
+#endif
 	// ------------
 
 	auto &env = tlnote_env();
@@ -797,7 +799,7 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 					"U+%04X is reserved for internal TL note handling:\n\n%s",
 					TLNOTE_INDEX, text
 				);
-				return { text };
+				return { text, {} };
 			};
 #define FAIL_IF(cond) \
 	if(cond) { \
@@ -810,8 +812,8 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 			auto index = index_from_utf8(byte_len, p + 1);
 			FAIL_IF(index < 0);
 			auto tlp_len = byte_len + 1;
+			FAIL_IF(text.len < i + tlp_len);
 			auto at_end = text.len - (i + tlp_len);
-			FAIL_IF(at_end < 0);
 			FAIL_IF(index - RENDERED_OFFSET >= (int)rendered.size());
 
 			tlnote_t tlp = { { p, tlp_len } };
@@ -830,7 +832,7 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 		tlnote_t tlnote = { { sepchar_ptr, p - sepchar_ptr } };
 		return { { text.str, sepchar_ptr - text.str }, tlnote };
 	}
-	return { text };
+	return { text, {} };
 }
 
 THCRAP_API tlnote_encoded_index_t tlnote_prerender(const tlnote_t tlnote)

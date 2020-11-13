@@ -193,7 +193,7 @@ repo_t **RepoLoad(void)
 	std::vector<repo_t*> repo_vector;
 	repo_t *repo;
 
-	while (repo = RepoLocalNext(&hFind)) {
+	while ((repo = RepoLocalNext(&hFind))) {
 		repo_vector.push_back(repo);
 	}
 	std::sort(repo_vector.begin(), repo_vector.end(), [](repo_t *a, repo_t *b) {

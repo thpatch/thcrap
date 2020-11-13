@@ -23,7 +23,7 @@ int file_rep_init(file_rep_t *fr, const char *file_name)
 	fn_len = strlen(file_name) + 1;
 	fr->name = EnsureUTF8(file_name, fn_len);
 	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->pre_json_size);
-	fr->offset = -1;
+	fr->offset = SIZE_MAX;
 	fr->hooks = patchhooks_build(fr->name);
 	if (fr->hooks) {
 		fr->patch = patchhooks_load_diff(fr->hooks, fr->name, &fr->patch_size);
@@ -50,7 +50,7 @@ int file_rep_clear(file_rep_t *fr)
 	SAFE_FREE(fr->hooks);
 	fr->patch_size = 0;
 	fr->pre_json_size = 0;
-	fr->offset = -1;
+	fr->offset = SIZE_MAX;
 	fr->orig_size = 0;
 	fr->object = NULL;
 	DeleteCriticalSection(&fr->cs);
@@ -178,7 +178,7 @@ int DumpDatFile(const char *dir, const file_rep_t *fr)
 // DumpDatFile, fragmented loading style.
 int DumpDatFragmentedFile(const char *dir, file_rep_t *fr, HANDLE hFile, fragmented_read_file_hook_t post_read)
 {
-	if (!fr || !hFile || hFile == INVALID_HANDLE_VALUE || !fr->name || fr->offset != -1) {
+	if (!fr || !hFile || hFile == INVALID_HANDLE_VALUE || !fr->name || fr->offset != SIZE_MAX) {
 		return -1;
 	}
 	{
@@ -197,7 +197,7 @@ int DumpDatFragmentedFile(const char *dir, file_rep_t *fr, HANDLE hFile, fragmen
 			if (post_read) {
 				fr->offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT); // Needed by nsml
 				post_read(fr, buffer, fr->orig_size);
-				fr->offset = -1;
+				fr->offset = SIZE_MAX;
 			}
 			file_write(fn, buffer, fr->orig_size);
 		}
@@ -404,7 +404,7 @@ int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info)
 
 	EnterCriticalSection(&fr->cs);
 	bool has_rep = fr->rep_buffer != nullptr;
-	if (fr->offset == -1) {
+	if (fr->offset == SIZE_MAX) {
 		fr->offset = SetFilePointer(hFile, 0, NULL, FILE_CURRENT);
 
 		// Read the original file if we don't have a replacement one

@@ -292,7 +292,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			func_name_len = 0; c++;
 		} else if(fs && *c == '+') {
 			const char *user_offset_end = strchr(c, func_name_end);
-			int offset_str_len = user_offset_end - c - 1;
+			size_t offset_str_len = user_offset_end - c - 1;
 			if (offset_str_len > sizeof(UINT_PTR) * 2) {
 				c = user_offset_end;
 				continue;

@@ -749,8 +749,8 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 	STRLEN_DEC(exe_fn);
 	VLA(char, exe_dir_local, exe_fn_len);
 	VLA(char, exe_fn_local, exe_fn_len);
-	STARTUPINFOA si = {0};
-	PROCESS_INFORMATION pi = {0};
+	STARTUPINFOA si = {};
+	PROCESS_INFORMATION pi = {};
 	char *exe_dir = NULL;
 
 	strcpy(exe_fn_local, exe_fn);
@@ -810,7 +810,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 /// -------------------------
 void* entry_from_context(HANDLE hThread)
 {
-	CONTEXT context = {0};
+	CONTEXT context = {};
 	context.ContextFlags = CONTEXT_FULL;
 	if(GetThreadContext(hThread, &context)) {
 #ifdef __x86_64__
@@ -825,7 +825,7 @@ void* entry_from_context(HANDLE hThread)
 
 int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 {
-	CONTEXT context = {0};
+	CONTEXT context = {};
 	BYTE entry_asm_orig[2];
 	const BYTE entry_asm_delay[2] = {0xEB, 0xFE}; // JMP SHORT YADA YADA
 	MEMORY_BASIC_INFORMATION mbi;
