@@ -150,6 +150,42 @@ PIDLIST_ABSOLUTE SelectFolder(PIDLIST_ABSOLUTE initial_path, const wchar_t* wind
 	return pidl;
 }
 
+json_t *sort_json(json_t *in)
+{
+	std::vector<const char*> keys;
+
+	const char *key;
+	json_t *val;
+	json_object_foreach(in, key, val) {
+		keys.push_back(key);
+	}
+
+	std::sort(keys.begin(), keys.end(), [](const char *s1, const char *s2) {
+		WCHAR_T_DEC(s1);
+		WCHAR_T_DEC(s2);
+		WCHAR_T_CONV(s1);
+		WCHAR_T_CONV(s2);
+
+		int sort_result = CompareStringEx(LOCALE_NAME_INVARIANT, 0,
+			s1_w, -1, s2_w, -1, nullptr, nullptr, 0);
+
+		WCHAR_T_FREE(s1);
+		WCHAR_T_FREE(s2);
+
+		if (sort_result == 0) {
+			throw std::runtime_error("CompareStringsEx failed");
+		}
+		return sort_result == CSTR_LESS_THAN;
+	});
+
+	json_t *out = json_object();
+	for (const char *key : keys) {
+		json_object_set(out, key, json_object_get(in, key));
+	}
+	json_decref(in);
+	return out;
+}
+
 json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
@@ -252,6 +288,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		found = SearchForGames(search_path, games);
 		VLA_FREE(search_path);
 		if(json_object_size(found)) {
+			found = sort_json(found);
 			char *games_js_str = NULL;
 			const char *id;
 			json_t *locs;
@@ -264,7 +301,8 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 
 			SetCurrentDirectory(games_js_path);
 
-			games_js_str = json_dumps(games, JSON_INDENT(2) | JSON_SORT_KEYS);
+			games = sort_json(games);
+			games_js_str = json_dumps(games, JSON_INDENT(2));
 			if(!file_write_text(games_js_fn, games_js_str)) {
 				log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
 				log_printf(games_js_str);
