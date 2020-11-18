@@ -271,7 +271,7 @@ int ascii_vpatchf_th165(
 	return putfunc(params.ClassPtr(), pos, single_str);
 }
 
-extern "C" __declspec(dllexport) int __stdcall ascii_vpatchf(
+extern "C" int __stdcall ascii_vpatchf(
 	ascii_put_func_t &putfunc, vector3_t &pos, const char* fmt, va_list va
 )
 {
