@@ -10,24 +10,13 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 
-int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const char*fn, json_t *patch)
+int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
-	if (!patch) {
-		log_printf("In patch_plaintext for %s\n", fn);
-		return 0;
-	}
+	char* file_in = (char*)file_inout;
+	std::string file_out;
+	file_out.reserve(size_out);
 
-	char* file_out = (char*)file_inout;
-	char* file_in;
-	char* buffer_in;
-	size_t line;
-
-	// Make a copy of the input buffer
-	buffer_in = (char*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, size_in);
-	memcpy(buffer_in, file_inout, size_in);
-	file_in = buffer_in;
-
-	line = 1;
+	size_t line = 1;
 	while (size_in > 0) {
 		char* end_line = file_in;
 		while (size_in > 0 && *end_line != '\n') {
@@ -41,42 +30,38 @@ int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const cha
 
 		json_t *lines = json_object_numkey_get(patch, line);
 		if (json_flex_array_size(lines) > 0) {
-			*file_out = '"';
-			file_out++;
+			file_out += '"';
 
 			size_t ind;
 			json_t *val;
 			json_flex_array_foreach(lines, ind, val) {
 				if (ind > 0) {
-					memcpy(file_out, "\\n", 2);
-					file_out += 2;
+					file_out += "\\n";
 				}
 				const char* str = json_string_value(val);
 				for (size_t i = 0; i < strlen(str); i++) {
 					if (str[i] == '"') {
 						if (ind == 0 && i == 0) {
-							*file_out = ' ';
-							file_out++;
+							file_out += ' ';
 						}
-						*file_out = '"';
-						file_out++;
+						file_out += '"';
 					}
-					*file_out = str[i];
-					file_out++;
+					file_out += str[i];
 				}
 			}
-			memcpy(file_out, "\"\r\n", 3);
-			file_out += 3;
+			file_out += "\"\r\n";
 		}
 		else {
-			memcpy(file_out, file_in, end_line - file_in);
-			file_out += end_line - file_in;
+			file_out.append(file_in, end_line - file_in);
 		}
 		file_in = end_line;
 		line++;
 	}
 
-	HeapFree(GetProcessHeap(), 0, buffer_in);
-
+	if (file_out.size() > size_out) {
+		log_printf("%s: patched file doesn't fit inside the rep buffer!\n", fn);
+		return 0;
+	}
+	memcpy(file_inout, file_out.c_str(), file_out.size());
 	return 1;
 }

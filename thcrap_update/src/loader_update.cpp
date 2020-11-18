@@ -742,7 +742,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		} while (wait_ret == WAIT_OBJECT_0 + 1 || wait_ret == WAIT_TIMEOUT);
 	}
 	else {
-		log_print("Background updates are disabled. Closing thcrap_loader.");
+		log_print("Background updates are disabled. Closing thcrap_loader.\n");
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
 

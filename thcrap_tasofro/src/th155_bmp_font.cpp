@@ -16,7 +16,7 @@
 // Increment this number to force a bmpfont cache refresh
 static const int cache_version = 2;
 
-size_t get_bmp_font_size(const char *fn, json_t *patch, size_t patch_size)
+size_t get_bmp_font_size(const char *fn, json_t *patch, size_t)
 {
 	if (patch) {
 		// TODO: generate and cache the file here, return the true size.
@@ -116,17 +116,33 @@ static void add_files_in_directory(char *chars_list, int& chars_list_count, std:
 	FindClose(hFind);
 }
 
-// Returns the number of elements set to true in the list
-int fill_chars_list(char *chars_list, void *file_inout, size_t size_in, json_t *files)
+// Add the characters of the original font - we will need them if we display unpatched text.
+int fill_chars_list_from_font(char *chars_list, const void *file_inout, size_t size_in)
 {
-	// First, add the characters of the original font - we will need them if we display unpatched text.
-	BITMAPFILEHEADER *bpFile = (BITMAPFILEHEADER*)file_inout;
-	BYTE *metadata = (BYTE*)file_inout + bpFile->bfSize;
-	int nb_chars = *(uint16_t*)(metadata + 2);
-	char *chars = (char*)(metadata + 4);
+	struct Metadata
+	{
+		uint16_t unk;
+		uint16_t nb_chars;
+	};
+	static_assert(sizeof(Metadata) == 4);
+
+	if (size_in < sizeof(BITMAPFILEHEADER)) {
+		return 0;
+	}
+	const BITMAPFILEHEADER *bpFile = (const BITMAPFILEHEADER*)file_inout;
+
+	if (size_in < bpFile->bfSize + sizeof(Metadata)) {
+		return 0;
+	}
+	const Metadata *metadata = (const Metadata*)((const BYTE*)file_inout + bpFile->bfSize);
+
+	if (size_in < bpFile->bfSize + sizeof(Metadata) + (metadata->nb_chars * 2)) {
+		return 0;
+	}
+	char *chars = (char*)(metadata + 1);
 	int chars_list_count = 0;
 
-	for (int i = 0; i < nb_chars; i++) {
+	for (int i = 0; i < metadata->nb_chars; i++) {
 		char cstr[2];
 		WCHAR wstr[3];
 		if (chars[i * 2 + 1] != 0)
@@ -147,7 +163,14 @@ int fill_chars_list(char *chars_list, void *file_inout, size_t size_in, json_t *
 		}
 	}
 
-	// Then, add all the characters that we could possibly want to display.
+	return chars_list_count;
+}
+
+// Add all the characters that we could possibly want to display.
+int fill_chars_list_from_files(char *chars_list, json_t *files)
+{
+	int chars_list_count = 0;
+
 	size_t i;
 	json_t *it;
 	json_flex_array_foreach(files, i, it) {
@@ -167,14 +190,19 @@ int fill_chars_list(char *chars_list, void *file_inout, size_t size_in, json_t *
 				}
 			});
 		}
-		/* else if (strchr(fn, '*') != nullptr) {
-			// TODO: pattern matching
-		} */
 		else {
 			add_json_file(chars_list, chars_list_count, stack_json_resolve(fn, nullptr));
 		}
 	}
 
+	return chars_list_count;
+}
+
+// Returns the number of elements set to true in the list
+int fill_chars_list(char *chars_list, void *file_inout, size_t size_in, json_t *files)
+{
+	int chars_list_count  = fill_chars_list_from_font(chars_list, file_inout, size_in);
+	chars_list_count     += fill_chars_list_from_files(chars_list, files);
 	return chars_list_count;
 }
 
@@ -461,7 +489,7 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 	return 1;
 }
 
-extern "C" int BP_c_bmpfont_fix_parameters(DWORD xmm0, DWORD xmm1, DWORD xmm2, x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_c_bmpfont_fix_parameters(DWORD, DWORD, DWORD, x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
