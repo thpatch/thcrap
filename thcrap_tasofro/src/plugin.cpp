@@ -14,7 +14,7 @@
 
 static json_t *cur_patch = nullptr;
 
-int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -51,7 +51,7 @@ int patch_dll(void*, size_t, size_t, const char*, json_t *patch)
 	return 0;
 }
 
-LPCSTR WINAPI tasofro_CharNextA(LPSTR lpsz)
+extern "C" LPCSTR WINAPI tasofro_CharNextA(LPSTR lpsz)
 {
 	return CharNextU(lpsz);
 }

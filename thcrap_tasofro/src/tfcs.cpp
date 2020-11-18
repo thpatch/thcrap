@@ -111,7 +111,8 @@ static void patch_win_message(std::vector<std::string>& line, json_t *patch_row,
 			line[line_start + 2]
 			}));
 		texts.push_back(text);
-		text->patch(texts, texts.begin(), "", patch_lines);
+		auto begin = texts.begin();
+		text->patch(texts, begin, "", patch_lines);
 
 		size_t i = 0;
 		for (TasofroPl::ALine* it : texts) {

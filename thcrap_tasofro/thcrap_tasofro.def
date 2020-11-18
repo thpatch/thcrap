@@ -1,4 +1,3 @@
-LIBRARY
 EXPORTS
 	thcrap_plugin_init	@1
 	nsml_mod_init

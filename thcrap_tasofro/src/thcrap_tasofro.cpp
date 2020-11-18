@@ -39,6 +39,9 @@ static tasofro_game_t game_id_from_string(const char *game)
 	else if (!strcmp(game, "th155")) {
 		return TH155;
 	}
+	else if (!strcmp(game, "marilega")) {
+		return TH_MARILEGA;
+	}
 	else if (!strcmp(game, "th175")) {
 		return TH175;
 	}

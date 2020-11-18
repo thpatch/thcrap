@@ -31,12 +31,15 @@ CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare
 
 CXXFLAGS = $(CFLAGS) -std=c++17
 
+LDFLAGS += -o $@ -Lbin/bin
+
 %.o : %.asm
 	$(AS) -o $@ $<
 
 # Everything else is pulled from dependencies
-# all: bin/bin/thcrap_configure.exe bin/bin/thcrap_loader.exe bin/bin/thcrap_test.exe
-all: bin/bin/thcrap_test.exe
+# TODO: add bin/bin/thcrap_configure.exe bin/bin/thcrap_loader.exe bin/bin/thcrap_tsa.dll bin/bin/thcrap_bgmmod.dll
+# TODO: add build rules for bin/bin/thcrap_bgmmod.dll (required by thcrap_tsa)
+all: bin/bin/thcrap_test.exe bin/bin/thcrap_tasofro.dll bin/bin/thcrap_update.dll
 
 
 
@@ -95,8 +98,8 @@ else
 THCRAP_DLL_LDFLAGS += -Wl,--defsym=bp_entry=0 -Wl,--defsym=bp_entry_localptr=0 -Wl,--defsym=bp_entry_end=0
 endif
 
-bin/bin/thcrap.dll: bin/bin/win32_utf8.dll bin/bin/jansson.dll bin/bin/zlib-ng.dll $(THCRAP_DLL_OBJS) thcrap/thcrap.def
-	$(CXX) $(THCRAP_DLL_OBJS) thcrap/thcrap.def -o bin/bin/thcrap.dll $(THCRAP_DLL_LDFLAGS)
+bin/bin/thcrap.dll: bin/bin/win32_utf8.dll bin/bin/jansson.dll bin/bin/zlib-ng.dll thcrap/thcrap.def $(THCRAP_DLL_OBJS)
+	$(CXX) $(THCRAP_DLL_OBJS) thcrap/thcrap.def $(LDFLAGS) $(THCRAP_DLL_LDFLAGS)
 
 
 
@@ -120,8 +123,87 @@ $(THCRAP_UPDATE_OBJS): CXXFLAGS += -DTHCRAP_UPDATE_EXPORTS -DUSE_HTTP_WININET
 
 THCRAP_UPDATE_LDFLAGS = -shared -lgdi32 -lcrypt32 -lwininet -lshlwapi -lcomctl32 -Lbin/bin -lwin32_utf8 -lthcrap -ljansson
 
-bin/bin/thcrap_update.dll: bin/bin/thcrap.dll $(THCRAP_UPDATE_OBJS) thcrap_update/thcrap_update.def
-	$(CXX) $(THCRAP_UPDATE_OBJS) thcrap_update/thcrap_update.def -o bin/bin/thcrap_update.dll $(THCRAP_UPDATE_LDFLAGS)
+bin/bin/thcrap_update.dll: bin/bin/thcrap.dll thcrap_update/thcrap_update.def $(THCRAP_UPDATE_OBJS)
+	$(CXX) $(THCRAP_UPDATE_OBJS) thcrap_update/thcrap_update.def $(LDFLAGS) $(THCRAP_UPDATE_LDFLAGS)
+
+
+
+THCRAP_TSA_SRCS = \
+	thcrap_tsa/src/anm_bounds.cpp \
+	thcrap_tsa/src/anm.cpp \
+	thcrap_tsa/src/ascii.cpp \
+	thcrap_tsa/src/bgm.cpp \
+	thcrap_tsa/src/bp_mission.cpp \
+	thcrap_tsa/src/devicelost.cpp \
+	thcrap_tsa/src/gentext.cpp \
+	thcrap_tsa/src/input.cpp \
+	thcrap_tsa/src/layout.cpp \
+	thcrap_tsa/src/music.cpp \
+	thcrap_tsa/src/png_ex.cpp \
+	thcrap_tsa/src/spells.cpp \
+	thcrap_tsa/src/textimage.cpp \
+	thcrap_tsa/src/th06_bp_file.cpp \
+	thcrap_tsa/src/th06_bp_music.cpp \
+	thcrap_tsa/src/th06_msg.cpp \
+	thcrap_tsa/src/th06_pngsplit.cpp \
+	thcrap_tsa/src/thcrap_tsa.cpp \
+	thcrap_tsa/src/win32_tsa.cpp \
+
+THCRAP_TSA_OBJS = $(THCRAP_TSA_SRCS:.cpp=.o)
+
+THCRAP_TSA_LDFLAGS = -shared
+
+bin/bin/thcrap_tsa.dll: bin/bin/thcrap.dll thcrap_tsa/thcrap_tsa.def $(THCRAP_TSA_OBJS)
+	$(CXX) $(THCRAP_TSA_OBJS) thcrap_tsa/thcrap_tsa.def $(LDFLAGS) $(THCRAP_TSA_LDFLAGS)
+
+
+
+THCRAP_TASOFRO_SRCS = \
+	thcrap_tasofro/src/act-nut.cpp \
+	thcrap_tasofro/src/bgm.cpp \
+	thcrap_tasofro/src/crypt.cpp \
+	thcrap_tasofro/src/csv.cpp \
+	thcrap_tasofro/src/cv0.cpp \
+	thcrap_tasofro/src/files_list.cpp \
+	thcrap_tasofro/src/nhtex.cpp \
+	thcrap_tasofro/src/nsml.cpp \
+	thcrap_tasofro/src/nsml_images.cpp \
+	thcrap_tasofro/src/plaintext.cpp \
+	thcrap_tasofro/src/pl.cpp \
+	thcrap_tasofro/src/plugin.cpp \
+	thcrap_tasofro/src/png.cpp \
+	thcrap_tasofro/src/spellcards_generator.cpp \
+	thcrap_tasofro/src/tfcs.cpp \
+	thcrap_tasofro/src/th135.cpp \
+	thcrap_tasofro/src/th155_bmp_font.cpp \
+	thcrap_tasofro/src/th175.cpp \
+	thcrap_tasofro/src/thcrap_tasofro.cpp \
+
+THCRAP_TASOFRO_OBJS = $(THCRAP_TASOFRO_SRCS:.cpp=.o)
+$(THCRAP_TASOFRO_OBJS): CXXFLAGS += -Ilibs/135tk/Act-Nut-lib
+# gcc suggests to use parenthesis because the no-parenthesis
+# version is ambiguous... and it is indeed ambiguous. So much
+# that I'm not sure which version is supposed to be correct
+# (I copy-pasted that one from Riatre's th135arc).
+# We'll keep it for now, and maybe we'll fix it after writing
+# an unit test to ensure the behavior doesn't change.
+thcrap_tasofro/src/crypt.o: CXXFLAGS += -Wno-parentheses
+# It works, and it's more readable than writing it in hex
+thcrap_tasofro/src/act-nut.o: CXXFLAGS += -Wno-multichar
+# We do not want to call the other GetGlyphOutline on the chain,
+# because we already did the U->W conversion
+thcrap_tasofro/src/nsml.o: CXXFLAGS += -Wno-unused-variable
+
+THCRAP_TASOFRO_LDFLAGS = -shared -lgdi32 -lcrypt32 -lwininet -lshlwapi -lcomctl32 \
+	-lwin32_utf8 -lthcrap -ljansson -lpng -lzlib-ng -lbmpfont_create -lact_nut_lib
+
+# TODO: I don't know why, but the linker doesn't find the BP_bmpfont_fix_parameters in thcrap_tasofro/src/bp_bmpfont.asm,
+# and it complains about BP_c_bmpfont_fix_parameters (required by thcrap_tasofro/src/bp_bmpfont.o) being undefined.
+# THCRAP_TASOFRO_OBJS += thcrap_tasofro/src/bp_bmpfont.o
+THCRAP_TASOFRO_LDFLAGS += -Wl,--defsym=BP_bmpfont_fix_parameters=0
+
+bin/bin/thcrap_tasofro.dll: bin/bin/thcrap.dll bin/bin/libpng.dll bin/bin/bmpfont_create.dll bin/bin/act_nut_lib.dll thcrap_tasofro/thcrap_tasofro.def $(THCRAP_TASOFRO_OBJS)
+	$(CXX) $(THCRAP_TASOFRO_OBJS) thcrap_tasofro/thcrap_tasofro.def $(LDFLAGS) $(THCRAP_TASOFRO_LDFLAGS)
 
 
 
@@ -141,7 +223,42 @@ $(THCRAP_TEST_OBJS): CXXFLAGS += \
 	-Ithcrap_update/src
 
 bin/bin/thcrap_test.exe: bin/bin/thcrap.dll bin/bin/thcrap_update.dll $(THCRAP_TEST_OBJS)
-	$(CXX) $(THCRAP_TEST_OBJS) -o bin/bin/thcrap_test.exe -Lbin/bin -ljansson -lthcrap -lthcrap_update -Wl,-subsystem,console
+	$(CXX) $(THCRAP_TEST_OBJS) $(LDFLAGS) -ljansson -lthcrap -lthcrap_update -Wl,-subsystem,console
+
+
+
+BMPFONT_DLL_SRCS = \
+	libs/135tk/bmpfont/bmpfont_create_main.c \
+	libs/135tk/bmpfont/bmpfont_create_core.c \
+
+BMPFONT_DLL_OBJS = $(BMPFONT_DLL_SRCS:.c=.o)
+# Using %d in printf instead of %u (32 bits) / %llu (64 bits)
+$(BMPFONT_DLL_OBJS): CFLAGS += -Wno-format
+
+bin/bin/bmpfont_create.dll: bin/bin/libpng.dll libs/bmpfont_create.def $(BMPFONT_DLL_OBJS)
+	$(CC) $(BMPFONT_DLL_OBJS) libs/bmpfont_create.def $(LDFLAGS) -shared -lpng
+
+
+
+ACT_NUT_DLL_SRCS = \
+	libs/135tk/Act-Nut-lib/Object.cpp \
+    libs/135tk/Act-Nut-lib/Utils.cpp \
+    libs/135tk/Act-Nut-lib/exports.cpp \
+    libs/135tk/Act-Nut-lib/act/Object.cpp \
+    libs/135tk/Act-Nut-lib/act/File.cpp \
+    libs/135tk/Act-Nut-lib/act/Entry.cpp \
+    libs/135tk/Act-Nut-lib/act/Entries.cpp \
+    libs/135tk/Act-Nut-lib/nut/SQObject.cpp \
+    libs/135tk/Act-Nut-lib/nut/SQComplexObjects.cpp \
+    libs/135tk/Act-Nut-lib/nut/SQInstruction.cpp \
+    libs/135tk/Act-Nut-lib/nut/SQFunctionProto.cpp \
+    libs/135tk/Act-Nut-lib/nut/Stream.cpp \
+
+ACT_NUT_DLL_OBJS = $(ACT_NUT_DLL_SRCS:.cpp=.o)
+$(ACT_NUT_DLL_OBJS): CFLAGS += -Ilibs/135tk/Act-Nut-lib -Wno-multichar
+
+bin/bin/act_nut_lib.dll: $(ACT_NUT_DLL_OBJS)
+	$(CXX) $(ACT_NUT_DLL_OBJS) $(LDFLAGS) -shared
 
 
 
@@ -162,7 +279,31 @@ JANSSON_DLL_OBJS = $(JANSSON_DLL_SRCS:.c=.o)
 $(JANSSON_DLL_OBJS): CFLAGS += -DHAVE_CONFIG_H -Wno-unused-parameter
 
 bin/bin/jansson.dll: $(JANSSON_DLL_OBJS)
-	$(CC) $(JANSSON_DLL_OBJS) -o bin/bin/jansson.dll -shared
+	$(CC) $(JANSSON_DLL_OBJS) $(LDFLAGS) -shared
+
+
+
+LIBPNG_DLL_SRCS = \
+	libs/external_deps/libpng/png.c \
+    libs/external_deps/libpng/pngerror.c \
+    libs/external_deps/libpng/pngget.c \
+    libs/external_deps/libpng/pngmem.c \
+    libs/external_deps/libpng/pngpread.c \
+    libs/external_deps/libpng/pngread.c \
+    libs/external_deps/libpng/pngrio.c \
+    libs/external_deps/libpng/pngrtran.c \
+    libs/external_deps/libpng/pngrutil.c \
+    libs/external_deps/libpng/pngset.c \
+    libs/external_deps/libpng/pngtrans.c \
+    libs/external_deps/libpng/pngwio.c \
+    libs/external_deps/libpng/pngwrite.c \
+    libs/external_deps/libpng/pngwtran.c \
+    libs/external_deps/libpng/pngwutil.c \
+
+LIBPNG_DLL_OBJS = $(LIBPNG_DLL_SRCS:.c=.o)
+
+bin/bin/libpng.dll: $(LIBPNG_DLL_OBJS) bin/bin/zlib-ng.dll
+	$(CC) $(LIBPNG_DLL_OBJS) $(LDFLAGS) -shared -lzlib-ng
 
 
 
@@ -192,7 +333,7 @@ ZLIB_NG_DLL_OBJS = $(ZLIB_NG_DLL_SRCS:.c=.o)
 $(ZLIB_NG_DLL_OBJS): CFLAGS += -DUNALIGNED_OK -DZLIB_COMPAT -Wno-implicit-fallthrough -Wno-sign-compare
 
 bin/bin/zlib-ng.dll: $(ZLIB_NG_DLL_OBJS)
-	$(CC) $(ZLIB_NG_DLL_OBJS) -o bin/bin/zlib-ng.dll -shared
+	$(CC) $(ZLIB_NG_DLL_OBJS) $(LDFLAGS) -shared
 
 
 
@@ -201,9 +342,20 @@ WIN32_UTF8_DLL_SRCS = libs/win32_utf8/win32_utf8_build_dynamic.c
 WIN32_UTF8_DLL_OBJS = $(WIN32_UTF8_DLL_SRCS:.c=.o)
 
 bin/bin/win32_utf8.dll: $(WIN32_UTF8_DLL_OBJS)
-	$(CC) $(WIN32_UTF8_DLL_OBJS) -o bin/bin/win32_utf8.dll -shared -ldelayimp -lcomdlg32 -ldsound -lgdi32 -lole32 -lpsapi -lshell32 -lshlwapi -luser32 -lversion -lwininet
+	$(CC) $(WIN32_UTF8_DLL_OBJS) $(LDFLAGS) -shared -ldelayimp -lcomdlg32 -ldsound -lgdi32 -lole32 -lpsapi -lshell32 -lshlwapi -luser32 -lversion -lwininet
 
 clean:
-	rm -f $(THCRAP_DLL_OBJS) $(THCRAP_TEST_OBJS) $(JANSSON_DLL_OBJS) $(ZLIB_NG_DLL_OBJS) $(WIN32_UTF8_DLL_OBJS)
+	rm -f \
+	$(THCRAP_DLL_OBJS)     bin/bin/thcrap.dll \
+	$(THCRAP_UPDATE_OBJS)  bin/bin/thcrap_update.dll \
+	$(THCRAP_TSA_OBJS)     bin/bin/thcrap_tsa.dll \
+	$(THCRAP_TASOFRO_OBJS) bin/bin/thcrap_tasofro.dll \
+	$(THCRAP_TEST_OBJS)    bin/bin/thcrap_test.exe \
+	$(BMPFONT_DLL_OBJS)    bin/bin/bmpfont_create.dll \
+	$(ACT_NUT_DLL_OBJS)    bin/bin/act_nut_lib.dll \
+	$(JANSSON_DLL_OBJS)    bin/bin/jansson.dll \
+	$(LIBPNG_DLL_OBJS)     bin/bin/libpng.dll \
+	$(ZLIB_NG_DLL_OBJS)    bin/bin/zlib-ng.dll \
+	$(WIN32_UTF8_DLL_OBJS) bin/bin/win32_utf8.dll \
 
 .PHONY: clean

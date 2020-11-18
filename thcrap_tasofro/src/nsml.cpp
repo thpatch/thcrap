@@ -171,7 +171,7 @@ json_t *convert_file_name_in_bp(x86_reg_t *regs, json_t *bp_info, char **uFilena
 	return new_bp_info;
 }
 
-int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	char *uFilename;
 	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
@@ -217,7 +217,7 @@ static void th105_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
 	}
 }
 
-int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 {
 	EnterCriticalSection(&cs);
 	// bp_info may be used by several threads at the same time, so we can't change its values.
@@ -245,7 +245,7 @@ int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
 }
 
 // In th105, relying on the last open file doesn't work. So we'll use the file object instead.
-int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 {
 	EnterCriticalSection(&cs);
 	char *uFilename;
@@ -259,7 +259,7 @@ int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 	return ret;
 }
 
-int BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

@@ -88,7 +88,6 @@ TasofroCv0::ALine::ALine()
 
 std::string TasofroCv0::ALine::unescape(const std::string& in) const
 {
-	bool is_in_quote = false;
 	std::string out;
 
 	for (size_t pos = 0; pos < in.size(); pos++) {
@@ -184,7 +183,7 @@ TasofroCv0::Text* TasofroCv0::Text::read(const char*& file, size_t& size)
 	while (guessLineType(file, size) == TEXT) {
 		line->content += "\n" + ALine::readLine(file, size);
 		size_t i = line->content.length() - 1;
-		while (i > 0 && line->content[i] == '\r' || line->content[i] == '\n') {
+		while (i > 0 && (line->content[i] == '\r' || line->content[i] == '\n')) {
 			i--;
 		}
 		if (line->content[i] == '\\') {
@@ -214,7 +213,7 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 		}
 
 		this->beginLine(file, file_it);
-		this->patchLine(json_string_value(json_line), file, file_it);
+		this->patchLine(json_string_value(json_line));
 		this->endLine();
 	}
 
@@ -264,7 +263,7 @@ void TasofroCv0::Text::beginLine(std::list<ALine*>& file, const std::list<ALine*
 	}
 }
 
-void TasofroCv0::Text::patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+void TasofroCv0::Text::patchLine(const char *text)
 {
 	std::string formattedText = text;
 	if (this->cur_line != this->nb_lines) {
@@ -386,7 +385,7 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, js
   * ------------------------
   *	None
   */
-int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

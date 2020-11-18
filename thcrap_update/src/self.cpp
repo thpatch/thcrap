@@ -104,12 +104,13 @@ DWORD WINAPI self_window_create_and_run(void *param)
 	HWND label = NULL;
 	DWORD wnd_style = WS_BORDER | WS_POPUP | WS_CAPTION;
 	DWORD wnd_style_ex = WS_EX_TOPMOST | WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT | WS_EX_DLGMODALFRAME;
-	RECT screen_rect = {0};
-	RECT wnd_rect = {0};
-	RECT label_rect = {0};
+	RECT screen_rect = {};
+	RECT wnd_rect = {};
+	RECT label_rect = {};
 	LONG font_pad = 0;
 
-	NONCLIENTMETRICSW nc_metrics = {sizeof(nc_metrics)};
+	NONCLIENTMETRICSW nc_metrics = {};
+	nc_metrics.cbSize = sizeof(nc_metrics);
 
 	if(SystemParametersInfoW(
 		SPI_GETNONCLIENTMETRICS, sizeof(nc_metrics), &nc_metrics, 0

@@ -8,7 +8,7 @@
   */
 
 #include <thcrap.h>
-#include <libs\135tk\Act-Nut-lib\exports.hpp>
+#include <libs/135tk/Act-Nut-lib/exports.hpp>
 #include "thcrap_tasofro.h"
 #include "act-nut.h"
 

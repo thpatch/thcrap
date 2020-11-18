@@ -28,7 +28,7 @@ void read_bytes(png_structp png_ptr, png_bytep out, size_t out_size)
 	in->size   -= out_size;
 }
 
-void png_warning_callback(png_structp png_ptr, png_const_charp msg)
+void png_warning_callback(png_structp, png_const_charp msg)
 {
 	log_printf("Warning: %s\n", msg);
 }
@@ -42,9 +42,9 @@ void png_error_callback(png_structp png_ptr, png_const_charp msg)
 // PNG reading core is adapted from http://www.libpng.org/pub/png/book/chapter13.html
 BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp, bool gray_to_rgb)
 {
-	stack_chain_iterate_t sci = { 0 };
+	stack_chain_iterate_t sci = {};
 	BYTE *file_buffer = nullptr;
-	file_buffer_t file = { 0 };
+	file_buffer_t file = {};
 
 	char **chain = resolve_chain_game(fn);
 
@@ -114,9 +114,9 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 
 bool png_image_get_IHDR(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp)
 {
-	stack_chain_iterate_t sci = { 0 };
+	stack_chain_iterate_t sci = {};
 	BYTE *file_buffer = nullptr;
-	file_buffer_t file = { 0 };
+	file_buffer_t file = {};
 
 	char **chain = resolve_chain_game(fn);
 

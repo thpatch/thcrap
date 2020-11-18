@@ -42,6 +42,7 @@ typedef enum {
 
 	// • bgm: add a 1 offset to the IDs
 	TH155,
+	TH_MARILEGA,
 
 	// • th175 engine
 	TH175,

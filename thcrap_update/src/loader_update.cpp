@@ -311,7 +311,8 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	wndClass.lpszClassName = L"LoaderUpdateWindow";
 	RegisterClassW(&wndClass);
 
-	NONCLIENTMETRICSW nc_metrics = { sizeof(nc_metrics) };
+	NONCLIENTMETRICSW nc_metrics = {};
+	nc_metrics.cbSize = sizeof(nc_metrics);
 	HFONT hFont = NULL;
 	if (SystemParametersInfoW(
 		SPI_GETNONCLIENTMETRICS, sizeof(nc_metrics), &nc_metrics, 0

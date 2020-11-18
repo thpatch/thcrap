@@ -38,7 +38,7 @@ void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_
 			dst[0] = (dst[0] * dst_alpha + rep[0] * rep[3]) >> 8;
 			dst[1] = (dst[1] * dst_alpha + rep[1] * rep[3]) >> 8;
 			dst[2] = (dst[2] * dst_alpha + rep[2] * rep[3]) >> 8;
-			dst[3] = min(new_alpha, 0xff);
+			dst[3] = MIN(new_alpha, 0xff);
 		}
 	} else if(format == FORMAT_ARGB4444) {
 		for(i = 0; i < pixels; ++i, dst += 2, rep += 2) {
@@ -54,7 +54,7 @@ void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_
 			const int dst_alpha = 0xf - rep_a;
 
 			dst[1] =
-				(min(new_alpha, 0xf) << 4) |
+				(MIN(new_alpha, 0xf) << 4) |
 				((dst_r * dst_alpha + rep_r * rep_a) >> 4);
 			dst[0] =
 				(dst_g * dst_alpha + rep_g * rep_a & 0xf0) |
@@ -99,8 +99,8 @@ void anm_entry_t::transform_and_add_sprite(const sprite_t &s_orig, BlitFunc_t bl
 	sprite_local_t s_lower_right(blitmode,
 		((png_uint_32)s_orig.x) % w,
 		((png_uint_32)s_orig.y) % h,
-		min((png_uint_32)s_orig.w, w),
-		min((png_uint_32)s_orig.h, h)
+		MIN((png_uint_32)s_orig.w, w),
+		MIN((png_uint_32)s_orig.h, h)
 	);
 	auto split_w = (int32_t)(s_lower_right.x + s_lower_right.w) - (int32_t)w;
 	auto split_h = (int32_t)(s_lower_right.y + s_lower_right.h) - (int32_t)h;
@@ -264,8 +264,8 @@ int sprite_patch_set(
 	assert(sprite.w <= (entry.w - sprite.x));
 	assert(sprite.h <= (entry.h - sprite.y));
 
-	sp.copy_w = min(sprite.w, (image.img.width - sp.rep_x));
-	sp.copy_h = min(sprite.h, (image.img.height - sp.rep_y));
+	sp.copy_w = MIN(sprite.w, (image.img.width - sp.rep_x));
+	sp.copy_h = MIN(sprite.h, (image.img.height - sp.rep_y));
 
 	sp.dst_buf = entry.thtx->data + (sp.dst_y * sp.dst_stride) + (sp.dst_x * sp.bpp);
 	sp.rep_buf = image.buf + (sp.rep_y * sp.rep_stride) + (sp.rep_x * sp.bpp);
@@ -980,7 +980,7 @@ int patch_png_apply(anm_entry_t &entry, const patch_t *patch_info, const char *f
 {
 	int ret = -1;
 	if(patch_info && fn) {
-		png_image_ex png = {0};
+		png_image_ex png = {};
 		ret = patch_png_load_for_thtx(png, patch_info, fn, entry.thtx);
 		if(!ret && png.buf) {
 			for(const auto &sprite : entry.sprites) {
@@ -1000,7 +1000,7 @@ int stack_game_png_apply(anm_entry_t &entry)
 {
 	int ret = -1;
 	if(entry.thtx && entry.name) {
-		stack_chain_iterate_t sci = {0};
+		stack_chain_iterate_t sci = {};
 		char **chain = resolve_chain_game(entry.name);
 		ret = 0;
 		if(chain && chain[0]) {
@@ -1026,9 +1026,9 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	const char *name_prev = NULL;
 
 	header_mods_t hdr_m(patch);
-	anm_entry_t entry = {0};
-	png_image_ex png = {0};
-	png_image_ex bounds = {0};
+	anm_entry_t entry = {};
+	png_image_ex png = {};
+	png_image_ex bounds = {};
 
 	auto *anm_entry_out = (uint8_t *)file_inout;
 	auto *endptr = (uint8_t *)(file_inout) + size_in;

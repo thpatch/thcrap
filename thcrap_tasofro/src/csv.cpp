@@ -148,7 +148,7 @@ size_t get_csv_size(const char*, json_t*, size_t patch_size)
   * ------------------------
   *	None
   */
-int BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

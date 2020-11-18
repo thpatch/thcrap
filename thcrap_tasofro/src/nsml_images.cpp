@@ -44,7 +44,7 @@ size_t get_cv2_size(const char *fn, json_t*, size_t)
 	return 17 + get_image_data_size(fn, true);
 }
 
-int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*)
+int patch_cv2(void *file_inout, size_t size_out, size_t, const char *fn, json_t*)
 {
 	BYTE *file_out = (BYTE*)file_inout;
 	VLA(char, fn_png, strlen(fn) + 1);
@@ -90,6 +90,15 @@ int patch_cv2(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	return 1;
 }
 
+struct DatDesc {
+	DWORD x;
+	DWORD y;
+	DWORD w;
+	DWORD h;
+};
+// Ensure the compiler doesn't add any padding
+static_assert(sizeof(DatDesc) == 4 * sizeof(DWORD));
+
 int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, json_t*)
 {
 	if (size_in < 8) {
@@ -116,7 +125,7 @@ int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, 
 		}
 		DWORD fn_size = *(DWORD*)file_in;
 		file_in += 4; size_in -= 4;
-		if (size_in < fn_size + 16) {
+		if (size_in < fn_size + sizeof(DatDesc)) {
 			return 0;
 		}
 
@@ -129,22 +138,19 @@ int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, 
 		uint32_t width, height;
 		bool IHDR_read = png_image_get_IHDR(path, &width, &height, nullptr);
 		if (!IHDR_read) {
-			file_in += 16; size_in -= 16;
+			file_in += sizeof(DatDesc); size_in -= sizeof(DatDesc);
 			continue;
 		}
 
-		DWORD x = *(DWORD*)file_in;
-		DWORD y = *(DWORD*)(file_in + 4);
-		DWORD w = *(DWORD*)(file_in + 8);
-		DWORD h = *(DWORD*)(file_in + 12);
-		if (w != width && h != height) {
-			*(DWORD*)(file_in + 0) = 0;
-			*(DWORD*)(file_in + 4) = 0;
-			*(DWORD*)(file_in + 8) = width;
-			*(DWORD*)(file_in + 12) = height;
+		DatDesc *desc = (DatDesc*)file_in;
+		if (desc->w != width && desc->h != height) {
+			desc->x = 0;
+			desc->y = 0;
+			desc->w = width;
+			desc->h = height;
 			file_changed = 1;
 		}
-		file_in += 16; size_in -= 16;
+		file_in += sizeof(DatDesc); size_in -= sizeof(DatDesc);
 	}
 	return file_changed;
 }
@@ -154,7 +160,7 @@ size_t get_bmp_size(const char *fn, json_t*, size_t)
 	return sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + get_image_data_size(fn, false);
 }
 
-int patch_bmp(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*)
+int patch_bmp(void *file_inout, size_t size_out, size_t, const char *fn, json_t*)
 {
 	VLA(char, fn_png, strlen(fn) + 1);
 	strcpy(fn_png, fn);

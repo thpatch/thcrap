@@ -328,8 +328,9 @@ TasofroPl::AText *TasofroPl::AText::createText(const std::vector<std::string>& f
 		return new EndingText(fields, comment);
 	case WIN:
 		return new WinText(fields, comment);
+	default:
+		return nullptr;
 	}
-	return nullptr;
 }
 
 TasofroPl::AText::AText(const std::vector<std::string>& fields, const std::string& comment)
@@ -393,7 +394,7 @@ void TasofroPl::AText::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 	this->_patchExit(file, file_it);
 }
 
-void TasofroPl::StoryText::_patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it)
+void TasofroPl::StoryText::_patchInit(std::list<ALine*>&, std::list<ALine*>::iterator&)
 {
 	this->balloonName = this->fields[1];
 }
@@ -412,7 +413,7 @@ void TasofroPl::EndingText::_patchInit(std::list<ALine*>& file, std::list<ALine*
 	}
 }
 
-void TasofroPl::WinText::_patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it)
+void TasofroPl::WinText::_patchInit(std::list<ALine*>&, std::list<ALine*>::iterator&)
 {
 	this->balloonName = this->fields[1];
 }
@@ -595,7 +596,7 @@ void TasofroPl::StoryText::_patchLine(std::string& text, std::list<ALine*>& file
 	file.insert(it, new StoryText(new_fields));
 }
 
-void TasofroPl::Th155StoryText::_patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+void TasofroPl::Th155StoryText::_patchLine(std::string& text, std::list<ALine*>&, const std::list<ALine*>::iterator&)
 {
 	if (this->cur_line != this->nb_lines) {
 		text += "\\n";
@@ -604,7 +605,7 @@ void TasofroPl::Th155StoryText::_patchLine(std::string& text, std::list<ALine*>&
 	this->fields[1] = this->balloonName;
 }
 
-void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>&, const std::list<ALine*>::iterator&)
 {
 	if (this->cur_line != this->nb_lines) {
 		text += "\\n";
@@ -618,7 +619,7 @@ void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>& fil
 	this->fields[0] += text;
 }
 
-void TasofroPl::WinText::_patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
+void TasofroPl::WinText::_patchLine(std::string& text, std::list<ALine*>&, const std::list<ALine*>::iterator&)
 {
 	if (this->cur_line != this->nb_lines) {
 		text += "\\n";
@@ -703,7 +704,7 @@ static void stickStoryLines(std::list<TasofroPl::ALine*>& lines)
 	}
 }
 
-int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
+int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char *, json_t *patch)
 {
 	if (!patch) {
 		return 0;

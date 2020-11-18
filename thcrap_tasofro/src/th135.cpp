@@ -23,7 +23,6 @@
 
 int th135_init()
 {
-	const char *crypt = json_object_get_string(runconfig_json_get(), "crypt");
 	if (game_id >= TH145) {
 		ICrypt::instance = new CryptTh145();
 	}
@@ -90,7 +89,7 @@ file_rep_t *call_file_header(x86_reg_t *regs, json_t *bp_info, const char *filen
 	return nullptr;
 }
 
-int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -140,7 +139,7 @@ int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
 
 	return 1;
 }
-int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -192,7 +191,7 @@ static void post_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
   * We use hFile (file_struct + 4), buffer (file_struct + 8) and FileNameHash (file_struct + 0x1001c).
   * All the other fields are listed for documentation.
   */
-int BP_th135_read_file(x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_th135_read_file(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

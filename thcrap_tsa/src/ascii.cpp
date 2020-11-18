@@ -332,14 +332,14 @@ void ascii_repatch()
 		};
 		for(auto &day : TH165_DAYS) {
 			auto str = strings_get_fallback(day);
-			day_width_max = max(day_width_max, str.len);
+			day_width_max = MAX(day_width_max, str.len);
 		}
 		const int USERNAME_LEN = 4;
 		auto number = strings_get_fallback({ "th06_ascii_2_digit_number_format", "No.%.2d" });
 		auto user = strings_get_fallback({ "th06_ascii_replay_user", "User" });
 		size_t number_printed_len = _scprintf(number.str, 25);
 		// The save menu shouldn't be made larger depending on the User translation
-		auto replay_col1_len = max(max(number_printed_len, user.len), USERNAME_LEN);
+		auto replay_col1_len = MAX(MAX(number_printed_len, user.len), USERNAME_LEN);
 		auto number_save = std::string(number.str, number.len);
 		auto number_padded = right_pad(number, replay_col1_len - number_printed_len);
 		auto user_padded = right_pad(user, replay_col1_len - user.len);
