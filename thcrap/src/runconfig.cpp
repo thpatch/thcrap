@@ -171,6 +171,10 @@ void runconfig_load(json_t *file, int flags)
 		run_cfg.json = tmp;
 	}
 
+	// Copy the merged options back into file so binhacks see them (replacing 'file' with
+	// a shallow copy so that this does not become a side effect)
+	file = json_copy(file);
+	defer(json_decref(file));
 	value = json_object_get(run_cfg.json, "options");
 	if (value) {
 		json_object_set(file, "options", value);
