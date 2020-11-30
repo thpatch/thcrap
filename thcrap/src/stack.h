@@ -88,9 +88,6 @@ char* stack_fn_resolve_chain(char **chain);
 // if there are any.
 void stack_show_missing(void);
 
-// Shows the MOTD of each individual patch.
-void stack_show_motds(void);
-
 // Print the content of the stack to the logs
 void stack_print(void);
 /// -----------

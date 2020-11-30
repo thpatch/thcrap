@@ -297,22 +297,6 @@ int patch_file_delete(const patch_t *patch_info, const char *fn)
 	return ret;
 }
 
-/// Customizable per-patch message on startup
-/// -----------------------------------------
-void patch_show_motd(const patch_t *patch_info)
-{
-	if (!patch_info->motd) {
-		return;
-	}
-	if (!patch_info->motd_title) {
-		std::string title = std::string("Message from ") + patch_info->id;
-		log_mboxf(title.c_str(), patch_info->motd_type, patch_info->motd);
-	}
-	else {
-		log_mboxf(patch_info->motd_title, patch_info->motd_type, patch_info->motd);
-	}
-}
-
 patch_t patch_build(const patch_desc_t *desc)
 {
 	std::string archive;
@@ -394,8 +378,6 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	set_string_if_exist("title",      patch.title);
 	set_array_if_exist( "servers",    patch.servers);
 	set_array_if_exist( "ignore",     patch.ignore);
-	set_string_if_exist("motd",       patch.motd);
-	set_string_if_exist("motd_title", patch.motd_title);
 	patch.level = level;
 
 	patch.update = true;
@@ -432,11 +414,6 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		patch.fonts[i] = nullptr;
 	}
 
-	json_t *motd_type = json_object_get(patch_js, "motd_type");
-	if (motd_type && json_is_integer(motd_type)) {
-		patch.motd_type = (DWORD)json_integer_value(motd_type);
-	}
-
 	json_decref(patch_js);
 	return patch;
 }
@@ -452,8 +429,6 @@ void patch_free(patch_t *patch)
 		free(patch->archive);
 		free(patch->id);
 		free(patch->title);
-		free(patch->motd);
-		free(patch->motd_title);
 		if (patch->servers) {
 			for (size_t i = 0; patch->servers[i]; i++) {
 				free(patch->servers[i]);

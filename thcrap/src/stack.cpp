@@ -245,18 +245,6 @@ void stack_show_missing(void)
 		);
 	}
 }
-
-void stack_show_motds(void)
-{
-	for (const patch_t& patch : stack) {
-		patch_show_motd(&patch);
-	}
-}
-
-extern "C" __declspec(dllexport) void motd_mod_post_init(void)
-{
-	stack_show_motds();
-}
 /// -----------------------------------------
 
 void stack_add_patch_from_json(json_t *patch)

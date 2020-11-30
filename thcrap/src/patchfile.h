@@ -85,15 +85,6 @@ typedef struct
 	size_t level;
 	// User set patch configuration
 	json_t *config;
-
-	// MOTD: message that can be displayed by a patch on startup (from patch.js)
-	// Message content
-	char *motd;
-	// Message title (optional)
-	char *motd_title;
-	// Message type. See the uType parameter in https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebox
-	// Optional, defaults to 0 (MB_OK)
-	DWORD motd_type;
 } patch_t;
 
 // Enum of possible types for the description of
@@ -198,12 +189,6 @@ int patch_json_store(const patch_t *patch_info, const char *fn, const json_t *js
 
 int patch_file_delete(const patch_t *patch_info, const char *fn);
 /// ------------------------
-
-/// Information
-/// -----------
-// Shows the MOTD of the patch.
-void patch_show_motd(const patch_t *patch_info);
-/// -----------
 
 /// Initialization
 /// --------------

@@ -48,6 +48,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\jansson_ex.cpp" />
+    <ClCompile Include="src\motd.cpp" />
     <ClCompile Include="src\minid3d.cpp" />
     <ClCompile Include="src\patchfile.cpp" />
     <ClCompile Include="src\pe.cpp" />

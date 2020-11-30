@@ -57,6 +57,7 @@ THCRAP_DLL_SRCS = \
 	thcrap/src/global.cpp \
 	thcrap/src/jansson_ex.cpp \
 	thcrap/src/minid3d.cpp \
+	thcrap/src/motd.cpp \
 	thcrap/src/patchfile.cpp \
 	thcrap/src/pe.cpp \
 	thcrap/src/plugin.cpp \
