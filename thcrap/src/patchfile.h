@@ -90,7 +90,7 @@ typedef struct
 	// List of dependencies
 	patch_desc_t *dependencies;
 	// Category of this patch
-	patch_category category;
+	enum patch_category category;
 	// Games supported by this patch
 	char **games;
 
