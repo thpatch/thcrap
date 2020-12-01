@@ -18,8 +18,11 @@
 #endif
 
 #ifdef __cplusplus
-#include <string>
 #include <functional>
+#include <map>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 extern "C" {
 #endif

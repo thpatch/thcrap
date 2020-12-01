@@ -34,21 +34,18 @@ extern "C" int BP_th175_file_desc(x86_reg_t *regs, json_t *bp_info)
 {
 	file_desc_t *desc = (file_desc_t*)json_object_get_immediate(bp_info, regs, "desc");
 
-	FileHeader *fh = hash_to_file_header((DWORD)desc->hash);
-	if (fh == nullptr) {
+	Th135File *fr = hash_to_Th135File((DWORD)desc->hash);
+	if (fr == nullptr) {
 		return 1;
 	}
 
-	auto fr = new file_rep_t {};
-	file_rep_init(fr, fh->path);
+	fr->init(fr->path.generic_u8string().c_str());
 	if (fr->rep_buffer == nullptr) {
-		file_rep_clear(fr);
-		delete fr;
+		fr->clear();
 		return 1;
 	}
 
 	desc->size = fr->pre_json_size;
-	fh->fr = fr;
 	return 1;
 }
 
@@ -59,18 +56,18 @@ extern "C" int BP_th175_read_file(x86_reg_t *regs, json_t *bp_info)
 	size_t offset = json_object_get_immediate(bp_info, regs, "offset");
 	size_t size = json_object_get_immediate(bp_info, regs, "size");
 
-	FileHeader *fh = hash_to_file_header((DWORD)hash);
-	if (fh == nullptr || fh->fr == nullptr) {
+	Th135File *fr = hash_to_Th135File(hash);
+	if (fr == nullptr) {
 		return 1;
 	}
 
-	if (fh->fr->rep_buffer == nullptr) {
+	if (fr->rep_buffer == nullptr) {
 		return 1;
 	}
 
 	memset(buffer, 0, size);
-	if (offset < fh->fr->pre_json_size) {
-		memcpy(buffer, (char*)fh->fr->rep_buffer + offset, MAX(size, fh->fr->pre_json_size - offset));
+	if (offset < fr->pre_json_size) {
+		memcpy(buffer, (char*)fr->rep_buffer + offset, MAX(size, fr->pre_json_size - offset));
 	}
 
 	return 1;

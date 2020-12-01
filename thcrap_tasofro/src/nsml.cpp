@@ -9,10 +9,12 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
+#include "tasofro_file.h"
 #include "tfcs.h"
 #include "bgm.h"
 #include "cv0.h"
 #include "nsml_images.h"
+#include <map>
 #include <set>
 
 /// Detour chains
@@ -21,6 +23,7 @@ W32U8_DETOUR_CHAIN_DEF(GetGlyphOutline);
 /// -------------
 
 static CRITICAL_SECTION cs;
+std::map<std::string, TasofroFile> files_list;
 static std::set<const char*, bool(*)(const char*, const char*)> game_fallback_ignore_list([](const char *a, const char *b){ return strcmp(a, b) < 0; });
 
 // Copy-paste of fn_for_game from patchfile.cpp
@@ -141,51 +144,7 @@ int nsml_init()
 	return 0;
 }
 
-/**
-  * Convert the file_name member of bp_info to a lowercase UTF-8 string.
-  * If bp_info contains a fn_size member, this member must contains the size
-  * of file_name (in bytes). Otherwise, file_name must be null-terminated.
-  *
-  * After the call, uFilename will contain a pointer to the utf-8 file name.
-  * The caller have to free() it.
-  */
-json_t *convert_file_name_in_bp(x86_reg_t *regs, json_t *bp_info, char **uFilename)
-{
-	// Parameters
-	// ----------
-	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
-	size_t fn_size = json_object_get_immediate(bp_info, regs, "fn_size");
-	// ----------
-
-	if (fn_size) {
-		*uFilename = EnsureUTF8(filename, fn_size);
-	}
-	else {
-		*uFilename = EnsureUTF8(filename, strlen(filename));
-	}
-	CharLowerA(*uFilename);
-
-	json_t *new_bp_info = json_copy(bp_info);
-	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)*uFilename));
-
-	return new_bp_info;
-}
-
-extern "C" int BP_nsml_file_header(x86_reg_t *regs, json_t *bp_info)
-{
-	char *uFilename;
-	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
-
-	EnterCriticalSection(&cs);
-	int ret = BP_file_header(regs, new_bp_info);
-	LeaveCriticalSection(&cs);
-
-	json_decref(new_bp_info);
-	free(uFilename);
-	return ret;
-}
-
-static void megamari_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
+static void megamari_xor(const TasofroFile *fr, BYTE *buffer, size_t size)
 {
 	BYTE key = ((fr->offset >> 1) | 8) & 0xFF;
 	for (unsigned int i = 0; i < size; i++) {
@@ -193,7 +152,7 @@ static void megamari_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
 	}
 }
 
-static void nsml_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
+static void nsml_xor(const TasofroFile *fr, BYTE *buffer, size_t size)
 {
 	BYTE key = ((fr->offset >> 1) | 0x23) & 0xFF;
 	for (unsigned int i = 0; i < size; i++) {
@@ -201,9 +160,10 @@ static void nsml_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
 	}
 }
 
-static void th105_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
+static void th105_xor(const TasofroFile *fr, BYTE *buffer, size_t size)
 {
-	nsml_patch(fr, buffer, size);
+	nsml_xor(fr, buffer, size);
+
 	const char *ext = PathFindExtensionA(fr->name);
 	if (!strcmp(ext, ".cv0") || !strcmp(ext, ".cv1")) {
 		unsigned char xorval = 0x8b;
@@ -217,46 +177,222 @@ static void th105_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
 	}
 }
 
-extern "C" int BP_nsml_read_file(x86_reg_t *regs, json_t *bp_info)
+static void game_xor(TasofroFile *fr, BYTE *buffer, size_t size)
 {
-	EnterCriticalSection(&cs);
-	// bp_info may be used by several threads at the same time, so we can't change its values.
-	char *uFilename = nullptr;
-	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
-
 	if (game_id == TH_MEGAMARI) {
-		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)megamari_patch));
-		json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)megamari_patch));
+		return megamari_xor(fr, buffer, size);
 	}
 	else if (game_id == TH105 || game_id == TH123) {
-		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)th105_patch));
-		json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)th105_patch));
+		return th105_xor(fr, buffer, size);
 	}
 	else {
-		json_object_set_new(new_bp_info, "post_read", json_integer((json_int_t)nsml_patch));
-		json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)nsml_patch));
+		return nsml_xor(fr, buffer, size);
 	}
-	int ret = BP_fragmented_read_file(regs, new_bp_info);
-	LeaveCriticalSection(&cs);
+}
 
-	json_decref(new_bp_info);
-	free(uFilename);
-	return ret;
+
+// Class name from the game's RTTI. Inherits from CFileHeader
+struct CPackageFileReader
+{
+	void *vtable;
+	HANDLE hFile;
+	size_t numberOfBytesRead; // Return of the last ReadFile call
+	size_t file_size;
+	size_t offset_in_archive;
+	size_t current_offset;
+	BYTE xor_key;
+};
+
+extern "C" int BP_nsml_CPackageFileReader_openFile(x86_reg_t *regs, json_t * bp_info)
+{
+	// Parameters
+	// ----------
+	auto file_name = (char*)json_object_get_immediate(bp_info, regs, "file_name");
+	auto file_reader = (CPackageFileReader*)json_object_get_immediate(bp_info, regs, "file_reader");
+	// ----------
+
+	if (!file_name || !file_reader) {
+		return 1;
+	}
+
+	file_name = EnsureUTF8(file_name, strlen(file_name));
+	CharLowerA(file_name);
+
+	TasofroFile *fr = new TasofroFile();
+	fr->init(file_name);
+	free(file_name);
+
+	if (fr->need_replace()) {
+		fr->pre_json_size = file_reader->file_size;
+		file_reader->file_size = MAX(file_reader->file_size, fr->pre_json_size) + fr->patch_size;
+	}
+	else {
+		file_rep_clear(fr);
+		delete fr;
+		return 1;
+	}
+
+	TasofroFile::tls_set(fr);
+	return 1;
+}
+
+extern "C" int BP_nsml_CPackageFileReader_readFile(x86_reg_t *regs, json_t*)
+{
+	TasofroFile *fr = TasofroFile::tls_get();
+	if (!fr) {
+		return 1;
+	}
+
+	return fr->replace_ReadFile(regs, game_xor, game_xor);
+}
+
+extern "C" int BP_nsml_CFileReader_closeFile(x86_reg_t *regs, json_t*)
+{
+	TasofroFile *fr = TasofroFile::tls_get();
+
+	if (fr) {
+		LeaveCriticalSection(&cs);
+		TasofroFile::tls_set(nullptr);
+	}
+
+	return 1;
+}
+
+struct MegamariFile
+{
+	HANDLE hFile;
+	DWORD hash;
+	DWORD size;
+	DWORD unk1; // Changes with the size
+	DWORD unk2; // Always uninitialized when creating the file. Not an offset.
+	DWORD unk3; // Doesn't change, point to valid memory
+	DWORD unk4; // Always 0x465
+};
+
+extern "C" int BP_megamari_openFile(x86_reg_t * regs, json_t * bp_info)
+{
+	// Parameters
+	// ----------
+	auto file_name = (char*)json_object_get_immediate(bp_info, regs, "file_name");
+	auto file_struct = (MegamariFile*)json_object_get_immediate(bp_info, regs, "file_struct");
+	// ----------
+
+	if (!file_name || !file_struct) {
+		return 1;
+	}
+
+	// We didn't look for a closeFile breakpoint, so just close the lase file whenever we open a new one.
+	// It seems to work well enough.
+	if (TasofroFile::tls_get()) {
+		delete TasofroFile::tls_get();
+		TasofroFile::tls_set(nullptr);
+	}
+
+	file_name = EnsureUTF8(file_name, strlen(file_name));
+	CharLowerA(file_name);
+
+	TasofroFile *fr = new TasofroFile();
+	fr->init(file_name);
+	free(file_name);
+
+	const char* dat_dump = runconfig_dat_dump_get();
+	if (fr->rep_buffer || fr->hooks || dat_dump) {
+		fr->pre_json_size = file_struct->size;
+		file_struct->size = MAX(file_struct->size, fr->pre_json_size) + fr->patch_size;
+	}
+	else {
+		file_rep_clear(fr);
+		delete fr;
+		return 1;
+	}
+
+	TasofroFile::tls_set(fr);
+	return 1;
 }
 
 // In th105, relying on the last open file doesn't work. So we'll use the file object instead.
+std::map<void*, TasofroFile> th105_open_files_list;
 extern "C" int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 {
+	// Parameters
+	// ----------
+	char *file_name = (char*)json_object_get_immediate(bp_info, regs, "file_name");
+	void *file_object = (void*)json_object_get_immediate(bp_info, regs, "file_object");
+	size_t *file_size = json_object_get_pointer(bp_info, regs, "file_size");
+	// ----------
+
 	EnterCriticalSection(&cs);
-	char *uFilename;
-	json_t *new_bp_info = convert_file_name_in_bp(regs, bp_info, &uFilename);
 
-	int ret = BP_fragmented_open_file(regs, new_bp_info);
+	if (file_name && file_object) {
+		TasofroFile& fr = th105_open_files_list[file_object];
+		TasofroFile::tls_set(&fr);
+
+		file_name = EnsureUTF8(file_name, strlen(file_name));
+		CharLowerA(file_name);
+		fr.init(file_name);
+		free(file_name);
+	}
+	else if (file_size) {
+		TasofroFile *fr = TasofroFile::tls_get();
+		if (fr) {
+			fr->pre_json_size = *file_size;
+			*file_size = MAX(*file_size, fr->pre_json_size) + fr->patch_size;
+		}
+		TasofroFile::tls_set(nullptr);
+	}
+
 	LeaveCriticalSection(&cs);
+	return 1;
+}
 
-	json_decref(new_bp_info);
-	free(uFilename);
+extern "C" int BP_th105_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	void *file_object = (void*)json_object_get_immediate(bp_info, regs, "file_object");
+
+	if (!file_object) {
+		return 1;
+	}
+
+	EnterCriticalSection(&cs);
+	auto it = th105_open_files_list.find(file_object);
+	if (it == th105_open_files_list.end()) {
+		LeaveCriticalSection(&cs);
+		return 1;
+	}
+	TasofroFile& fr = it->second;
+
+	ReadFileStack *stack = (ReadFileStack*)(regs->esp + sizeof(void*));
+	int ret = fr.replace_ReadFile(regs, game_xor, game_xor);
+
+	LeaveCriticalSection(&cs);
 	return ret;
+}
+
+extern "C" int BP_th105_close_file(x86_reg_t *regs, json_t *bp_info)
+{
+	// Parameters
+	// ----------
+	void *file_object = (void*)json_object_get_immediate(bp_info, regs, "file_object");
+	// ----------
+
+	if (!file_object) {
+		return 1;
+	}
+
+	EnterCriticalSection(&cs);
+	auto it = th105_open_files_list.find(file_object);
+	if (it == th105_open_files_list.end()) {
+		LeaveCriticalSection(&cs);
+		return 1;
+	}
+	file_rep_t& fr = it->second;
+
+	file_rep_clear(&fr);
+	th105_open_files_list.erase(it);
+	LeaveCriticalSection(&cs);
+	return 1;
 }
 
 extern "C" int BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)
