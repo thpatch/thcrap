@@ -68,9 +68,12 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size);
 // if there is no such file in the stack.
 HANDLE stack_file_resolve_chain(char **chain);
 
-// Searches the current patch stack for a replacement for the game data file
+// Searches the current patch stack for a replacement for the data file
 // [fn] and returns either a stream or a newly created buffer, analogous to
 // file_stream() and file_stream_read().
+HANDLE stack_file_stream(const char *fn);
+void* stack_file_resolve(const char *fn, size_t *file_size);
+// Use a game-specifig path
 HANDLE stack_game_file_stream(const char *fn);
 void* stack_game_file_resolve(const char *fn, size_t *file_size);
 

@@ -61,30 +61,49 @@ typedef struct
 	char *patch_id;
 } patch_desc_t;
 
+enum patch_category
+{
+	// Core patch, provides base support for other patches
+	PATCH_CORE,
+	// Language patch, provides translations to another language
+	PATCH_LANGUAGE,
+	// Content patch, every mod that isn't a translation. For example
+	// BGM patches, fanfiction patches, gameplay change patches,
+	// sprites change patches...
+	PATCH_CONTENT
+};
+
 // Patch data from runconfig and patch.js
 typedef struct
 {
 	// Patch root path
 	// Pulled from the run configuration then edited to make it an absolute path
 	char *archive;
-	// Patch id (from patch.js)
+	// Patch id. Read from the patch directory name, or from patch.js in legacy mode
 	char *id;
-	// Patch description (from patch.js)
+
+	// Values from repo.js (or patch.js in legacy mode)
+	// Patch description
 	char *title;
-	// Servers list (NULL-terminated) (from patch.js)
+	// Servers list (NULL-terminated)
 	char **servers;
-	// List of dependencies (from patch.js)
+	// List of dependencies
 	patch_desc_t *dependencies;
-	// List of font files to load (from patch.js)
-	char **fonts;
-	// List of files to ignore (NULL-terminated) (from run configuration)
+	// Category of this patch
+	patch_category category;
+	// Games supported by this patch
+	char **games;
+
+	// Values from run configuration
+	// List of files to ignore (NULL-terminated)
 	char **ignore;
 	// If false, the updater should ignore this patch
 	bool update;
-	// Patch index in the stack, used for pretty-printing
-	size_t level;
 	// User set patch configuration
 	json_t *config;
+
+	// Patch index in the stack, used for pretty-printing (filled when loaded from a stack)
+	size_t level;
 } patch_t;
 
 // Enum of possible types for the description of

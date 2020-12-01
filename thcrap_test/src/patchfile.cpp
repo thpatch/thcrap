@@ -3,6 +3,8 @@
 #include <fstream>
 #include <filesystem>
 
+using namespace std::string_literals;
+
 // Also test file_stream and file_stream_read
 TEST(PatchFile, FileRead)
 {
@@ -115,59 +117,154 @@ TEST(PatchFile, FnForPatch)
 
 TEST(PatchFile, DirCreateForFn)
 {
-    if (std::filesystem::exists("test_dir")) {
-        std::filesystem::remove_all("test_dir");
+    if (std::filesystem::exists("testdir")) {
+        std::filesystem::remove_all("testdir");
     }
 
-    dir_create_for_fn("test_dir/dir2/dir3/file.txt");
-    EXPECT_TRUE(std::filesystem::is_directory("test_dir/dir2/dir3"));
+    dir_create_for_fn("testdir/dir2/dir3/file.txt");
+    EXPECT_TRUE(std::filesystem::is_directory("testdir/dir2/dir3"));
 
-    std::filesystem::remove_all("test_dir");
+    std::filesystem::remove_all("testdir");
 }
 
 class PatchFileTest : public ::testing::Test
 {
 protected:
     patch_t patch;
+    std::filesystem::path root;
 
-    void SetUp() override
+    void initPatch(ScopedJson repo_js, std::string patch_id, ScopedJson patch_js, ScopedJson runconfig_js, int level = 0)
     {
+        root = "testdir/"s + patch_id + "/";
+
         if (std::filesystem::exists("testdir")) {
             std::filesystem::remove_all("testdir");
         }
-        std::filesystem::create_directory("testdir");
+        std::filesystem::create_directories(root);
 
-        ScopedJson patch_js = json_pack("{s:s,s:s,s:[s,s],s:[s,s],s:{s:b,s:b},s:s,s:s,s:i}",
-            "id", "base_tsa",
-            "title", "Base patch for TSA games",
-            "servers", "https://www.example.com/", "https://www.example2.com/",
-            "dependencies", "thpatch/patch1", "patch2",
-            "fonts", "arial.ttf", true, "comicsans.ttf", true,
-            "motd", "This is a message",
-            "motd_title", "Title for motd",
-            "motd_type", 12
+        if (repo_js) {
+            json_dump_file(*repo_js, "testdir/repo.js", 0);
+        }
+        if (patch_js) {
+            json_dump_file(*patch_js, (root / "patch.js").u8string().c_str(), 0);
+        }
+
+        this->patch = patch_init(root.u8string().c_str(), *runconfig_js, level);
+    }
+
+    void initDefaultPatch()
+    {
+        ScopedJson repo_js = json_pack("{s:{s:s},s:{s:{s:s,s:[s,s],s:[s,s]}},s:[s,s]}",
+            "patches", "base_tsa", "Base patch for TSA games",
+            "patchdata",
+                "base_tsa",
+                    "category", "core",
+                    "games", "th06", "th07",
+                    "dependencies", "thpatch/patch1", "patch2",
+            "servers", "https://www.example.com/", "https://www.example2.com/"
         );
-        json_dump_file(*patch_js, "testdir/patch.js", 0);
-
         ScopedJson runconfig_js = json_pack("{s:[s,s],s:b}",
             "ignore", "*.bmp", "*.jpg",
             "update", false
         );
-        this->patch = patch_init("testdir", *runconfig_js, 0);
+        this->initPatch(repo_js, "base_tsa", nullptr, runconfig_js, 3);
+    }
+
+    void freePatch()
+    {
+        if (this->patch.id) {
+            patch_free(&this->patch);
+        }
+        std::filesystem::remove_all("testdir");
     }
 
     void TearDown() override
     {
-        patch_free(&this->patch);
-        std::filesystem::remove_all("testdir");
+        this->freePatch();
     }
 };
 
+// Test a normal usage of patch_init, where we fill a value for every field.
 TEST_F(PatchFileTest, PatchInit)
 {
+    this->initDefaultPatch();
+
     // Writing a nice test for patch_archive is a bit hard and pointless,
     // we don't really care about its exact value.
     // The patch_file_exist will test if the archive value is actually meaningful.
+    EXPECT_NE(patch.archive, nullptr);
+    EXPECT_STREQ(patch.id, "base_tsa");
+    EXPECT_STREQ(patch.title, "Base patch for TSA games");
+
+    ASSERT_NE(patch.servers, nullptr);
+    EXPECT_STREQ(patch.servers[0], "https://www.example.com/base_tsa/");
+    EXPECT_STREQ(patch.servers[1], "https://www.example2.com/base_tsa/");
+    EXPECT_EQ(patch.servers[2], nullptr);
+
+    ASSERT_NE(patch.dependencies, nullptr);
+    EXPECT_STREQ(patch.dependencies[0].repo_id, "thpatch");
+    EXPECT_STREQ(patch.dependencies[0].patch_id, "patch1");
+    EXPECT_EQ(patch.dependencies[1].repo_id, nullptr);
+    EXPECT_STREQ(patch.dependencies[1].patch_id, "patch2");
+    EXPECT_EQ(patch.dependencies[2].patch_id, nullptr);
+
+    ASSERT_NE(patch.games, nullptr);
+    EXPECT_STREQ(patch.games[0], "th06");
+    EXPECT_STREQ(patch.games[1], "th07");
+    EXPECT_EQ(patch.games[2], nullptr);
+
+    EXPECT_EQ(patch.category, PATCH_CORE);
+
+    ASSERT_NE(patch.ignore, nullptr);
+    EXPECT_STREQ(patch.ignore[0], "*.bmp");
+    EXPECT_STREQ(patch.ignore[1], "*.jpg");
+    EXPECT_EQ(patch.ignore[2], nullptr);
+
+    EXPECT_EQ(patch.update, false);
+    EXPECT_EQ(patch.level, 3u);
+}
+
+// Test patch_init with an almost empty repo.js in order to test the default values.
+TEST_F(PatchFileTest, PatchInitDefaultValues)
+{
+    ScopedJson repo_js = json_pack("{s:{s:{}}}",
+        "patchdata",
+            "base_tsa"
+    );
+    ScopedJson runconfig_js = json_object();
+    this->initPatch(repo_js, "base_tsa", nullptr, runconfig_js);
+
+    // Writing a nice test for patch_archive is a bit hard and pointless,
+    // we don't really care about its exact value.
+    // The patch_file_exist will test if the archive value is actually meaningful.
+    EXPECT_NE(patch.archive, nullptr);
+    EXPECT_STREQ(patch.id, "base_tsa");
+    EXPECT_STREQ(patch.title, nullptr);
+
+    EXPECT_EQ(patch.servers, nullptr);
+    EXPECT_EQ(patch.dependencies, nullptr);
+    EXPECT_EQ(patch.games, nullptr);
+    EXPECT_EQ(patch.category, PATCH_CONTENT);
+    EXPECT_EQ(patch.ignore, nullptr);
+    EXPECT_EQ(patch.update, true);
+    EXPECT_EQ(patch.level, 0u);
+}
+
+// Test patch_init in legacy mode, loading everything from patch.js
+TEST_F(PatchFileTest, PatchInitLegacy)
+{
+    ScopedJson patch_js = json_pack("{s:s,s:s,s:[s,s],s:[s,s]}",
+        "id", "base_tsa",
+        "title", "Base patch for TSA games",
+        "servers", "https://www.example.com/", "https://www.example2.com/",
+        "dependencies", "thpatch/patch1", "patch2"
+    );
+    ScopedJson runconfig_js = json_pack("{s:[s,s],s:b}",
+        "ignore", "*.bmp", "*.jpg",
+        "update", false
+    );
+    this->initPatch(nullptr, "base_tsa", patch_js, runconfig_js, 3);
+
     EXPECT_NE(patch.archive, nullptr);
     EXPECT_STREQ(patch.id, "base_tsa");
     EXPECT_STREQ(patch.title, "Base patch for TSA games");
@@ -177,7 +274,6 @@ TEST_F(PatchFileTest, PatchInit)
     EXPECT_STREQ(patch.servers[1], "https://www.example2.com/");
     EXPECT_EQ(patch.servers[2], nullptr);
 
-    // TODO: dependencies
     ASSERT_NE(patch.dependencies, nullptr);
     EXPECT_STREQ(patch.dependencies[0].repo_id, "thpatch");
     EXPECT_STREQ(patch.dependencies[0].patch_id, "patch1");
@@ -185,10 +281,8 @@ TEST_F(PatchFileTest, PatchInit)
     EXPECT_STREQ(patch.dependencies[1].patch_id, "patch2");
     EXPECT_EQ(patch.dependencies[2].patch_id, nullptr);
 
-    ASSERT_NE(patch.fonts, nullptr);
-    EXPECT_STREQ(patch.fonts[0], "arial.ttf");
-    EXPECT_STREQ(patch.fonts[1], "comicsans.ttf");
-    EXPECT_EQ(patch.fonts[2], nullptr);
+    EXPECT_EQ(patch.games, nullptr);
+    EXPECT_EQ(patch.category, PATCH_CONTENT);
 
     ASSERT_NE(patch.ignore, nullptr);
     EXPECT_STREQ(patch.ignore[0], "*.bmp");
@@ -196,37 +290,154 @@ TEST_F(PatchFileTest, PatchInit)
     EXPECT_EQ(patch.ignore[2], nullptr);
 
     EXPECT_EQ(patch.update, false);
+    EXPECT_EQ(patch.level, 3u);
+}
 
-    EXPECT_STREQ(patch.motd, "This is a message");
-    EXPECT_STREQ(patch.motd_title, "Title for motd");
-    EXPECT_EQ(patch.motd_type, 12u);
+// When both new mode (repo.js with patchdata) and old mode (patch.js) are available,
+// we should only use repo.js, and consider patch.js as a leftover file from before
+// the update.
+TEST_F(PatchFileTest, PatchInitNoMerge)
+{
+    ScopedJson repo_js = json_pack("{s:{s:s},s:{s:{s:[s,s]}}}",
+        "patches", "base_tsa", "Base patch for TSA games",
+        "patchdata",
+            "base_tsa",
+                "dependencies", "thpatch/patch1", "patch2"
+    );
+    ScopedJson patch_js = json_pack("{s:s,s:s,s:[s,s],s:[s,s]}",
+        "id", "base_tsa",
+        "title", "Fake description",
+        "servers", "https://www.example.com/", "https://www.example2.com/",
+        "dependencies", "thpatch/patch3", "patch4"
+    );
+    this->initPatch(repo_js, "base_tsa", patch_js, nullptr);
 
-    // TODO: test invalid parameters
+    EXPECT_NE(patch.archive, nullptr);
+    EXPECT_STREQ(patch.id, "base_tsa");
+    EXPECT_STREQ(patch.title, "Base patch for TSA games");
+
+    ASSERT_NE(patch.dependencies, nullptr);
+    EXPECT_STREQ(patch.dependencies[0].repo_id, "thpatch");
+    EXPECT_STREQ(patch.dependencies[0].patch_id, "patch1");
+    EXPECT_EQ(patch.dependencies[1].repo_id, nullptr);
+    EXPECT_STREQ(patch.dependencies[1].patch_id, "patch2");
+    EXPECT_EQ(patch.dependencies[2].patch_id, nullptr);
+
+    EXPECT_EQ(patch.servers, nullptr);
+}
+
+// When using an invalid value for every field, they should all
+// manage to fallback to a safe value.
+TEST_F(PatchFileTest, PatchInitInvalidValues)
+{
+    ScopedJson repo_js = json_pack("{s:{s:b},s:{s:{s:b,s:b,s:b}},s:b}",
+        "patches", "base_tsa", true,
+        "patchdata",
+            "base_tsa",
+                "category", true,
+                "games", true,
+                "dependencies", true,
+        "servers", true
+    );
+    ScopedJson runconfig_js = json_pack("{s:b,s:s}",
+        "ignore", true,
+        "update", "hello"
+    );
+    this->initPatch(repo_js, "base_tsa", nullptr, runconfig_js);
+
+    EXPECT_NE(patch.archive, nullptr);
+    EXPECT_STREQ(patch.id, "base_tsa");
+    EXPECT_EQ(patch.title, nullptr);
+
+    EXPECT_EQ(patch.servers, nullptr);
+    EXPECT_EQ(patch.dependencies, nullptr);
+    EXPECT_EQ(patch.games, nullptr);
+    EXPECT_EQ(patch.category, PATCH_CONTENT);
+    EXPECT_EQ(patch.ignore, nullptr);
+    EXPECT_EQ(patch.update, true);
+    EXPECT_EQ(patch.level, 0u);
+}
+
+// Like PatchInitInvalidValues for legacy (patch.js) mode
+TEST_F(PatchFileTest, PatchInitInvalidValuesLegacy)
+{
+    ScopedJson patch_js = json_pack("{s:s,s:b,s:b,s:b}",
+        "id", "base_tsa",
+        "title", true,
+        "servers", true,
+        "dependencies", true
+    );
+    ScopedJson runconfig_js = json_object();
+    this->initPatch(nullptr, "base_tsa", patch_js, nullptr);
+
+    EXPECT_NE(patch.archive, nullptr);
+    EXPECT_STREQ(patch.id, "base_tsa");
+    EXPECT_EQ(patch.title, nullptr);
+
+    EXPECT_EQ(patch.servers, nullptr);
+    EXPECT_EQ(patch.dependencies, nullptr);
+}
+
+// Test the failure cases of patch_init.
+// The only invalid patches are when repo.js and / or patch.js can't be found.
+// Everything else has a safe fallback.
+// No patch.js have been tested in PatchInit and no repo.js have been tested
+// in PatchInitLegacy (both are valid cases), so we only have to test the cases
+// where both are missing or the path is invalid.
+TEST(PatchFile, PatchInitInvalidPatch)
+{
+    patch_t patch;
+
+    if (std::filesystem::exists("testdir")) {
+        std::filesystem::remove_all("testdir");
+    }
+
+    patch = patch_init("/", nullptr, 0);
+    EXPECT_EQ(patch.id, nullptr);
+
+    patch = patch_init("C:/", nullptr, 0);
+    EXPECT_EQ(patch.id, nullptr);
+
+    patch = patch_init("C:/Windows/", nullptr, 0);
+    EXPECT_EQ(patch.id, nullptr);
+
+    patch = patch_init("testdir/base_tsa/", nullptr, 0);
+    EXPECT_EQ(patch.id, nullptr);
+
+    std::filesystem::create_directories("testdir/base_tsa/");
+    patch = patch_init("testdir/base_tsa/", nullptr, 0);
+    EXPECT_EQ(patch.id, nullptr);
+
+    std::filesystem::remove_all("testdir");
 }
 
 TEST_F(PatchFileTest, PatchFileExists)
 {
+    this->initDefaultPatch();
+
     std::ofstream file;
 
-    file.open("testdir/test_exist.js");
+    file.open(root / "test_exist.js");
     file.close();
     EXPECT_TRUE (patch_file_exists(&patch, "test_exist.js"));
     EXPECT_FALSE(patch_file_exists(&patch, "test_missing.js"));
 
-    std::filesystem::create_directory("testdir/subdir");
-    file.open("testdir/subdir/test_exist.js");
+    std::filesystem::create_directory(root / "subdir");
+    file.open(root / "subdir" / "test_exist.js");
     file.close();
     EXPECT_TRUE (patch_file_exists(&patch, "subdir/test_exist.js"));
     EXPECT_FALSE(patch_file_exists(&patch, "subdir/test_missing.js"));
 
     // Test blacklist
-    file.open("testdir/test_blacklist.bmp");
+    file.open(root / "test_blacklist.bmp");
     file.close();
     EXPECT_FALSE(patch_file_exists(&patch, "test_blacklist.bmp"));
 }
 
 TEST_F(PatchFileTest, PatchFileBlacklisted)
 {
+    this->initDefaultPatch();
+
     EXPECT_TRUE (patch_file_blacklisted(&patch, "file.bmp"));
     EXPECT_TRUE (patch_file_blacklisted(&patch, "file.jpg"));
     EXPECT_FALSE(patch_file_blacklisted(&patch, "file.png"));
@@ -238,11 +449,13 @@ TEST_F(PatchFileTest, PatchFileBlacklisted)
 
 TEST_F(PatchFileTest, PatchFileLoad)
 {
+    this->initDefaultPatch();
+
     std::ofstream file;
     char *buffer;
     size_t file_size;
 
-    file.open("testdir/test_exist.txt");
+    file.open(root / "test_exist.txt");
     file.write("abcde", 6);
     file.close();
     buffer = (char*)patch_file_load(&patch, "test_exist.txt", &file_size);
@@ -253,8 +466,8 @@ TEST_F(PatchFileTest, PatchFileLoad)
     EXPECT_EQ(patch_file_load(&patch, "test_missing.txt", &file_size), nullptr);
     EXPECT_EQ(file_size, 0u);
 
-    std::filesystem::create_directory("testdir/subdir");
-    file.open("testdir/subdir/test_exist.txt");
+    std::filesystem::create_directory(root / "subdir");
+    file.open(root / "subdir" / "test_exist.txt");
     file.write("abcde", 6);
     file.close();
     buffer = (char*)patch_file_load(&patch, "subdir/test_exist.txt", &file_size);
@@ -263,7 +476,7 @@ TEST_F(PatchFileTest, PatchFileLoad)
     free(buffer);
 
     // Test blacklist
-    file.open("testdir/test_blacklist.bmp");
+    file.open(root / "test_blacklist.bmp");
     file.write("abcde", 6);
     file.close();
     EXPECT_EQ(patch_file_load(&patch, "test_blacklist.bmp", &file_size), nullptr);
@@ -279,6 +492,8 @@ TEST_F(PatchFileTest, PatchFileLoad)
 
 TEST_F(PatchFileTest, PatchToRunconfigJson)
 {
+    this->initDefaultPatch();
+
     ScopedJson json = patch_to_runconfig_json(&patch);
     EXPECT_NE(*json, nullptr);
     EXPECT_STREQ(json_string_value(json_object_get(*json, "archive")), patch.archive);
@@ -286,6 +501,8 @@ TEST_F(PatchFileTest, PatchToRunconfigJson)
 
 TEST_F(PatchFileTest, PatchRelToAbs)
 {
+    this->initDefaultPatch();
+
     // Create a file
     patch_file_store(&patch, "test.txt", "abcde", 6);
 

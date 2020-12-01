@@ -9,7 +9,9 @@
 
 #include "thcrap.h"
 #include <algorithm>
+#include <filesystem>
 #include <list>
+#include <map>
 #include <vector>
 
 struct patchhook_t
@@ -329,92 +331,200 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 	return desc;
 }
 
-patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t level)
+ScopedJson patch_load_from_repo(patch_t *patch)
+{
+	ScopedJson repo_js = patch_json_load(patch, "../repo.js", NULL);
+	if (!repo_js) {
+		// No repo found
+		return ScopedJson();
+	}
+
+	if (!json_is_object(json_object_get(*repo_js, "patchdata"))) {
+		// Legacy patch - no patchdata in repo.js
+		return ScopedJson();
+	}
+
+	// Get patch ID from path
+	std::filesystem::path path = patch->archive;
+	if (path.has_filename()) {
+		// This is a path to a directory, the filename part should be empty
+		path /= "";
+	}
+
+	auto end = path.end();
+	if (end == path.begin()) { return ScopedJson(); } end--; // Go to the last element
+	if (end == path.begin()) { return ScopedJson(); } end--; // Ignore the filename part (which should be empty anyway)
+	if (*end == path.root_name() || *end == path.root_directory()) { return ScopedJson(); } // Not a named directory
+	std::string patch_id = end->u8string();
+
+	patch->id = strdup(patch_id.c_str());
+	return repo_js;
+}
+
+static void try_set_string(char*& out, json_t *str)
+{
+	if (out || !json_is_string(str)) {
+		return;
+	}
+	out = strdup(json_string_value(str));
+}
+
+static void try_set_array(char **&out, json_t *array)
+{
+	if (out || !json_is_array(array)) {
+		return ;
+	}
+
+	out = new char*[json_array_size(array) + 1];
+	size_t i;
+	json_t *it;
+	json_array_foreach(array, i, it) {
+		out[i] = strdup(json_string_value(it));
+	}
+	out[i] = nullptr;
+};
+
+static void try_set_deps(patch_desc_t *&out, json_t *deps)
+{
+	if (out || !json_is_array(deps)) {
+		return ;
+	}
+
+	out = new patch_desc_t[json_array_size(deps) + 1];
+	size_t i = 0;
+	json_t *it;
+	json_array_foreach(deps, i, it) {
+		out[i] = patch_dep_to_desc(json_string_value(it));
+	}
+	out[i].patch_id = nullptr;
+};
+
+// Initialize from repo.js
+// Return true if repo.js contains patch info in patchdata
+// format, false if it doesn't (in that case, we need to
+// load the patch informations from patch.js in legacy mode).
+bool patch_init_from_repo(patch_t *patch)
+{
+	auto repo_js = patch_load_from_repo(patch);
+	if (!repo_js) {
+		return false;
+	}
+
+	json_t *patchdata = json_object_get(*repo_js, "patchdata");
+	json_t *patch_in_repo = json_object_get(patchdata, patch->id);
+	if (!patch_in_repo) {
+		// No entry for patch_id in patchdata.
+		// The repo.js still has a patchdata, so we don't want to
+		// load patch.js.
+		SAFE_FREE(patch->id);
+		return true;
+	}
+
+	try_set_string(patch->title, json_object_get(json_object_get(*repo_js, "patches"), patch->id));
+
+	// Servers
+	// This is the base path for the repo, so we need to append
+	// the patch name.
+	json_t *servers = json_object_get(*repo_js, "servers");
+	if (json_is_array(servers)) {
+		patch->servers = new char*[json_array_size(servers) + 1];
+		size_t i;
+		json_t *it;
+		json_array_foreach(servers, i, it) {
+			if (!json_is_string(it) || strlen(json_string_value(it)) == 0) {
+				break;
+			}
+			std::string server = json_string_value(it);
+			if (server.back() != '/') {
+				server += "/";
+			}
+			server += patch->id;
+			server += "/";
+			patch->servers[i] = strdup(server.c_str());
+		}
+		patch->servers[i] = nullptr;
+	}
+
+	try_set_deps(patch->dependencies, json_object_get(patch_in_repo, "dependencies"));
+
+	// We provide most CORE and LANGUAGE patches, so any patch without a category
+	// is probably a CONTENT patch. So we use that as a default value.
+	patch->category = PATCH_CONTENT;
+	json_t *category = json_object_get(patch_in_repo, "category");
+	if (json_is_string(category)) {
+		std::map<std::string, patch_category> mapping = {
+			{ "core",     PATCH_CORE },
+			{ "language", PATCH_LANGUAGE },
+			{ "content",  PATCH_CONTENT },
+		};
+		auto it = mapping.find(json_string_value(category));
+		if (it != mapping.end()) {
+			patch->category = it->second;
+		}
+	}
+
+	try_set_array( patch->games,    json_object_get(patch_in_repo, "games"));
+
+	return true;
+}
+
+// Initialize from local patch.js (legacy)
+void patch_init_from_local(patch_t *patch)
+{
+	ScopedJson patch_js = patch_json_load(patch, "patch.js", NULL);
+	if (!patch_js) {
+		return ;
+	}
+
+	try_set_string(patch->id,           json_object_get(*patch_js, "id"));
+	try_set_string(patch->title,        json_object_get(*patch_js, "title"));
+	try_set_array( patch->servers,      json_object_get(*patch_js, "servers"));
+	try_set_deps(  patch->dependencies, json_object_get(*patch_js, "dependencies"));
+	// These fields don't exist in patch.js
+	patch->category = PATCH_CONTENT;
+	patch->games = nullptr;
+}
+
+// Load additional options from run configuration
+void patch_init_from_runconfig(patch_t *patch, const json_t *patch_runcfg)
+{
+	if (!patch_runcfg) {
+		return ;
+	}
+	try_set_array(patch->ignore, json_object_get(patch_runcfg, "ignore"));
+
+	json_t *update = json_object_get(patch_runcfg, "update");
+	if (update && json_is_false(update)) {
+		patch->update = false;
+	}
+	else {
+		patch->update = true;
+	}
+
+	patch->config = json_object_get(patch_runcfg, "config");
+	json_incref(patch->config);
+}
+
+patch_t patch_init(const char *patch_path, const json_t *patch_runcfg, size_t level)
 {
 	patch_t patch = {};
 
 	if (patch_path == nullptr) {
 		return patch;
 	}
-	if (PathIsRelativeU(patch_path)) {
-		// Add the current directory to the patch archive field
-		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 2;
-		char *full_patch_path = (char *)malloc(full_patch_path_len);
-		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
-		strcpy(PathAddBackslashU(full_patch_path), patch_path);
-		str_slash_normalize(full_patch_path);
-		patch.archive = full_patch_path;
-	}
-	else {
-		patch.archive = strdup(patch_path);
-	}
-	patch.config = json_object_get(patch_info, "config");
-	// Merge the runconfig patch array and the patch.js
-	json_t *runconfig_js = json_deep_copy(patch_info);
-	json_t *patch_js = patch_json_load(&patch, "patch.js", NULL);
-	patch_js = json_object_merge(patch_js, runconfig_js);
-	json_decref_safe(runconfig_js);
 
-	auto set_string_if_exist = [patch_js](const char *key, char*& out) {
-		json_t *value = json_object_get(patch_js, key);
-		if (value) {
-			out = strdup(json_string_value(value));
-		}
-	};
-	auto set_array_if_exist = [patch_js](const char *key, char **&out) {
-		json_t *array = json_object_get(patch_js, key);
-		if (array && json_is_array(array)) {
-			out = new char*[json_array_size(array) + 1];
-			size_t i = 0;
-			json_t *it;
-			json_array_foreach(array, i, it) {
-				out[i] = strdup(json_string_value(it));
-			}
-			out[i] = nullptr;
-		}
-	};
+	std::filesystem::path patch_path_cpp = patch_path;
+	if (patch_path_cpp.is_relative()) {
+		patch_path_cpp = std::filesystem::absolute(patch_path_cpp);
+	}
+	patch.archive = strdup(patch_path_cpp.generic_u8string().c_str());
 
-	set_string_if_exist("id",         patch.id);
-	set_string_if_exist("title",      patch.title);
-	set_array_if_exist( "servers",    patch.servers);
-	set_array_if_exist( "ignore",     patch.ignore);
+	if (!patch_init_from_repo(&patch)) {
+		patch_init_from_local(&patch);
+	}
+	patch_init_from_runconfig(&patch, patch_runcfg);
 	patch.level = level;
 
-	patch.update = true;
-	json_t *update = json_object_get(patch_js, "update");
-	if (update && json_is_false(update)) {
-		patch.update = false;
-	}
-
-	json_t *dependencies = json_object_get(patch_js, "dependencies");
-	if (json_is_array(dependencies)) {
-		patch.dependencies = new patch_desc_t[json_array_size(dependencies) + 1];
-		size_t i;
-		json_t *val;
-		json_array_foreach(dependencies, i, val) {
-			patch.dependencies[i] = patch_dep_to_desc(json_string_value(val));
-		}
-		patch.dependencies[i].patch_id = nullptr;
-	}
-
-	json_t *fonts = json_object_get(patch_js, "fonts");
-	if (json_is_object(fonts)) {
-		std::vector<char*> fonts_vector;
-		const char *font_fn;
-		json_t *val;
-		json_object_foreach(fonts, font_fn, val) {
-			fonts_vector.push_back(strdup(font_fn));
-		}
-		patch.fonts = new char*[fonts_vector.size() + 1];
-		size_t i = 0;
-		for (char *it : fonts_vector) {
-			patch.fonts[i] = it;
-			i++;
-		}
-		patch.fonts[i] = nullptr;
-	}
-
-	json_decref(patch_js);
 	return patch;
 }
 
@@ -425,36 +535,36 @@ json_t *patch_to_runconfig_json(const patch_t *patch)
 
 void patch_free(patch_t *patch)
 {
-	if (patch) {
-		free(patch->archive);
-		free(patch->id);
-		free(patch->title);
-		if (patch->servers) {
-			for (size_t i = 0; patch->servers[i]; i++) {
-				free(patch->servers[i]);
-			}
-			delete[] patch->servers;
-		}
-		if (patch->ignore) {
-			for (size_t i = 0; patch->ignore[i]; i++) {
-				free(patch->ignore[i]);
-			}
-			delete[] patch->ignore;
-		}
-		if (patch->fonts) {
-			for (size_t i = 0; patch->fonts[i]; i++) {
-				free(patch->fonts[i]);
-			}
-			delete[] patch->fonts;
-		}
-		if (patch->dependencies) {
-			for (size_t i = 0; patch->dependencies[i].patch_id; i++) {
-				free(patch->dependencies[i].patch_id);
-				free(patch->dependencies[i].repo_id);
-			}
-			delete[] patch->dependencies;
-		}
+	if (!patch) {
+		return ;
 	}
+
+	auto free_array = [](char **array) {
+		if (!array) {
+			return ;
+		}
+		for (size_t i = 0; array[i]; i++) {
+			free(array[i]);
+		}
+		delete[] array;
+	};
+
+	free(patch->archive);
+	free(patch->id);
+	free(patch->title);
+	free_array(patch->servers);
+	free_array(patch->games);
+	free_array(patch->ignore);
+
+	if (patch->dependencies) {
+		for (size_t i = 0; patch->dependencies[i].patch_id; i++) {
+			free(patch->dependencies[i].patch_id);
+			free(patch->dependencies[i].repo_id);
+		}
+		delete[] patch->dependencies;
+	}
+
+	patch->id = nullptr;
 }
 
 int patch_rel_to_abs(patch_t *patch_info, const char *base_path)

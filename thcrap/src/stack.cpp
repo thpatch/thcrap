@@ -193,6 +193,23 @@ char* stack_fn_resolve_chain(char **chain)
 	return nullptr;
 }
 
+HANDLE stack_file_stream(const char *fn)
+{
+	HANDLE ret = INVALID_HANDLE_VALUE;
+	char **chain = resolve_chain_game(fn);
+	if (chain && chain[0]) {
+		log_printf("(Data) Resolving %s... ", chain[0]);
+		ret = stack_file_resolve_chain(chain);
+	}
+	chain_free(chain);
+	return ret;
+}
+
+void* stack_file_resolve(const char *fn, size_t *file_size)
+{
+	return file_stream_read(stack_file_stream(fn), file_size);
+}
+
 HANDLE stack_game_file_stream(const char *fn)
 {
 	HANDLE ret = INVALID_HANDLE_VALUE;

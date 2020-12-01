@@ -315,15 +315,17 @@ HFONT WINAPI textdisp_CreateFontIndirectExA(
 	return chain_CreateFontIndirectExU(lpelfe);
 }
 
-void patch_fonts_load(const patch_t *patch_info)
+static void fonts_load(json_t *fonts)
 {
-	for (size_t i = 0; patch_info->fonts && patch_info->fonts[i]; i++) {
+	const char *font_name;
+	json_t *dummy;
+	json_object_foreach(fonts, font_name, dummy) {
 		size_t font_size;
-		void *font_buffer = patch_file_load(patch_info, patch_info->fonts[i], &font_size);
+		void *font_buffer = stack_file_resolve(font_name, &font_size);
 
-		if(font_buffer) {
+		if (font_buffer) {
 			DWORD ret;
-			log_printf("(Font) Loading %s (%d bytes)...\n", patch_info->fonts[i], font_size);
+			log_printf("(Font) Loading %s (%d bytes)...\n", font_name, font_size);
 			AddFontMemResourceEx(font_buffer, font_size, NULL, &ret);
 			SAFE_FREE(font_buffer);
 			/**
@@ -346,7 +348,12 @@ void textdisp_mod_detour(void)
 
 void textdisp_mod_init(void)
 {
-	stack_foreach([](const patch_t *patch, void*) {
-		patch_fonts_load(patch);
-	}, nullptr);
+	// Load fonts form run configuration
+	fonts_load(json_object_get(runconfig_json_get(), "fonts"));
+
+	// Legacy - load fonts from patch.js
+	stack_foreach_cpp([](const patch_t *patch) {
+		ScopedJson patch_js = patch_json_load(patch, "patch.js", nullptr);
+		fonts_load(*patch_js);
+	});
 }
