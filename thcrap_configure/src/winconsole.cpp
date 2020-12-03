@@ -4,7 +4,7 @@
 #include "console.h"
 #include "resource.h"
 #include <string.h>
-#include <CommCtrl.h>
+#include <commctrl.h>
 #include <queue>
 #include <mutex>
 #include <future>
@@ -166,8 +166,8 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		g_hwnd = hwndDlg;
 
 		SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS1), PBM_SETRANGE, 0, MAKELONG(0, 100));
-		origEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_EDIT1), GWLP_WNDPROC, (LONG)EditProc);
-		origListProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_LIST1), GWLP_WNDPROC, (LONG)ListProc);
+		origEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_EDIT1), GWLP_WNDPROC, (LONG_PTR)EditProc);
+		origListProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_LIST1), GWLP_WNDPROC, (LONG_PTR)ListProc);
 
 		// set icon
 		hIconSm = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
@@ -558,7 +558,7 @@ char* console_read(char *str, int n) {
 	needAppend = false; // gotta insert that newline
 	return str;
 }
-void cls(SHORT top) {
+void cls(SHORT) {
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
 		LineEntry le = { LINE_CLS, L"" };

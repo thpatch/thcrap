@@ -8,6 +8,46 @@
 #include "configure.h"
 #include "search.h"
 
+struct PatchCategory
+{
+	const char *description;
+	int flags;
+	std::function<bool (int flags)> filter;
+
+	PatchCategory(const char *description, int flags)
+		: description(description), flags(flags)
+	{}
+	PatchCategory(const char *description, std::function<bool (int flags)> filter)
+		: description(description), flags(0), filter(filter)
+	{}
+
+	// Return true if the patch with these flags should be
+	// displayed in this category, false otherwise.
+	bool shouldDisplay(int flags)
+	{
+		if (this->filter) {
+			return this->filter(flags);
+		}
+		else {
+			return (flags & this->flags) && !(flags & PATCH_FLAG_HIDDEN);
+		}
+	}
+};
+
+std::vector<PatchCategory> categories = {
+	{ "Most complete languages",          PATCH_FLAG_LANGUAGE },
+	{ "All languages",                    [](int flags) { return flags & PATCH_FLAG_LANGUAGE; } },
+	{ "Gameplay modifications",           PATCH_FLAG_GAMEPLAY },
+	{ "Fanart sprites and texture packs", PATCH_FLAG_GRAPHICS },
+	{ "Fanfictions",                      PATCH_FLAG_FANFICTION },
+	{ "Alternative BGMs and arranges",    PATCH_FLAG_BGM },
+	{ "All mods (gameplay patches, textures packs etc)", [] (int flags) { return (flags & (PATCH_FLAG_CORE | PATCH_FLAG_LANGUAGE)) == 0; } },
+	{ "All patches",                      [](int) { return true; } },
+};
+
+
+
+
 // Returns 1 if the selectors [a] and [b] refer to the same patch.
 // The repository IDs can be NULLs to ignore them.
 bool sel_match(const patch_desc_t& a, const patch_desc_t& b)
@@ -98,6 +138,10 @@ std::string SearchPatch(repo_t **repo_list, const char *orig_repo_id, const patc
 // Returns the number of missing dependencies.
 int AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
 {
+	if (IsSelected(sel_stack, sel)) {
+		return 0;
+	}
+
 	int ret = 0;
 	const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
 	patch_t patch_info = patch_bootstrap_wrapper(&sel, repo);
@@ -130,7 +174,7 @@ int AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
 // Returns the number of patches removed.
 int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 {
-	auto& match = [patch_id](const patch_desc_t& desc) {
+	auto match = [patch_id](const patch_desc_t& desc) {
 		return strcmp(desc.patch_id, patch_id) == 0;
 	};
 
@@ -164,14 +208,14 @@ int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 
 int PrettyPrintPatch(const char *patch, const char *title)
 {
-    con_printf("%-20s %s\n", patch, title);
+	con_printf("%-20s %s\n", patch, title);
 	return 0;
 }
 
-// Prints all patches of [repo_js] that are not part of the [sel_stack],
+// Prints all patches of [repo_js] that are part of the [category]
 // filling [list_order] with the order they appear in.
 // Returns the final array size of [list_order].
-int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_sel_stack_t& sel_stack)
+int RepoPrintPatches(PatchCategory& category, repo_t *repo, std::vector<patch_desc_t>& list_order)
 {
 	size_t list_count = list_order.size();
 	bool print_header = true;
@@ -183,11 +227,10 @@ int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_
 			patch.patch_id
 		};
 
-		if(!IsSelected(sel_stack, sel)) {
+		if (category.shouldDisplay(patch.flags)) {
 			list_order.push_back(sel);
-
 			if(print_header) {
-                con_printf(
+				con_printf(
 					"Patches from [%s] (%s):\n"
 					"\t(Contact: %s)\n"
 					"\n", repo->title, repo->id, repo->contact
@@ -196,20 +239,18 @@ int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_
 			}
 			++list_count;
 			con_clickable(list_count);
-            con_printf(" [%2d] ", list_count);
+			con_printf(" [%2d] ", list_count);
 			PrettyPrintPatch(patch.patch_id, patch.title);
 		}
 	}
 	if(!print_header) {
-        con_printf("\n");
+		con_printf("\n");
 	}
 	return list_count;
 }
 
-int PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, patch_sel_stack_t& sel_stack)
+int PrintSelStack(repo_t **repo_list, patch_sel_stack_t& sel_stack, size_t list_count = 0)
 {
-	size_t list_count = list_order.size();
-
 	int width = console_width();
 	VLA(char, hr, width + 1);
 	memset(hr, '=', width);
@@ -217,14 +258,13 @@ int PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, pat
 
 	// After filling the entire width, the cursor will have already moved to
 	// the next line, so we don't need to add a separate \n after the string.
-    con_printf("%s",hr);
+	con_printf("%s",hr);
 
 	if(sel_stack.empty()) {
 		goto end;
 	}
-    con_printf(
-		"\n"
-		"Selected patches (in ascending order of priority):\n"
+	con_printf(
+		"Selected patches:\n"
 		"\n"
 	);
 	for (patch_desc_t& sel : sel_stack) {
@@ -234,12 +274,12 @@ int PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, pat
 
 		++list_count;
 		con_clickable(list_count);
-        con_printf("  %2d. ", list_count);
+		con_printf("  %2d. ", list_count);
 		PrettyPrintPatch(full_id.c_str(), patch->title);
-
-		list_order.push_back(sel);
 	}
-    con_printf("\n%s", hr);
+	con_printf("(you can select a patch to remove it from the list)\n");
+	con_printf("\n\n");
+	con_printf("\n%s", hr);
 
 end:
 	VLA_FREE(hr);
@@ -260,14 +300,106 @@ size_t repo_sort_patches(repo_t *repo)
 	return i;
 }
 
-size_t get_stack_size(patch_sel_stack_t sel_stack)
+static size_t pick_number(std::function<bool (size_t)> validate)
 {
-	size_t i = 0;
+	char buf[16];
+	char *endptr;
+	long pick;
 
-	for (auto& it : sel_stack) {
-		i++;
+	while (true) {
+		console_read(buf, sizeof(buf));
+		pick = strtol(buf, &endptr, 10);
+		if (
+			*endptr == '\0'   // A number
+			&& pick >= 0      // Positive number
+			&& validate(pick) // The caller accept this number
+		) {
+			return pick;
+		}
+		log_printf("Invalid number.");
 	}
-	return i;
+}
+
+PatchCategory *SelectCategory(repo_t **repo_list, patch_sel_stack_t& sel_stack)
+{
+	cls(0);
+	console_prepare_prompt();
+
+	con_printf(
+		"-----------------\n"
+		"Selecting patches\n"
+		"-----------------\n"
+		"\n"
+		"\n"
+	);
+	PrintSelStack(repo_list, sel_stack, 100);
+
+	con_printf("Select a category:\n");
+	for (size_t i = 0; i < categories.size(); i++) {
+		con_printf("[%d] %s\n", i + 1, categories[i].description);
+	}
+	if (!sel_stack.empty()) {
+		con_printf("[0] Continue\n");
+	}
+	con_printf("\n");
+
+	std::function<bool (size_t)> validate;
+	if (!sel_stack.empty()) {
+		con_printf("Pick a category (1 - %u), press 0 to continue, or select a patch to remove (101 - %u): ",
+			categories.size(), 100 + sel_stack.size());
+		validate = [&sel_stack](size_t pick) {
+			if (pick == 0) return true;
+			else if (pick >= 1 && pick < 1 + categories.size()) return true;
+			else if (pick >= 101 && pick < 101 + sel_stack.size()) return true;
+			else return false;
+		};
+	}
+	else {
+		con_printf("Pick a category (1 - %u): ", categories.size());
+		validate = [](size_t pick) { return pick >= 1 && pick < 1 + categories.size(); };
+	}
+
+	size_t pick = pick_number(validate);
+	if (pick == 0) {
+		return nullptr;
+	}
+	else if (pick >= 1 && pick < 1 + categories.size()) {
+		return &categories[pick - 1];
+	}
+	else if (pick >= 101 && pick < 101 + sel_stack.size()) {
+		patch_desc_t& sel = sel_stack[pick - 101];
+		RemovePatch(sel_stack, sel.patch_id);
+		return SelectCategory(repo_list, sel_stack);
+	}
+	throw std::logic_error("Unreachable code");
+}
+
+patch_desc_t SelectPatchInCategory(repo_t **repo_list, PatchCategory& category)
+{
+	cls(0);
+	console_prepare_prompt();
+
+	con_printf(
+		"-----------------\n"
+		"Selecting patches\n"
+		"-----------------\n"
+		"\n"
+		"\n"
+	);
+	con_printf("Select a patch:\n");
+
+	std::vector<patch_desc_t> patches_in_category;
+	for (size_t i = 0; repo_list[i]; i++) {
+		RepoPrintPatches(category, repo_list[i], patches_in_category);
+	}
+	con_printf("\n");
+
+	con_printf("Pick a patch (1 - %u): ", patches_in_category.size());
+	size_t pick = pick_number([&patches_in_category](size_t pick) { return pick <= patches_in_category.size(); });
+	if (pick == 0) {
+		return {};
+	}
+	return patches_in_category[pick - 1];
 }
 
 patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
@@ -291,76 +423,35 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 
 	stack_free();
 	while(1) {
-		char buf[16];
-		size_t list_pick;
-		size_t stack_size = get_stack_size(sel_stack);
-		size_t stack_offset;
-		size_t list_count = 0;
-
-		std::vector<patch_desc_t> list_order;
-
 		cls(0);
-        console_prepare_prompt();
+		console_prepare_prompt();
 
-		log_printf("-----------------\n");
-		log_printf("Selecting patches\n");
-		log_printf("-----------------\n");
-		log_printf(
-			"\n"
-			"\n"
-		);
-
-		for (size_t i = 0; repo_list[i]; i++) {
-			list_count = RepoPrintPatches(list_order, repo_list[i], sel_stack);
-		}
-		list_count = PrintSelStack(list_order, repo_list, sel_stack);
-        con_printf("\n");
-
-		stack_offset = list_order.size() - stack_size;
-
-		int still_picking = 1;
-		do {
-			list_pick = 0;
-			if(stack_size) {
-                con_printf(
-					"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm): ",
-					stack_offset, stack_offset + 1, list_count);
-			}
-			else {
-                con_printf("Pick a patch (1 - %u): ", list_count);
-			}
-			console_read(buf, sizeof(buf));
-
-			still_picking = sscanf(buf, "%u", &list_pick);
-		} while(
-			list_pick > list_count // Values out of range
-			|| (list_pick == 0 && buf[0] != '\0') // non-numbers
-		);
-
-		if(still_picking != 1) {
-			if(!stack_size) {
-                con_printf("\nPlease select at least one patch before continuing.\n");
+		PatchCategory* category = SelectCategory(repo_list, sel_stack);
+		if (!category) {
+			if (sel_stack.empty()) {
+				con_printf("\nPlease select at least one patch before continuing.\n");
 				pause();
 				continue;
 			}
 			break;
 		}
-		list_pick--;
-		patch_desc_t sel = list_order[list_pick];
-		if(list_pick < stack_offset) {
-			int ret;
-			log_printf("Resolving dependencies for %s/%s...\n", sel.repo_id, sel.patch_id);
-			ret = AddPatch(sel_stack, repo_list, sel);
-			if(ret) {
-				log_printf(
-					"\n"
-					"%d unmet dependencies. This configuration will most likely not work correctly!\n",
-					ret
-				);
-				pause();
-			}
-		} else {
-			RemovePatch(sel_stack, sel.patch_id);
+
+		patch_desc_t sel = SelectPatchInCategory(repo_list, *category);
+		if (!sel.patch_id) {
+			// Just loop back to the categories list
+			continue;
+		}
+
+		int ret;
+		log_printf("Resolving dependencies for %s/%s...\n", sel.repo_id, sel.patch_id);
+		ret = AddPatch(sel_stack, repo_list, sel);
+		if(ret) {
+			log_printf(
+				"\n"
+				"%d unmet dependencies. This configuration will most likely not work correctly!\n",
+				ret
+			);
+			pause();
 		}
 	}
 end:

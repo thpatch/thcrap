@@ -9,9 +9,21 @@
 
 #pragma once
 
+enum PatchFlags
+{
+	PATCH_FLAG_CORE       = 0x01,
+	PATCH_FLAG_LANGUAGE   = 0x02,
+	PATCH_FLAG_HIDDEN     = 0x04,
+	PATCH_FLAG_GAMEPLAY   = 0x08,
+	PATCH_FLAG_GRAPHICS   = 0x10,
+	PATCH_FLAG_FANFICTION = 0x20,
+	PATCH_FLAG_BGM        = 0x40,
+};
+
 typedef struct {
 	char *patch_id;
 	char *title;
+	unsigned int flags;
 } repo_patch_t;
 
 typedef struct {

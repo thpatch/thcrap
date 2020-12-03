@@ -18,6 +18,69 @@ char *RepoGetLocalFN(const char *id)
 	return strdup(repo.c_str());
 }
 
+unsigned int parse_flags(json_t *flags_js)
+{
+	const std::map<std::string, unsigned int> flags_map = {
+		{ "core",       PATCH_FLAG_CORE },
+		{ "language",   PATCH_FLAG_LANGUAGE },
+		{ "hidden",     PATCH_FLAG_HIDDEN },
+		{ "gameplay",   PATCH_FLAG_GAMEPLAY },
+		{ "graphics",   PATCH_FLAG_GRAPHICS },
+		{ "fanfiction", PATCH_FLAG_FANFICTION },
+		{ "bgm",        PATCH_FLAG_BGM },
+	};
+	unsigned int flags = 0;
+	size_t it;
+	json_t *flag;
+
+	json_flex_array_foreach(flags_js, it, flag) {
+		if (!json_is_string(flag)) {
+			continue ;
+		}
+
+		auto it = flags_map.find(json_string_value(flag));
+		if (it == flags_map.end()) {
+			continue ;
+		}
+
+		flags |= it->second;
+	}
+
+	return flags;
+}
+
+repo_patch_t *init_repo_patches(json_t *repo_js)
+{
+	json_t *patches_js = json_object_get(repo_js, "patches");
+	if (!json_is_object(patches_js)) {
+		return nullptr;
+	}
+
+	std::vector<repo_patch_t> patches_vector;
+	const char *patch_id;
+	json_t *patch_title;
+	json_object_foreach(patches_js, patch_id, patch_title) {
+		repo_patch_t patch = {};
+		patch.patch_id = strdup(patch_id);
+		patch.title = strdup(json_string_value(patch_title));
+
+		// TODO: load all the patchdata here, and use this in patch_init
+		json_t *flags_js = json_object_get(json_object_get(json_object_get(repo_js, "patchdata"), patch_id), "flags");
+		if (flags_js) {
+			patch.flags = parse_flags(flags_js);
+		}
+		patches_vector.push_back(patch);
+	}
+
+	auto patches = new repo_patch_t[patches_vector.size() + 1];
+	size_t i = 0;
+	for (i = 0; i < patches_vector.size(); i++) {
+		patches[i] = patches_vector[i];
+	}
+	patches[i].patch_id = nullptr;
+	return patches;
+}
+
 repo_t *RepoLoadJson(json_t *repo_js)
 {
 	if (!json_is_object(repo_js)) {
@@ -50,22 +113,7 @@ repo_t *RepoLoadJson(json_t *repo_js)
 	set_string_if_exist("contact",  repo->contact);
 	set_array_if_exist("servers",   repo->servers);
 	set_array_if_exist("neighbors", repo->neighbors);
-
-	json_t *patches = json_object_get(repo_js, "patches");
-	if (json_is_object(patches)) {
-		std::vector<repo_patch_t> patches_vector;
-		const char *patch_id;
-		json_t *patch_title;
-		json_object_foreach(patches, patch_id, patch_title) {
-			patches_vector.push_back({ strdup(patch_id), strdup(json_string_value(patch_title)) });
-		}
-		repo->patches = new repo_patch_t[patches_vector.size() + 1];
-		size_t i = 0;
-		for (i = 0; i < patches_vector.size(); i++) {
-			repo->patches[i] = patches_vector[i];
-		}
-		repo->patches[i].patch_id = nullptr;
-	}
+	repo->patches = init_repo_patches(repo_js);
 
 	return repo;
 }

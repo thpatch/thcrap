@@ -101,68 +101,68 @@ std::string EnterRunCfgFN(std::string& run_cfg_fn)
 
 struct progress_state_t
 {
-    // This callback can be called from a bunch of threads
-    std::mutex mutex;
-    std::map<std::string, std::chrono::steady_clock::time_point> files;
+	// This callback can be called from a bunch of threads
+	std::mutex mutex;
+	std::map<std::string, std::chrono::steady_clock::time_point> files;
 };
 
 bool progress_callback(progress_callback_status_t *status, void *param)
 {
-    using namespace std::literals;
-    progress_state_t *state = (progress_state_t*)param;
-    std::scoped_lock lock(state->mutex);
+	using namespace std::literals;
+	progress_state_t *state = (progress_state_t*)param;
+	std::scoped_lock lock(state->mutex);
 
-    switch (status->status) {
-        case GET_DOWNLOADING: {
-            // Using the URL instead of the filename is important, because we may
-            // be downloading the same file from 2 different URLs, and the UI
-            // could quickly become very confusing, with progress going backwards etc.
-            auto& file_time = state->files[status->url];
-            auto now = std::chrono::steady_clock::now();
-            if (file_time.time_since_epoch() == 0ms) {
-                file_time = now;
-            }
-            else if (now - file_time > 5s) {
-                log_printf("[%u/%u] %s: in progress (%ub/%ub)...\n", status->nb_files_downloaded, status->nb_files_total,
-                           status->url, status->file_progress, status->file_size);
-                file_time = now;
-            }
-            return true;
-        }
+	switch (status->status) {
+		case GET_DOWNLOADING: {
+			// Using the URL instead of the filename is important, because we may
+			// be downloading the same file from 2 different URLs, and the UI
+			// could quickly become very confusing, with progress going backwards etc.
+			auto& file_time = state->files[status->url];
+			auto now = std::chrono::steady_clock::now();
+			if (file_time.time_since_epoch() == 0ms) {
+				file_time = now;
+			}
+			else if (now - file_time > 5s) {
+				log_printf("[%u/%u] %s: in progress (%ub/%ub)...\n", status->nb_files_downloaded, status->nb_files_total,
+						   status->url, status->file_progress, status->file_size);
+				file_time = now;
+			}
+			return true;
+		}
 
-        case GET_OK:
-            log_printf("[%u/%u] %s/%s: OK (%ub)\n", status->nb_files_downloaded, status->nb_files_total, status->patch->id, status->fn, status->file_size);
-            return true;
+		case GET_OK:
+			log_printf("[%u/%u] %s/%s: OK (%ub)\n", status->nb_files_downloaded, status->nb_files_total, status->patch->id, status->fn, status->file_size);
+			return true;
 
-        case GET_CLIENT_ERROR:
+		case GET_CLIENT_ERROR:
 		case GET_SERVER_ERROR:
 		case GET_SYSTEM_ERROR:
 			log_printf("%s: %s\n", status->url, status->error);
-            return true;
-        case GET_CRC32_ERROR:
-            log_printf("%s: CRC32 error\n", status->url);
-            return true;
-        case GET_CANCELLED:
-            // Another copy of the file have been downloader earlier. Ignore.
-            return true;
-        default:
-            log_printf("%s: unknown status\n", status->url);
-            return true;
-    }
+			return true;
+		case GET_CRC32_ERROR:
+			log_printf("%s: CRC32 error\n", status->url);
+			return true;
+		case GET_CANCELLED:
+			// Another copy of the file have been downloader earlier. Ignore.
+			return true;
+		default:
+			log_printf("%s: unknown status\n", status->url);
+			return true;
+	}
 }
 
 
 char **games_json_to_array(json_t *games)
 {
-    char **array;
-    const char *key;
-    json_t *value;
+	char **array;
+	const char *key;
+	json_t *value;
 
-    array = strings_array_create();
-    json_object_foreach(games, key, value) {
-        array = strings_array_add(array, key);
-    }
-    return array;
+	array = strings_array_create();
+	json_object_foreach(games, key, value) {
+		array = strings_array_add(array, key);
+	}
+	return array;
 }
 
 #include <win32_utf8/entry_winmain.c>
@@ -175,7 +175,6 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	PathAppendA(current_dir, "..");
 	SetCurrentDirectoryU(current_dir);
 	VLA_FREE(current_dir);
-	int ret = 0;
 	i18n_lang_init(THCRAP_I18N_APPDOMAIN);
 	// Global URL cache to not download anything twice
 	json_t *url_cache = json_object();
@@ -198,7 +197,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	std::string run_cfg_fn_js;
 	char *run_cfg_str = NULL;
 
-    progress_state_t state;
+	progress_state_t state;
 
 	strings_mod_init();
 	log_init(0);
@@ -265,7 +264,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	pause();
 
 	CreateDirectoryU("repos", NULL);
-    repo_list = RepoDiscover_wrapper(start_repo);
+	repo_list = RepoDiscover_wrapper(start_repo);
 	if (!repo_list || !repo_list[0]) {
 		log_printf(_A("No patch repositories available...\n"));
 		pause();
@@ -275,14 +274,14 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	if (!sel_stack.empty()) {
 		log_printf(_A("Downloading game-independent data...\n"));
 		stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, &state);
-        state.files.clear();
+		state.files.clear();
 
 		/// Build the new run configuration
 		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
 		for (patch_desc_t& sel : sel_stack) {
 			patch_t patch = patch_build(&sel);
 			json_array_append_new(new_cfg_patches, patch_to_runconfig_json(&patch));
-            patch_free(&patch);
+			patch_free(&patch);
 		}
 	}
 
@@ -312,11 +311,11 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 	games = ConfigureLocateGames(cur_dir);
 
 	if (json_object_size(games) > 0 && (console_ask_yn(_A("Create shortcuts? (required for first run)")) == 'n' || !CreateShortcuts(run_cfg_fn.c_str(), games))) {
-        char **filter = games_json_to_array(games);
+		char **filter = games_json_to_array(games);
 		log_printf(_A("\nDownloading data specific to the located games...\n"));
 		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, &state);
-        state.files.clear();
-        strings_array_free(filter);
+		state.files.clear();
+		strings_array_free(filter);
 		log_printf(_A(
 			"\n"
 			"\n"
@@ -342,10 +341,10 @@ end:
 
 	VLA_FREE(cur_dir);
 	stack_free();
-    for (auto& sel : sel_stack) {
-        free(sel.repo_id);
-        free(sel.patch_id);
-    }
+	for (auto& sel : sel_stack) {
+		free(sel.repo_id);
+		free(sel.patch_id);
+	}
 	for (size_t i = 0; repo_list[i]; i++) {
 		RepoFree(repo_list[i]);
 	}

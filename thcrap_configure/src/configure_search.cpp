@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <stdexcept>
 #include "configure.h"
 
 static const char games_js_fn[] = "config/games.js";
@@ -26,7 +27,7 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		const char *loc;
 		json_t *val;
 		size_t i = 0;
-		size_t loc_num;
+		unsigned int loc_num;
 
 		log_printf("Found %d versions of %s:\n\n", num_versions, id);
 
@@ -66,7 +67,7 @@ typedef struct {
 	int attempts;
 } initial_path_t;
 
-int CALLBACK SetInitialBrowsePathProc(HWND hWnd, UINT uMsg, LPARAM lp, LPARAM pData)
+int CALLBACK SetInitialBrowsePathProc(HWND hWnd, UINT uMsg, LPARAM, LPARAM pData)
 {
 	initial_path_t *ip = (initial_path_t *)pData;
 	if(ip) {
@@ -130,8 +131,8 @@ static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pi
 }
 
 static int SelectFolderXP(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
-	BROWSEINFOW bi = { 0 };
-	initial_path_t ip = { 0 };
+	BROWSEINFOW bi = {};
+	initial_path_t ip = {};
 	ip.path = initial_path;
 
 	bi.lpszTitle = window_title;

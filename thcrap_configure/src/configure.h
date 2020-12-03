@@ -11,7 +11,7 @@
 #include <vector>
 #include "console.h"
 
-typedef std::list<patch_desc_t> patch_sel_stack_t;
+typedef std::vector<patch_desc_t> patch_sel_stack_t;
 
 // Writes [str] to a new file name [fn] in text mode.
 int file_write_text(const char *fn, const char *str);

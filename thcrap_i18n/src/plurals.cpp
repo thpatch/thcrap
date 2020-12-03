@@ -1,8 +1,8 @@
 #include "i18n_private.h"
 #include "resource.h"
 #define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-#include <Windowsx.h>
+#include <windows.h>
+#include <windowsx.h>
 #include <wchar.h>
 #include <stdio.h>
 #include <vector>

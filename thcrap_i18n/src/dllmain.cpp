@@ -18,7 +18,7 @@ static void tls_delete() {
 	free(TlsGetValue(g_tls));
 }
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID) {
 	switch (fdwReason) {
 	case DLL_PROCESS_ATTACH: {
 		g_instance = hinstDLL;

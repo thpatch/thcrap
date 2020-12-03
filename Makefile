@@ -29,7 +29,12 @@ CFLAGS += -I. -Ilibs -Ilibs/external_deps -Ithcrap/src -Ilibs/win32_utf8
 # TODO: fix and remove
 CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare
 
+# TODO: needed for CompareStringEx... Does that mean this function doesn't work on Windows XP?
+# (also needed for IFileDialog, but we do have a fallback for this one
+CFLAGS += -D_WIN32_WINNT=0x0600
+
 CXXFLAGS = $(CFLAGS) -std=c++17
+
 
 LDFLAGS += -o $@ -Lbin/bin
 
@@ -39,7 +44,7 @@ LDFLAGS += -o $@ -Lbin/bin
 # Everything else is pulled from dependencies
 # TODO: add bin/bin/thcrap_configure.exe bin/bin/thcrap_loader.exe bin/bin/thcrap_tsa.dll bin/bin/thcrap_bgmmod.dll
 # TODO: add build rules for bin/bin/thcrap_bgmmod.dll (required by thcrap_tsa)
-all: bin/bin/thcrap_test.exe bin/bin/thcrap_tasofro.dll bin/bin/thcrap_update.dll
+all: bin/bin/thcrap_configure.exe bin/bin/thcrap_test.exe bin/bin/thcrap_tasofro.dll bin/bin/thcrap_update.dll
 
 
 
@@ -101,6 +106,22 @@ endif
 
 bin/bin/thcrap.dll: bin/bin/win32_utf8.dll bin/bin/jansson.dll bin/bin/zlib-ng.dll thcrap/thcrap.def $(THCRAP_DLL_OBJS)
 	$(CXX) $(THCRAP_DLL_OBJS) thcrap/thcrap.def $(LDFLAGS) $(THCRAP_DLL_LDFLAGS)
+
+
+
+THCRAP_CONFIGURE_SRCS = \
+	thcrap_configure/src/configure.cpp \
+	thcrap_configure/src/configure_search.cpp \
+	thcrap_configure/src/select.cpp \
+	thcrap_configure/src/winconsole.cpp \
+
+THCRAP_CONFIGURE_OBJS = $(THCRAP_CONFIGURE_SRCS:.cpp=.o)
+$(THCRAP_CONFIGURE_OBJS): CXXFLAGS += -DTHCRAP_I18N_APPDOMAIN=\"thcrap_configure\"
+
+THCRAP_CONFIGURE_LDFLAGS = -lgdi32 -lshlwapi -lcomctl32 -lole32 -luuid -Lbin/bin -lwin32_utf8 -lthcrap -lthcrap_i18n -ljansson
+
+bin/bin/thcrap_configure.exe: bin/bin/thcrap.dll bin/bin/thcrap_i18n.dll $(THCRAP_CONFIGURE_OBJS)
+	$(CXX) $(THCRAP_CONFIGURE_OBJS) $(LDFLAGS) $(THCRAP_CONFIGURE_LDFLAGS)
 
 
 
@@ -205,6 +226,21 @@ THCRAP_TASOFRO_LDFLAGS += -Wl,--defsym=BP_bmpfont_fix_parameters=0
 
 bin/bin/thcrap_tasofro.dll: bin/bin/thcrap.dll bin/bin/libpng.dll bin/bin/bmpfont_create.dll bin/bin/act_nut_lib.dll thcrap_tasofro/thcrap_tasofro.def $(THCRAP_TASOFRO_OBJS)
 	$(CXX) $(THCRAP_TASOFRO_OBJS) thcrap_tasofro/thcrap_tasofro.def $(LDFLAGS) $(THCRAP_TASOFRO_LDFLAGS)
+
+
+
+THCRAP_I18N_SRCS = \
+	thcrap_i18n/src/plurals.cpp \
+	thcrap_i18n/src/i18n.cpp \
+	thcrap_i18n/src/files.cpp \
+	thcrap_i18n/src/dllmain.cpp \
+
+THCRAP_I18N_OBJS = $(THCRAP_I18N_SRCS:.cpp=.o)
+
+THCRAP_I18N_LDFLAGS = -shared -ljansson
+
+bin/bin/thcrap_i18n.dll: thcrap_i18n/thcrap_i18n.def $(THCRAP_I18N_OBJS)
+	$(CXX) $(THCRAP_I18N_OBJS) thcrap_i18n/thcrap_i18n.def $(LDFLAGS) $(THCRAP_I18N_LDFLAGS)
 
 
 
@@ -347,16 +383,18 @@ bin/bin/win32_utf8.dll: $(WIN32_UTF8_DLL_OBJS)
 
 clean:
 	rm -f \
-	$(THCRAP_DLL_OBJS)     bin/bin/thcrap.dll \
-	$(THCRAP_UPDATE_OBJS)  bin/bin/thcrap_update.dll \
-	$(THCRAP_TSA_OBJS)     bin/bin/thcrap_tsa.dll \
-	$(THCRAP_TASOFRO_OBJS) bin/bin/thcrap_tasofro.dll \
-	$(THCRAP_TEST_OBJS)    bin/bin/thcrap_test.exe \
-	$(BMPFONT_DLL_OBJS)    bin/bin/bmpfont_create.dll \
-	$(ACT_NUT_DLL_OBJS)    bin/bin/act_nut_lib.dll \
-	$(JANSSON_DLL_OBJS)    bin/bin/jansson.dll \
-	$(LIBPNG_DLL_OBJS)     bin/bin/libpng.dll \
-	$(ZLIB_NG_DLL_OBJS)    bin/bin/zlib-ng.dll \
-	$(WIN32_UTF8_DLL_OBJS) bin/bin/win32_utf8.dll \
+	$(THCRAP_DLL_OBJS)       bin/bin/thcrap.dll \
+	$(THCRAP_CONFIGURE_OBJS) bin/bin/thcrap_configure.exe \
+	$(THCRAP_UPDATE_OBJS)    bin/bin/thcrap_update.dll \
+	$(THCRAP_TSA_OBJS)       bin/bin/thcrap_tsa.dll \
+	$(THCRAP_TASOFRO_OBJS)   bin/bin/thcrap_tasofro.dll \
+	$(THCRAP_I18N_OBJS)      bin/bin/thcrap_i18n.dll \
+	$(THCRAP_TEST_OBJS)      bin/bin/thcrap_test.exe \
+	$(BMPFONT_DLL_OBJS)      bin/bin/bmpfont_create.dll \
+	$(ACT_NUT_DLL_OBJS)      bin/bin/act_nut_lib.dll \
+	$(JANSSON_DLL_OBJS)      bin/bin/jansson.dll \
+	$(LIBPNG_DLL_OBJS)       bin/bin/libpng.dll \
+	$(ZLIB_NG_DLL_OBJS)      bin/bin/zlib-ng.dll \
+	$(WIN32_UTF8_DLL_OBJS)   bin/bin/win32_utf8.dll \
 
 .PHONY: clean
