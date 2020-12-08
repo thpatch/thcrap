@@ -257,9 +257,8 @@ void Update::run(const std::list<const patch_t*>& patchs)
 
 patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
 {
-    if (!repo) {
-        patch_t empty_patch = { };
-        return empty_patch;
+    if (!repo || !repo->servers) {
+        return patch_build(sel);
     }
 
     std::string url = repo->servers[0];
