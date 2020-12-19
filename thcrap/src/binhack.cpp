@@ -274,6 +274,13 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			}
 
 			fp = (size_t)func_get(function);
+			if (!fp) {
+				str_address_ret_t address_error;
+				size_t address = str_address_value(function, NULL, &address_error);
+				if (address && address_error.error == STR_ADDRESS_ERROR_NONE) {
+					fp = address;
+				}
+			}
 			if(fp) {
 				fp += func_user_offset;
 				if(func_rel) {
