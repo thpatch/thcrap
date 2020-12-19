@@ -97,14 +97,12 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 			base = 16;
 			offset = 2;
 		}
-		// TODO: This should really scan all characters of the string,
-		// not just the first one.
-		else if('a' <= tolower(str[0]) && tolower(str[0]) <= 'f') {
+		else if(strpbrk(str + offset,"abcdefABCDEF")) {
 			base = 16;
 		}
 	}
 	errno = 0;
-	val += strtol(str + offset, endptr, base);
+	val += strtoul(str + offset, endptr, base);
 
 	if(ret) {
 		ret->error = STR_ADDRESS_ERROR_NONE;
