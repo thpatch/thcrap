@@ -345,8 +345,12 @@ int breakpoint_local_init(
 		key_len = slot - key;
 	}
 
-	strcpy(bp_key, "BP_");
-	strncat(bp_key, key, key_len);
+	if (strncmp(key, "codecave:", 9) != 0) {
+		strcpy(bp_key, "BP_");
+		strncat(bp_key, key, key_len);
+	} else {
+		strcpy(bp_key, key);
+	}
 	bp_local->func = (BreakpointFunc_t)func_get(bp_key);
 
 	bp_local->addr = (BYTE*)addr;
