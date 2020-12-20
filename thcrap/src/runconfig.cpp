@@ -134,14 +134,22 @@ static void runconfig_stage_load(json_t *stage_json)
 			continue;
 		}
 
-		if (!json_is_string(value)) {
+		codecave_t codecave;
+		if (json_is_string(value)) {
+			codecave.name = strdup(key);
+			codecave.code = strdup(json_string_value(value));
+			codecave.size = 0;
+		} else if (json_is_integer(value)) {
+			codecave.name = strdup(key);
+			codecave.code = NULL;
+			codecave.size = (size_t)json_integer_value(value);
+		} else {
 			// Don't print an error, this can be used for comments
 			continue;
 		}
 
-		codecave_t codecave;
-		codecave.name = strdup(key);
-		codecave.code = strdup(json_string_value(value));
+		
+		
 		stage.codecaves.push_back(codecave);
 	}
 

@@ -433,7 +433,11 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	// First pass: calc the complete codecave size
 	for (size_t i = 0; i < codecaves_count; i++) {
-		codecaves_local_state[i].size = binhack_calc_size(codecaves[i].code);
+		if (codecaves[i].code) {
+			codecaves_local_state[i].size = binhack_calc_size(codecaves[i].code);
+		} else {
+			codecaves_local_state[i].size = codecaves[i].size;
+		}
 
 		size_t temp = codecaves_local_state[i].size + codecave_sep_size_min;
 		codecaves_local_state[i].size_full = temp - (temp % 16) + 16;
@@ -464,7 +468,11 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	for (size_t i = 0; i < codecaves_count; i++) {
 		const char* code = codecaves[i].code;
-		binhack_render(current_cave, (size_t)current_cave, code);
+		if (code) {
+			binhack_render(current_cave, (size_t)current_cave, code);
+		} else {
+			memset(current_cave, 0, codecaves_local_state[i].size);
+		}
 
 		current_cave += codecaves_local_state[i].size;
 		for (size_t j = 0; j < codecaves_local_state[i].size_full - codecaves_local_state[i].size; j++) {

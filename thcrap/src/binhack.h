@@ -48,6 +48,8 @@ typedef struct {
 	char *name;
 	// Codecave code
 	char *code;
+	// Codecave size
+	size_t size;
 } codecave_t;
 
 // Returns whether [c] is a valid hexadecimal character
