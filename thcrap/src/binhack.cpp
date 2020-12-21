@@ -132,17 +132,39 @@ size_t binhack_calc_size(const char *binhack_str)
 	size_t size = 0;
 	const char *c = binhack_str;
 	const char *fs = NULL; // function start
+	const char *ex = NULL; // expression start
+	int ex_depth = 0;
 	if(!binhack_str) {
 		return 0;
 	}
 	while(*c) {
-		if(*c == '[' || *c == '<') {
+		if(!ex && *c == '[' || *c == '<') {
 			if(fs) {
 				log_printf("ERROR: Nested function pointers near %s!\n", c);
 				return 0;
 			}
 			fs = c + 1;
 			c++;
+		} else if(!fs && !ex && *c == '(') {
+			ex = c + 1;
+			++ex_depth;
+			++c;
+			if (strncmp(ex, "i8:", 3) == 0 || strncmp(ex, "u8:", 3) == 0) {
+				size += 1;
+				c += 3;
+			} else if (strncmp(ex, "i16:", 4) == 0 || strncmp(ex, "u16:", 4) == 0) {
+				size += 2;
+				c += 4;
+			} else if (strncmp(ex, "i32:", 4) == 0 || strncmp(ex, "u32:", 4) == 0 || strncmp(ex, "f32:", 4) == 0) {
+				size += 4;
+				c += 4;
+			} else if (strncmp(ex, "f64:", 4) == 0) {
+				size += 8;
+				c += 4;
+			} else {
+				log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+				size += 4;
+			}
 		} else if(fs) {
 			if((*c == ']' || *c == '>')) {
 				if (strncmp(fs, "option:", 7) == 0) {
@@ -166,6 +188,19 @@ size_t binhack_calc_size(const char *binhack_str)
 				}
 			}
 			c++;
+		} else if (ex) {
+			if (*c == '(') {
+				++ex_depth;
+			} else if (*c == ')') {
+				--ex_depth;
+				if (ex_depth == 0) {
+					ex = nullptr;
+				} else if (ex_depth < 0) {
+					log_printf("ERROR: invalid binhack expression\n");
+					return 0;
+				}
+			}
+			++c;
 		} else {
 			value_t val;
 			if(!consume_value(val, &c)) {
@@ -226,6 +261,10 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 {
 	const char *c = binhack_str;
 	const char *fs = NULL; // function start
+	const char *ex = NULL; // expression start
+	int ex_depth = 0;
+	patch_opt_val_t ex_ret;
+	ex_ret.t = PATCH_OPT_VAL_INVALID;
 	size_t written = 0;
 	int func_rel = 0; // Relative function pointer flag
 	int ret = 0;
@@ -238,7 +277,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	}
 
 	while(*c) {
-		if(*c == '[' || *c == '<') {
+		if(!ex && *c == '[' || *c == '<') {
 			func_user_offset = 0;
 			if(fs) {
 				log_printf("ERROR: Nested function pointers near %s!\n", c);
@@ -252,7 +291,41 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			}
 			fs = c + 1;
 			c++;
-		} else if(fs && (*c == ']' || *c == '>')) {
+		} else if (!fs && !ex && *c == '(') {
+			ex = c + 1;
+			++ex_depth;
+			++c;
+			if (strncmp(ex, "i8:", 3) == 0 || strncmp(ex, "u8:", 3) == 0) {
+				ex_ret.t = PATCH_OPT_VAL_BYTE;
+				ex_ret.size = 1;
+				c += 3;
+				ex += 3;
+			} else if (strncmp(ex, "i16:", 4) == 0 || strncmp(ex, "u16:", 4) == 0) {
+				ex_ret.t = PATCH_OPT_VAL_WORD;
+				ex_ret.size = 2;
+				c += 4;
+				ex += 4;
+			} else if (strncmp(ex, "i32:", 4) == 0 || strncmp(ex, "u32:", 4) == 0) {
+				ex_ret.t = PATCH_OPT_VAL_DWORD;
+				ex_ret.size = 4;
+				c += 4;
+				ex += 4;
+			} else if (strncmp(ex, "f32:", 4) == 0) {
+				ex_ret.t = PATCH_OPT_VAL_FLOAT;
+				ex_ret.size = 4;
+				c += 4;
+				ex += 4;
+			} else if (strncmp(ex, "f64:", 4) == 0) {
+				ex_ret.t = PATCH_OPT_VAL_DOUBLE;
+				ex_ret.size = 8;
+				c += 4;
+				ex += 4;
+			} else {
+				log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+				ex_ret.t = PATCH_OPT_VAL_DWORD;
+				ex_ret.size = 4;
+			}
+		} else if (fs && (*c == ']' || *c == '>')) {
 			VLA(char, function, func_name_len + 1);
 			defer({ VLA_FREE(function); });
 			size_t fp = 0;
@@ -314,6 +387,37 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 		} else if(fs) {
 			c++;
 			func_name_len++;
+		} else if (ex) {
+			++func_name_len;
+			if (*c == '(') {
+				++ex_depth;
+			} else if (*c == ')') {
+				--ex_depth;
+				if (ex_depth == 0) {
+					--func_name_len;
+					VLA(char, expression, func_name_len);
+					strncpy(expression, ex, func_name_len);
+					expression[func_name_len] = '\0';
+					ex_ret.val.dword = eval_expr((const char**)&expression, NULL, '\0');
+					VLA_FREE(expression);
+					switch (ex_ret.t) {
+						case PATCH_OPT_VAL_FLOAT:
+							ex_ret.val.f = (float)ex_ret.val.dword;
+							break;
+						case PATCH_OPT_VAL_DOUBLE:
+							ex_ret.val.d = (double)ex_ret.val.dword;
+							break;
+					}
+					memcpy(binhack_buf, &ex_ret.val.byte_array, ex_ret.size);
+					binhack_buf += ex_ret.size;
+					ex = NULL;
+					func_name_len = 0;
+				} else if (ex_depth < 0) {
+					log_printf("ERROR: invalid binhack expression\n");
+					return 0;
+				}
+			}
+			++c;
 		} else {
 			value_t val;
 			if(!consume_value(val, &c)) {
@@ -581,10 +685,9 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		if (!codecaves_local_state[i].skip) {
 			const char* code = codecaves[i].code;
 			const CodecaveAccessType access = codecaves[i].access_type;
+			memset(current_cave[access], codecaves[i].fill, codecaves_local_state[i].size);
 			if (code) {
-				binhack_render(current_cave[access], (size_t)current_cave, code);
-			} else {
-				memset(current_cave[access], codecaves[i].fill, codecaves_local_state[i].size);
+				binhack_render(current_cave[access], (size_t)current_cave[access], code);
 			}
 
 			current_cave[access] += codecaves_local_state[i].size;

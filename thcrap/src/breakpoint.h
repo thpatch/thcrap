@@ -99,6 +99,8 @@ typedef struct {
 // like the endptr parameter of strtol(), and can be a nullptr if not needed.
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
+size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end);
+
 /// Register and memory values from JSON
 /// ====================================
 // Calls reg() on the JSON string [val].

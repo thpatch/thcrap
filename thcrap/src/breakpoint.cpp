@@ -67,7 +67,7 @@ size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr)
 	return NULL;
 }
 
-static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
+size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 {
 	const char *expr = *expr_ptr;
 	const char *fs = NULL;
