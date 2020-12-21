@@ -518,22 +518,26 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	// First pass: calc the complete codecave size
 	for (size_t i = 0; i < codecaves_count; i++) {
-		log_printf("First pass on codecave %s\n", codecaves[i].name);
-		if (!codecaves[i].code && !codecaves[i].size) {
+		const char* code = codecaves[i].code;
+		size_t size = codecaves[i].size;
+		if (!code && !size) {
 			codecaves_local_state[i].skip = true;
 			continue;
 		}
-		size_t temp = codecaves[i].size * codecaves[i].count;
-		size_t calc_temp = codecaves[i].code ? binhack_calc_size(codecaves[i].code) : 0;
-		codecaves_local_state[i].size = temp > calc_temp ? temp : calc_temp;
-		if (!codecaves_local_state[i].size) {
+		size *= codecaves[i].count;
+		size_t calc_size = code ? binhack_calc_size(code) : 0;
+		if (calc_size > size) {
+			size = calc_size;
+		}
+		codecaves_local_state[i].size = size;
+		if (!size) {
 			codecaves_local_state[i].skip = true;
 			continue;
 		}
 		codecaves_local_state[i].skip = false;
 
-		temp = codecaves_local_state[i].size + codecave_sep_size_min;
-		codecaves_local_state[i].size_full = temp - (temp % 16) + 16;
+		size += codecave_sep_size_min;
+		codecaves_local_state[i].size_full = size - (size % 16) + 16;
 		codecaves_total_size[codecaves[i].access_type] += codecaves_local_state[i].size_full;
 	}
 
@@ -554,15 +558,15 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	for (size_t i = 0; i < codecaves_count; i++) {
 		if (!codecaves_local_state[i].skip) {
-			log_printf("Second pass on codecave %s\n", codecaves[i].name);
 			const char *codecave_name = codecaves[i].name;
+			const CodecaveAccessType access = codecaves[i].access_type;
 
 			VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
 			strcpy(codecave_full_name, "codecave:");
 			strcpy(codecave_full_name + 9, codecave_name);
-			func_add(codecave_full_name, (size_t)current_cave[codecaves[i].access_type]);
+			func_add(codecave_full_name, (size_t)current_cave[access]);
 
-			current_cave[codecaves[i].access_type] += codecaves_local_state[i].size_full;
+			current_cave[access] += codecaves_local_state[i].size_full;
 
 			VLA_FREE(codecave_full_name);
 		}
@@ -575,17 +579,17 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	for (size_t i = 0; i < codecaves_count; i++) {
 		if (!codecaves_local_state[i].skip) {
-			log_printf("Third pass on codecave %s\n", codecaves[i].name);
 			const char* code = codecaves[i].code;
+			const CodecaveAccessType access = codecaves[i].access_type;
 			if (code) {
-				binhack_render(current_cave[codecaves[i].access_type], (size_t)current_cave, code);
+				binhack_render(current_cave[access], (size_t)current_cave, code);
 			} else {
-				memset(current_cave[codecaves[i].access_type], codecaves[i].fill, codecaves_local_state[i].size);
+				memset(current_cave[access], codecaves[i].fill, codecaves_local_state[i].size);
 			}
 
-			current_cave[codecaves[i].access_type] += codecaves_local_state[i].size;
+			current_cave[access] += codecaves_local_state[i].size;
 			for (size_t j = 0; j < codecaves_local_state[i].size_full - codecaves_local_state[i].size; j++) {
-				*current_cave[codecaves[i].access_type] = 0xCC; current_cave[codecaves[i].access_type]++;
+				*current_cave[access] = 0xCC; current_cave[access]++;
 			}
 		}
 	}
@@ -593,20 +597,9 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	VLA_FREE(codecaves_local_state);
 
 	const DWORD const page_access_type_array[8] = { PAGE_NOACCESS, PAGE_READONLY, PAGE_WRITECOPY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_WRITECOPY, PAGE_EXECUTE_READWRITE };
-	char* debug_string_array[8] = {
-		"NOACCESS",
-		"READONLY",
-		"WRITECOPY",
-		"READWRITE",
-		"EXECUTE",
-		"EXECUTE_READ",
-		"EXECUTE_WRITECOPY",
-		"EXECUTE_READWRITE"
-	};
 	DWORD idgaf;
 
 	for (int i = 0; i < 8; ++i) {
-		log_printf("Setting %s: %p %u\n", debug_string_array[i], codecave_buf[i], codecaves_total_size[i]);
 		if (codecave_buf[i]) {
 			VirtualProtect(codecave_buf[i], codecaves_total_size[i], page_access_type_array[i], &idgaf);
 		}

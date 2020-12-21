@@ -43,15 +43,6 @@ typedef struct {
 	char **addr;
 } binhack_t;
 
-//typedef struct {
-//	// Codecave name
-//	char *name;
-//	// Codecave code
-//	char *code;
-//	// Codecave size
-//	size_t size;
-//} codecave_t;
-
 typedef enum {
 	NOACCESS = 0,
 	READONLY = 1,
