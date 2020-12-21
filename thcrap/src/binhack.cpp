@@ -10,6 +10,7 @@
 #include "thcrap.h"
 #include <math.h>
 #include <locale.h>
+#include <string.h>
 
 /*
  * Grumble, grumble, C is garbage and will only do string→float conversion
@@ -412,6 +413,87 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 	return failed;
 }
 
+bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
+	if (!json_is_object(in)) {
+		log_printf("codecave %s: not an object\n", name);
+		return false;
+	}
+
+	bool ignore = json_is_true(json_object_get(in, "ignore"));
+
+	if (ignore) {
+		log_printf("codecave %s: ignored\n", name);
+		return false;
+	}
+
+	const char *access = json_object_get_string(in, "access");
+	CodecaveAccessType access_val = EXECUTE_READWRITE;
+
+	if (access) {
+		BYTE temp = !!strpbrk(access, "rR");
+		temp += !!strpbrk(access, "wW") << 1;
+		temp += !!strpbrk(access, "eE") << 2;
+		access_val = (CodecaveAccessType)temp;
+	}
+
+	json_t *j_temp = json_object_get(in, "size");
+	size_t size_val = 0;
+
+	if (j_temp) {
+		if (!json_is_integer(j_temp) && !json_is_string(j_temp)) {
+			log_printf("ERROR: invalid value specified for size of codecave %s\n", name);
+			return false;
+		}
+		size_val = json_hex_value(j_temp);
+		if (!size_val) {
+			log_printf("codecave %s with size 0 ignored\n", name);
+			return false;
+		}
+	}
+
+	j_temp = json_object_get(in, "fill");
+	BYTE fill_val = 0;
+
+	if (j_temp) {
+		if (!json_is_integer(j_temp) && !json_is_string(j_temp)) {
+			log_printf("ERROR: invalid value specified for fill value of codecave %s\n", name);
+			return false;
+		}
+		fill_val = (BYTE)json_hex_value(j_temp);
+	}
+
+	j_temp = json_object_get(in, "count");
+	size_t count_val = 1;
+
+	if (j_temp) {
+		if (!json_is_integer(j_temp) && !json_is_string(j_temp)) {
+			log_printf("ERROR: invalid value specified for count of codecave %s\n", name);
+			return false;
+		}
+		count_val = json_hex_value(j_temp);
+		if (!count_val) {
+			log_printf("codecave %s with count 0 ignored\n", name);
+			return false;
+		}
+	}
+
+	const char *code = json_object_get_string(in, "code");
+
+	if (code) {
+		out->code = strdup(code);
+	} else {
+		out->code = NULL;
+	}
+
+	out->name = strdup(name);
+	out->access_type = access_val;
+	out->size = size_val;
+	out->count = count_val;
+	out->fill = fill_val;
+	log_printf("Codecave data:\nName:\t%s\nAccess:\t%u\nSize:\t%u\nCount:\t%u\nFill:\t%u\nCode:\t%s\n", name, access_val, size_val, count_val, fill_val, code);
+	return true;
+}
+
 int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	if (codecaves_count == 0) {
 		return 0;
@@ -421,11 +503,14 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	log_printf("------------------------\n");
 
 	const size_t codecave_sep_size_min = 3;
-	size_t codecaves_total_size = 0;
+
+	//One size for each access flag combo
+	size_t codecaves_total_size[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 
 	struct codecave_local_state_t {
 		size_t size;
 		size_t size_full;
+		bool skip;
 	};
 
 	VLA(codecave_local_state_t, codecaves_local_state, (codecaves_count + 1) * sizeof(codecave_local_state_t));
@@ -433,55 +518,99 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	// First pass: calc the complete codecave size
 	for (size_t i = 0; i < codecaves_count; i++) {
-		if (codecaves[i].code) {
-			codecaves_local_state[i].size = binhack_calc_size(codecaves[i].code);
-		} else {
-			codecaves_local_state[i].size = codecaves[i].size;
+		log_printf("First pass on codecave %s\n", codecaves[i].name);
+		if (!codecaves[i].code && !codecaves[i].size) {
+			codecaves_local_state[i].skip = true;
+			continue;
 		}
+		size_t temp = codecaves[i].size * codecaves[i].count;
+		size_t calc_temp = codecaves[i].code ? binhack_calc_size(codecaves[i].code) : 0;
+		codecaves_local_state[i].size = temp > calc_temp ? temp : calc_temp;
+		if (!codecaves_local_state[i].size) {
+			codecaves_local_state[i].skip = true;
+			continue;
+		}
+		codecaves_local_state[i].skip = false;
 
-		size_t temp = codecaves_local_state[i].size + codecave_sep_size_min;
+		temp = codecaves_local_state[i].size + codecave_sep_size_min;
 		codecaves_local_state[i].size_full = temp - (temp % 16) + 16;
-
-		codecaves_total_size += codecaves_local_state[i].size_full;
+		codecaves_total_size[codecaves[i].access_type] += codecaves_local_state[i].size_full;
 	}
 
-	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	BYTE* codecave_buf[8];
+	for (int i = 0; i < 8; ++i) {
+		if (codecaves_total_size[i]) {
+			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_total_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+		} else {
+			codecave_buf[i] = NULL;
+		}
+	}
 
 	// Second pass: Gather the addresses, so that codecaves can refer to each other.
-	BYTE *current_cave = codecave_buf;
+	BYTE* current_cave[8];
+	for (int i = 0; i < 8; ++i) {
+		current_cave[i] = codecave_buf[i];
+	}
 
 	for (size_t i = 0; i < codecaves_count; i++) {
-		const char *codecave_name = codecaves[i].name;
-		
-		VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
-		strcpy(codecave_full_name, "codecave:");
-		strcpy(codecave_full_name + 9, codecave_name);
-		func_add(codecave_full_name, (size_t)current_cave);
+		if (!codecaves_local_state[i].skip) {
+			log_printf("Second pass on codecave %s\n", codecaves[i].name);
+			const char *codecave_name = codecaves[i].name;
 
-		current_cave += codecaves_local_state[i].size_full;
+			VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
+			strcpy(codecave_full_name, "codecave:");
+			strcpy(codecave_full_name + 9, codecave_name);
+			func_add(codecave_full_name, (size_t)current_cave[codecaves[i].access_type]);
 
-		VLA_FREE(codecave_full_name);
+			current_cave[codecaves[i].access_type] += codecaves_local_state[i].size_full;
+
+			VLA_FREE(codecave_full_name);
+		}
 	}
 
 	// Third pass: Write all of the code
-	current_cave = codecave_buf;
+	for (int i = 0; i < 8; ++i) {
+		current_cave[i] = codecave_buf[i];
+	}
 
 	for (size_t i = 0; i < codecaves_count; i++) {
-		const char* code = codecaves[i].code;
-		if (code) {
-			binhack_render(current_cave, (size_t)current_cave, code);
-		} else {
-			memset(current_cave, 0, codecaves_local_state[i].size);
-		}
+		if (!codecaves_local_state[i].skip) {
+			log_printf("Third pass on codecave %s\n", codecaves[i].name);
+			const char* code = codecaves[i].code;
+			if (code) {
+				binhack_render(current_cave[codecaves[i].access_type], (size_t)current_cave, code);
+			} else {
+				memset(current_cave[codecaves[i].access_type], codecaves[i].fill, codecaves_local_state[i].size);
+			}
 
-		current_cave += codecaves_local_state[i].size;
-		for (size_t j = 0; j < codecaves_local_state[i].size_full - codecaves_local_state[i].size; j++) {
-			*current_cave = 0xCC; current_cave++;
+			current_cave[codecaves[i].access_type] += codecaves_local_state[i].size;
+			for (size_t j = 0; j < codecaves_local_state[i].size_full - codecaves_local_state[i].size; j++) {
+				*current_cave[codecaves[i].access_type] = 0xCC; current_cave[codecaves[i].access_type]++;
+			}
 		}
 	}
 
 	VLA_FREE(codecaves_local_state);
 
+	const DWORD const page_access_type_array[8] = { PAGE_NOACCESS, PAGE_READONLY, PAGE_WRITECOPY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_WRITECOPY, PAGE_EXECUTE_READWRITE };
+	char* debug_string_array[8] = {
+		"NOACCESS",
+		"READONLY",
+		"WRITECOPY",
+		"READWRITE",
+		"EXECUTE",
+		"EXECUTE_READ",
+		"EXECUTE_WRITECOPY",
+		"EXECUTE_READWRITE"
+	};
+	DWORD idgaf;
+
+	for (int i = 0; i < 8; ++i) {
+		log_printf("Setting %s: %p %u\n", debug_string_array[i], codecave_buf[i], codecaves_total_size[i]);
+		if (codecave_buf[i]) {
+			VirtualProtect(codecave_buf[i], codecaves_total_size[i], page_access_type_array[i], &idgaf);
+		}
+	}
 	return 0;
 }
 

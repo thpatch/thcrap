@@ -43,6 +43,26 @@ typedef struct {
 	char **addr;
 } binhack_t;
 
+//typedef struct {
+//	// Codecave name
+//	char *name;
+//	// Codecave code
+//	char *code;
+//	// Codecave size
+//	size_t size;
+//} codecave_t;
+
+typedef enum {
+	NOACCESS = 0,
+	READONLY = 1,
+	WRITECOPY = 2,
+	READWRITE = 3,
+	EXECUTE = 4,
+	EXECUTE_READ = 5,
+	EXECUTE_WRITECOPY = 6,
+	EXECUTE_READWRITE = 7
+} CodecaveAccessType;
+
 typedef struct {
 	// Codecave name
 	char *name;
@@ -50,6 +70,12 @@ typedef struct {
 	char *code;
 	// Codecave size
 	size_t size;
+	// Codecave count
+	size_t count;
+	// Codecave fill
+	BYTE fill;
+	// Read, write, execute flags
+	CodecaveAccessType access_type;
 } codecave_t;
 
 // Returns whether [c] is a valid hexadecimal character
@@ -87,3 +113,6 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 //		}
 // }
 int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
+
+// Parses a json codecave entry and returns a codecave object
+bool codecave_from_json(const char *name, json_t *in, codecave_t *out);
