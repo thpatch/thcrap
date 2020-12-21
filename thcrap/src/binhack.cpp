@@ -192,7 +192,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	const char *title = json_object_get_string(in, "title");;
 	const char *code = json_object_get_string(in, "code");
 	const char *expected = json_object_get_string(in, "expected");
-	bool ignore = json_is_true(json_object_get(in, "ignore"));
+	bool ignore = json_object_get_boolean_cast(in, "ignore");
 
 	if (ignore) {
 		log_printf("binhack %s: ignored\n", name);
@@ -419,7 +419,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		return false;
 	}
 
-	bool ignore = json_is_true(json_object_get(in, "ignore"));
+	bool ignore = json_object_get_boolean_cast(in, "ignore");
 
 	if (ignore) {
 		log_printf("codecave %s: ignored\n", name);
@@ -444,7 +444,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			log_printf("ERROR: invalid value specified for size of codecave %s\n", name);
 			return false;
 		}
-		size_val = json_hex_value(j_temp);
+		size_val = json_immediate_value_no_regs(j_temp);
 		if (!size_val) {
 			log_printf("codecave %s with size 0 ignored\n", name);
 			return false;
@@ -470,7 +470,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			log_printf("ERROR: invalid value specified for count of codecave %s\n", name);
 			return false;
 		}
-		count_val = json_hex_value(j_temp);
+		count_val = json_immediate_value_no_regs(j_temp);
 		if (!count_val) {
 			log_printf("codecave %s with count 0 ignored\n", name);
 			return false;
@@ -490,7 +490,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	out->size = size_val;
 	out->count = count_val;
 	out->fill = fill_val;
-	log_printf("Codecave data:\nName:\t%s\nAccess:\t%u\nSize:\t%u\nCount:\t%u\nFill:\t%u\nCode:\t%s\n", name, access_val, size_val, count_val, fill_val, code);
+
 	return true;
 }
 
@@ -596,7 +596,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	VLA_FREE(codecaves_local_state);
 
-	const DWORD const page_access_type_array[8] = { PAGE_NOACCESS, PAGE_READONLY, PAGE_WRITECOPY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_WRITECOPY, PAGE_EXECUTE_READWRITE };
+	const DWORD page_access_type_array[8] = { PAGE_NOACCESS, PAGE_READONLY, PAGE_WRITECOPY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_WRITECOPY, PAGE_EXECUTE_READWRITE };
 	DWORD idgaf;
 
 	for (int i = 0; i < 8; ++i) {

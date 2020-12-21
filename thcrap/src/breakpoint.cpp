@@ -70,6 +70,8 @@ size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr)
 static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 {
 	const char *expr = *expr_ptr;
+	const char *fs = NULL;
+	patch_opt_val_t *option = NULL;
 	size_t value = 0;
 	unsigned char op = '+';
 
@@ -104,23 +106,46 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 	/// ----------------
 
 	while (*expr && *expr != end) {
-		consume_whitespace();
-		if(consume("==")) {
-			op = EQ;
-			continue;
-		} else if(consume("!=")) {
-			op = NE;
-			continue;
-		} else if(consume("<=")) {
-			op = LE;
-			continue;
-		} else if(consume(">=")) {
-			op = GE;
-			continue;
-		} else if (strchr("+-*/%<>", *expr)) {
-			op = *expr;
-			expr++;
-			continue;
+		if (fs) {
+			if (*expr != '>') {
+				++expr;
+				continue;
+			}
+			size_t opt_name_len = expr - fs;
+			VLA(char, opt_name, opt_name_len);
+			strncpy(opt_name, fs, opt_name_len);
+			opt_name[opt_name_len] = 0;
+			option = patch_opt_get(opt_name);
+			if (!option) {
+				log_printf("ERROR: option %s not found\n", opt_name);
+			}
+			VLA_FREE(opt_name);
+			fs = NULL;
+		} else {
+			consume_whitespace();
+			if (consume("==")) {
+				op = EQ;
+				continue;
+			} else if (consume("!=")) {
+				op = NE;
+				continue;
+			} else if (consume("<")) {
+				if (consume("=")) {
+					op = LE;
+				} else if (consume("option:")) {
+					fs = expr;
+				} else {
+					op = '<';
+				}
+				continue;
+			} else if (consume(">=")) {
+				op = GE;
+				continue;
+			} else if (strchr("+-*/%>", *expr)) {
+				op = *expr;
+				expr++;
+				continue;
+			}
 		}
 
 		auto ptr_size = sizeof(size_t);
@@ -147,6 +172,17 @@ static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
 		}
 		else if ((cur_value = (size_t)reg(regs, expr, &expr)) != 0) {
 			cur_value = dereference(cur_value, ptr_size);
+		}
+		else if (option) {
+			switch (option->t) {
+				case PATCH_OPT_VAL_BYTE: cur_value = option->val.byte; break;
+				case PATCH_OPT_VAL_WORD: cur_value = option->val.word; break;
+				case PATCH_OPT_VAL_DWORD: cur_value = option->val.dword; break;
+				case PATCH_OPT_VAL_FLOAT: cur_value = (size_t)option->val.f; break;
+				case PATCH_OPT_VAL_DOUBLE: cur_value = (size_t)option->val.d; break;
+			}
+			option = NULL;
+			++expr;
 		}
 		else {
 			str_address_ret_t addr_ret;

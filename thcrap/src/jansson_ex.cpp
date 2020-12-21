@@ -28,6 +28,36 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
+size_t json_immediate_value_no_regs(json_t *val)
+{
+	return json_immediate_value(val, NULL);
+}
+
+size_t json_object_get_immediate_no_regs(json_t *object, const char *key)
+{
+	return json_immediate_value_no_regs(json_object_get(object, key));
+}
+
+bool json_boolean_cast(json_t *val)
+{
+	if (!val) {
+		return false;
+	} else if (json_is_boolean(val)) {
+		return json_boolean_value(val);
+	} else if (json_is_string(val)) {
+		return (bool)json_immediate_value_no_regs(val);
+	} else if (json_is_number(val)) {
+		return (bool)json_number_value(val);
+	} else {
+		return false;
+	}
+}
+
+bool json_object_get_boolean_cast(json_t *object, const char *key)
+{
+	return json_boolean_cast(json_object_get(object, key));
+}
+
 int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);

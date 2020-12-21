@@ -28,6 +28,11 @@ json_t* json_decref_safe(json_t *json);
   */
 size_t json_hex_value(json_t *val);
 
+size_t json_immediate_value_no_regs(json_t *val);
+size_t json_object_get_immediate_no_regs(json_t *object, const char *key);
+bool json_boolean_cast(json_t *val);
+bool json_object_get_boolean_cast(json_t *object, const char *key);
+
 /// Arrays
 /// ------
 // Like json_array_set(_new), but expands the array if necessary.

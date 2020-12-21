@@ -636,7 +636,7 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		json_t *j_val_val = json_object_get(j_val, "val");
-		if (!(json_is_number(j_val_val) || json_is_string(j_val_val))) {
+		if (!(json_is_number(j_val_val) || json_is_string(j_val_val) || json_is_boolean(j_val_val))) {
 			log_printf("ERROR: invalid format for value of option %s\n", key);
 			continue;
 		}
@@ -645,11 +645,15 @@ void patch_opts_from_json(json_t *opts) {
 		entry.size = strtol(tname + 1, nullptr, 10) / 8;
 		switch (tolower(tname[0])) {
 		case 'i': case 'u': {
-			if (!json_is_integer(j_val_val) && !json_is_string(j_val_val)) {
+			if (!json_is_integer(j_val_val) && !json_is_string(j_val_val) && !json_is_boolean(j_val_val)) {
 				log_printf("ERROR: invalid value specified for integer option %s\n", key);
 				continue;
 			}
-			entry.val.dword = json_hex_value(j_val_val);
+			if (json_is_boolean(j_val_val)) {
+				entry.val.dword = json_boolean_value(j_val_val);
+			} else {
+				entry.val.dword = json_hex_value(j_val_val);
+			}
 			switch (entry.size) {
 			case 1: entry.t = PATCH_OPT_VAL_BYTE;  break;
 			case 2: entry.t = PATCH_OPT_VAL_WORD;  break;
@@ -666,7 +670,10 @@ void patch_opts_from_json(json_t *opts) {
 			case JSON_STRING:
 				real_val = atof(json_string_value(j_val_val));
 				break;
-
+			case JSON_TRUE:
+			case JSON_FALSE:
+				real_val = (double)json_boolean_value(j_val_val);
+				break;
 			case JSON_INTEGER:
 			case JSON_REAL:
 				real_val = json_number_value(j_val_val);
