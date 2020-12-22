@@ -28,36 +28,6 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
-size_t json_immediate_value_no_regs(json_t *val)
-{
-	return json_immediate_value(val, NULL);
-}
-
-size_t json_object_get_immediate_no_regs(json_t *object, const char *key)
-{
-	return json_immediate_value_no_regs(json_object_get(object, key));
-}
-
-bool json_boolean_cast(json_t *val)
-{
-	if (!val) {
-		return false;
-	} else if (json_is_boolean(val)) {
-		return json_boolean_value(val);
-	} else if (json_is_string(val)) {
-		return (bool)json_immediate_value_no_regs(val);
-	} else if (json_is_number(val)) {
-		return (bool)json_number_value(val);
-	} else {
-		return false;
-	}
-}
-
-bool json_object_get_boolean_cast(json_t *object, const char *key)
-{
-	return json_boolean_cast(json_object_get(object, key));
-}
-
 int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
@@ -373,4 +343,89 @@ static int __cdecl dump_to_log(const char *buffer, size_t size, void*)
 int json_dump_log(const json_t *json, size_t flags)
 {
 	return json_dump_callback(json, dump_to_log, NULL, flags);
+}
+
+typedef struct {
+	bool boolean;
+	size_t integer;
+	double real;
+} json_eval_ret;
+
+static json_eval_ret json_evaluate(json_t *json, json_type type)
+{
+	json_eval_ret ret;
+	if (!json || json_is_null(json)) {
+		switch (type) {
+			case JSON_REAL:		ret.real = (double)false;	break;
+			case JSON_FALSE:	ret.integer = true;			break;
+			case JSON_TRUE:
+			case JSON_INTEGER:	ret.integer = false;		break;
+		}
+	} else if (json_is_boolean(json)) {
+		switch (type) {
+			case JSON_REAL:		ret.real = (double)json_boolean_value(json);	break;
+			case JSON_FALSE:	ret.integer = !json_boolean_value(json);		break;
+			case JSON_TRUE:
+			case JSON_INTEGER:	ret.integer = json_boolean_value(json);			break;
+		}
+	} else if (json_is_integer(json)) {
+		switch (type) {
+			case JSON_REAL:		ret.real = (double)json_integer_value(json);	break;
+			case JSON_FALSE:	ret.integer = !json_integer_value(json);		break;
+			case JSON_TRUE:		ret.integer = (bool)json_integer_value(json);	break;
+			case JSON_INTEGER:	ret.integer = (size_t)json_integer_value(json);	break;
+		}
+	} else if (json_is_real(json)) {
+		switch (type) {
+			case JSON_REAL:		ret.real = json_real_value(json);			break;
+			case JSON_FALSE:	ret.integer = !json_real_value(json);		break;
+			case JSON_TRUE:		ret.integer = (bool)json_real_value(json);	break;
+			case JSON_INTEGER:	ret.integer = (int)json_real_value(json);	break;
+		}
+	} else if (json_is_string(json)) {
+		switch (type) {
+			case JSON_REAL:		ret.real = (double)json_immediate_value(json, NULL);	break;
+			case JSON_FALSE:	ret.integer = !json_immediate_value(json, NULL);		break;
+			case JSON_TRUE:		ret.integer = (bool)json_immediate_value(json, NULL);	break;
+			case JSON_INTEGER:	ret.integer = json_immediate_value(json, NULL);			break;
+		}
+	} else {
+		switch (type) {
+			case JSON_REAL:		ret.real = (double)true;	break;
+			case JSON_FALSE:	ret.integer = false;		break;
+			case JSON_TRUE:
+			case JSON_INTEGER:	ret.integer = true;			break;
+		}
+	}
+	return ret;
+}
+
+bool json_evaluate_bool(json_t *val)
+{
+	return (bool)json_evaluate(val, JSON_TRUE).integer;
+}
+
+bool json_object_get_evaluate_bool(json_t *object, const char *key)
+{
+	return json_evaluate_bool(json_object_get(object, key));
+}
+
+size_t json_evaluate_int(json_t *val)
+{
+	return json_evaluate(val, JSON_INTEGER).integer;
+}
+
+size_t json_object_get_evaluate_int(json_t *object, const char *key)
+{
+	return json_evaluate_int(json_object_get(object, key));
+}
+
+double json_evaluate_real(json_t *val)
+{
+	return json_evaluate(val, JSON_REAL).real;
+}
+
+double json_object_get_evaluate_real(json_t *object, const char *key)
+{
+	return json_evaluate_real(json_object_get(object, key));
 }

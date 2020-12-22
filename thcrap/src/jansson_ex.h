@@ -28,11 +28,6 @@ json_t* json_decref_safe(json_t *json);
   */
 size_t json_hex_value(json_t *val);
 
-size_t json_immediate_value_no_regs(json_t *val);
-size_t json_object_get_immediate_no_regs(json_t *object, const char *key);
-bool json_boolean_cast(json_t *val);
-bool json_object_get_boolean_cast(json_t *object, const char *key);
-
 /// Arrays
 /// ------
 // Like json_array_set(_new), but expands the array if necessary.
@@ -130,3 +125,29 @@ json_t* json_load_file_report(const char *json_fn);
 
 // log_print for json_dump
 int json_dump_log(const json_t *json, size_t flags);
+
+/// ------
+
+/// Evaluation
+/// -------
+
+// Test if the JSON [val] can be parsed by json_evaluate()
+#define json_can_evaluate(val) (json_is_number(val) || json_is_boolean(val) || json_is_string(val))
+
+// Evaluate the JSON [val] and cast the result to bool.
+bool json_evaluate_bool(json_t *val);
+
+// Evaluate the JSON [val] and cast the result to int.
+size_t json_evaluate_int(json_t *val);
+
+// Evaluate the JSON [val] and cast the result to double.
+double json_evaluate_real(json_t *val);
+
+// Calls json_evaluate_bool() on the value of [key] in [object].
+bool json_object_get_evaluate_bool(json_t *object, const char *key);
+
+// Calls json_evaluate_int() on the value of [key] in [object].
+size_t json_object_get_evaluate_int(json_t *object, const char *key);
+
+// Calls json_evaluate_real() on the value of [key] in [object].
+double json_object_get_evaluate_real(json_t *object, const char *key);

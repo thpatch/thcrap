@@ -138,7 +138,7 @@ size_t binhack_calc_size(const char *binhack_str)
 		return 0;
 	}
 	while(*c) {
-		if(!ex && *c == '[' || *c == '<') {
+		if(!ex && (*c == '[' || *c == '<')) {
 			if(fs) {
 				log_printf("ERROR: Nested function pointers near %s!\n", c);
 				return 0;
@@ -227,8 +227,8 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	const char *title = json_object_get_string(in, "title");;
 	const char *code = json_object_get_string(in, "code");
 	const char *expected = json_object_get_string(in, "expected");
-	bool ignore = json_object_get_boolean_cast(in, "ignore");
-
+	bool ignore = json_object_get_evaluate_bool(in, "ignore");
+	
 	if (ignore) {
 		log_printf("binhack %s: ignored\n", name);
 		return false;
@@ -277,7 +277,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	}
 
 	while(*c) {
-		if(!ex && *c == '[' || *c == '<') {
+		if(!ex && (*c == '[' || *c == '<')) {
 			func_user_offset = 0;
 			if(fs) {
 				log_printf("ERROR: Nested function pointers near %s!\n", c);
@@ -292,9 +292,9 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			fs = c + 1;
 			c++;
 		} else if (!fs && !ex && *c == '(') {
-			ex = c + 1;
-			++ex_depth;
 			++c;
+			ex = c;
+			++ex_depth;
 			if (strncmp(ex, "i8:", 3) == 0 || strncmp(ex, "u8:", 3) == 0) {
 				ex_ret.t = PATCH_OPT_VAL_BYTE;
 				ex_ret.size = 1;
@@ -342,6 +342,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					}
 					memcpy(binhack_buf, option->val.byte_array, option->size);
 					binhack_buf += option->size;
+					written += option->size;
 					fs = 0; func_name_len = 0; c++;
 					continue;
 				}
@@ -364,7 +365,10 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_buf += sizeof(void*);
 				written += sizeof(void*);
 			} else {
-				return hackpoints_error_function_not_found(function, 2);
+				/*return*/ hackpoints_error_function_not_found(function, 2);
+				memset(binhack_buf, 0, sizeof(void*));
+				binhack_buf += sizeof(void*);
+				written += sizeof(void*);
 			}
 			fs = NULL;
 			if(ret) {
@@ -410,6 +414,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					}
 					memcpy(binhack_buf, &ex_ret.val.byte_array, ex_ret.size);
 					binhack_buf += ex_ret.size;
+					written += ex_ret.size;
 					ex = NULL;
 					func_name_len = 0;
 				} else if (ex_depth < 0) {
@@ -523,7 +528,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		return false;
 	}
 
-	bool ignore = json_object_get_boolean_cast(in, "ignore");
+	bool ignore = json_object_get_evaluate_bool(in, "ignore");
 
 	if (ignore) {
 		log_printf("codecave %s: ignored\n", name);
@@ -548,7 +553,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			log_printf("ERROR: invalid value specified for size of codecave %s\n", name);
 			return false;
 		}
-		size_val = json_immediate_value_no_regs(j_temp);
+		size_val = json_evaluate_int(j_temp);
 		if (!size_val) {
 			log_printf("codecave %s with size 0 ignored\n", name);
 			return false;
@@ -563,7 +568,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			log_printf("ERROR: invalid value specified for fill value of codecave %s\n", name);
 			return false;
 		}
-		fill_val = (BYTE)json_hex_value(j_temp);
+		fill_val = (BYTE)json_evaluate_int(j_temp);
 	}
 
 	j_temp = json_object_get(in, "count");
@@ -574,7 +579,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			log_printf("ERROR: invalid value specified for count of codecave %s\n", name);
 			return false;
 		}
-		count_val = json_immediate_value_no_regs(j_temp);
+		count_val = json_evaluate_int(j_temp);
 		if (!count_val) {
 			log_printf("codecave %s with count 0 ignored\n", name);
 			return false;
@@ -583,12 +588,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 
 	const char *code = json_object_get_string(in, "code");
 
-	if (code) {
-		out->code = strdup(code);
-	} else {
-		out->code = NULL;
-	}
-
+	out->code = code ? strdup(code) : NULL;
 	out->name = strdup(name);
 	out->access_type = access_val;
 	out->size = size_val;

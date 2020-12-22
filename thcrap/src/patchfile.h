@@ -107,18 +107,20 @@ enum patch_opt_val_type {
 	PATCH_OPT_VAL_DOUBLE = 4,
 };
 
+typedef union {
+	BYTE byte;
+	WORD word;
+	DWORD dword;
+	float f;
+	double d;
+	BYTE byte_array[8];
+} option_type_t;
+
 // Description of a value specified by the options
 typedef struct {
 	uint32_t t;
 	uint32_t size;
-	union type_t {
-		BYTE byte;
-		WORD word;
-		DWORD dword;
-		float f;
-		double d;
-		BYTE byte_array[8];
-	} val;
+	option_type_t val;
 } patch_opt_val_t;
 
 // Parses and error checks patch options from game_id.js

@@ -61,8 +61,8 @@ static void runconfig_stage_load_breakpoints(json_t *breakpoints, stage_t& stage
 		}
 
 		json_t *addr_array = json_object_get(breakpoint_entry, "addr");
-		size_t cavesize = json_object_get_hex(breakpoint_entry, "cavesize");
-		bool ignore = json_is_true(json_object_get(breakpoint_entry, "ignore"));
+		size_t cavesize = json_object_get_evaluate_int(breakpoint_entry, "cavesize");
+		bool ignore = json_object_get_evaluate_bool(breakpoint_entry, "ignore");
 
 		if (ignore) {
 			log_printf("breakpoint %s: ignored\n", key);
