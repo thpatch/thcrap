@@ -119,8 +119,11 @@ extern "C" {
 #endif
 /// --------------
 
-// Wrapper around json_load_file with indirect UTF-8 filename
-// support and nice error reporting.
+// Load a json file with the json5 syntax.
+json_t *json5_loadb(const void *buffer, size_t size, char **error);
+
+// Wrapper around json_load_file and json5_loadb with
+// indirect UTF-8 filename support and nice error reporting.
 json_t* json_load_file_report(const char *json_fn);
 
 // log_print for json_dump

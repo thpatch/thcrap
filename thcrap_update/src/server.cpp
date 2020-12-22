@@ -84,7 +84,7 @@ std::pair<ScopedJson, HttpStatus> Server::downloadJsonFile(const std::string& na
         return std::make_pair(nullptr, status);
     }
 
-    ScopedJson json = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
+    ScopedJson json = json5_loadb(data.data(), data.size(), nullptr);
     return std::make_pair(json, status);
 }
 
