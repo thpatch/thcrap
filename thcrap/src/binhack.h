@@ -44,14 +44,11 @@ typedef struct {
 } binhack_t;
 
 typedef enum {
-	NOACCESS = 0,
-	READONLY = 1,
-	WRITECOPY = 2,
-	READWRITE = 3,
-	EXECUTE = 4,
-	EXECUTE_READ = 5,
-	EXECUTE_WRITECOPY = 6,
-	EXECUTE_READWRITE = 7
+	READONLY = 0,
+	READWRITE = 1,
+	EXECUTE = 2,
+	EXECUTE_READ = 3,
+	EXECUTE_READWRITE = 4
 } CodecaveAccessType;
 
 typedef struct {

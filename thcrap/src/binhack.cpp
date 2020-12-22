@@ -542,7 +542,24 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		BYTE temp = !!strpbrk(access, "rR");
 		temp += !!strpbrk(access, "wW") << 1;
 		temp += !!strpbrk(access, "eE") << 2;
-		access_val = (CodecaveAccessType)temp;
+		switch (temp) {
+			case 0:
+				log_printf("codecave %s: why would you set a codecave to no access? skipping instead...\n", name);
+				return false;
+			case 1:
+				access_val = (CodecaveAccessType)(temp - 1);
+				break;
+			case 2:
+				log_printf("codecave %s: write-only codecaves can't be set, using read-write instead...\n", name);
+			case 3: case 4: case 5:
+				access_val = (CodecaveAccessType)(temp - 2);
+				break;
+			case 6:
+				log_printf("codecave %s: execute-write codecaves can't be set, using execute-read-write instead...\n", name);
+			case 7:
+				access_val = (CodecaveAccessType)(temp - 3);
+				break;
+		}
 	}
 
 	json_t *j_temp = json_object_get(in, "size");
@@ -608,8 +625,8 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	const size_t codecave_sep_size_min = 3;
 
-	//One size for each access flag combo
-	size_t codecaves_total_size[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+	//One size for each valid access flag combo
+	size_t codecaves_total_size[5] = { 0, 0, 0, 0, 0 };
 
 	struct codecave_local_state_t {
 		size_t size;
@@ -645,18 +662,22 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		codecaves_total_size[codecaves[i].access_type] += codecaves_local_state[i].size_full;
 	}
 
-	BYTE* codecave_buf[8];
-	for (int i = 0; i < 8; ++i) {
+	BYTE* codecave_buf[5];
+	for (int i = 0; i < 5; ++i) {
 		if (codecaves_total_size[i]) {
 			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_total_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			if (!codecave_buf[i]) {
+				//Should probably put an abort error here
+			}
 		} else {
+			//Don't try to reallocate a non-existing page later
 			codecave_buf[i] = NULL;
 		}
 	}
 
 	// Second pass: Gather the addresses, so that codecaves can refer to each other.
-	BYTE* current_cave[8];
-	for (int i = 0; i < 8; ++i) {
+	BYTE* current_cave[5];
+	for (int i = 0; i < 5; ++i) {
 		current_cave[i] = codecave_buf[i];
 	}
 
@@ -677,7 +698,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	}
 
 	// Third pass: Write all of the code
-	for (int i = 0; i < 8; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		current_cave[i] = codecave_buf[i];
 	}
 
@@ -699,10 +720,10 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	VLA_FREE(codecaves_local_state);
 
-	const DWORD page_access_type_array[8] = { PAGE_NOACCESS, PAGE_READONLY, PAGE_WRITECOPY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_WRITECOPY, PAGE_EXECUTE_READWRITE };
+	const DWORD page_access_type_array[5] = { PAGE_READONLY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE };
 	DWORD idgaf;
 
-	for (int i = 0; i < 8; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		if (codecave_buf[i]) {
 			VirtualProtect(codecave_buf[i], codecaves_total_size[i], page_access_type_array[i], &idgaf);
 		}
