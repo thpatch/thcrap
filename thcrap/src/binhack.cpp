@@ -148,7 +148,6 @@ size_t binhack_calc_size(const char *binhack_str)
 	char current_char;
 	while (current_char = *c) {
 		switch (current_char) {
-			if (0) {
 			case '(':
 				if (consume_bin(&c, "i8:") || consume_bin(&c, "u8:")) {
 					size += 1;
@@ -160,15 +159,10 @@ size_t binhack_calc_size(const char *binhack_str)
 					size += 8;
 				} else {
 					log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+			case '[':
+			case '<':
 					size += 4;
 				}
-			} else if (0) {
-			case '[':
-				size += 4;
-			} else {
-			case '<':
-				size += 4;
-			}
 			++c;
 			c = parse_brackets(c, current_char);
 			if (*c == current_char) {
@@ -249,7 +243,6 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	while(current_char = c[0]) {
 		value_t val;
 		switch (current_char) {
-		if (0) {
 			case '(':
 				++c;
 				func_name_end = ')';
@@ -267,15 +260,15 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
 					val.type = VT_DWORD;
 				}
-		} else if (0) {
+				goto ParseBrackets;
 			case '[':
 				func_name_end = ']';
 				val.type = VT_DWORD;
-		} else {
+				goto ParseBrackets;
 			case '<':
 				func_name_end = '>';
 				val.type = VT_DWORD;
-		}
+ParseBrackets:
 			val.i = eval_expr(&c, NULL, func_name_end, target_addr + written);
 			if (val.type == VT_FLOAT) {
 				val.f = (float)val.i;
