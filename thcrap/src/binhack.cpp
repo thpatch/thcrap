@@ -51,6 +51,8 @@ int is_valid_hex(char c)
 enum value_type_t {
 	VT_NONE = 0,
 	VT_BYTE = 1, // sizeof(char)
+	VT_WORD = 2, // sizeof(short)
+	VT_DWORD = 5, // sizeof(dword)
 	VT_FLOAT = 4, // sizeof(float)
 	VT_DOUBLE = 8 // sizeof(double)
 };
@@ -59,14 +61,23 @@ struct value_t {
 	value_type_t type = VT_NONE;
 	union {
 		unsigned char b;
+		unsigned short w;
+		unsigned int i;
 		float f;
 		double d;
+		unsigned char byte_array[8];
 	};
 
 	size_t size() {
-		return (size_t)type;
+		return (size_t)(type == VT_DWORD ? VT_FLOAT : type);
 	}
 };
+
+static inline bool consume_bin(const char * *const str, const stringref_t token) {
+	if (!!strnicmp(*str, token.str, token.len)) return false;
+	*str += token.len;
+	return true;
+}
 
 // Returns false only if parsing should be aborted.
 bool consume_value(value_t &val, const char** str)
@@ -131,87 +142,53 @@ size_t binhack_calc_size(const char *binhack_str)
 {
 	size_t size = 0;
 	const char *c = binhack_str;
-	const char *fs = NULL; // function start
-	const char *ex = NULL; // expression start
-	int ex_depth = 0;
-	if(!binhack_str) {
+	if(!c) {
 		return 0;
 	}
-	while(*c) {
-		if(!ex && (*c == '[' || *c == '<')) {
-			if(fs) {
-				log_printf("ERROR: Nested function pointers near %s!\n", c);
+	char current_char;
+	while (current_char = *c) {
+		switch (current_char) {
+			if (0) {
+			case '(':
+				if (consume_bin(&c, "i8:") || consume_bin(&c, "u8:")) {
+					size += 1;
+				} else if (consume_bin(&c, "i16:") || consume_bin(&c, "u16:")) {
+					size += 2;
+				} else if (consume_bin(&c, "i32:") || consume_bin(&c, "u32:") || consume_bin(&c, "f32:")) {
+					size += 4;
+				} else if (consume_bin(&c, "f64:")) {
+					size += 8;
+				} else {
+					log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+					size += 4;
+				}
+			} else if (0) {
+			case '[':
+				size += 4;
+			} else {
+			case '<':
+				size += 4;
+			}
+			++c;
+			c = parse_brackets(c, current_char);
+			if (*c == current_char) {
+				//Bracket error
 				return 0;
 			}
-			fs = c + 1;
-			c++;
-		} else if(!fs && !ex && *c == '(') {
-			ex = c + 1;
-			++ex_depth;
-			++c;
-			if (strncmp(ex, "i8:", 3) == 0 || strncmp(ex, "u8:", 3) == 0) {
-				size += 1;
-				c += 3;
-			} else if (strncmp(ex, "i16:", 4) == 0 || strncmp(ex, "u16:", 4) == 0) {
-				size += 2;
-				c += 4;
-			} else if (strncmp(ex, "i32:", 4) == 0 || strncmp(ex, "u32:", 4) == 0 || strncmp(ex, "f32:", 4) == 0) {
-				size += 4;
-				c += 4;
-			} else if (strncmp(ex, "f64:", 4) == 0) {
-				size += 8;
-				c += 4;
-			} else {
-				log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
-				size += 4;
-			}
-		} else if(fs) {
-			if((*c == ']' || *c == '>')) {
-				if (strncmp(fs, "option:", 7) == 0) {
-					fs += 7;
-					size_t opt_name_len = c - fs;
-					VLA(char, opt_name, opt_name_len + 1);
-					defer(VLA_FREE(opt_name));
-					strncpy(opt_name, fs, opt_name_len);
-					opt_name[opt_name_len] = 0;
-					patch_opt_val_t *opt = patch_opt_get(opt_name);
-					fs = nullptr;
-					if (opt) {
-						size += opt->size;
-					} else {
-						log_printf("ERROR: option %s does not exist\n", opt_name);
-						return 0;
-					}
-				} else {
-					size += sizeof(void*);
-					fs = nullptr;
+			break;
+			case '?':
+				if (c[1] == '?') {
+					++size;
+					break;
 				}
-			}
-			c++;
-		} else if (ex) {
-			if (*c == '(') {
-				++ex_depth;
-			} else if (*c == ')') {
-				--ex_depth;
-				if (ex_depth == 0) {
-					ex = nullptr;
-				} else if (ex_depth < 0) {
-					log_printf("ERROR: invalid binhack expression\n");
+			default: {
+				value_t val;
+				if (!consume_value(val, &c)) {
 					return 0;
 				}
+				size += val.size();
 			}
-			++c;
-		} else {
-			value_t val;
-			if(!consume_value(val, &c)) {
-				return 0;
-			}
-			size += val.size();
 		}
-	}
-	if(fs) {
-		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
-		size = 0;
 	}
 	return size;
 }
@@ -260,192 +237,75 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str)
 {
 	const char *c = binhack_str;
-	const char *fs = NULL; // function start
-	const char *ex = NULL; // expression start
-	int ex_depth = 0;
-	patch_opt_val_t ex_ret;
-	ex_ret.t = PATCH_OPT_VAL_INVALID;
 	size_t written = 0;
-	int func_rel = 0; // Relative function pointer flag
 	int ret = 0;
-	int func_name_len = 0;
-	UINT_PTR func_user_offset = 0;
 	char func_name_end = ']';
 
 	if(!binhack_buf || !binhack_str) {
 		return -1;
 	}
 
-	while(*c) {
-		if(!ex && (*c == '[' || *c == '<')) {
-			func_user_offset = 0;
-			if(fs) {
-				log_printf("ERROR: Nested function pointers near %s!\n", c);
-				return 0;
-			}
-			func_rel = (*c == '[');
-			if (func_rel) {
+	char current_char;
+	while(current_char = c[0]) {
+		value_t val;
+		switch (current_char) {
+		if (0) {
+			case '(':
+				++c;
+				func_name_end = ')';
+				if (consume_bin(&c, "i8:") || consume_bin(&c, "u8:")) {
+					val.type = VT_BYTE;
+				} else if (consume_bin(&c, "i16:") || consume_bin(&c, "u16:")) {
+					val.type = VT_WORD;
+				} else if (consume_bin(&c, "i32:") || consume_bin(&c, "u32:")) {
+					val.type = VT_DWORD;
+				} else if (consume_bin(&c, "f32:")) {
+					val.type = VT_FLOAT;
+				} else if (consume_bin(&c, "f64:")) {
+					val.type = VT_DOUBLE;
+				} else {
+					log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+					val.type = VT_DWORD;
+				}
+		} else if (0) {
+			case '[':
 				func_name_end = ']';
-			} else {
-				func_name_end = '>';
-			}
-			fs = c + 1;
-			c++;
-		} else if (!fs && !ex && *c == '(') {
-			++c;
-			ex = c;
-			++ex_depth;
-			if (strncmp(ex, "i8:", 3) == 0 || strncmp(ex, "u8:", 3) == 0) {
-				ex_ret.t = PATCH_OPT_VAL_BYTE;
-				ex_ret.size = 1;
-				c += 3;
-				ex += 3;
-			} else if (strncmp(ex, "i16:", 4) == 0 || strncmp(ex, "u16:", 4) == 0) {
-				ex_ret.t = PATCH_OPT_VAL_WORD;
-				ex_ret.size = 2;
-				c += 4;
-				ex += 4;
-			} else if (strncmp(ex, "i32:", 4) == 0 || strncmp(ex, "u32:", 4) == 0) {
-				ex_ret.t = PATCH_OPT_VAL_DWORD;
-				ex_ret.size = 4;
-				c += 4;
-				ex += 4;
-			} else if (strncmp(ex, "f32:", 4) == 0) {
-				ex_ret.t = PATCH_OPT_VAL_FLOAT;
-				ex_ret.size = 4;
-				c += 4;
-				ex += 4;
-			} else if (strncmp(ex, "f64:", 4) == 0) {
-				ex_ret.t = PATCH_OPT_VAL_DOUBLE;
-				ex_ret.size = 8;
-				c += 4;
-				ex += 4;
-			} else {
-				log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
-				ex_ret.t = PATCH_OPT_VAL_DWORD;
-				ex_ret.size = 4;
-			}
-		} else if (fs && (*c == ']' || *c == '>')) {
-			VLA(char, function, func_name_len + 1);
-			defer({ VLA_FREE(function); });
-			size_t fp = 0;
-
-			strncpy(function, fs, func_name_len);
-			function[func_name_len] = 0;
-
-			if (!func_rel) {
-				if (strncmp(function, "option:", 7) == 0) { // strlen("option:") = 7
-					patch_opt_val_t *option = patch_opt_get(function + 7);
-					if (!option) {
-						log_printf("ERROR: option %s not found\n", function + 7);
-						return 3;
-					}
-					memcpy(binhack_buf, option->val.byte_array, option->size);
-					binhack_buf += option->size;
-					written += option->size;
-					fs = 0; func_name_len = 0; c++;
-					continue;
-				}
-			}
-
-			fp = (size_t)func_get(function);
-			if (!fp) {
-				str_address_ret_t address_error;
-				size_t address = str_address_value(function, NULL, &address_error);
-				if (address && address_error.error == STR_ADDRESS_ERROR_NONE) {
-					fp = address;
-				}
-			}
-			if(fp) {
-				fp += func_user_offset;
-				if(func_rel) {
-					fp -= target_addr + written + sizeof(void*);
-				}
-				memcpy(binhack_buf, &fp, sizeof(void*));
-				binhack_buf += sizeof(void*);
-				written += sizeof(void*);
-			} else {
-				/*return*/ hackpoints_error_function_not_found(function, 2);
-				memset(binhack_buf, 0, sizeof(void*));
-				binhack_buf += sizeof(void*);
-				written += sizeof(void*);
-			}
-			fs = NULL;
-			if(ret) {
-				break;
-			}
-			func_name_len = 0; c++;
-		} else if(fs && *c == '+') {
-			const char *user_offset_end = strchr(c, func_name_end);
-			size_t offset_str_len = user_offset_end - c - 1;
-			if (offset_str_len > sizeof(UINT_PTR) * 2) {
-				c = user_offset_end;
-				continue;
-			}
-			char offset_str[sizeof(UINT_PTR) * 2 + 4];
-			strncpy(offset_str, c + 1, offset_str_len);
-			offset_str[offset_str_len] = 0;
-			char *_endptr;
-			func_user_offset = strtol(offset_str, &_endptr, 16);
-			c = user_offset_end;
-		} else if(fs) {
-			c++;
-			func_name_len++;
-		} else if (ex) {
-			++func_name_len;
-			if (*c == '(') {
-				++ex_depth;
-			} else if (*c == ')') {
-				--ex_depth;
-				if (ex_depth == 0) {
-					--func_name_len;
-					VLA(char, expression, func_name_len);
-					strncpy(expression, ex, func_name_len);
-					expression[func_name_len] = '\0';
-					ex_ret.val.dword = eval_expr_new((const char**)&expression, NULL, '\0', target_addr);
-					VLA_FREE(expression);
-					switch (ex_ret.t) {
-						case PATCH_OPT_VAL_FLOAT:
-							ex_ret.val.f = (float)ex_ret.val.dword;
-							break;
-						case PATCH_OPT_VAL_DOUBLE:
-							ex_ret.val.d = (double)ex_ret.val.dword;
-							break;
-					}
-					memcpy(binhack_buf, &ex_ret.val.byte_array, ex_ret.size);
-					binhack_buf += ex_ret.size;
-					written += ex_ret.size;
-					ex = NULL;
-					func_name_len = 0;
-				} else if (ex_depth < 0) {
-					log_printf("ERROR: invalid binhack expression\n");
-					return 0;
-				}
-			}
-			++c;
+				val.type = VT_DWORD;
 		} else {
-			value_t val;
-			if(!consume_value(val, &c)) {
-				return 1;
-			}
-			const char *copy_ptr = nullptr;
-			switch(val.type) {
-			case VT_BYTE:   copy_ptr = (const char *)&val.b; break;
-			case VT_FLOAT:  copy_ptr = (const char *)&val.f; break;
-			case VT_DOUBLE: copy_ptr = (const char *)&val.d; break;
-			default:        break; // -Wswitch...
-			}
-			if(copy_ptr) {
-				binhack_buf = (BYTE *)memcpy_advance_dst(
-					(char *)binhack_buf, copy_ptr, val.size()
-				);
-				written += val.size();
-			}
+			case '<':
+				func_name_end = '>';
+				val.type = VT_DWORD;
 		}
-	}
-	if(fs) {
-		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
-		ret = 1;
+			val.i = eval_expr(&c, NULL, func_name_end, target_addr + written);
+			if (val.type == VT_FLOAT) {
+				val.f = (float)val.i;
+			} else if (val.type == VT_DOUBLE) {
+				val.d = (double)val.i;
+			}
+			break;
+			case '?':
+				if (c[1] == '?') {
+					val.b = *(unsigned char*)(target_addr + written);
+					val.type = VT_BYTE;
+					break;
+				}
+			default:
+				if (!consume_value(val, &c)) {
+					return 1;
+				}
+		}
+		//switch (val.type) {
+		//	case VT_BYTE:   copy_ptr = (const char *)&val.b; break;
+		//	case VT_WORD:   copy_ptr = (const char *)&val.w; break;
+		//	case VT_DWORD:  copy_ptr = (const char *)&val.i; break;
+		//	case VT_FLOAT:  copy_ptr = (const char *)&val.f; break;
+		//	case VT_DOUBLE: copy_ptr = (const char *)&val.d; break;
+		//	default:        break; // -Wswitch...
+		//}
+		binhack_buf = (BYTE *)memcpy_advance_dst(
+			(char *)binhack_buf, val.byte_array, val.size()
+		);
+		written += val.size();
 	}
 	return ret;
 }
