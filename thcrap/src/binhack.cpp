@@ -402,7 +402,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					VLA(char, expression, func_name_len);
 					strncpy(expression, ex, func_name_len);
 					expression[func_name_len] = '\0';
-					ex_ret.val.dword = eval_expr((const char**)&expression, NULL, '\0');
+					ex_ret.val.dword = eval_expr_new((const char**)&expression, NULL, '\0', target_addr);
 					VLA_FREE(expression);
 					switch (ex_ret.t) {
 						case PATCH_OPT_VAL_FLOAT:

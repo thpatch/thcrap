@@ -52,6 +52,7 @@ extern "C" {
 #include "search.h"
 #include "shelllink.h"
 #include "fonts_charset.h"
+#include "expression.h"
 
 #ifdef __cplusplus
 }
