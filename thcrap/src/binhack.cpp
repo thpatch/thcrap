@@ -158,21 +158,24 @@ size_t binhack_calc_size(const char *binhack_str)
 				} else if (consume_bin(&c, "f64:")) {
 					size += 8;
 				} else {
-					log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+					//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
 			case '[':
 			case '<':
 					size += 4;
 				}
-			++c;
-			c = parse_brackets(c, current_char);
-			if (*c == current_char) {
-				//Bracket error
-				return 0;
-			}
-			break;
+				++c;
+				c = parse_brackets(c, current_char);
+				if (*c == current_char) {
+					//Bracket error
+					return 0;
+				}
+				break;
 			case '?':
 				if (c[1] == '?') {
+					// Found a wildcard byte, so just add
+					// a byte of size and keep going
 					++size;
+					c += 2;
 					break;
 				}
 			default: {
@@ -257,7 +260,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				} else if (consume_bin(&c, "f64:")) {
 					val.type = VT_DOUBLE;
 				} else {
-					log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+					//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
 					val.type = VT_DWORD;
 				}
 				goto ParseBrackets;
@@ -269,17 +272,20 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				func_name_end = '>';
 				val.type = VT_DWORD;
 ParseBrackets:
-			val.i = eval_expr(&c, NULL, func_name_end, target_addr + written);
-			if (val.type == VT_FLOAT) {
-				val.f = (float)val.i;
-			} else if (val.type == VT_DOUBLE) {
-				val.d = (double)val.i;
-			}
-			break;
+				val.i = eval_expr(&c, NULL, func_name_end, target_addr + written);
+				if (val.type == VT_FLOAT) {
+					val.f = (float)val.i;
+				} else if (val.type == VT_DOUBLE) {
+					val.d = (double)val.i;
+				}
+				break;
 			case '?':
 				if (c[1] == '?') {
+					// Found a wildcard byte, so read the contents
+					// of the appropriate address into the buffer.
 					val.b = *(unsigned char*)(target_addr + written);
 					val.type = VT_BYTE;
+					c += 2;
 					break;
 				}
 			default:

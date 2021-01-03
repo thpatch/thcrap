@@ -8,6 +8,9 @@
   */
 
 #include "thcrap.h"
+constexpr uint32_t ConstExprTextInt(unsigned char one, unsigned char two = '\0', unsigned char three = '\0', unsigned char four = '\0') {
+	return four << 24 | three << 16 | two << 8 | one;
+}
 
 static inline char* strndup(const char* source, size_t length) {
 	char *const ret = (char *const)malloc(length+1);
@@ -17,15 +20,6 @@ static inline char* strndup(const char* source, size_t length) {
 }
 
 #define PtrDiffStrlen(end_ptr, start_ptr) ((end_ptr) - (start_ptr))
-
-#define EAX 0x00786165
-#define ECX 0x00786365
-#define EDX 0x00786465
-#define EBX 0x00786265
-#define ESP 0x00707365
-#define EBP 0x00706265
-#define ESI 0x00697365
-#define EDI 0x00696465
 
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr) {
 	uint32_t cmp;
@@ -41,14 +35,14 @@ size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr) {
 		*endptr = regname + 3;
 	}
 	switch (cmp) {
-		case EAX: return &regs->eax;
-		case ECX: return &regs->ecx;
-		case EDX: return &regs->edx;
-		case EBX: return &regs->ebx;
-		case ESP: return &regs->esp;
-		case EBP: return &regs->ebp;
-		case ESI: return &regs->esi;
-		case EDI: return &regs->edi;
+		case ConstExprTextInt('e', 'a', 'x'): return &regs->eax;
+		case ConstExprTextInt('e', 'c', 'x'): return &regs->ecx;
+		case ConstExprTextInt('e', 'd', 'x'): return &regs->edx;
+		case ConstExprTextInt('e', 'b', 'x'): return &regs->ebx;
+		case ConstExprTextInt('e', 's', 'p'): return &regs->esp;
+		case ConstExprTextInt('e', 'b', 'p'): return &regs->ebp;
+		case ConstExprTextInt('e', 's', 'i'): return &regs->esi;
+		case ConstExprTextInt('e', 'd', 'i'): return &regs->edi;
 	}
 	if (endptr) {
 		*endptr = regname;
@@ -103,47 +97,6 @@ enum {
 	Comma = ','
 };
 typedef unsigned char op_t;
-
-#define ARSA 0x3D3E3E3E
-#define ALSA 0x3D3C3C3C
-#define ARS  0x003E3E3E
-#define ALS  0x003C3C3C
-#define LRSA 0x003D3E3E
-#define LLSA 0x003D3C3C
-#define LRS  0x3E3E
-#define LLS  0x3C3C
-#define GEQ  0x3D3E
-#define LEQ  0x3D3C
-#define EQU  0x3D3D
-#define NEQ  0x3D21
-#define ADDA 0x3D2B
-#define SUBA 0x3D2D
-#define MULA 0x3D2A
-#define DIVA 0x3D2F
-#define MODA 0x3D25
-#define ANDA 0x3D26
-#define ORA  0x3D7C
-#define XORA 0x3D5E
-#define LAND 0x2626
-#define LOR  0x7C7C
-#define INC  0x2B2B
-#define DEC  0x2D2D
-#define NULC 0x3A3F
-
-#define I32P 0x29323349
-#define i32P 0x29323369
-#define I16P 0x29363149
-#define i16P 0x29363169
-#define I8P 0x00293849
-#define i8P 0x00293869
-#define U32P 0x29323355
-#define u32P 0x29323375
-#define U16P 0x29363155
-#define u16P 0x29363175
-#define U8P 0x00293855
-#define u8P 0x00293875
-#define F32P 0x29323346
-#define f32P 0x29323366
 
 static inline const char* find_matching_end(const char* str, char start, char end) {
 	if (!str) return NULL;
@@ -220,38 +173,51 @@ static op_t __fastcall find_next_op(const char * *const expr, const char * *cons
 				if (expr_ref[1]) {
 					if ((c == '<' || c == '>') && expr_ref[2]) {
 						temp = *(uint32_t*)expr_ref;
-						if (temp == ARSA || temp == ALSA) {
-							*pre_op_ptr = expr_ref;
-							*expr = &expr_ref[4];
-							return c * 3 + '=';
+						// Yeah, the if chain is kind of ugly. However, MSVC doesn't
+						// optimize this into a jump table and using a switch adds an
+						// extra check for "higher than included" values, which are
+						// impossible anyway since they already got filtered out.
+						if (temp == ConstExprTextInt('>', '>', '>', '=') ||
+							temp == ConstExprTextInt('<', '<', '<', '=')) {
+								*pre_op_ptr = expr_ref;
+								*expr = &expr_ref[4];
+								return c * 3 + '=';
 						}
-						if (temp == LRSA || temp == LLSA) {
-							*pre_op_ptr = expr_ref;
-							*expr = &expr_ref[3];
-							return c * 2 + '=';
+						if (temp == ConstExprTextInt('>', '>', '=') ||
+							temp == ConstExprTextInt('<', '<', '=')) {
+								*pre_op_ptr = expr_ref;
+								*expr = &expr_ref[3];
+								return c * 2 + '=';
 						}
-						if (temp == ARS || temp == ALS) {
-							*pre_op_ptr = expr_ref;
-							*expr = &expr_ref[3];
-							return c * 3;
+						if (temp == ConstExprTextInt('>', '>', '>') ||
+							temp == ConstExprTextInt('<', '<', '<')) {
+								*pre_op_ptr = expr_ref;
+								*expr = &expr_ref[3];
+								return c * 3;
 						}
 					} else {
 						temp = *(uint16_t*)expr_ref;
 					}
-					if (temp == LRS || temp == LLS || temp == INC || temp == DEC || temp == EQU || temp == LAND || temp == LOR) {
-						*pre_op_ptr = expr_ref;
-						*expr = &expr_ref[2];
-						return c * 2;
+					if (temp == ConstExprTextInt('>', '>') || temp == ConstExprTextInt('<', '<') ||
+						temp == ConstExprTextInt('+', '+') || temp == ConstExprTextInt('-', '-') ||
+						temp == ConstExprTextInt('&', '&') || temp == ConstExprTextInt('|', '|')) {
+							*pre_op_ptr = expr_ref;
+							*expr = &expr_ref[2];
+							return c * 2;
 					}
-					if (temp == ORA || temp == XORA || temp == NEQ || temp == MODA || temp == ANDA || temp == MULA || temp == ADDA || temp == SUBA || temp == DIVA) {
-						*pre_op_ptr = expr_ref;
-						*expr = &expr_ref[2];
-						return c + '=';
+					if (temp == ConstExprTextInt('|', '=') || temp == ConstExprTextInt('^', '=') ||
+						temp == ConstExprTextInt('!', '=') || temp == ConstExprTextInt('%', '=') ||
+						temp == ConstExprTextInt('&', '=') || temp == ConstExprTextInt('*', '=') ||
+						temp == ConstExprTextInt('+', '=') || temp == ConstExprTextInt('-', '=') ||
+						temp == ConstExprTextInt('/', '=')) {
+							*pre_op_ptr = expr_ref;
+							*expr = &expr_ref[2];
+							return c + '=';
 					}
-					if (temp == NULC) {
-						*pre_op_ptr = expr_ref;
-						*expr = &expr_ref[2];
-						return NullCoalescing;
+					if (temp == ConstExprTextInt('?', ':')) {
+							*pre_op_ptr = expr_ref;
+							*expr = &expr_ref[2];
+							return NullCoalescing;
 					}
 				}
 			case ',': case '~':
@@ -557,14 +523,14 @@ static size_t eval_expr_new_impl(const char **expr_ptr, x86_reg_t *regs, char en
 		switch (cmp) {
 			default:
 				return false;
-			case EAX: *value_out = regs->eax; break;
-			case ECX: *value_out = regs->ecx; break;
-			case EDX: *value_out = regs->edx; break;
-			case EBX: *value_out = regs->ebx; break;
-			case ESP: *value_out = regs->esp; break;
-			case EBP: *value_out = regs->ebp; break;
-			case ESI: *value_out = regs->esi; break;
-			case EDI: *value_out = regs->edi; break;
+			case ConstExprTextInt('e', 'a', 'x'): *value_out = regs->eax; break;
+			case ConstExprTextInt('e', 'c', 'x'): *value_out = regs->ecx; break;
+			case ConstExprTextInt('e', 'd', 'x'): *value_out = regs->edx; break;
+			case ConstExprTextInt('e', 'b', 'x'): *value_out = regs->ebx; break;
+			case ConstExprTextInt('e', 's', 'p'): *value_out = regs->esp; break;
+			case ConstExprTextInt('e', 'b', 'p'): *value_out = regs->ebp; break;
+			case ConstExprTextInt('e', 's', 'i'): *value_out = regs->esi; break;
+			case ConstExprTextInt('e', 'd', 'i'): *value_out = regs->edi; break;
 		}
 		*expr = &expr_ref[3];
 		log_printf("Found register \"%s\"\n", (char*)&cmp);
@@ -583,7 +549,7 @@ static size_t eval_expr_new_impl(const char **expr_ptr, x86_reg_t *regs, char en
 		size_t ret = 0;
 		char * name_buffer = NULL;
 		bool success_state = true;
-		if (strnicmp(expr_ref, "codecave:", 9) == 0/*consume(&expr_ref, "codecave:")*/) {
+		if (strnicmp(expr_ref, "codecave:", 9) == 0) {
 			name_buffer = strndup(expr_ref, PtrDiffStrlen(patch_val_end, expr_ref));
 			char* user_offset = strchr(name_buffer, '+');
 			size_t user_offset_value = 0;
@@ -649,14 +615,42 @@ static size_t eval_expr_new_impl(const char **expr_ptr, x86_reg_t *regs, char en
 	auto CheckCastType = [&expr](void)->CastType {
 		if (expr[0] && expr[1] && expr[2]) {
 			uint32_t cast = *(uint32_t*)expr;
-			if (cast == I32P || cast == i32P) { expr += 3; return i32_cast; }
-			if (cast == U32P || cast == u32P) { expr += 3; return u32_cast; }
-			if (cast == F32P || cast == f32P) { expr += 3; return f32_cast; }
-			if (cast == I16P || cast == i16P) { expr += 3; return i16_cast; }
-			if (cast == U16P || cast == u16P) { expr += 3; return u16_cast; }
+			if (cast == ConstExprTextInt('I', '3', '2', ')') ||
+				cast == ConstExprTextInt('i', '3', '2', ')')) {
+					expr += 3;
+					return i32_cast;
+			}
+			if (cast == ConstExprTextInt('U', '3', '2', ')') ||
+				cast == ConstExprTextInt('u', '3', '2', ')')) {
+					expr += 3;
+					return u32_cast;
+			}
+			if (cast == ConstExprTextInt('F', '3', '2', ')') ||
+				cast == ConstExprTextInt('f', '3', '2', ')')) {
+					expr += 3;
+					return f32_cast;
+			}
+			if (cast == ConstExprTextInt('I', '1', '6', ')') ||
+				cast == ConstExprTextInt('i', '3', '2', ')')) {
+					expr += 3;
+					return i16_cast;
+			}
+			if (cast == ConstExprTextInt('U', '1', '6', ')') ||
+				cast == ConstExprTextInt('u', '1', '6', ')')) {
+					expr += 3;
+					return u16_cast;
+			}
 			cast &= 0x00FFFFFF;
-			if (cast == I8P || cast == i8P) { expr += 2; return i8_cast; }
-			if (cast == U8P || cast == u8P) { expr += 2; return u8_cast; }
+			if (cast == ConstExprTextInt('I', '8', ')') ||
+				cast == ConstExprTextInt('i', '8', ')')) {
+					expr += 2;
+					return i8_cast;
+			}
+			if (cast == ConstExprTextInt('U', '8', ')') ||
+				cast == ConstExprTextInt('u', '8', ')')) {
+					expr += 2;
+					return u8_cast;
+			}
 		}
 		return invalid_cast;
 	};
