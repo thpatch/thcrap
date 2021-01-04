@@ -166,8 +166,8 @@ json_t *sort_json(json_t *in)
 		WCHAR_T_CONV(s1);
 		WCHAR_T_CONV(s2);
 
-		int sort_result = CompareStringEx(LOCALE_NAME_INVARIANT, 0,
-			s1_w, -1, s2_w, -1, nullptr, nullptr, 0);
+		int sort_result = CompareStringW(LOCALE_INVARIANT, 0,
+			s1_w, -1, s2_w, -1);
 
 		WCHAR_T_FREE(s1);
 		WCHAR_T_FREE(s2);
