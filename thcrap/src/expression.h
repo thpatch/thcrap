@@ -27,6 +27,8 @@ typedef struct {
 // like the endptr parameter of strtol(), and can be a nullptr if not needed.
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
-inline const char* parse_brackets(const char* str, char opening);
+const char* parse_brackets(const char* str, char opening);
 
-size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end, size_t rel_source);
+//size_t eval_expr(const char** expr_ptr, x86_reg_t *const regs, char end, size_t rel_source);
+
+const char* eval_expr(const char* expr, size_t* out, char end, x86_reg_t* regs, size_t rel_source);

@@ -73,12 +73,6 @@ struct value_t {
 	}
 };
 
-static inline bool consume_bin(const char * *const str, const stringref_t token) {
-	if (!!strnicmp(*str, token.str, token.len)) return false;
-	*str += token.len;
-	return true;
-}
-
 // Returns false only if parsing should be aborted.
 bool consume_value(value_t &val, const char** str)
 {
@@ -149,13 +143,18 @@ size_t binhack_calc_size(const char *binhack_str)
 	while (current_char = *c) {
 		switch (current_char) {
 			case '(':
-				if (consume_bin(&c, "i8:") || consume_bin(&c, "u8:")) {
+			//case '{':
+				if (strnicmp(c, "i8:", 3) == 0 || strnicmp(c, "u8:", 3) == 0) {
+					c += 3;
 					size += 1;
-				} else if (consume_bin(&c, "i16:") || consume_bin(&c, "u16:")) {
+				} else if (strnicmp(c, "i16:", 4) == 0 || strnicmp(c, "u16:", 4) == 0) {
+					c += 4;
 					size += 2;
-				} else if (consume_bin(&c, "i32:") || consume_bin(&c, "u32:") || consume_bin(&c, "f32:")) {
+				} else if (strnicmp(c, "i32:", 4) == 0 || strnicmp(c, "u32:", 4) == 0 || strnicmp(c, "f32:", 3) == 0) {
+					c += 4;
 					size += 4;
-				} else if (consume_bin(&c, "f64:")) {
+				} else if (strnicmp(c, "f64:", 4) == 0) {
+					c += 4;
 					size += 8;
 				} else {
 					//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
@@ -234,30 +233,35 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str)
 {
 	const char *c = binhack_str;
+	const char* copy_ptr;
 	size_t written = 0;
-	int ret = 0;
 	char func_name_end = ']';
 
 	if(!binhack_buf || !binhack_str) {
 		return -1;
 	}
-
-	char current_char;
-	while(current_char = c[0]) {
+	
+	while(c[0]) {
 		value_t val;
-		switch (current_char) {
+		switch (c[0]) {
 			case '(':
+			case '{':
+				func_name_end = c[0] == '(' ? ')' : '}';
 				++c;
-				func_name_end = ')';
-				if (consume_bin(&c, "i8:") || consume_bin(&c, "u8:")) {
+				if (strnicmp(c, "i8:", 3) == 0 || strnicmp(c, "u8:", 3) == 0) {
+					c += 3;
 					val.type = VT_BYTE;
-				} else if (consume_bin(&c, "i16:") || consume_bin(&c, "u16:")) {
+				} else if (strnicmp(c, "i16:", 4) == 0 || strnicmp(c, "u16:", 4) == 0) {
+					c += 4;
 					val.type = VT_WORD;
-				} else if (consume_bin(&c, "i32:") || consume_bin(&c, "u32:")) {
+				} else if (strnicmp(c, "i32:", 4) == 0 || strnicmp(c, "u32:", 4) == 0) {
+					c += 4;
 					val.type = VT_DWORD;
-				} else if (consume_bin(&c, "f32:")) {
+				} else if (strnicmp(c, "f32:", 4) == 0) {
+					c += 4;
 					val.type = VT_FLOAT;
-				} else if (consume_bin(&c, "f64:")) {
+				} else if (strnicmp(c, "f64:", 4) == 0) {
+					c += 4;
 					val.type = VT_DOUBLE;
 				} else {
 					//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
@@ -272,7 +276,14 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				func_name_end = '>';
 				val.type = VT_DWORD;
 ParseBrackets:
-				val.i = eval_expr(&c, NULL, func_name_end, target_addr + written);
+				//copy_ptr = eval_expr(c, &val.i, func_name_end, NULL, target_addr + written);
+				copy_ptr = eval_expr(c, &val.i, func_name_end, NULL, target_addr + written);
+				if (c == copy_ptr) {
+					log_printf("Binhack render error!\n");
+					return 1;
+				}
+				c = copy_ptr;
+				
 				if (val.type == VT_FLOAT) {
 					val.f = (float)val.i;
 				} else if (val.type == VT_DOUBLE) {
@@ -283,7 +294,8 @@ ParseBrackets:
 				if (c[1] == '?') {
 					// Found a wildcard byte, so read the contents
 					// of the appropriate address into the buffer.
-					val.b = *(unsigned char*)(target_addr + written);
+					//val.b = *(unsigned char*)(target_addr + written);
+					val.b = *(unsigned char*)target_addr;
 					val.type = VT_BYTE;
 					c += 2;
 					break;
@@ -293,20 +305,53 @@ ParseBrackets:
 					return 1;
 				}
 		}
+		switch (val.type) {
+			case VT_BYTE:
+				*(uint8_t*)binhack_buf = val.b;
+				log_printf("Binhack rendered: %hhX at %p\n", *(uint8_t*)binhack_buf, target_addr + written);
+				binhack_buf += sizeof(uint8_t);
+				written += sizeof(uint8_t);
+				break;
+			case VT_WORD:
+				*(uint16_t*)binhack_buf = val.w;
+				log_printf("Binhack rendered: %hX at %p\n", *(uint16_t*)binhack_buf, target_addr + written);
+				binhack_buf += sizeof(uint16_t);
+				written += sizeof(uint16_t);
+				break;
+			case VT_DWORD:
+				*(uint32_t*)binhack_buf = val.i;
+				log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr + written);
+				binhack_buf += sizeof(uint32_t);
+				written += sizeof(uint32_t);
+				break;
+			case VT_FLOAT:
+				*(float*)binhack_buf = val.f;
+				log_printf("Binhack rendered: %X at %p\n", *(float*)binhack_buf, target_addr + written);
+				binhack_buf += sizeof(float);
+				written += sizeof(float);
+				break;
+			case VT_DOUBLE:
+				*(double*)binhack_buf = val.d;
+				log_printf("Binhack rendered: %llX at %p\n", *(uint64_t*)binhack_buf, target_addr + written);
+				binhack_buf += sizeof(double);
+				written += sizeof(double);
+				break;
+		}
 		//switch (val.type) {
-		//	case VT_BYTE:   copy_ptr = (const char *)&val.b; break;
-		//	case VT_WORD:   copy_ptr = (const char *)&val.w; break;
-		//	case VT_DWORD:  copy_ptr = (const char *)&val.i; break;
-		//	case VT_FLOAT:  copy_ptr = (const char *)&val.f; break;
-		//	case VT_DOUBLE: copy_ptr = (const char *)&val.d; break;
+		//	case VT_BYTE:   copy_ptr = (const char*)&val.b; break;
+		//	case VT_WORD:   copy_ptr = (const char*)&val.w; break;
+		//	case VT_DWORD:  copy_ptr = (const char*)&val.i; break;
+		//	case VT_FLOAT:  copy_ptr = (const char*)&val.f; break;
+		//	case VT_DOUBLE: copy_ptr = (const char*)&val.d; break;
 		//	default:        break; // -Wswitch...
 		//}
-		binhack_buf = (BYTE *)memcpy_advance_dst(
+		/*binhack_buf = (BYTE *)memcpy_advance_dst(
 			(char *)binhack_buf, val.byte_array, val.size()
-		);
-		written += val.size();
+		);*/
+		
+		//written += val.size();
 	}
-	return ret;
+	return 0;
 }
 
 // Returns the number of all individual instances of binary hacks in [binhacks].

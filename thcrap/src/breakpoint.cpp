@@ -41,7 +41,9 @@ size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 		return 0;
 	}
 	const char *expr = json_string_value(val);
-	return eval_expr(&expr, regs, '\0', NULL);
+	size_t ret = 0;
+	eval_expr(expr, &ret, '\0', regs, NULL);
+	return ret;
 }
 
 size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
@@ -64,7 +66,8 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	}
 	else if (expr[0] == '[') {
 		expr++;
-		ptr = (size_t*)eval_expr(&expr, regs, ']', NULL);
+		//ptr = (size_t*)eval_expr(&expr, regs, ']', NULL);
+		eval_expr(expr, (size_t*)&ptr, ']', regs, NULL);
 		/*if (*expr != '\0') {
 			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr);
 		}*/
