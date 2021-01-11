@@ -48,31 +48,6 @@ int is_valid_hex(char c)
 		('a' <= c && c <= 'f');
 }
 
-enum value_type_t {
-	VT_NONE = 0,
-	VT_BYTE = 1, // sizeof(char)
-	VT_WORD = 2, // sizeof(short)
-	VT_DWORD = 5, // sizeof(dword)
-	VT_FLOAT = 4, // sizeof(float)
-	VT_DOUBLE = 8 // sizeof(double)
-};
-
-struct value_t {
-	value_type_t type = VT_NONE;
-	union {
-		unsigned char b;
-		unsigned short w;
-		unsigned int i;
-		float f;
-		double d;
-		unsigned char byte_array[8];
-	};
-
-	size_t size() {
-		return (size_t)(type == VT_DWORD ? VT_FLOAT : type);
-	}
-};
-
 // Returns false only if parsing should be aborted.
 bool consume_value(value_t &val, const char** str)
 {
@@ -267,28 +242,27 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
 					val.type = VT_DWORD;
 				}
-				goto ParseBrackets;
-			case '[':
-				func_name_end = ']';
-				val.type = VT_DWORD;
-				goto ParseBrackets;
-			case '<':
-				func_name_end = '>';
-				val.type = VT_DWORD;
-ParseBrackets:
-				//copy_ptr = eval_expr(c, &val.i, func_name_end, NULL, target_addr + written);
 				copy_ptr = eval_expr(c, &val.i, func_name_end, NULL, target_addr + written);
 				if (c == copy_ptr) {
 					log_printf("Binhack render error!\n");
 					return 1;
 				}
 				c = copy_ptr;
-				
+
 				if (val.type == VT_FLOAT) {
 					val.f = (float)val.i;
 				} else if (val.type == VT_DOUBLE) {
 					val.d = (double)val.i;
 				}
+				break;
+			case '[':
+			case '<':
+				copy_ptr = get_patch_value(c, &val, NULL, target_addr + written);
+				if (c == copy_ptr) {
+					log_printf("Binhack render error!\n");
+					return 1;
+				}
+				c = copy_ptr;
 				break;
 			case '?':
 				if (c[1] == '?') {
@@ -308,31 +282,31 @@ ParseBrackets:
 		switch (val.type) {
 			case VT_BYTE:
 				*(uint8_t*)binhack_buf = val.b;
-				log_printf("Binhack rendered: %hhX at %p\n", *(uint8_t*)binhack_buf, target_addr + written);
+				//log_printf("Binhack rendered: %hhX at %p\n", *(uint8_t*)binhack_buf, target_addr + written);
 				binhack_buf += sizeof(uint8_t);
 				written += sizeof(uint8_t);
 				break;
 			case VT_WORD:
 				*(uint16_t*)binhack_buf = val.w;
-				log_printf("Binhack rendered: %hX at %p\n", *(uint16_t*)binhack_buf, target_addr + written);
+				//log_printf("Binhack rendered: %hX at %p\n", *(uint16_t*)binhack_buf, target_addr + written);
 				binhack_buf += sizeof(uint16_t);
 				written += sizeof(uint16_t);
 				break;
 			case VT_DWORD:
 				*(uint32_t*)binhack_buf = val.i;
-				log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr + written);
+				//log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr + written);
 				binhack_buf += sizeof(uint32_t);
 				written += sizeof(uint32_t);
 				break;
 			case VT_FLOAT:
 				*(float*)binhack_buf = val.f;
-				log_printf("Binhack rendered: %X at %p\n", *(float*)binhack_buf, target_addr + written);
+				//log_printf("Binhack rendered: %X at %p\n", *(float*)binhack_buf, target_addr + written);
 				binhack_buf += sizeof(float);
 				written += sizeof(float);
 				break;
 			case VT_DOUBLE:
 				*(double*)binhack_buf = val.d;
-				log_printf("Binhack rendered: %llX at %p\n", *(uint64_t*)binhack_buf, target_addr + written);
+				//log_printf("Binhack rendered: %llX at %p\n", *(uint64_t*)binhack_buf, target_addr + written);
 				binhack_buf += sizeof(double);
 				written += sizeof(double);
 				break;
