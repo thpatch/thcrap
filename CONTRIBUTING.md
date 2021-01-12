@@ -41,12 +41,21 @@ after merging with the previous games list in order to keep the
 games.js on disk sorted.
 ```
 
+## Compiler
+The release is built with Visual Studio 2017. Our usual setup is to install Visual Studio 2019, and install the v141_xp toolset (the Visual Studio 2017 compiler with Windows XP compatibility) from the Visual Studio 2019 installer. 
+We stay on the v141_xp toolset because it is the last one to support Windows XP.
+
+Any C++ feature properly supported by this compiler can be used. This includes C++17 features, but not C++20 features.
+
+## gcc
+There is a Makefile for gcc, but no official bulid using it. At least for now, it's mostly for me, when I want to work on a few things but I don't have a Windows PC at hand. You don't need to test your code with it.
+
 ## Build files
 We like having clean build files. All build files are hand-written, with many build parameters being shared between most projects. 
 If you want to add a build parameter that should be used by every project (for example, the version of the compiler toolset), put that in Base.props. Debug and release specific flags go to Debug.props and Release.props. For thcrap-specific flags (like the include path for thcrap.h), use thcrap.props.
 
 ## Dependencies
-The project *must* build with these 3 steps:
+The project **must** build with these 3 steps:
 - `git clone --recursive https://github.com/thpatch/thcrap`
 - Open Visual Studio
 - Rebuild all
@@ -72,14 +81,44 @@ A big part of this project is about fixing programs that don't handle Unicode we
 In most places, we UTF-8 stored in `char*` variables. The jansson library uses UTF-8 jansson files, and the `json_string` strings are always in UTF-8. 
 When we interact with Windows, unless we really need to work with UTF-16 directly for some reasin, we use win32_utf8 to handle the conversion between UTF-8 and UTF-16 silently. If you need to use a Windows function that isn't available in win32_utf8, you can call the UTF-16 version, but we would prefer if you could add it to win32_utf8 (we are the mainteners of win32_utf8, so you can open a pull request in both projects and we will take care of them together.
 
+## Backward compatibility
+Backward compatibility is important in a few ways:
+- Older versions of the self updater must be able to update to the last version.
+- Older versions of thcrap_configure should continue to work as much as possible.
+- Newer versions of thcrap should stay compatible with older patches formats.
+
+There are 2 rationales behind this:
+- Older versions exist.
+- We don't own all our patches.
+
+thcrap_configure doesn't auto-update itself, and older versions of thcrap_loader had some trouble updating themselves, often requiring a few restarts. We also made some mistakes in the past, and may make more in the future. And some games download sites bundle a thcrap version with their games, which of course doesn't get updated when we release a new version and has to auto-update itself. 
+A few statistics about thcrap versions, taken today on an unspecified time frame, and not filtered by individual IPs:
+```
+thcrap_update.js (thcrap_loader looking for a self-update):
+     70 "thcrap/2019-12-29
+    131 "thcrap/2020-06-06
+    518 "thcrap/2020-12-08
+lang_en/files.js (thcrap_configure or thcrap_loader pulling for the files list):
+     32 "thcrap/2019-12-29
+     53 "thcrap/2019-07-18
+    208 "thcrap/2020-06-06
+   1652 "thcrap/2020-12-08
+```
+The 2020-12-08 version is the last one, and the 2020-06-06 version has a bug where the self updater doesn't work. We can see many people stayed on 2020-06-06. I even see a few versions from 2017 in the logs.
+
+Because older versions exist on the net, every version **must** be able to auto-update to the last version. The self updater must have full backward compatibility, and provide an automatic update path when breaking changes to the self updater are introduced.
+
+Backward compatibility of new patches / new patch features / new games with older versions of thcrap isn't important. If they are using the latest patch, they are expected to use the last version of thcrap.
+
+Backward compatibility of older patches (and most importantly the language patches and their dependencies, which are the most likely to be used by people who don't update), is rather important. If we *need* to make a breaking change, we can make one, but we would rather keep things working for everyone. Same for repo.js.
+
+Backward compatibility with older repo.js, patch.js and files.js files is even more important. We don't maintain every patch in the thcrap network. We would need to coordinate with every other patch maker who uses thcrap, and make them update their patches. I'm not even sure we know how to contact everyone who has a patch on the thcrap network. So, a breaking change is possible if needed, but should be avoided.
+
 ## Windows XP
 We still offer limited support for Windows XP. When doing a small new feature, try to at least keep thcrap working on Windows XP. 
 For example, I recently used a Vista-only function to sort keys in a JSON config file, in order to make it more readable. An unsorted JSON file still works, so disabling the feature on XP is an acceptable fix (in this case, there was a XP-compatible function that did the job just as well so it didn't matter). But trying to use the Vista function every time and having thcrap crash on XP is not acceptable.
 
 For major changes, like a new UI, we might consider dropping Windows XP support. You should come and discuss about it with us on [our Discord](https://discord.thpatch.net/).
-
-## gcc
-There is a Makefile for gcc, but no official bulid using it. At least for now, it's mostly for me, when I want to work on a few things but I don't have a Windows PC at hand. You don't need to test your code with it.
 
 ## Testing
 For new features, we would appreciate some unit tests coming with them. But due to our really small test coverage, we do not require unit tests - we won't ask for more effort from external contributors than what we do ourselves. 
