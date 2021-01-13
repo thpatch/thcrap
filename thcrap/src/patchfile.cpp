@@ -345,6 +345,8 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 	return desc;
 }
 
+static std::unordered_map<std::string, patch_opt_val_t> patch_options;
+
 patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t level)
 {
 	patch_t patch = {};
@@ -363,6 +365,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	}
 	else {
 		patch.archive = strdup(patch_path);
+		str_slash_normalize(patch.archive);
 	}
 	patch.config = json_object_get(patch_info, "config");
 	// Merge the runconfig patch array and the patch.js
@@ -390,7 +393,55 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		}
 	};
 
-	set_string_if_exist("id",         patch.id);
+	json_t* id = json_object_get(patch_js, "id");
+	if (id && json_is_string(id)) {
+		patch.id = strdup(json_string_value(id));
+	} else if (patch.archive) {
+		const char* patch_folder = strrchr(patch.archive, '/');
+		if (patch_folder && patch_folder != patch.archive) {
+			// Don't read backwards past the beginning of the string
+			do {
+				if (patch_folder[-1] == '/') {
+					const size_t length = strlen(patch_folder);
+					strncpy(patch.id = (char*)malloc(length), patch_folder, length)[length] = '\0';
+					break;
+				}
+			} while (--patch_folder != patch.archive);
+		}
+	}
+
+	patch.version = 0;
+	json_t* version = json_object_get(patch_js, "version");
+	if (version) {
+		if (json_is_string(version)) {
+			const char* version_string = json_string_value(version);
+			char* end_sub_version;
+			uint8_t sub_versions[4] = { 0 };
+			for (int i = 0; i < 4; ++i) {
+				sub_versions[i] = (uint8_t)strtoul(version_string, &end_sub_version, 10);
+				for (; end_sub_version[0] && !isdigit(end_sub_version[0]); ++end_sub_version);
+				if (!end_sub_version[0]) break;
+				version_string = end_sub_version;
+			}
+			patch.version = sub_versions[0] << 24 | sub_versions[1] << 16 | sub_versions[2] << 8 | sub_versions[3];
+		} else if (json_is_integer(version)) {
+			patch.version = (uint32_t)json_integer_value(version);
+		}
+	}
+	if (!patch.version) {
+		patch.version = 1;
+	}
+
+	if (patch.id) {
+		char* patch_test_opt_name = (char*)malloc(strlen(patch.id) + 7);
+		strcpy(patch_test_opt_name, "patch:");
+		strcat(patch_test_opt_name, patch.id);
+		patch_opt_val_t patch_test_opt = { PATCH_OPT_VAL_DWORD, 4 };
+		patch_test_opt.val.dword = patch.version;
+		patch_options[patch_test_opt_name] = patch_test_opt;
+		free(patch_test_opt_name);
+	}
+
 	set_string_if_exist("title",      patch.title);
 	set_array_if_exist( "servers",    patch.servers);
 	set_array_if_exist( "ignore",     patch.ignore);
@@ -624,8 +675,6 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 	}
 	return ret;
 }
-
-static std::unordered_map<std::string, patch_opt_val_t> patch_options;
 
 void patch_opts_from_json(json_t *opts) {
 	const char *key;

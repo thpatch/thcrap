@@ -103,7 +103,7 @@ struct value_t {
 
 	size_t size() {
 		switch (type) {
-			case VT_NONE:
+			default:
 				return 0;
 			case VT_BYTE: case VT_SBYTE:
 				return 1;

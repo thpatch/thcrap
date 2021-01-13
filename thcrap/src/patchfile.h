@@ -69,6 +69,8 @@ typedef struct
 	char *archive;
 	// Patch id (from patch.js)
 	char *id;
+	// Patch version (from patch.js)
+	uint32_t version;
 	// Patch description (from patch.js)
 	char *title;
 	// Servers list (NULL-terminated) (from patch.js)
