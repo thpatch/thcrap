@@ -75,6 +75,11 @@ const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
 	return ret;
 }
 
+stringref_t json_array_get_stringref(const json_t *arr, const size_t ind)
+{
+	return stringref_t(json_array_get(arr, ind));
+}
+
 size_t json_flex_array_size(const json_t *json)
 {
 	return json ? (json_is_array(json) ? json_array_size(json) : 1) : 0;
@@ -146,6 +151,14 @@ const char* json_object_get_string(const json_t *object, const char *key)
 		return NULL;
 	}
 	return json_string_value(json_object_get(object, key));
+}
+
+stringref_t json_object_get_stringref(const json_t *object, const char *key)
+{
+	if (!key) {
+		return stringref_t((const char*)NULL);
+	}
+	return stringref_t(json_object_get(object, key));
 }
 
 json_t* json_object_merge(json_t *old_obj, json_t *new_obj)
