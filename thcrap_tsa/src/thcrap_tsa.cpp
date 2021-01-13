@@ -183,12 +183,12 @@ int InitDll(HMODULE hDll)
 // Yes, this _has_ to be included in every project.
 // Visual C++ won't use it when imported from a library
 // and just defaults to msvcrt's one in this case.
-//BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
-//{
-//	switch(ulReasonForCall) {
-//		case DLL_PROCESS_ATTACH:
-//			InitDll(hDll);
-//			break;
-//	}
-//	return TRUE;
-//}
+BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID lpReserved)
+{
+	switch(ulReasonForCall) {
+		case DLL_PROCESS_ATTACH:
+			InitDll(hDll);
+			break;
+	}
+	return TRUE;
+}

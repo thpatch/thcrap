@@ -1665,12 +1665,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 	*out = value;
 	return expr + 1;
 
-// TODO: Find a way of integrating this better...
-// For whatever reason, everything I've tried to
-// get rid of this goto has ended up doubling the
-// stack usage of this function. Considering that
-// it's a recursive function and stack space is
-// valuable, the goto seems to be worth it.
+// Find a way of integrating this better...
 DealWithTernary:
 	if (cur_value) {
 		if (expr++[1] == ':') {

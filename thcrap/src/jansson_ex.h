@@ -95,14 +95,6 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 #ifdef __cplusplus
 }
 
-// Same as json_array_get_string(), but returns a stringref_t
-// containing the string length.
-stringref_t json_array_get_stringref(const json_t *arr, const size_t ind);
-
-// Same as json_object_get_string(), but returns a stringref_t
-// containing the string length.
-stringref_t json_object_get_stringref(const json_t * object, const char *key);
-
 struct json_custom_value_t {
 	std::string err;
 };

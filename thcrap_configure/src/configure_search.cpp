@@ -9,8 +9,6 @@
 
 #include <thcrap.h>
 #include "configure.h"
-#include <algorithm>
-#include <stdexcept>
 
 static const char games_js_fn[] = "config/games.js";
 
