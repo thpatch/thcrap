@@ -62,12 +62,11 @@ typedef struct {
 	size_t count;
 	// Codecave fill
 	BYTE fill;
+	// Codecave export status
+	bool export_codecave;
 	// Read, write, execute flags
 	CodecaveAccessType access_type;
 } codecave_t;
-
-// Returns whether [c] is a valid hexadecimal character
-int is_valid_hex(char c);
 
 // Shared error message for nonexistent functions.
 int hackpoints_error_function_not_found(const char *func_name, int retval);

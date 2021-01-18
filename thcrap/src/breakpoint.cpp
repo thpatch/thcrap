@@ -42,7 +42,7 @@ size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 	}
 	const char *expr = json_string_value(val);
 	size_t ret = 0;
-	eval_expr(expr, &ret, '\0', regs, NULL);
+	eval_expr(expr, '\0', &ret, regs, NULL);
 	return ret;
 }
 
@@ -58,19 +58,17 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	// - A dereferencing (for example "[ebp-8]"), where we'll skip the top-level dereferencing. After all, ebp-8 points to [ebp-8].
 	// - A register name, without anything else. In that case, we can return a pointer to the register in the x86_reg_t structure.
 	size_t *ptr;
-	const char *reg_end;
+	const char *expr_end;
 
-	ptr = reg(regs, expr, &reg_end);
-	if (ptr && reg_end[0] == '\0') {
+	ptr = reg(regs, expr, &expr_end);
+	if (ptr && expr_end[0] == '\0') {
 		return ptr;
 	}
 	else if (expr[0] == '[') {
-		expr++;
-		//ptr = (size_t*)eval_expr(&expr, regs, ']', NULL);
-		eval_expr(expr, (size_t*)&ptr, ']', regs, NULL);
-		/*if (*expr != '\0') {
-			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr);
-		}*/
+		expr_end = eval_expr(expr + 1, ']', (size_t*)&ptr, regs, NULL);
+		if (expr_end[0] != '\0') {
+			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr_end);
+		}
 		return ptr;
 	}
 	log_func_printf("Error: called with something other than a register or a dereferencing.\n");

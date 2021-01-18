@@ -45,7 +45,7 @@ enum {
 typedef uint8_t CastType;
 
 #ifdef __cplusplus
-enum value_type_t {
+enum value_type_t : uint8_t {
 	VT_NONE = 0,
 	VT_BYTE,
 	VT_SBYTE,
@@ -122,6 +122,8 @@ struct value_t {
 const char* get_patch_value(const char* expr, value_t* out, x86_reg_t* regs, size_t rel_source);
 #endif
 
+void DisableCodecaveNotFoundWarning(bool state);
+
 // Returns a pointer to the register [regname] in [regs]. [endptr] behaves
 // like the endptr parameter of strtol(), and can be a nullptr if not needed.
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
@@ -131,4 +133,4 @@ const char* parse_brackets(const char* str, char opening);
 bool CheckForType(const char * *const expr, size_t *const expr_len, CastType *const out);
 
 //const char* consume_value(const char* expr, const char end, size_t *const out, const x86_reg_t *const regs, const size_t rel_source);
-const char* eval_expr(const char* expr, size_t* out, char end, x86_reg_t* regs, size_t rel_source);
+const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);

@@ -239,7 +239,7 @@ void runconfig_load(json_t *file, int flags)
 	}
 
 	json_t *stages = json_object_get(file, "init_stages");
-	if ((stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) &&
+	if ((stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) || json_object_get(file, "options") &&
 		(run_cfg.stages.empty() || can_overwrite)) {
 		run_cfg.stages.clear();
 		size_t i;

@@ -10,21 +10,13 @@
 #include "thcrap.h"
 #include <intrin.h>
 
-#define EnableExpressionLogging
+//#define EnableExpressionLogging
 
 #ifdef EnableExpressionLogging
 #define ExpressionLogging(...) log_printf(__VA_ARGS__)
 #else
 #define ExpressionLogging(...)
 #endif
-
-constexpr uint32_t TextInt(unsigned char one, unsigned char two = '\0', unsigned char three = '\0', unsigned char four = '\0') {
-	return four << 24 | three << 16 | two << 8 | one;
-}
-
-constexpr uint16_t TextInt16(unsigned char one, unsigned char two = '\0') {
-	return two << 8 | one;
-}
 
 static inline char* strndup(const char* source, size_t length) {
 	char *const ret = (char *const)malloc(length + 1);
@@ -195,32 +187,29 @@ static __declspec(noinline) void AssignmentWarningMessage(void) {
 	WarnOnce(log_printf("EXPRESSION WARNING 1: Assignment operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators are only included for future compatibility and operator precedence reasons.\n"));
 }
 
-//static __declspec(noinline) void TernaryWarningMessage(void) {
-//	WarnOnce(log_printf("EXPRESSION WARNING 2: Expressions currently don't support ternary operations with correct associativity. However, it is still possible to obtain a correct result with parenthesis.\n"));
-//}
-
 static __declspec(noinline) void PatchValueWarningMessage(const char *const name) {
-	log_printf("EXPRESSION WARNING 3: Unknown patch value type \"%s\", using value 0\n", name);
+	log_printf("EXPRESSION WARNING 2: Unknown patch value type \"%s\", using value 0\n", name);
 }
 
+// The whole reason for having this is so that the log doesn't
+// flood with warnings when calculating codecave sizes since
+// their addresses haven't been found/recorded yet
+static bool DisableCodecaveNotFound = false;
+void DisableCodecaveNotFoundWarning(bool state) {
+	DisableCodecaveNotFound = state;
+}
 static __declspec(noinline) void CodecaveNotFoundWarningMessage(const char *const name) {
-	log_printf("EXPRESSION WARNING 4: Codecave \"%s\" not found\n", name);
-}
-
-static __declspec(noinline) void PatchTestNotExistWarningMessage(const char *const name) {
-	log_printf("EXPRESSION WARNING 5: Couldn't test for patch \"%s\" because patch testing hasn't been implemented yet. Assuming it exists and returning 1...");
+	if (!DisableCodecaveNotFound) {
+		log_printf("EXPRESSION WARNING 3: Codecave \"%s\" not found\n", name);
+	}
 }
 
 static __declspec(noinline) void PostIncDecWarningMessage(void) {
-	WarnOnce(log_printf("EXPRESSION WARNING 6: Postfix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators do nothing and are only included for future compatibility and operator precedence reasons.\n"));
+	WarnOnce(log_printf("EXPRESSION WARNING 4: Postfix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators do nothing and are only included for future compatibility and operator precedence reasons.\n"));
 }
 
-//static inline void CPUTestNotExistWarningMessage(const char *const name) {
-//	log_printf("EXPRESSION WARNING 7: Couldn't test for CPU feature \"%s\" because CPU feature testing hasn't been implemented yet. Assuming it exists and returning 1...\n");
-//}
-
 static __declspec(noinline) void InvalidCPUFeatureWarningMessage(const char *const name) {
-	log_printf("EXPRESSION WARNING 7: Unknown CPU feature \"%s\"! Assuming feature is present and returning 1...\n");
+	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%s\"! Assuming feature is present and returning 1...\n");
 }
 
 static __declspec(noinline) void ExpressionErrorMessage(void) {
@@ -256,8 +245,6 @@ typedef struct {
 
 static const char* __fastcall eval_expr_new_impl(const char* expr, const char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *const data_refs);
 static const char* __fastcall consume_value_impl(const char* expr, const char end, size_t *const out, const StackSaver *const data_refs);
-
-#define PtrDiffStrlen(end_ptr, start_ptr) ((end_ptr) - (start_ptr))
 
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr) {
 	uint32_t cmp;
@@ -918,6 +905,7 @@ static __declspec(noinline) size_t ApplyOperator(const size_t value, const size_
 
 static __declspec(noinline) __declspec(safebuffers) value_t GetOptionValue(const char *const name, const size_t name_length) {
 	const char *const name_buffer = strndup(name, name_length);
+	ExpressionLogging("Option: \"%s\"\n", name_buffer);
 	const patch_opt_val_t *const option = patch_opt_get(name_buffer);
 	value_t ret = (uint64_t)0;
 	if (option) {
@@ -938,7 +926,7 @@ static __declspec(noinline) __declspec(safebuffers) value_t GetOptionValue(const
 
 static __declspec(noinline) value_t GetPatchTestValue(const char *const name, const size_t name_length) {
 	const char *const name_buffer = strndup(name, name_length);
-	//PatchTestNotExistWarningMessage(name_buffer);
+	ExpressionLogging("PatchTest: \"%s\"\n", name_buffer);
 	const patch_opt_val_t *const patch_test = patch_opt_get(name_buffer);
 	value_t ret = (uint32_t)0;
 	if (patch_test) {
@@ -956,6 +944,7 @@ static __declspec(noinline) value_t GetPatchTestValue(const char *const name, co
 
 static __declspec(noinline) value_t GetCPUFeatureTest(const char *const name, const size_t name_length) {
 	const char *const name_buffer = strndup(name, name_length);
+	ExpressionLogging("CPUFeatureTest: \"%s\"\n", name_buffer);
 	value_t ret = false;
 	// Yuck
 	switch (name_length) {
@@ -1054,21 +1043,31 @@ InvalidCPUFeatureError:
 
 static __declspec(noinline) value_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
 	char *const name_buffer = strndup(name, name_length);
+	ExpressionLogging("CodecaveAddress: \"%s\"\n", name_buffer);
 	char* user_offset_expr = strchr(name_buffer, '+');
 	if (user_offset_expr) {
 		// This prevents next read to name_buffer
 		// from containing the offset value
 		*user_offset_expr++ = '\0';
 	}
-	value_t ret = func_get(name_buffer);
-	if (!ret.type) {
+	value_t ret;
+	ret.type = VT_DWORD;
+	ret.i = func_get(name_buffer);
+	if (!ret.i) {
 		CodecaveNotFoundWarningMessage(name_buffer);
 	} else {
 		if (user_offset_expr) {
-			size_t user_offset_value;
-			if (user_offset_expr == eval_expr_new_impl(user_offset_expr, '\0', &user_offset_value, StartNoOp, 0, data_refs)) {
-				ExpressionErrorMessage();
-			} else {
+			char* user_offset_expr_next;
+			// Try a hex value by default for compatibility
+			size_t user_offset_value = strtoul(user_offset_expr, &user_offset_expr_next, 16);
+			// If a hex value doesn't work, try a subexpression
+			if (user_offset_expr == user_offset_expr_next) {
+				user_offset_expr_next = (char*)eval_expr_new_impl(user_offset_expr, '\0', &user_offset_value, StartNoOp, 0, data_refs);
+				if (user_offset_expr == user_offset_expr_next) {
+					ExpressionErrorMessage();
+				}
+			}
+			if (user_offset_expr != user_offset_expr_next) {
 				ret.i += user_offset_value;
 			}
 		}
@@ -1082,10 +1081,13 @@ static __declspec(noinline) value_t GetCodecaveAddress(const char *const name, c
 
 static __declspec(noinline) value_t GetBPFuncOrRawAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
 	const char *const name_buffer = strndup(name, name_length);
-	value_t ret = func_get(name_buffer);
-	if (!ret.type) { // Will be null if the name was not a BP function
-		ret.type = VT_DWORD;
-		if (name_buffer == eval_expr_new_impl(name_buffer, is_relative ? ']' : '>', &ret.i, StartNoOp, 0, data_refs)) {
+	ExpressionLogging("BPFuncOrRawAddress: \"%s\"\n", name_buffer);
+	value_t ret;
+	ret.type = VT_DWORD;
+	ret.i = func_get(name_buffer);
+	if (!ret.i) { // Will be null if the name was not a BP function
+		const char *const name_buffer_next = eval_expr_new_impl(name_buffer, '\0', &ret.i, StartNoOp, 0, data_refs);
+		if (name_buffer == name_buffer_next) {
 			ExpressionErrorMessage();
 			goto SkipRelative;
 			// Ret would still be 0, so keep going
@@ -1105,6 +1107,7 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, v
 	ExpressionLogging("Patch value opening char: \"%hhX\"\n", opening);
 	bool is_relative = opening == '[';
 	const char *const patch_val_end = find_matching_end(expr, { TextInt(opening, is_relative ? ']' : '>') });
+	ExpressionLogging("Patch value end: \"%s\"\n", patch_val_end ? patch_val_end : "NULL");
 	if (!patch_val_end) {
 		//Bracket error
 		return expr;
@@ -1137,14 +1140,14 @@ const char* get_patch_value(const char* expr, value_t* out, x86_reg_t* regs, siz
 
 	const char *const expr_next = get_patch_value_impl(expr, out, &data_refs);
 	if (expr == expr_next) goto ExpressionError;
-	ExpressionLogging("END PATCH VALUE\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, out->i, out->i, out->i, expr_next);
+	ExpressionLogging("END PATCH VALUE\n\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, out->i, out->i, out->i, expr_next);
 	return expr_next;
 
 ExpressionError:
 	ExpressionErrorMessage();
 	out->type = VT_DWORD;
 	out->i = 0;
-	ExpressionLogging("END PATCH VALUE WITH ERROR\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, out->i, out->i, out->i, expr_next);
+	ExpressionLogging("END PATCH VALUE WITH ERROR\n\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, out->i, out->i, out->i, expr_next);
 	return expr_next;
 }
 
@@ -1255,7 +1258,7 @@ static inline const char* CheckCastType(const char* expr, uint8_t &out) {
 	return expr;
 };
 
-static inline const char* is_reg_name(const char *const expr, const x86_reg_t *const regs, size_t &out) {
+static __forceinline const char* is_reg_name(const char *const expr, const x86_reg_t *const regs, size_t &out) {
 	if (!expr[0] || !expr[1] || !expr[2]) {
 		return expr;
 	}
@@ -1289,6 +1292,14 @@ static inline const char* is_reg_name(const char *const expr, const x86_reg_t *c
 	return ret;
 };
 
+static inline const char* PostfixCheck(const char* expr) {
+	if ((expr[0] == '+' && expr[1] == '+') || (expr[0] == '-' && expr[1] == '-')) {
+		PostIncDecWarningMessage();
+		return expr + 2;
+	}
+	return expr;
+}
+
 static const char* __fastcall consume_value_impl(const char* expr, const char end, size_t *const out, const StackSaver *const data_refs) {
 	// Current is used as both "current_char" and "cur_value"
 	uint32_t current = 0;
@@ -1296,75 +1307,89 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 	uint8_t cast = u32_cast;
 	const char* expr_next;
 	--expr;
-CheeseLoopLabel1:
-	++expr;
-CheeseLoopLabel2:
-	switch (current = expr[0]) {
+CheeseLoopContinue:
+	switch (current = *++expr) {
+		/*
+		*  IDK
+		*/
+		case '\0':
+			goto InvalidValueError;
 		/*
 		*  Skip whitespace
 		*/
 		case ' ': case '\t': case '\v': case '\f':
-			goto CheeseLoopLabel1;
+			goto CheeseLoopContinue;
 		/*
 		*  Pointer sizes
 		*/
 		case 'b': case 'B':
 			if (strnicmp(expr, "byte ptr", 8) == 0) {
 				cast = T8_ptr;
-				expr += 8;
-				goto CheeseLoopLabel2;
+				expr += 7;
+				goto CheeseLoopContinue;
 			}
-			goto RawValueOrRegister;
+			goto RawValue;
 		case 'w': case 'W':
 			if (strnicmp(expr, "word ptr", 8) == 0) {
 				cast = T16_ptr;
-				expr += 8;
-				goto CheeseLoopLabel2;
+				expr += 7;
+				goto CheeseLoopContinue;
 			}
-			goto RawValueOrRegister;
+			goto InvalidCharacterError;
 		case 'd': case 'D':
 			if (strnicmp(expr, "dword ptr", 9) == 0) {
 				cast = T32_ptr;
-				expr += 9;
-				goto CheeseLoopLabel2;
+				expr += 8;
+				goto CheeseLoopContinue;
 			} else if (strnicmp(expr, "double ptr", 10) == 0) {
 				cast = T64_ptr;
-				expr += 10;
-				goto CheeseLoopLabel2;
+				expr += 9;
+				goto CheeseLoopContinue;
 			}
-			goto RawValueOrRegister;
+			goto RawValue;
 		case 'f': case 'F':
 			if (strnicmp(expr, "float ptr", 9) == 0) {
 				cast = T32_ptr;
-				expr += 9;
-				goto CheeseLoopLabel2;
+				expr += 8;
+				goto CheeseLoopContinue;
 			}
-			goto RawValueOrRegister;
+			goto RawValue;
 		case 'q': case 'Q':
 			if (strnicmp(expr, "qword ptr", 9) == 0) {
 				cast = T64_ptr;
-				expr += 9;
-				goto CheeseLoopLabel2;
+				expr += 8;
+				goto CheeseLoopContinue;
 			}
-			goto RawValueOrRegister;
+			goto InvalidCharacterError;
 		/*
 		*  Unary Operators
 		*/
-		case '!': case '~': case '+': case '-': //case '*': case '&':
-			// expr + 1 is used to avoid creating a loop
-			expr_next = consume_value_impl(expr + 1, end, &current, data_refs);
-			if (expr + 1 == expr_next) {
+		case '!': case '~': case '+': case '-':
+		{
+			const uint8_t two_char_unary = expr[1] == current;
+			cast = expr[1] == current;
+			expr_next = consume_value_impl(expr + 1 + two_char_unary, end, &current, data_refs);
+			if (expr + 1 + two_char_unary == expr_next) {
 				goto InvalidValueError;
 			}
-			switch (expr[0]) {
-				case '!': current = !current; break;
-				case '~': current = ~current; break;
-				//case '*': current = *(size_t*)current; break;
-				//case '&': current = (size_t)&current; break;
-				case '-': expr[1] == '-' ? --current : current *= -1; break;
-				case '+': expr[1] == '+' ? ++current : current; break;
+			if (two_char_unary) {
+				switch (expr[0]) {
+					case '!': current = (bool)current; break;
+					//case '~': current = ~~current; break;
+					case '-': --current; break;
+					case '+': ++current; break;
+				}
+			} else {
+				switch (expr[0]) {
+					case '!': current = !current; break;
+					case '~': current = ~current; break;
+					case '-': current *= -1; break;
+					//case '+': current = +current; break;
+				}
 			}
-			goto PostfixCheck;
+			*out = current;
+			return PostfixCheck(expr_next);;
+		}
 		case '*':
 			++expr;
 			expr_next = consume_value_impl(expr, end, &current, data_refs);
@@ -1380,7 +1405,8 @@ CheeseLoopLabel2:
 				case f32_cast: current = (size_t) * (float*)current; break;
 				case f64_cast: current = (size_t) * (double*)current; break;
 			}
-			goto PostfixCheck;
+			*out = current;
+			return PostfixCheck(expr_next);
 		/*
 		*  Casts and subexpression values
 		*/
@@ -1414,7 +1440,8 @@ CheeseLoopLabel2:
 					--expr_next;
 				}
 			}
-			goto PostfixCheck;
+			*out = current;
+			return PostfixCheck(expr_next);
 		/*
 		*  Patch value and/or dereference
 		*/
@@ -1423,7 +1450,7 @@ CheeseLoopLabel2:
 		/*
 		*  Dereference
 		*/
-		//case '{':
+		case '{':
 				// expr + 1 is used to avoid creating a loop
 				expr_next = eval_expr_new_impl(expr + 1, current == '[' ? ']' : '}', &current, StartNoOp, 0, data_refs);
 				if (expr + 1 == expr_next) {
@@ -1438,35 +1465,34 @@ CheeseLoopLabel2:
 					case f32_cast: current = (size_t) * (float*)current; break;
 					case f64_cast: current = (size_t) * (double*)current; break;
 				}
-				//memcpy(&current, reinterpret_cast<void *>(current), cast);
-				goto PostfixCheck;
+				*out = current;
+				return PostfixCheck(expr_next);
 			}
 			[[fallthrough]];
 		/*
 		*  Guaranteed patch value
 		*/
-		case '{':
 		case '<':
 			// DON'T use expr + 1 since that kills get_patch_value
-			{
-				value_t temp;
-				expr_next = get_patch_value_impl(expr, &temp, data_refs);
-				if (expr == expr_next) {
-					goto InvalidPatchValueError;
-				}
-				switch (temp.type) {
-					case VT_BYTE: current = (uint32_t)temp.b; break;
-					case VT_SBYTE: current = (uint32_t)temp.sb; break;
-					case VT_WORD: current = (uint32_t)temp.w; break;
-					case VT_SWORD: current = (uint32_t)temp.sw; break;
-					case VT_DWORD: current = (uint32_t)temp.i; break;
-					case VT_SDWORD: current = (uint32_t)temp.si; break;
-					case VT_QWORD: current = (uint32_t)temp.q; break;
-					case VT_SQWORD: current = (uint32_t)temp.sq; break;
-					case VT_FLOAT: current = (uint32_t)temp.f; break;
-					case VT_DOUBLE: current = (uint32_t)temp.d; break;
-				}
+		{
+			value_t temp;
+			expr_next = get_patch_value_impl(expr, &temp, data_refs);
+			if (expr == expr_next) {
+				goto InvalidPatchValueError;
 			}
+			switch (temp.type) {
+				case VT_BYTE: current = (uint32_t)temp.b; break;
+				case VT_SBYTE: current = (uint32_t)temp.sb; break;
+				case VT_WORD: current = (uint32_t)temp.w; break;
+				case VT_SWORD: current = (uint32_t)temp.sw; break;
+				case VT_DWORD: current = (uint32_t)temp.i; break;
+				case VT_SDWORD: current = (uint32_t)temp.si; break;
+				case VT_QWORD: current = (uint32_t)temp.q; break;
+				case VT_SQWORD: current = (uint32_t)temp.sq; break;
+				case VT_FLOAT: current = (uint32_t)temp.f; break;
+				case VT_DOUBLE: current = (uint32_t)temp.d; break;
+			}
+		}
 			// If the previous character was the end character,
 			// back up so that the main function will be able
 			// to detect it and not loop. Yes, it's a bit jank.
@@ -1474,40 +1500,32 @@ CheeseLoopLabel2:
 				--expr_next;
 			}
 			ExpressionLogging("Parsed patch value is %X / %d / %u\n", current, current, current);
-			goto PostfixCheck;
+			*out = current;
+			return PostfixCheck(expr_next);
 		/*
 		*  Raw value or breakpoint register
 		*/
-RawValueOrRegister:
 		case '&':
 		default:
-			expr_next = is_breakpoint && current != '0' ? is_reg_name(expr, data_refs->regs, current) : expr;
+			expr_next = is_breakpoint ? is_reg_name(expr, data_refs->regs, current) : expr;
 			if (expr != expr_next) {
 				// current is set inside is_reg_name if a register is detected
 				ExpressionLogging("Register value was %X / %d / %u\n", current, current, current);
+				*out = current;
+				return PostfixCheck(expr_next);
 			} else {
+RawValue:
 				// TODO : Don't parse raw hex with the address function
 				str_address_ret_t addr_ret;
 				current = str_address_value(expr, nullptr, &addr_ret);
 				if (expr == addr_ret.endptr || (addr_ret.error && addr_ret.error != STR_ADDRESS_ERROR_GARBAGE)) {
 					goto InvalidCharacterError;
 				}
-				ExpressionLogging("Raw value was %X / %d / %u\n", current, current, current);
-				expr_next = addr_ret.endptr;
-				ExpressionLogging("Remaining after raw value: \"%s\"\n", expr_next);
+				ExpressionLogging("Raw value was %X / %d / %u\nRemaining after raw value: \"%s\"\n", current, current, current, addr_ret.endptr);
+				*out = current;
+				return PostfixCheck(addr_ret.endptr);
 			}
-			goto PostfixCheck;
 	}
-PostfixCheck:
-	if (expr_next[0] == '+' && expr_next[1] == '+') {
-		PostIncDecWarningMessage();
-		expr_next += 2;
-	} else if (expr_next[0] == '-' && expr_next[1] == '-') {
-		PostIncDecWarningMessage();
-		expr_next += 2;
-	}
-	*out = current;
-	return expr_next;
 
 InvalidValueError:
 	InvalidValueErrorMessage(expr);
@@ -1633,7 +1651,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 				break;
 			//case HigherThanNext:
 			default:
-				if (OpData.Precedence[ops.next] != OpData.Precedence[NoOp] && ops.cur != StartNoOp) {
+				if (OpData.Precedence[ops.next] != OpData.Precedence[NoOp] && start_op != StartNoOp) {
 					ExpressionLogging("\tHIGHER PRECEDENCE\n");
 					// Higher precedence quick exit
 					ExpressionLogging("Applying operation: \"%u %s %u\"\n", value, PrintOp(ops.cur), cur_value);
@@ -1673,9 +1691,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 // valuable, the goto seems to be worth it.
 DealWithTernary:
 	if (cur_value) {
-		if (expr++[1] == ':') {
-			cur_value = 1;
-		} else {
+		if (expr++[1] != ':') {
 			expr_next = eval_expr_new_impl(expr, ':', &cur_value, StartNoOp, 0, data_refs);
 			if (expr == expr_next) goto InvalidExpressionError;
 			expr = expr_next;
@@ -1719,19 +1735,19 @@ InvalidExpressionError:
 	return expr;
 }
 
-const char* eval_expr(const char* expr, size_t* out, char end, x86_reg_t* regs, size_t rel_source) {
+const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source) {
 	ExpressionLogging("START EXPRESSION \"%s\" with end \"%hhX\"\n", expr, end);
 
 	const StackSaver data_refs = { regs, rel_source };
 
 	const char *const expr_next = eval_expr_new_impl(expr, end, out, StartNoOp, 0, &data_refs);
 	if (expr == expr_next) goto ExpressionError;
-	ExpressionLogging("END EXPRESSION\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, *out, *out, *out, expr_next);
+	ExpressionLogging("END EXPRESSION\n\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, *out, *out, *out, expr_next);
 	return expr_next;
 
 ExpressionError:
 	ExpressionErrorMessage();
 	*out = 0;
-	ExpressionLogging("END EXPRESSION WITH ERROR\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, *out, *out, *out, expr_next);
+	ExpressionLogging("END EXPRESSION WITH ERROR\n\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, *out, *out, *out, expr_next);
 	return expr_next;
 }

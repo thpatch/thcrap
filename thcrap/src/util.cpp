@@ -9,6 +9,7 @@
 
 #include "thcrap.h"
 #include <errno.h>
+#include <string.h>
 
 size_t dword_align(const size_t val)
 {
@@ -82,10 +83,25 @@ void str_hexdate_format(char format[11], uint32_t date)
 	);
 }
 
+enum {
+	InvalidDigit = 0,
+	DecimalDigit = 1,
+	HexDigit = 4
+};
+
+struct hex_lookup_table_t {
+	uint8_t digits[256] = { InvalidDigit };
+	constexpr hex_lookup_table_t(void) {
+		digits['0'] = digits['1'] = digits['2'] = digits['3'] = digits['4'] = digits['5'] = digits['6'] = digits['7'] = digits['8'] = digits['9'] = DecimalDigit;
+		digits['a'] = digits['b'] = digits['c'] = digits['d'] = digits['e'] = digits['f'] = HexDigit;
+		digits['A'] = digits['B'] = digits['C'] = digits['D'] = digits['E'] = digits['F'] = HexDigit;
+	}
+}
+static const hex_lookup_table;
+
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 {
 	int base = 0;
-	size_t offset = 0;
 	size_t val = 0;
 	char *endptr_temp;
 	char **endptr = ret ? (char **)&ret->endptr : &endptr_temp;
@@ -93,16 +109,25 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 	if(str[0] != '\0') {
 		// Module-relative hex values
 		if(!strnicmp(str, "Rx", 2)) {
-			val += (size_t)(hMod ? hMod : GetModuleHandle(NULL));
+			val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
 			base = 16;
-			offset = 2;
+			str += 2;
 		}
-		else if(strpbrk(str + offset,"abcdefABCDEF")) {
+		else if (!strnicmp(str, "0x", 2)) {
 			base = 16;
+			str += 2;
 		}
 	}
 	errno = 0;
-	val += strtoul(str + offset, endptr, base);
+	if (base != 0) {
+		val += strtoul(str, endptr, base);
+	} else {
+		const size_t temp_val1 = strtoul(str, &endptr_temp, 10);
+		char* endptr_temp2;
+		const size_t temp_val2 = strtoul(str, &endptr_temp2, 16);
+		val += endptr_temp == endptr_temp2 ? temp_val2 : temp_val1;
+		*endptr = endptr_temp == endptr_temp2 ? endptr_temp2 : endptr_temp;
+	}
 
 	if(ret) {
 		ret->error = STR_ADDRESS_ERROR_NONE;
@@ -115,4 +140,23 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 		}
 	}
 	return val;
+}
+
+int is_valid_hex(char c) {
+	return hex_lookup_table.digits[c] != InvalidDigit;
+}
+
+int is_valid_hex_byte(int c1, int c2) {
+	return hex_lookup_table.digits[c1] != InvalidDigit && hex_lookup_table.digits[c2] != InvalidDigit;
+}
+
+size_t str_count_hex_digits(const char* str) {
+	const char* str_copy = str;
+	for (; hex_lookup_table.digits[*str_copy] != InvalidDigit; ++str_copy);
+	return PtrDiffStrlen(str_copy, str);
+}
+
+int str_min_hex_digits(const char* str, size_t num) {
+	for (; hex_lookup_table.digits[*str] != InvalidDigit && num; ++str, --num);
+	return num == 0;
 }

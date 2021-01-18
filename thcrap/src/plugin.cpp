@@ -52,6 +52,35 @@ bool func_remove(const char *name) {
 	return false;
 }
 
+int patch_func_init(exported_func_t *funcs_new, size_t func_count)
+{
+	if (func_count > 0) {
+		mod_funcs_t *mod_funcs_new = mod_func_build(funcs_new);
+		mod_func_run(mod_funcs_new, "init", NULL);
+		for (mod_func_pair_t pair : *mod_funcs_new) {
+			std::string_view key = pair.first;
+			std::vector<mod_call_type> arr = pair.second;
+
+			mod_funcs[key].insert(mod_funcs[key].end(), arr.begin(), arr.end());
+		}
+		for (int i = 0; funcs_new[i].func != 0 && funcs_new[i].name != nullptr; i++) {
+			auto existing = funcs.find(funcs_new[i].name);
+			if (existing == funcs.end()) {
+				funcs[funcs_new[i].name] = funcs_new[i].func;
+				return 0;
+			} else {
+				free((void*)funcs_new[i].name);
+				log_printf("Overwriting function/codecave %s\n");
+				existing->second = funcs_new[i].func;
+				return 1;
+			}
+		}
+		delete mod_funcs_new;
+		func_count = 0;
+	}
+	return func_count;
+}
+
 int plugin_init(HMODULE hMod)
 {
 	exported_func_t *funcs_new;
