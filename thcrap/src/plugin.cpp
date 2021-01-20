@@ -41,6 +41,41 @@ int func_add(const char *name, size_t addr) {
 	
 }
 
+void func_add_internal(void) {
+	funcs["th_malloc"] = (size_t)&malloc;
+	funcs["th_calloc"] = (size_t)&calloc;
+	funcs["th_realloc"] = (size_t)&realloc;
+	funcs["th_free"] = (size_t)&free;
+	funcs["th_msize"] = (size_t)&_msize;
+	funcs["th_expand"] = (size_t)&_expand;
+
+	funcs["th_memcpy"] = (size_t)&memcpy;
+	funcs["th_memmove"] = (size_t)&memmove;
+	funcs["th_memcmp"] = (size_t)&memcmp;
+	funcs["th_memset"] = (size_t)&memset;
+	funcs["th_strdup"] = (size_t)&strdup;
+	
+	funcs["th_strcmp"] = (size_t)&strcmp;
+	funcs["th_strncmp"] = (size_t)&strncmp;
+	funcs["th_stricmp"] = (size_t)&stricmp;
+	funcs["th_strnicmp"] = (size_t)&strnicmp;
+	funcs["th_strcpy"] = (size_t)&strcpy;
+	funcs["th_strncpy"] = (size_t)&strncpy;
+	funcs["th_strcat"] = (size_t)&strcat;
+	funcs["th_strncat"] = (size_t)&strncat;
+	funcs["th_strlen"] = (size_t)&strlen;
+	funcs["th_strnlen_s"] = (size_t)&strnlen_s;
+
+	funcs["th_sprintf"] = (size_t)&sprintf;
+	funcs["th_snprintf"] = (size_t)&snprintf;
+	funcs["th_sscanf"] = (size_t)&sscanf;
+
+	funcs["th_GetLastError"] = (size_t)&GetLastError;
+	funcs["th_GetProcAddress"] = (size_t)&GetProcAddress;
+	funcs["th_GetModuleHandleA"] = (size_t)&GetModuleHandleA;
+	funcs["th_GetModuleHandleW"] = (size_t)&GetModuleHandleW;
+}
+
 bool func_remove(const char *name) {
 	auto existing = funcs.find(name);
 	if (existing != funcs.end()) {

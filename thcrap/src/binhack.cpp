@@ -43,13 +43,13 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 
 // Returns false only if parsing should be aborted.
 const char* consume_value(const char *const expr, value_t *const val) {
+	char* expr_next;
 
 	// Double / float
 	if (expr[0] == '+' || expr[0] == '-') {
 		if (!lc_neutral) {
 			lc_neutral = _create_locale(LC_NUMERIC, "C");
 		}
-		char* expr_next;
 		errno = 0;
 		double result = _strtod_l(expr, &expr_next, lc_neutral);
 		if (expr == expr_next) {
@@ -68,6 +68,30 @@ const char* consume_value(const char *const expr, value_t *const val) {
 			return expr_next;
 		}
 	}
+	// TODO: Check if anyone uses single quotes already in code strings
+	//// Char
+	//else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
+	//	if (expr[1] == '\\') {
+	//		switch (expr[2]) {
+	//			case '0':  *val = '\0'; break;
+	//			case 'a':  *val = '\a'; break;
+	//			case 'b':  *val = '\b'; break;
+	//			case 'f':  *val = '\f'; break;
+	//			case 'n':  *val = '\n'; break;
+	//			case 'r':  *val = '\r'; break;
+	//			case 't':  *val = '\t'; break;
+	//			case 'v':  *val = '\v'; break;
+	//			case '\\': *val = '\\'; break;
+	//			case '\'': *val = '\''; break;
+	//			case '\"': *val = '\"'; break;
+	//			case '\?': *val = '\?'; break;
+	//			default:   *val = expr[2]; break;
+	//		}
+	//	} else {
+	//		*val = expr[1];
+	//	}
+	//	return expr_next + 1;
+	//}
 	// Byte
 	else if (is_valid_hex_byte(expr[0], expr[1])) {
 		const uint32_t conv = (uint32_t)*(uint16_t*)expr;
@@ -181,17 +205,19 @@ size_t binhack_calc_size(const char *binhack_str)
 				binhack_str = copy_ptr;
 		}
 		switch (val.type) {
-			case VT_BYTE:
-				++size;
+			case VT_BYTE: case VT_SBYTE:
+				size += sizeof(int8_t);
 				break;
-			case VT_WORD:
-				size += 2;
+			case VT_WORD: case VT_SWORD:
+				size += sizeof(int16_t);
 				break;
-			case VT_DWORD: case VT_FLOAT:
-				size += 4;
+			case VT_DWORD: case VT_SDWORD:
+				size += sizeof(int32_t);
 				break;
+			case VT_FLOAT:
+				size += sizeof(float);
 			case VT_DOUBLE:
-				size += 8;
+				size += sizeof(double);
 				break;
 		}
 	}
@@ -311,17 +337,35 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_buf += sizeof(uint8_t);
 				target_addr += sizeof(uint8_t);
 				break;
+			case VT_SBYTE:
+				*(int8_t*)binhack_buf = val.sb;
+				//log_printf("Binhack rendered: %02hhX at %p\n", *(int8_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int8_t);
+				target_addr += sizeof(int8_t);
+				break;
 			case VT_WORD:
 				*(uint16_t*)binhack_buf = val.w;
 				//log_printf("Binhack rendered: %04hX at %p\n", *(uint16_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(uint16_t);
 				target_addr += sizeof(uint16_t);
 				break;
+			case VT_SWORD:
+				*(int16_t*)binhack_buf = val.sw;
+				//log_printf("Binhack rendered: %04hX at %p\n", *(int16_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int16_t);
+				target_addr += sizeof(int16_t);
+				break;
 			case VT_DWORD:
 				*(uint32_t*)binhack_buf = val.i;
 				//log_printf("Binhack rendered: %08X at %p\n", *(uint32_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(uint32_t);
 				target_addr += sizeof(uint32_t);
+				break;
+			case VT_SDWORD:
+				*(int32_t*)binhack_buf = val.si;
+				//log_printf("Binhack rendered: %08X at %p\n", *(int32_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int32_t);
+				target_addr += sizeof(int32_t);
 				break;
 			case VT_FLOAT:
 				*(float*)binhack_buf = val.f;
@@ -602,7 +646,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	for (size_t i = 0; i < codecaves_count; i++) {
 		const CodecaveAccessType access = codecaves[i].access_type;
 
-		log_printf("Recording codecave: \"%s\"\n", codecaves[i].name);
+		log_printf("Recording codecave: \"%s\" at %p\n", codecaves[i].name, (size_t)current_cave[access]);
 		func_add(codecaves[i].name, (size_t)current_cave[access]);
 		if (codecaves[i].export_codecave) {
 			codecaves_export_table[export_index++] = { codecaves[i].name , (UINT_PTR)current_cave[access] };

@@ -303,6 +303,8 @@ int thcrap_init(const char *run_cfg_fn)
 	PathAppendU(dll_dir, "..");
 	SetCurrentDirectory(dll_dir);
 
+	func_add_internal();
+
 	runconfig_load_from_file(run_cfg_fn);
 	runconfig_thcrap_dir_set(dll_dir);
 

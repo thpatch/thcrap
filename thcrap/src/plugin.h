@@ -26,6 +26,10 @@ UINT_PTR func_get(const char *name);
 // Adds a pointer to a function to the list of functions used by func_get
 int func_add(const char *name, size_t addr);
 
+// Adds some common functions to the list of functions used by func_get.
+// Intended to allow patches easy access to those functions.
+void func_add_internal(void);
+
 // Removes a function from the list of functions used by func_get
 // This function is nessesairy for plugins to be able to unload themselves
 bool func_remove(const char *name);
