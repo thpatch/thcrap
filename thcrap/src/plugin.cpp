@@ -63,18 +63,6 @@ int patch_func_init(exported_func_t *funcs_new, size_t func_count)
 
 			mod_funcs[key].insert(mod_funcs[key].end(), arr.begin(), arr.end());
 		}
-		for (int i = 0; funcs_new[i].func != 0 && funcs_new[i].name != nullptr; i++) {
-			auto existing = funcs.find(funcs_new[i].name);
-			if (existing == funcs.end()) {
-				funcs[funcs_new[i].name] = funcs_new[i].func;
-				return 0;
-			} else {
-				free((void*)funcs_new[i].name);
-				log_printf("Overwriting function/codecave %s\n");
-				existing->second = funcs_new[i].func;
-				return 1;
-			}
-		}
 		delete mod_funcs_new;
 		func_count = 0;
 	}

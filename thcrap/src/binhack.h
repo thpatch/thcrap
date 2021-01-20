@@ -58,8 +58,6 @@ typedef struct {
 	char *code;
 	// Codecave size
 	size_t size;
-	// Codecave count
-	size_t count;
 	// Codecave fill
 	BYTE fill;
 	// Codecave export status

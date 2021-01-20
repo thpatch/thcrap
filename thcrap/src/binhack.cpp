@@ -412,99 +412,139 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 }
 
 bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
-	if (!json_is_object(in)) {
-		log_printf("codecave %s: not an object\n", name);
-		return false;
-	}
-
-	bool ignore = json_object_get_evaluate_bool(in, "ignore");
-
-	if (ignore) {
-		log_printf("codecave %s: ignored\n", name);
-		return false;
-	}
-
-	bool export_val = json_object_get_evaluate_bool(in, "export");
-
-	const char *access = json_object_get_string(in, "access");
-	CodecaveAccessType access_val;
-
-	if (access) {
-		BYTE temp = !!strpbrk(access, "rR");
-		temp += !!strpbrk(access, "wW") << 1;
-		temp += !!strpbrk(access, "eE") << 2;
-		switch (temp) {
-			case 0:
-				log_printf("codecave %s: why would you set a codecave to no access? skipping instead...\n", name);
-				return false;
-			case 1:
-				access_val = (CodecaveAccessType)(temp - 1);
-				break;
-			case 2:
-				log_printf("codecave %s: write-only codecaves can't be set, using read-write instead...\n", name);
-			case 3: case 4: case 5:
-				access_val = (CodecaveAccessType)(temp - 2);
-				break;
-			case 6:
-				log_printf("codecave %s: execute-write codecaves can't be set, using execute-read-write instead...\n", name);
-			case 7:
-				access_val = (CodecaveAccessType)(temp - 3);
-				break;
-		}
-	} else if (export_val) {
-		access_val = EXECUTE_READ;
-	} else {
-		access_val = EXECUTE_READWRITE;
-	}
-
-	json_t *j_temp = json_object_get(in, "size");
+	// Default properties
 	size_t size_val = 0;
+	const char* code = NULL;
+	bool export_val = false;
+	CodecaveAccessType access_val = EXECUTE_READWRITE;
+	BYTE fill_val = 0;
 
-	if (j_temp) {
-		if (!json_is_integer(j_temp) && !json_is_string(j_temp)) {
-			log_printf("ERROR: invalid value specified for size of codecave %s\n", name);
+	if (json_is_object(in)) {
+		if (json_object_get_evaluate_bool(in, "ignore")) {
+			log_printf("codecave %s: ignored\n", name);
 			return false;
 		}
-		size_val = json_evaluate_int(j_temp);
-		if (!size_val) {
+
+		json_t *j_temp = json_object_get(in, "size");
+		if (j_temp) {
+			if (!(json_is_integer(j_temp) || json_is_string(j_temp))) {
+				log_printf("ERROR: invalid json type for size of codecave %s, must be integer or string\n", name);
+				return false;
+			}
+			size_val = json_evaluate_int(j_temp);
+			if (!size_val) {
+				log_printf("codecave %s with size 0 ignored\n", name);
+				return false;
+			}
+			j_temp = json_object_get(in, "count");
+			if (j_temp) {
+				if (!(json_is_integer(j_temp) || json_is_string(j_temp))) {
+					log_printf("ERROR: invalid json type specified for count of codecave %s, must be integer or string\n", name);
+					return false;
+				}
+				const size_t count_val = json_evaluate_int(j_temp);
+				if (!count_val) {
+					log_printf("codecave %s with count 0 ignored\n", name);
+					return false;
+				}
+				size_val *= count_val;
+			}
+		} /*else {
+			size_val = 0;
+		}*/
+
+		code = json_object_get_string(in, "code");
+		export_val = json_object_get_evaluate_bool(in, "export");
+
+		const char* access = json_object_get_string(in, "access");
+		if (access) {
+			BYTE temp = !!strpbrk(access, "rR") + (!!strpbrk(access, "wW") << 1) + (!!strpbrk(access, "eExX") << 2);
+			switch (temp) {
+				case 0: /*NOACCESS*/
+					log_printf("codecave %s: why would you set a codecave to no access? skipping instead...\n", name);
+					return false;
+				case 1: /*READONLY*/
+					access_val = (CodecaveAccessType)(temp - 1);
+					break;
+				case 2: /*WRITE*/
+					log_printf("codecave %s: write-only codecaves can't be set, using read-write instead...\n", name);
+					[[fallthrough]];
+				case 3: /*READWRITE*/ case 4: /*EXECUTE*/ case 5: /*EXECUTE-READ*/
+					access_val = (CodecaveAccessType)(temp - 2);
+					break;
+				case 6: /*EXECUTE-WRITE*/
+					log_printf("codecave %s: execute-write codecaves can't be set, using execute-read-write instead...\n", name);
+					[[fallthrough]];
+				case 7: /*EXECUTE-READWRITE*/
+					access_val = (CodecaveAccessType)(temp - 3);
+					break;
+			}
+			if (export_val && access_val != EXECUTE && access_val != EXECUTE_READ) {
+				log_printf("codecave %s: export can only be applied to execute or execute-read codecaves\n", name);
+				export_val = false;
+			}
+		} else {
+			if ((code && !size_val) || export_val) {
+				access_val = EXECUTE;
+			} else if (size_val && !code) {
+				access_val = READWRITE;
+			} /*else {
+				access_val = EXECUTE_READWRITE;
+			}*/
+		}
+
+		j_temp = json_object_get(in, "fill");
+		if (j_temp) {
+			if (!(json_is_integer(j_temp) || json_is_string(j_temp))) {
+				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be integer or string\n", name);
+				return false;
+			}
+			fill_val = (BYTE)json_evaluate_int(j_temp);
+		} /*else {
+			fill_val = 0;
+		}*/
+		
+	} else if (json_is_string(in)) {
+		// size_val = 0;
+		code = json_string_value(in);
+		// export_val = false;
+		// access_val = EXECUTE_READWRITE;
+		// fill_val = 0;
+	} else if (json_is_integer(in)) {
+		size_val = (size_t)json_integer_value(in);
+		// code = NULL;
+		// export_val = false;
+		access_val = READWRITE;
+		// fill_val = 0;
+	} else {
+		// Don't print an error, this can be used for comments
+		return false;
+	}
+
+	// Validate codecave size early
+	if (code) {
+		DisableCodecaveNotFoundWarning(true);
+		const size_t code_size = binhack_calc_size(code);
+		DisableCodecaveNotFoundWarning(false);
+		if (!code_size && !size_val) {
 			log_printf("codecave %s with size 0 ignored\n", name);
 			return false;
 		}
-	}
-
-	j_temp = json_object_get(in, "fill");
-	BYTE fill_val = 0;
-
-	if (j_temp) {
-		if (!json_is_integer(j_temp) && !json_is_string(j_temp)) {
-			log_printf("ERROR: invalid value specified for fill value of codecave %s\n", name);
-			return false;
+		if (code_size > size_val) {
+			size_val = code_size;
 		}
-		fill_val = (BYTE)json_evaluate_int(j_temp);
+	} else if (!size_val) {
+		log_printf("codecave %s without \"code\" or \"size\" ignored\n", name);
+		return false;
 	}
-
-	j_temp = json_object_get(in, "count");
-	size_t count_val = 1;
-
-	if (j_temp) {
-		if (!json_is_integer(j_temp) && !json_is_string(j_temp)) {
-			log_printf("ERROR: invalid value specified for count of codecave %s\n", name);
-			return false;
-		}
-		count_val = json_evaluate_int(j_temp);
-		if (!count_val) {
-			log_printf("codecave %s with count 0 ignored\n", name);
-			return false;
-		}
-	}
-
-	const char *code = json_object_get_string(in, "code");
 
 	out->code = code ? strdup(code) : NULL;
-	out->name = strdup(name);
+	char* name_str = (char*)malloc(strlen(name) + 10);
+	strcpy(name_str, "codecave:");
+	strcpy(name_str + 9, name);
+	out->name = name_str;
 	out->access_type = access_val;
 	out->size = size_val;
-	out->count = count_val;
 	out->fill = fill_val;
 	out->export_codecave = export_val;
 
@@ -526,59 +566,22 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	size_t codecave_export_count = 0;
 
-	enum codecave_state_t : int8_t {
-		export_codecave = -1,
-		normal = 0,
-		skip = 1
-	};
+	VLA(size_t, codecaves_full_size, codecaves_count * sizeof(size_t));
 
-	struct codecave_local_state_t {
-		size_t size;
-		size_t size_full;
-		codecave_state_t state;
-	};
-
-	VLA(codecave_local_state_t, codecaves_local_state, (codecaves_count + 1) * sizeof(codecave_local_state_t));
-	codecaves_local_state[codecaves_count] = {};
-
-	DisableCodecaveNotFoundWarning(true);
 	// First pass: calc the complete codecave size
-	for (size_t i = 0; i < codecaves_count; i++) {
-		const char* code = codecaves[i].code;
-		size_t size = codecaves[i].size;
-		if (!code && !size) {
-			codecaves_local_state[i].state = skip;
-			continue;
-		}
-		size *= codecaves[i].count;
-		size_t calc_size = code ? binhack_calc_size(code) : 0;
-		if (calc_size > size) {
-			size = calc_size;
-		}
-		codecaves_local_state[i].size = size;
-		if (!size) {
-			codecaves_local_state[i].state = skip;
-			continue;
-		}
-		const CodecaveAccessType access = codecaves[i].access_type;
-		if (codecaves[i].export_codecave && (access == EXECUTE || access == EXECUTE_READ)) {
-			codecaves_local_state[i].state = export_codecave;
+	for (size_t i = 0; i < codecaves_count; ++i) {
+		if (codecaves[i].export_codecave) {
 			++codecave_export_count;
 		}
-		else {
-			codecaves_local_state[i].state = normal;
-		}
-
-		size += codecave_sep_size_min;
-		codecaves_local_state[i].size_full = size - (size % 16) + 16;
-		codecaves_total_size[codecaves[i].access_type] += codecaves_local_state[i].size_full;
+		const size_t size = codecaves[i].size + codecave_sep_size_min;
+		codecaves_full_size[i] = size - (size % 16) + 16;
+		codecaves_total_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
-	DisableCodecaveNotFoundWarning(false);
 
 	BYTE* codecave_buf[5];
 	for (int i = 0; i < 5; ++i) {
 		if (codecaves_total_size[i]) {
-			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_total_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_total_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 			if (!codecave_buf[i]) {
 				//Should probably put an abort error here
 			}
@@ -597,23 +600,15 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	VLA(exported_func_t, codecaves_export_table, (codecave_export_count + 1) * sizeof(exported_func_t));
 	size_t export_index = 0;
 	for (size_t i = 0; i < codecaves_count; i++) {
-		if (codecaves_local_state[i].state != skip) {
-			const char *codecave_name = codecaves[i].name;
-			const CodecaveAccessType access = codecaves[i].access_type;
+		const CodecaveAccessType access = codecaves[i].access_type;
 
-			VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
-			strcpy(codecave_full_name, "codecave:");
-			strcpy(codecave_full_name + 9, codecave_name);
-			log_printf("Recording codecave: \"%s\"\n", codecave_full_name);
-			func_add(codecave_full_name, (size_t)current_cave[access]);
-			if (codecaves_local_state[i].state == export_codecave) {
-				// The duped string is intentionally not freed
-				codecaves_export_table[export_index++] = { strdup(codecave_full_name) , (UINT_PTR)current_cave[access] };
-			}
-			VLA_FREE(codecave_full_name);
-
-			current_cave[access] += codecaves_local_state[i].size_full;
+		log_printf("Recording codecave: \"%s\"\n", codecaves[i].name);
+		func_add(codecaves[i].name, (size_t)current_cave[access]);
+		if (codecaves[i].export_codecave) {
+			codecaves_export_table[export_index++] = { codecaves[i].name , (UINT_PTR)current_cave[access] };
 		}
+
+		current_cave[access] += codecaves_full_size[i];
 	}
 
 	// Third pass: Write all of the code
@@ -622,18 +617,16 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	}
 
 	for (size_t i = 0; i < codecaves_count; i++) {
-		if (codecaves_local_state[i].state != skip) {
-			const char* code = codecaves[i].code;
-			const CodecaveAccessType access = codecaves[i].access_type;
-			memset(current_cave[access], codecaves[i].fill, codecaves_local_state[i].size);
-			if (code) {
-				binhack_render(current_cave[access], (size_t)current_cave[access], code);
-			}
+		const char* code = codecaves[i].code;
+		const CodecaveAccessType access = codecaves[i].access_type;
+		memset(current_cave[access], codecaves[i].fill, codecaves[i].size);
+		if (code) {
+			binhack_render(current_cave[access], (size_t)current_cave[access], code);
+		}
 
-			current_cave[access] += codecaves_local_state[i].size;
-			for (size_t j = 0; j < codecaves_local_state[i].size_full - codecaves_local_state[i].size; j++) {
-				*current_cave[access] = 0xCC; current_cave[access]++;
-			}
+		current_cave[access] += codecaves[i].size;
+		for (size_t j = codecaves[i].size; j < codecaves_full_size[i]; ++j) {
+			*(current_cave[access]++) = 0xCC;
 		}
 	}
 
@@ -643,7 +636,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	}
 	VLA_FREE(codecaves_export_table);
 
-	VLA_FREE(codecaves_local_state);
+	VLA_FREE(codecaves_full_size);
 
 	const DWORD page_access_type_array[5] = { PAGE_READONLY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE };
 	DWORD idgaf;

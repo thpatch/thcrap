@@ -125,8 +125,8 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 		const size_t temp_val1 = strtoul(str, &endptr_temp, 10);
 		char* endptr_temp2;
 		const size_t temp_val2 = strtoul(str, &endptr_temp2, 16);
-		val += endptr_temp == endptr_temp2 ? temp_val2 : temp_val1;
-		*endptr = endptr_temp == endptr_temp2 ? endptr_temp2 : endptr_temp;
+		val += endptr_temp == endptr_temp2 ? temp_val1 : temp_val2;
+		*endptr = endptr_temp == endptr_temp2 ? endptr_temp : endptr_temp2;
 	}
 
 	if(ret) {
