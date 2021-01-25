@@ -124,6 +124,9 @@ void str_hexdate_format(char format[11], uint32_t date);
 	VLA_FREE(str##_lower);
 /// -------
 
+// C23 compliant implementation of strndup
+char* strndup(const char* source, size_t size);
+
 #define STR_ADDRESS_ERROR_NONE 0
 #define STR_ADDRESS_ERROR_OVERFLOW 0x1
 #define STR_ADDRESS_ERROR_GARBAGE 0x2
@@ -143,7 +146,8 @@ typedef struct {
   *	- "0x": Hexadecimal, as expected.
   *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
   *	        If hMod is NULL, the main module of the current process is used.
-  *	- Everything else is parsed as a decimal number.
+  *	- Everything else is parsed as a hexadecimal or decimal number depending on
+  *   whether hexadecimal digits are present.
   *
   * [ret] can be a nullptr if a potential parse error and/or a pointer to the
   * end of the parsed address are not needed.

@@ -82,6 +82,19 @@ void str_hexdate_format(char format[11], uint32_t date)
 	);
 }
 
+extern "C" char* strndup(const char* src, size_t size) {
+	char* ret = (char*)malloc(size);
+	// memccpy is part of C23 and thus
+	// eventually become standardized
+#pragma warning(suppress:4996)
+	if (!memccpy(ret, src, '\0', size)) {
+		++size;
+		ret = (char*)realloc(ret, size);
+		ret[size] = '\0';
+	}
+	return ret;
+}
+
 enum {
 	InvalidDigit = 0,
 	DecimalDigit = 1,
@@ -95,8 +108,7 @@ struct hex_lookup_table_t {
 		digits['a'] = digits['b'] = digits['c'] = digits['d'] = digits['e'] = digits['f'] = HexDigit;
 		digits['A'] = digits['B'] = digits['C'] = digits['D'] = digits['E'] = digits['F'] = HexDigit;
 	}
-}
-static const hex_lookup_table;
+} static const hex_lookup_table;
 
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 {

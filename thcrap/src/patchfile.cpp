@@ -690,39 +690,49 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		const char *tname = json_object_get_string(j_val, "type");
-		patch_opt_val_t entry = {};
-		entry.size = strtol(tname + 1, nullptr, 10) / 8;
-		switch (tolower(tname[0])) {
-		case 'i': case 'u': {
-			entry.val.dword = json_evaluate_int(j_val_val);
-			switch (entry.size) {
-			case 1: entry.t = PATCH_OPT_VAL_BYTE;  break;
-			case 2: entry.t = PATCH_OPT_VAL_WORD;  break;
-			case 4: entry.t = PATCH_OPT_VAL_DWORD; break;
-			default:
-				log_printf("ERROR: invalid integer type %s for option %s\n", tname, key);
-				continue;
-			}
-			break;
+		if (!tname) {
+			continue;
 		}
-		case 'f': {
-			double real_val = json_evaluate_real(j_val_val);
-			switch (entry.size) {
-			case 4: {
-				entry.t = PATCH_OPT_VAL_FLOAT;
-				entry.val.f = (float)real_val;
+		patch_opt_val_t entry;
+		entry.size = strtol(tname + 1, nullptr, 10);
+		switch (tname[0]) {
+			case 'i': case 'I':
+				entry.val.sdword = json_evaluate_int(j_val_val);
+				switch (entry.size) {
+					case 8: entry.t = PATCH_OPT_VAL_SBYTE; break;
+					case 16: entry.t = PATCH_OPT_VAL_SWORD; break;
+					case 32: entry.t = PATCH_OPT_VAL_SDWORD; break;
+					default:
+						log_printf("ERROR: invalid integer size %s for option %s\n", tname, key);
+						continue;
+				}
 				break;
-			}
-			case 8: {
-				entry.t = PATCH_OPT_VAL_DOUBLE;
-				entry.val.d = real_val;
+			case 'b': case 'B':
+			case 'u': case 'U':
+				entry.val.dword = json_evaluate_int(j_val_val);
+				switch (entry.size) {
+					case 8: entry.t = PATCH_OPT_VAL_BYTE; break;
+					case 16: entry.t = PATCH_OPT_VAL_WORD; break;
+					case 32: entry.t = PATCH_OPT_VAL_DWORD; break;
+					default:
+						log_printf("ERROR: invalid integer type %s for option %s\n", tname, key);
+						continue;
+				}
 				break;
-			}
-			default:
-				log_printf("ERROR: invalid float type %s for option %s\n", tname, key);
-				continue;
-			}
-		}
+			case 'f': case 'F':
+				switch (entry.size) {
+					case 32:
+						entry.t = PATCH_OPT_VAL_FLOAT;
+						entry.val.f = (float)json_evaluate_real(j_val_val);
+						break;
+					case 64:
+						entry.t = PATCH_OPT_VAL_DOUBLE;
+						entry.val.d = json_evaluate_real(j_val_val);
+						break;
+					default:
+						log_printf("ERROR: invalid float type %s for option %s\n", tname, key);
+						continue;
+				}
 		}
 		patch_options[key] = entry;
 	}

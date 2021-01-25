@@ -158,7 +158,7 @@ size_t binhack_calc_size(const char *binhack_str)
 	size_t size = 0;
 	value_t val;
 	const char* copy_ptr;
-	for (;;) {
+	while (1) {
 		switch (binhack_str[0]) {
 			case '\0':
 				return size;
@@ -204,6 +204,7 @@ size_t binhack_calc_size(const char *binhack_str)
 					binhack_str += 2;
 					break;
 				}
+				[[fallthrough]];
 			default:
 				copy_ptr = consume_value(binhack_str, &val);
 				if (binhack_str == copy_ptr) {
@@ -223,6 +224,7 @@ size_t binhack_calc_size(const char *binhack_str)
 				break;
 			case VT_FLOAT:
 				size += sizeof(float);
+				break;
 			case VT_DOUBLE:
 				size += sizeof(double);
 				break;
@@ -281,7 +283,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 	value_t val;
 	const char* copy_ptr;
 
-	for (;;) {
+	while (1) {
 		switch (binhack_str[0]) {
 			case '\0':
 				return 0;
@@ -295,7 +297,8 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_str = copy_ptr;
 				if (val.type == VT_FLOAT) {
 					val.f = (float)val.i;
-				} else if (val.type == VT_DOUBLE) {
+				}
+				else if (val.type == VT_DOUBLE) {
 					val.d = (double)val.i;
 				}
 				break;
@@ -336,6 +339,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					binhack_str += 2;
 					break;
 				}
+				[[fallthrough]];
 			default:
 				copy_ptr = consume_value(binhack_str, &val);
 				if (binhack_str == copy_ptr) {
@@ -410,14 +414,14 @@ static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_co
 
 int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
 {
-	size_t c = 0;
-	size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
-	int failed = binhacks_total;
-
-	if(!binhacks_count) {
+	if (!binhacks_count) {
 		log_printf("No binary hacks to apply.\n");
 		return 0;
 	}
+
+	size_t c = 0;
+	size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
+	int failed = binhacks_total;
 
 	log_printf("Applying binary hacks...\n");
 	log_printf("------------------------\n");
@@ -511,9 +515,10 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				}
 				size_val *= count_val;
 			}
-		} /*else {
-			size_val = 0;
-		}*/
+		}
+		//else {
+		//    size_val = 0;
+		//}
 
 		code = json_object_get_string(in, "code");
 		export_val = json_object_get_evaluate_bool(in, "export");
@@ -545,14 +550,17 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				log_printf("codecave %s: export can only be applied to execute or execute-read codecaves\n", name);
 				export_val = false;
 			}
-		} else {
+		}
+		else {
 			if ((code && !size_val) || export_val) {
 				access_val = EXECUTE;
-			} else if (size_val && !code) {
+			}
+			else if (size_val && !code) {
 				access_val = READWRITE;
-			} /*else {
-				access_val = EXECUTE_READWRITE;
-			}*/
+			}
+			//else {
+			//    access_val = EXECUTE_READWRITE;
+			//}
 		}
 
 		j_temp = json_object_get(in, "fill");
@@ -562,23 +570,27 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				return false;
 			}
 			fill_val = (BYTE)json_evaluate_int(j_temp);
-		} /*else {
-			fill_val = 0;
-		}*/
+		}
+		//else {
+		//    fill_val = 0;
+		//}
 		
-	} else if (json_is_string(in)) {
+	}
+	else if (json_is_string(in)) {
 		// size_val = 0;
 		code = json_string_value(in);
 		// export_val = false;
 		// access_val = EXECUTE_READWRITE;
 		// fill_val = 0;
-	} else if (json_is_integer(in)) {
+	}
+	else if (json_is_integer(in)) {
 		size_val = (size_t)json_integer_value(in);
 		// code = NULL;
 		// export_val = false;
 		access_val = READWRITE;
 		// fill_val = 0;
-	} else {
+	}
+	else {
 		// Don't print an error, this can be used for comments
 		return false;
 	}
@@ -595,14 +607,14 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		if (code_size > size_val) {
 			size_val = code_size;
 		}
-	} else if (!size_val) {
+	}
+	else if (!size_val) {
 		log_printf("codecave %s without \"code\" or \"size\" ignored\n", name);
 		return false;
 	}
 
-	out->code = code ? strdup(code) : NULL;
-	char* name_str = (char*)malloc(strlen(name) + 10);
-	strcpy(name_str, "codecave:");
+	out->code = strdup(code);
+	char *const name_str = strndup("codecave:", strlen(name) + 10);
 	strcpy(name_str + 9, name);
 	out->name = name_str;
 	out->access_type = access_val;
@@ -613,18 +625,20 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	return true;
 }
 
-int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
+int __declspec(safebuffers) codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	if (codecaves_count == 0) {
 		return 0;
 	}
 
-	log_printf("Applying codecaves...\n");
-	log_printf("------------------------\n");
+	log_printf(
+		"Applying codecaves...\n"
+		"------------------------\n"
+	);
 
-	const size_t codecave_sep_size_min = 3;
+	const size_t codecave_sep_size_min = 1;
 
 	//One size for each valid access flag combo
-	size_t codecaves_total_size[5] = { 0, 0, 0, 0, 0 };
+	size_t codecaves_alloc_size[5] = { 0, 0, 0, 0, 0 };
 
 	size_t codecave_export_count = 0;
 
@@ -637,21 +651,24 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		}
 		const size_t size = codecaves[i].size + codecave_sep_size_min;
 		codecaves_full_size[i] = AlignUpToMultipleOf(size, 16);
-		codecaves_total_size[codecaves[i].access_type] += codecaves_full_size[i];
+		codecaves_alloc_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
 
-	BYTE* codecave_buf[5];
+	BYTE* codecave_buf[5] = { NULL, NULL, NULL, NULL, NULL };
 	for (int i = 0; i < 5; ++i) {
-		if (codecaves_total_size[i]) {
-			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_total_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+		if (codecaves_alloc_size[i] > 0) {
+			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_alloc_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 			if (codecave_buf[i]) {
+				/*
+				*  TODO: Profile whether it's faster to memset the whole block
+				*  here or just the extra padding required after each codecave.
+				*  Apply the same thing to breakpoint sourcecaves.
+				*/
 				//memset(codecave_buf[i], 0xCC, codecaves_total_size[i]);
-			} else {
+			}
+			else {
 				//Should probably put an abort error here
 			}
-		} else {
-			//Don't try to reallocate a non-existing page later
-			codecave_buf[i] = NULL;
 		}
 	}
 
@@ -661,13 +678,20 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		current_cave[i] = codecave_buf[i];
 	}
 
-	VLA(exported_func_t, codecaves_export_table, (codecave_export_count + 1) * sizeof(exported_func_t));
+	exported_func_t* codecaves_export_table;
+	if (codecave_export_count > 0) {
+		codecaves_export_table = (exported_func_t*)malloc((codecave_export_count + 1) * sizeof(exported_func_t));
+		codecaves_export_table[codecave_export_count].name = NULL;
+		codecaves_export_table[codecave_export_count].func = 0;
+	}
 	size_t export_index = 0;
+	
 	for (size_t i = 0; i < codecaves_count; i++) {
 		const CodecaveAccessType access = codecaves[i].access_type;
 
 		log_printf("Recording codecave: \"%s\" at %p\n", codecaves[i].name, (size_t)current_cave[access]);
 		func_add(codecaves[i].name, (size_t)current_cave[access]);
+
 		if (codecaves[i].export_codecave) {
 			codecaves_export_table[export_index].name = codecaves[i].name;
 			codecaves_export_table[export_index].func = (UINT_PTR)current_cave[access];
@@ -693,7 +717,6 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 			binhack_render(current_cave[access], (size_t)current_cave[access], code);
 		}
 
-		//current_cave[access] += codecaves_full_size[i];
 		current_cave[access] += codecaves[i].size;
 		for (size_t j = codecaves[i].size; j < codecaves_full_size[i]; ++j) {
 			*(current_cave[access]++) = 0xCC;
@@ -701,12 +724,9 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	}
 
 	if (codecave_export_count > 0) {
-		codecaves_export_table[codecave_export_count].name = nullptr;
-		codecaves_export_table[codecave_export_count].func = 0;
 		patch_func_init(codecaves_export_table, codecave_export_count);
+		free((void*)codecaves_export_table);
 	}
-	VLA_FREE(codecaves_export_table);
-
 	VLA_FREE(codecaves_full_size);
 
 	const DWORD page_access_type_array[5] = { PAGE_READONLY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE };
@@ -714,7 +734,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	for (int i = 0; i < 5; ++i) {
 		if (codecave_buf[i]) {
-			VirtualProtect(codecave_buf[i], codecaves_total_size[i], page_access_type_array[i], &idgaf);
+			VirtualProtect(codecave_buf[i], codecaves_alloc_size[i], page_access_type_array[i], &idgaf);
 		}
 	}
 	return 0;

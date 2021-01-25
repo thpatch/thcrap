@@ -103,26 +103,30 @@ typedef struct
 enum patch_opt_val_type {
 	PATCH_OPT_VAL_INVALID = -1,
 	PATCH_OPT_VAL_BYTE = 0,
-	PATCH_OPT_VAL_WORD = 1,
-	PATCH_OPT_VAL_DWORD = 2,
-	PATCH_OPT_VAL_FLOAT = 3,
-	PATCH_OPT_VAL_DOUBLE = 4,
+	PATCH_OPT_VAL_SBYTE = 1,
+	PATCH_OPT_VAL_WORD = 2,
+	PATCH_OPT_VAL_SWORD = 3,
+	PATCH_OPT_VAL_DWORD = 4,
+	PATCH_OPT_VAL_SDWORD = 5,
+	PATCH_OPT_VAL_FLOAT = 6,
+	PATCH_OPT_VAL_DOUBLE = 7,
 };
-
-typedef union {
-	BYTE byte;
-	WORD word;
-	DWORD dword;
-	float f;
-	double d;
-	BYTE byte_array[8];
-} option_type_t;
 
 // Description of a value specified by the options
 typedef struct {
 	uint32_t t;
 	uint32_t size;
-	option_type_t val;
+	union type_t {
+		BYTE byte;
+		signed char sbyte;
+		WORD word;
+		signed short sword;
+		DWORD dword;
+		signed long sdword;
+		float f;
+		double d;
+		BYTE byte_array[8];
+	} val;
 } patch_opt_val_t;
 
 // Parses and error checks patch options from game_id.js
