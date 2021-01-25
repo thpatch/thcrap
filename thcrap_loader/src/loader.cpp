@@ -246,7 +246,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 
-	runconfig_load(run_cfg, 0);
+	runconfig_load(run_cfg, RUNCONFIG_NO_BINHACKS);
 	runconfig_runcfg_fn_set(run_cfg_fn.c_str());
 
 	log_print("Command-line parsing finished\n");

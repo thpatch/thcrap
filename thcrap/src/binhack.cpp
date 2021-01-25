@@ -181,11 +181,18 @@ size_t binhack_calc_size(const char *binhack_str)
 				binhack_str = copy_ptr;
 				break;
 			case '[':
+				val.type = VT_DWORD;
+				copy_ptr = parse_brackets(++binhack_str, '[');
+				if (binhack_str == copy_ptr) {
+					//Bracket error
+					return 0;
+				}
+				binhack_str = copy_ptr;
+				break;
 			case '<':
 				copy_ptr = get_patch_value(binhack_str, &val, NULL, 0);
 				if (binhack_str == copy_ptr) {
-					log_printf("Binhack render error!\n");
-					return 1;
+					return 0;
 				}
 				binhack_str = copy_ptr;
 				break;
@@ -230,21 +237,22 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	json_t *addr = json_object_get(in, "addr");
-	const char *title = json_object_get_string(in, "title");;
-	const char *code = json_object_get_string(in, "code");
-	const char *expected = json_object_get_string(in, "expected");
 	bool ignore = json_object_get_evaluate_bool(in, "ignore");
-	
 	if (ignore) {
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
+
+	json_t *addr = json_object_get(in, "addr");
+	const char *code = json_object_get_string(in, "code");
 	if (!code || json_flex_array_size(addr) == 0) {
 		// Ignore binhacks with missing fields
 		// It usually means the binhack doesn't apply for this game or game version.
 		return false;
 	}
+
+	const char *expected = json_object_get_string(in, "expected");
+	const char *title = json_object_get_string(in, "title");
 
 	out->name = strdup(name);
 	out->title = strdup(title);
@@ -299,10 +307,15 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					return 1;
 				}
 				binhack_str = copy_ptr;
-				if (val.type == VT_FLOAT) {
-					val.f = (float)val.i;
-				} else if (val.type == VT_DOUBLE) {
-					val.d = (double)val.i;
+				switch (val.type) {
+					case VT_BYTE:	val.b = *(uint8_t*)val.i; break;
+					case VT_SBYTE:	val.sb = *(int8_t*)val.i; break;
+					case VT_WORD:	val.w = *(uint16_t*)val.i; break;
+					case VT_SWORD:	val.sw = *(int16_t*)val.i; break;
+					case VT_DWORD:	val.i = *(uint32_t*)val.i; break;
+					case VT_SDWORD:	val.si = *(int32_t*)val.i; break;
+					case VT_FLOAT:	val.f = *(float*)val.i; break;
+					case VT_DOUBLE:	val.d = *(double*)val.i; break;
 				}
 				break;
 			case '[':
@@ -422,7 +435,8 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 		VLA(BYTE, asm_buf, asm_size);
 		VLA(BYTE, exp_buf, exp_size);
 		for(size_t j = 0; cur.addr[j]; j++) {
-			auto addr = str_address_value(cur.addr[j], hMod, NULL);
+			size_t addr = 0;
+			eval_expr(cur.addr[j], '\0', &addr, NULL, (size_t)hMod);
 			if(!addr) {
 				continue;
 			}
@@ -433,13 +447,17 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 				log_printf("%s...", cur.name);
 			}
 			if(binhack_render(asm_buf, addr, cur.code)) {
+				log_printf("invalid code string, skipping...\n");
 				continue;
 			}
-			if(exp_size > 0 && exp_size != asm_size) {
-				log_printf("different sizes for expected and new code, skipping verification... ");
-				exp_size = 0;
-			} else if(binhack_render(exp_buf, addr, cur.expected)) {
-				exp_size = 0;
+			if (exp_size > 0) {
+				if (exp_size != asm_size) {
+					log_printf("different sizes for expected and new code, skipping verification... ");
+					exp_size = 0;
+				} else if (binhack_render(exp_buf, addr, cur.expected)) {
+					log_printf("invalid expected string, skipping verification... ");
+					exp_size = 0;
+				}
 			}
 			if(PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
 				log_printf("OK\n");
@@ -618,15 +636,17 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 			++codecave_export_count;
 		}
 		const size_t size = codecaves[i].size + codecave_sep_size_min;
-		codecaves_full_size[i] = size - (size % 16) + 16;
+		codecaves_full_size[i] = AlignUpToMultipleOf(size, 16);
 		codecaves_total_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
 
 	BYTE* codecave_buf[5];
 	for (int i = 0; i < 5; ++i) {
 		if (codecaves_total_size[i]) {
-			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_total_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-			if (!codecave_buf[i]) {
+			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_total_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			if (codecave_buf[i]) {
+				//memset(codecave_buf[i], 0xCC, codecaves_total_size[i]);
+			} else {
 				//Should probably put an abort error here
 			}
 		} else {
@@ -649,7 +669,9 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		log_printf("Recording codecave: \"%s\" at %p\n", codecaves[i].name, (size_t)current_cave[access]);
 		func_add(codecaves[i].name, (size_t)current_cave[access]);
 		if (codecaves[i].export_codecave) {
-			codecaves_export_table[export_index++] = { codecaves[i].name , (UINT_PTR)current_cave[access] };
+			codecaves_export_table[export_index].name = codecaves[i].name;
+			codecaves_export_table[export_index].func = (UINT_PTR)current_cave[access];
+			++export_index;
 		}
 
 		current_cave[access] += codecaves_full_size[i];
@@ -663,11 +685,15 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	for (size_t i = 0; i < codecaves_count; i++) {
 		const char* code = codecaves[i].code;
 		const CodecaveAccessType access = codecaves[i].access_type;
-		memset(current_cave[access], codecaves[i].fill, codecaves[i].size);
+		if (codecaves[i].fill) {
+			// VirtualAlloc zeroes memory, so don't bother when fill is 0
+			memset(current_cave[access], codecaves[i].fill, codecaves[i].size);
+		}
 		if (code) {
 			binhack_render(current_cave[access], (size_t)current_cave[access], code);
 		}
 
+		//current_cave[access] += codecaves_full_size[i];
 		current_cave[access] += codecaves[i].size;
 		for (size_t j = codecaves[i].size; j < codecaves_full_size[i]; ++j) {
 			*(current_cave[access]++) = 0xCC;
@@ -675,7 +701,8 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	}
 
 	if (codecave_export_count > 0) {
-		codecaves_export_table[codecave_export_count] = { nullptr, 0 };
+		codecaves_export_table[codecave_export_count].name = nullptr;
+		codecaves_export_table[codecave_export_count].func = 0;
 		patch_func_init(codecaves_export_table, codecave_export_count);
 	}
 	VLA_FREE(codecaves_export_table);

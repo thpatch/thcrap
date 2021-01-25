@@ -60,21 +60,25 @@ static void runconfig_stage_load_breakpoints(json_t *breakpoints, stage_t& stage
 			continue;
 		}
 
-		json_t *addr_array = json_object_get(breakpoint_entry, "addr");
-		size_t cavesize = json_object_get_evaluate_int(breakpoint_entry, "cavesize");
 		bool ignore = json_object_get_evaluate_bool(breakpoint_entry, "ignore");
-
 		if (ignore) {
 			log_printf("breakpoint %s: ignored\n", key);
 			continue;
 		}
-		if (!cavesize) {
-			log_printf("breakpoint %s: no cavesize specified\n", key);
-			continue;
-		}
+
+		json_t *addr_array = json_object_get(breakpoint_entry, "addr");
 		if (json_flex_array_size(addr_array) == 0) {
 			// Ignore binhacks with missing addr field.
 			// It usually means the breakpoint doesn't apply for this game or game version.
+			continue;
+		}
+
+		size_t cavesize = json_object_get_evaluate_int(breakpoint_entry, "cavesize");
+		if (!cavesize) {
+			log_printf("breakpoint %s: no cavesize specified\n", key);
+			continue;
+		} else if (cavesize < sizeof(void*) + 1) {
+			log_printf("breakpoint %s: cavesize too small to implement breakpoint\n", key);
 			continue;
 		}
 
@@ -150,7 +154,8 @@ static void runconfig_stage_load(json_t *stage_json)
 void runconfig_load(json_t *file, int flags)
 {
 	json_t *value;
-	bool can_overwrite = (flags & RUNCONFIG_NO_OVERWRITE) == 0;
+	bool can_overwrite = !(flags & RUNCONFIG_NO_OVERWRITE);
+	bool load_binhacks = !(flags & RUNCONFIG_NO_BINHACKS);
 
 	if (!run_cfg.json) {
 		run_cfg.json = json_object();
@@ -219,15 +224,18 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
-	json_t *stages = json_object_get(file, "init_stages");
-	if ((stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) || json_object_get(file, "options") &&
-		(run_cfg.stages.empty() || can_overwrite)) {
-		run_cfg.stages.clear();
-		size_t i;
-		json_flex_array_foreach(stages, i, value) {
-			runconfig_stage_load(value);
-		};
-		runconfig_stage_load(file);
+	if (load_binhacks) {
+		json_t *stages = json_object_get(file, "init_stages");
+		if ((can_overwrite || run_cfg.stages.empty()) &&
+			(stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) || json_object_get(file, "options")
+			) {
+			run_cfg.stages.clear();
+			size_t i;
+			json_flex_array_foreach(stages, i, value) {
+				runconfig_stage_load(value);
+			};
+			runconfig_stage_load(file);
+		}
 	}
 }
 

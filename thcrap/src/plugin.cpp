@@ -48,6 +48,10 @@ void func_add_internal(void) {
 	funcs["th_free"] = (size_t)&free;
 	funcs["th_msize"] = (size_t)&_msize;
 	funcs["th_expand"] = (size_t)&_expand;
+	funcs["th_aligned_malloc"] = (size_t)&_aligned_malloc;
+	funcs["th_aligned_realloc"] = (size_t)&_aligned_realloc;
+	funcs["th_aligned_free"] = (size_t)&_aligned_free;
+	funcs["th_aligned_msize"] = (size_t)&_aligned_msize;
 
 	funcs["th_memcpy"] = (size_t)&memcpy;
 	funcs["th_memmove"] = (size_t)&memmove;
