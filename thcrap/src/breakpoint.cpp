@@ -276,7 +276,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 
 	log_printf(
 		"-------------------------\n",
-		"Rendering up breakpoints... (source cave at 0x%p, call cave at 0x%p)\n"
+		"Rendering breakpoints... (source cave at 0x%p, call cave at 0x%p)\n"
 		"-------------------------\n",
 		cave_source, cave_call
 	);

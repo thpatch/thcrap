@@ -9,7 +9,6 @@
 
 #include "thcrap.h"
 #include <errno.h>
-#include <string.h>
 
 size_t dword_align(const size_t val)
 {
