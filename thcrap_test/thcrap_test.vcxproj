@@ -46,5 +46,6 @@
     <ClCompile Include="src\runconfig.cpp" />
     <ClCompile Include="src\patchfile.cpp" />
     <ClCompile Include="src\plugin.cpp" />
+    <ClCompile Include="src\win32_utf8.cpp" />
   </ItemGroup>
 </Project>

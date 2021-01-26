@@ -157,7 +157,7 @@ int GetExportedFunctions(exported_func_t **funcs, HMODULE hDll)
 HMODULE GetModuleContaining(void *addr)
 {
 	HMODULE ret = nullptr;
-	if(!GetModuleHandleEx(
+	if(!GetModuleHandleExW(
 		GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT | GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
 		(LPTSTR)addr,
 		&ret
