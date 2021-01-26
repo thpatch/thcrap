@@ -423,8 +423,10 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 	size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
 	int failed = binhacks_total;
 
-	log_printf("Applying binary hacks...\n");
-	log_printf("------------------------\n");
+	log_printf(
+		"Applying binary hacks...\n"
+		"------------------------\n"
+	);
 
 	for(size_t i = 0; i < binhacks_count; i++) {
 		const binhack_t& cur = binhacks[i];

@@ -1145,14 +1145,26 @@ const char* get_patch_value(const char* expr, value_t* out, x86_reg_t* regs, siz
 
 	const char *const expr_next = get_patch_value_impl(expr, out, &data_refs);
 	if (expr == expr_next) goto ExpressionError;
-	ExpressionLogging("END PATCH VALUE\n\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, out->i, out->i, out->i, expr_next);
+	ExpressionLogging(
+		"END PATCH VALUE\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+		"Remaining after final: \"%s\"\n",
+		expr, out->i, out->i, out->i, expr_next
+	);
 	return expr_next;
 
 ExpressionError:
 	ExpressionErrorMessage();
 	out->type = VT_DWORD;
 	out->i = 0;
-	ExpressionLogging("END PATCH VALUE WITH ERROR\n\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, out->i, out->i, out->i, expr_next);
+	ExpressionLogging(
+		"END PATCH VALUE WITH ERROR\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+		"Remaining after final: \"%s\"\n",
+		expr, out->i, out->i, out->i, expr_next
+	);
 	return expr_next;
 }
 
@@ -1450,7 +1462,11 @@ RawValue:
 					if (expr == addr_ret.endptr || (addr_ret.error && addr_ret.error != STR_ADDRESS_ERROR_GARBAGE)) {
 						goto InvalidCharacterError;
 					}
-					ExpressionLogging("Raw value was %X / %d / %u\nRemaining after raw value: \"%s\"\n", current, current, current, addr_ret.endptr);
+					ExpressionLogging(
+						"Raw value was %X / %d / %u\n"
+						"Remaining after raw value: \"%s\"\n",
+						current, current, current, addr_ret.endptr
+					);
 					*out = current;
 					return PostfixCheck(addr_ret.endptr);
 				}
@@ -1506,7 +1522,12 @@ static __forceinline const char* __fastcall skip_value(const char *const expr, c
 
 static const char* __fastcall eval_expr_new_impl(const char* expr, const char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *const data_refs) {
 
-	ExpressionLogging("START SUBEXPRESSION: \"%s\"\nCurrent value: %X / %d / %u\nCurrent end character: \"%hhX\"\n", expr, start_value, start_value, start_value, end);
+	ExpressionLogging(
+		"START SUBEXPRESSION: \"%s\"\n"
+		"Current value: %X / %d / %u\n"
+		"Current end character: \"%hhX\"\n",
+		expr, start_value, start_value, start_value, end
+	);
 
 	size_t value = start_value;
 	struct {
@@ -1519,14 +1540,22 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 
 	// Yes, this loop is awful looking, but it's intentional
 	do {
-		ExpressionLogging("Remaining expression: \"%s\"\nCurrent character: %hhX\n", expr, expr[0]);
+		ExpressionLogging(
+			"Remaining expression: \"%s\"\n"
+			"Current character: %hhX\n",
+			expr, expr[0]
+		);
 
 		expr_next = consume_value_impl(expr, end, &cur_value, data_refs);
 		if (expr == expr_next) goto InvalidValueError;
 		expr = expr_next;
 
 		expr_next = find_next_op_impl(expr, &ops.next);
-		ExpressionLogging("Found operator %hhX: \"%s\"\nRemaining after op: \"%s\"\n", ops.next, PrintOp(ops.next), expr_next);
+		ExpressionLogging(
+			"Found operator %hhX: \"%s\"\n"
+			"Remaining after op: \"%s\"\n",
+			ops.next, PrintOp(ops.next), expr_next
+		);
 
 		// Encountering an operator with a higher precedence can
 		// be solved by recursing eval_expr over the remaining text
@@ -1550,11 +1579,19 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 					}
 				}
 				else if (expr[0] != end) {
-					ExpressionLogging("\tEVIL JANK Remaining: \"%s\"\nApplying operation: \"%u %s %u\"\n", expr, value, PrintOp(ops.cur), cur_value);
+					ExpressionLogging(
+						"\tEVIL JANK Remaining: \"%s\"\n"
+						"Applying operation: \"%u %s %u\"\n",
+						expr, value, PrintOp(ops.cur), cur_value
+					);
 					value = ApplyOperator(value, cur_value, ops.cur);
 					ExpressionLogging("Result of operator was %X / %d / %u\n", value, value, value);
 					expr = find_next_op_impl(expr, &ops.cur);
-					ExpressionLogging("Found operator %hhX: \"%s\"\nRemaining after op: \"%s\"\n", ops.cur, PrintOp(ops.cur), expr_next);
+					ExpressionLogging(
+						"Found operator %hhX: \"%s\"\n"
+						"Remaining after op: \"%s\"\n",
+						ops.cur, PrintOp(ops.cur), expr_next
+					);
 					continue;
 				}
 				else {
@@ -1614,7 +1651,11 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 		}
 
 	} while (expr[0] != end);
-	ExpressionLogging("END SUBEXPRESSION \"%s\"\nSubexpression value was %X / %d / %u\n", expr, value, value, value);
+	ExpressionLogging(
+		"END SUBEXPRESSION \"%s\"\n"
+		"Subexpression value was %X / %d / %u\n",
+		expr, value, value, value
+	);
 	*out = value;
 	return expr + 1;
 
@@ -1645,7 +1686,11 @@ DealWithTernary:
 		expr = expr_next - 1;
 		ExpressionLogging("Ternary FALSE remaining: \"%s\"\n", expr);
 	}
-	ExpressionLogging("Remaining after ternary: \"%s\"\nApplying operation: \"%u %s %u\"\n", expr, value, PrintOp(ops.cur), cur_value);
+	ExpressionLogging(
+		"Remaining after ternary: \"%s\"\n"
+		"Applying operation: \"%u %s %u\"\n",
+		expr, value, PrintOp(ops.cur), cur_value
+	);
 	if (expr[0] == end) {
 		expr += end != '\0';
 		*out = ApplyOperator(value, cur_value, ops.cur);
@@ -1656,11 +1701,20 @@ DealWithTernary:
 		if (expr == expr_next) goto InvalidExpressionError;
 		expr = expr_next;
 	}
-	ExpressionLogging("Result of operator was %X / %d / %u\nEND TERNARY SUBEXPRESSION \"%s\"\nSubexpression value was %X / %d / %u\n", *out, *out, *out, expr, *out, *out, *out);
+	ExpressionLogging(
+		"Result of operator was %X / %d / %u\n"
+		"END TERNARY SUBEXPRESSION \"%s\"\n"
+		"Subexpression value was %X / %d / %u\n",
+		*out, *out, *out, expr, *out, *out, *out
+	);
 	return expr + 1;
 
 OhCrapItsATernaryHideTheKids:
-	ExpressionLogging("END SUBEXPRESSION FOR TERNARY \"%s\"\nSubexpression value was %X / %d / %u\n", expr, value, value, value);
+	ExpressionLogging(
+		"END SUBEXPRESSION FOR TERNARY \"%s\"\n"
+		"Subexpression value was %X / %d / %u\n",
+		expr, value, value, value
+	);
 	*out = value;
 	return expr;
 
@@ -1679,12 +1733,24 @@ const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_re
 
 	const char *const expr_next = eval_expr_new_impl(expr, end, out, StartNoOp, 0, &data_refs);
 	if (expr == expr_next) goto ExpressionError;
-	ExpressionLogging("END EXPRESSION\n\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, *out, *out, *out, expr_next);
+	ExpressionLogging(
+		"END EXPRESSION\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+		"Remaining after final: \"%s\"\n",
+		expr, *out, *out, *out, expr_next
+	);
 	return expr_next;
 
 ExpressionError:
 	ExpressionErrorMessage();
 	*out = 0;
-	ExpressionLogging("END EXPRESSION WITH ERROR\n\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\nRemaining after final: \"%s\"\n", expr, *out, *out, *out, expr_next);
+	ExpressionLogging(
+		"END EXPRESSION WITH ERROR\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
+		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+		"Remaining after final: \"%s\"\n",
+		expr, *out, *out, *out, expr_next
+	);
 	return expr_next;
 }
