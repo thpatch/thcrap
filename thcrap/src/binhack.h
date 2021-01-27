@@ -29,6 +29,21 @@
 
 #pragma once
 
+typedef enum {
+	END_ADDR = -1,
+	NULL_ADDR = 0,
+	STR_ADDR = 1,
+	RAW_ADDR = 2
+} hackpoint_addr_type;
+
+typedef struct {
+	int8_t type;
+	union {
+		char* str;
+		uint32_t raw;
+	};
+} hackpoint_addr_t;
+
 typedef struct {
 	// Binhack name
 	char *name;
@@ -40,7 +55,7 @@ typedef struct {
 	char *expected;
 	// Binhack addresses (NULL-terminated array)
 	// They are passed as strings and resolved by binhacks_apply.
-	char **addr;
+	hackpoint_addr_t* addr;
 } binhack_t;
 
 typedef enum {

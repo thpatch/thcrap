@@ -137,6 +137,9 @@ int json_dump_log(const json_t *json, size_t flags);
 // Test if the JSON [val] can be parsed by json_evaluate()
 #define json_can_evaluate(val) (json_is_number(val) || json_is_boolean(val) || json_is_string(val))
 
+// Test if the JSON [val] can be parsed as an int by json_evaluate()
+#define json_can_evaluate_int_strict(val) (json_is_integer(val) || json_is_string(val))
+
 // Evaluate the JSON [val] and cast the result to bool.
 bool json_evaluate_bool(json_t *val);
 

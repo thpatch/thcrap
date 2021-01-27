@@ -124,6 +124,36 @@ size_t breakpoint_process(breakpoint_local_t *bp, x86_reg_t *regs)
 	return esp_diff;
 }
 
+bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out) {
+	if (!json_is_object(in)) {
+		log_printf("breakpoint %s: not an object\n", name);
+		return false;
+	}
+
+	bool ignore = json_object_get_evaluate_bool(in, "ignore");
+	if (ignore) {
+		log_printf("breakpoint %s: ignored\n", name);
+		return false;
+	}
+
+	size_t cavesize = json_object_get_evaluate_int(in, "cavesize");
+	if (!cavesize) {
+		log_printf("breakpoint %s: no cavesize specified\n", name);
+		return false;
+	} else if (cavesize < CALL_LEN) {
+		log_printf("breakpoint %s: cavesize too small to implement breakpoint\n", name);
+		return false;
+	}
+
+	out->name = strdup(name);
+	out->cavesize = cavesize;
+	out->json_obj = json_incref(in);
+	out->func = nullptr;
+	out->cave = nullptr;
+
+	return true;
+}
+
 static inline void __fastcall cave_fix(BYTE *cave, BYTE *bp_addr)
 {
 	/// Fix relative stuff
@@ -171,14 +201,14 @@ static bool __fastcall breakpoint_local_init(
 
 static void __fastcall breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
 {
-	const size_t cave_dist = bp->addr - (bp->cave + CALL_LEN);
-	const size_t bp_dist = (BYTE*)callcave - (bp->addr + CALL_LEN);
+	const size_t cave_dist = bp->addr.raw - ((size_t)bp->cave + CALL_LEN);
+	const size_t bp_dist = (size_t)(callcave - (bp->addr.raw + CALL_LEN));
 	VLA(BYTE, bp_asm, bp->cavesize);
 
 	/// Cave assembly
 	// Copy old code to cave
-	memcpy(bp->cave, (void*)bp->addr, bp->cavesize);
-	cave_fix(bp->cave, bp->addr);
+	memcpy(bp->cave, (void*)bp->addr.raw, bp->cavesize);
+	cave_fix(bp->cave, (BYTE*)bp->addr.raw);
 
 	// JMP addr
 	bp->cave[bp->cavesize] = 0xe9;
@@ -206,7 +236,7 @@ static void __fastcall breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
 		case 0:;
 	}
 
-	PatchRegion(bp->addr, NULL, bp_asm, bp->cavesize);
+	PatchRegion((void*)bp->addr.raw, NULL, bp_asm, bp->cavesize);
 	VLA_FREE(bp_asm);
 }
 
@@ -240,8 +270,15 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 		breakpoint_local_t *const cur_bp = &breakpoints[i];
 
 		size_t addr = 0;
-		eval_expr(cur_bp->addr_str, '\0', &addr, NULL, (size_t)hMod);
-
+		if (cur_bp->addr.type == STR_ADDR) {
+			eval_expr(cur_bp->addr.str, '\0', &addr, NULL, (size_t)hMod);
+			free(cur_bp->addr.str);
+			cur_bp->addr.type = RAW_ADDR;
+			cur_bp->addr.raw = addr;
+		} else if (cur_bp->addr.type == RAW_ADDR) {
+			addr = cur_bp->addr.raw;
+		}
+		
 		log_printf("(%2d/%2d) 0x%p %s... ", i + 1, bp_count, addr, cur_bp->name);
 
 		const size_t cavesize = cur_bp->cavesize;
@@ -249,7 +286,6 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 			breakpoint_local_state[i].skip = true;
 			continue;
 		}
-		cur_bp->addr = (uint8_t*)addr;
 		if (breakpoint_local_init(cur_bp)) {
 			breakpoint_local_state[i].skip = false;
 			breakpoint_local_state[i].cavesize_full = AlignUpToMultipleOf(cavesize, 16);

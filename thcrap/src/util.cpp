@@ -88,8 +88,7 @@ extern "C" char* strndup(const char* src, size_t size) {
 	// eventually become standardized
 #pragma warning(suppress:4996)
 	if (!memccpy(ret, src, '\0', size)) {
-		++size;
-		ret = (char*)realloc(ret, size);
+		ret = (char*)realloc(ret, size + 1);
 		ret[size] = '\0';
 	}
 	return ret;

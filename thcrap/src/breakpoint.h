@@ -43,7 +43,8 @@ typedef struct {
 	char *name;
 
 	// Address as string from run configuration
-	char *addr_str;
+	// Address where the breakpoint is written
+	hackpoint_addr_t addr;
 
 	// Size of the original code sliced out at [addr].
 	// Must be inside BP_SourceCave_Limits.
@@ -65,9 +66,6 @@ typedef struct {
 
 	// First byte of the code cave for this breakpoint.
 	uint8_t *cave;
-
-	// Address where the breakpoint is written
-	uint8_t *addr;
 } breakpoint_local_t;
 
 typedef struct {
@@ -102,6 +100,9 @@ size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key
 // Calls json_immediate_value() on the value of [key] in [object].
 size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key);
 /// =====================================
+
+// Parses a json breakpoint entry and returns a breakpoint object
+bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out);
 
 // Returns 0 if "cave_exec" in [bp_info] is set to false, 1 otherwise.
 // Should be used as the return value for a breakpoint function after it made

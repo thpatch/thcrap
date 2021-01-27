@@ -260,16 +260,25 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	out->title = strdup(title);
 	out->code = strdup(code);
 	out->expected = strdup(expected);
-	out->addr = new char*[(json_flex_array_size(addr) + 1)];
+	out->addr = new hackpoint_addr_t[(json_flex_array_size(addr) + 1)];
 
 	size_t i;
 	json_t *it;
 	json_flex_array_foreach(addr, i, it) {
 		if (json_is_string(it)) {
-			out->addr[i] = strdup(json_string_value(it));
+			out->addr[i].str = strdup(json_string_value(it));
+			out->addr[i].type = STR_ADDR;
+		}
+		else if (json_is_integer(it)) {
+			out->addr[i].raw = (uint32_t)json_integer_value(it);
+			out->addr[i].type = RAW_ADDR;
+		}
+		else {
+			out->addr[i].raw = 0;
+			out->addr[i].type = NULL_ADDR;
 		}
 	}
-	out->addr[i] = nullptr;
+	out->addr[i].type = END_ADDR;
 
 	return true;
 }
@@ -405,7 +414,7 @@ static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_co
 {
 	int ret = 0;
 	for (size_t i = 0; i < binhacks_count; i++) {
-		for (size_t j = 0; binhacks[i].addr[j]; j++) {
+		for (size_t j = 0; binhacks[i].addr[j].type != END_ADDR; j++) {
 			ret++;
 		}
 	}
@@ -440,12 +449,22 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 
 		VLA(BYTE, asm_buf, asm_size);
 		VLA(BYTE, exp_buf, exp_size);
-		for(size_t j = 0; cur.addr[j]; j++) {
+		for(size_t j = 0;; j++) {
+
 			size_t addr = 0;
-			eval_expr(cur.addr[j], '\0', &addr, NULL, (size_t)hMod);
+			if (cur.addr[j].type == END_ADDR) {
+				break;
+			}
+			else if (cur.addr[j].type == STR_ADDR) {
+				eval_expr(cur.addr[j].str, '\0', &addr, NULL, (size_t)hMod);
+			}
+			else if (cur.addr[j].type == RAW_ADDR) {
+				addr = cur.addr[j].raw;
+			}
 			if(!addr) {
 				continue;
 			}
+
 			log_printf("(%2d/%2d) 0x%p ", ++c, binhacks_total, addr);
 			if(cur.title) {
 				log_printf("%s (%s)... ", cur.title, cur.name);
@@ -495,7 +514,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 
 		json_t *j_temp = json_object_get(in, "size");
 		if (j_temp) {
-			if (!(json_is_integer(j_temp) || json_is_string(j_temp))) {
+			if (!json_can_evaluate_int_strict(j_temp)) {
 				log_printf("ERROR: invalid json type for size of codecave %s, must be integer or string\n", name);
 				return false;
 			}
@@ -506,7 +525,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			}
 			j_temp = json_object_get(in, "count");
 			if (j_temp) {
-				if (!(json_is_integer(j_temp) || json_is_string(j_temp))) {
+				if (!json_can_evaluate_int_strict(j_temp)) {
 					log_printf("ERROR: invalid json type specified for count of codecave %s, must be integer or string\n", name);
 					return false;
 				}
@@ -567,7 +586,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 
 		j_temp = json_object_get(in, "fill");
 		if (j_temp) {
-			if (!(json_is_integer(j_temp) || json_is_string(j_temp))) {
+			if (!json_can_evaluate_int_strict(j_temp)) {
 				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be integer or string\n", name);
 				return false;
 			}
