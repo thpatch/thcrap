@@ -10,6 +10,11 @@
 #include "thcrap.h"
 #include <array>
 
+#pragma warning(push)
+#pragma warning(disable:4146)
+#include <json5pp.hpp>
+#pragma warning(pop)
+
 json_t* json_decref_safe(json_t *json)
 {
 	if(json && json->refcount != (size_t)-1 && --json->refcount == 0) {
@@ -265,13 +270,37 @@ json_xywh_t json_xywh_value(const json_t *arr)
 	);
 }
 
+json_t *json5_loadb(const void *buffer, size_t size, char **error)
+{
+	if (error) {
+		*error = nullptr;
+	}
+
+	json5pp::value json5;
+	try {
+		json5pp::impl::imemstream istream(buffer, size);
+		json5 = json5pp::parse5(istream, false);
+	}
+	catch (json5pp::syntax_error e) {
+		if (error) {
+			*error = strdup(e.what());
+		}
+		return nullptr;
+	}
+
+	std::string json_string = json5.stringify();
+
+	json_t *jansson = json_loadb(json_string.c_str(), json_string.size(), 0, nullptr);
+	return jansson;
+}
+
 json_t* json_load_file_report(const char *json_fn)
 {
 	size_t json_size;
 	const unsigned char utf8_bom[] = { 0xef, 0xbb, 0xbf };
 	const unsigned char utf16le_bom[] = { 0xff, 0xfe };
 	char *converted_buffer = nullptr;
-	json_error_t error;
+	char *error = nullptr;
 	json_t *ret;
 	int msgbox_ret;
 	void* file_buffer;
@@ -313,19 +342,18 @@ start:
 			json_buffer = converted_buffer;
 		}
 	}
-	ret = json_loadb(json_buffer, json_size, JSON_DISABLE_EOF_CHECK, &error);
+	ret = json5_loadb(json_buffer, json_size, &error);
 	if (!ret) {
 		msgbox_ret = log_mboxf(NULL, MB_RETRYCANCEL | MB_ICONSTOP,
-			"JSON parsing error:\n"
+			"JSON parsing error: %s\n"
 			"\n"
-			"\t%s\n"
-			"\n"
-			"(%s, line %d, column %d)",
-			error.text, json_fn, error.line, error.column
+			"(%s)",
+			error, json_fn
 		);
 	}
 	SAFE_FREE(converted_buffer);
 	SAFE_FREE(file_buffer);
+	SAFE_FREE(error);
 
 	if (msgbox_ret == IDRETRY) {
 		goto start;

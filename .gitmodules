@@ -10,3 +10,6 @@
 [submodule "libs/external_deps"]
 	path = libs/external_deps
 	url = https://github.com/thpatch/thcrap_external_dependencies.git
+[submodule "libs/json5pp"]
+	path = libs/json5pp
+	url = https://github.com/thpatch/json5pp.git

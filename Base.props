@@ -52,7 +52,7 @@
     </Link>
     <PostBuildEvent Condition="'$(ConfigurationType)'!='StaticLibrary'">
       <Command>if exist $(SolutionDir)cert.pfx (
-	signtool sign /v /f $(SolutionDir)cert.pfx /t http://timestamp.verisign.com/scripts/timstamp.dll /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"
+	signtool sign /v /f $(SolutionDir)cert.pfx /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"
 ) else (
 	echo warning: $(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.
 	echo Please see README.md for instructions on how to generate this file.

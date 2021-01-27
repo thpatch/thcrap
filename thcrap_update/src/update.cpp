@@ -136,7 +136,7 @@ std::string Update::fnToUrl(const std::string& url, uint32_t crc32)
 void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>& data)
 {
     auto localFilesJs = std::make_shared<AutoWriteJson>(patch, "files.js");
-    ScopedJson remoteFilesJs = json_loadb(reinterpret_cast<const char*>(data.data()), data.size(), 0, nullptr);
+    ScopedJson remoteFilesJs = json5_loadb(data.data(), data.size(), nullptr);
 
     if (*remoteFilesJs == nullptr) {
         log_printf("%s: files.js isn't a valid json file!\n", patch->id);
@@ -382,7 +382,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
                 continue;
             }
 
-	    	ScopedJson config = json_load_file(path.u8string().c_str(), 0, nullptr);
+            ScopedJson config = json_load_file_report(path.u8string().c_str());
 	    	if (!*config) {
 	    		continue;
 	    	}
@@ -411,7 +411,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
 
     char **games = strings_array_create();
     {
-	    ScopedJson games_js = json_load_file("config/games.js", 0, nullptr);
+	    ScopedJson games_js = json_load_file_report("config/games.js");
         const char *key;
         json_t *value;
         json_object_foreach(*games_js, key, value) {
