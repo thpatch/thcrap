@@ -195,7 +195,7 @@ void DisableCodecaveNotFoundWarning(bool state) {
 }
 static __declspec(noinline) void CodecaveNotFoundWarningMessage(const char *const name) {
 	if (!DisableCodecaveNotFound) {
-		log_printf("EXPRESSION WARNING 3: Codecave \"%s\" not found\n", name);
+		log_printf("EXPRESSION WARNING 3: Codecave \"%s\" not found! Returning NULL...\n", name);
 	}
 }
 
@@ -206,6 +206,10 @@ static __declspec(noinline) void PostIncDecWarningMessage(void) {
 static __declspec(noinline) void InvalidCPUFeatureWarningMessage(const char *const name) {
 	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%s\"! Assuming feature is present and returning 1...\n");
 }
+
+//static __declspec(noinline) void InvalidCodeOptionWarningMessage(void) {
+//	log_printf("EXPRESSION WARNING 6: Code options are not valid in expressions! Returning NULL...\n");
+//}
 
 static __declspec(noinline) void ExpressionErrorMessage(void) {
 	log_printf("EXPRESSION ERROR: Error parsing expression!\n");
@@ -893,11 +897,11 @@ static __declspec(noinline) size_t ApplyOperator(const size_t value, const size_
 	}
 }
 
-static __declspec(noinline) __declspec(safebuffers) value_t GetOptionValue(const char *const name, const size_t name_length) {
+static __declspec(noinline) value_t GetOptionValue(const char *const name, const size_t name_length) {
 	const char *const name_buffer = strndup(name, name_length);
 	ExpressionLogging("Option: \"%s\"\n", name_buffer);
 	const patch_opt_val_t *const option = patch_opt_get(name_buffer);
-	value_t ret = 0u;
+	value_t ret;
 	if (option) {
 		switch (option->t) {
 			case PATCH_OPT_VAL_BYTE: ret = option->val.byte; break;
@@ -906,8 +910,16 @@ static __declspec(noinline) __declspec(safebuffers) value_t GetOptionValue(const
 			case PATCH_OPT_VAL_SWORD: ret = option->val.sword; break;
 			case PATCH_OPT_VAL_DWORD: ret = option->val.dword; break;
 			case PATCH_OPT_VAL_SDWORD: ret = option->val.sdword; break;
+			case PATCH_OPT_VAL_QWORD: ret = option->val.qword; break;
+			case PATCH_OPT_VAL_SQWORD: ret = option->val.sqword; break;
 			case PATCH_OPT_VAL_FLOAT: ret = option->val.f; break;
 			case PATCH_OPT_VAL_DOUBLE: ret = option->val.d; break;
+			case PATCH_OPT_VAL_STRING: ret = option->val.str; break;
+			/*case PATCH_OPT_VAL_CODE:
+				ret.str = option->val.str;
+				ret.type = VT_CODE;
+				ret.size = option->size;
+				break;*/
 		}
 	}
 	else {
@@ -922,7 +934,7 @@ static __declspec(noinline) value_t GetPatchTestValue(const char *const name, co
 	const char *const name_buffer = strndup(name, name_length);
 	ExpressionLogging("PatchTest: \"%s\"\n", name_buffer);
 	const patch_opt_val_t *const patch_test = patch_opt_get(name_buffer);
-	value_t ret = 0u;
+	value_t ret;
 	if (patch_test) {
 		switch (patch_test->t) {
 			case PATCH_OPT_VAL_BYTE: ret = patch_test->val.byte; break;
@@ -931,8 +943,16 @@ static __declspec(noinline) value_t GetPatchTestValue(const char *const name, co
 			case PATCH_OPT_VAL_SWORD: ret = patch_test->val.sword; break;
 			case PATCH_OPT_VAL_DWORD: ret = patch_test->val.dword; break;
 			case PATCH_OPT_VAL_SDWORD: ret = patch_test->val.sdword; break;
+			case PATCH_OPT_VAL_QWORD: ret = patch_test->val.qword; break;
+			case PATCH_OPT_VAL_SQWORD: ret = patch_test->val.sqword; break;
 			case PATCH_OPT_VAL_FLOAT: ret = patch_test->val.f; break;
 			case PATCH_OPT_VAL_DOUBLE: ret = patch_test->val.d; break;
+			case PATCH_OPT_VAL_STRING: ret = patch_test->val.str; break;
+			/*case PATCH_OPT_VAL_CODE:
+				ret.str = patch_test->val.str;
+				ret.type = VT_CODE;
+				ret.size = patch_test->size;
+				break;*/
 		}
 	}
 	else {
@@ -1172,41 +1192,50 @@ static inline const char* CheckCastType(const char* expr, uint8_t &out) {
 	if (expr[0] && expr[1] && expr[2]) {
 		uint32_t cast = *(uint32_t*)expr;
 		ExpressionLogging("Cast debug: %X\n");
-		if (cast == TextInt('I', '3', '2', ')') ||
-			cast == TextInt('i', '3', '2', ')')) {
+		switch (cast) {
+			case TextInt('F', '6', '4', ')'):
+			case TextInt('f', '6', '4', ')'):
+				out = f64_cast;
+				return expr + 4;
+			case TextInt('I', '6', '4', ')'):
+			case TextInt('i', '6', '4', ')'):
+				out = i64_cast;
+				return expr + 4;
+			case TextInt('U', '6', '4', ')'):
+			case TextInt('u', '6', '4', ')'):
+				out = u64_cast;
+				return expr + 4;
+			case TextInt('I', '3', '2', ')'):
+			case TextInt('i', '3', '2', ')'):
 				out = i32_cast;
 				return expr + 4;
-		}
-		if (cast == TextInt('U', '3', '2', ')') ||
-			cast == TextInt('u', '3', '2', ')')) {
+			case TextInt('U', '3', '2', ')'):
+			case TextInt('u', '3', '2', ')'):
 				out = u32_cast;
 				return expr + 4;
-		}
-		if (cast == TextInt('F', '3', '2', ')') ||
-			cast == TextInt('f', '3', '2', ')')) {
+			case TextInt('F', '3', '2', ')'):
+			case TextInt('f', '3', '2', ')'):
 				out = f32_cast;
 				return expr + 4;
-		}
-		if (cast == TextInt('I', '1', '6', ')') ||
-			cast == TextInt('i', '3', '2', ')')) {
+			case TextInt('I', '1', '6', ')'):
+			case TextInt('i', '1', '6', ')'):
 				out = i16_cast;
 				return expr + 4;
-		}
-		if (cast == TextInt('U', '1', '6', ')') ||
-			cast == TextInt('u', '1', '6', ')')) {
+			case TextInt('U', '1', '6', ')'):
+			case TextInt('u', '1', '6', ')'):
 				out = u16_cast;
 				return expr + 3;
-		}
-		cast &= 0x00FFFFFF;
-		if (cast == TextInt('I', '8', ')') ||
-			cast == TextInt('i', '8', ')')) {
-				out = i8_cast;
-				return expr + 3;
-		}
-		if (cast == TextInt('U', '8', ')') ||
-			cast == TextInt('u', '8', ')')) {
-				out = u8_cast;
-				return expr + 3;
+			default:
+				switch (cast & 0x00FFFFFF) {
+					case TextInt('I', '8', ')'):
+					case TextInt('i', '8', ')'):
+						out = i8_cast;
+						return expr + 3;
+					case TextInt('U', '8', ')'):
+					case TextInt('u', '8', ')'):
+						out = u8_cast;
+						return expr + 3;
+				}
 		}
 	}
 	return expr;
@@ -1290,7 +1319,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 					expr += 8;
 					continue;
 				}
-				else if (strnicmp(expr, "double ptr", 10) == 0) {
+				if (strnicmp(expr, "double ptr", 10) == 0) {
 					cast = T64_ptr;
 					expr += 9;
 					continue;
@@ -1322,8 +1351,8 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 					switch (expr[0]) {
 						case '!': current = (bool)current; break;
 						//case '~': current = ~~current; break;
-						case '-': --current; break;
-						case '+': ++current; break;
+						case '-': IncDecWarningMessage(); --current; break;
+						case '+': IncDecWarningMessage(); ++current; break;
 					}
 				}
 				else {
@@ -1348,9 +1377,9 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 					case i8_cast: case u8_cast: current = *(uint8_t*)current; break;
 					case i16_cast: case u16_cast: current = *(uint16_t*)current; break;
 					case i32_cast: case u32_cast: current = *(uint32_t*)current; break;
-					//case i64_cast: case u64_cast: current = (size_t) * (uint64_t*)current; break;
-					case f32_cast: current = (size_t) * (float*)current; break;
-					//case f64_cast: current = (size_t) * (double*)current; break;
+					case i64_cast: case u64_cast: current = (uint32_t)*(uint64_t*)current; break;
+					case f32_cast: current = (uint32_t)*(float*)current; break;
+					case f64_cast: current = (uint32_t)*(double*)current; break;
 				}
 				*out = current;
 				return PostfixCheck(expr_next);
@@ -1374,8 +1403,8 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 						case u16_cast: current = *(uint16_t*)&current; break;
 						case u32_cast: current = *(uint32_t*)&current; break;
 						//case u64_cast: current = *(uint64_t*)&current; break;
-						case f32_cast: current = (uint32_t) * (float*)&current; break;
-						// case f64_cast: current = (uint64_t) * (double*)&current; break;
+						case f32_cast: current = (uint32_t)*(float*)&current; break;
+						// case f64_cast: current = (uint64_t)*(double*)&current; break;
 					}
 				}
 				else {
@@ -1406,9 +1435,9 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 						case i8_cast: case u8_cast: current = *(uint8_t*)current; break;
 						case i16_cast: case u16_cast: current = *(uint16_t*)current; break;
 						case i32_cast: case u32_cast: current = *(uint32_t*)current; break;
-						// case i64_cast: case u64_cast: current = (size_t) * (uint64_t*)current; break;
-						case f32_cast: current = (size_t) * (float*)current; break;
-						// case f64_cast: current = (size_t) * (double*)current; break;
+						case i64_cast: case u64_cast: current = (uint32_t)*(uint64_t*)current; break;
+						case f32_cast: current = (uint32_t)*(float*)current; break;
+						case f64_cast: current = (uint32_t)*(double*)current; break;
 					}
 					*out = current;
 					return PostfixCheck(expr_next);
@@ -1433,6 +1462,8 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 					case VT_SQWORD: current = (uint32_t)temp.sq; break;
 					case VT_FLOAT: current = (uint32_t)temp.f; break;
 					case VT_DOUBLE: current = (uint32_t)temp.d; break;
+					case VT_STRING: current = (uint32_t)temp.str; break;
+					//case VT_CODE: InvalidCodeOptionWarningMessage(); current = 0; break;
 				}
 			}
 			// If the previous character was the end character,

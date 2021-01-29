@@ -121,25 +121,39 @@ static __forceinline const char* check_for_binhack_cast(const char* expr, value_
 					case TextInt('f', '6', '4', ':'):
 						val->type = VT_DOUBLE;
 						return expr + 4;
-					case TextInt('I', '1', '6', ':'):
 					case TextInt('U', '1', '6', ':'):
-					case TextInt('i', '1', '6', ':'):
 					case TextInt('u', '1', '6', ':'):
 						val->type = VT_WORD;
 						return expr + 4;
-					case TextInt('I', '3', '2', ':'):
+					case TextInt('I', '1', '6', ':'):
+					case TextInt('i', '1', '6', ':'):
+						val->type = VT_SWORD;
+						return expr + 4;
 					case TextInt('U', '3', '2', ':'):
-					case TextInt('i', '3', '2', ':'):
 					case TextInt('u', '3', '2', ':'):
 						val->type = VT_DWORD;
 						return expr + 4;
+					case TextInt('I', '3', '2', ':'):
+					case TextInt('i', '3', '2', ':'):
+						val->type = VT_SDWORD;
+						return expr + 4;
+					case TextInt('U', '6', '4', ':'):
+					case TextInt('u', '6', '4', ':'):
+						val->type = VT_QWORD;
+						return expr + 4;
+					case TextInt('I', '6', '4', ':'):
+					case TextInt('i', '6', '4', ':'):
+						val->type = VT_SQWORD;
+						return expr + 4;
 					default:
 						switch (temp & 0x00FFFFFF) {
-							case TextInt('I', '8', ':'):
 							case TextInt('U', '8', ':'):
-							case TextInt('i', '8', ':'):
 							case TextInt('u', '8', ':'):
 								val->type = VT_BYTE;
+								return expr + 3;
+							case TextInt('I', '8', ':'):
+							case TextInt('i', '8', ':'):
+								val->type = VT_SBYTE;
 								return expr + 3;
 						}
 				}
@@ -222,12 +236,21 @@ size_t binhack_calc_size(const char *binhack_str)
 			case VT_DWORD: case VT_SDWORD:
 				size += sizeof(int32_t);
 				break;
+			case VT_QWORD: case VT_SQWORD:
+				size += sizeof(int64_t);
+				break;
 			case VT_FLOAT:
 				size += sizeof(float);
 				break;
 			case VT_DOUBLE:
 				size += sizeof(double);
 				break;
+			case VT_STRING:
+				size += sizeof(const char*);
+				break;
+			/*case VT_CODE:
+				size += val.size;
+				break;*/
 		}
 	}
 }
@@ -326,8 +349,14 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					case VT_SWORD:	val.sw = *(int16_t*)val.i; break;
 					case VT_DWORD:	val.i = *(uint32_t*)val.i; break;
 					case VT_SDWORD:	val.si = *(int32_t*)val.i; break;
+					case VT_QWORD:  val.q = *(uint64_t*)val.i; break;
+					case VT_SQWORD: val.sq = *(int64_t*)val.i; break;
 					case VT_FLOAT:	val.f = *(float*)val.i; break;
 					case VT_DOUBLE:	val.d = *(double*)val.i; break;
+					case VT_STRING:
+					//case VT_CODE:
+						log_printf("Binhack render error!\n");
+						return 1;
 				}
 				break;
 			case '[':
@@ -393,6 +422,18 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_buf += sizeof(int32_t);
 				target_addr += sizeof(int32_t);
 				break;
+			case VT_QWORD:
+				*(uint64_t*)binhack_buf = val.q;
+				//log_printf("Binhack rendered: %016X at %p\n", *(uint64_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(uint64_t);
+				target_addr += sizeof(uint64_t);
+				break;
+			case VT_SQWORD:
+				*(int64_t*)binhack_buf = val.sq;
+				//log_printf("Binhack rendered: %016X at %p\n", *(int64_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int64_t);
+				target_addr += sizeof(int64_t);
+				break;
 			case VT_FLOAT:
 				*(float*)binhack_buf = val.f;
 				//log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr);
@@ -405,6 +446,20 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_buf += sizeof(double);
 				target_addr += sizeof(double);
 				break;
+			case VT_STRING:
+				*(const char**)binhack_buf = val.str;
+				//log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(const char*);
+				target_addr += sizeof(const char*);
+				break;
+			/*case VT_CODE: {
+				if (binhack_render(binhack_buf, target_addr, val.str)) {
+					return 1;
+				}
+				binhack_buf += val.size;
+				target_addr += val.size;
+				break;
+			}*/
 		}
 	}
 }

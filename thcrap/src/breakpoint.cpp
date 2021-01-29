@@ -217,7 +217,11 @@ static void __fastcall breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
 	// CALL bp_entry
 	bp_asm[0] = 0xe8;
 	*(size_t*)(bp_asm + 1) = bp_dist;
-	switch (bp->cavesize - CALL_LEN) {
+	const size_t nop_fill_length = bp->cavesize - CALL_LEN;
+	if (nop_fill_length > 0) {
+		memset(bp_asm + CALL_LEN, 0x90, nop_fill_length);
+	}
+	/*switch (bp->cavesize - CALL_LEN) {
 		case 1:
 			*(bp_asm + CALL_LEN) = 0x90;
 			break;
@@ -234,7 +238,7 @@ static void __fastcall breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
 		default:
 			memset(bp_asm + CALL_LEN, 0x90, bp->cavesize - CALL_LEN);
 		case 0:;
-	}
+	}*/
 
 	PatchRegion((void*)bp->addr.raw, NULL, bp_asm, bp->cavesize);
 	VLA_FREE(bp_asm);
@@ -281,11 +285,12 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 		
 		log_printf("(%2d/%2d) 0x%p %s... ", i + 1, bp_count, addr, cur_bp->name);
 
-		const size_t cavesize = cur_bp->cavesize;
+		size_t cavesize = cur_bp->cavesize;
 		if (!addr || !VirtualCheckRegion((const void*)addr, cavesize)) {
 			breakpoint_local_state[i].skip = true;
 			continue;
 		}
+		cavesize += CALL_LEN;
 		if (breakpoint_local_init(cur_bp)) {
 			breakpoint_local_state[i].skip = false;
 			breakpoint_local_state[i].cavesize_full = AlignUpToMultipleOf(cavesize, 16);

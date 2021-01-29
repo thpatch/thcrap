@@ -436,7 +436,9 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		char* patch_test_opt_name = (char*)malloc(strlen(patch.id) + 7);
 		strcpy(patch_test_opt_name, "patch:");
 		strcat(patch_test_opt_name, patch.id);
-		patch_opt_val_t patch_test_opt = { PATCH_OPT_VAL_DWORD, 4 };
+		patch_opt_val_t patch_test_opt;
+		patch_test_opt.t = PATCH_OPT_VAL_DWORD;
+		patch_test_opt.size = 4;
 		patch_test_opt.val.dword = patch.version;
 		patch_options[patch_test_opt_name] = patch_test_opt;
 		free(patch_test_opt_name);
@@ -694,32 +696,60 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		patch_opt_val_t entry;
-		entry.size = strtol(tname + 1, nullptr, 10);
 		switch (tname[0]) {
+			case 's': case 'S': {
+				if (json_is_string(j_val_val)) {
+					const char* opt_str = json_string_value(j_val_val);
+					entry.t = PATCH_OPT_VAL_STRING;
+					entry.val.str = strdup(opt_str);
+					entry.size = strlen(entry.val.str) + 1;
+				} else {
+					log_printf("ERROR: invalid json type for string option %s\n", key);
+					continue;
+				}
+				break;
+			}
+			/*case 'c': case 'C': {
+				if (json_is_string(j_val_val)) {
+					const char* opt_code_str = json_string_value(j_val_val);
+					entry.t = PATCH_OPT_VAL_CODE;
+					entry.val.str = strdup(opt_code_str);
+					entry.size = binhack_calc_size(entry.val.str);
+				} else {
+					log_printf("ERROR: invalid json type for code option %s\n", key);
+					continue;
+				}
+				break;
+			}*/
 			case 'i': case 'I':
-				entry.val.sdword = json_evaluate_int(j_val_val);
+				entry.size = strtol(tname + 1, nullptr, 10);
 				switch (entry.size) {
 					case 8: entry.t = PATCH_OPT_VAL_SBYTE; break;
 					case 16: entry.t = PATCH_OPT_VAL_SWORD; break;
 					case 32: entry.t = PATCH_OPT_VAL_SDWORD; break;
+					//case 64: entry.t = PATCH_OPT_VAL_SQWORD; break;
 					default:
 						log_printf("ERROR: invalid integer size %s for option %s\n", tname, key);
 						continue;
 				}
+				entry.val.sdword = json_evaluate_int(j_val_val);
 				break;
 			case 'b': case 'B':
 			case 'u': case 'U':
-				entry.val.dword = json_evaluate_int(j_val_val);
+				entry.size = strtol(tname + 1, nullptr, 10);
 				switch (entry.size) {
 					case 8: entry.t = PATCH_OPT_VAL_BYTE; break;
 					case 16: entry.t = PATCH_OPT_VAL_WORD; break;
 					case 32: entry.t = PATCH_OPT_VAL_DWORD; break;
+					//case 64: entry.t = PATCH_OPT_VAL_QWORD; break;
 					default:
 						log_printf("ERROR: invalid integer type %s for option %s\n", tname, key);
 						continue;
 				}
+				entry.val.dword = json_evaluate_int(j_val_val);
 				break;
 			case 'f': case 'F':
+				entry.size = strtol(tname + 1, nullptr, 10);
 				switch (entry.size) {
 					case 32:
 						entry.t = PATCH_OPT_VAL_FLOAT;

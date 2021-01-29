@@ -108,8 +108,12 @@ enum patch_opt_val_type {
 	PATCH_OPT_VAL_SWORD = 3,
 	PATCH_OPT_VAL_DWORD = 4,
 	PATCH_OPT_VAL_SDWORD = 5,
-	PATCH_OPT_VAL_FLOAT = 6,
-	PATCH_OPT_VAL_DOUBLE = 7,
+	PATCH_OPT_VAL_QWORD = 6,
+	PATCH_OPT_VAL_SQWORD = 7,
+	PATCH_OPT_VAL_FLOAT = 8,
+	PATCH_OPT_VAL_DOUBLE = 9,
+	PATCH_OPT_VAL_STRING = 10,
+	//PATCH_OPT_VAL_CODE = 11
 };
 
 // Description of a value specified by the options
@@ -117,15 +121,19 @@ typedef struct {
 	uint32_t t;
 	uint32_t size;
 	union type_t {
-		BYTE byte;
-		signed char sbyte;
-		WORD word;
-		signed short sword;
-		DWORD dword;
-		signed long sdword;
+		uint8_t byte;
+		int8_t sbyte;
+		uint16_t word;
+		int16_t sword;
+		uint32_t dword;
+		int32_t sdword;
+		uint64_t qword;
+		int64_t sqword;
 		float f;
 		double d;
 		BYTE byte_array[8];
+		const char* str;
+		const char* code;
 	} val;
 } patch_opt_val_t;
 
