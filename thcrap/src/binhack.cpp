@@ -35,7 +35,7 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 #else
 			"(outdated or corrupt %s installation, maybe?)"
 #endif
-			"\n", func_name, PROJECT_NAME_SHORT()
+			, func_name, PROJECT_NAME_SHORT()
 		);
 	}
 	return retval;
@@ -276,6 +276,19 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
+	size_t valid_addrs = 0;
+
+	size_t i;
+	json_t *it;
+	json_flex_array_foreach(addr, i, it) {
+		if (json_can_evaluate_int_strict(it)) {
+			++valid_addrs;
+		}
+	}
+	if (valid_addrs == 0) {
+		return false;
+	}
+
 	const char *expected = json_object_get_string(in, "expected");
 	const char *title = json_object_get_string(in, "title");
 
@@ -283,10 +296,8 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	out->title = strdup(title);
 	out->code = strdup(code);
 	out->expected = strdup(expected);
-	out->addr = new hackpoint_addr_t[(json_flex_array_size(addr) + 1)];
+	out->addr = new hackpoint_addr_t[valid_addrs + 1];
 
-	size_t i;
-	json_t *it;
 	json_flex_array_foreach(addr, i, it) {
 		if (json_is_string(it)) {
 			out->addr[i].str = strdup(json_string_value(it));
@@ -295,10 +306,6 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		else if (json_is_integer(it)) {
 			out->addr[i].raw = (uint32_t)json_integer_value(it);
 			out->addr[i].type = RAW_ADDR;
-		}
-		else {
-			out->addr[i].raw = 0;
-			out->addr[i].type = NULL_ADDR;
 		}
 	}
 	out->addr[i].type = END_ADDR;
@@ -483,73 +490,76 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 		return 0;
 	}
 
-	size_t c = 0;
 	size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
 	int failed = binhacks_total;
 
 	log_printf(
-		"Applying binary hacks...\n"
 		"------------------------\n"
+		"Applying binary hacks...\n"
+		"------------------------"
 	);
 
 	for(size_t i = 0; i < binhacks_count; i++) {
 		const binhack_t& cur = binhacks[i];
 
+		if (cur.title) {
+			log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_total, cur.title, cur.name);
+		} else {
+			log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_total, cur.name);
+		}
+		
 		// calculated byte size of the hack
 		size_t asm_size = binhack_calc_size(cur.code);
-		size_t exp_size = binhack_calc_size(cur.expected);
 		if(!asm_size) {
+			log_printf("invalid code string size, skipping...\n");
 			continue;
+		}
+		size_t exp_size = binhack_calc_size(cur.expected);
+		if (exp_size > 0 && exp_size != asm_size) {
+			log_printf("different sizes for expected and new code (%z != %z), skipping verification... ", exp_size, asm_size);
+			exp_size = 0;
 		}
 
 		VLA(BYTE, asm_buf, asm_size);
 		VLA(BYTE, exp_buf, exp_size);
 		for(size_t j = 0;; j++) {
+			const hackpoint_addr_t *const addr_ref = &cur.addr[j];
 
 			size_t addr = 0;
-			if (cur.addr[j].type == END_ADDR) {
+			if (addr_ref->type == END_ADDR) {
 				break;
 			}
-			else if (cur.addr[j].type == STR_ADDR) {
-				eval_expr(cur.addr[j].str, '\0', &addr, NULL, (size_t)hMod);
+			else if (addr_ref->type == STR_ADDR) {
+				eval_expr(addr_ref->str, '\0', &addr, NULL, (size_t)hMod);
 			}
-			else if (cur.addr[j].type == RAW_ADDR) {
-				addr = cur.addr[j].raw;
+			else if (addr_ref->type == RAW_ADDR) {
+				addr = addr_ref->raw;
 			}
 			if(!addr) {
 				continue;
 			}
 
-			log_printf("(%2d/%2d) 0x%p ", ++c, binhacks_total, addr);
-			if(cur.title) {
-				log_printf("%s (%s)... ", cur.title, cur.name);
-			} else {
-				log_printf("%s...", cur.name);
-			}
+			log_printf("\nat 0x%p... ", addr);
+
 			if(binhack_render(asm_buf, addr, cur.code)) {
-				log_printf("invalid code string, skipping...\n");
+				log_printf("invalid code string, skipping...");
 				continue;
 			}
-			if (exp_size > 0) {
-				if (exp_size != asm_size) {
-					log_printf("different sizes for expected and new code, skipping verification... ");
-					exp_size = 0;
-				} else if (binhack_render(exp_buf, addr, cur.expected)) {
-					log_printf("invalid expected string, skipping verification... ");
-					exp_size = 0;
-				}
+			if (exp_size > 0 && binhack_render(exp_buf, addr, cur.expected)) {
+				log_printf("invalid expected string, skipping verification... ");
+				exp_size = 0;
 			}
-			if(PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
-				log_printf("OK\n");
-				failed--;
-			} else {
-				log_printf("expected bytes not matched, skipping...\n");
+			if(!PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
+				log_printf("expected bytes not matched, skipping... ");
+				continue;
 			}
+			log_printf("OK");
+			failed--;
 		}
 		VLA_FREE(asm_buf);
 		VLA_FREE(exp_buf);
 	}
-	log_printf("------------------------\n");
+	log_printf("\n");
 	return failed;
 }
 
@@ -707,6 +717,7 @@ int __declspec(safebuffers) codecaves_apply(const codecave_t *codecaves, size_t 
 	}
 
 	log_printf(
+		"------------------------\n"
 		"Applying codecaves...\n"
 		"------------------------\n"
 	);

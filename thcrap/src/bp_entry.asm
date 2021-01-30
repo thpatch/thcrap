@@ -8,17 +8,19 @@
   */
 
 	.intel_syntax
-	.global	_bp_entry, _bp_entry_localptr, _bp_call, _bp_entry_end
+	.global	_bp_entry, _bp_entry_indexptr, _bp_entry_localptr, _bp_entry_callptr, _bp_entry_end
 
 _bp_entry:
 	pusha
 	pushf
 	push	%esp
+_bp_entry_indexptr:
+	push	0x12345678
 _bp_entry_localptr:
 	push	0x12345678
-_bp_call:
-	call	_bp_call
-	lea %esp, [%esp+%eax+8]
+_bp_entry_callptr:
+	call	_bp_entry_callptr
+	lea		%esp, [%esp+%eax+0xC]
 	popf
 	popa
 	ret

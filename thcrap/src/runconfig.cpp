@@ -99,39 +99,11 @@ static void runconfig_stage_load(json_t *stage_json)
 	json_t *breakpoints = json_object_get(stage_json, "breakpoints");
 	json_object_foreach(breakpoints, key, value) {
 
-		json_t *addr_array = json_object_get(value, "addr");
-		if (json_flex_array_size(addr_array) == 0) {
-			// Ignore breakpoints with missing addr field.
-			// It usually means the breakpoint doesn't apply for this game or game version.
+		breakpoint_local_t breakpoint;
+		if (!breakpoint_from_json(key, value, &breakpoint)) {
 			continue;
 		}
-
-		size_t i;
-		json_t *it;
-		json_flex_array_foreach(addr_array, i, it) {
-
-			breakpoint_local_t breakpoint;
-			if (json_is_string(it)) {
-				breakpoint.addr.type = STR_ADDR;
-				if (!breakpoint_from_json(key, value, &breakpoint)) {
-					continue;
-				}
-				breakpoint.addr.str = strdup(json_string_value(it));
-			}
-			else if (json_is_integer(it)) {
-				breakpoint.addr.type = RAW_ADDR;
-				if (!breakpoint_from_json(key, value, &breakpoint)) {
-					continue;
-				}
-				breakpoint.addr.raw = (uint32_t)json_integer_value(it);
-			}
-			else {
-				continue;
-			}
-
-			stage.breakpoints.push_back(breakpoint);
-		}
-		
+		stage.breakpoints.push_back(breakpoint);
 	}
 
 	run_cfg.stages.push_back(stage);
@@ -297,9 +269,12 @@ void runconfig_free()
 		stage.codecaves.clear();
 		for (auto& breakpoint : stage.breakpoints) {
 			free(breakpoint.name);
-			if (breakpoint.addr.type == STR_ADDR) {
-				free(breakpoint.addr.str);
+			for (size_t i = 0; breakpoint.addr[i].type != END_ADDR; ++i) {
+				if (breakpoint.addr[i].type == STR_ADDR) {
+					free(breakpoint.addr[i].str);
+				}
 			}
+			free(breakpoint.addr);
 			json_decref(breakpoint.json_obj);
 		}
 		stage.breakpoints.clear();

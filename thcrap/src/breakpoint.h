@@ -42,10 +42,6 @@ typedef struct {
 	// Name of the breakpoint
 	char *name;
 
-	// Address as string from run configuration
-	// Address where the breakpoint is written
-	hackpoint_addr_t addr;
-
 	// Size of the original code sliced out at [addr].
 	// Must be inside BP_SourceCave_Limits.
 	size_t cavesize;
@@ -64,8 +60,9 @@ typedef struct {
 	// Function to be called when the breakpoint is hit
 	BreakpointFunc_t func;
 
-	// First byte of the code cave for this breakpoint.
-	uint8_t *cave;
+	// Address as string from run configuration
+	// Address where the breakpoint is written
+	hackpoint_addr_t *addr;
 } breakpoint_local_t;
 
 typedef struct {
