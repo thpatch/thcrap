@@ -10,3 +10,4 @@ int my_wcscmp(const wchar_t *s1, const wchar_t *s2);
 // Returns the pointer to the end of dst, so that you can chain the call to append
 // several strings.
 LPWSTR my_strcpy(LPWSTR dst, LPCWSTR src);
+void *my_memcpy(void *dst, const void *src, size_t n);

@@ -29,36 +29,17 @@ void printError(LPCWSTR path)
 
 LPWSTR getStringResource(UINT id)
 {
-    LPWSTR buffer = NULL;
-    size_t size = 128;
-    size_t count;
+    LPWSTR resource = NULL;
+    size_t count = LoadStringW(GetModuleHandle(NULL), id, (LPWSTR)&resource, 0);
+    if (count == 0 || resource == NULL)
+        return NULL;
 
-    // LoadString don't give us a way to know the resource size,
-    // so we just grow a buffer until it's big enough.
-    do {
-        if (buffer == NULL) {
-            buffer = HeapAlloc(GetProcessHeap(), 0, size);
-			if (buffer == NULL) {
-				return NULL;
-			}
-        }
-        else {
-            size = size * size;
-            LPWSTR newBuffer = HeapReAlloc(GetProcessHeap(), 0, buffer, size);
-			if (newBuffer == NULL) {
-				HeapFree(GetProcessHeap(), 0, buffer);
-				return NULL;
-			}
-			buffer = newBuffer;
-        }
+    LPWSTR buffer = HeapAlloc(GetProcessHeap(), 0, (count + 1) * sizeof(WCHAR));
+    if (buffer == NULL)
+        return NULL;
 
-        count = LoadStringW(GetModuleHandle(NULL), id, buffer, size / sizeof(WCHAR));
-        if (count == 0) {
-            HeapFree(GetProcessHeap(), 0, buffer);
-            return NULL;
-        }
-    } while ((count + 1) * sizeof(WCHAR) == size);
-
+    my_memcpy(buffer, resource, count * sizeof(WCHAR));
+    buffer[count] = L'\0';
     return buffer;
 }
 

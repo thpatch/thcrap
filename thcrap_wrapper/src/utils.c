@@ -31,3 +31,14 @@ LPWSTR my_strcpy(LPWSTR dst, LPCWSTR src)
 	*dst = '\0';
 	return dst;
 }
+
+void *my_memcpy(void *dst, const void *src, size_t n)
+{
+	char *d = dst;
+	const char *s = src;
+
+	while (n-- > 0)
+		*d++ = *s++;
+
+	return dst;
+}
