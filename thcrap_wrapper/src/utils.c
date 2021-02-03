@@ -1,4 +1,5 @@
 #include "thcrap_wrapper.h"
+#include <limits.h>
 
 // A quick implementation of a few CRT functions because we don't link with the CRT.
 size_t my_wcslen(const wchar_t *str)
@@ -41,4 +42,28 @@ void *my_memcpy(void *dst, const void *src, size_t n)
 		*d++ = *s++;
 
 	return dst;
+}
+
+void *my_memset(void *dst, int ch, size_t n)
+{
+	char *d = dst;
+
+	while (n-- > 0)
+		*d++ = ch;
+
+	return dst;
+}
+
+void *my_alloc(size_t num, size_t size)
+{
+	if (num > SIZE_MAX / size)
+		return NULL;
+
+	return HeapAlloc(GetProcessHeap(), 0, num * size);
+}
+
+void my_free(void *ptr)
+{
+	if (ptr)
+		HeapFree(GetProcessHeap(), 0, ptr);
 }

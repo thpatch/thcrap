@@ -14,7 +14,7 @@ void printError(LPCWSTR path)
     FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 	NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&lpMsgBuf, 0, NULL);
 
-    lpDisplayBuf = LocalAlloc(LMEM_ZEROINIT, (my_wcslen(format) + my_wcslen(path) + my_wcslen(lpMsgBuf) + 1) * sizeof(WCHAR));
+    lpDisplayBuf = my_alloc(my_wcslen(format) + my_wcslen(path) + my_wcslen(lpMsgBuf) + 1, sizeof(WCHAR));
 	LPWSTR ptr = lpDisplayBuf;
 	ptr = my_strcpy(ptr, L"Could not run ");
 	ptr = my_strcpy(ptr, path);
@@ -23,7 +23,7 @@ void printError(LPCWSTR path)
     //StringCchPrintf(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(WCHAR), format, path, lpMsgBuf);
     MessageBox(NULL, lpDisplayBuf, L"Touhou Community Reliant Automatic Patcher", MB_OK);
 
-    LocalFree(lpDisplayBuf);
+    my_free(lpDisplayBuf);
     LocalFree(lpMsgBuf);
 }
 
@@ -34,7 +34,7 @@ LPWSTR getStringResource(UINT id)
     if (count == 0 || resource == NULL)
         return NULL;
 
-    LPWSTR buffer = HeapAlloc(GetProcessHeap(), 0, (count + 1) * sizeof(WCHAR));
+    LPWSTR buffer = my_alloc(count + 1, sizeof(WCHAR));
     if (buffer == NULL)
         return NULL;
 
@@ -56,7 +56,7 @@ int main()
 	rcCommandLine = getStringResource(1);
 	rcApplicationName = getStringResource(2);
 
-	LPWSTR ApplicationPath = (LPWSTR)HeapAlloc(GetProcessHeap(), 0, MAX_PATH * sizeof(WCHAR));
+	LPWSTR ApplicationPath = my_alloc(MAX_PATH, sizeof(WCHAR));
 
 	GetModuleFileNameW(NULL, ApplicationPath, MAX_PATH);
 	PathRemoveFileSpecW(ApplicationPath);
@@ -79,24 +79,24 @@ int main()
 		commandLineUsed = rcCommandLine;
 	}
 
-	for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
+    my_memset(&si, 0, sizeof(si));
 	si.cb = sizeof(si);
-	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
+    my_memset(&pi, 0, sizeof(pi));
 
 	if (CreateProcess(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
         printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
-        if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
-        if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-        if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
-        if (ApplicationPath)    HeapFree(GetProcessHeap(), 0, ApplicationPath);
+        my_free(rcApplicationPath);
+        my_free(rcCommandLine);
+        my_free(rcApplicationName);
+        my_free(ApplicationPath);
         return 1;
     }
 
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
-    if (rcApplicationPath)  HeapFree(GetProcessHeap(), 0, rcApplicationPath);
-    if (rcCommandLine)      HeapFree(GetProcessHeap(), 0, rcCommandLine);
-    if (rcApplicationName)  HeapFree(GetProcessHeap(), 0, rcApplicationName);
-    if (ApplicationPath)    HeapFree(GetProcessHeap(), 0, ApplicationPath);
+    my_free(rcApplicationPath);
+    my_free(rcCommandLine);
+    my_free(rcApplicationName);
+    my_free(ApplicationPath);
     return 0;
 }

@@ -11,3 +11,6 @@ int my_wcscmp(const wchar_t *s1, const wchar_t *s2);
 // several strings.
 LPWSTR my_strcpy(LPWSTR dst, LPCWSTR src);
 void *my_memcpy(void *dst, const void *src, size_t n);
+void *my_memset(void *dst, int ch, size_t n);
+void *my_alloc(size_t num, size_t size);
+void my_free(void *ptr);

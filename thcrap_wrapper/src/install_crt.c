@@ -34,7 +34,7 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 		if (hFont == NULL) {
 			NONCLIENTMETRICS ncMetrics;
 			OSVERSIONINFO osvi;
-			for (unsigned int i = 0; i < sizeof(osvi); i++) ((BYTE*)&osvi)[i] = 0;
+			my_memset(&osvi, 0, sizeof(osvi));
 			osvi.dwOSVersionInfoSize = sizeof(osvi);
 			GetVersionEx(&osvi);
 			if (osvi.dwMajorVersion >= 6) {
@@ -139,18 +139,18 @@ void installCrt(LPWSTR ApplicationPath)
 	STARTUPINFOW si;
 	PROCESS_INFORMATION pi;
 
-	for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)& si)[i] = 0;
+	my_memset(&si, 0, sizeof(si));
 	si.cb = sizeof(si);
-	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)& pi)[i] = 0;
+	my_memset(&pi, 0, sizeof(pi));
 
-	LPWSTR RtPath = HeapAlloc(GetProcessHeap(), 0, (my_wcslen(ApplicationPath) + my_wcslen(L"\"vc_redist.x86.exe\" /install /quiet /norestart") + 1) * sizeof(wchar_t));
+	LPWSTR RtPath = my_alloc(my_wcslen(ApplicationPath) + my_wcslen(L"\"vc_redist.x86.exe\" /install /quiet /norestart") + 1, sizeof(wchar_t));
 	LPWSTR p = RtPath;
 	p = my_strcpy(p, L"\"");
 	p = my_strcpy(p, ApplicationPath);
 	p = my_strcpy(p, L"vc_redist.x86.exe");
 	p = my_strcpy(p, L"\" /install /quiet /norestart");
 	BOOL ret = CreateProcess(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-	HeapFree(GetProcessHeap(), 0, RtPath);
+	my_free(RtPath);
 	CloseHandle(pi.hThread);
 
 	if (!ret) {
