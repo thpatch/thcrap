@@ -89,6 +89,14 @@ static void registerClass()
 	RegisterClassEx(&wc);
 }
 
+static void addNonClientArea(DWORD dwStyle, int *w, int *h)
+{
+	RECT rc = { 0, 0, *w, *h };
+	AdjustWindowRect(&rc, dwStyle, FALSE);
+	*w = rc.right - rc.left;
+	*h = rc.bottom - rc.top;
+}
+
 static void centerWindow(int w, int h, int *x, int *y)
 {
 	POINT cursor;
@@ -109,11 +117,12 @@ static HWND createCrtInstallPopup()
 
 	registerClass();
 
-	const int textWidth = 232;
-	const int w = textWidth + BORDER_W * 2;
-	const int h = 46 + BORDER_H * 2;
+	const int textWidth = 226;
+	int w = textWidth + BORDER_W * 2;
+	int h = 17 + BORDER_H * 2;
 	int x;
 	int y;
+	addNonClientArea(WS_POPUPWINDOW | WS_CAPTION, &w, &h);
 	centerWindow(w, h, &x, &y);
 
 	hwnd = CreateWindow(
