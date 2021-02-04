@@ -45,6 +45,7 @@ LPWSTR getStringResource(UINT id)
 
 int main()
 {
+    UINT exitCode = 0;
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
     LPWSTR rcApplicationPath;
@@ -85,18 +86,15 @@ int main()
 
 	if (CreateProcess(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
         printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
-        my_free(rcApplicationPath);
-        my_free(rcCommandLine);
-        my_free(rcApplicationName);
-        my_free(ApplicationPath);
-        return 1;
+        exitCode = 1;
+    } else {
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
     }
 
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
     my_free(rcApplicationPath);
     my_free(rcCommandLine);
     my_free(rcApplicationName);
     my_free(ApplicationPath);
-    return 0;
+    ExitProcess(exitCode);
 }
