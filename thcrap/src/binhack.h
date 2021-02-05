@@ -29,6 +29,9 @@
 
 #pragma once
 
+// TODO: Test whether a different default size is more efficient.
+#define BINHACK_BUFSIZE_MIN 512
+
 typedef enum {
 	END_ADDR = -1,
 	NULL_ADDR = 0,

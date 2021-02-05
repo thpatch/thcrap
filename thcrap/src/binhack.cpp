@@ -20,7 +20,7 @@
  * (and free) The Neutral Locale instead. C is garbage.
  */
 // TODO: Is this really necessary? Documentation for C and MSVC say setlocale(LC_ALL, "C") is effectively run at program startup.
-_locale_t lc_neutral = nullptr;
+static _locale_t lc_neutral = nullptr;
 
 int hackpoints_error_function_not_found(const char *func_name, int retval)
 {
@@ -474,7 +474,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 // Returns the number of all individual instances of binary hacks in [binhacks].
 static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_count)
 {
-	int ret = 0;
+	size_t ret = 0;
 	for (size_t i = 0; i < binhacks_count; i++) {
 		for (size_t j = 0; binhacks[i].addr[j].type != END_ADDR; j++) {
 			ret++;
@@ -499,31 +499,44 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 		"------------------------"
 	);
 
-	for(size_t i = 0; i < binhacks_count; i++) {
-		const binhack_t& cur = binhacks[i];
+	size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
+	BYTE* asm_buf = (BYTE*)malloc(BINHACK_BUFSIZE_MIN);
+	size_t current_exp_buf_size = BINHACK_BUFSIZE_MIN;
+	BYTE* exp_buf = (BYTE*)malloc(BINHACK_BUFSIZE_MIN);
 
-		if (cur.title) {
-			log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_total, cur.title, cur.name);
+	for(size_t i = 0; i < binhacks_count; i++) {
+		const binhack_t *const cur = &binhacks[i];
+
+		if (cur->title) {
+			log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_total, cur->title, cur->name);
 		} else {
-			log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_total, cur.name);
+			log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_total, cur->name);
 		}
 		
 		// calculated byte size of the hack
-		size_t asm_size = binhack_calc_size(cur.code);
+		const size_t asm_size = binhack_calc_size(cur->code);
 		if(!asm_size) {
 			log_printf("invalid code string size, skipping...\n");
 			continue;
 		}
-		size_t exp_size = binhack_calc_size(cur.expected);
+		if (asm_size > current_asm_buf_size) {
+			asm_buf = (BYTE*)realloc(asm_buf, asm_size);
+			current_asm_buf_size = asm_size;
+		}
+
+		size_t exp_size = binhack_calc_size(cur->expected);
 		if (exp_size > 0 && exp_size != asm_size) {
 			log_printf("different sizes for expected and new code (%z != %z), skipping verification... ", exp_size, asm_size);
 			exp_size = 0;
+		} else {
+			if (exp_size > current_exp_buf_size) {
+				exp_buf = (BYTE*)realloc(exp_buf, exp_size);
+				current_exp_buf_size = exp_size;
+			}
 		}
-
-		VLA(BYTE, asm_buf, asm_size);
-		VLA(BYTE, exp_buf, exp_size);
+		
 		for(size_t j = 0;; j++) {
-			const hackpoint_addr_t *const addr_ref = &cur.addr[j];
+			const hackpoint_addr_t *const addr_ref = &cur->addr[j];
 
 			size_t addr = 0;
 			if (addr_ref->type == END_ADDR) {
@@ -541,24 +554,24 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 
 			log_printf("\nat 0x%p... ", addr);
 
-			if(binhack_render(asm_buf, addr, cur.code)) {
+			if(binhack_render(asm_buf, addr, cur->code)) {
 				log_printf("invalid code string, skipping...");
 				continue;
 			}
-			if (exp_size > 0 && binhack_render(exp_buf, addr, cur.expected)) {
+			if (exp_size > 0 && binhack_render(exp_buf, addr, cur->expected)) {
 				log_printf("invalid expected string, skipping verification... ");
 				exp_size = 0;
 			}
-			if(!PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
+			if(PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
+				log_printf("OK");
+				failed--;
+			} else {
 				log_printf("expected bytes not matched, skipping... ");
-				continue;
 			}
-			log_printf("OK");
-			failed--;
 		}
-		VLA_FREE(asm_buf);
-		VLA_FREE(exp_buf);
 	}
+	SAFE_FREE(asm_buf);
+	SAFE_FREE(exp_buf);
 	log_printf("\n");
 	return failed;
 }
@@ -711,7 +724,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	return true;
 }
 
-int __declspec(safebuffers) codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
+int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	if (codecaves_count == 0) {
 		return 0;
 	}
