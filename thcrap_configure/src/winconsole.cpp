@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <windowsx.h>
 #include "console.h"
+#include "dialog.h"
 #include "resource.h"
 #include <string.h>
 #include <CommCtrl.h>
@@ -13,6 +14,19 @@
 
 template<typename T>
 using EventPtr = const std::shared_ptr<std::promise<T>>*;
+
+struct ConsoleDialog : Dialog<ConsoleDialog> {
+private:
+	friend Dialog<ConsoleDialog>;
+	HINSTANCE getInstance();
+	LPCWSTR getTemplate();
+	INT_PTR dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
+public:
+	EventPtr<void> onInit;
+};
+static ConsoleDialog g_console_xxx{};
+static ConsoleDialog *g_console = &g_console_xxx;
+
 
 #define APP_READQUEUE (WM_APP+0)
 /* lparam = const std::shared_ptr<std::promise<char>>* */
@@ -153,7 +167,13 @@ LRESULT CALLBACK ListProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 
 bool con_can_close = false;
-INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+HINSTANCE ConsoleDialog::getInstance() {
+	return GetModuleHandle(NULL);
+}
+LPCWSTR ConsoleDialog::getTemplate() {
+	return MAKEINTRESOURCEW(IDD_DIALOG1);
+}
+INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static int input_len = 0;
 	static int last_index = 0;
 	static std::wstring pending = L"";
@@ -163,11 +183,11 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	static HICON hIconSm = NULL, hIcon = NULL;
 	switch (uMsg) {
 	case WM_INITDIALOG: {
-		g_hwnd = hwndDlg;
+		g_hwnd = hWnd;
 
-		SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS1), PBM_SETRANGE, 0, MAKELONG(0, 100));
-		origEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_EDIT1), GWLP_WNDPROC, (LONG)EditProc);
-		origListProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hwndDlg, IDC_LIST1), GWLP_WNDPROC, (LONG)ListProc);
+		SendMessage(GetDlgItem(hWnd, IDC_PROGRESS1), PBM_SETRANGE, 0, MAKELONG(0, 100));
+		origEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hWnd, IDC_EDIT1), GWLP_WNDPROC, (LONG)EditProc);
+		origListProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hWnd, IDC_LIST1), GWLP_WNDPROC, (LONG)ListProc);
 
 		// set icon
 		hIconSm = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
@@ -175,25 +195,25 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		hIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
 			GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), 0);
 		if (hIconSm) {
-			SendMessage(hwndDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
+			SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
 		}
 		if (hIcon) {
-			SendMessage(hwndDlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+			SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 		}
-		SetMode(hwndDlg, NoMode);
+		SetMode(hWnd, NoMode);
 
 		RECT workarea, winrect;
 		SystemParametersInfo(SPI_GETWORKAREA, 0, (PVOID)&workarea, 0);
-		GetWindowRect(hwndDlg, &winrect);
+		GetWindowRect(hWnd, &winrect);
 		int width = winrect.right - winrect.left;
-		MoveWindow(hwndDlg,
+		MoveWindow(hWnd,
 			workarea.left + ((workarea.right - workarea.left) / 2) - (width / 2),
 			workarea.top,
 			width,
 			workarea.bottom - workarea.top,
 			TRUE);
 
-		(*(EventPtr<void>)lParam)->set_value();
+		(*onInit)->set_value();
 		return TRUE;
 	}
 	case WM_COMMAND:
@@ -201,13 +221,13 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		case IDC_BUTTON1: {
 			if (CurrentMode == InputMode) {
 				wchar_t* input_str = new wchar_t[input_len];
-				GetDlgItemTextW(hwndDlg, IDC_EDIT1, input_str, input_len);
-				SetDlgItemTextW(hwndDlg, IDC_EDIT1, L"");
-				SetMode(hwndDlg, NoMode);
+				GetDlgItemTextW(hWnd, IDC_EDIT1, input_str, input_len);
+				SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
+				SetMode(hWnd, NoMode);
 				SignalEvent(promise, input_str);
 			}
 			else if (CurrentMode == PauseMode) {
-				SetMode(hwndDlg, NoMode);
+				SetMode(hWnd, NoMode);
 				SignalEvent(promisev);
 			}
 			return TRUE;
@@ -215,7 +235,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		case IDC_BUTTON_YES:
 		case IDC_BUTTON_NO: {
 			if (CurrentMode == AskYnMode) {
-				SetMode(hwndDlg, NoMode);
+				SetMode(hWnd, NoMode);
 				SignalEvent(promiseyn, LOWORD(wParam) == IDC_BUTTON_YES ? 'y' : 'n');
 			}
 			return TRUE;
@@ -227,12 +247,12 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 				if (CurrentMode == InputMode && cur != LB_ERR && (!q_responses[cur].empty() || cur == last_index)) {
 					wchar_t* input_str = new wchar_t[q_responses[cur].length() + 1];
 					wcscpy(input_str, q_responses[cur].c_str());
-					SetDlgItemTextW(hwndDlg, IDC_EDIT1, L"");
-					SetMode(hwndDlg, NoMode);
+					SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
+					SetMode(hWnd, NoMode);
 					SignalEvent(promise, input_str);
 				}
 				else if (CurrentMode == PauseMode) {
-					SetMode(hwndDlg, NoMode);
+					SetMode(hWnd, NoMode);
 					SignalEvent(promisev);
 				}
 				return TRUE;
@@ -241,7 +261,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		}
 		return FALSE;
 	case APP_LISTCHAR: {
-		HWND edit = GetDlgItem(hwndDlg, IDC_EDIT1);
+		HWND edit = GetDlgItem(hWnd, IDC_EDIT1);
 		if (CurrentMode == InputMode) {
 			SetFocus(edit);
 			SendMessage(edit, WM_CHAR, wParam, lParam);
@@ -249,14 +269,14 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		else if (CurrentMode == AskYnMode) {
 			char c = wctob(towlower(wParam));
 			if (c == 'y' || c == 'n') {
-				SetMode(hwndDlg, NoMode);
+				SetMode(hWnd, NoMode);
 				SignalEvent(promiseyn, c);
 			}
 		}
 		return TRUE;
 	}
 	case APP_READQUEUE: {
-		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
+		HWND list = GetDlgItem(hWnd, IDC_LIST1);
 		std::lock_guard<std::mutex> lock(g_mutex);
 		while (!g_queue.empty()) {
 			LineEntry& ent = g_queue.front();
@@ -295,25 +315,25 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 		return TRUE;
 	}
 	case APP_GETINPUT:
-		SetMode(hwndDlg, InputMode);
+		SetMode(hWnd, InputMode);
 		input_len = wParam;
 		promise = *(EventPtr<wchar_t*>)lParam;
 		return TRUE;
 	case APP_PAUSE:
-		SetMode(hwndDlg, PauseMode);
+		SetMode(hWnd, PauseMode);
 		promisev = *(EventPtr<void>)lParam;
 		return TRUE;
 	case APP_ASKYN:
-		SetMode(hwndDlg, AskYnMode);
+		SetMode(hWnd, AskYnMode);
 		promiseyn = *(EventPtr<char>)lParam;
 		return TRUE;
 	case APP_PREUPDATE: {
-		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
+		HWND list = GetDlgItem(hWnd, IDC_LIST1);
 		SetWindowRedraw(list, FALSE);
 		return TRUE;
 	}
 	case APP_UPDATE: {
-		HWND list = GetDlgItem(hwndDlg, IDC_LIST1);
+		HWND list = GetDlgItem(hWnd, IDC_LIST1);
 		//SendMessage(list, WM_VSCROLL, SB_BOTTOM, 0L);
 		ListBox_SetCurSel(list, last_index);// Just scrolling doesn't work well
 		SetWindowRedraw(list, TRUE);
@@ -323,7 +343,7 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 	}
 	
 	case APP_PROGRESS: {
-		HWND progress = GetDlgItem(hwndDlg, IDC_PROGRESS1);
+		HWND progress = GetDlgItem(hWnd, IDC_PROGRESS1);
 		if (wParam == -1) {
 			SetWindowLong(progress, GWL_STYLE, GetWindowLong(progress, GWL_STYLE) | PBS_MARQUEE);
 			SendMessage(progress, PBM_SETMARQUEE, 1, 0L);
@@ -334,14 +354,14 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			SendMessage(progress, PBM_SETPOS, wParam, 0L);
 		}
 
-		SetMode(hwndDlg, ProgressBarMode);
+		SetMode(hWnd, ProgressBarMode);
 		return TRUE;
 	}
 	case WM_SIZE: {
 		RECT baseunits;
 		baseunits.left = baseunits.right = 100;
 		baseunits.top = baseunits.bottom = 100;
-		MapDialogRect(hwndDlg, &baseunits);
+		MapDialogRect(hWnd, &baseunits);
 		int basex = 4 * baseunits.right / 100;
 		int basey = 8 * baseunits.bottom / 100;
 		long origright = LOWORD(lParam) * 4 / basex;
@@ -361,49 +381,49 @@ INT_PTR CALLBACK DlgProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 			origbottom - MARGIN - BTN_HEIGHT,
 			origright - MARGIN,
 			origbottom - MARGIN };
-		MapDialogRect(hwndDlg, &rbutton1);
+		MapDialogRect(hWnd, &rbutton1);
 		// Progress/staic size
 		rwide = {
 			MARGIN,
 			origbottom - MARGIN - BTN_HEIGHT,
 			origright - MARGIN,
 			origbottom - MARGIN };
-		MapDialogRect(hwndDlg, &rwide);
+		MapDialogRect(hWnd, &rwide);
 		// Edit size
 		redit = {
 			MARGIN,
 			origbottom - MARGIN - BTN_HEIGHT,
 			origright - MARGIN - BTN_WIDTH - PADDING,
 			origbottom - MARGIN };
-		MapDialogRect(hwndDlg, &redit);
+		MapDialogRect(hWnd, &redit);
 		// Button2 size
 		rbutton2 = {
 			origright - MARGIN - BTN_WIDTH - PADDING - BTN_WIDTH,
 			origbottom - MARGIN - BTN_HEIGHT,
 			origright - MARGIN - BTN_WIDTH - PADDING,
 			origbottom - MARGIN };
-		MapDialogRect(hwndDlg, &rbutton2);
+		MapDialogRect(hWnd, &rbutton2);
 		// List size
 		rlist = {
 			MARGIN,
 			MARGIN,
 			origright - MARGIN,
 			origbottom - MARGIN - BTN_HEIGHT - PADDING};
-		MapDialogRect(hwndDlg, &rlist);
+		MapDialogRect(hWnd, &rlist);
 #define MoveToRect(hwnd,rect) MoveWindow((hwnd), (rect).left, (rect).top, (rect).right - (rect).left, (rect).bottom - (rect).top, TRUE)
-		MoveToRect(GetDlgItem(hwndDlg, IDC_BUTTON1), rbutton1);
-		MoveToRect(GetDlgItem(hwndDlg, IDC_EDIT1), redit);
-		MoveToRect(GetDlgItem(hwndDlg, IDC_LIST1), rlist);
-		MoveToRect(GetDlgItem(hwndDlg, IDC_PROGRESS1), rwide);
-		MoveToRect(GetDlgItem(hwndDlg, IDC_STATIC1), rwide);
-		MoveToRect(GetDlgItem(hwndDlg, IDC_BUTTON_YES), rbutton2);
-		MoveToRect(GetDlgItem(hwndDlg, IDC_BUTTON_NO), rbutton1);
-		InvalidateRect(hwndDlg, &rwide, FALSE); // needed because static doesn't repaint on move
+		MoveToRect(GetDlgItem(hWnd, IDC_BUTTON1), rbutton1);
+		MoveToRect(GetDlgItem(hWnd, IDC_EDIT1), redit);
+		MoveToRect(GetDlgItem(hWnd, IDC_LIST1), rlist);
+		MoveToRect(GetDlgItem(hWnd, IDC_PROGRESS1), rwide);
+		MoveToRect(GetDlgItem(hWnd, IDC_STATIC1), rwide);
+		MoveToRect(GetDlgItem(hWnd, IDC_BUTTON_YES), rbutton2);
+		MoveToRect(GetDlgItem(hWnd, IDC_BUTTON_NO), rbutton1);
+		InvalidateRect(hWnd, &rwide, FALSE); // needed because static doesn't repaint on move
 		return TRUE;
 	}
 	case WM_CLOSE:
-		if (con_can_close || MessageBoxW(hwndDlg, L"Patch configuration is not finished.\n\nQuit anyway?", L"Touhou Community Reliant Automatic Patcher", MB_YESNO | MB_ICONWARNING) == IDYES) {
-			EndDialog(hwndDlg, 0);
+		if (con_can_close || MessageBoxW(hWnd, L"Patch configuration is not finished.\n\nQuit anyway?", L"Touhou Community Reliant Automatic Patcher", MB_YESNO | MB_ICONWARNING) == IDYES) {
+			EndDialog(hWnd, 0);
 		}
 		return TRUE;
 	case WM_NCDESTROY:
@@ -534,8 +554,9 @@ void console_init() {
 	log_set_hook(log_windows, log_nwindows);
 
 	WaitForEvent<void> e;
-	std::thread([](LPARAM lParam) {
-		DialogBoxParamW(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG1), NULL, DlgProc, lParam);
+	std::thread([](EventPtr<void> onInit) {
+		g_console->onInit = onInit;
+		g_console->createModal(NULL);
 		log_set_hook(NULL, NULL);
 		if (!g_exitguithreadevent) {
 			exit(0); // Exit the entire process when exiting this thread
@@ -543,7 +564,7 @@ void console_init() {
 		else {
 			SignalEvent(g_exitguithreadevent);
 		}
-	}, (LPARAM)e.getEvent()).detach();
+	}, e.getEvent()).detach();
 	e.getResponse();
 }
 char* console_read(char *str, int n) {
