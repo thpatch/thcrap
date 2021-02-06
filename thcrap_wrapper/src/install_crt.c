@@ -170,27 +170,21 @@ void installCrt(LPWSTR ApplicationPath)
 	HWND hwnd = createCrtInstallPopup();
 
 	// Wait for the VC runtime installer
+	MSG msg;
+	my_memset(&msg, 0, sizeof(msg));
 	while (1) {
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) && msg.message != WM_QUIT) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		if (msg.message == WM_QUIT) {
+			PostQuitMessage(msg.wParam);
+			break;
+		}
 		DWORD waitStatus = MsgWaitForMultipleObjects(1, &pi.hProcess, FALSE, INFINITE, QS_ALLEVENTS);
 		if (waitStatus == WAIT_OBJECT_0 + 0) { // Process finished
 			DestroyWindow(hwnd);
 			break;
-		}
-		else if (WAIT_OBJECT_0 + waitStatus == 1) { // Message on the thread's input queue
-			MSG msg;
-			int exit = FALSE;
-			while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-				TranslateMessage(&msg);
-				DispatchMessage(&msg);
-				if (msg.message == WM_QUIT) {
-					PostQuitMessage(0);
-					exit = TRUE;
-					break;
-				}
-			}
-			if (exit) {
-				break;
-			}
 		}
 	}
 
