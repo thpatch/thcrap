@@ -21,6 +21,19 @@ private:
 	HINSTANCE getInstance();
 	LPCWSTR getTemplate();
 	INT_PTR dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam);
+private:
+	enum Mode {
+		MODE_INPUT = 0,
+		MODE_PAUSE,
+		MODE_PROGRESS_BAR,
+		MODE_NONE,
+		MODE_ASK_YN,
+	};
+	int currentMode = -1;
+	void setMode(Mode mode);
+
+	static LRESULT CALLBACK editProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 public:
 	EventPtr<void> onInit;
 };
@@ -103,67 +116,75 @@ static std::mutex g_mutex; // used for synchronizing the queue
 static std::queue<LineEntry> g_queue;
 static std::vector<std::wstring> q_responses;
 static std::shared_ptr<std::promise<void>> g_exitguithreadevent;
-static bool* CurrentMode = nullptr;
-static void SetMode(HWND hwndDlg, bool* mode) {
-	if (CurrentMode == mode) return;
-	CurrentMode = mode;
-	int items[] = { IDC_BUTTON1, IDC_EDIT1, IDC_PROGRESS1, IDC_STATIC1, IDC_BUTTON_YES, IDC_BUTTON_NO};
-	for (int i = 0; i < _countof(items); i++) {
-		HWND item = GetDlgItem(hwndDlg, items[i]);
-		ShowWindow(item, mode[i] ? SW_SHOW : SW_HIDE);
-		EnableWindow(item, mode[i] ? TRUE : FALSE);
+void ConsoleDialog::setMode(Mode mode) {
+	if (currentMode == mode)
+		return;
+	currentMode = mode;
+	static const int items[6] = { IDC_BUTTON1, IDC_EDIT1, IDC_PROGRESS1, IDC_STATIC1, IDC_BUTTON_YES, IDC_BUTTON_NO };
+	static const bool modes[5][6] = {
+		{ true, true, false, false, false, false }, // MODE_INPUT
+		{ true, false, false, false, false, false }, // MODE_PAUSE
+		{ false, false, true, false, false, false }, // MODE_PROGRESS_BAR
+		{ false, false, false, true, false, false }, // MODE_NONE
+		{ false, false, false, false, true, true }, // MODE_ASK_YN
+	};
+	for (int i = 0; i < 6; i++) {
+		HWND item = GetDlgItem(hWnd, items[i]);
+		ShowWindow(item, modes[mode][i] ? SW_SHOW : SW_HIDE);
+		EnableWindow(item, modes[mode][i] ? TRUE : FALSE);
 	}
 }
-static bool InputMode[] = { true, true, false, false, false, false };
-static bool PauseMode[] = { true, false, false, false, false, false };
-static bool ProgressBarMode[] = { false, false, true, false, false, false};
-static bool NoMode[] = { false, false, false, true, false, false};
-static bool AskYnMode[] = { false, false, false, false, true, true};
 
-WNDPROC origEditProc = NULL;
-LRESULT CALLBACK EditProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+static WNDPROC getClassWindowProc(HINSTANCE hInstance, LPCWSTR lpClassName) {
+	WNDCLASS wndClass;
+	if (!GetClassInfoW(hInstance, lpClassName, &wndClass))
+		assert(0);
+	return wndClass.lpfnWndProc;
+}
+
+LRESULT CALLBACK ConsoleDialog::editProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	static WNDPROC origEditProc = NULL;
+	if (!origEditProc)
+		origEditProc = getClassWindowProc(NULL, WC_EDITW);
 	if (uMsg == WM_KEYDOWN && wParam == VK_RETURN) {
 		SendMessage(GetParent(hwnd), WM_COMMAND, MAKELONG(IDC_BUTTON1, BN_CLICKED), (LPARAM)hwnd);
 		return 0;
-	}
-	else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
+	} else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
 		// nescessary for control to recieve VK_RETURN
-		return origEditProc(hwnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
-	}
-	else if (uMsg == WM_KEYDOWN && (wParam == VK_UP || wParam == VK_DOWN)) {
+		return CallWindowProcW(origEditProc, hwnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
+	} else if (uMsg == WM_KEYDOWN && (wParam == VK_UP || wParam == VK_DOWN)) {
 		// Switch focus to list on up/down arrows
 		HWND list = GetDlgItem(GetParent(hwnd), IDC_LIST1);
 		SetFocus(list);
 		return 0;
-	}
-	else if ((uMsg == WM_KEYDOWN || uMsg == WM_KEYUP) && (wParam == VK_PRIOR || wParam == VK_NEXT)) {
+	} else if ((uMsg == WM_KEYDOWN || uMsg == WM_KEYUP) && (wParam == VK_PRIOR || wParam == VK_NEXT)) {
 		// Switch focus to list on up/down arrows
 		HWND list = GetDlgItem(GetParent(hwnd), IDC_LIST1);
 		SendMessage(list, uMsg, wParam, lParam);
 		return 0;
 	}
-	return origEditProc(hwnd,uMsg,wParam,lParam);
+	return CallWindowProcW(origEditProc, hwnd, uMsg, wParam, lParam);
 }
 
-WNDPROC origListProc = NULL;
-LRESULT CALLBACK ListProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK ConsoleDialog::listProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	static WNDPROC origListProc = NULL;
+	if (!origListProc)
+		origListProc = getClassWindowProc(NULL, WC_LISTBOXW);
 	if (uMsg == WM_KEYDOWN && wParam == VK_RETURN) {
 		// if edit already has something in it, clicking on the button
 		// otherwise doubleclick the list
 		int len = GetWindowTextLength(GetDlgItem(GetParent(hwnd), IDC_EDIT1));
 		SendMessage(GetParent(hwnd), WM_COMMAND, len ? MAKELONG(IDC_BUTTON1, BN_CLICKED) : MAKELONG(IDC_LIST1, LBN_DBLCLK), (LPARAM)hwnd);
 		return 0;
-	}
-	else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
+	} else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
 		// nescessary for control to recieve VK_RETURN
-		return origListProc(hwnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
-	}
-	else if (uMsg == WM_CHAR) {
+		return CallWindowProcW(origListProc, hwnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
+	} else if (uMsg == WM_CHAR) {
 		// let parent dialog process the keypresses from list
 		SendMessage(GetParent(hwnd), APP_LISTCHAR, wParam, lParam);
 		return 0;
 	}
-	return origListProc(hwnd, uMsg, wParam, lParam);
+	return CallWindowProcW(origListProc, hwnd, uMsg, wParam, lParam);
 }
 
 bool con_can_close = false;
@@ -186,8 +207,8 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		g_hwnd = hWnd;
 
 		SendMessage(GetDlgItem(hWnd, IDC_PROGRESS1), PBM_SETRANGE, 0, MAKELONG(0, 100));
-		origEditProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hWnd, IDC_EDIT1), GWLP_WNDPROC, (LONG)EditProc);
-		origListProc = (WNDPROC)SetWindowLongPtr(GetDlgItem(hWnd, IDC_LIST1), GWLP_WNDPROC, (LONG)ListProc);
+		SetWindowLongPtr(GetDlgItem(hWnd, IDC_EDIT1), GWLP_WNDPROC, (LONG_PTR)editProc);
+		SetWindowLongPtr(GetDlgItem(hWnd, IDC_LIST1), GWLP_WNDPROC, (LONG_PTR)listProc);
 
 		// set icon
 		hIconSm = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
@@ -200,7 +221,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		if (hIcon) {
 			SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 		}
-		SetMode(hWnd, NoMode);
+		setMode(MODE_NONE);
 
 		RECT workarea, winrect;
 		SystemParametersInfo(SPI_GETWORKAREA, 0, (PVOID)&workarea, 0);
@@ -219,23 +240,23 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_BUTTON1: {
-			if (CurrentMode == InputMode) {
+			if (currentMode == MODE_INPUT) {
 				wchar_t* input_str = new wchar_t[input_len];
 				GetDlgItemTextW(hWnd, IDC_EDIT1, input_str, input_len);
 				SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
-				SetMode(hWnd, NoMode);
+				setMode(MODE_NONE);
 				SignalEvent(promise, input_str);
 			}
-			else if (CurrentMode == PauseMode) {
-				SetMode(hWnd, NoMode);
+			else if (currentMode == MODE_PAUSE) {
+				setMode(MODE_NONE);
 				SignalEvent(promisev);
 			}
 			return TRUE;
 		}
 		case IDC_BUTTON_YES:
 		case IDC_BUTTON_NO: {
-			if (CurrentMode == AskYnMode) {
-				SetMode(hWnd, NoMode);
+			if (currentMode == MODE_ASK_YN) {
+				setMode(MODE_NONE);
 				SignalEvent(promiseyn, LOWORD(wParam) == IDC_BUTTON_YES ? 'y' : 'n');
 			}
 			return TRUE;
@@ -244,15 +265,15 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			switch (HIWORD(wParam)) {
 			case LBN_DBLCLK: {
 				int cur = ListBox_GetCurSel((HWND)lParam);
-				if (CurrentMode == InputMode && cur != LB_ERR && (!q_responses[cur].empty() || cur == last_index)) {
+				if (currentMode == MODE_INPUT && cur != LB_ERR && (!q_responses[cur].empty() || cur == last_index)) {
 					wchar_t* input_str = new wchar_t[q_responses[cur].length() + 1];
 					wcscpy(input_str, q_responses[cur].c_str());
 					SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
-					SetMode(hWnd, NoMode);
+					setMode(MODE_NONE);
 					SignalEvent(promise, input_str);
 				}
-				else if (CurrentMode == PauseMode) {
-					SetMode(hWnd, NoMode);
+				else if (currentMode == MODE_PAUSE) {
+					setMode(MODE_NONE);
 					SignalEvent(promisev);
 				}
 				return TRUE;
@@ -262,14 +283,14 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		return FALSE;
 	case APP_LISTCHAR: {
 		HWND edit = GetDlgItem(hWnd, IDC_EDIT1);
-		if (CurrentMode == InputMode) {
+		if (currentMode == MODE_INPUT) {
 			SetFocus(edit);
 			SendMessage(edit, WM_CHAR, wParam, lParam);
 		}
-		else if (CurrentMode == AskYnMode) {
+		else if (currentMode == MODE_ASK_YN) {
 			char c = wctob(towlower(wParam));
 			if (c == 'y' || c == 'n') {
-				SetMode(hWnd, NoMode);
+				setMode(MODE_ASK_YN);
 				SignalEvent(promiseyn, c);
 			}
 		}
@@ -315,16 +336,16 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		return TRUE;
 	}
 	case APP_GETINPUT:
-		SetMode(hWnd, InputMode);
+		setMode(MODE_INPUT);
 		input_len = wParam;
 		promise = *(EventPtr<wchar_t*>)lParam;
 		return TRUE;
 	case APP_PAUSE:
-		SetMode(hWnd, PauseMode);
+		setMode(MODE_PAUSE);
 		promisev = *(EventPtr<void>)lParam;
 		return TRUE;
 	case APP_ASKYN:
-		SetMode(hWnd, AskYnMode);
+		setMode(MODE_ASK_YN);
 		promiseyn = *(EventPtr<char>)lParam;
 		return TRUE;
 	case APP_PREUPDATE: {
@@ -354,7 +375,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			SendMessage(progress, PBM_SETPOS, wParam, 0L);
 		}
 
-		SetMode(hWnd, ProgressBarMode);
+		setMode(MODE_PROGRESS_BAR);
 		return TRUE;
 	}
 	case WM_SIZE: {
