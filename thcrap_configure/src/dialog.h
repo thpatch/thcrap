@@ -17,7 +17,7 @@ private:
 			obj = (T*)lParam;
 			obj->hWnd = hWnd;
 		} else {
-			obj = (T*)GetWindowLongPtrW(hWnd, DWLP_USER);
+			obj = fromHandle(hWnd);
 		}
 
 		INT_PTR result = FALSE;
@@ -31,9 +31,11 @@ private:
 		return result;
 	}
 protected:
-	HWND hWnd;
+	HWND hWnd = NULL;
 public:
-	Dialog() :hWnd(NULL) {}
+	static T *fromHandle(HWND hWnd) {
+		return (T*)GetWindowLongPtrW(hWnd, DWLP_USER);
+	}
 	bool isAlive() {
 		return !!hWnd;
 	}
