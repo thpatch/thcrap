@@ -56,15 +56,6 @@ public:
 	}
 };
 
-template<typename T>
-struct PromiseFuture {
-	std::promise<T> promise;
-	std::future<T> future;
-	PromiseFuture() {
-		future = promise.get_future();
-	}
-};
-
 struct ConsoleDialog : Dialog<ConsoleDialog> {
 private:
 	friend Dialog<ConsoleDialog>;
@@ -113,11 +104,11 @@ public:
 	PromiseSlot<void> onInit;
 
 	void readQueue();
-	void askyn(std::promise<char> *promise);
-	void getInput(DWORD len, std::promise<wchar_t*> *promise);
+	std::future<char> askyn();
+	std::future<wchar_t*> getInput(DWORD len);
 	void update();
 	void preupdate();
-	void pause(std::promise<void> *promise);
+	std::future<void> pause();
 	void setProgress(int pc);
 };
 static ConsoleDialog g_console_xxx{};
@@ -126,11 +117,17 @@ static ConsoleDialog *g_console = &g_console_xxx;
 void ConsoleDialog::readQueue() {
 	PostMessage(hWnd, APP_READQUEUE, 0, 0L);
 }
-void ConsoleDialog::askyn(std::promise<char> *promise) {
-	PostMessage(hWnd, APP_ASKYN, 0, (LPARAM)promise);
+std::future<char> ConsoleDialog::askyn() {
+	std::promise<char> promise;
+	std::future<char> future = promise.get_future();
+	SendMessage(hWnd, APP_ASKYN, 0, (LPARAM)&promise);
+	return future;
 }
-void ConsoleDialog::getInput(DWORD len, std::promise<wchar_t*> *promise) {
-	PostMessage(hWnd, APP_GETINPUT, (WPARAM)len, (LPARAM)promise);
+std::future<wchar_t *> ConsoleDialog::getInput(DWORD len) {
+	std::promise<wchar_t*> promise;
+	std::future<wchar_t*> future = promise.get_future();
+	SendMessage(hWnd, APP_GETINPUT, (WPARAM)len, (LPARAM)&promise);
+	return future;
 }
 // Should be called after adding/appending bunch of lines
 void ConsoleDialog::update() {
@@ -140,8 +137,11 @@ void ConsoleDialog::update() {
 void ConsoleDialog::preupdate() {
 	PostMessage(hWnd, APP_PREUPDATE, 0, 0L);
 }
-void ConsoleDialog::pause(std::promise<void> *promise) {
-	PostMessage(hWnd, APP_PAUSE, 0, (LPARAM)promise);
+std::future<void> ConsoleDialog::pause() {
+	std::promise<void> promise;
+	std::future<void> future = promise.get_future();
+	SendMessage(hWnd, APP_PAUSE, 0, (LPARAM)&promise);
+	return future;
 }
 void ConsoleDialog::setProgress(int pc) {
 	PostMessage(hWnd, APP_PROGRESS, (WPARAM)(DWORD)pc, 0L);
@@ -408,17 +408,20 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		return TRUE;
 	}
 	case APP_GETINPUT:
-		setMode(MODE_INPUT);
 		input_len = wParam;
 		onInput = std::move(*(std::promise<wchar_t*>*)lParam);
+		ReplyMessage(0L);
+		setMode(MODE_INPUT);
 		return TRUE;
 	case APP_PAUSE:
-		setMode(MODE_PAUSE);
 		onUnpause = std::move(*(std::promise<void>*)lParam);
+		ReplyMessage(0L);
+		setMode(MODE_PAUSE);
 		return TRUE;
 	case APP_ASKYN:
-		setMode(MODE_ASK_YN);
 		onYesNo = std::move(*(std::promise<char>*)lParam);
+		ReplyMessage(0L);
+		setMode(MODE_ASK_YN);
 		return TRUE;
 	case APP_PREUPDATE:
 		SetWindowRedraw(list, FALSE);
@@ -634,9 +637,10 @@ void console_init() {
 
 	log_set_hook(log_windows, log_nwindows);
 
-	PromiseFuture<void> e;
-	std::thread([](std::promise<void> *onInit) {
-		g_console->onInit = std::move(*onInit);
+	std::promise<void> promise;
+	std::future<void> future = promise.get_future();
+	std::thread([&promise]() {
+		g_console->onInit = std::move(promise);
 		g_console->createModal(NULL);
 		log_set_hook(NULL, NULL);
 		if (!g_exitguithreadevent) {
@@ -645,16 +649,14 @@ void console_init() {
 		else {
 			g_exitguithreadevent.set_value();
 		}
-	}, &e.promise).detach();
-	e.future.get();
+	}).detach();
+	future.get();
 }
 char* console_read(char *str, int n) {
 	dontUpdate = false;
 	g_console->readQueue();
 	g_console->update();
-	PromiseFuture<wchar_t*> e;
-	g_console->getInput(n, &e.promise);
-	wchar_t* input = e.future.get();
+	wchar_t *input = g_console->getInput(n).get();
 	StringToUTF8(str, input, n);
 	delete[] input;
 	needAppend = false; // gotta insert that newline
@@ -677,9 +679,7 @@ void pause(void) {
 	dontUpdate = false;
 	con_printf("Press ENTER to continue . . . "); // this will ReadQueue and Update for us
 	needAppend = false;
-	PromiseFuture<void> e;
-	g_console->pause(&e.promise);
-	e.future.get();
+	g_console->pause().get();
 }
 void console_prepare_prompt(void) {
 	g_console->preupdate();
@@ -693,15 +693,14 @@ char console_ask_yn(const char* what) {
 	log_windows(what);
 	needAppend = false;
 
-	PromiseFuture<char> e;
-	g_console->askyn(&e.promise);
-	return e.future.get();
+	return g_console->askyn().get();
 }
 void con_end(void) {
-	PromiseFuture<void> e;
-	g_exitguithreadevent = std::move(e.promise);
+	std::promise<void> promise;
+	std::future<void> future = promise.get_future();
+	g_exitguithreadevent = std::move(promise);
 	SendMessage(g_hwnd, WM_CLOSE, 0, 0L);
-	e.future.get();
+	future.get();
 }
 HWND con_hwnd(void) {
 	return g_hwnd;
