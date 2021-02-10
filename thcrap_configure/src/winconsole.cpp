@@ -145,8 +145,13 @@ void ConsoleDialog::setMode(Mode mode) {
 		{ false, false, false, false, true, true }, // MODE_ASK_YN
 	};
 	for (int i = 0; i < 6; i++) {
-		ShowWindow(this->*items[i], modes[mode][i] ? SW_SHOW : SW_HIDE);
-		EnableWindow(this->*items[i], modes[mode][i] ? TRUE : FALSE);
+		if (modes[mode][i]) {
+			EnableWindow(this->*items[i], TRUE);
+			ShowWindow(this->*items[i], SW_SHOW);
+		} else {
+			ShowWindow(this->*items[i], SW_HIDE);
+			EnableWindow(this->*items[i], FALSE);
+		}
 	}
 }
 
