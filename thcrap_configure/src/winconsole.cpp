@@ -14,9 +14,56 @@
 #include <future>
 #include <memory>
 #include <thread>
+#include <utility>
+#include <type_traits>
+
+// A wrapper around std::promise that lets us call set_value without
+// having to worry about promise_already_satisfied/no_state.
+template<typename R>
+class PromiseSlot {
+	static inline constexpr bool is_void = std::is_void<R>::value;
+	static inline constexpr bool is_ref = std::is_lvalue_reference<R>::value;
+
+	std::promise<R> promise;
+	bool present;
+public:
+	PromiseSlot() {
+		release();
+	}
+	PromiseSlot(std::promise<R> &&other) :promise(std::move(other)), present(true) {
+	}
+	PromiseSlot &operator=(std::promise<R> &&other) {
+		std::promise<R>{std::move(other)}.swap(promise);
+		present = true;
+		return *this;
+	}
+	std::promise<R> release() {
+		present = false;
+		return std::promise<R>{std::move(promise)};
+	}
+	template<typename RR = std::enable_if_t<!is_void && !is_ref, R>>
+	void set_value(const RR &value) {
+		if (present)
+			release().set_value(value);
+	}
+	template<typename = std::enable_if_t<is_void>>
+	void set_value() {
+		if (present)
+			release().set_value();
+	}
+	explicit operator bool() {
+		return present;
+	}
+};
 
 template<typename T>
-using EventPtr = const std::shared_ptr<std::promise<T>>*;
+struct PromiseFuture {
+	std::promise<T> promise;
+	std::future<T> future;
+	PromiseFuture() {
+		future = promise.get_future();
+	}
+};
 
 struct ConsoleDialog : Dialog<ConsoleDialog> {
 private:
@@ -47,40 +94,44 @@ private:
 	static LRESULT CALLBACK listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	void setMarquee(BOOL fEnable);
+
+	PromiseSlot<char> onYesNo; // APP_ASKYN event
+	PromiseSlot<wchar_t*> onInput; // APP_GETINPUT event
+	PromiseSlot<void> onUnpause; // APP_PAUSE event
 public:
-	EventPtr<void> onInit;
+	PromiseSlot<void> onInit;
 };
 static ConsoleDialog g_console_xxx{};
 static ConsoleDialog *g_console = &g_console_xxx;
 
 
 #define APP_READQUEUE (WM_APP+0)
-/* lparam = const std::shared_ptr<std::promise<char>>* */
+/* lparam = std::promise<char>* */
 #define APP_ASKYN (WM_APP+1)
 /* wparam = length of output string */
-/* lparam = const std::shared_ptr<std::promise<wchar_t*>>* */
+/* lparam = std::promise<wchar_t*>* */
 #define APP_GETINPUT (WM_APP+2)
 /* wparam = WM_CHAR */
 #define APP_LISTCHAR (WM_APP+3)
 #define APP_UPDATE (WM_APP+4)
 #define APP_PREUPDATE (WM_APP+5)
-/* lparam = const std::shared_ptr<std::promise<void>>* */
+/* lparam = std::promise<void>* */
 #define APP_PAUSE (WM_APP+6)
 /* wparam = percent */
 #define APP_PROGRESS (WM_APP+7)
 
 /* Reads line queue */
 #define Thcrap_ReadQueue(hwndDlg) ((void)::PostMessage((hwndDlg), APP_READQUEUE, 0, 0L))
-#define Thcrap_Askyn(hwndDlg,a_promise) ((void)::PostMessage((hwndDlg), APP_ASKYN, 0, (LPARAM)(EventPtr<char>)(a_promise)))
+#define Thcrap_Askyn(hwndDlg,a_promise) ((void)::PostMessage((hwndDlg), APP_ASKYN, 0, (LPARAM)(std::promise<char>*)(a_promise)))
 /* Request input */
 /* UI thread will signal g_event when user confirms input */
-#define Thcrap_GetInput(hwndDlg,len,a_promise) ((void)::PostMessage((hwndDlg), APP_GETINPUT, (WPARAM)(DWORD)(len), (LPARAM)(EventPtr<wchar_t*>)(a_promise)))
+#define Thcrap_GetInput(hwndDlg,len,a_promise) ((void)::PostMessage((hwndDlg), APP_GETINPUT, (WPARAM)(DWORD)(len), (LPARAM)(std::promise<wchar_t*>*)(a_promise)))
 /* Should be called after adding/appending bunch of lines */
 #define Thcrap_Update(hwndDlg) ((void)::PostMessage((hwndDlg), APP_UPDATE, 0, 0L))
 /* Should be called before adding lines*/
 #define Thcrap_Preupdate(hwndDlg) ((void)::PostMessage((hwndDlg), APP_PREUPDATE, 0, 0L))
 /* Pause */
-#define Thcrap_Pause(hwndDlg,a_promise) ((void)::PostMessage((hwndDlg), APP_PAUSE, 0, (LPARAM)(EventPtr<void>)(a_promise)))
+#define Thcrap_Pause(hwndDlg,a_promise) ((void)::PostMessage((hwndDlg), APP_PAUSE, 0, (LPARAM)(std::promise<void>*)(a_promise)))
 /* Updates progress bar */
 #define Thcrap_Progress(hwndDlg, pc) ((void)::PostMessage((hwndDlg), APP_PROGRESS, (WPARAM)(DWORD)(pc), 0L))
 
@@ -94,41 +145,12 @@ struct LineEntry {
 	LineType type;
 	std::wstring content;
 };
-template<typename T>
-class WaitForEvent {
-	std::shared_ptr<std::promise<T>> promise;
-	std::future<T> future;
-public:
-	WaitForEvent() {
-		promise = std::make_shared<std::promise<T>>();
-		future = promise->get_future();
-	}
-	EventPtr<T> getEvent() {
-		return &promise;
-	}
-	T getResponse() {
-		return future.get();
-	}
-};
-template<typename T>
-void SignalEvent(std::shared_ptr<std::promise<T>>& ptr, T val) {
-	if (ptr) {
-		ptr->set_value(val);
-		ptr.reset();
-	}
-}
-void SignalEvent(std::shared_ptr<std::promise<void>>& ptr) {
-	if (ptr) {
-		ptr->set_value();
-		ptr.reset();
-	}
-}
 
 static HWND g_hwnd = NULL;
 static std::mutex g_mutex; // used for synchronizing the queue
 static std::queue<LineEntry> g_queue;
 static std::vector<std::wstring> q_responses;
-static std::shared_ptr<std::promise<void>> g_exitguithreadevent;
+static PromiseSlot<void> g_exitguithreadevent;
 void ConsoleDialog::setMode(Mode mode) {
 	if (currentMode == mode)
 		return;
@@ -237,9 +259,6 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static int input_len = 0;
 	static int last_index = 0;
 	static std::wstring pending = L"";
-	static std::shared_ptr<std::promise<char>> promiseyn; // APP_ASKYN event
-	static std::shared_ptr<std::promise<wchar_t*>> promise; // APP_GETINPUT event
-	static std::shared_ptr<std::promise<void>> promisev; // APP_PAUSE event
 	static HICON hIconSm = NULL, hIcon = NULL;
 	switch (uMsg) {
 	case WM_INITDIALOG: {
@@ -280,7 +299,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			workarea.bottom - workarea.top,
 			TRUE);
 
-		(*onInit)->set_value();
+		onInit.set_value();
 		return TRUE;
 	}
 	case WM_COMMAND:
@@ -291,18 +310,18 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				GetWindowTextW(edit, input_str, input_len);
 				SetWindowTextW(edit, L"");
 				setMode(MODE_NONE);
-				SignalEvent(promise, input_str);
+				onInput.set_value(input_str);
 			}
 			else if (currentMode == MODE_PAUSE) {
 				setMode(MODE_NONE);
-				SignalEvent(promisev);
+				onUnpause.set_value();
 			}
 			return TRUE;
 		case IDC_BUTTON_YES:
 		case IDC_BUTTON_NO:
 			if (currentMode == MODE_ASK_YN) {
 				setMode(MODE_NONE);
-				SignalEvent(promiseyn, LOWORD(wParam) == IDC_BUTTON_YES ? 'y' : 'n');
+				onYesNo.set_value(LOWORD(wParam) == IDC_BUTTON_YES ? 'y' : 'n');
 			}
 			return TRUE;
 		case IDC_LIST1:
@@ -314,11 +333,11 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 					wcscpy(input_str, q_responses[cur].c_str());
 					SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
 					setMode(MODE_NONE);
-					SignalEvent(promise, input_str);
+					onInput.set_value(input_str);
 				}
 				else if (currentMode == MODE_PAUSE) {
 					setMode(MODE_NONE);
-					SignalEvent(promisev);
+					onUnpause.set_value();
 				}
 				return TRUE;
 			}
@@ -334,7 +353,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			char c = wctob(towlower(wParam));
 			if (c == 'y' || c == 'n') {
 				setMode(MODE_ASK_YN);
-				SignalEvent(promiseyn, c);
+				onYesNo.set_value(c);
 			}
 		}
 		return TRUE;
@@ -379,15 +398,15 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case APP_GETINPUT:
 		setMode(MODE_INPUT);
 		input_len = wParam;
-		promise = *(EventPtr<wchar_t*>)lParam;
+		onInput = std::move(*(std::promise<wchar_t*>*)lParam);
 		return TRUE;
 	case APP_PAUSE:
 		setMode(MODE_PAUSE);
-		promisev = *(EventPtr<void>)lParam;
+		onUnpause = std::move(*(std::promise<void>*)lParam);
 		return TRUE;
 	case APP_ASKYN:
 		setMode(MODE_ASK_YN);
-		promiseyn = *(EventPtr<char>)lParam;
+		onYesNo = std::move(*(std::promise<char>*)lParam);
 		return TRUE;
 	case APP_PREUPDATE:
 		SetWindowRedraw(list, FALSE);
@@ -601,27 +620,27 @@ void console_init() {
 
 	log_set_hook(log_windows, log_nwindows);
 
-	WaitForEvent<void> e;
-	std::thread([](EventPtr<void> onInit) {
-		g_console->onInit = onInit;
+	PromiseFuture<void> e;
+	std::thread([](std::promise<void> *onInit) {
+		g_console->onInit = std::move(*onInit);
 		g_console->createModal(NULL);
 		log_set_hook(NULL, NULL);
 		if (!g_exitguithreadevent) {
 			exit(0); // Exit the entire process when exiting this thread
 		}
 		else {
-			SignalEvent(g_exitguithreadevent);
+			g_exitguithreadevent.set_value();
 		}
-	}, e.getEvent()).detach();
-	e.getResponse();
+	}, &e.promise).detach();
+	e.future.get();
 }
 char* console_read(char *str, int n) {
 	dontUpdate = false;
 	Thcrap_ReadQueue(g_hwnd);
 	Thcrap_Update(g_hwnd);
-	WaitForEvent<wchar_t*> e;
-	Thcrap_GetInput(g_hwnd, n, e.getEvent());
-	wchar_t* input = e.getResponse();
+	PromiseFuture<wchar_t*> e;
+	Thcrap_GetInput(g_hwnd, n, &e.promise);
+	wchar_t* input = e.future.get();
 	StringToUTF8(str, input, n);
 	delete[] input;
 	needAppend = false; // gotta insert that newline
@@ -644,9 +663,9 @@ void pause(void) {
 	dontUpdate = false;
 	con_printf("Press ENTER to continue . . . "); // this will ReadQueue and Update for us
 	needAppend = false;
-	WaitForEvent<void> e;
-	Thcrap_Pause(g_hwnd, e.getEvent());
-	e.getResponse();
+	PromiseFuture<void> e;
+	Thcrap_Pause(g_hwnd, &e.promise);
+	e.future.get();
 }
 void console_prepare_prompt(void) {
 	Thcrap_Preupdate(g_hwnd);
@@ -660,15 +679,15 @@ char console_ask_yn(const char* what) {
 	log_windows(what);
 	needAppend = false;
 
-	WaitForEvent<char> e;
-	Thcrap_Askyn(g_hwnd, e.getEvent());
-	return e.getResponse();
+	PromiseFuture<char> e;
+	Thcrap_Askyn(g_hwnd, &e.promise);
+	return e.future.get();
 }
 void con_end(void) {
-	WaitForEvent<void> e;
-	g_exitguithreadevent = *e.getEvent();
+	PromiseFuture<void> e;
+	g_exitguithreadevent = std::move(e.promise);
 	SendMessage(g_hwnd, WM_CLOSE, 0, 0L);
-	e.getResponse();
+	e.future.get();
 }
 HWND con_hwnd(void) {
 	return g_hwnd;
