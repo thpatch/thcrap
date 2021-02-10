@@ -98,42 +98,54 @@ private:
 	PromiseSlot<char> onYesNo; // APP_ASKYN event
 	PromiseSlot<wchar_t*> onInput; // APP_GETINPUT event
 	PromiseSlot<void> onUnpause; // APP_PAUSE event
+
+	enum {
+		APP_READQUEUE = WM_APP,
+		APP_ASKYN, // lparam = std::promise<char>*
+		APP_GETINPUT, // wparam = length of output string, lparam = std::promise<wchar_t*>*
+		APP_LISTCHAR, // wparam = WM_CHAR
+		APP_UPDATE,
+		APP_PREUPDATE,
+		APP_PAUSE, // lparam = std::promise<void>*
+		APP_PROGRESS, // wparam = percent
+	};
 public:
 	PromiseSlot<void> onInit;
+
+	void readQueue();
+	void askyn(std::promise<char> *promise);
+	void getInput(DWORD len, std::promise<wchar_t*> *promise);
+	void update();
+	void preupdate();
+	void pause(std::promise<void> *promise);
+	void setProgress(int pc);
 };
 static ConsoleDialog g_console_xxx{};
 static ConsoleDialog *g_console = &g_console_xxx;
 
-
-#define APP_READQUEUE (WM_APP+0)
-/* lparam = std::promise<char>* */
-#define APP_ASKYN (WM_APP+1)
-/* wparam = length of output string */
-/* lparam = std::promise<wchar_t*>* */
-#define APP_GETINPUT (WM_APP+2)
-/* wparam = WM_CHAR */
-#define APP_LISTCHAR (WM_APP+3)
-#define APP_UPDATE (WM_APP+4)
-#define APP_PREUPDATE (WM_APP+5)
-/* lparam = std::promise<void>* */
-#define APP_PAUSE (WM_APP+6)
-/* wparam = percent */
-#define APP_PROGRESS (WM_APP+7)
-
-/* Reads line queue */
-#define Thcrap_ReadQueue(hwndDlg) ((void)::PostMessage((hwndDlg), APP_READQUEUE, 0, 0L))
-#define Thcrap_Askyn(hwndDlg,a_promise) ((void)::PostMessage((hwndDlg), APP_ASKYN, 0, (LPARAM)(std::promise<char>*)(a_promise)))
-/* Request input */
-/* UI thread will signal g_event when user confirms input */
-#define Thcrap_GetInput(hwndDlg,len,a_promise) ((void)::PostMessage((hwndDlg), APP_GETINPUT, (WPARAM)(DWORD)(len), (LPARAM)(std::promise<wchar_t*>*)(a_promise)))
-/* Should be called after adding/appending bunch of lines */
-#define Thcrap_Update(hwndDlg) ((void)::PostMessage((hwndDlg), APP_UPDATE, 0, 0L))
-/* Should be called before adding lines*/
-#define Thcrap_Preupdate(hwndDlg) ((void)::PostMessage((hwndDlg), APP_PREUPDATE, 0, 0L))
-/* Pause */
-#define Thcrap_Pause(hwndDlg,a_promise) ((void)::PostMessage((hwndDlg), APP_PAUSE, 0, (LPARAM)(std::promise<void>*)(a_promise)))
-/* Updates progress bar */
-#define Thcrap_Progress(hwndDlg, pc) ((void)::PostMessage((hwndDlg), APP_PROGRESS, (WPARAM)(DWORD)(pc), 0L))
+void ConsoleDialog::readQueue() {
+	PostMessage(hWnd, APP_READQUEUE, 0, 0L);
+}
+void ConsoleDialog::askyn(std::promise<char> *promise) {
+	PostMessage(hWnd, APP_ASKYN, 0, (LPARAM)promise);
+}
+void ConsoleDialog::getInput(DWORD len, std::promise<wchar_t*> *promise) {
+	PostMessage(hWnd, APP_GETINPUT, (WPARAM)len, (LPARAM)promise);
+}
+// Should be called after adding/appending bunch of lines
+void ConsoleDialog::update() {
+	PostMessage(hWnd, APP_UPDATE, 0, 0L);
+}
+// Should be called before adding lines
+void ConsoleDialog::preupdate() {
+	PostMessage(hWnd, APP_PREUPDATE, 0, 0L);
+}
+void ConsoleDialog::pause(std::promise<void> *promise) {
+	PostMessage(hWnd, APP_PAUSE, 0, (LPARAM)promise);
+}
+void ConsoleDialog::setProgress(int pc) {
+	PostMessage(hWnd, APP_PROGRESS, (WPARAM)(DWORD)pc, 0L);
+}
 
 enum LineType {
 	LINE_ADD,
@@ -508,8 +520,10 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 static bool needAppend = false;
 static bool dontUpdate = false;
 void log_windows(const char* text) {
-	if (!g_hwnd) return;
-	if (!dontUpdate) Thcrap_Preupdate(g_hwnd);
+	if (!g_console->isAlive())
+		return;
+	if (!dontUpdate)
+		g_console->preupdate();
 
 	int len = strlen(text) + 1;
 	VLA(wchar_t, wtext, len);
@@ -544,10 +558,10 @@ void log_windows(const char* text) {
 			mutexcond = g_queue.size() > 10;
 		}
 		if (mutexcond) {
-			Thcrap_ReadQueue(g_hwnd);
+			g_console->readQueue();
 			if (dontUpdate) {
-				Thcrap_Update(g_hwnd);
-				Thcrap_Preupdate(g_hwnd);
+				g_console->update();
+				g_console->preupdate();
 			}
 		}
 		start = end;
@@ -556,8 +570,8 @@ void log_windows(const char* text) {
 	if (!end) needAppend = true;
 
 	if (!dontUpdate) {
-		Thcrap_ReadQueue(g_hwnd);
-		Thcrap_Update(g_hwnd);
+		g_console->readQueue();
+		g_console->update();
 	}
 }
 void log_nwindows(const char* text, size_t len) {
@@ -636,10 +650,10 @@ void console_init() {
 }
 char* console_read(char *str, int n) {
 	dontUpdate = false;
-	Thcrap_ReadQueue(g_hwnd);
-	Thcrap_Update(g_hwnd);
+	g_console->readQueue();
+	g_console->update();
 	PromiseFuture<wchar_t*> e;
-	Thcrap_GetInput(g_hwnd, n, &e.promise);
+	g_console->getInput(n, &e.promise);
 	wchar_t* input = e.future.get();
 	StringToUTF8(str, input, n);
 	delete[] input;
@@ -651,12 +665,12 @@ void cls(SHORT top) {
 		std::lock_guard<std::mutex> lock(g_mutex);
 		LineEntry le = { LINE_CLS, L"" };
 		g_queue.push(le);
-		Thcrap_ReadQueue(g_hwnd);
+		g_console->readQueue();
 		needAppend = false;
 	}
 	if (dontUpdate) {
-		Thcrap_Update(g_hwnd);
-		Thcrap_Preupdate(g_hwnd);
+		g_console->update();
+		g_console->preupdate();
 	}
 }
 void pause(void) {
@@ -664,15 +678,15 @@ void pause(void) {
 	con_printf("Press ENTER to continue . . . "); // this will ReadQueue and Update for us
 	needAppend = false;
 	PromiseFuture<void> e;
-	Thcrap_Pause(g_hwnd, &e.promise);
+	g_console->pause(&e.promise);
 	e.future.get();
 }
 void console_prepare_prompt(void) {
-	Thcrap_Preupdate(g_hwnd);
+	g_console->preupdate();
 	dontUpdate = true;
 }
 void console_print_percent(int pc) {
-	Thcrap_Progress(g_hwnd, pc);
+	g_console->setProgress(pc);
 }
 char console_ask_yn(const char* what) {
 	dontUpdate = false;
@@ -680,7 +694,7 @@ char console_ask_yn(const char* what) {
 	needAppend = false;
 
 	PromiseFuture<char> e;
-	Thcrap_Askyn(g_hwnd, &e.promise);
+	g_console->askyn(&e.promise);
 	return e.future.get();
 }
 void con_end(void) {
