@@ -1,6 +1,9 @@
 #include <thcrap.h>
 #include <windows.h>
 #include <windowsx.h>
+#define ProgressBar_SetRange(hwndCtl, low, high) ((DWORD)SNDMSG((hwndCtl), PBM_SETRANGE, 0L, MAKELPARAM((low), (high))))
+#define ProgressBar_SetPos(hwndCtl, pos) ((int)(DWORD)SNDMSG((hwndCtl), PBM_SETPOS, (WPARAM)(int)(pos), 0L))
+#define ProgressBar_SetMarquee(hwndCtl, fEnable, animTime) ((BOOL)(DWORD)SNDMSG((hwndCtl), PBM_SETMARQUEE, (WPARAM)(BOOL)(fEnable), (LPARAM)(DWORD)(animTime)))
 #include "console.h"
 #include "dialog.h"
 #include "resource.h"
@@ -42,6 +45,8 @@ private:
 
 	static LRESULT CALLBACK editProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 	static LRESULT CALLBACK listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	void setMarquee(BOOL fEnable);
 public:
 	EventPtr<void> onInit;
 };
@@ -209,6 +214,18 @@ LRESULT CALLBACK ConsoleDialog::listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 	return CallWindowProcW(origListProc, hWnd, uMsg, wParam, lParam);
 }
 
+void ConsoleDialog::setMarquee(BOOL fEnable) {
+	DWORD dwStyle = GetWindowLong(progress, GWL_STYLE);
+	if (!!(dwStyle & PBS_MARQUEE) != fEnable) {
+		if (fEnable)
+			dwStyle |= PBS_MARQUEE;
+		else
+			dwStyle &= ~PBS_MARQUEE;
+		SetWindowLong(progress, GWL_STYLE, dwStyle);
+		ProgressBar_SetMarquee(progress, fEnable, 0L);
+	}
+}
+
 bool con_can_close = false;
 HINSTANCE ConsoleDialog::getInstance() {
 	return GetModuleHandle(NULL);
@@ -235,7 +252,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		buttonYes = GetDlgItem(hWnd, IDC_BUTTON_YES);
 		buttonNo = GetDlgItem(hWnd, IDC_BUTTON_NO);
 
-		SendMessage(progress, PBM_SETRANGE, 0, MAKELONG(0, 100));
+		ProgressBar_SetRange(progress, 0, 100);
 		SetWindowLongPtr(edit, GWLP_WNDPROC, (LONG_PTR)editProc);
 		SetWindowLongPtr(list, GWLP_WNDPROC, (LONG_PTR)listProc);
 
@@ -383,16 +400,9 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		//RedrawWindow(list, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
 		return TRUE;
 	case APP_PROGRESS:
-		if (wParam == -1) {
-			SetWindowLong(progress, GWL_STYLE, GetWindowLong(progress, GWL_STYLE) | PBS_MARQUEE);
-			SendMessage(progress, PBM_SETMARQUEE, 1, 0L);
-		}
-		else {
-			SendMessage(progress, PBM_SETMARQUEE, 0, 0L);
-			SetWindowLong(progress, GWL_STYLE, GetWindowLong(progress, GWL_STYLE) & ~PBS_MARQUEE);
-			SendMessage(progress, PBM_SETPOS, wParam, 0L);
-		}
-
+		setMarquee(wParam == -1);
+		if (wParam != -1)
+			ProgressBar_SetPos(progress, wParam);
 		setMode(MODE_PROGRESS_BAR);
 		return TRUE;
 	case WM_SIZE: {
