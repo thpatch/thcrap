@@ -114,6 +114,7 @@ private:
 
 	std::mutex mutex; // used for synchronizing the queue
 	std::queue<LineEntry> queue;
+	std::vector<std::wstring> responses;
 public:
 	PromiseSlot<void> onInit;
 
@@ -168,7 +169,6 @@ void ConsoleDialog::pushQueue(LineEntry &&ent) {
 	queue.push(std::move(ent));
 }
 
-static std::vector<std::wstring> q_responses;
 static PromiseSlot<void> g_exitguithreadevent;
 void ConsoleDialog::setMode(Mode mode) {
 	if (currentMode == mode)
@@ -346,9 +346,9 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			switch (HIWORD(wParam)) {
 			case LBN_DBLCLK: {
 				int cur = ListBox_GetCurSel((HWND)lParam);
-				if (currentMode == MODE_INPUT && cur != LB_ERR && (!q_responses[cur].empty() || cur == last_index)) {
-					wchar_t* input_str = new wchar_t[q_responses[cur].length() + 1];
-					wcscpy(input_str, q_responses[cur].c_str());
+				if (currentMode == MODE_INPUT && cur != LB_ERR && (!responses[cur].empty() || cur == last_index)) {
+					wchar_t* input_str = new wchar_t[responses[cur].length() + 1];
+					wcscpy(input_str, responses[cur].c_str());
 					SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
 					setMode(MODE_NONE);
 					onInput.set_value(input_str);
@@ -382,7 +382,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			switch (ent.type) {
 			case LINE_ADD:
 				last_index = ListBox_AddString(list, ent.content.c_str());
-				q_responses.push_back(pending);
+				responses.push_back(pending);
 				pending = L"";
 				break;
 			case LINE_APPEND: {
@@ -395,14 +395,14 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				ListBox_InsertString(list, last_index, wstr);
 				VLA_FREE(wstr);
 				if (!pending.empty()) {
-					q_responses[last_index] = pending;
+					responses[last_index] = pending;
 					pending = L"";
 				}
 				break;
 			}
 			case LINE_CLS:
 				ListBox_ResetContent(list);
-				q_responses.clear();
+				responses.clear();
 				pending = L"";
 				break;
 			case LINE_PENDING:
