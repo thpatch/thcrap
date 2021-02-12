@@ -56,6 +56,17 @@ public:
 	}
 };
 
+enum LineType {
+	LINE_ADD,
+	LINE_APPEND,
+	LINE_CLS,
+	LINE_PENDING
+};
+struct LineEntry {
+	LineType type;
+	std::wstring content;
+};
+
 struct ConsoleDialog : Dialog<ConsoleDialog> {
 private:
 	friend Dialog<ConsoleDialog>;
@@ -100,6 +111,9 @@ private:
 		APP_PAUSE, // lparam = std::promise<void>*
 		APP_PROGRESS, // wparam = percent
 	};
+
+	std::mutex mutex; // used for synchronizing the queue
+	std::queue<LineEntry> queue;
 public:
 	PromiseSlot<void> onInit;
 
@@ -110,6 +124,8 @@ public:
 	void preupdate();
 	std::future<void> pause();
 	void setProgress(int pc);
+
+	void pushQueue(LineEntry &&ent);
 };
 static ConsoleDialog g_console_xxx{};
 static ConsoleDialog *g_console = &g_console_xxx;
@@ -147,19 +163,11 @@ void ConsoleDialog::setProgress(int pc) {
 	PostMessage(hWnd, APP_PROGRESS, (WPARAM)(DWORD)pc, 0L);
 }
 
-enum LineType {
-	LINE_ADD,
-	LINE_APPEND,
-	LINE_CLS,
-	LINE_PENDING
-};
-struct LineEntry {
-	LineType type;
-	std::wstring content;
-};
+void ConsoleDialog::pushQueue(LineEntry &&ent) {
+	std::lock_guard<std::mutex> lock(mutex);
+	queue.push(std::move(ent));
+}
 
-static std::mutex g_mutex; // used for synchronizing the queue
-static std::queue<LineEntry> g_queue;
 static std::vector<std::wstring> q_responses;
 static PromiseSlot<void> g_exitguithreadevent;
 void ConsoleDialog::setMode(Mode mode) {
@@ -368,9 +376,9 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		}
 		return TRUE;
 	case APP_READQUEUE: {
-		std::lock_guard<std::mutex> lock(g_mutex);
-		while (!g_queue.empty()) {
-			LineEntry& ent = g_queue.front();
+		std::lock_guard<std::mutex> lock(mutex);
+		while (!queue.empty()) {
+			LineEntry& ent = queue.front();
 			switch (ent.type) {
 			case LINE_ADD:
 				last_index = ListBox_AddString(list, ent.content.c_str());
@@ -401,7 +409,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				pending = ent.content;
 				break;
 			}
-			g_queue.pop();
+			queue.pop();
 		}
 		return TRUE;
 	}
@@ -529,34 +537,22 @@ void log_windows(const char* text) {
 	wchar_t *start = text_w, *end = NULL;
 	bool completeLine = true;
 	while (completeLine) {
-		int mutexcond = 0;
-		{
-			std::lock_guard<std::mutex> lock(g_mutex);
-			end = wcschr(start, '\n');
-			if (!end)
-				end = wcschr(start, '\0');
-			if (*end == '\0') {
-				if (end == start) // '\0' right after '\n'
-					break;
-				completeLine = false;
-			}
-
-			if (needAppend == true) {
-				LineEntry le = { LINE_APPEND, std::wstring(start, end - start) };
-				g_queue.push(le);
-				needAppend = false;
-			} else {
-				LineEntry le = { LINE_ADD, std::wstring(start, end - start) };
-				g_queue.push(le);
-			}
-			mutexcond = g_queue.size() > 10;
+		end = wcschr(start, '\n');
+		if (!end)
+			end = wcschr(start, '\0');
+		if (*end == '\0') {
+			if (end == start) // '\0' right after '\n'
+				break;
+			completeLine = false;
 		}
-		if (mutexcond) {
-			g_console->readQueue();
-			if (dontUpdate) {
-				g_console->update();
-				g_console->preupdate();
-			}
+
+		if (needAppend == true) {
+			LineEntry le = { LINE_APPEND, std::wstring(start, end - start) };
+			g_console->pushQueue(std::move(le));
+			needAppend = false;
+		} else {
+			LineEntry le = { LINE_ADD, std::wstring(start, end - start) };
+			g_console->pushQueue(std::move(le));
 		}
 		start = end + 1;
 	}
@@ -606,11 +602,8 @@ void con_printf(const char *str, ...)
 void con_clickable(const char* response) {
 	WCHAR_T_DEC(response);
 	WCHAR_T_CONV(response);
-	{
-		std::lock_guard<std::mutex> lock(g_mutex);
-		LineEntry le = { LINE_PENDING,  response_w };
-		g_queue.push(le);
-	}
+	LineEntry le = { LINE_PENDING,  response_w };
+	g_console->pushQueue(std::move(le));
 	WCHAR_T_FREE(response);
 }
 
@@ -652,13 +645,11 @@ wchar_t *console_read() {
 	return input;
 }
 void cls(SHORT top) {
-	{
-		std::lock_guard<std::mutex> lock(g_mutex);
-		LineEntry le = { LINE_CLS, L"" };
-		g_queue.push(le);
-		g_console->readQueue();
-		needAppend = false;
-	}
+	LineEntry le = { LINE_CLS, L"" };
+	g_console->pushQueue(std::move(le));
+	g_console->readQueue();
+	needAppend = false;
+	
 	if (dontUpdate) {
 		g_console->update();
 		g_console->preupdate();
