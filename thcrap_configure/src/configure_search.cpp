@@ -81,7 +81,7 @@ int CALLBACK SetInitialBrowsePathProc(HWND hWnd, UINT uMsg, LPARAM lp, LPARAM pD
 
 #define UnkRelease(p) do { IUnknown** __p = (IUnknown**)(p); (*__p)->Release(); (*__p) = NULL; } while(0)
 
-static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
+static int SelectFolderVista(HWND owner, PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
 	// Those two functions are absent in XP, so we have to load them dynamically
 	HMODULE shell32 = GetModuleHandle(L"Shell32.dll");
 	auto pSHCreateItemFromIDList = (HRESULT(WINAPI *)(PCIDLIST_ABSOLUTE, REFIID, void**))GetProcAddress(shell32, "SHCreateItemFromIDList");
@@ -107,7 +107,7 @@ static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pi
 		FOS_NOCHANGEDIR | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM
 		| FOS_PATHMUSTEXIST | FOS_FILEMUSTEXIST | FOS_DONTADDTORECENT);
 	pfd->SetTitle(window_title);
-	HRESULT hr = pfd->Show(con_hwnd());
+	HRESULT hr = pfd->Show(owner);
 	if (SUCCEEDED(hr)) {
 		if (SUCCEEDED(pfd->GetResult(&psi))) {
 			pSHGetIDListFromObject(psi, &pidl);
@@ -124,23 +124,23 @@ static int SelectFolderVista(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pi
 	return -1;
 }
 
-static int SelectFolderXP(PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
+static int SelectFolderXP(HWND owner, PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
 	BROWSEINFOW bi = { 0 };
 	initial_path_t ip = { 0 };
 	ip.path = initial_path;
 
 	bi.lpszTitle = window_title;
 	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NONEWFOLDERBUTTON | BIF_USENEWUI;
-	bi.hwndOwner = con_hwnd();
+	bi.hwndOwner = owner;
 	bi.lpfn = SetInitialBrowsePathProc;
 	bi.lParam = (LPARAM)&ip;
 	pidl = SHBrowseForFolderW(&bi);
 	return 0;
 }
-PIDLIST_ABSOLUTE SelectFolder(PIDLIST_ABSOLUTE initial_path, const wchar_t* window_title) {
+PIDLIST_ABSOLUTE SelectFolder(HWND owner, PIDLIST_ABSOLUTE initial_path, const wchar_t* window_title) {
 	PIDLIST_ABSOLUTE pidl = NULL;
-	if (-1 == SelectFolderVista(initial_path, pidl, window_title)) {
-		SelectFolderXP(initial_path, pidl, window_title);
+	if (-1 == SelectFolderVista(owner, initial_path, pidl, window_title)) {
+		SelectFolderXP(owner, initial_path, pidl, window_title);
 	}
 	return pidl;
 }
@@ -264,7 +264,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		wchar_t search_path_w[MAX_PATH] = {0};
 		json_t *found = NULL;
 
-		PIDLIST_ABSOLUTE pidl = SelectFolder(initial_path, L"Root path for game search (cancel to search entire system):");
+		PIDLIST_ABSOLUTE pidl = SelectFolder(con_hwnd(), initial_path, L"Root path for game search (cancel to search entire system):");
 		if (pidl && SHGetPathFromIDListW(pidl, search_path_w)) {
 			PathAddBackslashW(search_path_w);
 			CoTaskMemFree(pidl);
