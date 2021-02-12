@@ -76,23 +76,27 @@ std::string run_cfg_fn_build(const patch_sel_stack_t& sel_stack)
 std::string EnterRunCfgFN(std::string& run_cfg_fn)
 {
 	int ret = 0;
-	char run_cfg_fn_new[MAX_PATH];
-	std::string run_cfg_fn_js;
 	do {
 		log_printf(
 			"\n"
 			"Enter a custom name for this configuration, or leave blank to use the default\n"
 			" (%s): ", run_cfg_fn.c_str()
 		);
-		console_read(run_cfg_fn_new, sizeof(run_cfg_fn_new));
+
+		wchar_t *run_cfg_fn_new = console_read();
 		if (run_cfg_fn_new[0]) {
-			run_cfg_fn = run_cfg_fn_new;
+			UTF8_DEC(run_cfg_fn_new);
+			UTF8_CONV(run_cfg_fn_new);
+			run_cfg_fn = run_cfg_fn_new_utf8;
+			UTF8_FREE(run_cfg_fn_new);
 		}
+		delete[] run_cfg_fn_new;
+
+		std::string run_cfg_fn_js = run_cfg_fn + ".js";
 		if (PathFileExists(run_cfg_fn_js.c_str())) {
 			log_printf("\"%s\" already exists. ", run_cfg_fn_js.c_str());
 			ret = console_ask_yn("Overwrite?") == 'n';
-		}
-		else {
+		} else {
 			ret = 0;
 		}
 	} while (ret);

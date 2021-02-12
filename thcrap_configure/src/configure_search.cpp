@@ -35,19 +35,14 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 			con_clickable(i); log_printf(" [%2d] %s: %s\n", i, loc, json_string_value(val));
 		}
 		printf("\n");
-		while(1) {
-			char buf[16];
+		do {
 			con_printf("Pick a version to run the patch on: (1 - %u): ", num_versions);
 
-			console_read(buf, sizeof (buf));
-			if(
-				(sscanf(buf, "%u", &loc_num) == 1) &&
-				(loc_num <= num_versions) &&
-				(loc_num >= 1)
-			) {
-				break;
-			}
-		}
+			wchar_t *buf = console_read();
+			if (swscanf(buf, L"%u", &loc_num) != 1)
+				loc_num = 0;
+			delete[] buf;
+		} while (loc_num < 1 || loc_num > num_versions);
 		i = 0;
 		json_object_foreach(locs, loc, val) {
 			if(++i == loc_num) {

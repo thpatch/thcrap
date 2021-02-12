@@ -291,7 +291,6 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 
 	stack_free();
 	while(1) {
-		char buf[16];
 		size_t list_pick;
 		size_t stack_size = get_stack_size(sel_stack);
 		size_t stack_offset;
@@ -329,13 +328,11 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 			else {
                 con_printf("Pick a patch (1 - %u): ", list_count);
 			}
-			console_read(buf, sizeof(buf));
-
-			still_picking = sscanf(buf, "%u", &list_pick);
-		} while(
-			list_pick > list_count // Values out of range
-			|| (list_pick == 0 && buf[0] != '\0') // non-numbers
-		);
+			wchar_t *buf = console_read();
+			swscanf(buf, L"%u", &list_pick);
+			still_picking = buf[0] != '\0';
+			delete[] buf;
+		} while((list_pick < 0 || list_pick > list_count) && still_picking);
 
 		if(still_picking != 1) {
 			if(!stack_size) {

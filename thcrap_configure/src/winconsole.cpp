@@ -93,7 +93,7 @@ private:
 	enum {
 		APP_READQUEUE = WM_APP,
 		APP_ASKYN, // lparam = std::promise<char>*
-		APP_GETINPUT, // wparam = length of output string, lparam = std::promise<wchar_t*>*
+		APP_GETINPUT, // lparam = std::promise<wchar_t*>*
 		APP_LISTCHAR, // wparam = WM_CHAR
 		APP_UPDATE,
 		APP_PREUPDATE,
@@ -105,7 +105,7 @@ public:
 
 	void readQueue();
 	std::future<char> askyn();
-	std::future<wchar_t*> getInput(DWORD len);
+	std::future<wchar_t*> getInput();
 	void update();
 	void preupdate();
 	std::future<void> pause();
@@ -123,10 +123,10 @@ std::future<char> ConsoleDialog::askyn() {
 	SendMessage(hWnd, APP_ASKYN, 0, (LPARAM)&promise);
 	return future;
 }
-std::future<wchar_t *> ConsoleDialog::getInput(DWORD len) {
+std::future<wchar_t *> ConsoleDialog::getInput() {
 	std::promise<wchar_t*> promise;
 	std::future<wchar_t*> future = promise.get_future();
-	SendMessage(hWnd, APP_GETINPUT, (WPARAM)len, (LPARAM)&promise);
+	SendMessage(hWnd, APP_GETINPUT, 0, (LPARAM)&promise);
 	return future;
 }
 // Should be called after adding/appending bunch of lines
@@ -268,7 +268,6 @@ LPCWSTR ConsoleDialog::getTemplate() {
 	return MAKEINTRESOURCEW(IDD_DIALOG1);
 }
 INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	static int input_len = 0;
 	static int last_index = 0;
 	static std::wstring pending = L"";
 	static HICON hIconSm = NULL, hIcon = NULL;
@@ -318,6 +317,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		switch (LOWORD(wParam)) {
 		case IDC_BUTTON1:
 			if (currentMode == MODE_INPUT) {
+				int input_len = GetWindowTextLengthW(edit) + 1;
 				wchar_t* input_str = new wchar_t[input_len];
 				GetWindowTextW(edit, input_str, input_len);
 				SetWindowTextW(edit, L"");
@@ -408,7 +408,6 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		return TRUE;
 	}
 	case APP_GETINPUT:
-		input_len = wParam;
 		onInput = std::move(*(std::promise<wchar_t*>*)lParam);
 		ReplyMessage(0L);
 		setMode(MODE_INPUT);
@@ -652,15 +651,13 @@ void console_init() {
 	}).detach();
 	future.get();
 }
-char* console_read(char *str, int n) {
+wchar_t *console_read() {
 	dontUpdate = false;
 	g_console->readQueue();
 	g_console->update();
-	wchar_t *input = g_console->getInput(n).get();
-	StringToUTF8(str, input, n);
-	delete[] input;
+	wchar_t *input = g_console->getInput().get();
 	needAppend = false; // gotta insert that newline
-	return str;
+	return input;
 }
 void cls(SHORT top) {
 	{

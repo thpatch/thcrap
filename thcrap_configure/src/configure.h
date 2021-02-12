@@ -45,7 +45,6 @@ template <size_t N = 2> char Ask(
 	}
 
 	while(1) {
-		char buf[2];
 		if(question) {
 			log_print(question);
 			log_print(" ");
@@ -64,17 +63,15 @@ template <size_t N = 2> char Ask(
 		}
 		log_print(") ");
 
-		console_read(buf, sizeof(buf));
-		char ret = tolower(buf[0]);
-		if(ret == '\0') {
+		wchar_t *buf = console_read();
+		wint_t ret = towlower(buf[0]);
+		delete[] buf;
+		if(ret == L'\0')
 			ret = defopt;
-		}
 
-		for(auto c : answers) {
-			if(ret == c) {
-				return ret;
-			}
-		}
+		for(auto c : answers)
+			if(ret == (wint_t)c)
+				return c;
 	}
 	return '\0';
 }
