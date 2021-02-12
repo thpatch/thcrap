@@ -524,10 +524,9 @@ void log_windows(const char* text) {
 	if (!dontUpdate)
 		g_console->preupdate();
 
-	int len = strlen(text) + 1;
-	VLA(wchar_t, wtext, len);
-	StringToUTF16(wtext, text, len);
-	wchar_t *start = wtext, *end = wtext;
+	WCHAR_T_DEC(text);
+	WCHAR_T_CONV(text);
+	wchar_t *start = text_w, *end = text_w;
 	while (end) {
 		int mutexcond = 0;
 		{
@@ -539,7 +538,7 @@ void log_windows(const char* text) {
 				end[-1] = '\0'; // Replace newline with null
 			}
 			else if (c == '\0') {
-				if (end != wtext && end == start) {
+				if (end != text_w && end == start) {
 					break; // '\0' right after '\n'
 				}
 				end = NULL;
@@ -565,7 +564,7 @@ void log_windows(const char* text) {
 		}
 		start = end;
 	}
-	VLA_FREE(wtext);
+	WCHAR_T_FREE(text);
 	if (!end) needAppend = true;
 
 	if (!dontUpdate) {
@@ -608,15 +607,14 @@ void con_printf(const char *str, ...)
 }
 /* ------------------- */
 void con_clickable(const char* response) {
-	int len = strlen(response) + 1;
-	VLA(wchar_t, wresponse, len);
-	StringToUTF16(wresponse, response, len);
+	WCHAR_T_DEC(response);
+	WCHAR_T_CONV(response);
 	{
 		std::lock_guard<std::mutex> lock(g_mutex);
-		LineEntry le = { LINE_PENDING,  wresponse };
+		LineEntry le = { LINE_PENDING,  response_w };
 		g_queue.push(le);
 	}
-	VLA_FREE(wresponse);
+	WCHAR_T_FREE(response);
 }
 
 void con_clickable(int response) {
