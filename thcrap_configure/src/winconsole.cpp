@@ -158,7 +158,6 @@ struct LineEntry {
 	std::wstring content;
 };
 
-static HWND g_hwnd = NULL;
 static std::mutex g_mutex; // used for synchronizing the queue
 static std::queue<LineEntry> g_queue;
 static std::vector<std::wstring> q_responses;
@@ -273,7 +272,6 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	static HICON hIconSm = NULL, hIcon = NULL;
 	switch (uMsg) {
 	case WM_INITDIALOG: {
-		g_hwnd = hWnd;
 		buttonNext = GetDlgItem(hWnd, IDC_BUTTON1);
 		edit = GetDlgItem(hWnd, IDC_EDIT1);
 		list = GetDlgItem(hWnd, IDC_LIST1);
@@ -508,7 +506,6 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		}
 		return TRUE;
 	case WM_NCDESTROY:
-		g_hwnd = NULL;
 		if (hIconSm) {
 			DestroyIcon(hIconSm);
 		}
@@ -696,11 +693,11 @@ void con_end(void) {
 	std::promise<void> promise;
 	std::future<void> future = promise.get_future();
 	g_exitguithreadevent = std::move(promise);
-	SendMessage(g_hwnd, WM_CLOSE, 0, 0L);
+	SendMessage(g_console->getHandle(), WM_CLOSE, 0, 0L);
 	future.get();
 }
 HWND con_hwnd(void) {
-	return g_hwnd;
+	return g_console->getHandle();
 }
 int console_width(void) {
 	return 80;
