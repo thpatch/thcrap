@@ -526,31 +526,27 @@ void log_windows(const char* text) {
 
 	WCHAR_T_DEC(text);
 	WCHAR_T_CONV(text);
-	wchar_t *start = text_w, *end = text_w;
-	while (end) {
+	wchar_t *start = text_w, *end = NULL;
+	bool completeLine = true;
+	while (completeLine) {
 		int mutexcond = 0;
 		{
 			std::lock_guard<std::mutex> lock(g_mutex);
-			end = wcschr(end, '\n');
-			if (!end) end = wcschr(start, '\0');
-			wchar_t c = *end++;
-			if (c == '\n') {
-				end[-1] = '\0'; // Replace newline with null
+			end = wcschr(start, '\n');
+			if (!end)
+				end = wcschr(start, '\0');
+			if (*end == '\0') {
+				if (end == start) // '\0' right after '\n'
+					break;
+				completeLine = false;
 			}
-			else if (c == '\0') {
-				if (end != text_w && end == start) {
-					break; // '\0' right after '\n'
-				}
-				end = NULL;
-			}
-			else continue;
+
 			if (needAppend == true) {
-				LineEntry le = { LINE_APPEND, start };
+				LineEntry le = { LINE_APPEND, std::wstring(start, end - start) };
 				g_queue.push(le);
 				needAppend = false;
-			}
-			else {
-				LineEntry le = { LINE_ADD, start };
+			} else {
+				LineEntry le = { LINE_ADD, std::wstring(start, end - start) };
 				g_queue.push(le);
 			}
 			mutexcond = g_queue.size() > 10;
@@ -562,10 +558,11 @@ void log_windows(const char* text) {
 				g_console->preupdate();
 			}
 		}
-		start = end;
+		start = end + 1;
 	}
 	WCHAR_T_FREE(text);
-	if (!end) needAppend = true;
+	if (!completeLine)
+		needAppend = true;
 
 	if (!dontUpdate) {
 		g_console->readQueue();
