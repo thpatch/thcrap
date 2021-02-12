@@ -79,48 +79,57 @@ int CALLBACK SetInitialBrowsePathProc(HWND hWnd, UINT uMsg, LPARAM lp, LPARAM pD
 	return 0;
 }
 
-#define UnkRelease(p) do { IUnknown** __p = (IUnknown**)(p); (*__p)->Release(); (*__p) = NULL; } while(0)
+template<typename T>
+struct ComRAII {
+	T *p;
+
+	operator bool() const { return !!p; }
+	operator T*() const { return p; }
+	T **operator&() { return &p; }
+	T *operator->() const { return p; }
+	T &operator*() const { return *p; }
+	
+	ComRAII() :p(NULL) {}
+	explicit ComRAII(T *p) :p(p) {}
+	ComRAII(const ComRAII<T> &other) = delete;
+	ComRAII<T> &operator=(const ComRAII<T> &other) = delete;
+	~ComRAII() { if (p) { p->Release(); p = NULL; } }
+};
 
 static int SelectFolderVista(HWND owner, PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
 	// Those two functions are absent in XP, so we have to load them dynamically
 	HMODULE shell32 = GetModuleHandle(L"Shell32.dll");
 	auto pSHCreateItemFromIDList = (HRESULT(WINAPI *)(PCIDLIST_ABSOLUTE, REFIID, void**))GetProcAddress(shell32, "SHCreateItemFromIDList");
 	auto pSHGetIDListFromObject = (HRESULT(WINAPI *)(IUnknown*, PIDLIST_ABSOLUTE*))GetProcAddress(shell32, "SHGetIDListFromObject");
-	if (!pSHCreateItemFromIDList || !pSHGetIDListFromObject) {
+	if (!pSHCreateItemFromIDList || !pSHGetIDListFromObject)
 		return -1;
-	}
 
-	IFileDialog *pfd = NULL;
+	ComRAII<IFileDialog> pfd;
 	CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pfd));
-	if (!pfd) return -1;
-
-	IShellItem* psi = NULL;
-	pSHCreateItemFromIDList(initial_path, IID_PPV_ARGS(&psi));
-	if (!psi) {
-		UnkRelease(&pfd);
+	if (!pfd)
 		return -1;
+
+	{
+		ComRAII<IShellItem> psi;
+		pSHCreateItemFromIDList(initial_path, IID_PPV_ARGS(&psi));
+		if (!psi)
+			return -1;
+		pfd->SetDefaultFolder(psi);
 	}
-	pfd->SetDefaultFolder(psi);
-	UnkRelease(&psi);
 
 	pfd->SetOptions(
 		FOS_NOCHANGEDIR | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM
 		| FOS_PATHMUSTEXIST | FOS_FILEMUSTEXIST | FOS_DONTADDTORECENT);
 	pfd->SetTitle(window_title);
 	HRESULT hr = pfd->Show(owner);
-	if (SUCCEEDED(hr)) {
-		if (SUCCEEDED(pfd->GetResult(&psi))) {
-			pSHGetIDListFromObject(psi, &pidl);
-			UnkRelease(&psi);
-			UnkRelease(&pfd);
-			return 0;
-		}
-	}
-
-	UnkRelease(&pfd);
-	if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
+	ComRAII<IShellItem> psi;
+	if (SUCCEEDED(hr) && SUCCEEDED(pfd->GetResult(&psi))) {
+		pSHGetIDListFromObject(psi, &pidl);
 		return 0;
 	}
+
+	if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+		return 0;
 	return -1;
 }
 
