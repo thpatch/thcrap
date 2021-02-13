@@ -297,6 +297,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	out->code = strdup(code);
 	out->expected = strdup(expected);
 	out->addr = new hackpoint_addr_t[valid_addrs + 1];
+	out->addr[valid_addrs].type = END_ADDR;
 
 	json_flex_array_foreach(addr, i, it) {
 		if (json_is_string(it)) {
@@ -308,7 +309,6 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 			out->addr[i].type = RAW_ADDR;
 		}
 	}
-	out->addr[i].type = END_ADDR;
 
 	return true;
 }

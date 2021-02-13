@@ -26,10 +26,6 @@ UINT_PTR func_get(const char *name);
 // Adds a pointer to a function to the list of functions used by func_get
 int func_add(const char *name, size_t addr);
 
-// Adds some common functions to the list of functions used by func_get.
-// Intended to allow patches easy access to those functions.
-void func_add_internal(void);
-
 // Removes a function from the list of functions used by func_get
 // This function is nessesairy for plugins to be able to unload themselves
 bool func_remove(const char *name);
@@ -67,11 +63,14 @@ bool func_remove(const char *name);
   */
 
 // Module function type.
-typedef void (*mod_call_type)(void *param);
+typedef void (__cdecl *mod_call_type)(void *param);
 
 // Removes a module hook function from the unordered map of module hook function
 // This function is nessesairy for plugins to be able to unload themselves
 void mod_func_remove(const char *pattern, mod_call_type func);
+
+// Removes a module hook function from the unordered map of patch hook function
+void patch_func_remove(const char *pattern, mod_call_type func);
 
 #ifdef __cplusplus
 typedef std::unordered_map<std::string_view, std::vector<mod_call_type>> mod_funcs_t;
@@ -86,7 +85,7 @@ typedef std::pair<std::string_view, std::vector<mod_call_type>> mod_func_pair_t;
 //	],
 //	...
 // }
-mod_funcs_t* mod_func_build(exported_func_t *funcs);
+mod_funcs_t* mod_func_build(exported_func_t *funcs, const char* infix);
 
 // Runs every module hook function for [suffix] in [mod_funcs]. The execution
 // order of the hook functions follows the order their DLLs were originally
@@ -95,6 +94,9 @@ void mod_func_run(mod_funcs_t *funcs, const char *suffix, void *param);
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.
 void mod_func_run_all(const char *suffix, void *param);
+
+// Calls mod_fun_run() with all registered functions from patches.
+void patch_func_run_all(const char *pattern, void *param);
 /// ===================
 #endif
 
