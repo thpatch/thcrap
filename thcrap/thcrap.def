@@ -239,6 +239,8 @@ EXPORTS
 	plugins_load
 	plugins_close
 	mod_func_remove
+	patch_func_run_all
+	patch_func_remove
 
 	; Detour promotion
 	; ----------------
