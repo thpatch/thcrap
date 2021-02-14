@@ -115,6 +115,11 @@ private:
 	std::mutex mutex; // used for synchronizing the queue
 	std::queue<LineEntry> queue;
 	std::vector<std::wstring> responses;
+
+	int last_index = 0;
+	std::wstring pending = L"";
+	HICON hIconSm = NULL;
+	HICON hIcon = NULL;
 public:
 	PromiseSlot<void> onInit;
 
@@ -169,7 +174,6 @@ void ConsoleDialog::pushQueue(LineEntry &&ent) {
 	queue.push(std::move(ent));
 }
 
-static PromiseSlot<void> g_exitguithreadevent;
 void ConsoleDialog::setMode(Mode mode) {
 	if (currentMode == mode)
 		return;
@@ -275,9 +279,6 @@ LPCWSTR ConsoleDialog::getTemplate() {
 	return MAKEINTRESOURCEW(IDD_DIALOG1);
 }
 INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
-	static int last_index = 0;
-	static std::wstring pending = L"";
-	static HICON hIconSm = NULL, hIcon = NULL;
 	switch (uMsg) {
 	case WM_INITDIALOG: {
 		buttonNext = GetDlgItem(hWnd, IDC_BUTTON1);
@@ -293,16 +294,14 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		SetWindowLongPtr(list, GWLP_WNDPROC, (LONG_PTR)listProc);
 
 		// set icon
-		hIconSm = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
+		hIconSm = (HICON)LoadImage(getInstance(), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
 			GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0);
-		hIcon = (HICON)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
+		hIcon = (HICON)LoadImage(getInstance(), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
 			GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), 0);
-		if (hIconSm) {
+		if (hIconSm)
 			SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
-		}
-		if (hIcon) {
+		if (hIcon)
 			SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-		}
 		setMode(MODE_NONE);
 
 		RECT workarea, winrect;
@@ -514,12 +513,10 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		}
 		return TRUE;
 	case WM_NCDESTROY:
-		if (hIconSm) {
+		if (hIconSm)
 			DestroyIcon(hIconSm);
-		}
-		if (hIcon) {
+		if (hIcon)
 			DestroyIcon(hIcon);
-		}
 		return TRUE;
 	}
 	return FALSE;
@@ -613,6 +610,8 @@ void con_clickable(int response) {
 	sprintf(response_full, "%d", response);
 	con_clickable(response_full);
 }
+
+static PromiseSlot<void> g_exitguithreadevent;
 void console_init() {
 	INITCOMMONCONTROLSEX iccex;
 	iccex.dwSize = sizeof(iccex);
