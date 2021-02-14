@@ -915,6 +915,7 @@ static __declspec(noinline) value_t GetOptionValue(const char *const name, const
 			case PATCH_OPT_VAL_FLOAT: ret = option->val.f; break;
 			case PATCH_OPT_VAL_DOUBLE: ret = option->val.d; break;
 			case PATCH_OPT_VAL_STRING: ret = option->val.str; break;
+			case PATCH_OPT_VAL_WIDE_STRING: ret = option->val.wstr; break;
 			/*case PATCH_OPT_VAL_CODE:
 				ret.str = option->val.str;
 				ret.type = VT_CODE;
@@ -948,6 +949,7 @@ static __declspec(noinline) value_t GetPatchTestValue(const char *const name, co
 			case PATCH_OPT_VAL_FLOAT: ret = patch_test->val.f; break;
 			case PATCH_OPT_VAL_DOUBLE: ret = patch_test->val.d; break;
 			case PATCH_OPT_VAL_STRING: ret = patch_test->val.str; break;
+			case PATCH_OPT_VAL_WIDE_STRING: ret = patch_test->val.wstr; break;
 			/*case PATCH_OPT_VAL_CODE:
 				ret.str = patch_test->val.str;
 				ret.type = VT_CODE;

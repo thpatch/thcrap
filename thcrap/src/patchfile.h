@@ -113,7 +113,8 @@ enum patch_opt_val_type {
 	PATCH_OPT_VAL_FLOAT = 8,
 	PATCH_OPT_VAL_DOUBLE = 9,
 	PATCH_OPT_VAL_STRING = 10,
-	//PATCH_OPT_VAL_CODE = 11
+	PATCH_OPT_VAL_WIDE_STRING = 11,
+	//PATCH_OPT_VAL_CODE = 12,
 };
 
 // Description of a value specified by the options
@@ -134,6 +135,7 @@ typedef struct {
 		BYTE byte_array[8];
 		const char* str;
 		const char* code;
+		const wchar_t* wstr;
 	} val;
 } patch_opt_val_t;
 

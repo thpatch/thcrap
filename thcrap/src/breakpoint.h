@@ -31,7 +31,7 @@
   *	    In this case, the retaddr element of [regs] can be manipulated to
   *	    specify a different address to resume code execution after the breakpoint.
   */
-typedef int (*BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
+typedef int (__cdecl *BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
 
 // Represents a breakpoint.
 typedef struct {

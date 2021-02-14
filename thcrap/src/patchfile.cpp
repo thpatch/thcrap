@@ -697,13 +697,30 @@ void patch_opts_from_json(json_t *opts) {
 		}
 		patch_opt_val_t entry;
 		switch (tname[0]) {
+			case 'w': case 'W': {
+				if (json_is_string(j_val_val)) {
+					const char* opt_str = json_string_value(j_val_val);
+					entry.t = PATCH_OPT_VAL_WIDE_STRING;
+					const size_t length = strlen(opt_str) + 1;
+					wchar_t* wide_str = new wchar_t[length];
+					swprintf(wide_str, length, L"%hs", opt_str);
+					entry.val.wstr = wide_str;
+					entry.size = length * 2;
+				}
+				else {
+					log_printf("ERROR: invalid json type for wide string option %s\n", key);
+					continue;
+				}
+				break;
+			}
 			case 's': case 'S': {
 				if (json_is_string(j_val_val)) {
 					const char* opt_str = json_string_value(j_val_val);
 					entry.t = PATCH_OPT_VAL_STRING;
 					entry.val.str = strdup(opt_str);
 					entry.size = strlen(entry.val.str) + 1;
-				} else {
+				}
+				else {
 					log_printf("ERROR: invalid json type for string option %s\n", key);
 					continue;
 				}
@@ -715,7 +732,8 @@ void patch_opts_from_json(json_t *opts) {
 					entry.t = PATCH_OPT_VAL_CODE;
 					entry.val.str = strdup(opt_code_str);
 					entry.size = binhack_calc_size(entry.val.str);
-				} else {
+				}
+				else {
 					log_printf("ERROR: invalid json type for code option %s\n", key);
 					continue;
 				}
