@@ -120,6 +120,8 @@ private:
 	std::wstring pending = L"";
 	HICON hIconSm = NULL;
 	HICON hIcon = NULL;
+
+	bool popQueue(LineEntry &ent);
 public:
 	PromiseSlot<void> onInit;
 
@@ -169,6 +171,15 @@ void ConsoleDialog::setProgress(int pc) {
 	PostMessage(hWnd, APP_PROGRESS, (WPARAM)(DWORD)pc, 0L);
 }
 
+bool ConsoleDialog::popQueue(LineEntry &ent) {
+	std::lock_guard<std::mutex> lock(mutex);
+	if (!queue.size())
+		return false;
+
+	ent = std::move(queue.front());
+	queue.pop();
+	return true;
+}
 void ConsoleDialog::pushQueue(LineEntry &&ent) {
 	std::lock_guard<std::mutex> lock(mutex);
 	queue.push(std::move(ent));
@@ -375,14 +386,12 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		}
 		return TRUE;
 	case APP_READQUEUE: {
-		std::lock_guard<std::mutex> lock(mutex);
-		while (!queue.empty()) {
-			LineEntry& ent = queue.front();
+		LineEntry ent;
+		while (popQueue(ent)) {
 			switch (ent.type) {
 			case LINE_ADD:
 				last_index = ListBox_AddString(list, ent.content.c_str());
-				responses.push_back(pending);
-				pending = L"";
+				responses.push_back(std::exchange(pending, L""));
 				break;
 			case LINE_APPEND: {
 				int origlen = ListBox_GetTextLen(list, last_index);
@@ -393,10 +402,8 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				ListBox_DeleteString(list, last_index);
 				ListBox_InsertString(list, last_index, wstr);
 				VLA_FREE(wstr);
-				if (!pending.empty()) {
-					responses[last_index] = pending;
-					pending = L"";
-				}
+				if (!pending.empty())
+					responses[last_index] = std::exchange(pending, L"");
 				break;
 			}
 			case LINE_CLS:
@@ -408,7 +415,6 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				pending = ent.content;
 				break;
 			}
-			queue.pop();
 		}
 		return TRUE;
 	}
