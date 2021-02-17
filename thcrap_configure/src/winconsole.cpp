@@ -231,6 +231,9 @@ LRESULT CALLBACK ConsoleDialog::editProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 	if (uMsg == WM_KEYDOWN && wParam == VK_RETURN) {
 		SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON1, BN_CLICKED), (LPARAM)dlg->buttonNext);
 		return 0;
+	} else if (uMsg == WM_CHAR && wParam == L'\r') {
+		// ignoring this message prevents a beep
+		return 0;
 	} else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
 		// nescessary for control to recieve VK_RETURN
 		return CallWindowProcW(origEditProc, hWnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
