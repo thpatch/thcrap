@@ -105,7 +105,6 @@ private:
 		APP_READQUEUE = WM_APP,
 		APP_ASKYN, // lparam = std::promise<char>*
 		APP_GETINPUT, // lparam = std::promise<wchar_t*>*
-		APP_LISTCHAR, // wparam = WM_CHAR
 		APP_UPDATE,
 		APP_PREUPDATE,
 		APP_PAUSE, // lparam = std::promise<void>*
@@ -230,7 +229,7 @@ LRESULT CALLBACK ConsoleDialog::editProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 		origEditProc = getClassWindowProc(NULL, WC_EDITW);
 
 	if (uMsg == WM_KEYDOWN && wParam == VK_RETURN) {
-		SendMessage(dlg->hWnd, WM_COMMAND, MAKELONG(IDC_BUTTON1, BN_CLICKED), (LPARAM)hWnd);
+		SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON1, BN_CLICKED), (LPARAM)dlg->buttonNext);
 		return 0;
 	} else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
 		// nescessary for control to recieve VK_RETURN
@@ -263,8 +262,15 @@ LRESULT CALLBACK ConsoleDialog::listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 		// nescessary for control to recieve VK_RETURN
 		return CallWindowProcW(origListProc, hWnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
 	} else if (uMsg == WM_CHAR) {
-		// let parent dialog process the keypresses from list
-		SendMessage(dlg->hWnd, APP_LISTCHAR, wParam, lParam);
+		if (dlg->currentMode == MODE_INPUT) {
+			SetFocus(dlg->edit);
+			SendMessage(dlg->edit, WM_CHAR, wParam, lParam);
+		} else if (dlg->currentMode == MODE_ASK_YN) {
+			if (wParam == L'Y' || wParam == L'y')
+				SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON_YES, BN_CLICKED), (LPARAM)dlg->buttonYes);
+			else if (wParam == L'N' || wParam == L'n')
+				SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON_NO, BN_CLICKED), (LPARAM)dlg->buttonNo);
+		}
 		return 0;
 	}
 	return CallWindowProcW(origListProc, hWnd, uMsg, wParam, lParam);
@@ -372,19 +378,6 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			}
 		}
 		return FALSE;
-	case APP_LISTCHAR:
-		if (currentMode == MODE_INPUT) {
-			SetFocus(edit);
-			SendMessage(edit, WM_CHAR, wParam, lParam);
-		}
-		else if (currentMode == MODE_ASK_YN) {
-			char c = wctob(towlower(wParam));
-			if (c == 'y' || c == 'n') {
-				setMode(MODE_ASK_YN);
-				onYesNo.set_value(c);
-			}
-		}
-		return TRUE;
 	case APP_READQUEUE: {
 		LineEntry ent;
 		while (popQueue(ent)) {
