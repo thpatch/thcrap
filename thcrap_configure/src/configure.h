@@ -63,9 +63,7 @@ template <size_t N = 2> char Ask(
 		}
 		log_print(") ");
 
-		wchar_t *buf = console_read();
-		wint_t ret = towlower(buf[0]);
-		delete[] buf;
+		wint_t ret = towlower(console_read()[0]);
 		if(ret == L'\0')
 			ret = defopt;
 

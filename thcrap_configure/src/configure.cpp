@@ -38,6 +38,14 @@ int file_write_text(const char *fn, const char *str)
 	return ret;
 }
 
+std::string to_utf8_string(const std::wstring &wstr)
+{
+	std::string str(wstr.size() * UTF8_MUL, '\0');
+	StringToUTF8(str.data(), wstr.c_str(), str.size() + 1);
+	str.resize(strlen(str.c_str()));
+	return str;
+}
+
 std::string run_cfg_fn_build(const patch_sel_stack_t& sel_stack)
 {
 	bool skip = false;
@@ -83,14 +91,9 @@ std::string EnterRunCfgFN(std::string& run_cfg_fn)
 			" (%s): ", run_cfg_fn.c_str()
 		);
 
-		wchar_t *run_cfg_fn_new = console_read();
-		if (run_cfg_fn_new[0]) {
-			UTF8_DEC(run_cfg_fn_new);
-			UTF8_CONV(run_cfg_fn_new);
-			run_cfg_fn = run_cfg_fn_new_utf8;
-			UTF8_FREE(run_cfg_fn_new);
-		}
-		delete[] run_cfg_fn_new;
+		std::wstring run_cfg_fn_new = console_read();
+		if (run_cfg_fn_new[0])
+			run_cfg_fn = to_utf8_string(run_cfg_fn_new);
 
 		std::string run_cfg_fn_js = run_cfg_fn + ".js";
 		if (PathFileExists(run_cfg_fn_js.c_str())) {

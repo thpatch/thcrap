@@ -42,6 +42,11 @@ public:
 		return std::promise<R>{std::move(promise)};
 	}
 	template<typename RR = std::enable_if_t<!is_void && !is_ref, R>>
+	void set_value(RR &&value) {
+		if (present)
+			release().set_value(std::move(value));
+	}
+	template<typename RR = std::enable_if_t<!is_void && !is_ref, R>>
 	void set_value(const RR &value) {
 		if (present)
 			release().set_value(value);
@@ -98,13 +103,13 @@ private:
 	void setMarquee(BOOL fEnable);
 
 	PromiseSlot<char> onYesNo; // APP_ASKYN event
-	PromiseSlot<wchar_t*> onInput; // APP_GETINPUT event
+	PromiseSlot<std::wstring> onInput; // APP_GETINPUT event
 	PromiseSlot<void> onUnpause; // APP_PAUSE event
 
 	enum {
 		APP_READQUEUE = WM_APP,
 		APP_ASKYN, // lparam = std::promise<char>*
-		APP_GETINPUT, // lparam = std::promise<wchar_t*>*
+		APP_GETINPUT, // lparam = std::promise<wstring>*
 		APP_UPDATE,
 		APP_PREUPDATE,
 		APP_PAUSE, // lparam = std::promise<void>*
@@ -126,7 +131,7 @@ public:
 
 	void readQueue();
 	std::future<char> askyn();
-	std::future<wchar_t*> getInput();
+	std::future<std::wstring> getInput();
 	void update();
 	void preupdate();
 	std::future<void> pause();
@@ -146,9 +151,9 @@ std::future<char> ConsoleDialog::askyn() {
 	SendMessage(hWnd, APP_ASKYN, 0, (LPARAM)&promise);
 	return future;
 }
-std::future<wchar_t *> ConsoleDialog::getInput() {
-	std::promise<wchar_t*> promise;
-	std::future<wchar_t*> future = promise.get_future();
+std::future<std::wstring> ConsoleDialog::getInput() {
+	std::promise<std::wstring> promise;
+	std::future<std::wstring> future = promise.get_future();
 	SendMessage(hWnd, APP_GETINPUT, 0, (LPARAM)&promise);
 	return future;
 }
@@ -342,14 +347,13 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		switch (LOWORD(wParam)) {
 		case IDC_BUTTON1:
 			if (currentMode == MODE_INPUT) {
-				int input_len = GetWindowTextLengthW(edit) + 1;
-				wchar_t* input_str = new wchar_t[input_len];
-				GetWindowTextW(edit, input_str, input_len);
+				int input_len = GetWindowTextLengthW(edit);
+				std::wstring input_str(input_len, L'\0');
+				GetWindowTextW(edit, input_str.data(), input_len+1);
 				SetWindowTextW(edit, L"");
 				setMode(MODE_NONE);
 				onInput.set_value(input_str);
-			}
-			else if (currentMode == MODE_PAUSE) {
+			} else if (currentMode == MODE_PAUSE) {
 				setMode(MODE_NONE);
 				onUnpause.set_value();
 			}
@@ -366,13 +370,10 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			case LBN_DBLCLK: {
 				int cur = ListBox_GetCurSel((HWND)lParam);
 				if (currentMode == MODE_INPUT && cur != LB_ERR && (!responses[cur].empty() || cur == last_index)) {
-					wchar_t* input_str = new wchar_t[responses[cur].length() + 1];
-					wcscpy(input_str, responses[cur].c_str());
 					SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
 					setMode(MODE_NONE);
-					onInput.set_value(input_str);
-				}
-				else if (currentMode == MODE_PAUSE) {
+					onInput.set_value(responses[cur]);
+				} else if (currentMode == MODE_PAUSE) {
 					setMode(MODE_NONE);
 					onUnpause.set_value();
 				}
@@ -415,7 +416,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		return TRUE;
 	}
 	case APP_GETINPUT:
-		onInput = std::move(*(std::promise<wchar_t*>*)lParam);
+		onInput = std::move(*(std::promise<std::wstring>*)lParam);
 		ReplyMessage(0L);
 		setMode(MODE_INPUT);
 		return TRUE;
@@ -598,19 +599,9 @@ void con_printf(const char *str, ...)
 	}
 }
 /* ------------------- */
-void con_clickable(const char* response) {
-	WCHAR_T_DEC(response);
-	WCHAR_T_CONV(response);
-	LineEntry le = { LINE_PENDING,  response_w };
+void con_clickable(std::wstring &&response) {
+	LineEntry le = { LINE_PENDING, std::move(response)};
 	g_console->pushQueue(std::move(le));
-	WCHAR_T_FREE(response);
-}
-
-void con_clickable(int response) {
-	size_t response_full_len = _scprintf("%d", response) + 1;
-	VLA(char, response_full, response_full_len);
-	sprintf(response_full, "%d", response);
-	con_clickable(response_full);
 }
 
 static PromiseSlot<void> g_exitguithreadevent;
@@ -637,11 +628,11 @@ void console_init() {
 	}).detach();
 	future.get();
 }
-wchar_t *console_read() {
+std::wstring console_read() {
 	dontUpdate = false;
 	g_console->readQueue();
 	g_console->update();
-	wchar_t *input = g_console->getInput().get();
+	std::wstring input = g_console->getInput().get();
 	needAppend = false; // gotta insert that newline
 	return input;
 }

@@ -32,16 +32,14 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 
 		json_object_foreach(locs, loc, val) {
 			++i;
-			con_clickable(i); log_printf(" [%2d] %s: %s\n", i, loc, json_string_value(val));
+			con_clickable(std::to_wstring(i)); log_printf(" [%2d] %s: %s\n", i, loc, json_string_value(val));
 		}
 		printf("\n");
 		do {
 			con_printf("Pick a version to run the patch on: (1 - %u): ", num_versions);
 
-			wchar_t *buf = console_read();
-			if (swscanf(buf, L"%u", &loc_num) != 1)
+			if (swscanf(console_read().c_str(), L"%u", &loc_num) != 1)
 				loc_num = 0;
-			delete[] buf;
 		} while (loc_num < 1 || loc_num > num_versions);
 		i = 0;
 		json_object_foreach(locs, loc, val) {
@@ -215,9 +213,9 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			"Patch data will be downloaded or updated for all the games listed.\n"
 			"\n"
 		);
-		con_clickable("a"); log_printf("\t* (A)dd new games to this list and keep existing ones?\n");
-		con_clickable("r"); log_printf("\t* Clear this list and (r)escan?\n");
-		con_clickable("k"); log_printf("\t* (K)eep this list and continue?\n");
+		con_clickable(L"a"); log_printf("\t* (A)dd new games to this list and keep existing ones?\n");
+		con_clickable(L"r"); log_printf("\t* Clear this list and (r)escan?\n");
+		con_clickable(L"k"); log_printf("\t* (K)eep this list and continue?\n");
 		log_printf("\n");
 		char ret = Ask<3>(nullptr, { 'a', 'r', 'k' | DEFAULT_ANSWER });
 		if(ret == 'k') {

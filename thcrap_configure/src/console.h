@@ -1,10 +1,10 @@
 #pragma once
 #include <windows.h>
+#include <string>
 void console_init();
 void con_printf(const char *str, ...);
-void con_clickable(const char *response);
-void con_clickable(int response);
-wchar_t *console_read(void);
+void con_clickable(std::wstring &&response);
+std::wstring console_read(void);
 void cls(SHORT top);
 void pause(void);
 void console_prepare_prompt(void);
