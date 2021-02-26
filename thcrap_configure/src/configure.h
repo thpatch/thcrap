@@ -61,7 +61,7 @@ template <size_t N = 2> char Ask(
 				log_printf("%c", c);
 			}
 		}
-		log_print(") ");
+		log_print(")\n");
 
 		wint_t ret = towlower(console_read()[0]);
 		if(ret == L'\0')

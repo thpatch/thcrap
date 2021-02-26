@@ -88,7 +88,7 @@ std::string EnterRunCfgFN(std::string& run_cfg_fn)
 		log_printf(
 			"\n"
 			"Enter a custom name for this configuration, or leave blank to use the default\n"
-			" (%s): ", run_cfg_fn.c_str()
+			" (%s):\n", run_cfg_fn.c_str()
 		);
 
 		std::wstring run_cfg_fn_new = console_read();

@@ -322,11 +322,10 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 			list_pick = 0;
 			if(stack_size) {
                 con_printf(
-					"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm): ",
+					"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm):\n",
 					stack_offset, stack_offset + 1, list_count);
-			}
-			else {
-                con_printf("Pick a patch (1 - %u): ", list_count);
+			} else {
+				con_printf("Pick a patch (1 - %u):\n", list_count);
 			}
 			std::wstring buf = console_read();
 			swscanf(buf.c_str(), L"%u", &list_pick);

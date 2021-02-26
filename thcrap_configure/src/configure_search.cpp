@@ -36,7 +36,7 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		}
 		printf("\n");
 		do {
-			con_printf("Pick a version to run the patch on: (1 - %u): ", num_versions);
+			con_printf("Pick a version to run the patch on: (1 - %u):\n", num_versions);
 
 			if (swscanf(console_read().c_str(), L"%u", &loc_num) != 1)
 				loc_num = 0;

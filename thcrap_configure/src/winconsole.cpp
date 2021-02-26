@@ -630,7 +630,6 @@ std::wstring console_read() {
 	g_console->readQueue();
 	g_console->update();
 	std::wstring input = g_console->getInput().get();
-	needAppend = false; // gotta insert that newline
 	return input;
 }
 void cls(SHORT top) {
