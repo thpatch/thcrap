@@ -122,6 +122,7 @@ private:
 
 	int last_index = 0;
 	std::wstring pending = L"";
+	std::wstring last_line = L"";
 	HICON hIconSm = NULL;
 	HICON hIcon = NULL;
 
@@ -389,16 +390,12 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			case LINE_ADD:
 				last_index = ListBox_AddString(list, ent.content.c_str());
 				responses.push_back(std::exchange(pending, L""));
+				last_line = std::move(ent.content);
 				break;
 			case LINE_APPEND: {
-				int origlen = ListBox_GetTextLen(list, last_index);
-				int len = origlen + ent.content.length() + 1;
-				VLA(wchar_t, wstr, len);
-				ListBox_GetText(list, last_index, wstr);
-				wcscat_s(wstr, len, ent.content.c_str());
+				last_line += ent.content;
 				ListBox_DeleteString(list, last_index);
-				ListBox_InsertString(list, last_index, wstr);
-				VLA_FREE(wstr);
+				ListBox_InsertString(list, last_index, last_line.c_str());
 				if (!pending.empty())
 					responses[last_index] = std::exchange(pending, L"");
 				break;
