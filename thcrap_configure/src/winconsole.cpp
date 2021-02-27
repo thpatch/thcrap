@@ -431,11 +431,8 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		SetWindowRedraw(list, FALSE);
 		return TRUE;
 	case APP_UPDATE:
-		//SendMessage(list, WM_VSCROLL, SB_BOTTOM, 0L);
-		ListBox_SetCurSel(list, last_index);// Just scrolling doesn't work well
 		SetWindowRedraw(list, TRUE);
-		// this causes unnescessary flickering
-		//RedrawWindow(list, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
+		ListBox_SetCurSel(list, last_index);
 		return TRUE;
 	case APP_PROGRESS:
 		setMarquee(wParam == -1);
