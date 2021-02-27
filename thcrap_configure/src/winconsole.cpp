@@ -645,8 +645,7 @@ void cls(SHORT top) {
 }
 void pause(void) {
 	dontUpdate = false;
-	con_printf("Press ENTER to continue . . . "); // this will ReadQueue and Update for us
-	needAppend = false;
+	con_printf("Press ENTER to continue . . .\n"); // this will ReadQueue and Update for us
 	g_console->pause().get();
 }
 void console_prepare_prompt(void) {
