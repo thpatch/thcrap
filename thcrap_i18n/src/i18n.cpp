@@ -151,7 +151,7 @@ const char *i18n_translate(const char *domain, const char *s, const char *def_s,
 	if (IS_I18N_ENABLED()) {
 		i18n_load_narrow(domain);
 		const auto lastcache = i18n_tls_get()->lastcache;
-		unsigned form = _i18n_plural(num);
+		unsigned form = i18n_plural(num);
 		json_t* json = json_object_get(lastcache->narrow, s);
 		if (json) {
 			if (json_is_array(json)) {
@@ -171,11 +171,11 @@ const wchar_t *i18n_translate_wide(const char *domain, const wchar_t *s, const w
 	if (IS_I18N_ENABLED()) {
 		i18n_load_wide(domain);
 		const auto lastcache = i18n_tls_get()->lastcache;
-		unsigned form = _i18n_plural(num);
+		unsigned form = i18n_plural(num);
 		auto it = lastcache->wide.find(s);
 		if (it != lastcache->wide.end() && form < it->second.size()) {
 			return it->second[form].c_str();
 		}
 	}
-	return num==1?def_s:def_p;
+	return num == 1 ? def_s : def_p;
 }

@@ -47,7 +47,7 @@ static vector<I18nLang> langs = {
 const char* i18n_langid() {
 	return currentLang.langid;
 }
-unsigned _i18n_plural(unsigned long num) {
+unsigned i18n_plural(unsigned long num) {
 	if (num == ULONG_MAX) {
 		return 0;
 	}
@@ -100,7 +100,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARA
 }
 void i18n_lang_selector(const char *domain) {
 	if (IS_I18N_ENABLED()) {
-		DialogBoxParam(g_instance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, DialogProc, (LPARAM)domain);
+		DialogBoxParam(i18n_instance, MAKEINTRESOURCE(IDD_DIALOG1), NULL, DialogProc, (LPARAM)domain);
 	}
 }
 

@@ -13,12 +13,12 @@ int i18n_dump_json(const json_t *json, const char *subdir, const char *file, siz
 bool i18n_exists_json(const char *subdir, const char *file);
 
 // plurals.cpp
-unsigned _i18n_plural(unsigned long num);
+unsigned i18n_plural(unsigned long num);
 
 // dllmain.cpp
-extern HINSTANCE g_instance;
-extern bool g_isEnabled;
-#define IS_I18N_ENABLED() (g_isEnabled)
+extern HINSTANCE i18n_instance;
+extern bool i18n_is_enabled;
+#define IS_I18N_ENABLED() (i18n_is_enabled)
 
 struct TLSBlock {
 	const char *lastdomain_raw;

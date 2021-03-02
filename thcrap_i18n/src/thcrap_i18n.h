@@ -4,21 +4,19 @@
 #if !defined(THCRAP_I18N_DONTALIAS) && defined(THCRAP_I18N_APPDOMAIN)
 #define _(s) (i18n_w(THCRAP_I18N_APPDOMAIN, s))
 #define C_(c,s) (i18n_wp(THCRAP_I18N_APPDOMAIN, c, s))
-#define N_(s,p) (i18n_wn(THCRAP_I18N_APPDOMAIN, s, p))
-#define NC_(c,s,p) (i18n_wdp(THCRAP_I18N_APPDOMAIN, c, s, p))
+#define N_(s,p,n) (i18n_wn(THCRAP_I18N_APPDOMAIN, s, p, n))
+#define NC_(c,s,p,n) (i18n_wpn(THCRAP_I18N_APPDOMAIN, c, s, p, n))
 
 #define _A(s) (i18n_(THCRAP_I18N_APPDOMAIN, s))
 #define C_A(c,s) (i18n_p(THCRAP_I18N_APPDOMAIN, c, s))
-#define N_A(s,p) (i18n_n(THCRAP_I18N_APPDOMAIN, s, p))
-#define NC_A(c,s,p) (i18n_dp(THCRAP_I18N_APPDOMAIN, c, s, p))
+#define N_A(s,p,n) (i18n_n(THCRAP_I18N_APPDOMAIN, s, p, n))
+#define NC_A(c,s,p,n) (i18n_pn(THCRAP_I18N_APPDOMAIN, c, s, p, n))
 #endif
-
 
 /**
 * Naming for the functions
-* i18n_[w]d[n][p]
+* i18n_[w][n][p]
 * w - wide
-* d - domain
 * n - plurals
 * p - context
 */
@@ -27,16 +25,16 @@
 extern "C" {
 #endif
 #ifdef THCRAP_I18N_DISABLE
-#define _i18n_translate(d,c,s,p,n) (((n)==1)?(s):(p))
-#define _i18n_translate_wide(d,c,s,p,n) (((n)==1)?(s):(p))
+#define i18n_translate(d,c,s,p,n) (((n)==1)?(s):(p))
+#define i18n_translate_wide(d,c,s,p,n) (((n)==1)?(s):(p))
 #define i18n_load_narrow(domain)
 #define i18n_load_wide(domain)
 #define i18n_load_narrow_only(domain)
 #define i18n_load_wide_only(domain)
-#define _i18n_langid() "en"
-#define i18n_lang_selector(domain);
-#define i18n_lang_init(domain);
-#define i18n_lang_init_quiet();
+#define i18n_langid() "en"
+#define i18n_lang_selector(domain)
+#define i18n_lang_init(domain)
+#define i18n_lang_init_quiet()
 #else
 	/*** translation functions ***/
 	const char *i18n_translate(const char *domain, const char *s, const char *def_s, const char *def_p, unsigned long num);
