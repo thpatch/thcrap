@@ -93,38 +93,44 @@ static unordered_map<string, I18nCache*> g_cache;
 
 void i18n_load_narrow(const char *domain) {
 	if (IS_I18N_ENABLED()) {
-		if (domain == lastdomain_raw) return;
-		lastdomain_raw = domain;
-		if (*lastdomain == domain) return;
-		*lastdomain = domain;
+		const auto tls = i18n_tls_get();
+
+		if (domain == tls->lastdomain_raw)
+			return;
+		tls->lastdomain_raw = domain;
+
+		if (tls->lastdomain == domain)
+			return;
+		tls->lastdomain = domain;
 
 		{
 			lock_guard<mutex> lock(g_cachemutex);
-			auto it = g_cache.find(*lastdomain);
+			auto it = g_cache.find(tls->lastdomain);
 			if (it == g_cache.end()) {
-				lastcache = nullptr;
+				tls->lastcache = nullptr;
 			}
 			else {
-				lastcache = it->second;
+				tls->lastcache = it->second;
 			}
 		}
 
-		if (!lastcache) {
-			lastcache = new I18nCache;
-			lastcache->narrow = i18n_load_json(domain, i18n_langid(), 0, nullptr);
-			lastcache->narrowFailed = json_is_object(lastcache->narrow);
+		if (!tls->lastcache) {
+			tls->lastcache = new I18nCache;
+			tls->lastcache->narrow = i18n_load_json(domain, i18n_langid(), 0, nullptr);
+			tls->lastcache->narrowFailed = json_is_object(tls->lastcache->narrow);
 		}
 	}
 }
 void i18n_load_wide(const char *domain) {
 	if (IS_I18N_ENABLED()) {
 		i18n_load_narrow(domain);
-		lastcache->assert_wide();
+		i18n_tls_get()->lastcache->assert_wide();
 	}
 }
 void i18n_load_narrow_only(const char *domain) {
 	if (IS_I18N_ENABLED()) {
 		i18n_load_narrow(domain);
+		const auto lastcache = i18n_tls_get()->lastcache;
 		lock_guard<mutex> lock(lastcache->wideConversionMutex);
 		lastcache->hasWide = true;
 		lastcache->wideFailed = true;
@@ -133,6 +139,7 @@ void i18n_load_narrow_only(const char *domain) {
 void i18n_load_wide_only(const char *domain) {
 	if (IS_I18N_ENABLED()) {
 		i18n_load_narrow(domain);
+		const auto lastcache = i18n_tls_get()->lastcache;
 		lastcache->assert_wide();
 		lastcache->narrowFailed = true;
 		json_decref(lastcache->narrow);
@@ -143,6 +150,7 @@ void i18n_load_wide_only(const char *domain) {
 const char *i18n_translate(const char *domain, const char *s, const char *def_s, const char *def_p, unsigned long num) {
 	if (IS_I18N_ENABLED()) {
 		i18n_load_narrow(domain);
+		const auto lastcache = i18n_tls_get()->lastcache;
 		unsigned form = _i18n_plural(num);
 		json_t* json = json_object_get(lastcache->narrow, s);
 		if (json) {
@@ -162,6 +170,7 @@ const char *i18n_translate(const char *domain, const char *s, const char *def_s,
 const wchar_t *i18n_translate_wide(const char *domain, const wchar_t *s, const wchar_t *def_s, const wchar_t *def_p, unsigned long num) {
 	if (IS_I18N_ENABLED()) {
 		i18n_load_wide(domain);
+		const auto lastcache = i18n_tls_get()->lastcache;
 		unsigned form = _i18n_plural(num);
 		auto it = lastcache->wide.find(s);
 		if (it != lastcache->wide.end() && form < it->second.size()) {

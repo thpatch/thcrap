@@ -20,28 +20,9 @@ extern HINSTANCE g_instance;
 extern bool g_isEnabled;
 #define IS_I18N_ENABLED() (g_isEnabled)
 
-template<typename T, size_t index>
-struct TLSProxy {
-
-	static void **tls() {
-		void **tls_init();
-		extern DWORD g_tls;
-
-		void **tls = (void**)TlsGetValue(g_tls);
-		return tls ? tls : tls_init();
-	}
-	operator T() {
-		return (T)tls()[index];
-	}
-	TLSProxy& operator=(const T&val) {
-		tls()[index] = (void*)val;
-		return *this;
-	}
-	T operator->() {
-		return T(*this);
-	}
+struct TLSBlock {
+	const char *lastdomain_raw;
+	std::string lastdomain;
+	I18nCache *lastcache;
 };
-extern TLSProxy<const char*, 0> lastdomain_raw;
-extern TLSProxy<std::string*, 1> lastdomain;
-extern TLSProxy<I18nCache*, 2> lastcache;
-#define TLS_MAX_INDEX 3
+TLSBlock *i18n_tls_get();

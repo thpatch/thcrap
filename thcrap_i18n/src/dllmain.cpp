@@ -3,22 +3,19 @@
 HINSTANCE g_instance = nullptr;
 bool g_isEnabled = false;
 
-DWORD g_tls = -1;
-TLSProxy<const char*, 0> lastdomain_raw;
-TLSProxy<std::string*, 1> lastdomain;
-TLSProxy<I18nCache*, 2> lastcache;
-void **tls_init() {
-	void *tls = calloc(sizeof(void*), TLS_MAX_INDEX);
-	TlsSetValue(g_tls, (void*)tls);
-	lastdomain = new std::string();
-	return (void**)tls;
-}
-static void tls_delete() {
-	delete lastdomain;
-	free(TlsGetValue(g_tls));
+static DWORD g_tls = -1;
+TLSBlock *i18n_tls_get()
+{
+	TLSBlock *tls = (TLSBlock*)TlsGetValue(g_tls);
+	if (!tls) {
+		tls = new TLSBlock();
+		TlsSetValue(g_tls, (void*)tls);
+	}
+	return tls;
 }
 
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
 	switch (fdwReason) {
 	case DLL_PROCESS_ATTACH: {
 		g_instance = hinstDLL;
@@ -34,7 +31,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
 		TlsFree(g_tls);
 		break;
 	case DLL_THREAD_DETACH:
-		tls_delete();
+		delete (TLSBlock*)TlsGetValue(g_tls);
 		break;
 	}
 	return TRUE;
