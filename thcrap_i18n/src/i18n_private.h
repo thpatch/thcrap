@@ -9,8 +9,9 @@ struct I18nCache;
 // files.cpp
 bool i18n_init_path();
 json_t *i18n_load_json(const char *subdir, const char *file, size_t flags, json_error_t *error);
-int i18n_dump_json(const json_t *json, const char *subdir, const char *file, size_t flags);
 bool i18n_exists_json(const char *subdir, const char *file);
+int i18n_load_lang(char *buf, size_t len);
+int i18n_save_lang(const char *buf);
 
 // plurals.cpp
 unsigned i18n_plural(unsigned long num);

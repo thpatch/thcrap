@@ -78,16 +78,11 @@ static INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARA
 		switch (LOWORD(wParam)) {
 		case IDC_BUTTON1:
 			HWND combo = GetDlgItem(hwndDlg, IDC_COMBO1);
-
 			int sel = ComboBox_GetCurSel(combo);
 			int index = ComboBox_GetItemData(combo, sel);
 			const I18nLang &lang = langs[index];
 			currentLang = lang;
-
-			json_t *json = json_object();
-			json_object_set_new(json, "lang", json_string(lang.langid));
-			i18n_dump_json(json, nullptr, "config", 0);
-			json_decref(json);
+			i18n_save_lang(lang.langid);
 			EndDialog(hwndDlg,0);
 			return TRUE;
 		}
@@ -106,22 +101,16 @@ void i18n_lang_selector(const char *domain) {
 
 static bool i18n_try_init() {
 	if (IS_I18N_ENABLED()) {
-		json_error_t error;
-		json_t* json = i18n_load_json(nullptr, "config", 0, &error);
-		if (json && json_is_object(json)) {
-			json_t *json2 = json_object_get(json, "lang");
-			if (json2 && json_is_string(json2)) {
-				const char* lang = json_string_value(json2);
-				auto it = std::find_if(langs.begin(), langs.end(), [lang](const I18nLang&l) {
-					return !strcmp(l.langid, lang);
-				});
-				if (it != langs.end()) {
-					currentLang = *it;
-					return true;
-				}
+		char lang[32];
+		if (!i18n_load_lang(lang, 32) && lang[0]) {
+			auto it = std::find_if(langs.begin(), langs.end(), [lang](const I18nLang&l) {
+				return !strcmp(l.langid, lang);
+			});
+			if (it != langs.end()) {
+				currentLang = *it;
+				return true;
 			}
 		}
-		json_decref(json);
 	}
 	return false;
 }
@@ -133,10 +122,9 @@ void i18n_lang_init(const char *domain) {
 		}
 	}
 }
+
 void i18n_lang_init_quiet() {
 	if (IS_I18N_ENABLED()) {
 		i18n_try_init();
 	}
 }
-
-
