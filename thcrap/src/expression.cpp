@@ -15,7 +15,9 @@
 #ifdef EnableExpressionLogging
 #define ExpressionLogging(...) log_printf(__VA_ARGS__)
 #else
-#define ExpressionLogging(...)
+// Using __noop makes the compiler check the validity of
+// the macro contents without actually compiling them.
+#define ExpressionLogging(...) __noop(__VA_ARGS__)
 #endif
 
 enum ManufacturerID : int8_t {
@@ -235,6 +237,10 @@ static __declspec(noinline) void InvalidValueErrorMessage(const char *const str)
 	log_printf("EXPRESSION ERROR 4: Invalid value \"%s\"\n", str);
 }
 
+static __declspec(noinline) void NullDerefErrorMessage(void) {
+	log_printf("EXPRESSION ERROR 5: Attempted to dereference NULL value\n");
+}
+
 typedef uint8_t op_t;
 
 typedef struct {
@@ -246,32 +252,31 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 static const char* __fastcall consume_value_impl(const char* expr, const char end, size_t *const out, const StackSaver *const data_refs);
 
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr) {
-	uint32_t cmp;
-
+	// Verify pointers and regname is at least 4 bytes
 	if (!regs || !regname || !regname[0] || !regname[1] || !regname[2]) {
 		return NULL;
 	}
-	memcpy(&cmp, regname, 3);
-	cmp &= 0x00FFFFFF;
-	strlwr((char *)&cmp);
+	// Just make sure that endptr can be written to unconditionally
+	if (!endptr) endptr = (const char**)&endptr;
 
-	if (endptr) {
-		*endptr = regname + 3;
+	*endptr = regname + 3;
+	// Since regname is guaranteed to be at least 4
+	// bytes long and none of `{|}~ are a valid register
+	// name, the whole string can be converted to a
+	// single case by clearing bit 5 of each character.
+	switch (*(uint32_t*)regname & TextInt(0xDF, 0xDF, 0xDF, '\0')) {
+		case TextInt('E', 'A', 'X'): return &regs->eax;
+		case TextInt('E', 'C', 'X'): return &regs->ecx;
+		case TextInt('E', 'D', 'X'): return &regs->edx;
+		case TextInt('E', 'B', 'X'): return &regs->ebx;
+		case TextInt('E', 'S', 'P'): return &regs->esp;
+		case TextInt('E', 'B', 'P'): return &regs->ebp;
+		case TextInt('E', 'S', 'I'): return &regs->esi;
+		case TextInt('E', 'D', 'I'): return &regs->edi;
+		default:
+			*endptr = regname;
+			return NULL;
 	}
-	switch (cmp) {
-		case TextInt('e', 'a', 'x'): return &regs->eax;
-		case TextInt('e', 'c', 'x'): return &regs->ecx;
-		case TextInt('e', 'd', 'x'): return &regs->edx;
-		case TextInt('e', 'b', 'x'): return &regs->ebx;
-		case TextInt('e', 's', 'p'): return &regs->esp;
-		case TextInt('e', 'b', 'p'): return &regs->ebp;
-		case TextInt('e', 's', 'i'): return &regs->esi;
-		case TextInt('e', 'd', 'i'): return &regs->edi;
-	}
-	if (endptr) {
-		*endptr = regname;
-	}
-	return NULL;
 }
 
 #define PreventOverlap(val) ((val) + (val))
@@ -297,10 +302,8 @@ enum : uint8_t {
 	ArithmeticRightShift = '>' + '>',
 	LogicalLeftShift = '<' + '<' + '<',
 	LogicalRightShift = '>' + '>' + '>',
-	CircularLeftShift = PreventOverlap('r') + '<' + '<',
-	CircularLeftShiftB = PreventOverlap('R') + '<' + '<',
-	CircularRightShift = PreventOverlap('r') + '>' + '>',
-	CircularRightShiftB = PreventOverlap('R') + '>' + '>',
+	CircularLeftShift = PreventOverlap('R') + '<' + '<',
+	CircularRightShift = PreventOverlap('R') + '>' + '>',
 	ThreeWay = '<' + '=' + '>',
 	Less = '<',
 	LessEqual = '<' + '=',
@@ -333,10 +336,8 @@ enum : uint8_t {
 	ArithmeticRightShiftAssign = '>' + '>' + '=',
 	LogicalLeftShiftAssign = '<' + '<' + '<' + '=',
 	LogicalRightShiftAssign = '>' + '>' + '>' + '=',
-	CircularLeftShiftAssign = PreventOverlap('r') + '<' + '<' + '=',
-	CircularLeftShiftAssignB = PreventOverlap('R') + '<' + '<' + '=',
-	CircularRightShiftAssign = PreventOverlap('r') + '>' + '>' + '=',
-	CircularRightShiftAssignB = PreventOverlap('R') + '>' + '>' + '=',
+	CircularLeftShiftAssign = PreventOverlap('R') + '<' + '<' + '=',
+	CircularRightShiftAssign = PreventOverlap('R') + '>' + '>' + '=',
 	AndAssign = PreventOverlap('&') + '=',
 	NandAssign = '~' + PreventOverlap('&') + '=',
 	XorAssign = '^' + '=',
@@ -374,8 +375,8 @@ struct OpData_t {
 		Associativity[Add] = Associativity[Subtract] = ADD_ASSOCIATIVITY;
 #define SHIFT_PRECEDENCE 15
 #define SHIFT_ASSOCIATIVITY LeftAssociative
-		Precedence[LogicalLeftShift] = Precedence[LogicalRightShift] = Precedence[ArithmeticLeftShift] = Precedence[ArithmeticRightShift] = Precedence[CircularLeftShift] = Precedence[CircularLeftShiftB] = Precedence[CircularRightShift] = Precedence[CircularRightShiftB] = SHIFT_PRECEDENCE;
-		Associativity[LogicalLeftShift] = Associativity[LogicalRightShift] = Associativity[ArithmeticLeftShift] = Associativity[ArithmeticRightShift] = Associativity[CircularLeftShift] = Associativity[CircularLeftShiftB] = Associativity[CircularRightShift] = Associativity[CircularRightShiftB] = SHIFT_ASSOCIATIVITY;
+		Precedence[LogicalLeftShift] = Precedence[LogicalRightShift] = Precedence[ArithmeticLeftShift] = Precedence[ArithmeticRightShift] = Precedence[CircularLeftShift] = Precedence[CircularRightShift] = SHIFT_PRECEDENCE;
+		Associativity[LogicalLeftShift] = Associativity[LogicalRightShift] = Associativity[ArithmeticLeftShift] = Associativity[ArithmeticRightShift] = Associativity[CircularLeftShift] = Associativity[CircularRightShift] = SHIFT_ASSOCIATIVITY;
 #define COMPARE_PRECEDENCE 14
 #define COMPARE_ASSOCIATIVITY LeftAssociative
 		Precedence[Less] = Precedence[LessEqual] = Precedence[Greater] = Precedence[GreaterEqual] = COMPARE_PRECEDENCE;
@@ -422,8 +423,8 @@ struct OpData_t {
 		Associativity[TernaryConditional] = Associativity[Elvis] = TERNARY_ASSOCIATIVITY;
 #define ASSIGN_PRECEDENCE 3
 #define ASSIGN_ASSOCIATIVITY RightAssociative
-		Precedence[Assign] = Precedence[AddAssign] = Precedence[SubtractAssign] = Precedence[MultiplyAssign] = Precedence[DivideAssign] = Precedence[ModuloAssign] = Precedence[LogicalLeftShiftAssign] = Precedence[LogicalRightShiftAssign] = Precedence[ArithmeticLeftShiftAssign] = Precedence[ArithmeticRightShiftAssign] = Precedence[CircularLeftShiftAssign] = Precedence[CircularLeftShiftAssignB] = Precedence[CircularRightShiftAssign] = Precedence[CircularRightShiftAssignB] = Precedence[AndAssign] = Precedence[OrAssign] = Precedence[XorAssign] = Precedence[NandAssign] = Precedence[XnorAssign] = Precedence[NorAssign] = Precedence[NullCoalescingAssign] = ASSIGN_PRECEDENCE;
-		Associativity[Assign] = Associativity[AddAssign] = Associativity[SubtractAssign] = Associativity[MultiplyAssign] = Associativity[DivideAssign] = Associativity[ModuloAssign] = Associativity[LogicalLeftShiftAssign] = Associativity[LogicalRightShiftAssign] = Associativity[ArithmeticLeftShiftAssign] = Associativity[ArithmeticRightShiftAssign] = Associativity[CircularLeftShiftAssign] = Associativity[CircularLeftShiftAssignB] = Associativity[CircularRightShiftAssign] = Associativity[CircularRightShiftAssignB] = Associativity[AndAssign] = Associativity[OrAssign] = Associativity[XorAssign] = Associativity[NandAssign] = Associativity[XnorAssign] = Associativity[NorAssign] = Associativity[NullCoalescingAssign] = ASSIGN_ASSOCIATIVITY;
+		Precedence[Assign] = Precedence[AddAssign] = Precedence[SubtractAssign] = Precedence[MultiplyAssign] = Precedence[DivideAssign] = Precedence[ModuloAssign] = Precedence[LogicalLeftShiftAssign] = Precedence[LogicalRightShiftAssign] = Precedence[ArithmeticLeftShiftAssign] = Precedence[ArithmeticRightShiftAssign] = Precedence[CircularLeftShiftAssign] = Precedence[CircularRightShiftAssign] = Precedence[AndAssign] = Precedence[OrAssign] = Precedence[XorAssign] = Precedence[NandAssign] = Precedence[XnorAssign] = Precedence[NorAssign] = Precedence[NullCoalescingAssign] = ASSIGN_PRECEDENCE;
+		Associativity[Assign] = Associativity[AddAssign] = Associativity[SubtractAssign] = Associativity[MultiplyAssign] = Associativity[DivideAssign] = Associativity[ModuloAssign] = Associativity[LogicalLeftShiftAssign] = Associativity[LogicalRightShiftAssign] = Associativity[ArithmeticLeftShiftAssign] = Associativity[ArithmeticRightShiftAssign] = Associativity[CircularLeftShiftAssign] = Associativity[CircularRightShiftAssign] = Associativity[AndAssign] = Associativity[OrAssign] = Associativity[XorAssign] = Associativity[NandAssign] = Associativity[XnorAssign] = Associativity[NorAssign] = Associativity[NullCoalescingAssign] = ASSIGN_ASSOCIATIVITY;
 #define COMMA_PRECEDENCE 2
 #define COMMA_ASSOCIATIVITY LeftAssociative
 		Precedence[Comma] = COMMA_PRECEDENCE;
@@ -495,11 +496,10 @@ const char* parse_brackets(const char* str, const char opening) {
 }
 
 static inline const char* __fastcall find_next_op_impl(const char *const expr, op_t *const out) {
-	uint32_t c;
+	uint8_t c;
 	const char* expr_ref = expr - 1;
-	uint32_t temp;
 	while (1) {
-		switch (c = *(unsigned char*)++expr_ref) {
+		switch (c = *++expr_ref) {
 			case '\0':
 				*out = c;
 				return expr;
@@ -510,38 +510,37 @@ static inline const char* __fastcall find_next_op_impl(const char *const expr, o
 				*out = EndGroupOp;
 				return expr_ref;
 			case '~':
-				switch (temp = expr_ref[1]) {
+				switch (uint8_t temp = expr_ref[1]) {
 					case '&': case '|':
 						temp += temp;
 						[[fallthrough]];
 					case '^':
-						if (expr_ref[2] == '=') {
-							*out = c + temp + '=';
-							return expr_ref + 3;
-						}
-						else {
-							*out = c + temp;
-							return expr_ref + 2;
+						switch (expr_ref[2]) {
+							case '=':
+								*out = c + temp + '=';
+								return expr_ref + 3;
+							default:
+								*out = c + temp;
+								return expr_ref + 2;
 						}
 				}
 				continue;
 			case '!':
 				c += c;
-				switch (temp = expr_ref[1]) {
-					case '=':
-						*out = c + temp;
-						return expr_ref + 2;
-					case '^':
-						if (expr_ref[2] == temp) {
-							*out = c + temp * 2;
-							return expr_ref + 3;
-						}
-						break;
-					case '&': case '|':
-						if (expr_ref[2] == temp) {
-							*out = c + temp * 4;
-							return expr_ref + 3;
-						}
+				if (uint8_t temp = expr_ref[1]; temp == '=') {
+					goto CPlusEqualRetPlus2;
+				}
+				else {
+					switch (temp) {
+						case '&': case '|':
+							temp += temp;
+							[[fallthrough]];
+						case '^':
+							if (expr_ref[2] == expr_ref[1]) {
+								*out = c + temp * 2;
+								return expr_ref + 3;
+							}
+					}
 				}
 				continue;
 			case '?':
@@ -551,13 +550,9 @@ static inline const char* __fastcall find_next_op_impl(const char *const expr, o
 				// more easily process the operators.
 				switch (expr_ref[1]) {
 					case '?':
-						if (expr_ref[2] == '=') {
-							*out = c * 2 + '=';
-							return expr_ref + 3;
-						}
-						else {
-							*out = c * 2;
-							return expr_ref + 2;
+						switch (expr_ref[2]) {
+							case '=':	goto CTimes2PlusEqualRetPlus3;
+							default:	goto CTimes2RetPlus2;
 						}
 					case ':':
 						*out = c + ':';
@@ -568,96 +563,110 @@ static inline const char* __fastcall find_next_op_impl(const char *const expr, o
 				}
 			case '<': case '>':
 				if (expr_ref[1]) {
+					uint32_t temp;
 					if (expr_ref[2]) {
-						temp = *(uint32_t*)expr_ref;
-						// Yeah, the if chain is kind of ugly. However, this can't
-						// optimize into a jump table and using a switch adds an
-						// extra check for "higher than included" values, which are
-						// impossible anyway since they already got filtered out.
-						if (temp == TextInt('>', '>', '>', '=') || temp == TextInt('<', '<', '<', '=')) {
+						temp = *(uint32_t*)expr_ref & TextInt(0xFD, 0xFD, 0xFD, 0xFF);
+						if (temp == TextInt('<', '<', '<', '=')) {
 							*out = c * 3 + '=';
 							return expr_ref + 4;
 						}
-						temp &= 0x00FFFFFF;
-						if (temp == TextInt('<', '=', '>')) {
-							*out = ThreeWay;
-							return expr_ref + 3;
+						temp &= TextInt(0xFF, 0xFF, 0xFF, '\0');
+						switch (temp) {
+							case TextInt('<', '=', '<'):
+								*out = ThreeWay;
+								return expr_ref + 3;
+							case TextInt('<', '<', '='):
+								goto CTimes2PlusEqualRetPlus3;
+							case TextInt('<', '<', '<'):
+								*out = c * 3;
+								return expr_ref + 3;
 						}
-						if (temp == TextInt('>', '>', '=') || temp == TextInt('<', '<', '=')) {
-							*out = c * 2 + '=';
-							return expr_ref + 3;
-						}
-						if (temp == TextInt('>', '>', '>') || temp == TextInt('<', '<', '<')) {
-							*out = c * 3;
-							return expr_ref + 3;
-						}
-						temp &= 0x0000FFFF;
+						temp &= TextInt(0xFF, 0xFF, '\0');
 					}
 					else {
-						temp = *(uint16_t*)expr_ref;
+						temp = *(uint16_t*)expr_ref & TextInt(0xFD, 0xFD, '\0');
 					}
-					if (temp == TextInt('<', '=') || temp == TextInt('>', '=')) {
-						*out = c + '=';
-						return expr_ref + 2;
-					}
-					if (temp == TextInt('>', '>') || temp == TextInt('<', '<')) {
-						*out = c * 2;
-						return expr_ref + 2;
+					switch (temp) {
+						case TextInt('<', '='):	goto CPlusEqualRetPlus2;
+						case TextInt('<', '<'):	goto CTimes2RetPlus2;
 					}
 				}
-				*out = c;
-				return expr_ref + 1;
-			// No fallthrough
+				goto CRetPlus1;
+
 			case 'r': case 'R':
 				if (expr_ref[1] && expr_ref[2]) {
+					c &= 0xDF;
 					c += c;
-					temp = *(uint32_t*)expr_ref;
-					if (temp == TextInt('r', '>', '>', '=') || temp == TextInt('R', '>', '>', '=')) {
-						*out = c + '>' + '>' + '=';
-						return expr_ref + 4;
+					uint32_t temp = *(uint32_t*)expr_ref & TextInt(0xDF, 0xFF, 0xFF, 0xFF);
+					switch (temp) {
+						case TextInt('R', '>', '>', '='):
+							*out = c + '>' + '>' + '=';
+							return expr_ref + 4;
+						case TextInt('R', '<', '<', '='):
+							*out = c + '<' + '<' + '=';
+							return expr_ref + 4;
 					}
-					if (temp == TextInt('r', '<', '<', '=') || temp == TextInt('R', '<', '<', '=')) {
-						*out = c + '<' + '<' + '=';
-						return expr_ref + 4;
-					}
-					temp &= 0x00FFFFFF;
-					if (temp == TextInt('r', '>', '>') || temp == TextInt('R', '>', '>')) {
-						*out = c + '<' + '<';
-						return expr_ref + 3;
-					}
-					if (temp == TextInt('r', '<', '<') || temp == TextInt('R', '<', '<')) {
-						*out = c + '>' + '>';
-						return expr_ref + 3;
+					switch (temp & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
+						case TextInt('R', '>', '>'):
+							*out = c + '>' + '>';
+							return expr_ref + 3;
+						case TextInt('R', '<', '<'):
+							*out = c + '<' + '<';
+							return expr_ref + 3;
 					}
 				}
 				continue;
-			// No fallthrough
-			case '&': case '|':
+			case '&':
 				c += c;
-				[[fallthrough]];
-			case '+': case '-': case '*': case '/': case '%': case '=': case '^':
-				if (expr_ref[1]) {
-					temp = *(uint16_t*)expr_ref;
-					if (temp == TextInt('=', '=') || temp == TextInt('&', '&') ||
-						temp == TextInt('|', '|') || temp == TextInt('*', '*') ||
-						temp == TextInt('^', '^')) {
-							*out = c * 2;
-							return expr_ref + 2;
-					}
-					if (temp == TextInt('|', '=') || temp == TextInt('^', '=') ||
-						temp == TextInt('%', '=') || temp == TextInt('&', '=') ||
-						temp == TextInt('*', '=') || temp == TextInt('+', '=') ||
-						temp == TextInt('-', '=') || temp == TextInt('/', '=')) {
-							*out = c + '=';
-							return expr_ref + 2;
-					}
+				switch (expr_ref[1]) {
+					case '&':	goto CTimes2RetPlus2;
+					case '=':	goto CPlusEqualRetPlus2;
+					default:	goto CRetPlus1;
 				}
-				[[fallthrough]];
+			case '|':
+				c += c;
+				switch (expr_ref[1]) {
+					case '|':	goto CTimes2RetPlus2;
+					case '=':	goto CPlusEqualRetPlus2;
+					default:	goto CRetPlus1;
+				}
+			case '*':
+				switch (expr_ref[1]) {
+					case '*':	goto CTimes2RetPlus2;
+					case '=':	goto CPlusEqualRetPlus2;
+					default:	goto CRetPlus1;
+				}
+			case '^':
+				switch (expr_ref[1]) {
+					case '^':	goto CTimes2RetPlus2;
+					case '=':	goto CPlusEqualRetPlus2;
+					default:	goto CRetPlus1;
+				}
+			case '+': case '-': case '/': case '%': case '=':
+				switch (expr_ref[1]) {
+					case '=':	goto CPlusEqualRetPlus2;
+					default:	goto CRetPlus1;
+				}
 			case ',': case ';':
-				*out = c;
-				return expr_ref + 1;
+				goto CRetPlus1;
 		}
 	}
+
+CRetPlus1:
+	*out = c;
+	return expr_ref + 1;
+
+CTimes2RetPlus2:
+	*out = c * 2;
+	return expr_ref + 2;
+
+CPlusEqualRetPlus2:
+	*out = c + '=';
+	return expr_ref + 2;
+
+CTimes2PlusEqualRetPlus3:
+	*out = c * 2 + '=';
+	return expr_ref + 3;
 }
 
 // Returns a string containing a textual representation of the operator
@@ -674,10 +683,8 @@ static inline const char *const PrintOp(const op_t op) {
 		case ArithmeticRightShift: return ">>";
 		case LogicalLeftShift: return "<<<";
 		case LogicalRightShift: return ">>>";
-		case CircularLeftShift:
-		case CircularLeftShiftB: return "r<<";
-		case CircularRightShift:
-		case CircularRightShiftB: return "r>>";
+		case CircularLeftShift: return "R<<";
+		case CircularRightShift: return "R>>";
 		case BitwiseAnd: return "&";
 		case BitwiseNand: return "~&";
 		case BitwiseXor: return "^";
@@ -710,10 +717,8 @@ static inline const char *const PrintOp(const op_t op) {
 		case ArithmeticRightShiftAssign: return ">>=";
 		case LogicalLeftShiftAssign: return "<<<=";
 		case LogicalRightShiftAssign: return ">>>=";
-		case CircularLeftShiftAssign:
-		case CircularLeftShiftAssignB: return "r<<=";
-		case CircularRightShiftAssign:
-		case CircularRightShiftAssignB: return "r>>=";
+		case CircularLeftShiftAssign: return "R<<=";
+		case CircularRightShiftAssign: return "R>>=";
 		case AndAssign: return "&=";
 		case XorAssign: return "^=";
 		case OrAssign: return "|=";
@@ -807,18 +812,14 @@ static __declspec(noinline) size_t ApplyOperator(const size_t value, const size_
 		case ArithmeticRightShift:
 			return (uint32_t)((int32_t)value >> arg);
 		case CircularLeftShiftAssign:
-		case CircularLeftShiftAssignB:
 			AssignmentWarningMessage();
 			[[fallthrough]];
 		case CircularLeftShift:
-		case CircularLeftShiftB:
 			return value << arg | value >> (sizeof(value) * CHAR_BIT - arg);
 		case CircularRightShiftAssign:
-		case CircularRightShiftAssignB:
 			AssignmentWarningMessage();
 			[[fallthrough]];
 		case CircularRightShift:
-		case CircularRightShiftB:
 			return value >> arg | value << (sizeof(value) * CHAR_BIT - arg);
 		case Less:
 			return value < arg;
@@ -897,162 +898,114 @@ static __declspec(noinline) size_t ApplyOperator(const size_t value, const size_
 	}
 }
 
-static __declspec(noinline) value_t GetOptionValue(const char *const name, const size_t name_length) {
+static __declspec(noinline) const patch_val_t* GetOptionValue(const char *const name, const size_t name_length) {
 	const char *const name_buffer = strndup(name, name_length);
 	ExpressionLogging("Option: \"%s\"\n", name_buffer);
-	const patch_opt_val_t *const option = patch_opt_get(name_buffer);
-	value_t ret;
-	if (option) {
-		switch (option->t) {
-			case PATCH_OPT_VAL_BYTE: ret = option->val.byte; break;
-			case PATCH_OPT_VAL_SBYTE: ret = option->val.sbyte; break;
-			case PATCH_OPT_VAL_WORD: ret = option->val.word; break;
-			case PATCH_OPT_VAL_SWORD: ret = option->val.sword; break;
-			case PATCH_OPT_VAL_DWORD: ret = option->val.dword; break;
-			case PATCH_OPT_VAL_SDWORD: ret = option->val.sdword; break;
-			case PATCH_OPT_VAL_QWORD: ret = option->val.qword; break;
-			case PATCH_OPT_VAL_SQWORD: ret = option->val.sqword; break;
-			case PATCH_OPT_VAL_FLOAT: ret = option->val.f; break;
-			case PATCH_OPT_VAL_DOUBLE: ret = option->val.d; break;
-			case PATCH_OPT_VAL_STRING: ret = option->val.str; break;
-			case PATCH_OPT_VAL_WIDE_STRING: ret = option->val.wstr; break;
-			/*case PATCH_OPT_VAL_CODE:
-				ret.str = option->val.str;
-				ret.type = VT_CODE;
-				ret.size = option->size;
-				break;*/
-		}
-	}
-	else {
+	const patch_val_t *const option = patch_opt_get(name_buffer);
+	if (!option) {
 		OptionNotFoundErrorMessage(name_buffer);
-		ret.type = VT_NONE;
 	}
 	free((void*)name_buffer);
-	return ret;
+	return option;
 }
 
-static __declspec(noinline) value_t GetPatchTestValue(const char *const name, const size_t name_length) {
+static __declspec(noinline) const patch_val_t* GetPatchTestValue(const char *const name, const size_t name_length) {
 	const char *const name_buffer = strndup(name, name_length);
 	ExpressionLogging("PatchTest: \"%s\"\n", name_buffer);
-	const patch_opt_val_t *const patch_test = patch_opt_get(name_buffer);
-	value_t ret;
-	if (patch_test) {
-		switch (patch_test->t) {
-			case PATCH_OPT_VAL_BYTE: ret = patch_test->val.byte; break;
-			case PATCH_OPT_VAL_SBYTE: ret = patch_test->val.sbyte; break;
-			case PATCH_OPT_VAL_WORD: ret = patch_test->val.word; break;
-			case PATCH_OPT_VAL_SWORD: ret = patch_test->val.sword; break;
-			case PATCH_OPT_VAL_DWORD: ret = patch_test->val.dword; break;
-			case PATCH_OPT_VAL_SDWORD: ret = patch_test->val.sdword; break;
-			case PATCH_OPT_VAL_QWORD: ret = patch_test->val.qword; break;
-			case PATCH_OPT_VAL_SQWORD: ret = patch_test->val.sqword; break;
-			case PATCH_OPT_VAL_FLOAT: ret = patch_test->val.f; break;
-			case PATCH_OPT_VAL_DOUBLE: ret = patch_test->val.d; break;
-			case PATCH_OPT_VAL_STRING: ret = patch_test->val.str; break;
-			case PATCH_OPT_VAL_WIDE_STRING: ret = patch_test->val.wstr; break;
-			/*case PATCH_OPT_VAL_CODE:
-				ret.str = patch_test->val.str;
-				ret.type = VT_CODE;
-				ret.size = patch_test->size;
-				break;*/
-		}
-	}
-	else {
-		ret.type = VT_NONE;
-	}
+	const patch_val_t *const patch_test = patch_opt_get(name_buffer);
 	free((void*)name_buffer);
-	return ret;
+	return patch_test;
 }
 
-static __declspec(noinline) value_t GetCPUFeatureTest(const char *const name, const size_t name_length) {
+static __declspec(noinline) bool GetCPUFeatureTest(const char *const name, const size_t name_length) {
 	const char *const name_buffer = strndup(name, name_length);
 	ExpressionLogging("CPUFeatureTest: \"%s\"\n", name_buffer);
-	value_t ret = false;
+	bool ret = false;
 	// Yuck
 	switch (name_length) {
 		case 15:
-			if		(stricmp(name_buffer, "avx512vpopcntdq") == 0) ret.b = CPUID_Data.HasAVX512VPOPCNTDQ;
+			if		(stricmp(name_buffer, "avx512vpopcntdq") == 0) ret = CPUID_Data.HasAVX512VPOPCNTDQ;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 12:
-			if		(stricmp(name_buffer, "avx512bitalg") == 0) ret.b = CPUID_Data.HasAVX512BITALG;
-			else if (stricmp(name_buffer, "avx5124fmaps") == 0) ret.b = CPUID_Data.HasAVX5124FMAPS;
-			else if (stricmp(name_buffer, "avx5124vnniw") == 0) ret.b = CPUID_Data.HasAVX5124VNNIW;
+			if		(stricmp(name_buffer, "avx512bitalg") == 0) ret = CPUID_Data.HasAVX512BITALG;
+			else if (stricmp(name_buffer, "avx5124fmaps") == 0) ret = CPUID_Data.HasAVX5124FMAPS;
+			else if (stricmp(name_buffer, "avx5124vnniw") == 0) ret = CPUID_Data.HasAVX5124VNNIW;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 11:
-			if		(stricmp(name_buffer, "avx512vbmi1") == 0) ret.b = CPUID_Data.HasAVX512VBMI;
-			else if (stricmp(name_buffer, "avx512vbmi2") == 0) ret.b = CPUID_Data.HasAVX512VBMI2;
+			if		(stricmp(name_buffer, "avx512vbmi1") == 0) ret = CPUID_Data.HasAVX512VBMI;
+			else if (stricmp(name_buffer, "avx512vbmi2") == 0) ret = CPUID_Data.HasAVX512VBMI2;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 10:
-			if		(stricmp(name_buffer, "cmpxchg16b") == 0) ret.b = CPUID_Data.HasCMPXCHG16B;
-			else if (stricmp(name_buffer, "vpclmulqdq") == 0) ret.b = CPUID_Data.HasVPCLMULQDQ;
-			else if (stricmp(name_buffer, "avx512ifma") == 0) ret.b = CPUID_Data.HasAVX512IFMA;
-			else if (stricmp(name_buffer, "avx512vnni") == 0) ret.b = CPUID_Data.HasAVX512VNNI;
-			else if (stricmp(name_buffer, "avx512vp2i") == 0) ret.b = CPUID_Data.HasAVX512VP2I;
-			else if (stricmp(name_buffer, "avx512bf16") == 0) ret.b = CPUID_Data.HasAVX512BF16;
+			if		(stricmp(name_buffer, "cmpxchg16b") == 0) ret = CPUID_Data.HasCMPXCHG16B;
+			else if (stricmp(name_buffer, "vpclmulqdq") == 0) ret = CPUID_Data.HasVPCLMULQDQ;
+			else if (stricmp(name_buffer, "avx512ifma") == 0) ret = CPUID_Data.HasAVX512IFMA;
+			else if (stricmp(name_buffer, "avx512vnni") == 0) ret = CPUID_Data.HasAVX512VNNI;
+			else if (stricmp(name_buffer, "avx512vp2i") == 0) ret = CPUID_Data.HasAVX512VP2I;
+			else if (stricmp(name_buffer, "avx512bf16") == 0) ret = CPUID_Data.HasAVX512BF16;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 9:
-			if		(stricmp(name_buffer, "pclmulqdq") == 0) ret.b = CPUID_Data.HasPCLMULQDQ;
+			if		(stricmp(name_buffer, "pclmulqdq") == 0) ret = CPUID_Data.HasPCLMULQDQ;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 8:
-			if		(stricmp(name_buffer, "cmpxchg8") == 0) ret.b = CPUID_Data.HasCMPXCHG8;
-			else if (stricmp(name_buffer, "avx512dq") == 0) ret.b = CPUID_Data.HasAVX512DQ;
-			else if (stricmp(name_buffer, "avx512pf") == 0) ret.b = CPUID_Data.HasAVX512PF;
-			else if (stricmp(name_buffer, "avx512er") == 0) ret.b = CPUID_Data.HasAVX512ER;
-			else if (stricmp(name_buffer, "avx512cd") == 0) ret.b = CPUID_Data.HasAVX512CD;
-			else if (stricmp(name_buffer, "avx512bw") == 0) ret.b = CPUID_Data.HasAVX512BW;
-			else if (stricmp(name_buffer, "avx512vl") == 0) ret.b = CPUID_Data.HasAVX512VL;
-			else if (stricmp(name_buffer, "3dnowext") == 0) ret.b = CPUID_Data.Has3DNOWEXT;
+			if		(stricmp(name_buffer, "cmpxchg8") == 0) ret = CPUID_Data.HasCMPXCHG8;
+			else if (stricmp(name_buffer, "avx512dq") == 0) ret = CPUID_Data.HasAVX512DQ;
+			else if (stricmp(name_buffer, "avx512pf") == 0) ret = CPUID_Data.HasAVX512PF;
+			else if (stricmp(name_buffer, "avx512er") == 0) ret = CPUID_Data.HasAVX512ER;
+			else if (stricmp(name_buffer, "avx512cd") == 0) ret = CPUID_Data.HasAVX512CD;
+			else if (stricmp(name_buffer, "avx512bw") == 0) ret = CPUID_Data.HasAVX512BW;
+			else if (stricmp(name_buffer, "avx512vl") == 0) ret = CPUID_Data.HasAVX512VL;
+			else if (stricmp(name_buffer, "3dnowext") == 0) ret = CPUID_Data.Has3DNOWEXT;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 7:
-			if		(stricmp(name_buffer, "avx512f") == 0) ret.b = CPUID_Data.HasAVX512F;
+			if		(stricmp(name_buffer, "avx512f") == 0) ret = CPUID_Data.HasAVX512F;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 6:
-			if		(stricmp(name_buffer, "popcnt") == 0) ret.b = CPUID_Data.HasPOPCNT;
-			else if (stricmp(name_buffer, "fxsave") == 0) ret.b = CPUID_Data.HasFXSAVE;
-			else if (stricmp(name_buffer, "mmxext") == 0) ret.b = CPUID_Data.HasMMXEXT;
+			if		(stricmp(name_buffer, "popcnt") == 0) ret = CPUID_Data.HasPOPCNT;
+			else if (stricmp(name_buffer, "fxsave") == 0) ret = CPUID_Data.HasFXSAVE;
+			else if (stricmp(name_buffer, "mmxext") == 0) ret = CPUID_Data.HasMMXEXT;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 5:
-			if		(stricmp(name_buffer, "intel") == 0) ret.b = CPUID_Data.Manufacturer == Intel;
-			else if (stricmp(name_buffer, "ssse3") == 0) ret.b = CPUID_Data.HasSSSE3;
-			else if (stricmp(name_buffer, "sse41") == 0) ret.b = CPUID_Data.HasSSE41;
-			else if (stricmp(name_buffer, "sse42") == 0) ret.b = CPUID_Data.HasSSE42;
-			else if (stricmp(name_buffer, "sse4a") == 0) ret.b = CPUID_Data.HasSSE4A;
-			else if (stricmp(name_buffer, "movbe") == 0) ret.b = CPUID_Data.HasMOVBE;
-			else if (stricmp(name_buffer, "3dnow") == 0) ret.b = CPUID_Data.Has3DNOW;
+			if		(stricmp(name_buffer, "intel") == 0) ret = CPUID_Data.Manufacturer == Intel;
+			else if (stricmp(name_buffer, "ssse3") == 0) ret = CPUID_Data.HasSSSE3;
+			else if (stricmp(name_buffer, "sse41") == 0) ret = CPUID_Data.HasSSE41;
+			else if (stricmp(name_buffer, "sse42") == 0) ret = CPUID_Data.HasSSE42;
+			else if (stricmp(name_buffer, "sse4a") == 0) ret = CPUID_Data.HasSSE4A;
+			else if (stricmp(name_buffer, "movbe") == 0) ret = CPUID_Data.HasMOVBE;
+			else if (stricmp(name_buffer, "3dnow") == 0) ret = CPUID_Data.Has3DNOW;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 4:
-			if		(stricmp(name_buffer, "cmov") == 0) ret.b = CPUID_Data.HasCMOV;
-			else if (stricmp(name_buffer, "sse2") == 0) ret.b = CPUID_Data.HasSSE2;
-			else if (stricmp(name_buffer, "sse3") == 0) ret.b = CPUID_Data.HasSSE3;
-			else if (stricmp(name_buffer, "avx2") == 0) ret.b = CPUID_Data.HasAVX2;
-			else if (stricmp(name_buffer, "bmi1") == 0) ret.b = CPUID_Data.HasBMI1;
-			else if (stricmp(name_buffer, "bmi2") == 0) ret.b = CPUID_Data.HasBMI2;
-			else if (stricmp(name_buffer, "erms") == 0) ret.b = CPUID_Data.HasERMS;
-			else if (stricmp(name_buffer, "fsrm") == 0) ret.b = CPUID_Data.HasFSRM;
-			else if (stricmp(name_buffer, "f16c") == 0) ret.b = CPUID_Data.HasF16C;
-			else if (stricmp(name_buffer, "gfni") == 0) ret.b = CPUID_Data.HasGFNI;
-			else if (stricmp(name_buffer, "fma4") == 0) ret.b = CPUID_Data.HasFMA4;
+			if		(stricmp(name_buffer, "cmov") == 0) ret = CPUID_Data.HasCMOV;
+			else if (stricmp(name_buffer, "sse2") == 0) ret = CPUID_Data.HasSSE2;
+			else if (stricmp(name_buffer, "sse3") == 0) ret = CPUID_Data.HasSSE3;
+			else if (stricmp(name_buffer, "avx2") == 0) ret = CPUID_Data.HasAVX2;
+			else if (stricmp(name_buffer, "bmi1") == 0) ret = CPUID_Data.HasBMI1;
+			else if (stricmp(name_buffer, "bmi2") == 0) ret = CPUID_Data.HasBMI2;
+			else if (stricmp(name_buffer, "erms") == 0) ret = CPUID_Data.HasERMS;
+			else if (stricmp(name_buffer, "fsrm") == 0) ret = CPUID_Data.HasFSRM;
+			else if (stricmp(name_buffer, "f16c") == 0) ret = CPUID_Data.HasF16C;
+			else if (stricmp(name_buffer, "gfni") == 0) ret = CPUID_Data.HasGFNI;
+			else if (stricmp(name_buffer, "fma4") == 0) ret = CPUID_Data.HasFMA4;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 3:
-			if		(stricmp(name_buffer, "amd") == 0) ret.b = CPUID_Data.Manufacturer == AMD;
-			else if (stricmp(name_buffer, "sse") == 0) ret.b = CPUID_Data.HasSSE;
-			else if (stricmp(name_buffer, "fma") == 0) ret.b = CPUID_Data.HasFMA;
-			else if (stricmp(name_buffer, "mmx") == 0) ret.b = CPUID_Data.HasMMX;
-			else if (stricmp(name_buffer, "avx") == 0) ret.b = CPUID_Data.HasAVX;
-			else if (stricmp(name_buffer, "adx") == 0) ret.b = CPUID_Data.HasADX;
-			else if (stricmp(name_buffer, "abm") == 0) ret.b = CPUID_Data.HasABM;
-			else if (stricmp(name_buffer, "xop") == 0) ret.b = CPUID_Data.HasXOP;
-			else if (stricmp(name_buffer, "tbm") == 0) ret.b = CPUID_Data.HasTBM;
+			if		(stricmp(name_buffer, "amd") == 0) ret = CPUID_Data.Manufacturer == AMD;
+			else if (stricmp(name_buffer, "sse") == 0) ret = CPUID_Data.HasSSE;
+			else if (stricmp(name_buffer, "fma") == 0) ret = CPUID_Data.HasFMA;
+			else if (stricmp(name_buffer, "mmx") == 0) ret = CPUID_Data.HasMMX;
+			else if (stricmp(name_buffer, "avx") == 0) ret = CPUID_Data.HasAVX;
+			else if (stricmp(name_buffer, "adx") == 0) ret = CPUID_Data.HasADX;
+			else if (stricmp(name_buffer, "abm") == 0) ret = CPUID_Data.HasABM;
+			else if (stricmp(name_buffer, "xop") == 0) ret = CPUID_Data.HasXOP;
+			else if (stricmp(name_buffer, "tbm") == 0) ret = CPUID_Data.HasTBM;
 			else	goto InvalidCPUFeatureError;
 			break;
 		default:
@@ -1063,7 +1016,7 @@ InvalidCPUFeatureError:
 	return ret;
 }
 
-static __declspec(noinline) value_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
+static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
 	char *const name_buffer = strndup(name, name_length);
 	ExpressionLogging("CodecaveAddress: \"%s\"\n", name_buffer);
 	char* user_offset_expr = strchr(name_buffer, '+');
@@ -1072,10 +1025,8 @@ static __declspec(noinline) value_t GetCodecaveAddress(const char *const name, c
 		// from containing the offset value
 		*user_offset_expr++ = '\0';
 	}
-	value_t ret;
-	ret.type = VT_DWORD;
-	ret.i = func_get(name_buffer);
-	if (!ret.i) {
+	size_t cave_addr = func_get(name_buffer);
+	if (!cave_addr) {
 		CodecaveNotFoundWarningMessage(name_buffer);
 	}
 	else {
@@ -1091,25 +1042,23 @@ static __declspec(noinline) value_t GetCodecaveAddress(const char *const name, c
 				}
 			}
 			if (user_offset_expr != user_offset_expr_next) {
-				ret.i += user_offset_value;
+				cave_addr += user_offset_value;
 			}
 		}
 		if (is_relative) {
-			ret.i -= data_refs->rel_source + sizeof(void*);
+			cave_addr -= data_refs->rel_source + sizeof(void*);
 		}
 	}
 	free(name_buffer);
-	return ret;
+	return cave_addr;
 }
 
-static __declspec(noinline) value_t GetBPFuncOrRawAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
+static __declspec(noinline) size_t GetBPFuncOrRawAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
 	const char *const name_buffer = strndup(name, name_length);
 	ExpressionLogging("BPFuncOrRawAddress: \"%s\"\n", name_buffer);
-	value_t ret;
-	ret.type = VT_DWORD;
-	ret.i = func_get(name_buffer);
-	if (!ret.i) { // Will be null if the name was not a BP function
-		const char *const name_buffer_next = eval_expr_new_impl(name_buffer, '\0', &ret.i, StartNoOp, 0, data_refs);
+	size_t addr = func_get(name_buffer);
+	if (!addr) { // Will be null if the name was not a BP function
+		const char *const name_buffer_next = eval_expr_new_impl(name_buffer, '\0', &addr, StartNoOp, 0, data_refs);
 		if (name_buffer == name_buffer_next) {
 			ExpressionErrorMessage();
 			goto SkipRelative;
@@ -1118,14 +1067,14 @@ static __declspec(noinline) value_t GetBPFuncOrRawAddress(const char *const name
 		}
 	}
 	if (is_relative) {
-		ret.i -= data_refs->rel_source + sizeof(void*);
+		addr -= data_refs->rel_source + sizeof(void*);
 	}
 SkipRelative:
 	free((void*)name_buffer);
-	return ret;
+	return addr;
 }
 
-static __declspec(noinline) const char* get_patch_value_impl(const char* expr, value_t *const out, const StackSaver *const data_refs) {
+static __declspec(noinline) const char* get_patch_value_impl(const char* expr, patch_val_t *const out, const StackSaver *const data_refs) {
 	const char opening = expr[0];
 	ExpressionLogging("Patch value opening char: \"%hhX\"\n", opening);
 	bool is_relative = opening == '[';
@@ -1141,26 +1090,39 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, v
 	// This would be a lot simpler if there were a variant of
 	// patch_opt_get and func_get that took a length parameter
 	if (strnicmp(expr, "codecave:", 9) == 0) {
-		*out = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
+		out->type = VT_DWORD;
+		out->i = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	}
 	else if (strnicmp(expr, "option:", 7) == 0) {
 		expr += 7;
-		*out = GetOptionValue(expr, PtrDiffStrlen(patch_val_end, expr));
+		const patch_val_t* option = GetOptionValue(expr, PtrDiffStrlen(patch_val_end, expr));
+		if (option) {
+			*out = *option;
+		} else {
+			out->type = VT_NONE;
+		}
 	}
 	else if (strnicmp(expr, "patch:", 6) == 0) {
-		*out = GetPatchTestValue(expr, PtrDiffStrlen(patch_val_end, expr));
+		const patch_val_t* patch_test = GetPatchTestValue(expr, PtrDiffStrlen(patch_val_end, expr));
+		if (patch_test) {
+			*out = *patch_test;
+		} else {
+			out->type = VT_NONE;
+		}
 	}
 	else if (strnicmp(expr, "cpuid:", 6) == 0) {
 		expr += 6;
-		*out = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
+		out->type = VT_BYTE;
+		out->b = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
 	}
 	else {
-		*out = GetBPFuncOrRawAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
+		out->type = VT_DWORD;
+		out->i = GetBPFuncOrRawAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	}
 	return patch_val_end + 1;
 };
 
-const char* get_patch_value(const char* expr, value_t* out, x86_reg_t* regs, size_t rel_source) {
+const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, size_t rel_source) {
 	ExpressionLogging("START PATCH VALUE \"%s\"\n", expr);
 
 	const StackSaver data_refs = { regs, rel_source };
@@ -1192,49 +1154,38 @@ ExpressionError:
 
 static inline const char* CheckCastType(const char* expr, uint8_t &out) {
 	if (expr[0] && expr[1] && expr[2]) {
-		uint32_t cast = *(uint32_t*)expr;
 		ExpressionLogging("Cast debug: %X\n");
-		switch (cast) {
+		switch (const uint32_t cast = *(uint32_t*)expr & TextInt(0xDF, 0xFF, 0xFF, 0xFF)) {
 			case TextInt('F', '6', '4', ')'):
-			case TextInt('f', '6', '4', ')'):
 				out = f64_cast;
 				return expr + 4;
 			case TextInt('I', '6', '4', ')'):
-			case TextInt('i', '6', '4', ')'):
 				out = i64_cast;
 				return expr + 4;
 			case TextInt('U', '6', '4', ')'):
-			case TextInt('u', '6', '4', ')'):
 				out = u64_cast;
 				return expr + 4;
 			case TextInt('I', '3', '2', ')'):
-			case TextInt('i', '3', '2', ')'):
 				out = i32_cast;
 				return expr + 4;
 			case TextInt('U', '3', '2', ')'):
-			case TextInt('u', '3', '2', ')'):
 				out = u32_cast;
 				return expr + 4;
 			case TextInt('F', '3', '2', ')'):
-			case TextInt('f', '3', '2', ')'):
 				out = f32_cast;
 				return expr + 4;
 			case TextInt('I', '1', '6', ')'):
-			case TextInt('i', '1', '6', ')'):
 				out = i16_cast;
 				return expr + 4;
 			case TextInt('U', '1', '6', ')'):
-			case TextInt('u', '1', '6', ')'):
 				out = u16_cast;
 				return expr + 3;
 			default:
-				switch (cast & 0x00FFFFFF) {
+				switch (cast & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
 					case TextInt('I', '8', ')'):
-					case TextInt('i', '8', ')'):
 						out = i8_cast;
 						return expr + 3;
 					case TextInt('U', '8', ')'):
-					case TextInt('u', '8', ')'):
 						out = u8_cast;
 						return expr + 3;
 				}
@@ -1243,42 +1194,58 @@ static inline const char* CheckCastType(const char* expr, uint8_t &out) {
 	return expr;
 };
 
-static __forceinline const char* is_reg_name(const char *const expr, const x86_reg_t *const regs, size_t &out) {
-	if (!expr[0] || !expr[1] || !expr[2]) {
-		return expr;
+static __forceinline const char* is_reg_name(const char *const expr, const x86_reg_t *const regs, size_t* out) {
+
+	const char* expr_ref = expr;
+	const bool deref = expr_ref[0] != '&';
+	if (!deref) ++expr_ref;
+
+	const void* temp;
+
+	switch ((expr_ref[0] |
+			 (expr_ref[0] ? expr_ref[1] : '\0') << 8 |
+			 (expr_ref[0] && expr_ref[1] ? expr_ref[2] : '\0') << 16)
+			& TextInt(0xDF, 0xDF, 0xDF, '\0')) {
+		default:						return expr;
+		case TextInt('E', 'A', 'X'):	temp = &regs->eax; goto DwordRegister;
+		case TextInt('E', 'C', 'X'):	temp = &regs->ecx; goto DwordRegister;
+		case TextInt('E', 'D', 'X'):	temp = &regs->edx; goto DwordRegister;
+		case TextInt('E', 'B', 'X'):	temp = &regs->ebx; goto DwordRegister;
+		case TextInt('E', 'S', 'P'):	temp = &regs->esp; goto DwordRegister;
+		case TextInt('E', 'B', 'P'):	temp = &regs->ebp; goto DwordRegister;
+		case TextInt('E', 'S', 'I'):	temp = &regs->esi; goto DwordRegister;
+		case TextInt('E', 'D', 'I'):	temp = &regs->edi; goto DwordRegister;
+		case TextInt('A', 'X'):			temp = &regs->ax; goto WordRegister;
+		case TextInt('C', 'X'):			temp = &regs->cx; goto WordRegister;
+		case TextInt('D', 'X'):			temp = &regs->dx; goto WordRegister;
+		case TextInt('B', 'X'):			temp = &regs->bx; goto WordRegister;
+		case TextInt('S', 'P'):			temp = &regs->sp; goto WordRegister;
+		case TextInt('B', 'P'):			temp = &regs->bp; goto WordRegister;
+		case TextInt('S', 'I'):			temp = &regs->si; goto WordRegister;
+		case TextInt('D', 'I'):			temp = &regs->di; goto WordRegister;
+		case TextInt('A', 'L'):			temp = &regs->al; goto ByteRegister;
+		case TextInt('A', 'H'):			temp = &regs->ah; goto ByteRegister;
+		case TextInt('C', 'L'):			temp = &regs->cl; goto ByteRegister;
+		case TextInt('C', 'H'):			temp = &regs->ch; goto ByteRegister;
+		case TextInt('D', 'L'):			temp = &regs->dl; goto ByteRegister;
+		case TextInt('D', 'H'):			temp = &regs->dh; goto ByteRegister;
+		case TextInt('B', 'L'):			temp = &regs->bl; goto ByteRegister;
+		case TextInt('B', 'H'):			temp = &regs->bh; goto ByteRegister;
 	}
-	const char* ret = expr;
-	bool deref = ret[0] != '&';
-	if (!deref) {
-		++ret;
-	}
-	// Since !expr_ref[2] already validated the string has at least
-	// three non-null characters, there must also be at least one
-	// more character because of the null terminator, thus it's fine
-	// to just read a whole 4 bytes at once.
-	ExpressionLogging("Reg test: \"%s\"\n", ret);
-	uint32_t cmp = *(uint32_t*)ret & 0x00FFFFFF;
-	strlwr((char*)&cmp);
-	ExpressionLogging("Reg string: \"%s\"\n", &cmp);
-	switch (cmp) {
-		default:
-			return expr;
-		case TextInt('e', 'a', 'x'): out = deref ? regs->eax : (size_t)&regs->eax; break;
-		case TextInt('e', 'c', 'x'): out = deref ? regs->ecx : (size_t)&regs->ecx; break;
-		case TextInt('e', 'd', 'x'): out = deref ? regs->edx : (size_t)&regs->edx; break;
-		case TextInt('e', 'b', 'x'): out = deref ? regs->ebx : (size_t)&regs->ebx; break;
-		case TextInt('e', 's', 'p'): out = deref ? regs->esp : (size_t)&regs->esp; break;
-		case TextInt('e', 'b', 'p'): out = deref ? regs->ebp : (size_t)&regs->ebp; break;
-		case TextInt('e', 's', 'i'): out = deref ? regs->esi : (size_t)&regs->esi; break;
-		case TextInt('e', 'd', 'i'): out = deref ? regs->edi : (size_t)&regs->edi; break;
-	}
-	ret += 3;
-	ExpressionLogging("Found register \"%s\"\n", (char*)&cmp);
-	return ret;
-};
+
+DwordRegister:
+	*out = deref ? *(uint32_t*)temp : (size_t)temp;
+	return expr_ref + 3;
+WordRegister:
+	*out = deref ? *(uint16_t*)temp : (size_t)temp;
+	return expr_ref + 2;
+ByteRegister:
+	*out = deref ? *(uint8_t*)temp : (size_t)temp;
+	return expr_ref + 2;
+}
 
 static inline const char* PostfixCheck(const char* expr) {
-	if ((expr[0] == '+' && expr[1] == '+') || (expr[0] == '-' && expr[1] == '-')) {
+	if ((expr[0] == '+' || expr[0] == '-') && expr[0] == expr[1]) {
 		PostIncDecWarningMessage();
 		return expr + 2;
 	}
@@ -1288,6 +1255,7 @@ static inline const char* PostfixCheck(const char* expr) {
 static const char* __fastcall consume_value_impl(const char* expr, const char end, size_t *const out, const StackSaver *const data_refs) {
 	// Current is used as both "current_char" and "cur_value"
 	uint32_t current = 0;
+	uint32_t* current_addr = out ? &current : NULL;
 	// cast is used for both casts and pointer sizes
 	uint8_t cast = u32_cast;
 	const char* expr_next;
@@ -1345,14 +1313,14 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 			case '!': case '~': case '+': case '-': {
 				const uint8_t two_char_unary = expr[1] == current;
 				cast = expr[1] == current;
-				expr_next = consume_value_impl(expr + 1 + two_char_unary, end, &current, data_refs);
+				expr_next = consume_value_impl(expr + 1 + two_char_unary, end, current_addr, data_refs);
 				if (expr + 1 + two_char_unary == expr_next) {
 					goto InvalidValueError;
 				}
 				if (two_char_unary) {
 					switch (expr[0]) {
 						case '!': current = (bool)current; break;
-						//case '~': current = ~~current; break;
+							//case '~': current = ~~current; break;
 						case '-': IncDecWarningMessage(); --current; break;
 						case '+': IncDecWarningMessage(); ++current; break;
 					}
@@ -1362,37 +1330,39 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 						case '!': current = !current; break;
 						case '~': current = ~current; break;
 						case '-': current *= -1; break;
-						//case '+': current = +current; break;
+							//case '+': current = +current; break;
 					}
 				}
 				*out = current;
 				return PostfixCheck(expr_next);;
 			}
 			case '*':
-				++expr;
-				expr_next = consume_value_impl(expr, end, &current, data_refs);
-				if (expr == expr_next) {
+				// expr + 1 is used to avoid creating a loop
+				expr_next = consume_value_impl(expr + 1, end, current_addr, data_refs);
+				if (expr + 1 == expr_next) {
 					goto InvalidValueError;
 				}
+				if (!current) goto NullDerefError;
 				switch (cast) {
 					case b_cast: current = (bool)*(uint8_t*)current; break;
 					case i8_cast: case u8_cast: current = *(uint8_t*)current; break;
 					case i16_cast: case u16_cast: current = *(uint16_t*)current; break;
 					case i32_cast: case u32_cast: current = *(uint32_t*)current; break;
-					case i64_cast: case u64_cast: current = (uint32_t)*(uint64_t*)current; break;
-					case f32_cast: current = (uint32_t)*(float*)current; break;
-					case f64_cast: current = (uint32_t)*(double*)current; break;
+					case i64_cast: case u64_cast: current = (uint32_t) * (uint64_t*)current; break;
+					case f32_cast: current = (uint32_t) * (float*)current; break;
+					case f64_cast: current = (uint32_t) * (double*)current; break;
 				}
 				*out = current;
 				return PostfixCheck(expr_next);
 			// Casts and subexpression values
 			case '(':
+				// expr + 1 is used to avoid creating a loop
 				expr_next = CheckCastType(expr + 1, cast);
 				if (expr + 1 != expr_next) {
 					ExpressionLogging("Cast success\n");
 					// Casts
 					expr = expr_next;
-					expr_next = consume_value_impl(expr, end, &current, data_refs);
+					expr_next = consume_value_impl(expr, end, current_addr, data_refs);
 					if (expr == expr_next) {
 						goto InvalidValueError;
 					}
@@ -1411,8 +1381,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 				}
 				else {
 					// Subexpressions
-					// expr + 1 is used to avoid creating a loop
-					expr_next = eval_expr_new_impl(expr + 1, ')', &current, StartNoOp, 0, data_refs);
+					expr_next = eval_expr_new_impl(expr + 1, ')', current_addr, StartNoOp, 0, data_refs);
 					if (expr + 1 == expr_next) {
 						goto InvalidExpressionError;
 					}
@@ -1428,18 +1397,19 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 					// Dereference
 			case '{':
 					// expr + 1 is used to avoid creating a loop
-					expr_next = eval_expr_new_impl(expr + 1, current == '[' ? ']' : '}', &current, StartNoOp, 0, data_refs);
+					expr_next = eval_expr_new_impl(expr + 1, current == '[' ? ']' : '}', current_addr, StartNoOp, 0, data_refs);
 					if (expr + 1 == expr_next) {
 						goto InvalidExpressionError;
 					}
+					if (!current) goto NullDerefError;
 					switch (cast) {
 						case b_cast: current = (bool)*(uint8_t*)current; break;
 						case i8_cast: case u8_cast: current = *(uint8_t*)current; break;
 						case i16_cast: case u16_cast: current = *(uint16_t*)current; break;
 						case i32_cast: case u32_cast: current = *(uint32_t*)current; break;
-						case i64_cast: case u64_cast: current = (uint32_t)*(uint64_t*)current; break;
-						case f32_cast: current = (uint32_t)*(float*)current; break;
-						case f64_cast: current = (uint32_t)*(double*)current; break;
+						case i64_cast: case u64_cast: current = (uint32_t) * (uint64_t*)current; break;
+						case f32_cast: current = (uint32_t) * (float*)current; break;
+						case f64_cast: current = (uint32_t) * (double*)current; break;
 					}
 					*out = current;
 					return PostfixCheck(expr_next);
@@ -1448,7 +1418,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 			// Guaranteed patch value
 			case '<': {
 				// DON'T use expr + 1 since that kills get_patch_value
-				value_t temp;
+				patch_val_t temp;
 				expr_next = get_patch_value_impl(expr, &temp, data_refs);
 				if (expr == expr_next) {
 					goto InvalidPatchValueError;
@@ -1464,30 +1434,33 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 					case VT_SQWORD: current = (uint32_t)temp.sq; break;
 					case VT_FLOAT: current = (uint32_t)temp.f; break;
 					case VT_DOUBLE: current = (uint32_t)temp.d; break;
-					case VT_STRING: current = (uint32_t)temp.str; break;
+					case VT_STRING: current = (uint32_t)temp.str.ptr; break;
+					case VT_WSTRING: current = (uint32_t)temp.wstr.ptr; break;
 					//case VT_CODE: InvalidCodeOptionWarningMessage(); current = 0; break;
 				}
+				ExpressionLogging("Parsed patch value is %X / %d / %u\n", current, current, current);
+				*out = current;
+				// If the previous character was the end character,
+				// back up so that the main function will be able
+				// to detect it and not loop. Yes, it's a bit jank.
+				if (expr_next[-1] == end) {
+					--expr_next;
+				}
+				return PostfixCheck(expr_next);
 			}
-			// If the previous character was the end character,
-			// back up so that the main function will be able
-			// to detect it and not loop. Yes, it's a bit jank.
-			if (expr_next[-1] == end) {
-				--expr_next;
-			}
-			ExpressionLogging("Parsed patch value is %X / %d / %u\n", current, current, current);
-			*out = current;
-			return PostfixCheck(expr_next);
 			// Raw value or breakpoint register
 			case '&':
 			default:
-				expr_next = is_breakpoint ? is_reg_name(expr, data_refs->regs, current) : expr;
-				if (expr != expr_next) {
-					// current is set inside is_reg_name if a register is detected
-					ExpressionLogging("Register value was %X / %d / %u\n", current, current, current);
-					*out = current;
-					return PostfixCheck(expr_next);
+				if (is_breakpoint) {
+					expr_next = is_reg_name(expr, data_refs->regs, &current);
+					if (expr != expr_next) {
+						// current is set inside is_reg_name if a register is detected
+						ExpressionLogging("Register value was %X / %d / %u\n", current, current, current);
+						*out = current;
+						return PostfixCheck(expr_next);
+					}
 				}
-				else {
+				{
 RawValue:
 					// TODO : Don't parse raw hex with the address function
 					str_address_ret_t addr_ret;
@@ -1517,6 +1490,9 @@ InvalidPatchValueError:
 	return expr;
 InvalidCharacterError:
 	BadCharacterErrorMessage();
+	return expr;
+NullDerefError:
+	NullDerefErrorMessage();
 	return expr;
 }
 
@@ -1569,7 +1545,8 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 	} ops;
 	ops.cur = start_op;
 	const char* expr_next;
-	size_t cur_value;
+	size_t cur_value = 0;
+	//bool ignore_value = !out;
 
 	// Yes, this loop is awful looking, but it's intentional
 	do {
@@ -1600,7 +1577,11 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 				expr_next = eval_expr_new_impl(expr, end, &cur_value, ops.next, cur_value, data_refs);
 				if (expr == expr_next) goto InvalidExpressionError;
 				expr = expr_next;
-				ExpressionLogging("\tRETURN FROM SUBEXPRESSION\n");
+				ExpressionLogging(
+					"\tRETURN FROM SUBEXPRESSION\n"
+					"\tRemaining: \"%s\"\n",
+					expr
+				);
 				if (expr[0] == '?') {
 					if (OpData.Precedence[ops.cur] < OpData.Precedence[TernaryConditional]) {
 						ExpressionLogging("Ternary compare: %s has < precedence\n", PrintOp(ops.cur));
@@ -1627,9 +1608,9 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 					);
 					continue;
 				}
-				else {
+				/*else {
 					--expr;
-				}
+				}*/
 				break;
 			case SameAsNext:
 				ExpressionLogging("\tSAME PRECEDENCE\n");
@@ -1659,7 +1640,11 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 					// Higher precedence quick exit
 					ExpressionLogging("Applying operation: \"%u %s %u\"\n", value, PrintOp(ops.cur), cur_value);
 					*out = ApplyOperator(value, cur_value, ops.cur);
-					ExpressionLogging("Result of operator was %X / %d / %u\n", *out, *out, *out);
+					ExpressionLogging(
+						"Result of operator was %X / %d / %u\n"
+						"END SUBEXPRESSION\n",
+						*out, *out, *out
+					);
 					return expr + 1;
 				}
 				expr = expr_next;
@@ -1670,27 +1655,35 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 		ExpressionLogging("Result of operator was %X / %d / %u\n", value, value, value);
 
 		// This block can probably be handled better
-		if (ops.next == TernaryConditional || ops.next == Elvis) {
-			if (start_op == StartNoOp) {
-				ExpressionLogging("Ternary with no preceding ops\n");
-				goto DealWithTernary;
-			}
-			else {
-				goto OhCrapItsATernaryHideTheKids;
-			}
+		switch (ops.next) {
+			case TernaryConditional:
+			case Elvis:
+				if (start_op == StartNoOp) {
+					ExpressionLogging("Ternary with no preceding ops\n");
+					goto DealWithTernary;
+				} else {
+					goto OhCrapItsATernaryHideTheKids;
+				}
+			/*case LogicalAnd:
+			case LogicalNand:
+				ignore_value = value == 0;
+				break;
+			case LogicalOr:
+			case LogicalNor:
+				break;
+			default:
+				ignore_value = false;*/
 		}
-		else {
-			ops.cur = ops.next;
-		}
+		ops.cur = ops.next;
 
 	} while (expr[0] != end);
 	ExpressionLogging(
-		"END SUBEXPRESSION \"%s\"\n"
+		"END SUBEXPRESSION: \"%s\"\n"
 		"Subexpression value was %X / %d / %u\n",
 		expr, value, value, value
 	);
 	*out = value;
-	return expr + 1;
+	return expr + (end != '\0');
 
 // TODO: Find a way of integrating this better...
 // For whatever reason, everything I've tried to
@@ -1736,7 +1729,7 @@ DealWithTernary:
 	}
 	ExpressionLogging(
 		"Result of operator was %X / %d / %u\n"
-		"END TERNARY SUBEXPRESSION \"%s\"\n"
+		"END TERNARY SUBEXPRESSION: \"%s\"\n"
 		"Subexpression value was %X / %d / %u\n",
 		*out, *out, *out, expr, *out, *out, *out
 	);
@@ -1744,7 +1737,7 @@ DealWithTernary:
 
 OhCrapItsATernaryHideTheKids:
 	ExpressionLogging(
-		"END SUBEXPRESSION FOR TERNARY \"%s\"\n"
+		"END SUBEXPRESSION FOR TERNARY: \"%s\"\n"
 		"Subexpression value was %X / %d / %u\n",
 		expr, value, value, value
 	);

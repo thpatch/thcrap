@@ -13,6 +13,7 @@
 _bp_entry:
 	pusha
 	pushf
+	cld
 	push	%esp
 _bp_entry_indexptr:
 	push	0x12345678

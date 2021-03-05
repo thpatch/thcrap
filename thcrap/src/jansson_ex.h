@@ -55,11 +55,21 @@ json_t *json_flex_array_get(json_t *flarr, size_t ind);
 
 const char* json_flex_array_get_string_safe(json_t *flarr, size_t ind);
 
+#define json_array_foreach_scoped(ind_type, ind, arr, val) \
+	for(ind_type ind = 0, ind ## _max = json_array_size(arr); \
+		ind < ind ## _max ? (val = json_array_get(arr, ind)), 1 : 0; \
+		ind++)
+
 #define json_flex_array_foreach(flarr, ind, val) \
 	for(ind = 0; 	(\
 			ind < json_flex_array_size(flarr) && \
 			(val = json_flex_array_get(flarr, ind)) \
 		); \
+		ind++)
+
+#define json_flex_array_foreach_scoped(ind_type, ind, flarr, val) \
+	for(ind_type ind = 0, ind ## _max = (ind_type)json_flex_array_size(flarr); \
+			ind < ind ## _max ? (val = json_flex_array_get(flarr, ind)), 1 : 0 ; \
 		ind++)
 /// ------
 
@@ -134,26 +144,49 @@ int json_dump_log(const json_t *json, size_t flags);
 /// Evaluation
 /// -------
 
-// Test if the JSON [val] can be parsed by json_evaluate()
-#define json_can_evaluate(val) (json_is_number(val) || json_is_boolean(val) || json_is_string(val))
+size_t json_string_expression_value(json_t* json);
 
-// Test if the JSON [val] can be parsed as an int by json_evaluate()
-#define json_can_evaluate_int_strict(val) (json_is_integer(val) || json_is_string(val))
+typedef enum {
+	JEVAL_SUCCESS = 0,
+	JEVAL_NULL_PTR = 1,
+	JEVAL_ERROR_STRICT_TYPE_MISMATCH = 2,
+	JEVAL_ERROR_STRING_NO_EXPRS = 3
+} json_eval_error_t;
 
-// Evaluate the JSON [val] and cast the result to bool.
-bool json_evaluate_bool(json_t *val);
+typedef enum {
+	JEVAL_DEFAULT	= 0b00000,
 
-// Evaluate the JSON [val] and cast the result to int.
-size_t json_evaluate_int(json_t *val);
+	JEVAL_LENIENT	= 0b00000,
+	JEVAL_STRICT	= 0b00100,
+	JEVAL_USE_EXPRS	= 0b00000,
+	JEVAL_NO_EXPRS	= 0b01000
+} json_eval_flags_t;
 
-// Evaluate the JSON [val] and cast the result to double.
-double json_evaluate_real(json_t *val);
+// Evaluate the JSON [val] according to the supplied [flags] and
+// store the result in [out], returning a json_eval_error_t
+// indicating whether the operation was successful. [out] is not
+// modified for any return value except JEVAL_SUCCESS.
+int json_eval_bool(json_t* val, bool* out, uint8_t flags);
+int json_eval_int(json_t* val, size_t* out, uint8_t flags);
+int json_eval_real(json_t* val, double* out, uint8_t flags);
+int json_eval_number(json_t* val, double* out, uint8_t flags);
 
-// Calls json_evaluate_bool() on the value of [key] in [object].
-bool json_object_get_evaluate_bool(json_t *object, const char *key);
+// Convenience functions for json_eval_type(json_object_get(object, key), out, flags);
+int json_object_get_eval_bool(json_t* object, const char* key, bool* out, uint8_t flags);
+int json_object_get_eval_int(json_t* object, const char* key, size_t* out, uint8_t flags);
+int json_object_get_eval_real(json_t* object, const char* key, double* out, uint8_t flags);
+int json_object_get_eval_number(json_t* object, const char* key, double* out, uint8_t flags);
 
-// Calls json_evaluate_int() on the value of [key] in [object].
-size_t json_object_get_evaluate_int(json_t *object, const char *key);
+// Evaluate the JSON [val] according to the supplied [flags] and
+// returning either the result or [default_ret] if the operation
+// could not be performed.
+bool json_eval_bool_default(json_t* val, bool default_ret, uint8_t flags);
+size_t json_eval_int_default(json_t* val, size_t default_ret, uint8_t flags);
+double json_eval_real_default(json_t* val, double default_ret, uint8_t flags);
+double json_eval_number_default(json_t* val, double default_ret, uint8_t flags);
 
-// Calls json_evaluate_real() on the value of [key] in [object].
-double json_object_get_evaluate_real(json_t *object, const char *key);
+// Convenience functions for json_eval_type_default(json_object_get(object, key), default_ret, flags);
+bool json_object_get_eval_bool_default(json_t* object, const char* key, bool default_ret, uint8_t flags);
+size_t json_object_get_eval_int_default(json_t* object, const char* key, size_t default_ret, uint8_t flags);
+double json_object_get_eval_real_default(json_t* object, const char* key, double default_ret, uint8_t flags);
+double json_object_get_eval_number_default(json_t* object, const char* key, double default_ret, uint8_t flags);

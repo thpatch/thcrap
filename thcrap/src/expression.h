@@ -11,16 +11,59 @@
 
 // Register structure in PUSHAD+PUSHFD order at the beginning of a function
 typedef struct {
-	size_t flags;
-	size_t edi;
-	size_t esi;
-	size_t ebp;
-	size_t esp;
-	size_t ebx;
-	size_t edx;
-	size_t ecx;
-	size_t eax;
-	size_t retaddr;
+	union {
+		uint32_t eflags;
+		uint16_t flags;
+	};
+	union {
+		uint32_t edi;
+		uint16_t di;
+	};
+	union {
+		uint32_t esi;
+		uint16_t si;
+	};
+	union {
+		uint32_t ebp;
+		uint16_t bp;
+	};
+	union {
+		uint32_t esp;
+		uint16_t sp;
+	};
+	union {
+		uint32_t ebx;
+		uint16_t bx;
+		struct {
+			uint8_t bl;
+			uint8_t bh;
+		};
+	};
+	union {
+		uint32_t edx;
+		uint16_t dx;
+		struct {
+			uint8_t dl;
+			uint8_t dh;
+		};
+	};
+	union {
+		uint32_t ecx;
+		uint16_t cx;
+		struct {
+			uint8_t cl;
+			uint8_t ch;
+		};
+	};
+	union {
+		uint32_t eax;
+		uint16_t ax;
+		struct {
+			uint8_t al;
+			uint8_t ah;
+		};
+	};
+	uint32_t retaddr;
 } x86_reg_t;
 
 enum {
@@ -44,8 +87,9 @@ enum {
 };
 typedef uint8_t CastType;
 
-#ifdef __cplusplus
-enum value_type_t : uint8_t {
+// Enum of possible types for the description of
+// a value specified by the user defined patch options
+enum {
 	VT_NONE = 0,
 	VT_BYTE,
 	VT_SBYTE,
@@ -58,12 +102,14 @@ enum value_type_t : uint8_t {
 	VT_FLOAT,
 	VT_DOUBLE,
 	VT_STRING,
+	VT_WSTRING,
 	//VT_CODE
 };
+typedef uint8_t patch_value_type_t;
 
-struct value_t {
-	value_type_t type = VT_NONE;
-	size_t size;
+// Description of a value specified by the options
+typedef struct {
+	patch_value_type_t type;
 	union {
 		uint8_t b;
 		int8_t sb;
@@ -77,38 +123,18 @@ struct value_t {
 		float f;
 		double d;
 		unsigned char byte_array[8];
-		const char* str;
+		struct {
+			const char* ptr;
+			size_t len;
+		} str;
+		struct {
+			const wchar_t* ptr;
+			size_t len;
+		} wstr;
 	};
+} patch_val_t;
 
-	value_t() {}
-
-	value_t(void* in) {
-		if (in) {
-			p = (uintptr_t)in;
-			type = VT_DWORD;
-			size = sizeof(uintptr_t);
-		} else {
-			type = VT_NONE;
-			size = 0;
-		}
-	}
-	value_t(bool in) { b = in; type = VT_BYTE; size = sizeof(uint8_t); }
-	value_t(uint8_t in) { b = in; type = VT_BYTE; size = sizeof(uint8_t); }
-	value_t(int8_t in) { sb = in; type = VT_SBYTE; size = sizeof(int8_t); }
-	value_t(uint16_t in) { w = in; type = VT_WORD; size = sizeof(uint16_t); }
-	value_t(int16_t in) { sw = in; type = VT_SWORD; size = sizeof(int16_t); }
-	value_t(uint32_t in) { i = in; type = VT_DWORD; size = sizeof(uint32_t); }
-	value_t(int32_t in) { si = in; type = VT_SDWORD; size = sizeof(int32_t); }
-	value_t(uint64_t in) { q = in; type = VT_QWORD; size = sizeof(uint64_t); }
-	value_t(int64_t in) { sq = in; type = VT_SQWORD; size = sizeof(int64_t); }
-	value_t(float in) { f = in; type = VT_FLOAT; size = sizeof(float); }
-	value_t(double in) { d = in; type = VT_DOUBLE; size = sizeof(double); }
-	value_t(const char* in) { str = in; type = VT_STRING; size = sizeof(const char*); }
-	//value_t(const char* in, size_t size) { str = in; type = VT_CODE; size = size; }
-};
-
-const char* get_patch_value(const char* expr, value_t* out, x86_reg_t* regs, size_t rel_source);
-#endif
+const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, size_t rel_source);
 
 void DisableCodecaveNotFoundWarning(bool state);
 
@@ -117,8 +143,6 @@ void DisableCodecaveNotFoundWarning(bool state);
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
 const char* parse_brackets(const char* str, char opening);
-
-bool CheckForType(const char * *const expr, size_t *const expr_len, CastType *const out);
 
 //const char* consume_value(const char* expr, const char end, size_t *const out, const x86_reg_t *const regs, const size_t rel_source);
 const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);

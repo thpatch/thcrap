@@ -49,7 +49,7 @@ size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 {
 	const char *expr = json_string_value(val);
-	if (!expr) {
+	if (!expr || json_string_length(val) < 3) {
 		return NULL;
 	}
 
@@ -77,7 +77,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
-	return reg(regs, json_string_value(val), nullptr);
+	return json_string_length(val) >= 3 ? reg(regs, json_string_value(val), nullptr) : nullptr;
 }
 
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
@@ -128,20 +128,24 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out)
 		return false;
 	}
 
-	bool ignore = json_object_get_evaluate_bool(in, "ignore");
-	if (ignore) {
+	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
 		log_printf("breakpoint %s: ignored\n", name);
 		return false;
 	}
 
-	size_t cavesize = json_object_get_evaluate_int(in, "cavesize");
-	if (!cavesize) {
-		log_printf("breakpoint %s: no cavesize specified\n", name);
-		return false;
-	}
-	else if (cavesize < CALL_LEN) {
-		log_printf("breakpoint %s: cavesize too small to implement breakpoint\n", name);
-		return false;
+	size_t cavesize;
+	switch (json_object_get_eval_int(in, "cavesize", &cavesize, JEVAL_STRICT)) {
+		default:
+			log_printf("ERROR: invalid json type for cavesize of breakpoint %s, must be integer or string\n", name);
+			return false;
+		case JEVAL_NULL_PTR:
+			log_printf("breakpoint %s: no cavesize specified\n", name);
+			return false;
+		case JEVAL_SUCCESS:
+			if (cavesize < CALL_LEN) {
+				log_printf("breakpoint %s: cavesize too small to implement breakpoint\n", name);
+				return false;
+			}
 	}
 
 	json_t *addr = json_object_get(in, "addr");
@@ -153,10 +157,9 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out)
 
 	size_t valid_addrs = 0;
 
-	size_t i;
 	json_t *it;
-	json_flex_array_foreach(addr, i, it) {
-		if (json_can_evaluate_int_strict(it)) {
+	json_flex_array_foreach_scoped(size_t, i, addr, it) {
+		if (json_is_integer(it) || json_is_string(it)) {
 			++valid_addrs;
 		}
 	}
@@ -171,7 +174,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out)
 	out->addr = new hackpoint_addr_t[valid_addrs + 1];
 	out->addr[valid_addrs].type = END_ADDR;
 
-	json_flex_array_foreach(addr, i, it) {
+	json_flex_array_foreach_scoped(size_t, i, addr, it) {
 		if (json_is_string(it)) {
 			out->addr[i].str = strdup(json_string_value(it));
 			out->addr[i].type = STR_ADDR;
@@ -302,7 +305,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 		}
 		if (cur_has_valid_addrs) {
 			cavesize += CALL_LEN;
-			breakpoint_size[i] = AlignUpToMultipleOf(cavesize, 16);
+			breakpoint_size[i] = AlignUpToMultipleOf2(cavesize, 16);
 			sourcecaves_total_size += breakpoint_size[i];
 			++valid_breakpoint_count;
 		} else {
@@ -317,7 +320,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 
 	// Call cave construction
 	const size_t call_size = (uint8_t*)&bp_entry_end - (uint8_t*)bp_entry;
-	const size_t call_size_full = AlignUpToMultipleOf(call_size, 16);
+	const size_t call_size_full = AlignUpToMultipleOf2(call_size, 16);
 
 #define PatchBPEntryInstance(bp_entry_instance, bp_entry_ptr, type, value) \
 {\

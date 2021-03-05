@@ -42,7 +42,7 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 }
 
 // Returns false only if parsing should be aborted.
-const char* consume_value(const char *const expr, value_t *const val) {
+const char* consume_value(const char *const expr, patch_val_t *const val) {
 	char* expr_next;
 
 	// Double / float
@@ -61,41 +61,45 @@ const char* consume_value(const char *const expr, value_t *const val) {
 			return expr;
 		}
 		if (expr_next[0] == 'f') {
-			*val = (float)result;
+			val->type = VT_FLOAT;
+			val->f = (float)result;
 			return expr_next + 1;
 		} else {
-			*val = result;
+			val->type = VT_DOUBLE;
+			val->d = result;
 			return expr_next;
 		}
 	}
 	// TODO: Check if anyone uses single quotes already in code strings
 	//// Char
 	//else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
+	//  val->type = VT_SBYTE;
 	//	if (expr[1] == '\\') {
 	//		switch (expr[2]) {
-	//			case '0':  *val = '\0'; break;
-	//			case 'a':  *val = '\a'; break;
-	//			case 'b':  *val = '\b'; break;
-	//			case 'f':  *val = '\f'; break;
-	//			case 'n':  *val = '\n'; break;
-	//			case 'r':  *val = '\r'; break;
-	//			case 't':  *val = '\t'; break;
-	//			case 'v':  *val = '\v'; break;
-	//			case '\\': *val = '\\'; break;
-	//			case '\'': *val = '\''; break;
-	//			case '\"': *val = '\"'; break;
-	//			case '\?': *val = '\?'; break;
-	//			default:   *val = expr[2]; break;
+	//			case '0':  val->sb = '\0'; break;
+	//			case 'a':  val->sb = '\a'; break;
+	//			case 'b':  val->sb = '\b'; break;
+	//			case 'f':  val->sb = '\f'; break;
+	//			case 'n':  val->sb = '\n'; break;
+	//			case 'r':  val->sb = '\r'; break;
+	//			case 't':  val->sb = '\t'; break;
+	//			case 'v':  val->sb = '\v'; break;
+	//			case '\\': val->sb = '\\'; break;
+	//			case '\'': val->sb = '\''; break;
+	//			case '\"': val->sb = '\"'; break;
+	//			case '\?': val->sb = '\?'; break;
+	//			default:   val->sb = expr[2]; break;
 	//		}
 	//	} else {
-	//		*val = expr[1];
+	//		val->sb = expr[1];
 	//	}
 	//	return expr_next + 1;
 	//}
 	// Byte
 	else if (is_valid_hex_byte(expr[0], expr[1])) {
 		const uint32_t conv = (uint32_t)*(uint16_t*)expr;
-		*val = (unsigned char)strtoul((const char*)&conv, nullptr, 16);
+		val->type = VT_BYTE;
+		val->b = (unsigned char)strtoul((const char*)&conv, nullptr, 16);
 		return expr + 2;
 	}
 	// Nothing, keep going
@@ -105,54 +109,43 @@ const char* consume_value(const char *const expr, value_t *const val) {
 	}
 }
 
-static __forceinline const char* check_for_binhack_cast(const char* expr, value_t *const val) {
+static __forceinline const char* check_for_binhack_cast(const char* expr, patch_val_t *const val) {
 	switch (expr[0]) {
 		case 'i': case 'I':
 		case 'u': case 'U':
 		case 'f': case 'F':
 			if (expr[1] && expr[2]) {
-				const uint32_t temp = *(uint32_t*)expr;
-				switch (temp) {
+				switch (const uint32_t temp = *(uint32_t*)expr & TextInt(0xDF, 0xFF, 0xFF, 0xFF)) {
 					case TextInt('F', '3', '2', ':'):
-					case TextInt('f', '3', '2', ':'):
 						val->type = VT_FLOAT;
 						return expr + 4;
 					case TextInt('F', '6', '4', ':'):
-					case TextInt('f', '6', '4', ':'):
 						val->type = VT_DOUBLE;
 						return expr + 4;
 					case TextInt('U', '1', '6', ':'):
-					case TextInt('u', '1', '6', ':'):
 						val->type = VT_WORD;
 						return expr + 4;
 					case TextInt('I', '1', '6', ':'):
-					case TextInt('i', '1', '6', ':'):
 						val->type = VT_SWORD;
 						return expr + 4;
 					case TextInt('U', '3', '2', ':'):
-					case TextInt('u', '3', '2', ':'):
 						val->type = VT_DWORD;
 						return expr + 4;
 					case TextInt('I', '3', '2', ':'):
-					case TextInt('i', '3', '2', ':'):
 						val->type = VT_SDWORD;
 						return expr + 4;
 					case TextInt('U', '6', '4', ':'):
-					case TextInt('u', '6', '4', ':'):
 						val->type = VT_QWORD;
 						return expr + 4;
 					case TextInt('I', '6', '4', ':'):
-					case TextInt('i', '6', '4', ':'):
 						val->type = VT_SQWORD;
 						return expr + 4;
 					default:
-						switch (temp & 0x00FFFFFF) {
+						switch (temp & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
 							case TextInt('U', '8', ':'):
-							case TextInt('u', '8', ':'):
 								val->type = VT_BYTE;
 								return expr + 3;
 							case TextInt('I', '8', ':'):
-							case TextInt('i', '8', ':'):
 								val->type = VT_SBYTE;
 								return expr + 3;
 						}
@@ -170,24 +163,16 @@ size_t binhack_calc_size(const char *binhack_str)
 		return 0;
 	}
 	size_t size = 0;
-	value_t val;
+	patch_val_t val;
+	val.type = VT_NONE;
 	const char* copy_ptr;
 	while (1) {
-		switch (binhack_str[0]) {
+		switch (uint8_t temp = binhack_str[0]) {
 			case '\0':
 				return size;
-			case '(':
+			case '(': case '{':
 				binhack_str = check_for_binhack_cast(++binhack_str, &val);
-				copy_ptr = parse_brackets(binhack_str, '(');
-				if (binhack_str == copy_ptr) {
-					//Bracket error
-					return 0;
-				}
-				binhack_str = copy_ptr;
-				break;
-			case '{':
-				binhack_str = check_for_binhack_cast(++binhack_str, &val);
-				copy_ptr = parse_brackets(binhack_str, '{');
+				copy_ptr = parse_brackets(binhack_str, temp);
 				if (binhack_str == copy_ptr) {
 					//Bracket error
 					return 0;
@@ -248,8 +233,11 @@ size_t binhack_calc_size(const char *binhack_str)
 			case VT_STRING:
 				size += sizeof(const char*);
 				break;
+			case VT_WSTRING:
+				size += sizeof(const wchar_t*);
+				break;
 			/*case VT_CODE:
-				size += val.size;
+				size += val.str.len;
 				break;*/
 		}
 	}
@@ -262,8 +250,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	bool ignore = json_object_get_evaluate_bool(in, "ignore");
-	if (ignore) {
+	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
@@ -278,10 +265,9 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 
 	size_t valid_addrs = 0;
 
-	size_t i;
 	json_t *it;
-	json_flex_array_foreach(addr, i, it) {
-		if (json_can_evaluate_int_strict(it)) {
+	json_flex_array_foreach_scoped(size_t, i, addr, it) {
+		if (json_is_integer(it) || json_is_string(it)) {
 			++valid_addrs;
 		}
 	}
@@ -299,7 +285,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	out->addr = new hackpoint_addr_t[valid_addrs + 1];
 	out->addr[valid_addrs].type = END_ADDR;
 
-	json_flex_array_foreach(addr, i, it) {
+	json_flex_array_foreach_scoped(size_t, i, addr, it) {
 		if (json_is_string(it)) {
 			out->addr[i].str = strdup(json_string_value(it));
 			out->addr[i].type = STR_ADDR;
@@ -315,11 +301,11 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 
 int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str)
 {
-	if (!binhack_buf || !binhack_str || !target_addr) {
+	if (!binhack_buf || !binhack_str) {
 		return -1;
 	}
 
-	value_t val;
+	patch_val_t val;
 	const char* copy_ptr;
 
 	while (1) {
@@ -349,6 +335,10 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					return 1;
 				}
 				binhack_str = copy_ptr;
+				if (!val.i) {
+					log_printf("Binhack render error!\n");
+					return 1;
+				}
 				switch (val.type) {
 					case VT_BYTE:	val.b = *(uint8_t*)val.i; break;
 					case VT_SBYTE:	val.sb = *(int8_t*)val.i; break;
@@ -361,6 +351,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					case VT_FLOAT:	val.f = *(float*)val.i; break;
 					case VT_DOUBLE:	val.d = *(double*)val.i; break;
 					case VT_STRING:
+					case VT_WSTRING:
 					//case VT_CODE:
 						log_printf("Binhack render error!\n");
 						return 1;
@@ -376,11 +367,12 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_str = copy_ptr;
 				break;
 			case '?':
-				if (binhack_str[1] == '?') {
+				if (binhack_str[1] == '?' && target_addr) {
 					// Found a wildcard byte, so read the contents
 					// of the appropriate address into the buffer.
 					//val.b = *(unsigned char*)(target_addr + written);
-					val = *(unsigned char*)target_addr;
+					val.type = VT_BYTE;
+					val.b = *(unsigned char*)target_addr;
 					binhack_str += 2;
 					break;
 				}
@@ -454,17 +446,23 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				target_addr += sizeof(double);
 				break;
 			case VT_STRING:
-				*(const char**)binhack_buf = val.str;
-				//log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr);
+				*(const char**)binhack_buf = val.str.ptr;
+				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const char**)binhack_buf, target_addr);
 				binhack_buf += sizeof(const char*);
 				target_addr += sizeof(const char*);
 				break;
+			case VT_WSTRING:
+				*(const wchar_t**)binhack_buf = val.wstr.ptr;
+				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const wchar_t**)binhack_buf, target_addr);
+				binhack_buf += sizeof(const wchar_t**);
+				target_addr += sizeof(const wchar_t**);
+				break;
 			/*case VT_CODE: {
-				if (binhack_render(binhack_buf, target_addr, val.str)) {
+				if (binhack_render(binhack_buf, target_addr, val.str.ptr)) {
 					return 1;
 				}
-				binhack_buf += val.size;
-				target_addr += val.size;
+				binhack_buf += val.str.len;
+				target_addr += val.str.len;
 				break;
 			}*/
 		}
@@ -582,50 +580,49 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	const char* code = NULL;
 	bool export_val = false;
 	CodecaveAccessType access_val = EXECUTE_READWRITE;
-	BYTE fill_val = 0;
+	size_t fill_val = 0;
 
 	if (json_is_object(in)) {
-		if (json_object_get_evaluate_bool(in, "ignore")) {
+		if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
 			log_printf("codecave %s: ignored\n", name);
 			return false;
 		}
 
-		json_t *j_temp = json_object_get(in, "size");
-		if (j_temp) {
-			if (!json_can_evaluate_int_strict(j_temp)) {
+		switch (json_object_get_eval_int(in, "size", &size_val, JEVAL_STRICT)) {
+			default:
 				log_printf("ERROR: invalid json type for size of codecave %s, must be integer or string\n", name);
 				return false;
-			}
-			size_val = json_evaluate_int(j_temp);
-			if (!size_val) {
-				log_printf("codecave %s with size 0 ignored\n", name);
-				return false;
-			}
-			j_temp = json_object_get(in, "count");
-			if (j_temp) {
-				if (!json_can_evaluate_int_strict(j_temp)) {
-					log_printf("ERROR: invalid json type specified for count of codecave %s, must be integer or string\n", name);
+			case JEVAL_SUCCESS: {
+				if (!size_val) {
+					log_printf("codecave %s with size 0 ignored\n", name);
 					return false;
 				}
-				const size_t count_val = json_evaluate_int(j_temp);
-				if (!count_val) {
-					log_printf("codecave %s with count 0 ignored\n", name);
-					return false;
+				size_t count_val;
+				switch (json_object_get_eval_int(in, "count", &count_val, JEVAL_STRICT)) {
+					default:
+						log_printf("ERROR: invalid json type specified for count of codecave %s, must be integer or string\n", name);
+						return false;
+					case JEVAL_SUCCESS:
+						if (!count_val) {
+							log_printf("codecave %s with count 0 ignored\n", name);
+							return false;
+						}
+						size_val *= count_val;
+					case JEVAL_NULL_PTR:
+						break;
 				}
-				size_val *= count_val;
+				break;
 			}
+			case JEVAL_NULL_PTR:
+				break;
 		}
-		//else {
-		//    size_val = 0;
-		//}
 
 		code = json_object_get_string(in, "code");
-		export_val = json_object_get_evaluate_bool(in, "export");
 
-		const char* access = json_object_get_string(in, "access");
-		if (access) {
-			BYTE temp = !!strpbrk(access, "rR") + (!!strpbrk(access, "wW") << 1) + (!!strpbrk(access, "eExX") << 2);
-			switch (temp) {
+		json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
+
+		if (const char* access = json_object_get_string(in, "access")) {
+			switch (BYTE temp = !!strpbrk(access, "rR") + (!!strpbrk(access, "wW") << 1) + (!!strpbrk(access, "eExX") << 2)) {
 				case 0: /*NOACCESS*/
 					log_printf("codecave %s: why would you set a codecave to no access? skipping instead...\n", name);
 					return false;
@@ -662,17 +659,14 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			//}
 		}
 
-		j_temp = json_object_get(in, "fill");
-		if (j_temp) {
-			if (!json_can_evaluate_int_strict(j_temp)) {
+		switch (json_object_get_eval_int(in, "fill", &fill_val, JEVAL_STRICT)) {
+			default:
 				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be integer or string\n", name);
 				return false;
-			}
-			fill_val = (BYTE)json_evaluate_int(j_temp);
+			case JEVAL_SUCCESS:
+			case JEVAL_NULL_PTR:
+				break;
 		}
-		//else {
-		//    fill_val = 0;
-		//}
 		
 	}
 	else if (json_is_string(in)) {
@@ -718,7 +712,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	out->name = name_str;
 	out->access_type = access_val;
 	out->size = size_val;
-	out->fill = fill_val;
+	out->fill = (BYTE)fill_val;
 	out->export_codecave = export_val;
 
 	return true;
@@ -750,7 +744,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 			++codecave_export_count;
 		}
 		const size_t size = codecaves[i].size + codecave_sep_size_min;
-		codecaves_full_size[i] = AlignUpToMultipleOf(size, 16);
+		codecaves_full_size[i] = AlignUpToMultipleOf2(size, 16);
 		codecaves_alloc_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
 

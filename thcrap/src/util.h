@@ -11,7 +11,8 @@
 
 /// Pointers
 /// --------
-#define AlignUpToMultipleOf(ptr, len) ((ptr) - ((ptr) % (len)) + (len));
+#define AlignUpToMultipleOf(ptr, len) ((ptr) - ((ptr) % (len)) + (len))
+#define AlignUpToMultipleOf2(ptr, mul) (((ptr) + (mul) - 1) & -(mul))
 
 size_t dword_align(const size_t val);
 BYTE* ptr_dword_align(const BYTE *in);
