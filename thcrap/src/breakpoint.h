@@ -52,16 +52,16 @@ typedef struct {
 	// You are free to put anything in it.
 	json_t *json_obj;
 
+	// Address as string from run configuration
+	// Address where the breakpoint is written
+	hackpoint_addr_t *addr;
+
 	/**
 	  * These variables are use internaly by the breakpoints engine
 	  */
 
 	// Function to be called when the breakpoint is hit
 	BreakpointFunc_t func;
-
-	// Address as string from run configuration
-	// Address where the breakpoint is written
-	hackpoint_addr_t *addr;
 } breakpoint_local_t;
 
 typedef struct {

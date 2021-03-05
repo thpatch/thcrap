@@ -1082,7 +1082,7 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, p
 	ExpressionLogging("Patch value end: \"%s\"\n", patch_val_end ? patch_val_end : "NULL");
 	if (!patch_val_end) {
 		//Bracket error
-		return expr;
+		return NULL;
 	}
 	// Increment expr so that the comparisons
 	// don't check the opening bracket
@@ -1128,7 +1128,7 @@ const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs,
 	const StackSaver data_refs = { regs, rel_source };
 
 	const char *const expr_next = get_patch_value_impl(expr, out, &data_refs);
-	if (expr == expr_next) goto ExpressionError;
+	if (!expr_next) goto ExpressionError;
 	ExpressionLogging(
 		"END PATCH VALUE\n"
 		"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
@@ -1147,9 +1147,9 @@ ExpressionError:
 		"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
 		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
 		"Remaining after final: \"%s\"\n",
-		expr, out->i, out->i, out->i, expr_next
+		expr, out->i, out->i, out->i, expr
 	);
-	return expr_next;
+	return NULL;
 }
 
 static inline const char* CheckCastType(const char* expr, uint8_t &out) {
@@ -1314,9 +1314,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 				const uint8_t two_char_unary = expr[1] == current;
 				cast = expr[1] == current;
 				expr_next = consume_value_impl(expr + 1 + two_char_unary, end, current_addr, data_refs);
-				if (expr + 1 + two_char_unary == expr_next) {
-					goto InvalidValueError;
-				}
+				if (!expr_next) goto InvalidValueError;
 				if (two_char_unary) {
 					switch (expr[0]) {
 						case '!': current = (bool)current; break;
@@ -1339,9 +1337,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 			case '*':
 				// expr + 1 is used to avoid creating a loop
 				expr_next = consume_value_impl(expr + 1, end, current_addr, data_refs);
-				if (expr + 1 == expr_next) {
-					goto InvalidValueError;
-				}
+				if (!expr_next) goto InvalidValueError;
 				if (!current) goto NullDerefError;
 				switch (cast) {
 					case b_cast: current = (bool)*(uint8_t*)current; break;
@@ -1363,9 +1359,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 					// Casts
 					expr = expr_next;
 					expr_next = consume_value_impl(expr, end, current_addr, data_refs);
-					if (expr == expr_next) {
-						goto InvalidValueError;
-					}
+					if (!expr_next) goto InvalidValueError;
 					switch (cast) {
 						case i8_cast: current = *(int8_t*)&current; break;
 						case i16_cast: current = *(int16_t*)&current; break;
@@ -1382,9 +1376,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 				else {
 					// Subexpressions
 					expr_next = eval_expr_new_impl(expr + 1, ')', current_addr, StartNoOp, 0, data_refs);
-					if (expr + 1 == expr_next) {
-						goto InvalidExpressionError;
-					}
+					if (!expr_next) goto InvalidExpressionError;
 					if (is_binhack) {
 						--expr_next;
 					}
@@ -1398,9 +1390,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 			case '{':
 					// expr + 1 is used to avoid creating a loop
 					expr_next = eval_expr_new_impl(expr + 1, current == '[' ? ']' : '}', current_addr, StartNoOp, 0, data_refs);
-					if (expr + 1 == expr_next) {
-						goto InvalidExpressionError;
-					}
+					if (!expr_next) goto InvalidExpressionError;
 					if (!current) goto NullDerefError;
 					switch (cast) {
 						case b_cast: current = (bool)*(uint8_t*)current; break;
@@ -1420,9 +1410,7 @@ static const char* __fastcall consume_value_impl(const char* expr, const char en
 				// DON'T use expr + 1 since that kills get_patch_value
 				patch_val_t temp;
 				expr_next = get_patch_value_impl(expr, &temp, data_refs);
-				if (expr == expr_next) {
-					goto InvalidPatchValueError;
-				}
+				if (!expr_next) goto InvalidPatchValueError;
 				switch (temp.type) {
 					case VT_BYTE: current = (uint32_t)temp.b; break;
 					case VT_SBYTE: current = (uint32_t)temp.sb; break;
@@ -1557,7 +1545,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 		);
 
 		expr_next = consume_value_impl(expr, end, &cur_value, data_refs);
-		if (expr == expr_next) goto InvalidValueError;
+		if (!expr_next) goto InvalidValueError;
 		expr = expr_next;
 
 		expr_next = find_next_op_impl(expr, &ops.next);
@@ -1575,7 +1563,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 				ExpressionLogging("\tLOWER PRECEDENCE\n");
 				expr = expr_next;
 				expr_next = eval_expr_new_impl(expr, end, &cur_value, ops.next, cur_value, data_refs);
-				if (expr == expr_next) goto InvalidExpressionError;
+				if (!expr_next) goto InvalidExpressionError;
 				expr = expr_next;
 				ExpressionLogging(
 					"\tRETURN FROM SUBEXPRESSION\n"
@@ -1604,7 +1592,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 					ExpressionLogging(
 						"Found operator %hhX: \"%s\"\n"
 						"Remaining after op: \"%s\"\n",
-						ops.cur, PrintOp(ops.cur), expr_next
+						ops.cur, PrintOp(ops.cur), expr
 					);
 					continue;
 				}
@@ -1624,7 +1612,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, const char en
 					case OpData.Precedence[TernaryConditional]:
 					case OpData.Precedence[Assign]:
 						expr_next = eval_expr_new_impl(expr, end, &cur_value, ops.next, cur_value, data_refs);
-						if (expr == expr_next) goto InvalidExpressionError;
+						if (!expr_next) goto InvalidExpressionError;
 						expr = expr_next - 1;
 				}
 				/*if (OpData.Associativity[ops.cur] == RightAssociative) {
@@ -1695,20 +1683,20 @@ DealWithTernary:
 	if (cur_value) {
 		if (expr++[1] != ':') {
 			expr_next = eval_expr_new_impl(expr, ':', &cur_value, StartNoOp, 0, data_refs);
-			if (expr == expr_next) goto InvalidExpressionError;
+			if (!expr_next) goto InvalidExpressionError;
 			expr = expr_next;
 		}
 		expr_next = skip_value(expr, end);
-		if (expr == expr_next) goto InvalidValueError;
+		if (!expr_next) goto InvalidValueError;
 		expr = expr_next;
 		ExpressionLogging("Ternary TRUE remaining: \"%s\"\n", expr);
 	}
 	else {
 		expr_next = skip_value(expr, ':');
-		if (expr == expr_next) goto InvalidValueError;
+		if (!expr_next) goto InvalidValueError;
 		expr = expr_next;
 		expr_next = eval_expr_new_impl(expr, end, &cur_value, StartNoOp, 0, data_refs);
-		if (expr == expr_next) goto InvalidExpressionError;
+		if (!expr_next) goto InvalidExpressionError;
 		expr = expr_next - 1;
 		ExpressionLogging("Ternary FALSE remaining: \"%s\"\n", expr);
 	}
@@ -1724,7 +1712,7 @@ DealWithTernary:
 	else {
 		expr = find_next_op_impl(expr, &ops.cur);
 		expr_next = eval_expr_new_impl(expr, end, out, ops.cur, 0, data_refs);
-		if (expr == expr_next) goto InvalidExpressionError;
+		if (!expr_next) goto InvalidExpressionError;
 		expr = expr_next;
 	}
 	ExpressionLogging(
@@ -1746,10 +1734,10 @@ OhCrapItsATernaryHideTheKids:
 
 InvalidValueError:
 	InvalidValueErrorMessage(expr);
-	return expr;
+	return NULL;
 InvalidExpressionError:
 	ExpressionErrorMessage();
-	return expr;
+	return NULL;
 }
 
 const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source) {
@@ -1758,7 +1746,7 @@ const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_re
 	const StackSaver data_refs = { regs, rel_source };
 
 	const char *const expr_next = eval_expr_new_impl(expr, end, out, StartNoOp, 0, &data_refs);
-	if (expr == expr_next) goto ExpressionError;
+	if (!expr_next) goto ExpressionError;
 	ExpressionLogging(
 		"END EXPRESSION\n"
 		"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
@@ -1776,7 +1764,7 @@ ExpressionError:
 		"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
 		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
 		"Remaining after final: \"%s\"\n",
-		expr, *out, *out, *out, expr_next
+		expr, *out, *out, *out, expr
 	);
-	return expr_next;
+	return expr;
 }

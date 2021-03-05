@@ -69,7 +69,7 @@ typedef void (__cdecl *mod_call_type)(void *param);
 // This function is nessesairy for plugins to be able to unload themselves
 void mod_func_remove(const char *pattern, mod_call_type func);
 
-// Removes a module hook function from the unordered map of patch hook function
+// Removes a patch hook function from the unordered map of patch hook function
 void patch_func_remove(const char *pattern, mod_call_type func);
 
 #ifdef __cplusplus
@@ -91,6 +91,7 @@ mod_funcs_t* mod_func_build(exported_func_t *funcs, const char* infix);
 // order of the hook functions follows the order their DLLs were originally
 // loaded in, but is undefined within the functions of a single DLL.
 void mod_func_run(mod_funcs_t *funcs, const char *suffix, void *param);
+#endif
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.
 void mod_func_run_all(const char *suffix, void *param);
@@ -98,7 +99,6 @@ void mod_func_run_all(const char *suffix, void *param);
 // Calls mod_fun_run() with all registered functions from patches.
 void patch_func_run_all(const char *pattern, void *param);
 /// ===================
-#endif
 
 // Initializes a plug-in DLL at [hMod]. This means registering all of its
 // exports, and calling its "init" and "detour" module functions.

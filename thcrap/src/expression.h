@@ -134,6 +134,10 @@ typedef struct {
 	};
 } patch_val_t;
 
+// Parses [expr], a string containing a [relative] or <absolute> patch value and writes it [out].
+// Returns a pointer to the character following the parsed patch value or NULL on error.
+// [regs] is either the current register structure if called from a breakpoint or null.
+// [rel_source] is the address used when computing a relative value.
 const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, size_t rel_source);
 
 void DisableCodecaveNotFoundWarning(bool state);
@@ -144,5 +148,8 @@ size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
 const char* parse_brackets(const char* str, char opening);
 
-//const char* consume_value(const char* expr, const char end, size_t *const out, const x86_reg_t *const regs, const size_t rel_source);
+// Parses [expr], a string containing an expression terminated by [end].
+// Returns a pointer to the character following the parsed expression or NULL on error.
+// [regs] is either the current register structure if called from a breakpoint or null.
+// [rel_source] is the address used when computing a relative value.
 const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);

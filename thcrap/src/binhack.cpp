@@ -173,26 +173,18 @@ size_t binhack_calc_size(const char *binhack_str)
 			case '(': case '{':
 				binhack_str = check_for_binhack_cast(++binhack_str, &val);
 				copy_ptr = parse_brackets(binhack_str, temp);
-				if (binhack_str == copy_ptr) {
-					//Bracket error
-					return 0;
-				}
+				if (!copy_ptr) return 0; //Bracket error
 				binhack_str = copy_ptr;
 				break;
 			case '[':
 				val.type = VT_DWORD;
 				copy_ptr = parse_brackets(++binhack_str, '[');
-				if (binhack_str == copy_ptr) {
-					//Bracket error
-					return 0;
-				}
+				if (!copy_ptr) return 0; //Bracket error
 				binhack_str = copy_ptr;
 				break;
 			case '<':
 				copy_ptr = get_patch_value(binhack_str, &val, NULL, 0);
-				if (binhack_str == copy_ptr) {
-					return 0;
-				}
+				if (!copy_ptr) return 0;
 				binhack_str = copy_ptr;
 				break;
 			case '?':
@@ -315,7 +307,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			case '(':
 				binhack_str = check_for_binhack_cast(++binhack_str, &val);
 				copy_ptr = eval_expr(binhack_str, ')', &val.i, NULL, target_addr);
-				if (binhack_str == copy_ptr) {
+				if (!copy_ptr) {
 					log_printf("Binhack render error!\n");
 					return 1;
 				}
@@ -330,15 +322,11 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			case '{':
 				binhack_str = check_for_binhack_cast(++binhack_str, &val);
 				copy_ptr = eval_expr(binhack_str, '}', &val.i, NULL, target_addr);
-				if (binhack_str == copy_ptr) {
+				if (!copy_ptr || !val.i) {
 					log_printf("Binhack render error!\n");
 					return 1;
 				}
 				binhack_str = copy_ptr;
-				if (!val.i) {
-					log_printf("Binhack render error!\n");
-					return 1;
-				}
 				switch (val.type) {
 					case VT_BYTE:	val.b = *(uint8_t*)val.i; break;
 					case VT_SBYTE:	val.sb = *(int8_t*)val.i; break;
@@ -360,7 +348,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			case '[':
 			case '<':
 				copy_ptr = get_patch_value(binhack_str, &val, NULL, target_addr);
-				if (binhack_str == copy_ptr) {
+				if (!copy_ptr) {
 					log_printf("Binhack render error!\n");
 					return 1;
 				}

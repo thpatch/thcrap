@@ -7,6 +7,11 @@ EXPORTS
 	binhack_render
 	binhacks_apply
 
+	; Expression parsing
+	; ----------------
+	get_patch_value
+	eval_expr
+
 	; File breakpoints
 	; ----------------
 	file_mod_init

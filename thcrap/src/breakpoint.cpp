@@ -66,7 +66,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	}
 	else if (expr[0] == '[') {
 		expr_end = eval_expr(expr + 1, ']', (size_t*)&ptr, regs, NULL);
-		if (expr_end[0] != '\0') {
+		if (expr_end && expr_end[0] != '\0') {
 			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr_end);
 		}
 		return ptr;
