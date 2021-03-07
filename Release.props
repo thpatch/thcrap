@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Configuration">
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -9,20 +9,9 @@
       <StringPooling>true</StringPooling>
       <!-- Ensures assert()s to be removed, among other things. -->
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <Optimization>MaxSpeed</Optimization>
-      <!--<InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>-->
+      <Optimization>Full</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <OmitFramePointers>true</OmitFramePointers>
-      <!--<EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>-->
-      <BufferSecurityCheck>false</BufferSecurityCheck>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
-      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
-      <!--<EnableEnhancedInstructionSet>AdvancedVectorExtensions</EnableEnhancedInstructionSet>-->
-      <!--<CallingConvention>VectorCall</CallingConvention>-->
-      <AdditionalOptions>/Qfast_transcendentals /Qpar-report:2 /Qvec-report:2 /Zo /Gw /Ob3 %(AdditionalOptions)</AdditionalOptions>
-      <!--<AdditionalOptions>/Qfast_transcendentals /Zo /Gw /Ob3 %(AdditionalOptions)</AdditionalOptions>-->
     </ClCompile>
     <Link>
       <OptimizeReferences>true</OptimizeReferences>

@@ -92,6 +92,21 @@ extern "C" char* strndup(const char* src, size_t size) {
 	return ret;
 }
 
+enum {
+	InvalidDigit = 0,
+	DecimalDigit = 1,
+	HexDigit = 4
+};
+
+struct hex_lookup_table_t {
+	uint8_t digits[256] = { InvalidDigit };
+	constexpr hex_lookup_table_t(void) {
+		digits['0'] = digits['1'] = digits['2'] = digits['3'] = digits['4'] = digits['5'] = digits['6'] = digits['7'] = digits['8'] = digits['9'] = DecimalDigit;
+		digits['a'] = digits['b'] = digits['c'] = digits['d'] = digits['e'] = digits['f'] = HexDigit;
+		digits['A'] = digits['B'] = digits['C'] = digits['D'] = digits['E'] = digits['F'] = HexDigit;
+	}
+} static const hex_lookup_table;
+
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 {
 	int base = 0;
@@ -133,4 +148,23 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 		}
 	}
 	return val;
+}
+
+int is_valid_hex(char c) {
+	return hex_lookup_table.digits[c] != InvalidDigit;
+}
+
+int is_valid_hex_byte(int c1, int c2) {
+	return hex_lookup_table.digits[c1] != InvalidDigit && hex_lookup_table.digits[c2] != InvalidDigit;
+}
+
+size_t str_count_hex_digits(const char* str) {
+	const char* str_copy = str;
+	for (; hex_lookup_table.digits[*str_copy] != InvalidDigit; ++str_copy);
+	return PtrDiffStrlen(str_copy, str);
+}
+
+int str_min_hex_digits(const char* str, size_t num) {
+	for (; hex_lookup_table.digits[*str] != InvalidDigit && num; ++str, --num);
+	return num == 0;
 }
