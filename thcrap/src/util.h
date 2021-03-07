@@ -155,18 +155,6 @@ typedef struct {
   */
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
 
-// Returns whether [c] is a valid hexadecimal character
-int is_valid_hex(char c);
-
-// Returns whether [c1] and [c2] form a valid hexadecimal byte
-int is_valid_hex_byte(int c1, int c2);
-
-// Returns how many characters of [str] can be parsed as hexadecimal
-size_t str_count_hex_digits(const char* str);
-
-// Returns whether [num] characters of [str] can be parsed as hexadecimal
-int str_min_hex_digits(const char* str, size_t num);
-
 #ifdef __cplusplus
 
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer

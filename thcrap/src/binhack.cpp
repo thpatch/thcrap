@@ -19,8 +19,22 @@
  * always looks for a decimal point, and so we have to dynamically allocate
  * (and free) The Neutral Locale instead. C is garbage.
  */
-// TODO: Is this really necessary? Documentation for C and MSVC say setlocale(LC_ALL, "C") is effectively run at program startup.
-static _locale_t lc_neutral = nullptr;
+struct LocaleHolder_t {
+	_locale_t locale = nullptr;
+
+	LocaleHolder_t(int category, const char* locale_str) {
+		locale = _create_locale(category, locale_str);
+	}
+
+	~LocaleHolder_t() {
+		if (locale) {
+			_free_locale(locale);
+			locale = nullptr;
+		}
+	}
+};
+
+static LocaleHolder_t lc_neutral = LocaleHolder_t(LC_NUMERIC, "C");
 
 int hackpoints_error_function_not_found(const char *func_name, int retval)
 {
@@ -41,79 +55,59 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 	return retval;
 }
 
-// Returns false only if parsing should be aborted.
-const char* consume_value(const char *const expr, patch_val_t *const val) {
+// Returns NULL only if parsing should be aborted.
+static __declspec(noinline) const char* consume_float_value(const char *const expr, patch_val_t *const val) {
 	char* expr_next;
-
-	// Double / float
-	if (expr[0] == '+' || expr[0] == '-') {
-		if (!lc_neutral) {
-			lc_neutral = _create_locale(LC_NUMERIC, "C");
-		}
-		errno = 0;
-		double result = _strtod_l(expr, &expr_next, lc_neutral);
-		if (expr == expr_next) {
-			// Not actually a floating-point number, keep going though
-			val->type = VT_NONE;
-			return expr + 1;
-		} else if (errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL)) {
-			log_printf( "ERROR: Floating point constant \"%.*s\" out of range!\n", expr_next - expr, expr);
-			return expr;
-		}
-		if (expr_next[0] == 'f') {
-			val->type = VT_FLOAT;
-			val->f = (float)result;
-			return expr_next + 1;
-		} else {
-			val->type = VT_DOUBLE;
-			val->d = result;
-			return expr_next;
-		}
-	}
-	// TODO: Check if anyone uses single quotes already in code strings
-	//// Char
-	//else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
-	//  val->type = VT_SBYTE;
-	//	if (expr[1] == '\\') {
-	//		switch (expr[2]) {
-	//			case '0':  val->sb = '\0'; break;
-	//			case 'a':  val->sb = '\a'; break;
-	//			case 'b':  val->sb = '\b'; break;
-	//			case 'f':  val->sb = '\f'; break;
-	//			case 'n':  val->sb = '\n'; break;
-	//			case 'r':  val->sb = '\r'; break;
-	//			case 't':  val->sb = '\t'; break;
-	//			case 'v':  val->sb = '\v'; break;
-	//			case '\\': val->sb = '\\'; break;
-	//			case '\'': val->sb = '\''; break;
-	//			case '\"': val->sb = '\"'; break;
-	//			case '\?': val->sb = '\?'; break;
-	//			default:   val->sb = expr[2]; break;
-	//		}
-	//	} else {
-	//		val->sb = expr[1];
-	//	}
-	//	return expr_next + 1;
-	//}
-	// Byte
-	else if (is_valid_hex_byte(expr[0], expr[1])) {
-		const uint32_t conv = (uint32_t)*(uint16_t*)expr;
-		val->type = VT_BYTE;
-		val->b = (unsigned char)strtoul((const char*)&conv, nullptr, 16);
-		return expr + 2;
-	}
-	// Nothing, keep going
-	else {
+	errno = 0;
+	double result = _strtod_l(expr, &expr_next, lc_neutral.locale);
+	if (expr == expr_next) {
+		// Not actually a floating-point number, keep going though
 		val->type = VT_NONE;
 		return expr + 1;
+	} else if ((result == HUGE_VAL || result == -HUGE_VAL) && errno == ERANGE) {
+		log_printf("ERROR: Floating point constant \"%.*s\" out of range!\n", expr_next - expr, expr);
+		return NULL;
+	}
+	if (expr_next[0] == 'f') {
+		val->type = VT_FLOAT;
+		val->f = (float)result;
+		return expr_next + 1;
+	} else {
+		val->type = VT_DOUBLE;
+		val->d = result;
+		return expr_next;
 	}
 }
 
+// TODO: Check if anyone uses single quotes already in code strings
+//// Char
+//else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
+//  val->type = VT_SBYTE;
+//	if (expr[1] == '\\') {
+//		switch (expr[2]) {
+//			case '0':  val->sb = '\0'; break;
+//			case 'a':  val->sb = '\a'; break;
+//			case 'b':  val->sb = '\b'; break;
+//			case 'f':  val->sb = '\f'; break;
+//			case 'n':  val->sb = '\n'; break;
+//			case 'r':  val->sb = '\r'; break;
+//			case 't':  val->sb = '\t'; break;
+//			case 'v':  val->sb = '\v'; break;
+//			case '\\': val->sb = '\\'; break;
+//			case '\'': val->sb = '\''; break;
+//			case '\"': val->sb = '\"'; break;
+//			case '\?': val->sb = '\?'; break;
+//			default:   val->sb = expr[2]; break;
+//		}
+//	} else {
+//		val->sb = expr[1];
+//	}
+//	return expr_next + 1;
+//}
+
 static __forceinline const char* check_for_binhack_cast(const char* expr, patch_val_t *const val) {
-	switch (expr[0]) {
-		case 'i': case 'I':
-		case 'u': case 'U':
-		case 'f': case 'F':
+	switch (const uint8_t c = expr[0] & 0xDF) {
+		case 'I': case 'U': case 'F':
 			if (expr[1] && expr[2]) {
 				switch (const uint32_t temp = *(uint32_t*)expr & TextInt(0xDF, 0xFF, 0xFF, 0xFF)) {
 					case TextInt('F', '3', '2', ':'):
@@ -165,44 +159,70 @@ size_t binhack_calc_size(const char *binhack_str)
 	size_t size = 0;
 	patch_val_t val;
 	val.type = VT_NONE;
-	const char* copy_ptr;
 	while (1) {
-		switch (uint8_t temp = binhack_str[0]) {
-			case '\0':
+		// Parse characters
+		switch (uint8_t cur_char = binhack_str[0]) {
+			case '\0': // End of string
 				return size;
-			case '(': case '{':
-				binhack_str = check_for_binhack_cast(++binhack_str, &val);
-				copy_ptr = parse_brackets(binhack_str, temp);
-				if (!copy_ptr) return 0; //Bracket error
-				binhack_str = copy_ptr;
-				break;
-			case '[':
-				val.type = VT_DWORD;
-				copy_ptr = parse_brackets(++binhack_str, '[');
-				if (!copy_ptr) return 0; //Bracket error
-				binhack_str = copy_ptr;
-				break;
-			case '<':
-				copy_ptr = get_patch_value(binhack_str, &val, NULL, 0);
-				if (!copy_ptr) return 0;
-				binhack_str = copy_ptr;
-				break;
-			case '?':
-				if (binhack_str[1] == '?') {
-					// Found a wildcard byte, so just add
-					// a byte of size and keep going
-					val.type = VT_BYTE;
-					binhack_str += 2;
-					break;
+			case '(': case '{': case '[':
+				++binhack_str;
+				if (cur_char == '[') { // Relative patch value
+					val.type = VT_DWORD;
 				}
-				[[fallthrough]];
-			default:
-				copy_ptr = consume_value(binhack_str, &val);
-				if (binhack_str == copy_ptr) {
-					return 0;
+				else { // Expressions
+					binhack_str = check_for_binhack_cast(binhack_str, &val);
 				}
-				binhack_str = copy_ptr;
+				binhack_str = parse_brackets(binhack_str, cur_char);
+				break;
+			case '<': // Absolute patch value
+				binhack_str = get_patch_value(binhack_str, &val, NULL, 0);
+				break;
+			case '?': // Wildcard byte
+				++binhack_str;
+				if (binhack_str[0] != '?') {
+					// Not a full wildcard byte, ignore current character
+					// and parse the next character from the beginning
+					continue;
+				}
+				// Found a wildcard byte, so just add
+				// a byte of size and keep going
+				val.type = VT_BYTE;
+				++binhack_str;
+				break;
+			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+			case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+			{ // Raw byte
+				++binhack_str;
+				uint8_t low_nibble = binhack_str[0] - '0';
+				if (low_nibble >= 10) {
+					low_nibble &= 0xDF;
+					if ((int8_t)low_nibble < 17) {
+						// Next character doesn't form complete byte, so
+						// ignore the current character and parse the
+						// next character from the beginning
+						continue;
+					}
+				}
+				val.type = VT_BYTE;
+				++binhack_str;
+				break;
+			}
+			case '+': case '-': // Float
+				binhack_str = consume_float_value(binhack_str, &val);
+				break;
+			default: // Skip character
+				++binhack_str;
+				continue;
 		}
+
+		// Check for errors
+		if (!binhack_str) {
+			// Binhack calc size error
+			return 0;
+		}
+
+		// Add to size
 		switch (val.type) {
 			case VT_BYTE: case VT_SBYTE:
 				size += sizeof(int8_t);
@@ -297,81 +317,117 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 		return -1;
 	}
 
+	//const bool can_deref_target = target_addr != NULL;
+#define BinhackRenderError() binhack_str = NULL;
+
 	patch_val_t val;
-	const char* copy_ptr;
 
 	while (1) {
-		switch (binhack_str[0]) {
-			case '\0':
+		// Parse characters
+		switch (uint8_t cur_char = binhack_str[0]) {
+			case '\0': // End of string
 				return 0;
-			case '(':
+			case '(': case '{': // Expression
 				binhack_str = check_for_binhack_cast(++binhack_str, &val);
-				copy_ptr = eval_expr(binhack_str, ')', &val.i, NULL, target_addr);
-				if (!copy_ptr) {
-					log_printf("Binhack render error!\n");
-					return 1;
-				}
-				binhack_str = copy_ptr;
-				if (val.type == VT_FLOAT) {
-					val.f = (float)val.i;
-				}
-				else if (val.type == VT_DOUBLE) {
-					val.d = (double)val.i;
-				}
-				break;
-			case '{':
-				binhack_str = check_for_binhack_cast(++binhack_str, &val);
-				copy_ptr = eval_expr(binhack_str, '}', &val.i, NULL, target_addr);
-				if (!copy_ptr || !val.i) {
-					log_printf("Binhack render error!\n");
-					return 1;
-				}
-				binhack_str = copy_ptr;
-				switch (val.type) {
-					case VT_BYTE:	val.b = *(uint8_t*)val.i; break;
-					case VT_SBYTE:	val.sb = *(int8_t*)val.i; break;
-					case VT_WORD:	val.w = *(uint16_t*)val.i; break;
-					case VT_SWORD:	val.sw = *(int16_t*)val.i; break;
-					case VT_DWORD:	val.i = *(uint32_t*)val.i; break;
-					case VT_SDWORD:	val.si = *(int32_t*)val.i; break;
-					case VT_QWORD:  val.q = *(uint64_t*)val.i; break;
-					case VT_SQWORD: val.sq = *(int64_t*)val.i; break;
-					case VT_FLOAT:	val.f = *(float*)val.i; break;
-					case VT_DOUBLE:	val.d = *(double*)val.i; break;
-					case VT_STRING:
-					case VT_WSTRING:
-					//case VT_CODE:
-						log_printf("Binhack render error!\n");
-						return 1;
-				}
-				break;
-			case '[':
-			case '<':
-				copy_ptr = get_patch_value(binhack_str, &val, NULL, target_addr);
-				if (!copy_ptr) {
-					log_printf("Binhack render error!\n");
-					return 1;
-				}
-				binhack_str = copy_ptr;
-				break;
-			case '?':
-				if (binhack_str[1] == '?' && target_addr) {
-					// Found a wildcard byte, so read the contents
-					// of the appropriate address into the buffer.
-					//val.b = *(unsigned char*)(target_addr + written);
-					val.type = VT_BYTE;
-					val.b = *(unsigned char*)target_addr;
-					binhack_str += 2;
+				if (cur_char == '(') { // Raw value
+					binhack_str = eval_expr(binhack_str, ')', &val.i, NULL, target_addr);
+					if (!binhack_str) {
+						break; // Error
+					}
+					if (val.type == VT_FLOAT) {
+						val.f = (float)val.i;
+					}
+					else if (val.type == VT_DOUBLE) {
+						val.d = (double)val.i;
+					}
 					break;
 				}
-				[[fallthrough]];
-			default:
-				copy_ptr = consume_value(binhack_str, &val);
-				if (binhack_str == copy_ptr) {
-					return 1;
+				else { // Dereference
+					binhack_str = eval_expr(binhack_str, '}', &val.i, NULL, target_addr);
+					if (!binhack_str) {
+						break; // Error
+					}
+					switch (val.type) {
+						case VT_BYTE:	val.b = *(uint8_t*)val.i; break;
+						case VT_SBYTE:	val.sb = *(int8_t*)val.i; break;
+						case VT_WORD:	val.w = *(uint16_t*)val.i; break;
+						case VT_SWORD:	val.sw = *(int16_t*)val.i; break;
+						case VT_DWORD:	val.i = *(uint32_t*)val.i; break;
+						case VT_SDWORD:	val.si = *(int32_t*)val.i; break;
+						case VT_QWORD:  val.q = *(uint64_t*)val.i; break;
+						case VT_SQWORD: val.sq = *(int64_t*)val.i; break;
+						case VT_FLOAT:	val.f = *(float*)val.i; break;
+						case VT_DOUBLE:	val.d = *(double*)val.i; break;
+						case VT_STRING:
+						case VT_WSTRING:
+							//case VT_CODE:
+							BinhackRenderError();
+					}
+					break;
 				}
-				binhack_str = copy_ptr;
+			case '[': case '<': // Patch value
+				binhack_str = get_patch_value(binhack_str, &val, NULL, target_addr);
+				break;
+			case '?': // Wildcard byte
+				++binhack_str;
+				if (binhack_str[0] != '?') {
+					// Not a full wildcard byte, ignore current character
+					// and parse the next character from the beginning
+					continue;
+				}
+				/*if (!can_deref_target) {
+					// Please just don't use an invalid address for
+					// target_addr, it makes this hard to implement
+					BinhackRenderError();
+					break;
+				}*/
+				// Found a wildcard byte, so read the contents
+				// of the appropriate address into the buffer.
+				val.type = VT_BYTE;
+				val.b = *(unsigned char*)target_addr;
+				++binhack_str;
+				break;
+			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+			case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+			{ // Raw byte
+				++binhack_str;
+				uint8_t low_nibble = binhack_str[0] - '0';
+				if (low_nibble >= 10) {
+					low_nibble &= 0xDF;
+					if ((int8_t)low_nibble < 17) {
+						// Next character doesn't form complete byte, so
+						// ignore the current character and parse the
+						// next character from the beginning
+						continue;
+					}
+					low_nibble -= 7;
+				}
+				cur_char -= '0'; // high_nibble
+				if (cur_char >= 10) {
+					cur_char &= 0xDF;
+					cur_char -= 7;
+				}
+				val.b = cur_char << 4 | low_nibble;
+				val.type = VT_BYTE;
+				++binhack_str;
+				break;
+			}
+			case '+': case '-': // Float
+				binhack_str = consume_float_value(binhack_str, &val);
+				break;
+			default: // Skip character
+				++binhack_str;
+				continue;
 		}
+
+		// Check for errors
+		if (!binhack_str) {
+			log_printf("Binhack render error!\n");
+			return 1;
+		}
+
+		// Render bytes
 		switch (val.type) {
 			case VT_BYTE:
 				*(uint8_t*)binhack_buf = val.b;
@@ -442,8 +498,8 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			case VT_WSTRING:
 				*(const wchar_t**)binhack_buf = val.wstr.ptr;
 				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const wchar_t**)binhack_buf, target_addr);
-				binhack_buf += sizeof(const wchar_t**);
-				target_addr += sizeof(const wchar_t**);
+				binhack_buf += sizeof(const wchar_t*);
+				target_addr += sizeof(const wchar_t*);
 				break;
 			/*case VT_CODE: {
 				if (binhack_render(binhack_buf, target_addr, val.str.ptr)) {
@@ -820,9 +876,4 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		}
 	}
 	return 0;
-}
-
-extern "C" __declspec(dllexport) void binhack_mod_exit()
-{
-	SAFE_CLEANUP(_free_locale, lc_neutral);
 }
