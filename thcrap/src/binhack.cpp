@@ -10,7 +10,6 @@
 #include "thcrap.h"
 #include <math.h>
 #include <locale.h>
-#include <string.h>
 
 /*
  * Grumble, grumble, C is garbage and will only do string→float conversion
@@ -194,10 +193,11 @@ size_t binhack_calc_size(const char *binhack_str)
 			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
 			{ // Raw byte
 				++binhack_str;
-				uint8_t low_nibble = binhack_str[0] - '0';
-				if (low_nibble >= 10) {
+				int8_t low_nibble = binhack_str[0] - '0';
+				if ((uint8_t)low_nibble >= 10) {
 					low_nibble &= 0xDF;
-					if ((int8_t)low_nibble < 17) {
+					low_nibble -= 17;
+					if ((uint8_t)low_nibble > 6) {
 						// Next character doesn't form complete byte, so
 						// ignore the current character and parse the
 						// next character from the beginning
@@ -392,16 +392,17 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
 			{ // Raw byte
 				++binhack_str;
-				uint8_t low_nibble = binhack_str[0] - '0';
-				if (low_nibble >= 10) {
+				int8_t low_nibble = binhack_str[0] - '0';
+				if ((uint8_t)low_nibble >= 10) {
 					low_nibble &= 0xDF;
-					if ((int8_t)low_nibble < 17) {
+					low_nibble -= 17;
+					if ((uint8_t)low_nibble > 6) {
 						// Next character doesn't form complete byte, so
 						// ignore the current character and parse the
 						// next character from the beginning
 						continue;
 					}
-					low_nibble -= 7;
+					low_nibble += 10;
 				}
 				cur_char -= '0'; // high_nibble
 				if (cur_char >= 10) {

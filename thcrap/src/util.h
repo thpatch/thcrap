@@ -155,6 +155,13 @@ typedef struct {
   */
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
 
+// Returns whether [c] is a valid hexadecimal character
+bool is_valid_hex(char c);
+
+// Returns either the hexadecimal value of [c]
+// or -1 if [c] is not a valid hexadecimal character
+int8_t hex_value(char c);
+
 #ifdef __cplusplus
 
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer

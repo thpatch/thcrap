@@ -101,14 +101,13 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 
 	if(str[0] != '\0') {
 		// Module-relative hex values
-		if(!strnicmp(str, "Rx", 2)) {
-			val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
-			base = 16;
-			str += 2;
-		}
-		else if (!strnicmp(str, "0x", 2)) {
-			base = 16;
-			str += 2;
+		switch (*(uint16_t*)str & TextInt(0xFF, 0xDF)) {
+			case TextInt('R', 'X'):
+			case TextInt('r', 'X'):
+				val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
+			case TextInt('0', 'X'):
+				base = 16;
+				str += 2;
 		}
 	}
 	errno = 0;
@@ -133,4 +132,20 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 		}
 	}
 	return val;
+}
+
+bool is_valid_hex(char c) {
+	c -= '0';
+	if ((unsigned char)c < 10) return 1;
+	c &= 0xDF;
+	c -= 17;
+	return (unsigned char)c < 6;
+}
+
+int8_t hex_value(char c) {
+	c -= '0';
+	if ((unsigned char)c < 10) return c;
+	c &= 0xDF;
+	c -= 17;
+	return (unsigned char)c < 6 ? c + 10 : -1;
 }
