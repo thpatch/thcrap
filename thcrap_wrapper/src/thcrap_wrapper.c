@@ -98,9 +98,9 @@ int main()
 		commandLineUsed = rcCommandLine;
 	}
 
-	for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
+	for (volatile unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)&si)[i] = 0;
 	si.cb = sizeof(si);
-	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
+	for (volatile unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)&pi)[i] = 0;
 
 	if (CreateProcess(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
         printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);

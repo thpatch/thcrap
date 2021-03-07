@@ -232,3 +232,6 @@ docs/_build/
 
 # i18n configuration
 i18n/config.json
+/thcrap/src/_expression.cpp
+/thcrap/src/_expression.h
+/key.txt

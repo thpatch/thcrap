@@ -34,7 +34,7 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 		if (hFont == NULL) {
 			NONCLIENTMETRICS ncMetrics;
 			OSVERSIONINFO osvi;
-			for (unsigned int i = 0; i < sizeof(osvi); i++) ((BYTE*)&osvi)[i] = 0;
+			for (volatile unsigned int i = 0; i < sizeof(osvi); i++) ((BYTE*)&osvi)[i] = 0;
 			osvi.dwOSVersionInfoSize = sizeof(osvi);
 			GetVersionEx(&osvi);
 			if (osvi.dwMajorVersion >= 6) {
@@ -139,9 +139,9 @@ void installCrt(LPWSTR ApplicationPath)
 	STARTUPINFOW si;
 	PROCESS_INFORMATION pi;
 
-	for (unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)& si)[i] = 0;
+	for (volatile unsigned int i = 0; i < sizeof(si); i++) ((BYTE*)& si)[i] = 0;
 	si.cb = sizeof(si);
-	for (unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)& pi)[i] = 0;
+	for (volatile unsigned int i = 0; i < sizeof(pi); i++) ((BYTE*)& pi)[i] = 0;
 
 	LPWSTR RtPath = HeapAlloc(GetProcessHeap(), 0, (my_wcslen(ApplicationPath) + my_wcslen(L"\"vc_redist.x86.exe\" /install /quiet /norestart") + 1) * sizeof(wchar_t));
 	LPWSTR p = RtPath;

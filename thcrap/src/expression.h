@@ -146,7 +146,7 @@ void DisableCodecaveNotFoundWarning(bool state);
 // like the endptr parameter of strtol(), and can be a nullptr if not needed.
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
-const char* parse_brackets(const char* str, char opening);
+const char* parse_brackets(const char* str, char c);
 
 // Parses [expr], a string containing an expression terminated by [end].
 // Returns a pointer to the character following the parsed expression or NULL on error.

@@ -469,30 +469,24 @@ static __declspec(noinline) const char* find_matching_end(const char* str, const
 	return NULL;
 };
 
-const char* parse_brackets(const char* str, const char opening) {
-	const char* str_ref = str - 1;
-	int32_t paren_count = opening == '(';
-	int32_t square_count = opening == '[';
-	int32_t curly_count = opening == '{';
-	int32_t angle_count = opening == '<';
-	char c;
-	while (c = *++str_ref) {
-		paren_count += c == '(';
-		paren_count -= c == ')';
-		square_count += c == '[';
-		square_count -= c == ']';
-		curly_count += c == '{';
-		curly_count -= c == '}';
-		angle_count += c == '<';
-		angle_count -= c == '>';
-		if ((paren_count | square_count | curly_count | angle_count) == 0) {
-			return str_ref;
-		}
-		if ((paren_count | square_count | curly_count | angle_count) < 0) {
+const char* parse_brackets(const char* str, char c) {
+	--str;
+	int32_t paren_count = 0;
+	int32_t square_count = 0;
+	int32_t curly_count = 0;
+	do {
+		paren_count += (c == '(') - (c == ')');
+		square_count += (c == '[') - (c == ']');
+		curly_count += (c == '{') - (c == '}');
+		if (const int32_t temp = (paren_count | square_count | curly_count);
+			temp == 0) {
 			return str;
 		}
-	}
-	return str;
+		else if (temp < 0) {
+			return NULL;
+		}
+	} while (c = *++str);
+	return NULL;
 }
 
 static inline const char* __fastcall find_next_op_impl(const char *const expr, op_t *const out) {
@@ -1469,19 +1463,19 @@ RawValue:
 
 InvalidValueError:
 	InvalidValueErrorMessage(expr);
-	return expr;
+	return NULL;
 InvalidExpressionError:
 	ExpressionErrorMessage();
-	return expr;
+	return NULL;
 InvalidPatchValueError:
 	ValueBracketErrorMessage();
-	return expr;
+	return NULL;
 InvalidCharacterError:
 	BadCharacterErrorMessage();
-	return expr;
+	return NULL;
 NullDerefError:
 	NullDerefErrorMessage();
-	return expr;
+	return NULL;
 }
 
 static __forceinline const char* __fastcall skip_value(const char *const expr, const char end) {

@@ -48,7 +48,7 @@ typedef enum {
 } sprite_alpha_t;
 
 // All per-entry ANM data we need
-typedef struct {
+typedef struct anm_entry_t {
 	// X and Y offsets of the THTX inside the image
 	png_uint_32 x;
 	png_uint_32 y;
