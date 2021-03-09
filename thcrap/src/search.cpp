@@ -16,7 +16,6 @@ typedef struct alignas(16) {
 	json_t *versions;
 	json_t *found;
 	json_t *result;
-	DWORD max_threads;
 	volatile DWORD cur_threads;
 	CRITICAL_SECTION cs_result;
 } search_state_t;
@@ -126,7 +125,6 @@ DWORD WINAPI SearchThread(void *param)
 		local_dir[dir_len - 3] = 0;
 
 		if(w32fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-			DWORD thread_id;
 			size_t cur_file_len = dir_len + wcslen(w32fd.cFileName) + 2;
 			wchar_t *cur_file = (wchar_t*)malloc(cur_file_len * sizeof(wchar_t));
 
@@ -134,13 +132,7 @@ DWORD WINAPI SearchThread(void *param)
 			wcscat(cur_file, w32fd.cFileName);
 			PathAddBackslashW(cur_file);
 
-			// Execute the function normally if we're above the thread limit
-			if(InterlockedCompareExchange(&state.cur_threads, -1, -1) > state.max_threads) {
-				SearchThread(cur_file);
-			} else {
-				HANDLE hThread = CreateThread(NULL, 0, SearchThread, cur_file, 0, &thread_id);
-				if (hThread) CloseHandle(hThread);
-			}
+			SearchThread(cur_file);
 		} else if(
 			(PathMatchSpecW(w32fd.cFileName, L"*.exe")) &&
 			(w32fd.nFileSizeLow >= state.size_min) &&
@@ -192,7 +184,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	state.size_min = 0xFFFFFFFF;
 	state.size_max = 0;
 	state.cur_threads = 0;
-	state.max_threads = 0;
 	state.found = json_object();
 	state.result = games_in ? games_in : json_object();
 	InitializeCriticalSection(&state.cs_result);
