@@ -116,7 +116,7 @@ static HANDLE LaunchSearchThread(const wchar_t *dir)
 	return CreateThread(NULL, 0, SearchThread, (void*)dir, 0, &thread_id);
 }
 
-json_t* SearchForGames(const char *dir, json_t *games_in)
+json_t* SearchForGames(const wchar_t *dir, json_t *games_in)
 {
 	const char *versions_js_fn = "versions.js";
 	json_t *sizes;
@@ -156,12 +156,8 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	HANDLE threads[max_threads];
 	DWORD count = 0;
 
-	wchar_t *dir_w = NULL;
 	if(dir && dir[0]) {
-		size_t dir_len = strlen(dir) + 1;
-		dir_w = (wchar_t*)malloc(dir_len * sizeof(wchar_t));
-		StringToUTF16(dir_w, dir, dir_len);
-		if ((threads[count] = LaunchSearchThread(dir_w)) != NULL)
+		if ((threads[count] = LaunchSearchThread(dir)) != NULL)
 			count++;
 	} else {
 		wchar_t drive_strings[512];
@@ -184,7 +180,6 @@ json_t* SearchForGames(const char *dir, json_t *games_in)
 	WaitForMultipleObjects(count, threads, TRUE, INFINITE);
 	while (count)
 		CloseHandle(threads[--count]);
-	free(dir_w);
 
 	DeleteCriticalSection(&state.cs_result);
 	json_decref(state.versions);

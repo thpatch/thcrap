@@ -286,9 +286,10 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			search_path[0] ? " in " : " on the entire system",
 			search_path[0] ? search_path: ""
 		);
-		console_print_percent(-1);
-		found = SearchForGames(search_path, games);
 		VLA_FREE(search_path);
+		console_print_percent(-1);
+		found = SearchForGames(search_path_w, games);
+		
 		if(json_object_size(found)) {
 			found = sort_json(found);
 			char *games_js_str = NULL;
