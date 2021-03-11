@@ -188,6 +188,8 @@ bool ConsoleDialog::popQueue(LineEntry &ent) {
 void ConsoleDialog::pushQueue(LineEntry &&ent) {
 	std::lock_guard<std::mutex> lock(mutex);
 	queue.push(std::move(ent));
+	if (queue.size() > 10)
+		readQueue();
 }
 
 void ConsoleDialog::setMode(Mode mode) {
@@ -406,7 +408,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 				pending = L"";
 				break;
 			case LINE_PENDING:
-				pending = ent.content;
+				pending = std::move(ent.content);
 				break;
 			}
 		}
