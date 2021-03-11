@@ -85,7 +85,7 @@ std::string EnterRunCfgFN(std::string& run_cfg_fn)
 
 		std::wstring run_cfg_fn_new = console_read();
 		if (run_cfg_fn_new[0])
-			run_cfg_fn = to_utf8_string(run_cfg_fn_new);
+			run_cfg_fn = to_utf8(run_cfg_fn_new);
 
 		std::string run_cfg_fn_js = run_cfg_fn + ".js";
 		if (PathFileExists(run_cfg_fn_js.c_str())) {

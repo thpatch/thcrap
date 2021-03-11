@@ -562,7 +562,7 @@ void log_windows(const char* text) {
 void con_vprintf(const char *str, va_list va)
 {
 	if (str)
-		log_windows(to_utf16_string(uformat(str, va)));
+		log_windows(to_utf16(stringf(str, va)));
 }
 void con_printf(const char *str, ...)
 {

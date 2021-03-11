@@ -33,7 +33,7 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 		json_object_foreach(locs, loc, val) {
 			++i;
 			con_clickable(std::to_wstring(i),
-				to_utf16_string(uformat(" [%2d] %s: %s", i, loc, json_string_value(val))));
+				to_utf16(stringf(" [%2d] %s: %s", i, loc, json_string_value(val))));
 		}
 		printf("\n");
 		do {

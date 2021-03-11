@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 #include <string>
+#include <string_view>
 #include <stdio.h>
 #include "console.h"
 
@@ -76,21 +77,21 @@ template <size_t N = 2> char Ask(
 	return '\0';
 }
 
-inline std::string to_utf8_string(const std::wstring &wstr)
+inline std::string to_utf8(std::wstring_view wstr)
 {
 	std::string str(wstr.size() * UTF8_MUL, '\0');
-	StringToUTF8(str.data(), wstr.c_str(), str.size() + 1);
+	StringToUTF8(str.data(), wstr.data(), str.size());
 	str.resize(strlen(str.c_str()));
 	return str;
 }
-inline std::wstring to_utf16_string(const std::string &str)
+inline std::wstring to_utf16(std::string_view str)
 {
 	std::wstring wstr(str.size(), '\0');
-	StringToUTF16(wstr.data(), str.c_str(), wstr.size() + 1);
+	StringToUTF16(wstr.data(), str.data(), wstr.size());
 	wstr.resize(wcslen(wstr.c_str()));
 	return wstr;
 }
-inline std::string uformat(const char *format, va_list va)
+inline std::string stringf(const char *format, va_list va)
 {
 	size_t len = _vscprintf(format, va);
 	std::string str(len, '\0');
@@ -98,15 +99,15 @@ inline std::string uformat(const char *format, va_list va)
 	str.resize(strlen(str.c_str()));
 	return str;
 }
-inline std::string uformat(const char *format, ...)
+inline std::string stringf(const char *format, ...)
 {
 	va_list va;
 	va_start(va, format);
-	std::string str = uformat(format, va);
+	std::string str = stringf(format, va);
 	va_end(va);
 	return str;
 }
-inline std::wstring wformat(const wchar_t *format, va_list va)
+inline std::wstring wstringf(const wchar_t *format, va_list va)
 {
 	size_t len = _vscwprintf(format, va);
 	std::wstring str(len, L'\0');
@@ -114,11 +115,11 @@ inline std::wstring wformat(const wchar_t *format, va_list va)
 	str.resize(wcslen(str.c_str()));
 	return str;
 }
-inline std::wstring wformat(const wchar_t *format, ...)
+inline std::wstring wstringf(const wchar_t *format, ...)
 {
 	va_list va;
 	va_start(va, format);
-	std::wstring str = wformat(format, va);
+	std::wstring str = wstringf(format, va);
 	va_end(va);
 	return str;
 }
