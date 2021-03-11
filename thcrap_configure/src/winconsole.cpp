@@ -522,15 +522,13 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 static bool needAppend = false;
 static bool dontUpdate = false;
-void log_windows(const char* text) {
+void log_windows(const wchar_t *text) {
 	if (!g_console->isAlive())
 		return;
 	if (!dontUpdate)
 		g_console->preupdate();
 
-	WCHAR_T_DEC(text);
-	WCHAR_T_CONV(text);
-	wchar_t *start = text_w, *end = NULL;
+	const wchar_t *start = text, *end = NULL;
 	bool completeLine = true;
 	while (completeLine) {
 		end = wcschr(start, '\n');
@@ -552,7 +550,7 @@ void log_windows(const char* text) {
 		}
 		start = end + 1;
 	}
-	WCHAR_T_FREE(text);
+	
 	if (!completeLine)
 		needAppend = true;
 
@@ -561,12 +559,18 @@ void log_windows(const char* text) {
 		g_console->update();
 	}
 }
+void log_windows(const char* text) {
+	WCHAR_T_DEC(text);
+	WCHAR_T_CONV(text);
+	log_windows(text_w);
+	WCHAR_T_FREE(text);
+}
 void log_nwindows(const char* text, size_t len) {
-	VLA(char, ntext, len+1);
-	memcpy(ntext, text, len);
-	ntext[len] = '\0';
-	log_windows(ntext);
-	VLA_FREE(ntext);
+	VLA(wchar_t, text_w, len + 1);
+	size_t len_w = StringToUTF16(text_w, text, len);
+	text_w[len_w] = '\0';
+	log_windows(text_w);
+	VLA_FREE(text_w);
 }
 /* --- code proudly stolen from thcrap/log.cpp --- */
 #define VLA_VSPRINTF(str, va) \
