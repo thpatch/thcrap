@@ -4,6 +4,7 @@
 #define ProgressBar_SetRange(hwndCtl, low, high) ((DWORD)SNDMSG((hwndCtl), PBM_SETRANGE, 0L, MAKELPARAM((low), (high))))
 #define ProgressBar_SetPos(hwndCtl, pos) ((int)(DWORD)SNDMSG((hwndCtl), PBM_SETPOS, (WPARAM)(int)(pos), 0L))
 #define ProgressBar_SetMarquee(hwndCtl, fEnable, animTime) ((BOOL)(DWORD)SNDMSG((hwndCtl), PBM_SETMARQUEE, (WPARAM)(BOOL)(fEnable), (LPARAM)(DWORD)(animTime)))
+#include "configure.h"
 #include "console.h"
 #include "dialog.h"
 #include "resource.h"
@@ -558,23 +559,11 @@ void log_nwindows(const char* text, size_t len) {
 void log_windows(const char* text) {
 	log_nwindows(text, strlen(text));
 }
-/* --- code proudly stolen from thcrap/log.cpp --- */
-#define VLA_VSPRINTF(str, va) \
-	size_t str##_full_len = _vscprintf(str, va) + 1; \
-	VLA(char, str##_full, str##_full_len); \
-	/* vs*n*printf is not available in msvcrt.dll. Doesn't matter anyway. */ \
-	vsprintf(str##_full, str, va);
-
 void con_vprintf(const char *str, va_list va)
 {
-	if (str) {
-		VLA_VSPRINTF(str, va);
-		log_windows(str_full);
-		//printf("%s", str_full);
-		VLA_FREE(str_full);
-	}
+	if (str)
+		log_windows(to_utf16_string(uformat(str, va)));
 }
-
 void con_printf(const char *str, ...)
 {
 	if (str) {
