@@ -3,7 +3,7 @@
 #include <string>
 void console_init();
 void con_printf(const char *str, ...);
-void con_clickable(std::wstring &&response);
+void con_clickable(std::wstring &&response, std::wstring &&line);
 std::wstring console_read(void);
 void cls(SHORT top);
 void pause(void);

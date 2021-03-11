@@ -162,12 +162,6 @@ int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 	return 1;
 }
 
-int PrettyPrintPatch(const char *patch, const char *title)
-{
-    con_printf("%-20s %s\n", patch, title);
-	return 0;
-}
-
 // Prints all patches of [repo_js] that are not part of the [sel_stack],
 // filling [list_order] with the order they appear in.
 // Returns the final array size of [list_order].
@@ -195,9 +189,8 @@ int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_
 				print_header = false;
 			}
 			++list_count;
-			con_clickable(std::to_wstring(list_count));
-            con_printf(" [%2d] ", list_count);
-			PrettyPrintPatch(patch.patch_id, patch.title);
+			con_clickable(std::to_wstring(list_count),
+				to_utf16_string(uformat(" [%2d] %-20s %s", list_count, patch.patch_id, patch.title)));
 		}
 	}
 	if(!print_header) {
@@ -233,9 +226,8 @@ int PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, pat
 		std::string full_id = std::string(sel.repo_id) + "/" + sel.patch_id;
 
 		++list_count;
-		con_clickable(std::to_wstring(list_count));
-        con_printf("  %2d. ", list_count);
-		PrettyPrintPatch(full_id.c_str(), patch->title);
+		con_clickable(std::to_wstring(list_count),
+			to_utf16_string(uformat("  %2d. %-20s %s", list_count, full_id.c_str(), patch->title)));
 
 		list_order.push_back(sel);
 	}

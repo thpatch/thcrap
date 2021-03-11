@@ -38,14 +38,6 @@ int file_write_text(const char *fn, const char *str)
 	return ret;
 }
 
-std::string to_utf8_string(const std::wstring &wstr)
-{
-	std::string str(wstr.size() * UTF8_MUL, '\0');
-	StringToUTF8(str.data(), wstr.c_str(), str.size() + 1);
-	str.resize(strlen(str.c_str()));
-	return str;
-}
-
 std::string run_cfg_fn_build(const patch_sel_stack_t& sel_stack)
 {
 	bool skip = false;

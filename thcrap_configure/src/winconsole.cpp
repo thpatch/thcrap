@@ -65,12 +65,12 @@ public:
 enum LineType {
 	LINE_ADD,
 	LINE_APPEND,
-	LINE_CLS,
-	LINE_PENDING
+	LINE_CLS
 };
 struct LineEntry {
 	LineType type;
 	std::wstring content;
+	std::wstring response;
 };
 
 struct ConsoleDialog : Dialog<ConsoleDialog> {
@@ -122,7 +122,6 @@ private:
 	std::vector<std::wstring> responses;
 
 	int last_index = 0;
-	std::wstring pending = L"";
 	std::wstring last_line = L"";
 	HICON hIconSm = NULL;
 	HICON hIcon = NULL;
@@ -392,24 +391,18 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			switch (ent.type) {
 			case LINE_ADD:
 				last_index = ListBox_AddString(list, ent.content.c_str());
-				responses.push_back(std::exchange(pending, L""));
+				responses.push_back(std::move(ent.response));
 				last_line = std::move(ent.content);
 				break;
 			case LINE_APPEND: {
 				last_line += ent.content;
 				ListBox_DeleteString(list, last_index);
 				ListBox_InsertString(list, last_index, last_line.c_str());
-				if (!pending.empty())
-					responses[last_index] = std::exchange(pending, L"");
 				break;
 			}
 			case LINE_CLS:
 				ListBox_ResetContent(list);
 				responses.clear();
-				pending = L"";
-				break;
-			case LINE_PENDING:
-				pending = std::move(ent.content);
 				break;
 			}
 		}
@@ -534,11 +527,11 @@ void log_windows(std::wstring_view text) {
 		std::wstring_view line = text.substr(0, len);
 		
 		if (needAppend == true) {
-			LineEntry le = { LINE_APPEND, std::wstring(line) };
+			LineEntry le = { LINE_APPEND, std::wstring(line), L"" };
 			g_console->pushQueue(std::move(le));
 			needAppend = false;
 		} else {
-			LineEntry le = { LINE_ADD, std::wstring(line) };
+			LineEntry le = { LINE_ADD, std::wstring(line), L"" };
 			g_console->pushQueue(std::move(le));
 		}
 
@@ -592,8 +585,8 @@ void con_printf(const char *str, ...)
 	}
 }
 /* ------------------- */
-void con_clickable(std::wstring &&response) {
-	LineEntry le = { LINE_PENDING, std::move(response)};
+void con_clickable(std::wstring &&response, std::wstring &&line) {
+	LineEntry le = { LINE_ADD, std::move(line), std::move(response)};
 	g_console->pushQueue(std::move(le));
 }
 
@@ -629,7 +622,7 @@ std::wstring console_read() {
 	return input;
 }
 void cls(SHORT top) {
-	LineEntry le = { LINE_CLS, L"" };
+	LineEntry le = { LINE_CLS, L"", L"" };
 	g_console->pushQueue(std::move(le));
 	g_console->readQueue();
 	needAppend = false;

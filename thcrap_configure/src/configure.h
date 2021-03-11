@@ -9,6 +9,8 @@
 #include <list>
 #include <map>
 #include <vector>
+#include <string>
+#include <stdio.h>
 #include "console.h"
 
 typedef std::list<patch_desc_t> patch_sel_stack_t;
@@ -72,6 +74,53 @@ template <size_t N = 2> char Ask(
 				return c;
 	}
 	return '\0';
+}
+
+inline std::string to_utf8_string(const std::wstring &wstr)
+{
+	std::string str(wstr.size() * UTF8_MUL, '\0');
+	StringToUTF8(str.data(), wstr.c_str(), str.size() + 1);
+	str.resize(strlen(str.c_str()));
+	return str;
+}
+inline std::wstring to_utf16_string(const std::string &str)
+{
+	std::wstring wstr(str.size(), '\0');
+	StringToUTF16(wstr.data(), str.c_str(), wstr.size() + 1);
+	wstr.resize(wcslen(wstr.c_str()));
+	return wstr;
+}
+inline std::string uformat(const char *format, va_list va)
+{
+	size_t len = _vscprintf(format, va);
+	std::string str(len, '\0');
+	vsnprintf(str.data(), str.size() + 1, format, va);
+	str.resize(strlen(str.c_str()));
+	return str;
+}
+inline std::string uformat(const char *format, ...)
+{
+	va_list va;
+	va_start(va, format);
+	std::string str = uformat(format, va);
+	va_end(va);
+	return str;
+}
+inline std::wstring wformat(const wchar_t *format, va_list va)
+{
+	size_t len = _vscwprintf(format, va);
+	std::wstring str(len, L'\0');
+	vswprintf(str.data(), str.size() + 1, format, va);
+	str.resize(wcslen(str.c_str()));
+	return str;
+}
+inline std::wstring wformat(const wchar_t *format, ...)
+{
+	va_list va;
+	va_start(va, format);
+	std::wstring str = wformat(format, va);
+	va_end(va);
+	return str;
 }
 
 json_t* ConfigureLocateGames(const char *games_js_path);
