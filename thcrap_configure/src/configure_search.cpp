@@ -278,16 +278,13 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			CoTaskMemFree(pidl);
 		}
 
-		int search_path_len = wcslen(search_path_w)*UTF8_MUL + 1;
-		VLA(char, search_path, search_path_len);
-		StringToUTF8(search_path, search_path_w, search_path_len);
+		std::string search_path = to_utf8(search_path_w);
 		repeat = 0;
 		log_printf(
 			"Searching games%s%s... this may take a while...\n\n",
 			search_path[0] ? " in " : " on the entire system",
-			search_path[0] ? search_path: ""
+			search_path[0] ? search_path.c_str(): ""
 		);
-		VLA_FREE(search_path);
 		console_print_percent(-1);
 		found = SearchForGames(search_path_w, games);
 		

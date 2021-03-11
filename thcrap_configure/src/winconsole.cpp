@@ -551,13 +551,10 @@ void log_windows(std::wstring_view text) {
 }
 
 void log_nwindows(const char* text, size_t len) {
-	VLA(wchar_t, text_w, len);
-	size_t len_w = StringToUTF16(text_w, text, len);
-	log_windows(std::wstring_view(text_w, len_w));
-	VLA_FREE(text_w);
+	log_windows(to_utf16({text, len}));
 }
 void log_windows(const char* text) {
-	log_nwindows(text, strlen(text));
+	log_windows(to_utf16(text));
 }
 void con_vprintf(const char *str, va_list va)
 {
