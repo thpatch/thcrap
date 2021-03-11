@@ -438,14 +438,10 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		setMode(MODE_PROGRESS_BAR);
 		return TRUE;
 	case WM_SIZE: {
-		RECT baseunits;
-		baseunits.left = baseunits.right = 100;
-		baseunits.top = baseunits.bottom = 100;
+		RECT baseunits = { 4, 8, 4, 8 };
 		MapDialogRect(hWnd, &baseunits);
-		int basex = 4 * baseunits.right / 100;
-		int basey = 8 * baseunits.bottom / 100;
-		long origright = LOWORD(lParam) * 4 / basex;
-		long origbottom = HIWORD(lParam) * 8 / basey;
+		long origright = MulDiv(LOWORD(lParam), 4, baseunits.right);
+		long origbottom = MulDiv(HIWORD(lParam), 8, baseunits.bottom);
 		RECT rbutton1, rbutton2, rlist, redit, rwide;
 		const int MARGIN = 7;
 		const int PADDING = 2;
