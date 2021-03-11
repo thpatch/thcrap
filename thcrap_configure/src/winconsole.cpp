@@ -63,10 +63,10 @@ public:
 	}
 };
 
-enum LineType {
-	LINE_ADD,
-	LINE_APPEND,
-	LINE_CLS
+enum class LineType {
+	Add,
+	Append,
+	Clear
 };
 struct LineEntry {
 	LineType type;
@@ -89,14 +89,15 @@ private:
 	HWND buttonYes = NULL;
 	HWND buttonNo = NULL;
 
-	enum Mode {
-		MODE_INPUT = 0,
-		MODE_PAUSE,
-		MODE_PROGRESS_BAR,
-		MODE_NONE,
-		MODE_ASK_YN,
+	enum class Mode {
+		Uninitalized = -1,
+		Input = 0,
+		Pause,
+		ProgressBar,
+		None,
+		AskYn
 	};
-	int currentMode = -1;
+	Mode currentMode = Mode::Uninitalized;
 	void setMode(Mode mode);
 
 	static LRESULT CALLBACK editProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -206,14 +207,14 @@ void ConsoleDialog::setMode(Mode mode) {
 	};
 
 	static const bool modes[5][6] = {
-		{ true, true, false, false, false, false }, // MODE_INPUT
-		{ true, false, false, false, false, false }, // MODE_PAUSE
-		{ false, false, true, false, false, false }, // MODE_PROGRESS_BAR
-		{ false, false, false, true, false, false }, // MODE_NONE
-		{ false, false, false, false, true, true }, // MODE_ASK_YN
+		{ true, true, false, false, false, false }, // Input
+		{ true, false, false, false, false, false }, // Pause
+		{ false, false, true, false, false, false }, // ProgressBar
+		{ false, false, false, true, false, false }, // None
+		{ false, false, false, false, true, true }, // AskYn
 	};
 	for (int i = 0; i < 6; i++) {
-		if (modes[mode][i]) {
+		if (modes[int(mode)][i]) {
 			EnableWindow(this->*items[i], TRUE);
 			ShowWindow(this->*items[i], SW_SHOW);
 		} else {
@@ -273,10 +274,10 @@ LRESULT CALLBACK ConsoleDialog::listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 		// nescessary for control to recieve VK_RETURN
 		return CallWindowProcW(origListProc, hWnd, uMsg, wParam, lParam) | DLGC_WANTALLKEYS;
 	} else if (uMsg == WM_CHAR) {
-		if (dlg->currentMode == MODE_INPUT) {
+		if (dlg->currentMode == Mode::Input) {
 			SetFocus(dlg->edit);
 			SendMessage(dlg->edit, WM_CHAR, wParam, lParam);
-		} else if (dlg->currentMode == MODE_ASK_YN) {
+		} else if (dlg->currentMode == Mode::AskYn) {
 			if (wParam == L'Y' || wParam == L'y')
 				SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON_YES, BN_CLICKED), (LPARAM)dlg->buttonYes);
 			else if (wParam == L'N' || wParam == L'n')
@@ -330,7 +331,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
 		if (hIcon)
 			SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
-		setMode(MODE_NONE);
+		setMode(Mode::None);
 
 		RECT workarea, winrect;
 		SystemParametersInfo(SPI_GETWORKAREA, 0, (PVOID)&workarea, 0);
@@ -349,22 +350,22 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case WM_COMMAND:
 		switch (LOWORD(wParam)) {
 		case IDC_BUTTON1:
-			if (currentMode == MODE_INPUT) {
+			if (currentMode == Mode::Input) {
 				int input_len = GetWindowTextLengthW(edit);
 				std::wstring input_str(input_len, L'\0');
 				GetWindowTextW(edit, input_str.data(), input_len+1);
 				SetWindowTextW(edit, L"");
-				setMode(MODE_NONE);
+				setMode(Mode::None);
 				onInput.set_value(input_str);
-			} else if (currentMode == MODE_PAUSE) {
-				setMode(MODE_NONE);
+			} else if (currentMode == Mode::Pause) {
+				setMode(Mode::None);
 				onUnpause.set_value();
 			}
 			return TRUE;
 		case IDC_BUTTON_YES:
 		case IDC_BUTTON_NO:
-			if (currentMode == MODE_ASK_YN) {
-				setMode(MODE_NONE);
+			if (currentMode == Mode::AskYn) {
+				setMode(Mode::None);
 				onYesNo.set_value(LOWORD(wParam) == IDC_BUTTON_YES ? 'y' : 'n');
 			}
 			return TRUE;
@@ -372,12 +373,12 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 			switch (HIWORD(wParam)) {
 			case LBN_DBLCLK: {
 				int cur = ListBox_GetCurSel((HWND)lParam);
-				if (currentMode == MODE_INPUT && cur != LB_ERR && (!responses[cur].empty() || cur == last_index)) {
+				if (currentMode == Mode::Input && cur != LB_ERR && (!responses[cur].empty() || cur == last_index)) {
 					SetDlgItemTextW(hWnd, IDC_EDIT1, L"");
-					setMode(MODE_NONE);
+					setMode(Mode::None);
 					onInput.set_value(responses[cur]);
-				} else if (currentMode == MODE_PAUSE) {
-					setMode(MODE_NONE);
+				} else if (currentMode == Mode::Pause) {
+					setMode(Mode::None);
 					onUnpause.set_value();
 				}
 				return TRUE;
@@ -390,18 +391,18 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		LineEntry ent;
 		while (popQueue(ent)) {
 			switch (ent.type) {
-			case LINE_ADD:
+			case LineType::Add:
 				last_index = ListBox_AddString(list, ent.content.c_str());
 				responses.push_back(std::move(ent.response));
 				last_line = std::move(ent.content);
 				break;
-			case LINE_APPEND: {
+			case LineType::Append: {
 				last_line += ent.content;
 				ListBox_DeleteString(list, last_index);
 				ListBox_InsertString(list, last_index, last_line.c_str());
 				break;
 			}
-			case LINE_CLS:
+			case LineType::Clear:
 				ListBox_ResetContent(list);
 				responses.clear();
 				break;
@@ -412,17 +413,17 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 	case APP_GETINPUT:
 		onInput = std::move(*(std::promise<std::wstring>*)lParam);
 		ReplyMessage(0L);
-		setMode(MODE_INPUT);
+		setMode(Mode::Input);
 		return TRUE;
 	case APP_PAUSE:
 		onUnpause = std::move(*(std::promise<void>*)lParam);
 		ReplyMessage(0L);
-		setMode(MODE_PAUSE);
+		setMode(Mode::Pause);
 		return TRUE;
 	case APP_ASKYN:
 		onYesNo = std::move(*(std::promise<char>*)lParam);
 		ReplyMessage(0L);
-		setMode(MODE_ASK_YN);
+		setMode(Mode::AskYn);
 		return TRUE;
 	case APP_PREUPDATE:
 		SetWindowRedraw(list, FALSE);
@@ -435,7 +436,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		setMarquee(wParam == -1);
 		if (wParam != -1)
 			ProgressBar_SetPos(progress, wParam);
-		setMode(MODE_PROGRESS_BAR);
+		setMode(Mode::ProgressBar);
 		return TRUE;
 	case WM_SIZE: {
 		RECT baseunits = { 4, 8, 4, 8 };
@@ -524,11 +525,11 @@ void log_windows(std::wstring_view text) {
 		std::wstring_view line = text.substr(0, len);
 		
 		if (needAppend == true) {
-			LineEntry le = { LINE_APPEND, std::wstring(line), L"" };
+			LineEntry le = { LineType::Append, std::wstring(line), L"" };
 			g_console->pushQueue(std::move(le));
 			needAppend = false;
 		} else {
-			LineEntry le = { LINE_ADD, std::wstring(line), L"" };
+			LineEntry le = { LineType::Add, std::wstring(line), L"" };
 			g_console->pushQueue(std::move(le));
 		}
 
@@ -568,7 +569,7 @@ void con_printf(const char *str, ...)
 }
 /* ------------------- */
 void con_clickable(std::wstring &&response, std::wstring &&line) {
-	LineEntry le = { LINE_ADD, std::move(line), std::move(response)};
+	LineEntry le = { LineType::Add, std::move(line), std::move(response)};
 	g_console->pushQueue(std::move(le));
 }
 
@@ -604,7 +605,7 @@ std::wstring console_read() {
 	return input;
 }
 void cls(SHORT top) {
-	LineEntry le = { LINE_CLS, L"", L"" };
+	LineEntry le = { LineType::Clear, L"", L"" };
 	g_console->pushQueue(std::move(le));
 	g_console->readQueue();
 	needAppend = false;
