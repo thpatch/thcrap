@@ -39,6 +39,7 @@
     <ClCompile Include="$(GoogleTestDir)src\gtest_main.cc">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="expression.cpp" />
     <ClCompile Include="src\repo.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

@@ -197,7 +197,7 @@ static inline void __fastcall cave_fix(BYTE *cave, BYTE *bp_addr)
 		size_t dist_old = *((size_t*)(cave + 1));
 		size_t dist_new = dist_old + bp_addr - cave;
 
-		memcpy(cave + 1, &dist_new, sizeof(dist_new));
+		*(size_t*)(cave + 1) = dist_new;
 
 		log_printf("fixing rel.addr. 0x%p to 0x%p... \n", dist_old, dist_new);
 	}
@@ -222,13 +222,12 @@ static bool __fastcall breakpoint_local_init(
 	}
 	bp_local->func = (BreakpointFunc_t)func_get(bp_key);
 
-	if (!bp_local->func) {
+	const bool func_found = (bool)bp_local->func;
+	if (!func_found) {
 		hackpoints_error_function_not_found(bp_key, 0);
-		VLA_FREE(bp_key);
-		return false;
 	}
 	VLA_FREE(bp_key);
-	return true;
+	return func_found;
 }
 
 extern "C" void *bp_entry_end;
@@ -375,7 +374,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 				if (addr_ref->type == NULL_ADDR) {
 					continue;
 				}
-				memcpy(callcave_p, (uint8_t*)&bp_entry, call_size);
+				memcpy(callcave_p, &bp_entry, call_size);
 
 				PatchBPEntryInstance(callcave_p, bp_entry_indexptr, size_t, sourcecave_p);
 				PatchBPEntryInstance(callcave_p, bp_entry_localptr, const breakpoint_local_t*, cur);

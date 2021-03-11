@@ -55,6 +55,9 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 }
 
 // Returns NULL only if parsing should be aborted.
+// Declared noinline since float values aren't used
+// frequently and otherwise binhack_calc_size/binhack_render
+// waste a whole register storing the address of errno
 static __declspec(noinline) const char* consume_float_value(const char *const expr, patch_val_t *const val) {
 	char* expr_next;
 	errno = 0;
@@ -104,50 +107,54 @@ static __declspec(noinline) const char* consume_float_value(const char *const ex
 //	return expr_next + 1;
 //}
 
+// Declared forceinline since the compiler can't
+// figure it out otherwise and copy/pasting this
+// into two functions would be a pain
 static __forceinline const char* check_for_binhack_cast(const char* expr, patch_val_t *const val) {
-	switch (const uint8_t c = expr[0] & 0xDF) {
-		case 'I': case 'U': case 'F':
+	switch (const uint8_t c = expr[0] | 0x20) {
+		case 'i': case 'u': case 'f':
 			if (expr[1] && expr[2]) {
-				switch (const uint32_t temp = *(uint32_t*)expr & TextInt(0xDF, 0xFF, 0xFF, 0xFF)) {
-					case TextInt('F', '3', '2', ':'):
+				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
+					case TextInt('f', '3', '2', ':'):
 						val->type = VT_FLOAT;
 						return expr + 4;
-					case TextInt('F', '6', '4', ':'):
+					case TextInt('f', '6', '4', ':'):
 						val->type = VT_DOUBLE;
 						return expr + 4;
-					case TextInt('U', '1', '6', ':'):
+					case TextInt('u', '1', '6', ':'):
 						val->type = VT_WORD;
 						return expr + 4;
-					case TextInt('I', '1', '6', ':'):
+					case TextInt('i', '1', '6', ':'):
 						val->type = VT_SWORD;
 						return expr + 4;
-					case TextInt('U', '3', '2', ':'):
+					case TextInt('u', '3', '2', ':'):
 						val->type = VT_DWORD;
 						return expr + 4;
-					case TextInt('I', '3', '2', ':'):
+					case TextInt('i', '3', '2', ':'):
 						val->type = VT_SDWORD;
 						return expr + 4;
-					case TextInt('U', '6', '4', ':'):
+					case TextInt('u', '6', '4', ':'):
 						val->type = VT_QWORD;
 						return expr + 4;
-					case TextInt('I', '6', '4', ':'):
+					case TextInt('i', '6', '4', ':'):
 						val->type = VT_SQWORD;
 						return expr + 4;
 					default:
 						switch (temp & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
-							case TextInt('U', '8', ':'):
+							case TextInt('u', '8', ':'):
 								val->type = VT_BYTE;
 								return expr + 3;
-							case TextInt('I', '8', ':'):
+							case TextInt('i', '8', ':'):
 								val->type = VT_SBYTE;
 								return expr + 3;
 						}
 				}
 			}
+		default:
+			//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+			val->type = VT_DWORD;
+			return expr;
 	}
-	//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
-	val->type = VT_DWORD;
-	return expr;
 }
 
 size_t binhack_calc_size(const char *binhack_str)
@@ -191,23 +198,17 @@ size_t binhack_calc_size(const char *binhack_str)
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 			case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
 			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
-			{ // Raw byte
+				// Raw byte
 				++binhack_str;
-				int8_t low_nibble = binhack_str[0] - '0';
-				if ((uint8_t)low_nibble >= 10) {
-					low_nibble &= 0xDF;
-					low_nibble -= 17;
-					if ((uint8_t)low_nibble > 6) {
-						// Next character doesn't form complete byte, so
-						// ignore the current character and parse the
-						// next character from the beginning
-						continue;
-					}
+				if (!is_valid_hex(binhack_str[0])) {
+					// Next character doesn't form complete byte, so
+					// ignore the current character and parse the
+					// next character from the beginning
+					continue;
 				}
 				val.type = VT_BYTE;
 				++binhack_str;
 				break;
-			}
 			case '+': case '-': // Float
 				binhack_str = consume_float_value(binhack_str, &val);
 				break;
@@ -392,11 +393,11 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
 			{ // Raw byte
 				++binhack_str;
-				int8_t low_nibble = binhack_str[0] - '0';
-				if ((uint8_t)low_nibble >= 10) {
+				uint8_t low_nibble = binhack_str[0] - '0';
+				if (low_nibble >= 10) {
 					low_nibble &= 0xDF;
 					low_nibble -= 17;
-					if ((uint8_t)low_nibble > 6) {
+					if (low_nibble > 6) {
 						// Next character doesn't form complete byte, so
 						// ignore the current character and parse the
 						// next character from the beginning

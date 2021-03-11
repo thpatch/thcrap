@@ -103,7 +103,8 @@ enum {
 	VT_DOUBLE,
 	VT_STRING,
 	VT_WSTRING,
-	//VT_CODE
+	//VT_CODE,
+	VT_ADDRRET
 };
 typedef uint8_t patch_value_type_t;
 
@@ -131,6 +132,7 @@ typedef struct {
 			const wchar_t* ptr;
 			size_t len;
 		} wstr;
+		str_address_ret_t addr_ret;
 	};
 } patch_val_t;
 

@@ -96,30 +96,20 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 {
 	int base = 0;
 	size_t val = 0;
-	char *endptr_temp;
-	char **endptr = ret ? (char **)&ret->endptr : &endptr_temp;
+	char **endptr = ret ? (char **)&ret->endptr : NULL;
 
-	if(str[0] != '\0') {
-		// Module-relative hex values
-		switch (*(uint16_t*)str & TextInt(0xFF, 0xDF)) {
-			case TextInt('R', 'X'):
-			case TextInt('r', 'X'):
-				val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
-			case TextInt('0', 'X'):
-				base = 16;
-				str += 2;
+	switch (str[0] | 0x20) {
+		case 'r':
+			val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
+		case '0':
+		{
+			const bool is_hex = (*++str | 0x20) == 'x';
+			str += is_hex;
+			base = is_hex ? 16 : 10;
 		}
 	}
 	errno = 0;
-	if (base != 0) {
-		val += strtoul(str, endptr, base);
-	} else {
-		const size_t temp_val1 = strtoul(str, &endptr_temp, 10);
-		char* endptr_temp2;
-		const size_t temp_val2 = strtoul(str, &endptr_temp2, 16);
-		val += endptr_temp == endptr_temp2 ? temp_val1 : temp_val2;
-		*endptr = endptr_temp == endptr_temp2 ? endptr_temp : endptr_temp2;
-	}
+	val += strtoul(str, endptr, base);
 
 	if(ret) {
 		ret->error = STR_ADDRESS_ERROR_NONE;
@@ -127,7 +117,7 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 		if(errno == ERANGE) {
 			ret->error |= STR_ADDRESS_ERROR_OVERFLOW;
 		}
-		if(*endptr[0] != '\0') {
+		if(endptr && *endptr[0] != '\0') {
 			ret->error |= STR_ADDRESS_ERROR_GARBAGE;
 		}
 	}
@@ -135,17 +125,15 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 }
 
 bool is_valid_hex(char c) {
-	c -= '0';
-	if ((unsigned char)c < 10) return 1;
-	c &= 0xDF;
-	c -= 17;
-	return (unsigned char)c < 6;
+	c |= 0x20;
+	return ((uint8_t)(c - '0') < 10) | ((uint8_t)(c - 'a') < 6);
 }
 
 int8_t hex_value(char c) {
+	c |= 0x20;
 	c -= '0';
-	if ((unsigned char)c < 10) return c;
-	c &= 0xDF;
-	c -= 17;
-	return (unsigned char)c < 6 ? c + 10 : -1;
+	if ((uint8_t)c < 10) return c;
+	c -= 49;
+	if ((uint8_t)c < 6) return c + 10;
+	return -1;
 }
