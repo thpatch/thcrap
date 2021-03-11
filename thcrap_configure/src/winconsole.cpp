@@ -177,7 +177,6 @@ void ConsoleDialog::setProgress(int pc) {
 }
 
 bool ConsoleDialog::popQueue(LineEntry &ent) {
-	std::lock_guard<std::mutex> lock(mutex);
 	if (!queue.size())
 		return false;
 
@@ -386,6 +385,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		}
 		return FALSE;
 	case APP_READQUEUE: {
+		std::lock_guard<std::mutex> lock(mutex);
 		LineEntry ent;
 		while (popQueue(ent)) {
 			switch (ent.type) {
