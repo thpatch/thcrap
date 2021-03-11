@@ -16,6 +16,7 @@
 #include <thread>
 #include <utility>
 #include <type_traits>
+#include <string_view>
 
 // A wrapper around std::promise that lets us call set_value without
 // having to worry about promise_already_satisfied/no_state.
@@ -522,55 +523,47 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 }
 static bool needAppend = false;
 static bool dontUpdate = false;
-void log_windows(const wchar_t *text) {
+void log_windows(std::wstring_view text) {
 	if (!g_console->isAlive())
 		return;
 	if (!dontUpdate)
 		g_console->preupdate();
 
-	const wchar_t *start = text, *end = NULL;
-	bool completeLine = true;
-	while (completeLine) {
-		end = wcschr(start, '\n');
-		if (!end)
-			end = wcschr(start, '\0');
-		if (*end == '\0') {
-			if (end == start) // '\0' right after '\n'
-				break;
-			completeLine = false;
-		}
-
+	while (!text.empty()) {
+		size_t len = text.find(L'\n');
+		std::wstring_view line = text.substr(0, len);
+		
 		if (needAppend == true) {
-			LineEntry le = { LINE_APPEND, std::wstring(start, end - start) };
+			LineEntry le = { LINE_APPEND, std::wstring(line) };
 			g_console->pushQueue(std::move(le));
 			needAppend = false;
 		} else {
-			LineEntry le = { LINE_ADD, std::wstring(start, end - start) };
+			LineEntry le = { LINE_ADD, std::wstring(line) };
 			g_console->pushQueue(std::move(le));
 		}
-		start = end + 1;
+
+		if (len != -1) {
+			text.remove_prefix(len + 1);
+		} else { // incomplete last line
+			needAppend = true;
+			break;
+		}
 	}
-	
-	if (!completeLine)
-		needAppend = true;
 
 	if (!dontUpdate) {
 		g_console->readQueue();
 		g_console->update();
 	}
 }
-void log_windows(const char* text) {
-	WCHAR_T_DEC(text);
-	WCHAR_T_CONV(text);
-	log_windows(text_w);
-	WCHAR_T_FREE(text);
-}
+
 void log_nwindows(const char* text, size_t len) {
-	VLA(wchar_t, text_w, len + 1);
+	VLA(wchar_t, text_w, len);
 	size_t len_w = StringToUTF16(text_w, text, len);
-	text_w[len_w] = '\0';
-	log_windows(text_w);
+	log_windows(std::wstring_view(text_w, len_w));
 	VLA_FREE(text_w);
+}
+void log_windows(const char* text) {
+	log_nwindows(text, strlen(text));
 }
 /* --- code proudly stolen from thcrap/log.cpp --- */
 #define VLA_VSPRINTF(str, va) \
