@@ -301,7 +301,7 @@ void replace_line(char *dst, patch_msg_state_t *state, const stringref_t &rep)
 		&& state->cur_line < elementsof(state->line_widths)
 	) {
 		if(state->cur_line == 0) {
-			log_printf("\xF0\x9F\x92\xAC\n"); // 💬
+			log_printf("💬\n");
 		}
 		size_t font_id = (size_t)json_integer_value(state->font_dialog_id);
 		size_t width = GetTextExtentForFontID(dst, font_id);
@@ -749,7 +749,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 				if (line_str) {
 					size_t new_line_len = strlen(line_str);
 					strcpy(new_end, line_str);
-					new_end[new_line_len] = '\x00';
+					new_end[new_line_len] = '\0';
 					new_end[new_line_len + 1] = '\n';
 					new_end += new_line_len + 2;
 				}

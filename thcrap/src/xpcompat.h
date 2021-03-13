@@ -31,12 +31,12 @@ THCRAP_API extern srwlock_func_t *srwlock_funcs[4];
 // (MinGW/GCC seems to support C11 _Thread_local, which would have saved us
 // all of this.)
 // The THREAD_LOCAL macro declares:
-// • a TLS slot with the given [name]
-// • a type-safe accessor function named [name]_get(void), returning a pointer
+// â€¢ a TLS slot with the given [name]
+// â€¢ a type-safe accessor function named [name]_get(void), returning a pointer
 //   of the given [type] to the thread's instance of the structure. This
 //   function can then be optionally exported to make the thread-local
 //   structure available to other modules.
-// • a _mod_thread_exit(void) function freeing a thread's instance of the
+// â€¢ a _mod_thread_exit(void) function freeing a thread's instance of the
 //   structure once it exits.
 //
 // [ctor] and [dtor] are optional constructor and destructor functions that

@@ -366,7 +366,7 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 			}
 		}
 	}
-	stringref_t MODE_DESC_FMT = "\n\n\xE2\x80\xA2 \"%s\": %s";
+	stringref_t MODE_DESC_FMT = "\n\n• \"%s\": %s";
 	size_t modes_len = 0;
 	for(const auto &mode : BLITMODES) {
 		modes_len += MODE_DESC_FMT.len + mode.name.len + mode.desc.len;
@@ -484,8 +484,8 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 			FAIL(
 				": {\"changes\": {\"%s\"}",
 				"Invalid key syntax, must be one of:\n"
-				"\xE2\x80\xA2 \"<line>#<parameter address>\" (to change instruction parameters)\n"
-				"\xE2\x80\xA2 \"<line>#time\" (to change the frame an instruction is executed on)\n",
+				"• \"<line>#<parameter address>\" (to change instruction parameters)\n"
+				"• \"<line>#time\" (to change the frame an instruction is executed on)\n",
 				key
 			);
 		};
@@ -638,7 +638,7 @@ void entry_mods_t::apply_ourdata(anm_entry_t &entry)
 {
 	if(name) {
 		log_printf(
-			"(Header) Entry #%u: %s \xE2\x86\x92 %s\n",
+			"(Header) Entry #%u: %s → %s\n",
 			num, entry.name, name
 		);
 		entry.name = name;
@@ -705,7 +705,7 @@ void sprite_mods_t::apply_orig(sprite_t &orig)
 	if(bounds.is_some()) {
 		const auto &b = bounds.unwrap();
 		log_printf(
-			"(Header) Sprite #%u: [%.0f, %.0f, %.0f, %.0f] \xE2\x86\x92 [%.0f, %.0f, %.0f, %.0f]\n",
+			"(Header) Sprite #%u: [%.0f, %.0f, %.0f, %.0f] → [%.0f, %.0f, %.0f, %.0f]\n",
 			num,
 			orig.x, orig.y, orig.w, orig.h,
 			   b.x,    b.y,    b.w,    b.h

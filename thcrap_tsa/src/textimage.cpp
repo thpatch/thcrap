@@ -337,7 +337,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 		|| (srcinfo.Height % sprite_h) != 0
 	) {
 		textimage_log.errorf("%s: "
-			"Image size must be a multiple of %u\xC3\x97%u, got %u\xC3\x97%u",
+			"Image size must be a multiple of %u×%u, got %u×%u",
 			fn, sprite_w, sprite_h, srcinfo.Width, srcinfo.Height
 		);
 		return release_and_fallback(-2);
@@ -403,7 +403,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 	}
 
 	log_printf(
-		"(Text image) Got %u sprites (%u rows \xC3\x97 %u columns)\n",
+		"(Text image) Got %u sprites (%u rows × %u columns)\n",
 		rows * cols, rows, cols
 	);
 	safe_release(&TextureSlots[texture_slot]);

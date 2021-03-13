@@ -85,7 +85,7 @@ THCRAP_API bool tlnote_env_render_t::reference_resolution_set(const vector2_t &n
 {
 	if(newval.x <= 0 || newval.y <= 0) {
 		tlnote_log.errorf(
-			"Reference resolution must be positive and nonzero, got %f\xE2\x9C\x95%f",
+			"Reference resolution must be positive and nonzero, got %f✕%f",
 			newval.x, newval.y
 		);
 		return false;
@@ -117,7 +117,7 @@ THCRAP_API bool tlnote_env_t::region_size_set(const vector2_t &newval)
 		newval.x <= 0 || newval.y <= 0 || newval.x >= rr.x || newval.y >= rr.y
 	) {
 		tlnote_log.errorf(
-			"Region size must be nonzero and smaller than the reference resolution (%f\xE2\x9C\x95%f), got %f\xE2\x9C\x95%f",
+			"Region size must be nonzero and smaller than the reference resolution (%f✕%f), got %f✕%f",
 			rr.x, rr.y, newval.x, newval.y
 		);
 		return false;

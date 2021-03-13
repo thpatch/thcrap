@@ -222,9 +222,7 @@ json_t* identify(const char *exe_fn)
 	// run_cfg because we already require it down below to resolve ver_fn.
 	runconfig_build_set(build);
 
-	// More robust than putting the UTF-8 character here directly,
-	// who knows which locale this might be compiled under...
-	log_printf("\xE2\x86\x92 %s %s %s (codepage %d)\n", game, build, variety, codepage);
+	log_printf("→ %s %s %s (codepage %d)\n", game, build, variety, codepage);
 
 	if(stricmp(PathFindExtensionA(game), ".js")) {
 		size_t ver_fn_len = json_string_length(game_obj) + 1 + strlen(".js") + 1;

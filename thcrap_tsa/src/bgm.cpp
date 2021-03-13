@@ -451,7 +451,7 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 		auto mod = stack_bgm_resolve(basename);
 		if(mod) {
 			if(!is_allowed(mod->pcmf)) {
-				stringref_t PCMF_LINE_FMT = "\n\xE2\x80\xA2 ";
+				stringref_t PCMF_LINE_FMT = "\n• ";
 				size_t supported_len = 0;
 				size_t desc_len = sizeof(pcm_format_t::desc_t);
 				for(const auto &pcmf : allowed_pcmfs) {

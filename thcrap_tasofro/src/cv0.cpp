@@ -364,9 +364,9 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, js
   * Add a way to escape commas in the th105 cv0 parser.
   *
   * Returns:
-  * • 0 if the the current character is a backslash followed by a quote.
+  * â€¢ 0 if the the current character is a backslash followed by a quote.
   *   We overwrite the backslash and skip the code checking for the comma.
-  * • 1 otherwise, just let the game do its thing.
+  * â€¢ 1 otherwise, just let the game do its thing.
   *
   * Own JSON parameters
   * -------------------

@@ -35,13 +35,12 @@ struct I18nLang {
 };
 
 static I18nLang currentLang = {"en", "English", L"English", 2, plural_germanic};
-// TODO: when vs2013 dies, change source encoding to utf-8
 static vector<I18nLang> langs = {
 	{ "en", "English", L"English", 2, plural_germanic },
 	{ "de", "German", L"Deutsch", 2, plural_germanic },
-	{ "fr", "French", L"fran\u00E7ais", 2, plural_french }, // français
-	{ "ru", "Russian", L"\u0440\u0443\u0441\u0441\u043A\u0438\u0439", 3, plural_eastslavic }, // русский
-	{ "uk", "Ukrainian", L"\u0443\u043A\u0440\u0430\u0457\u043D\u0441\u044C\u043A\u0430", 3, plural_eastslavic }, // українська
+	{ "fr", "French", L"français", 2, plural_french },
+	{ "ru", "Russian", L"русский", 3, plural_eastslavic },
+	{ "uk", "Ukrainian", L"українська", 3, plural_eastslavic },
 };
 
 const char* i18n_langid() {
