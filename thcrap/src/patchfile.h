@@ -69,6 +69,8 @@ typedef struct
 	char *archive;
 	// Patch id (from patch.js)
 	char *id;
+	// Patch version (from patch.js)
+	uint32_t version;
 	// Patch description (from patch.js)
 	char *title;
 	// Servers list (NULL-terminated) (from patch.js)
@@ -96,36 +98,11 @@ typedef struct
 	DWORD motd_type;
 } patch_t;
 
-// Enum of possible types for the description of
-// a value specified by the user defined patch options
-enum patch_opt_val_type {
-	PATCH_OPT_VAL_INVALID = -1,
-	PATCH_OPT_VAL_BYTE = 0,
-	PATCH_OPT_VAL_WORD = 1,
-	PATCH_OPT_VAL_DWORD = 2,
-	PATCH_OPT_VAL_FLOAT = 3,
-	PATCH_OPT_VAL_DOUBLE = 4,
-};
-
-// Description of a value specified by the options
-typedef struct {
-	uint32_t t;
-	uint32_t size;
-	union type_t {
-		BYTE byte;
-		WORD word;
-		DWORD dword;
-		float f;
-		double d;
-		BYTE byte_array[8];
-	} val;
-} patch_opt_val_t;
-
 // Parses and error checks patch options from game_id.js
 void patch_opts_from_json(json_t *opts);
 
 // Obtains the value of a patch option
-patch_opt_val_t* patch_opt_get(const char *name);
+patch_val_t* patch_opt_get(const char *name);
 
 // Opens the file [fn] for read operations. Just a lightweight wrapper around
 // CreateFile(): Returns INVALID_HANDLE_VALUE on failure, and the caller must

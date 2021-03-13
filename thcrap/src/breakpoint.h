@@ -9,20 +9,6 @@
 
 #pragma once
 
-// Register structure in PUSHAD+PUSHFD order at the beginning of a function
-typedef struct {
-	size_t flags;
-	size_t edi;
-	size_t esi;
-	size_t ebp;
-	size_t esp;
-	size_t ebx;
-	size_t edx;
-	size_t ecx;
-	size_t eax;
-	size_t retaddr;
-} x86_reg_t;
-
 /**
   * Breakpoint function type.
   * As these are looked up without any manual registration, the name of a
@@ -44,7 +30,7 @@ typedef struct {
   *	    In this case, the retaddr element of [regs] can be manipulated to
   *	    specify a different address to resume code execution after the breakpoint.
   */
-typedef int (*BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
+typedef int (__cdecl *BreakpointFunc_t)(x86_reg_t *regs, json_t *bp_info);
 
 // Represents a breakpoint.
 typedef struct {
@@ -54,9 +40,6 @@ typedef struct {
 
 	// Name of the breakpoint
 	char *name;
-
-	// Address as string from run configuration
-	char *addr_str;
 
 	// Size of the original code sliced out at [addr].
 	// Must be inside BP_SourceCave_Limits.
@@ -69,18 +52,16 @@ typedef struct {
 	// You are free to put anything in it.
 	json_t *json_obj;
 
+	// Address as string from run configuration
+	// Address where the breakpoint is written
+	hackpoint_addr_t *addr;
+
 	/**
 	  * These variables are use internaly by the breakpoints engine
 	  */
 
 	// Function to be called when the breakpoint is hit
 	BreakpointFunc_t func;
-
-	// First byte of the code cave for this breakpoint.
-	uint8_t *cave;
-
-	// Address where the breakpoint is written
-	uint8_t *addr;
 } breakpoint_local_t;
 
 typedef struct {
@@ -94,10 +75,6 @@ typedef struct {
 	// breakpoint.
 	uint8_t *cave_call;
 } breakpoint_set_t;
-
-// Returns a pointer to the register [regname] in [regs]. [endptr] behaves
-// like the endptr parameter of strtol(), and can be a nullptr if not needed.
-size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
 /// Register and memory values from JSON
 /// ====================================
@@ -119,6 +96,9 @@ size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key
 // Calls json_immediate_value() on the value of [key] in [object].
 size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key);
 /// =====================================
+
+// Parses a json breakpoint entry and returns a breakpoint object
+bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out);
 
 // Returns 0 if "cave_exec" in [bp_info] is set to false, 1 otherwise.
 // Should be used as the return value for a breakpoint function after it made

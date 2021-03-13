@@ -17,7 +17,7 @@ extern "C" void bp_entry(void);
 
 // Performs breakpoint lookup, invocation and stack adjustments. Returns the
 // number of bytes the stack has to be moved downwards by breakpoint_entry().
-extern "C" size_t breakpoint_process(breakpoint_local_t *bp_local, x86_reg_t *regs);
+extern "C" size_t __cdecl breakpoint_process(breakpoint_local_t *bp_local, size_t cave_addr, x86_reg_t *regs);
 /// ---------
 
 /// Constants
@@ -27,184 +27,6 @@ extern "C" size_t breakpoint_process(breakpoint_local_t *bp_local, x86_reg_t *re
 static const size_t BP_SourceCave_Min = CALL_LEN;
 static const size_t BP_SourceCave_Max = BP_Offset - CALL_LEN;
 /// ---------
-
-#define EAX 0x00786165
-#define ECX 0x00786365
-#define EDX 0x00786465
-#define EBX 0x00786265
-#define ESP 0x00707365
-#define EBP 0x00706265
-#define ESI 0x00697365
-#define EDI 0x00696465
-
-size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr)
-{
-	uint32_t cmp;
-
-	if(!regs || !regname || !regname[0] || !regname[1] || !regname[2]) {
-		return NULL;
-	}
-	memcpy(&cmp, regname, 3);
-	cmp &= 0x00FFFFFF;
-	strlwr((char *)&cmp);
-
-	if(endptr) {
-		*endptr = regname + 3;
-	}
-	switch(cmp) {
-		case EAX: return &regs->eax;
-		case ECX: return &regs->ecx;
-		case EDX: return &regs->edx;
-		case EBX: return &regs->ebx;
-		case ESP: return &regs->esp;
-		case EBP: return &regs->ebp;
-		case ESI: return &regs->esi;
-		case EDI: return &regs->edi;
-	}
-	if(endptr) {
-		*endptr = regname;
-	}
-	return NULL;
-}
-
-static size_t eval_expr(const char **expr_ptr, x86_reg_t *regs, char end)
-{
-	const char *expr = *expr_ptr;
-	size_t value = 0;
-	unsigned char op = '+';
-
-	enum twochar_op_t : unsigned char {
-		EQ = 0x80,
-		NE,
-		LE,
-		GE
-	};
-
-	/// Parser functions
-	/// ----------------
-	auto consume = [&expr] (const stringref_t token) {
-		if(!strnicmp(expr, token.str, token.len)) {
-			expr += token.len;
-			return true;
-		}
-		return false;
-	};
-
-	auto consume_whitespace = [&expr] () {
-		while(expr[0] == ' ' || expr[0] == '\t') {
-			expr++;
-		}
-	};
-
-	auto dereference = [] (size_t addr, size_t len) {
-		size_t ret = 0;
-		memcpy(&ret, reinterpret_cast<void *>(addr), len);
-		return ret;
-	};
-	/// ----------------
-
-	while (*expr && *expr != end) {
-		consume_whitespace();
-		if(consume("==")) {
-			op = EQ;
-			continue;
-		} else if(consume("!=")) {
-			op = NE;
-			continue;
-		} else if(consume("<=")) {
-			op = LE;
-			continue;
-		} else if(consume(">=")) {
-			op = GE;
-			continue;
-		} else if (strchr("+-*/%<>", *expr)) {
-			op = *expr;
-			expr++;
-			continue;
-		}
-
-		auto ptr_size = sizeof(size_t);
-		if(consume("byte ptr")) {
-			ptr_size = 1;
-		} else if(consume("word ptr")) {
-			ptr_size = 2;
-		} else if(consume("dword ptr")) {
-			ptr_size = 4;
-		}
-		consume_whitespace();
-
-		size_t cur_value;
-		if (*expr == '(') {
-			expr++;
-			cur_value = eval_expr(&expr, regs, ')');
-		}
-		else if (*expr == '[') {
-			expr++;
-			cur_value = eval_expr(&expr, regs, ']');
-			if (cur_value) {
-				cur_value = dereference(cur_value, ptr_size);
-			}
-		}
-		else if ((cur_value = (size_t)reg(regs, expr, &expr)) != 0) {
-			cur_value = dereference(cur_value, ptr_size);
-		}
-		else {
-			str_address_ret_t addr_ret;
-			cur_value = str_address_value(expr, nullptr, &addr_ret);
-			if (expr == addr_ret.endptr || (addr_ret.error && addr_ret.error != STR_ADDRESS_ERROR_GARBAGE)) {
-				// TODO: Print a message specific to the error code.
-				log_printf("Error while evaluating expression around '%s': unknown character.\n", expr);
-				return 0;
-			}
-			expr = addr_ret.endptr;
-		}
-
-		switch (op) {
-		case '+':
-			value += cur_value;
-			break;
-		case '-':
-			value -= cur_value;
-			break;
-		case '*':
-			value *= cur_value;
-			break;
-		case '/':
-			value /= cur_value;
-			break;
-		case '%':
-			value %= cur_value;
-			break;
-		case '<':
-			value = value < cur_value;
-			break;
-		case '>':
-			value = value > cur_value;
-			break;
-		case EQ:
-			value = value == cur_value;
-			break;
-		case NE:
-			value = value != cur_value;
-			break;
-		case LE:
-			value = value <= cur_value;
-			break;
-		case GE:
-			value = value >= cur_value;
-			break;
-		}
-	}
-
-	if (end == ']' && *expr != end) {
-		log_printf("Error while evaluating expression around '%s': '[' without matching ']'.\n", expr);
-		return 0;
-	}
-
-	expr++;
-	*expr_ptr = expr;
-	return value;
-}
 
 size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 {
@@ -219,13 +41,15 @@ size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 		return 0;
 	}
 	const char *expr = json_string_value(val);
-	return eval_expr(&expr, regs, '\0');
+	size_t ret = 0;
+	eval_expr(expr, '\0', &ret, regs, NULL);
+	return ret;
 }
 
 size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 {
 	const char *expr = json_string_value(val);
-	if (!expr) {
+	if (!expr || json_string_length(val) < 3) {
 		return NULL;
 	}
 
@@ -234,17 +58,16 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	// - A dereferencing (for example "[ebp-8]"), where we'll skip the top-level dereferencing. After all, ebp-8 points to [ebp-8].
 	// - A register name, without anything else. In that case, we can return a pointer to the register in the x86_reg_t structure.
 	size_t *ptr;
-	const char *reg_end;
+	const char *expr_end;
 
-	ptr = reg(regs, expr, &reg_end);
-	if (ptr && reg_end[0] == '\0') {
+	ptr = reg(regs, expr, &expr_end);
+	if (ptr && expr_end[0] == '\0') {
 		return ptr;
 	}
 	else if (expr[0] == '[') {
-		expr++;
-		ptr = (size_t*)eval_expr(&expr, regs, ']');
-		if (*expr != '\0') {
-			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr);
+		expr_end = eval_expr(expr + 1, ']', (size_t*)&ptr, regs, NULL);
+		if (expr_end && expr_end[0] != '\0') {
+			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr_end);
 		}
 		return ptr;
 	}
@@ -254,7 +77,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
-	return reg(regs, json_string_value(val), nullptr);
+	return json_string_length(val) >= 3 ? reg(regs, json_string_value(val), nullptr) : nullptr;
 }
 
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
@@ -277,10 +100,8 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 	return !json_is_false(json_object_get(bp_info, "cave_exec"));
 }
 
-size_t breakpoint_process(breakpoint_local_t *bp, x86_reg_t *regs)
+size_t __cdecl breakpoint_process(breakpoint_local_t *bp, size_t cave_addr, x86_reg_t *regs)
 {
-	assert(bp);
-
 	size_t esp_diff = 0;
 
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
@@ -290,7 +111,7 @@ size_t breakpoint_process(breakpoint_local_t *bp, x86_reg_t *regs)
 	int cave_exec = bp->func(regs, bp->json_obj);
 	if(cave_exec) {
 		// Point return address to codecave.
-		regs->retaddr = (size_t)bp->cave;
+		regs->retaddr = cave_addr;
 	}
 	if(esp_prev != regs->esp) {
 		// ESP change requested.
@@ -301,7 +122,72 @@ size_t breakpoint_process(breakpoint_local_t *bp, x86_reg_t *regs)
 	return esp_diff;
 }
 
-void cave_fix(BYTE *cave, BYTE *bp_addr)
+bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out) {
+	if (!json_is_object(in)) {
+		log_printf("breakpoint %s: not an object\n", name);
+		return false;
+	}
+
+	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
+		log_printf("breakpoint %s: ignored\n", name);
+		return false;
+	}
+
+	size_t cavesize;
+	switch (json_object_get_eval_int(in, "cavesize", &cavesize, JEVAL_STRICT)) {
+		default:
+			log_printf("ERROR: invalid json type for cavesize of breakpoint %s, must be integer or string\n", name);
+			return false;
+		case JEVAL_NULL_PTR:
+			log_printf("breakpoint %s: no cavesize specified\n", name);
+			return false;
+		case JEVAL_SUCCESS:
+			if (cavesize < CALL_LEN) {
+				log_printf("breakpoint %s: cavesize too small to implement breakpoint\n", name);
+				return false;
+			}
+	}
+
+	json_t *addr = json_object_get(in, "addr");
+	if (json_flex_array_size(addr) == 0) {
+		// Ignore breakpoints with missing addr field.
+		// It usually means the breakpoint doesn't apply for this game or game version.
+		return false;
+	}
+
+	size_t valid_addrs = 0;
+
+	json_t *it;
+	json_flex_array_foreach_scoped(size_t, i, addr, it) {
+		if (json_is_integer(it) || json_is_string(it)) {
+			++valid_addrs;
+		}
+	}
+	if (valid_addrs == 0) {
+		return false;
+	}
+
+	out->name = strdup(name);
+	out->cavesize = cavesize;
+	out->json_obj = json_incref(in);
+	out->func = nullptr;
+	out->addr = new hackpoint_addr_t[valid_addrs + 1];
+	out->addr[valid_addrs].type = END_ADDR;
+
+	json_flex_array_foreach_scoped(size_t, i, addr, it) {
+		if (json_is_string(it)) {
+			out->addr[i].str = strdup(json_string_value(it));
+			out->addr[i].type = STR_ADDR;
+		} else if (json_is_integer(it)) {
+			out->addr[i].raw = (uint32_t)json_integer_value(it);
+			out->addr[i].type = RAW_ADDR;
+		}
+	}
+
+	return true;
+}
+
+static inline void __fastcall cave_fix(BYTE *cave, BYTE *bp_addr)
 {
 	/// Fix relative stuff
 	/// ------------------
@@ -311,131 +197,214 @@ void cave_fix(BYTE *cave, BYTE *bp_addr)
 		size_t dist_old = *((size_t*)(cave + 1));
 		size_t dist_new = dist_old + bp_addr - cave;
 
-		memcpy(cave + 1, &dist_new, sizeof(dist_new));
+		*(size_t*)(cave + 1) = dist_new;
 
-		log_printf("fixing rel.addr. 0x%p to 0x%p... ", dist_old, dist_new);
+		log_printf("fixing rel.addr. 0x%p to 0x%p... \n", dist_old, dist_new);
 	}
 	/// ------------------
 }
 
-int breakpoint_local_init(
-	breakpoint_local_t *bp_local,
-	size_t addr,
-	uint8_t *cave_source
-)
-{
-	if(!bp_local || !addr) {
-		return -1;
-	}
+static bool __fastcall breakpoint_local_init(
+	breakpoint_local_t *bp_local
+) {
 
-	if(bp_local->cavesize < BP_SourceCave_Min || bp_local->cavesize > BP_SourceCave_Max) {
-		log_printf("ERROR: cavesize exceeds limits! (given: %d, min: %d, max: %d)\n",
-			bp_local->cavesize, BP_SourceCave_Min, BP_SourceCave_Max);
-		return 3;
-	}
-
-	const char *key = bp_local->name;
-	STRLEN_DEC(key);
-	VLA(char, bp_key, key_len + strlen("BP_") + 1);
-	int ret = 0;
-
+	const char *const key = bp_local->name;
 	// Multi-slot support
-	const char *slot = strchr(key, '#');
-	if(slot) {
-		key_len = slot - key;
-	}
+	const char *const slot = strchr(key, '#');
+	const size_t key_len = slot ? (size_t)(slot - key) : strlen(key);
 
-	strcpy(bp_key, "BP_");
-	strncat(bp_key, key, key_len);
+	VLA(char, bp_key, strlen("BP_") + key_len + 1);
+	if (strncmp(key, "codecave:", 9) != 0) {
+		strcpy(bp_key, "BP_");
+		strncat(bp_key, key, key_len);
+	} else {
+		strcpy(bp_key, key);
+	}
 	bp_local->func = (BreakpointFunc_t)func_get(bp_key);
 
-	bp_local->addr = (BYTE*)addr;
-	if(!bp_local->func) {
-		ret = hackpoints_error_function_not_found(bp_key, 4);
+	const bool func_found = (bool)bp_local->func;
+	if (!func_found) {
+		hackpoints_error_function_not_found(bp_key, 0);
 	}
-	bp_local->cave = cave_source;
 	VLA_FREE(bp_key);
-	return ret;
-}
-
-int breakpoint_apply(BYTE* callcave, breakpoint_local_t *bp)
-{
-	if(bp) {
-		size_t cave_dist = bp->addr - (bp->cave + CALL_LEN);
-		size_t bp_dist = (BYTE*)callcave - (bp->addr + CALL_LEN);
-		BYTE bp_asm[BP_Offset];
-
-		/// Cave assembly
-		// Copy old code to cave
-		memcpy(bp->cave, (void*)bp->addr, bp->cavesize);
-		cave_fix(bp->cave, bp->addr);
-
-		// JMP addr
-		bp->cave[bp->cavesize] = 0xe9;
-		memcpy(bp->cave + bp->cavesize + 1, &cave_dist, sizeof(cave_dist));
-
-		/// Breakpoint assembly
-		memset(bp_asm, 0x90, bp->cavesize);
-		// CALL bp_entry
-		bp_asm[0] = 0xe8;
-		memcpy(bp_asm + 1, &bp_dist, sizeof(void*));
-
-		PatchRegion(bp->addr, NULL, bp_asm, bp->cavesize);
-		log_printf("OK\n");
-		return 0;
-	}
-	return -1;
+	return func_found;
 }
 
 extern "C" void *bp_entry_end;
+extern "C" void *bp_entry_indexptr;
 extern "C" void *bp_entry_localptr;
+extern "C" void *bp_entry_callptr;
 
 int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE hMod)
 {
-	int failed = bp_count;
-
 	if(!breakpoints || !bp_count) {
 		log_printf("No breakpoints to set up.\n");
 		return 0;
 	}
-	uint8_t *cave_source = (BYTE*)VirtualAlloc(0, bp_count * BP_Offset, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-	memset(cave_source, 0xcc, bp_count * BP_Offset);
 
-	// Call cave construction
-	size_t call_size = (uint8_t*)&bp_entry_end - (uint8_t*)bp_entry;
-	size_t localptr_offset = (uint8_t*)&bp_entry_localptr + 1 - (uint8_t*)bp_entry;
-	uint8_t *cave_call = (BYTE*)VirtualAlloc(0, bp_count * call_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	size_t sourcecaves_total_size = 0;
+	size_t valid_breakpoint_count = 0;
+	size_t total_valid_addrs = 0;
+
+	VLA(size_t, breakpoint_size, bp_count * sizeof(size_t));
 
 	log_printf(
-		"Setting up breakpoints... (source cave at 0x%p, call cave at 0x%p)\n"
+		"-------------------------\n"
+		"Setting up breakpoints...\n"
+		"-------------------------"
+	);
+
+	for (size_t i = 0; i < bp_count; ++i) {
+
+		breakpoint_local_t *const cur = &breakpoints[i];
+
+		log_printf("\n(%2d/%2d) %s... ", i + 1, bp_count, cur->name);
+
+		if (!breakpoint_local_init(cur)) {
+			breakpoint_size[i] = 0;
+			// Not found message inside function
+			continue;
+		}
+
+		size_t cavesize = cur->cavesize;
+
+		bool cur_has_valid_addrs = false;
+
+		for (size_t j = 0;; ++j) {
+			hackpoint_addr_t *const addr_ref = &cur->addr[j];
+
+			size_t addr = 0;
+			if (addr_ref->type == END_ADDR) {
+				break;
+			}
+			else if (addr_ref->type == STR_ADDR) {
+				eval_expr(addr_ref->str, '\0', &addr, NULL, (size_t)hMod);
+				free(addr_ref->str);
+				addr_ref->type = RAW_ADDR;
+				addr_ref->raw = addr;
+			}
+			else if (addr_ref->type == RAW_ADDR) {
+				addr = addr_ref->raw;
+			}
+			if (!addr) {
+				addr_ref->type = NULL_ADDR;
+				continue;
+			}
+
+			log_printf("\nat 0x%p... ", addr);
+			
+			if (VirtualCheckRegion((const void*)addr, cavesize)) {
+				cur_has_valid_addrs = true;
+				++total_valid_addrs;
+				log_printf("OK");
+			} else {
+				addr_ref->type = NULL_ADDR;
+				log_printf("not enough source bytes, skipping... ", addr);
+			}
+		}
+		if (cur_has_valid_addrs) {
+			cavesize += CALL_LEN;
+			breakpoint_size[i] = AlignUpToMultipleOf2(cavesize, 16);
+			sourcecaves_total_size += breakpoint_size[i];
+			++valid_breakpoint_count;
+		} else {
+			breakpoint_size[i] = 0;
+		}
+	}
+
+	if (!valid_breakpoint_count) {
+		log_printf("No breakpoints to render.\n");
+		return 0;
+	}
+
+	// Call cave construction
+	const size_t call_size = (uint8_t*)&bp_entry_end - (uint8_t*)bp_entry;
+	const size_t call_size_full = AlignUpToMultipleOf2(call_size, 16);
+
+#define PatchBPEntryInstance(bp_entry_instance, bp_entry_ptr, type, value) \
+{\
+	const size_t bp_entry_offset = (size_t)&(bp_entry_ptr) + 1 - (size_t)&bp_entry;\
+	type *const bp_instance_ptr = (type*const)((size_t)(bp_entry_instance) + (bp_entry_offset));\
+	*bp_instance_ptr = (type)(value);\
+}
+	
+	uint8_t *const cave_source = (BYTE*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	memset(cave_source, 0xcc, sourcecaves_total_size);
+
+	const size_t callcaves_total_size = total_valid_addrs * call_size_full;
+	uint8_t *const cave_call = (BYTE*)VirtualAlloc(0, callcaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	memset(cave_call, 0xcc, callcaves_total_size);
+
+	log_printf(
+		"\n-------------------------\n"
+		"Rendering breakpoints... (source cave at 0x%p, call cave at 0x%p)\n"
 		"-------------------------\n",
 		cave_source, cave_call
 	);
 
+	BYTE *sourcecave_p = cave_source;
 	BYTE *callcave_p = cave_call;
-	for (size_t i = 0; i < bp_count; i++) {
-		breakpoint_local_t *bp = &breakpoints[i];
-		auto addr = str_address_value(bp->addr_str, hMod, nullptr);
 
-		log_printf("(%2d/%2d) 0x%p %s... ", i + 1, bp_count, addr, bp->name);
+	size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
+	BYTE* asm_buf = (BYTE*)malloc(BINHACK_BUFSIZE_MIN);
+	// CALL bp_entry
+	asm_buf[0] = 0xE8;
+	if (BINHACK_BUFSIZE_MIN > CALL_LEN) {
+		memset(asm_buf + CALL_LEN, 0x90, BINHACK_BUFSIZE_MIN - CALL_LEN);
+	}
 
-		if (!addr || !VirtualCheckRegion((const void*)addr, CALL_LEN)) {
-			continue;
-		}
+	for (size_t i = 0; i < bp_count; ++i) {
+		if (breakpoint_size[i] != 0) {
+			const breakpoint_local_t *const cur = &breakpoints[i];
 
-		if (!breakpoint_local_init(
-			bp, addr, cave_source + (i * BP_Offset)
-		)) {
-			memcpy(callcave_p, (uint8_t*)bp_entry, call_size);
-			auto callcave_localptr = (breakpoint_local_t **)(callcave_p + localptr_offset);
-			*callcave_localptr = bp;
+			const size_t cavesize = cur->cavesize;
 
-			breakpoint_apply(callcave_p, bp);
+			if (cavesize > current_asm_buf_size) {
+				asm_buf = (BYTE*)realloc(asm_buf, cavesize);
+				memset(asm_buf + current_asm_buf_size, 0x90, current_asm_buf_size - cavesize);
+				current_asm_buf_size = cavesize;
+			}
 
-			callcave_p += call_size;
-			failed--;
+			for (size_t j = 0;; ++j) {
+				const hackpoint_addr_t *const addr_ref = &cur->addr[j];
+
+				if (addr_ref->type == END_ADDR) {
+					break;
+				}
+				if (addr_ref->type == NULL_ADDR) {
+					continue;
+				}
+				memcpy(callcave_p, &bp_entry, call_size);
+
+				PatchBPEntryInstance(callcave_p, bp_entry_indexptr, size_t, sourcecave_p);
+				PatchBPEntryInstance(callcave_p, bp_entry_localptr, const breakpoint_local_t*, cur);
+				PatchBPEntryInstance(callcave_p, bp_entry_callptr, size_t, (size_t)&breakpoint_process - (size_t)bp_instance_ptr - sizeof(void*));
+
+				const size_t cave_dist = addr_ref->raw - ((size_t)sourcecave_p + CALL_LEN);
+				const size_t bp_dist = (size_t)callcave_p - (addr_ref->raw + CALL_LEN);
+
+				*(size_t*)(asm_buf + 1) = bp_dist;
+
+				/// Cave assembly
+				// Copy old code to cave
+				memcpy(sourcecave_p, (void*)addr_ref->raw, cavesize);
+				cave_fix(sourcecave_p, (BYTE*)addr_ref->raw);
+
+				// JMP addr
+				sourcecave_p[cavesize] = 0xe9;
+				*(size_t*)(sourcecave_p + cavesize + 1) = cave_dist;
+
+				PatchRegion((void*)addr_ref->raw, NULL, asm_buf, cavesize);
+				sourcecave_p += breakpoint_size[i];
+				callcave_p += call_size_full;
+			}
 		}
 	}
-	log_printf("-------------------------\n");
-	return failed;
+	SAFE_FREE(asm_buf);
+
+	DWORD idgaf;
+	VirtualProtect(cave_source, sourcecaves_total_size, PAGE_EXECUTE_READ, &idgaf);
+	VirtualProtect(cave_call, callcaves_total_size, PAGE_EXECUTE_READ, &idgaf);
+
+	return bp_count - valid_breakpoint_count;
 }

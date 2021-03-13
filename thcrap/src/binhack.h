@@ -29,6 +29,24 @@
 
 #pragma once
 
+// TODO: Test whether a different default size is more efficient.
+#define BINHACK_BUFSIZE_MIN 512
+
+typedef enum {
+	END_ADDR = -1,
+	NULL_ADDR = 0,
+	STR_ADDR = 1,
+	RAW_ADDR = 2
+} hackpoint_addr_type;
+
+typedef struct {
+	int8_t type;
+	union {
+		char* str;
+		uint32_t raw;
+	};
+} hackpoint_addr_t;
+
 typedef struct {
 	// Binhack name
 	char *name;
@@ -40,18 +58,31 @@ typedef struct {
 	char *expected;
 	// Binhack addresses (NULL-terminated array)
 	// They are passed as strings and resolved by binhacks_apply.
-	char **addr;
+	hackpoint_addr_t* addr;
 } binhack_t;
+
+typedef enum {
+	READONLY = 0,
+	READWRITE = 1,
+	EXECUTE = 2,
+	EXECUTE_READ = 3,
+	EXECUTE_READWRITE = 4
+} CodecaveAccessType;
 
 typedef struct {
 	// Codecave name
 	char *name;
 	// Codecave code
 	char *code;
+	// Codecave size
+	size_t size;
+	// Codecave fill
+	BYTE fill;
+	// Codecave export status
+	bool export_codecave;
+	// Read, write, execute flags
+	CodecaveAccessType access_type;
 } codecave_t;
-
-// Returns whether [c] is a valid hexadecimal character
-int is_valid_hex(char c);
 
 // Shared error message for nonexistent functions.
 int hackpoints_error_function_not_found(const char *func_name, int retval);
@@ -85,3 +116,6 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 //		}
 // }
 int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
+
+// Parses a json codecave entry and returns a codecave object
+bool codecave_from_json(const char *name, json_t *in, codecave_t *out);

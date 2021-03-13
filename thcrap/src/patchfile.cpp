@@ -345,6 +345,8 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 	return desc;
 }
 
+static std::unordered_map<std::string, patch_val_t> patch_options;
+
 patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t level)
 {
 	patch_t patch = {};
@@ -363,6 +365,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	}
 	else {
 		patch.archive = strdup(patch_path);
+		str_slash_normalize(patch.archive);
 	}
 	patch.config = json_object_get(patch_info, "config");
 	// Merge the runconfig patch array and the patch.js
@@ -390,7 +393,58 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		}
 	};
 
-	set_string_if_exist("id",         patch.id);
+	json_t* id = json_object_get(patch_js, "id");
+	if (id && json_is_string(id)) {
+		patch.id = strdup(json_string_value(id));
+	} else if (patch.archive) {
+		const char* patch_folder = strrchr(patch.archive, '/');
+		if (patch_folder && patch_folder != patch.archive) {
+			// Don't read backwards past the beginning of the string
+			do {
+				if (patch_folder[-1] == '/') {
+					const size_t length = strlen(patch_folder);
+					patch.id = (char*)malloc(length);
+					strncpy(patch.id, patch_folder, length - 1);
+					patch.id[length - 1] = '\0';
+					break;
+				}
+			} while (--patch_folder != patch.archive);
+		}
+	}
+
+	patch.version = 0;
+	json_t* version = json_object_get(patch_js, "version");
+	if (version) {
+		if (json_is_string(version)) {
+			const char* version_string = json_string_value(version);
+			char* end_sub_version;
+			uint8_t sub_versions[4] = { 0 };
+			for (int i = 0; i < 4; ++i) {
+				sub_versions[i] = (uint8_t)strtoul(version_string, &end_sub_version, 10);
+				for (; end_sub_version[0] && !isdigit(end_sub_version[0]); ++end_sub_version);
+				if (!end_sub_version[0]) break;
+				version_string = end_sub_version;
+			}
+			patch.version = sub_versions[0] << 24 | sub_versions[1] << 16 | sub_versions[2] << 8 | sub_versions[3];
+		} else if (json_is_integer(version)) {
+			patch.version = (uint32_t)json_integer_value(version);
+		}
+	}
+	if (!patch.version) {
+		patch.version = 1;
+	}
+
+	if (patch.id) {
+		char* patch_test_opt_name = (char*)malloc(strlen(patch.id) + 7);
+		strcpy(patch_test_opt_name, "patch:");
+		strcat(patch_test_opt_name, patch.id);
+		patch_val_t patch_test_opt;
+		patch_test_opt.type = VT_DWORD;
+		patch_test_opt.i = patch.version;
+		patch_options[patch_test_opt_name] = patch_test_opt;
+		free(patch_test_opt_name);
+	}
+
 	set_string_if_exist("title",      patch.title);
 	set_array_if_exist( "servers",    patch.servers);
 	set_array_if_exist( "ignore",     patch.ignore);
@@ -625,8 +679,6 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 	return ret;
 }
 
-static std::unordered_map<std::string, patch_opt_val_t> patch_options;
-
 void patch_opts_from_json(json_t *opts) {
 	const char *key;
 	json_t *j_val;
@@ -636,69 +688,130 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		json_t *j_val_val = json_object_get(j_val, "val");
-		if (!(json_is_number(j_val_val) || json_is_string(j_val_val))) {
-			log_printf("ERROR: invalid format for value of option %s\n", key);
+		if (!j_val_val) {
 			continue;
 		}
 		const char *tname = json_object_get_string(j_val, "type");
-		patch_opt_val_t entry = {};
-		entry.size = strtol(tname + 1, nullptr, 10) / 8;
-		switch (tname[0]) {
-		case 'i': {
-			if (!json_is_integer(j_val_val) && !json_is_string(j_val_val)) {
-				log_printf("ERROR: invalid value specified for integer option %s\n", key);
-				continue;
-			}
-			entry.val.dword = json_hex_value(j_val_val);
-			switch (entry.size) {
-			case 1: entry.t = PATCH_OPT_VAL_BYTE;  break;
-			case 2: entry.t = PATCH_OPT_VAL_WORD;  break;
-			case 4: entry.t = PATCH_OPT_VAL_DWORD; break;
-			default:
-				log_printf("ERROR: invalid integer type %s for option %s\n", tname, key);
-				continue;
-			}
-			break;
+		if (!tname) {
+			continue;
 		}
-		case 'f': {
-			double real_val;
-			switch (json_typeof(j_val_val)) {
-			case JSON_STRING:
-				real_val = atof(json_string_value(j_val_val));
+		patch_val_t entry;
+		switch (tname[0] & 0xDF) {
+			case 'W':
+				if (json_is_string(j_val_val)) {
+					const char* opt_str = json_string_value(j_val_val);
+					entry.type = VT_WSTRING;
+					const size_t length = strlen(opt_str) + 1;
+					wchar_t* wide_str = new wchar_t[length];
+					swprintf(wide_str, length, L"%hs", opt_str);
+					entry.wstr.ptr = wide_str;
+					entry.wstr.len = length;
+				}
+				else {
+					log_printf("ERROR: invalid json type for wide string option %s\n", key);
+					continue;
+				}
 				break;
-
-			case JSON_INTEGER:
-			case JSON_REAL:
-				real_val = json_number_value(j_val_val);
+			case 'S':
+				if (json_is_string(j_val_val)) {
+					const char* opt_str = json_string_value(j_val_val);
+					entry.type = VT_STRING;
+					entry.str.ptr = strdup(opt_str);
+					entry.str.len = strlen(opt_str) + 1;
+				}
+				else {
+					log_printf("ERROR: invalid json type for string option %s\n", key);
+					continue;
+				}
 				break;
-
-			default:
-				log_printf("ERROR: invalid value specified for integer option %s\n", key);
-				continue;
-			}
-			switch (entry.size) {
-			case 4: {
-				entry.t = PATCH_OPT_VAL_FLOAT;
-				entry.val.f = (float)real_val;
+			/*case 'C':
+				if (json_is_string(j_val_val)) {
+					const char* opt_code_str = json_string_value(j_val_val);
+					entry.type = VT_CODE;
+					entry.str.ptr = strdup(opt_code_str);
+					entry.str.len = binhack_calc_size(opt_code_str);
+				}
+				else {
+					log_printf("ERROR: invalid json type for code option %s\n", key);
+					continue;
+				}
+				break;*/
+			case 'I': {
+				size_t value;
+				json_eval_int(j_val_val, &value, JEVAL_DEFAULT);
+				switch (strtol(tname + 1, nullptr, 10)) {
+					case 8:
+						entry.type = VT_SBYTE;
+						entry.sb = (int8_t)value;
+						break;
+					case 16:
+						entry.type = VT_SWORD;
+						entry.sw = (int16_t)value;
+						break;
+					case 32:
+						entry.type = VT_SDWORD;
+						entry.si = (int32_t)value;
+						break;
+					/*case 64:
+						entry.type = VT_SQWORD;
+						entry.sq = (int64_t)value;
+						break;*/
+					default:
+						log_printf("ERROR: invalid integer size %s for option %s\n", tname, key);
+						continue;
+				}
 				break;
 			}
-			case 8: {
-				entry.t = PATCH_OPT_VAL_DOUBLE;
-				entry.val.d = real_val;
+			case 'B': case 'U': {
+				size_t value;
+				json_eval_int(j_val_val, &value, JEVAL_DEFAULT);
+				switch (strtol(tname + 1, nullptr, 10)) {
+					case 8:
+						entry.type = VT_BYTE;
+						entry.b = (uint8_t)value;
+						break;
+					case 16:
+						entry.type = VT_WORD;
+						entry.w = (uint16_t)value;
+						break;
+					case 32:
+						entry.type = VT_DWORD;
+						entry.i = (uint32_t)value;
+						break;
+					/*case 64:
+						entry.type = VT_QWORD;
+						entry.q = (uint64_t)value;
+						break;*/
+					default:
+						log_printf("ERROR: invalid integer size %s for option %s\n", tname, key);
+						continue;
+				}
 				break;
-
-			default:
-				log_printf("ERROR: invalid float type %s for option %s\n", tname, key);
-				continue;
 			}
+			case 'F': {
+				double value;
+				json_eval_real(j_val_val, &value, JEVAL_DEFAULT);
+				switch (strtol(tname + 1, nullptr, 10)) {
+					case 32:
+						entry.type = VT_FLOAT;
+						entry.f = (float)value;
+						break;
+					case 64:
+						entry.type = VT_DOUBLE;
+						entry.d = value;
+						break;
+					default:
+						log_printf("ERROR: invalid float type %s for option %s\n", tname, key);
+						continue;
+				}
+				break;
 			}
-		}
 		}
 		patch_options[key] = entry;
 	}
 }
 
-patch_opt_val_t* patch_opt_get(const char *name) {
+patch_val_t* patch_opt_get(const char *name) {
 	auto val = patch_options.find(name);
 	if (val == patch_options.end()) {
 		return NULL;

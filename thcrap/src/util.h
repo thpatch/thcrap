@@ -11,6 +11,9 @@
 
 /// Pointers
 /// --------
+#define AlignUpToMultipleOf(ptr, len) ((ptr) - ((ptr) % (len)) + (len))
+#define AlignUpToMultipleOf2(ptr, mul) (((ptr) + (mul) - 1) & -(mul))
+
 size_t dword_align(const size_t val);
 BYTE* ptr_dword_align(const BYTE *in);
 // Advances [src] by [num] and returns [num].
@@ -28,6 +31,8 @@ __inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 
 /// Strings
 /// -------
+#define PtrDiffStrlen(end_ptr, start_ptr) ((end_ptr) - (start_ptr))
+
 __inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 {
 	assert(src);
@@ -120,6 +125,9 @@ void str_hexdate_format(char format[11], uint32_t date);
 	VLA_FREE(str##_lower);
 /// -------
 
+// C23 compliant implementation of strndup
+char* strndup(const char* source, size_t size);
+
 #define STR_ADDRESS_ERROR_NONE 0
 #define STR_ADDRESS_ERROR_OVERFLOW 0x1
 #define STR_ADDRESS_ERROR_GARBAGE 0x2
@@ -139,16 +147,30 @@ typedef struct {
   *	- "0x": Hexadecimal, as expected.
   *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
   *	        If hMod is NULL, the main module of the current process is used.
-  *	- Everything else is parsed as a decimal number.
+  *	- Everything else is parsed as a hexadecimal or decimal number depending on
+  *   whether hexadecimal digits are present.
   *
   * [ret] can be a nullptr if a potential parse error and/or a pointer to the
   * end of the parsed address are not needed.
   */
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
 
+// Returns whether [c] is a valid hexadecimal character
+bool is_valid_hex(char c);
+
+// Returns either the hexadecimal value of [c]
+// or -1 if [c] is not a valid hexadecimal character
+int8_t hex_value(char c);
+
+#ifdef __cplusplus
+
+// Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer
+constexpr uint32_t TextInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
+	return c4 << 24 | c3 << 16 | c2 << 8 | c1;
+}
+
 /// Geometry
 /// --------
-#ifdef __cplusplus
 struct vector2_t {
 	union {
 		struct {

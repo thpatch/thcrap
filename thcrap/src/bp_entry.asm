@@ -8,19 +8,20 @@
   */
 
 	.intel_syntax
-	.global	_bp_entry, _bp_entry_localptr, _bp_entry_end
+	.global	_bp_entry, _bp_entry_indexptr, _bp_entry_localptr, _bp_entry_callptr, _bp_entry_end
 
 _bp_entry:
 	pusha
 	pushf
+	cld
 	push	%esp
+_bp_entry_indexptr:
+	push	0x12345678
 _bp_entry_localptr:
 	push	0x12345678
-	/* Since we need to be position-independent... */
-	mov %eax, offset _breakpoint_process
-	call	eax
-	add	%esp, 8
-	add	%esp, %eax
+_bp_entry_callptr:
+	call	_bp_entry_callptr
+	lea		%esp, [%esp+%eax+0xC]
 	popf
 	popa
 	ret

@@ -30,6 +30,7 @@ extern "C" {
 #include "exception.h"
 #include "util.h"
 #include "jansson_ex.h"
+#include "expression.h"
 #include "global.h"
 #include "runconfig.h"
 #include "log.h"

@@ -50,52 +50,6 @@ struct runconfig_t
 
 static runconfig_t run_cfg;
 
-static void runconfig_stage_load_breakpoints(json_t *breakpoints, stage_t& stage)
-{
-	const char *key;
-	json_t *breakpoint_entry;
-	json_object_foreach(breakpoints, key, breakpoint_entry) {
-		if (!json_is_object(breakpoint_entry)) {
-			log_printf("breakpoint %s: not an object\n", key);
-			continue;
-		}
-
-		json_t *addr_array = json_object_get(breakpoint_entry, "addr");
-		size_t cavesize = json_object_get_hex(breakpoint_entry, "cavesize");
-		bool ignore = json_is_true(json_object_get(breakpoint_entry, "ignore"));
-
-		if (ignore) {
-			log_printf("breakpoint %s: ignored\n", key);
-			continue;
-		}
-		if (!cavesize) {
-			log_printf("breakpoint %s: no cavesize specified\n", key);
-			continue;
-		}
-		if (json_flex_array_size(addr_array) == 0) {
-			// Ignore binhacks with missing addr field.
-			// It usually means the breakpoint doesn't apply for this game or game version.
-			continue;
-		}
-
-		size_t i;
-		json_t *addr;
-		json_flex_array_foreach(addr_array, i, addr) {
-			if (json_is_string(addr)) {
-				breakpoint_local_t bp;
-				bp.name = strdup(key);
-				bp.addr_str = strdup(json_string_value(addr));
-				bp.cavesize = cavesize;
-				bp.json_obj = json_incref(breakpoint_entry);
-				bp.addr = nullptr;
-				bp.func = nullptr;
-				bp.cave = nullptr;
-				stage.breakpoints.push_back(bp);
-			}
-		}
-	}
-}
-
 static void runconfig_stage_load(json_t *stage_json)
 {
 	stage_t stage;
@@ -118,9 +72,10 @@ static void runconfig_stage_load(json_t *stage_json)
 	json_t *binhacks = json_object_get(stage_json, "binhacks");
 	json_object_foreach(binhacks, key, value) {
 		binhack_t binhack;
-		if (binhack_from_json(key, value, &binhack)) {
-			stage.binhacks.push_back(binhack);
+		if (!binhack_from_json(key, value, &binhack)) {
+			continue;
 		}
+		stage.binhacks.push_back(binhack);
 	}
 
 	json_t *codecaves = json_object_get(stage_json, "codecaves");
@@ -134,19 +89,22 @@ static void runconfig_stage_load(json_t *stage_json)
 			continue;
 		}
 
-		if (!json_is_string(value)) {
-			// Don't print an error, this can be used for comments
+		codecave_t codecave;
+		if (!codecave_from_json(key, value, &codecave)) {
 			continue;
 		}
-
-		codecave_t codecave;
-		codecave.name = strdup(key);
-		codecave.code = strdup(json_string_value(value));
 		stage.codecaves.push_back(codecave);
 	}
 
 	json_t *breakpoints = json_object_get(stage_json, "breakpoints");
-	runconfig_stage_load_breakpoints(breakpoints, stage);
+	json_object_foreach(breakpoints, key, value) {
+
+		breakpoint_local_t breakpoint;
+		if (!breakpoint_from_json(key, value, &breakpoint)) {
+			continue;
+		}
+		stage.breakpoints.push_back(breakpoint);
+	}
 
 	run_cfg.stages.push_back(stage);
 }
@@ -154,7 +112,8 @@ static void runconfig_stage_load(json_t *stage_json)
 void runconfig_load(json_t *file, int flags)
 {
 	json_t *value;
-	bool can_overwrite = (flags & RUNCONFIG_NO_OVERWRITE) == 0;
+	bool can_overwrite = !(flags & RUNCONFIG_NO_OVERWRITE);
+	bool load_binhacks = !(flags & RUNCONFIG_NO_BINHACKS);
 
 	if (!run_cfg.json) {
 		run_cfg.json = json_object();
@@ -223,15 +182,18 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
-	json_t *stages = json_object_get(file, "init_stages");
-	if ((stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) &&
-		(run_cfg.stages.empty() || can_overwrite)) {
-		run_cfg.stages.clear();
-		size_t i;
-		json_flex_array_foreach(stages, i, value) {
-			runconfig_stage_load(value);
-		};
-		runconfig_stage_load(file);
+	if (load_binhacks) {
+		json_t *stages = json_object_get(file, "init_stages");
+		if ((can_overwrite || run_cfg.stages.empty()) &&
+			(stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) || json_object_get(file, "options")
+			) {
+			run_cfg.stages.clear();
+			size_t i;
+			json_flex_array_foreach(stages, i, value) {
+				runconfig_stage_load(value);
+			};
+			runconfig_stage_load(file);
+		}
 	}
 }
 
@@ -292,8 +254,10 @@ void runconfig_free()
 			free(binhack.title);
 			free(binhack.code);
 			free(binhack.expected);
-			for (size_t i = 0; binhack.addr[i]; i++) {
-				free(binhack.addr[i]);
+			for (size_t i = 0; binhack.addr[i].type != END_ADDR; ++i) {
+				if (binhack.addr[i].type == STR_ADDR) {
+					free(binhack.addr[i].str);
+				}
 			}
 			free(binhack.addr);
 		}
@@ -305,7 +269,12 @@ void runconfig_free()
 		stage.codecaves.clear();
 		for (auto& breakpoint : stage.breakpoints) {
 			free(breakpoint.name);
-			free(breakpoint.addr_str);
+			for (size_t i = 0; breakpoint.addr[i].type != END_ADDR; ++i) {
+				if (breakpoint.addr[i].type == STR_ADDR) {
+					free(breakpoint.addr[i].str);
+				}
+			}
+			free(breakpoint.addr);
 			json_decref(breakpoint.json_obj);
 		}
 		stage.breakpoints.clear();

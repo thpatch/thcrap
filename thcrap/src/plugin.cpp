@@ -13,8 +13,48 @@
 #include <unordered_map>
 #include <string_view>
 
-static std::unordered_map<std::string_view, UINT_PTR> funcs = {};
+static std::unordered_map<std::string_view, UINT_PTR> funcs = {
+	{ "th_malloc", (size_t)&malloc },
+	{ "th_calloc", (size_t)&calloc },
+	{ "th_realloc", (size_t)&realloc },
+	{ "th_free", (size_t)&free },
+	{ "th_msize", (size_t)&_msize },
+	{ "th_expand", (size_t)&_expand },
+	{ "th_aligned_malloc", (size_t)&_aligned_malloc },
+	{ "th_aligned_realloc", (size_t)&_aligned_realloc },
+	{ "th_aligned_free", (size_t)&_aligned_free },
+	{ "th_aligned_msize", (size_t)&_aligned_msize },
+
+	{ "th_memcpy", (size_t)&memcpy },
+	{ "th_memmove", (size_t)&memmove },
+	{ "th_memcmp", (size_t)&memcmp },
+	{ "th_memset", (size_t)&memset },
+	{ "th_memccpy", (size_t)&_memccpy },
+	{ "th_strdup", (size_t)&strdup },
+	{ "th_strndup", (size_t)&strndup },
+
+	{ "th_strcmp", (size_t)&strcmp },
+	{ "th_strncmp", (size_t)&strncmp },
+	{ "th_stricmp", (size_t)&stricmp },
+	{ "th_strnicmp", (size_t)&strnicmp },
+	{ "th_strcpy", (size_t)&strcpy },
+	{ "th_strncpy", (size_t)&strncpy },
+	{ "th_strcat", (size_t)&strcat },
+	{ "th_strncat", (size_t)&strncat },
+	{ "th_strlen", (size_t)&strlen },
+	{ "th_strnlen_s", (size_t)&strnlen_s },
+
+	{ "th_sprintf", (size_t)&sprintf },
+	{ "th_snprintf", (size_t)&snprintf },
+	{ "th_sscanf", (size_t)&sscanf },
+
+	{ "th_GetLastError", (size_t)&GetLastError },
+	{ "th_GetProcAddress", (size_t)&GetProcAddress },
+	{ "th_GetModuleHandleA", (size_t)&GetModuleHandleA },
+	{ "th_GetModuleHandleW", (size_t)&GetModuleHandleW },
+};
 static mod_funcs_t mod_funcs = {};
+static mod_funcs_t patch_funcs = {};
 static json_t *plugins = NULL;
 
 UINT_PTR func_get(const char *name)
@@ -28,6 +68,7 @@ UINT_PTR func_get(const char *name)
 }
 
 int func_add(const char *name, size_t addr) {
+	// Can this use insert_or_assign somehow?
 	auto existing = funcs.find(name);
 	if (existing == funcs.end()) {
 		funcs[strdup(name)] = addr;
@@ -52,20 +93,27 @@ bool func_remove(const char *name) {
 	return false;
 }
 
+int patch_func_init(exported_func_t *funcs_new, size_t func_count)
+{
+	if (func_count > 0) {
+		mod_funcs_t *patch_funcs_new = mod_func_build(funcs_new, "_patch_");
+		mod_func_run(patch_funcs_new, "init", NULL);
+		patch_funcs.merge(*patch_funcs_new);
+		delete patch_funcs_new;
+		func_count = 0;
+	}
+	return func_count;
+}
+
 int plugin_init(HMODULE hMod)
 {
 	exported_func_t *funcs_new;
 	int func_count = GetExportedFunctions(&funcs_new, hMod);
 	if(func_count > 0) {
-		mod_funcs_t *mod_funcs_new = mod_func_build(funcs_new);
+		mod_funcs_t *mod_funcs_new = mod_func_build(funcs_new, "_mod_");
 		mod_func_run(mod_funcs_new, "init", NULL);
 		mod_func_run(mod_funcs_new, "detour", NULL);
-		for (mod_func_pair_t pair : *mod_funcs_new) {
-			std::string_view key = pair.first;
-			std::vector<mod_call_type> arr = pair.second;
-
-			mod_funcs[key].insert(mod_funcs[key].end(), arr.begin(), arr.end());
-		}
+		mod_funcs.merge(*mod_funcs_new);
 		for (int i = 0; funcs_new[i].func != 0 && funcs_new[i].name != nullptr; i++) {
 			funcs[funcs_new[i].name] = funcs_new[i].func;
 		}
@@ -168,27 +216,28 @@ int plugins_close(void)
 	return 0;
 }
 
-mod_funcs_t* mod_func_build(exported_func_t *funcs)
+mod_funcs_t* mod_func_build(exported_func_t *funcs, const char* infix)
 {
 	// This function is not exported
 	mod_funcs_t *ret = new mod_funcs_t;
-	const char *infix = "_mod_";
-	size_t infix_len = strlen(infix);
+	const size_t infix_len = strlen(infix);
 	for (int i = 0; funcs[i].name != nullptr && funcs[i].func != 0; i++) {
 		const char *p = strstr(funcs[i].name, infix);
 		if(p) {
 			p += infix_len;
-			(*ret)[p].push_back((mod_call_type)funcs[i].func);
+			if (p[0] != '\0') {
+				(*ret)[p].push_back((mod_call_type)funcs[i].func);
+			}
 		}
 	}
 	return ret;
 }
 
-void mod_func_run(mod_funcs_t *mod_funcs, const char *pattern, void *param)
+void mod_func_run(mod_funcs_t* mod_funcs, const char *pattern, void *param)
 {
-	std::vector<mod_call_type> func_array = (*mod_funcs)[pattern];
-	for(mod_call_type &func : func_array) {
-		if(func) {
+	std::vector<mod_call_type>& func_array = (*mod_funcs)[pattern];
+	for (mod_call_type &func : func_array) {
+		if (func) {
 			func(param);
 		}
 	}
@@ -197,12 +246,29 @@ void mod_func_run(mod_funcs_t *mod_funcs, const char *pattern, void *param)
 void mod_func_run_all(const char *pattern, void *param)
 {
 	mod_func_run(&mod_funcs, pattern, param);
+	mod_func_run(&patch_funcs, pattern, param);
 }
 
-void mod_func_remove(const char *pattern, mod_call_type func) {
-	std::vector<mod_call_type> &func_array = mod_funcs[pattern];
+void patch_func_run_all(const char *pattern, void *param)
+{
+	mod_func_run(&patch_funcs, pattern, param);
+}
+
+void mod_func_remove_from(mod_funcs_t *mod_funcs, const char *pattern, mod_call_type func)
+{
+	std::vector<mod_call_type> &func_array = (*mod_funcs)[pattern];
 	auto elem = std::find_if(func_array.begin(), func_array.end(), [&func](mod_call_type func_in_array) {
 		return func_in_array == func;
 	});
 	func_array.erase(elem);
+}
+
+void mod_func_remove(const char *pattern, mod_call_type func)
+{
+	mod_func_remove_from(&mod_funcs, pattern, func);
+}
+
+void patch_func_remove(const char *pattern, mod_call_type func)
+{
+	mod_func_remove_from(&patch_funcs, pattern, func);
 }

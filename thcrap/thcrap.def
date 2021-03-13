@@ -7,6 +7,11 @@ EXPORTS
 	binhack_render
 	binhacks_apply
 
+	; Expression parsing
+	; ----------------
+	get_patch_value
+	eval_expr
+
 	; File breakpoints
 	; ----------------
 	file_mod_init
@@ -239,6 +244,8 @@ EXPORTS
 	plugins_load
 	plugins_close
 	mod_func_remove
+	patch_func_run_all
+	patch_func_remove
 
 	; Detour promotion
 	; ----------------

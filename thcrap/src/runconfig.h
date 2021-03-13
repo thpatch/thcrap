@@ -75,6 +75,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module);
   */
 
 #define RUNCONFIG_NO_OVERWRITE 1
+#define RUNCONFIG_NO_BINHACKS 2
 
 // Load a run configuration.
 // If called several times, the new configuration will be merged with the old one
