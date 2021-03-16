@@ -2,6 +2,7 @@ EXPORTS
 	; Binary hacks
 	; -------------
 	is_valid_hex
+	hex_value
 	binhack_calc_size
 	binhack_from_json
 	binhack_render

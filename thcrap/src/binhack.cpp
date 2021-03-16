@@ -54,11 +54,79 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 	return retval;
 }
 
+hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array)
+{
+
+	if (!addr_array) {
+		return NULL;
+	}
+
+	size_t addr_count = 0;
+
+	json_t *it;
+	json_flex_array_foreach_scoped(size_t, i, addr_array, it) {
+		if (json_is_integer(it) || json_is_string(it)) {
+			++addr_count;
+		}
+	}
+	if (!addr_count) {
+		return NULL;
+	}
+
+	hackpoint_addr_t* ret = new hackpoint_addr_t[addr_count + 1];
+	ret[addr_count].type = END_ADDR;
+
+	addr_count = 0;
+
+	json_flex_array_foreach_scoped(size_t, i, addr_array, it) {
+		if (json_is_string(it)) {
+			ret[addr_count].str = strdup(json_string_value(it));
+			ret[addr_count].type = STR_ADDR;
+			++addr_count;
+		}
+		else if (json_is_integer(it)) {
+			ret[addr_count].raw = (uint32_t)json_integer_value(it);
+			ret[addr_count].type = RAW_ADDR;
+			++addr_count;
+		}
+	}
+
+	return ret;
+}
+
+inline bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, HMODULE hMod)
+{
+
+	if (hackpoint_addr) {
+		size_t addr = 0;
+		switch (int8_t addr_type = hackpoint_addr->type) {
+			case STR_ADDR:
+				eval_expr(hackpoint_addr->str, '\0', &addr, NULL, (size_t)hMod);
+				free(hackpoint_addr->str);
+				hackpoint_addr->type = RAW_ADDR;
+				hackpoint_addr->raw = addr;
+				[[fallthrough]];
+			case RAW_ADDR:
+				addr = hackpoint_addr->raw;
+				if (!addr) {
+					hackpoint_addr->type = INVALID_ADDR;
+				}
+				[[fallthrough]];
+			case INVALID_ADDR:
+				*out = addr;
+				return true;
+			default:; //case END_ADDR:
+		}
+	}
+	return false;
+}
+
 // Returns NULL only if parsing should be aborted.
 // Declared noinline since float values aren't used
 // frequently and otherwise binhack_calc_size/binhack_render
 // waste a whole register storing the address of errno
-static __declspec(noinline) const char* consume_float_value(const char *const expr, patch_val_t *const val) {
+static __declspec(noinline) const char* consume_float_value(const char *const expr, patch_val_t *const val)
+{
 	char* expr_next;
 	errno = 0;
 	double result = _strtod_l(expr, &expr_next, lc_neutral.locale);
@@ -110,7 +178,8 @@ static __declspec(noinline) const char* consume_float_value(const char *const ex
 // Declared forceinline since the compiler can't
 // figure it out otherwise and copy/pasting this
 // into two functions would be a pain
-static __forceinline const char* check_for_binhack_cast(const char* expr, patch_val_t *const val) {
+static __forceinline const char* check_for_binhack_cast(const char* expr, patch_val_t *const val)
+{
 	switch (const uint8_t c = expr[0] | 0x20) {
 		case 'i': case 'u': case 'f':
 			if (expr[1] && expr[2]) {
@@ -249,9 +318,9 @@ size_t binhack_calc_size(const char *binhack_str)
 			case VT_WSTRING:
 				size += sizeof(const wchar_t*);
 				break;
-			/*case VT_CODE:
+			case VT_CODE:
 				size += val.str.len;
-				break;*/
+				break;
 		}
 	}
 }
@@ -268,23 +337,16 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	json_t *addr = json_object_get(in, "addr");
 	const char *code = json_object_get_string(in, "code");
-	if (!code || json_flex_array_size(addr) == 0) {
+	if (!code) {
 		// Ignore binhacks with missing fields
 		// It usually means the binhack doesn't apply for this game or game version.
 		return false;
 	}
 
-	size_t valid_addrs = 0;
-
-	json_t *it;
-	json_flex_array_foreach_scoped(size_t, i, addr, it) {
-		if (json_is_integer(it) || json_is_string(it)) {
-			++valid_addrs;
-		}
-	}
-	if (valid_addrs == 0) {
+	hackpoint_addr_t *addrs = hackpoint_addrs_from_json(json_object_get(in, "addr"));
+	if (!addrs) {
+		// Ignore binhacks with no valid addresses
 		return false;
 	}
 
@@ -295,19 +357,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	out->title = strdup(title);
 	out->code = strdup(code);
 	out->expected = strdup(expected);
-	out->addr = new hackpoint_addr_t[valid_addrs + 1];
-	out->addr[valid_addrs].type = END_ADDR;
-
-	json_flex_array_foreach_scoped(size_t, i, addr, it) {
-		if (json_is_string(it)) {
-			out->addr[i].str = strdup(json_string_value(it));
-			out->addr[i].type = STR_ADDR;
-		}
-		else if (json_is_integer(it)) {
-			out->addr[i].raw = (uint32_t)json_integer_value(it);
-			out->addr[i].type = RAW_ADDR;
-		}
-	}
+	out->addr = addrs;
 
 	return true;
 }
@@ -361,7 +411,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 						case VT_DOUBLE:	val.d = *(double*)val.i; break;
 						case VT_STRING:
 						case VT_WSTRING:
-							//case VT_CODE:
+						case VT_CODE:
 							BinhackRenderError();
 					}
 					break;
@@ -503,14 +553,14 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_buf += sizeof(const wchar_t*);
 				target_addr += sizeof(const wchar_t*);
 				break;
-			/*case VT_CODE: {
+			case VT_CODE: {
 				if (binhack_render(binhack_buf, target_addr, val.str.ptr)) {
 					return 1;
 				}
 				binhack_buf += val.str.len;
 				target_addr += val.str.len;
 				break;
-			}*/
+			}
 		}
 	}
 }
@@ -534,7 +584,7 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 		return 0;
 	}
 
-	size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
+	const size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
 	int failed = binhacks_total;
 
 	log_printf(
@@ -579,20 +629,13 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 			}
 		}
 		
-		for(size_t j = 0;; j++) {
-			const hackpoint_addr_t *const addr_ref = &cur->addr[j];
+		size_t addr;
+		for (hackpoint_addr_t* cur_addr = cur->addr;
+			 eval_hackpoint_addr(cur_addr, &addr, hMod);
+			 ++cur_addr) {
 
-			size_t addr = 0;
-			if (addr_ref->type == END_ADDR) {
-				break;
-			}
-			else if (addr_ref->type == STR_ADDR) {
-				eval_expr(addr_ref->str, '\0', &addr, NULL, (size_t)hMod);
-			}
-			else if (addr_ref->type == RAW_ADDR) {
-				addr = addr_ref->raw;
-			}
-			if(!addr) {
+			if (!addr) {
+				// NULL_ADDR
 				continue;
 			}
 
@@ -614,8 +657,8 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 			}
 		}
 	}
-	SAFE_FREE(asm_buf);
-	SAFE_FREE(exp_buf);
+	free(asm_buf);
+	free(exp_buf);
 	log_printf("\n");
 	return failed;
 }

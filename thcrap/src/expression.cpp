@@ -160,13 +160,91 @@ struct CPUID_Data_t {
 			}
 		}
 	}
+	//CPUID_Data_t(void) {
+	//	int data[4];
+	//	__cpuid(&data[0], 0);
+	//	if (data[1] == TextInt('G', 'e', 'n', 'u') &&
+	//		data[3] == TextInt('i', 'n', 'e', 'I') &&
+	//		data[2] == TextInt('n', 't', 'e', 'l')) {
+	//			Manufacturer = Intel;
+	//	}
+	//	else if (data[1] == TextInt('A', 'u', 't', 'h') &&
+	//			 data[3] == TextInt('e', 'n', 't', 'i') &&
+	//			 data[2] == TextInt('c', 'A', 'M', 'D')) {
+	//				Manufacturer = AMD;
+	//	}
+	//	else {
+	//		Manufacturer = Unknown;
+	//	}
+	//	switch (data[0]) {
+	//		default: //case 7:
+	//			__cpuidex(&data[0], 7, 0);
+	//			HasBMI1				= _bittest((long*)&data[1], 3);
+	//			HasAVX2				= _bittest((long*)&data[1], 4);
+	//			HasERMS				= _bittest((long*)&data[1], 9);
+	//			HasAVX512F			= _bittest((long*)&data[1], 16);
+	//			HasAVX512DQ			= _bittest((long*)&data[1], 17);
+	//			HasADX				= _bittest((long*)&data[1], 19);
+	//			HasAVX512IFMA		= _bittest((long*)&data[1], 21);
+	//			HasAVX512PF			= _bittest((long*)&data[1], 26);
+	//			HasAVX512ER			= _bittest((long*)&data[1], 27);
+	//			HasAVX512CD			= _bittest((long*)&data[1], 28);
+	//			HasAVX512BW			= _bittest((long*)&data[1], 30);
+	//			HasAVX512VL			= _bittest((long*)&data[1], 31);
+	//			HasAVX512VBMI		= _bittest((long*)&data[2], 1);
+	//			HasAVX512VBMI2		= _bittest((long*)&data[2], 6);
+	//			HasGFNI				= _bittest((long*)&data[2], 8);
+	//			HasVPCLMULQDQ		= _bittest((long*)&data[2], 10);
+	//			HasAVX512VNNI		= _bittest((long*)&data[2], 11);
+	//			HasAVX512BITALG		= _bittest((long*)&data[2], 12);
+	//			HasAVX512VPOPCNTDQ	= _bittest((long*)&data[2], 14);
+	//			HasAVX5124VNNIW		= _bittest((long*)&data[3], 2);
+	//			HasAVX5124FMAPS		= _bittest((long*)&data[3], 3);
+	//			HasFSRM				= _bittest((long*)&data[3], 4);
+	//			HasAVX512VP2I		= _bittest((long*)&data[3], 8);
+	//			switch (data[0]) {
+	//				default: //case 1:
+	//					__cpuidex(&data[0], 7, 1);
+	//					HasAVX512BF16 = _bittest((long*)&data[0], 5);
+	//				case 0:;
+	//			}
+	//		case 6: case 5: case 4: case 3: case 2:
+	//			__cpuid(&data[0], 0x80000000);
+	//			if (data[0] >= 0x80000001) {
+	//				HasMMXEXT		= _bittest((long*)&data[3], 22);
+	//				Has3DNOWEXT		= _bittest((long*)&data[3], 30);
+	//				Has3DNOW		= _bittest((long*)&data[3], 31);
+	//				HasABM			= _bittest((long*)&data[2], 5);
+	//				HasSSE4A		= _bittest((long*)&data[2], 6);
+	//				HasXOP			= _bittest((long*)&data[2], 7);
+	//				HasFMA4			= _bittest((long*)&data[2], 16);
+	//				HasTBM			= _bittest((long*)&data[2], 21);
+	//			}
+	//		case 1:
+	//			__cpuid(&data[0], 1);
+	//			HasCMPXCHG8			= _bittest((long*)&data[3], 8);
+	//			HasCMOV				= _bittest((long*)&data[3], 15);
+	//			HasMMX				= _bittest((long*)&data[3], 23);
+	//			HasFXSAVE			= _bittest((long*)&data[3], 24);
+	//			HasSSE				= _bittest((long*)&data[3], 25);
+	//			HasSSE2				= _bittest((long*)&data[3], 26);
+	//			HasSSE3				= _bittest((long*)&data[2], 1);
+	//			HasPCLMULQDQ		= _bittest((long*)&data[2], 1);
+	//			HasSSSE3			= _bittest((long*)&data[2], 9);
+	//			HasFMA				= _bittest((long*)&data[2], 12);
+	//			HasCMPXCHG16B		= _bittest((long*)&data[2], 13);
+	//			HasSSE41			= _bittest((long*)&data[2], 19);
+	//			HasSSE42			= _bittest((long*)&data[2], 20);
+	//			HasMOVBE			= _bittest((long*)&data[2], 22);
+	//			HasPOPCNT			= _bittest((long*)&data[2], 23);
+	//			HasAVX				= _bittest((long*)&data[2], 28);
+	//			HasF16C				= _bittest((long*)&data[2], 29);
+	//		case 0:;
+	//	}
+	//}
 };
 
 static const CPUID_Data_t CPUID_Data;
-
-#define breakpoint_test_var data_refs->regs
-#define is_breakpoint (breakpoint_test_var)
-#define is_binhack (!breakpoint_test_var)
 
 #define WarnOnce(warning) do {\
 	static bool AlreadyDisplayedWarning = false;\
@@ -209,9 +287,9 @@ static __declspec(noinline) void InvalidCPUFeatureWarningMessage(const char *con
 	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%s\"! Assuming feature is present and returning 1...\n");
 }
 
-//static __declspec(noinline) void InvalidCodeOptionWarningMessage(void) {
-//	log_printf("EXPRESSION WARNING 6: Code options are not valid in expressions! Returning NULL...\n");
-//}
+static __declspec(noinline) void InvalidCodeOptionWarningMessage(void) {
+	log_printf("EXPRESSION WARNING 6: Code options are not valid in expressions! Returning NULL...\n");
+}
 
 static __declspec(noinline) void NullDerefWarningMessage(void) {
 	log_printf("EXPRESSION WARNING 7: Attempted to dereference NULL value! Returning NULL...\n");
@@ -248,8 +326,8 @@ typedef struct {
 	const size_t rel_source;
 } StackSaver;
 
-static const char* __fastcall eval_expr_new_impl(const char* expr, const char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *const data_refs);
-static const char* __fastcall consume_value_impl(const char* expr, size_t *const out, const StackSaver *const data_refs);
+static const char* eval_expr_new_impl(const char* expr, const char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *const data_refs);
+static const char* consume_value_impl(const char* expr, size_t *const out, const StackSaver *const data_refs);
 
 size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr) {
 	// Verify pointers and regname is at least 4 bytes
@@ -302,8 +380,8 @@ enum : uint8_t {
 	ArithmeticRightShift = '>' + '>',
 	LogicalLeftShift = '<' + '<' + '<',
 	LogicalRightShift = '>' + '>' + '>',
-	CircularLeftShift = PreventOverlap('R') + '<' + '<',
-	CircularRightShift = PreventOverlap('R') + '>' + '>',
+	CircularLeftShift = PreventOverlap('r') + '<' + '<',
+	CircularRightShift = PreventOverlap('r') + '>' + '>',
 	ThreeWay = '<' + '=' + '>',
 	Less = '<',
 	LessEqual = '<' + '=',
@@ -312,43 +390,40 @@ enum : uint8_t {
 	Equal = '=' + '=',
 	NotEqual = PreventOverlap('!') + '=',
 	BitwiseAnd = PreventOverlap('&'),
-	BitwiseNand = '~' + PreventOverlap('&'),
+	BitwiseNand = '~' + BitwiseAnd,
 	BitwiseXor = '^',
-	BitwiseXnor = '~' + '^',
+	BitwiseXnor = '~' + BitwiseXor,
 	BitwiseOr = PreventOverlap('|'),
-	BitwiseNor = '~' + PreventOverlap('|'),
+	BitwiseNor = '~' + BitwiseOr,
 	LogicalAnd = PreventOverlap('&') + PreventOverlap('&'),
 	LogicalAndSC = LogicalAnd - 1,
-	LogicalNand = PreventOverlap('!') + PreventOverlap('&') + PreventOverlap('&'),
+	LogicalNand = PreventOverlap('!') + LogicalAnd,
 	LogicalNandSC = LogicalNand - 1,
 	LogicalXor = '^' + '^',
-	LogicalXnor = PreventOverlap('!') + '^' + '^',
+	LogicalXnor = PreventOverlap('!') + LogicalXor,
 	LogicalOr = PreventOverlap('|') + PreventOverlap('|'),
 	LogicalOrSC = LogicalOr - 1,
-	LogicalNor = PreventOverlap('!') + PreventOverlap('|') + PreventOverlap('|'),
+	LogicalNor = PreventOverlap('!') + LogicalOr,
 	LogicalNorSC = LogicalNor - 1,
 	TernaryConditional = PreventOverlap('?'),
-	Elvis = PreventOverlap('?') + ':',
-	NullCoalescing = PreventOverlap('?') + PreventOverlap('?'),
 	Assign = '=',
-	AddAssign = '+' + '=',
-	SubtractAssign = '-' + '=',
-	MultiplyAssign = '*' + '=',
-	DivideAssign = '/' + '=',
-	ModuloAssign = '%' + '=',
-	ArithmeticLeftShiftAssign = '<' + '<' + '=',
-	ArithmeticRightShiftAssign = '>' + '>' + '=',
-	LogicalLeftShiftAssign = '<' + '<' + '<' + '=',
-	LogicalRightShiftAssign = '>' + '>' + '>' + '=',
-	CircularLeftShiftAssign = PreventOverlap('R') + '<' + '<' + '=',
-	CircularRightShiftAssign = PreventOverlap('R') + '>' + '>' + '=',
-	AndAssign = PreventOverlap('&') + '=',
-	NandAssign = '~' + PreventOverlap('&') + '=',
-	XorAssign = '^' + '=',
-	XnorAssign = '~' + '^' + '=',
-	OrAssign = PreventOverlap('|') + '=',
-	NorAssign = '~' + PreventOverlap('|') + '=',
-	NullCoalescingAssign = PreventOverlap('?') + PreventOverlap('?') + '=',
+	AddAssign = Add + '=',
+	SubtractAssign = Subtract + '=',
+	MultiplyAssign = Multiply + '=',
+	DivideAssign = Divide + '=',
+	ModuloAssign = Modulo + '=',
+	ArithmeticLeftShiftAssign = ArithmeticLeftShift + '=',
+	ArithmeticRightShiftAssign = ArithmeticRightShift + '=',
+	LogicalLeftShiftAssign = LogicalLeftShift + '=',
+	LogicalRightShiftAssign = LogicalRightShift + '=',
+	CircularLeftShiftAssign = CircularLeftShift + '=',
+	CircularRightShiftAssign = CircularRightShift + '=',
+	AndAssign = BitwiseAnd + '=',
+	NandAssign = BitwiseNand + '=',
+	XorAssign = BitwiseXor + '=',
+	XnorAssign = BitwiseXnor + '=',
+	OrAssign = BitwiseOr + '=',
+	NorAssign = BitwiseNor + '=',
 	Comma = ',',
 	Gomma = ';'
 };
@@ -367,90 +442,82 @@ struct OpData_t {
 #define ERROR_ASSOCIATIVITY LeftAssociative
 		Precedence[BadBrackets] = ERROR_PRECEDENCE;
 		Associativity[BadBrackets] = ERROR_ASSOCIATIVITY;
-#define POWER_PRECEDENCE 21
+#define POWER_PRECEDENCE 19
 #define POWER_ASSOCIATIVITY LeftAssociative
 		Precedence[Power] = POWER_PRECEDENCE;
 		Associativity[Power] = POWER_ASSOCIATIVITY;
-#define MULTIPLY_PRECEDENCE 19
+#define MULTIPLY_PRECEDENCE 17
 #define MULTIPLY_ASSOCIATIVITY LeftAssociative
 		Precedence[Multiply] = Precedence[Divide] = Precedence[Modulo] = MULTIPLY_PRECEDENCE;
 		Associativity[Multiply] = Associativity[Divide] = Associativity[Modulo] = MULTIPLY_ASSOCIATIVITY;
-#define ADD_PRECEDENCE 18
+#define ADD_PRECEDENCE 16
 #define ADD_ASSOCIATIVITY LeftAssociative
 		Precedence[Add] = Precedence[Subtract] = ADD_PRECEDENCE;
 		Associativity[Add] = Associativity[Subtract] = ADD_ASSOCIATIVITY;
-#define SHIFT_PRECEDENCE 17
+#define SHIFT_PRECEDENCE 15
 #define SHIFT_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalLeftShift] = Precedence[LogicalRightShift] = Precedence[ArithmeticLeftShift] = Precedence[ArithmeticRightShift] = Precedence[CircularLeftShift] = Precedence[CircularRightShift] = SHIFT_PRECEDENCE;
 		Associativity[LogicalLeftShift] = Associativity[LogicalRightShift] = Associativity[ArithmeticLeftShift] = Associativity[ArithmeticRightShift] = Associativity[CircularLeftShift] = Associativity[CircularRightShift] = SHIFT_ASSOCIATIVITY;
-#define COMPARE_PRECEDENCE 16
+#define COMPARE_PRECEDENCE 14
 #define COMPARE_ASSOCIATIVITY LeftAssociative
 		Precedence[Less] = Precedence[LessEqual] = Precedence[Greater] = Precedence[GreaterEqual] = COMPARE_PRECEDENCE;
 		Associativity[Less] = Associativity[LessEqual] = Associativity[Greater] = Associativity[GreaterEqual] = COMPARE_ASSOCIATIVITY;
-#define EQUALITY_PRECEDENCE 15
+#define EQUALITY_PRECEDENCE 13
 #define EQUALITY_ASSOCIATIVITY LeftAssociative
 		Precedence[Equal] = Precedence[NotEqual] = EQUALITY_PRECEDENCE;
 		Associativity[Equal] = Associativity[NotEqual] = EQUALITY_ASSOCIATIVITY;
-#define THREEWAY_PRECEDENCE 14
+#define THREEWAY_PRECEDENCE 12
 #define THREEWAY_ASSOCIATIVITY LeftAssociative
 		Precedence[ThreeWay] = THREEWAY_PRECEDENCE;
 		Associativity[ThreeWay] = THREEWAY_ASSOCIATIVITY;
-#define BITAND_PRECEDENCE 13
+#define BITAND_PRECEDENCE 11
 #define BITAND_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseAnd] = Precedence[BitwiseNand] = BITAND_PRECEDENCE;
 		Associativity[BitwiseAnd] = Associativity[BitwiseNand] = BITAND_ASSOCIATIVITY;
-#define BITXOR_PRECEDENCE 12
+#define BITXOR_PRECEDENCE 10
 #define BITXOR_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseXor] = Precedence[BitwiseXnor] = BITXOR_PRECEDENCE;
 		Associativity[BitwiseXor] = Associativity[BitwiseXnor] = BITXOR_ASSOCIATIVITY;
-#define BITOR_PRECEDENCE 11
+#define BITOR_PRECEDENCE 9
 #define BITOR_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseOr] = Precedence[BitwiseNor] = BITOR_PRECEDENCE;
 		Associativity[BitwiseOr] = Associativity[BitwiseNor] = BITOR_ASSOCIATIVITY;
-#define AND_PRECEDENCE 10
+#define AND_PRECEDENCE 8
 #define AND_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalAnd] = Precedence[LogicalNand] = Precedence[LogicalAndSC] = Precedence[LogicalNandSC] = AND_PRECEDENCE;
 		Associativity[LogicalAnd] = Associativity[LogicalNand] = Associativity[LogicalAndSC] = Associativity[LogicalNandSC] = AND_ASSOCIATIVITY;
-#define XOR_PRECEDENCE 9
+#define XOR_PRECEDENCE 7
 #define XOR_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalXor] = Precedence[LogicalXnor] = XOR_PRECEDENCE;
 		Associativity[LogicalXor] = Associativity[LogicalXnor] = XOR_ASSOCIATIVITY;
-#define OR_PRECEDENCE 8
+#define OR_PRECEDENCE 6
 #define OR_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalOr] = Precedence[LogicalNor] = Precedence[LogicalOrSC] = Precedence[LogicalNorSC] = OR_PRECEDENCE;
 		Associativity[LogicalOr] = Associativity[LogicalNor] = Associativity[LogicalOrSC] = Associativity[LogicalNorSC] = OR_ASSOCIATIVITY;
-#define NULLC_PRECEDENCE 7
-#define NULLC_ASSOCIATIVITY RightAssociative
-		Precedence[NullCoalescing] = NULLC_PRECEDENCE;
-		Associativity[NullCoalescing] = NULLC_ASSOCIATIVITY;
-#define TERNARY_PRECEDENCE 6
+#define TERNARY_PRECEDENCE 5
 #define TERNARY_ASSOCIATIVITY RightAssociative
-		Precedence[TernaryConditional] = Precedence[Elvis] = TERNARY_PRECEDENCE;
-		Associativity[TernaryConditional] = Associativity[Elvis] = TERNARY_ASSOCIATIVITY;
-#define ASSIGN_PRECEDENCE 5
+		Precedence[TernaryConditional] = TERNARY_PRECEDENCE;
+		Associativity[TernaryConditional] = TERNARY_ASSOCIATIVITY;
+#define ASSIGN_PRECEDENCE 4
 #define ASSIGN_ASSOCIATIVITY RightAssociative
-		Precedence[Assign] = Precedence[AddAssign] = Precedence[SubtractAssign] = Precedence[MultiplyAssign] = Precedence[DivideAssign] = Precedence[ModuloAssign] = Precedence[LogicalLeftShiftAssign] = Precedence[LogicalRightShiftAssign] = Precedence[ArithmeticLeftShiftAssign] = Precedence[ArithmeticRightShiftAssign] = Precedence[CircularLeftShiftAssign] = Precedence[CircularRightShiftAssign] = Precedence[AndAssign] = Precedence[OrAssign] = Precedence[XorAssign] = Precedence[NandAssign] = Precedence[XnorAssign] = Precedence[NorAssign] = Precedence[NullCoalescingAssign] = ASSIGN_PRECEDENCE;
-		Associativity[Assign] = Associativity[AddAssign] = Associativity[SubtractAssign] = Associativity[MultiplyAssign] = Associativity[DivideAssign] = Associativity[ModuloAssign] = Associativity[LogicalLeftShiftAssign] = Associativity[LogicalRightShiftAssign] = Associativity[ArithmeticLeftShiftAssign] = Associativity[ArithmeticRightShiftAssign] = Associativity[CircularLeftShiftAssign] = Associativity[CircularRightShiftAssign] = Associativity[AndAssign] = Associativity[OrAssign] = Associativity[XorAssign] = Associativity[NandAssign] = Associativity[XnorAssign] = Associativity[NorAssign] = Associativity[NullCoalescingAssign] = ASSIGN_ASSOCIATIVITY;
-#define COMMA_PRECEDENCE 4
+		Precedence[Assign] = Precedence[AddAssign] = Precedence[SubtractAssign] = Precedence[MultiplyAssign] = Precedence[DivideAssign] = Precedence[ModuloAssign] = Precedence[LogicalLeftShiftAssign] = Precedence[LogicalRightShiftAssign] = Precedence[ArithmeticLeftShiftAssign] = Precedence[ArithmeticRightShiftAssign] = Precedence[CircularLeftShiftAssign] = Precedence[CircularRightShiftAssign] = Precedence[AndAssign] = Precedence[OrAssign] = Precedence[XorAssign] = Precedence[NandAssign] = Precedence[XnorAssign] = Precedence[NorAssign] = ASSIGN_PRECEDENCE;
+		Associativity[Assign] = Associativity[AddAssign] = Associativity[SubtractAssign] = Associativity[MultiplyAssign] = Associativity[DivideAssign] = Associativity[ModuloAssign] = Associativity[LogicalLeftShiftAssign] = Associativity[LogicalRightShiftAssign] = Associativity[ArithmeticLeftShiftAssign] = Associativity[ArithmeticRightShiftAssign] = Associativity[CircularLeftShiftAssign] = Associativity[CircularRightShiftAssign] = Associativity[AndAssign] = Associativity[OrAssign] = Associativity[XorAssign] = Associativity[NandAssign] = Associativity[XnorAssign] = Associativity[NorAssign] = ASSIGN_ASSOCIATIVITY;
+#define COMMA_PRECEDENCE 3
 #define COMMA_ASSOCIATIVITY LeftAssociative
 		Precedence[Comma] = COMMA_PRECEDENCE;
 		Associativity[Comma] = COMMA_ASSOCIATIVITY;
-#define GOMMA_PRECEDENCE 3
+#define GOMMA_PRECEDENCE 2
 #define GOMMA_ASSOCIATIVITY LeftAssociative
 		Precedence[Gomma] = GOMMA_PRECEDENCE;
 		Associativity[Gomma] = GOMMA_ASSOCIATIVITY;
-#define STARTOP_PRECEDENCE 2
+#define STARTOP_PRECEDENCE 1
 #define STARTOP_ASSOCIATIVITY LeftAssociative
-		Precedence[StartNoOp] = Precedence[StandaloneTernaryEnd] = STARTOP_PRECEDENCE;
-		Associativity[StartNoOp] = Precedence[StandaloneTernaryEnd] = STARTOP_ASSOCIATIVITY;
-#define END_GROUP_NOOP_PRECEDENCE 0
-#define END_GROUP_NOOP_ASSOCIATIVITY LeftAssociative
-		Precedence[EndGroupOp] = END_GROUP_NOOP_PRECEDENCE;
-		Associativity[EndGroupOp] = END_GROUP_NOOP_ASSOCIATIVITY;
+		Precedence[StartNoOp] = STARTOP_PRECEDENCE;
+		Associativity[StartNoOp] = STARTOP_ASSOCIATIVITY;
 #define NOOP_PRECEDENCE 0
 #define NOOP_ASSOCIATIVITY LeftAssociative
-		Precedence[NullOp] = NOOP_PRECEDENCE;
-		Associativity[NullOp] = NOOP_ASSOCIATIVITY;
+		Precedence[NullOp] = Precedence[EndGroupOp] = Precedence[StandaloneTernaryEnd] = NOOP_PRECEDENCE;
+		Associativity[NullOp] = Associativity[EndGroupOp] = Associativity[StandaloneTernaryEnd] = NOOP_ASSOCIATIVITY;
 	}
 };
 
@@ -541,21 +608,6 @@ static __forceinline const char* __fastcall find_next_op_impl(const char *const 
 					}
 				}
 				continue;
-			case '?':
-				c += c;
-				switch (expr_ref[1]) {
-					case '?':
-						switch (expr_ref[2]) {
-							case '=':	goto CTimes2PlusEqualRetPlus3;
-							default:	goto CTimes2RetPlus2;
-						}
-					default:
-						// All of these offset expr_ref by
-						// 1 less than normal in order to
-						// more easily process the operators.
-						*out = c;
-						return expr_ref;
-				}
 			case '<': case '>':
 				if (expr_ref[1]) {
 					uint32_t temp;
@@ -643,8 +695,14 @@ static __forceinline const char* __fastcall find_next_op_impl(const char *const 
 					case '=':	goto CPlusEqualRetPlus2;
 					default:	goto CRetPlus1;
 				}
-			case ',': case ';': case ':':
+			case '?':
+				c += c;
+				[[fallthrough]];
+			case ',': case ';': //case ':':
 				goto CRetPlus1;
+			case ':':
+				*out = c;
+				return expr_ref;
 		}
 	}
 
@@ -705,8 +763,6 @@ static inline const char *const PrintOp(const op_t op) {
 		case NotEqual: return "!=";
 		case ThreeWay: return "<=>";
 		case TernaryConditional: return "?";
-		case Elvis: return "?:";
-		case NullCoalescing: return "??";
 		case Assign: return "=";
 		case AddAssign: return "+=";
 		case SubtractAssign: return "-=";
@@ -725,7 +781,6 @@ static inline const char *const PrintOp(const op_t op) {
 		case NandAssign: return "~&=";
 		case XnorAssign: return "~^=";
 		case NorAssign: return "~|=";
-		case NullCoalescingAssign: return "??=";
 		case Comma: return ",";
 		case Gomma: return ";";
 		case NullOp: return "NullOp";
@@ -885,12 +940,6 @@ static size_t ApplyOperator(const size_t value, const size_t arg, const op_t op)
 			return value || arg;
 		case LogicalNor: case LogicalNorSC:
 			return !(value || arg);
-		case NullCoalescingAssign:
-			AssignmentWarningMessage();
-			[[fallthrough]];
-		case NullCoalescing:
-			return value ? value : arg;
-			break;
 		case Assign:
 			AssignmentWarningMessage();
 			[[fallthrough]];
@@ -1084,6 +1133,44 @@ static __declspec(noinline) size_t GetBPFuncOrRawAddress(const char *const name,
 	return addr;
 }
 
+static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, const size_t name_length, const StackSaver *const data_refs) {
+	const char *const name_buffer = strndup(name, name_length);
+	patch_val_t nop_str;
+	nop_str.type = VT_CODE;
+	nop_str.str.len = 0;
+	eval_expr_new_impl(name_buffer, '\0', &nop_str.str.len, StartNoOp, 0, data_refs);
+	switch (nop_str.str.len) {
+		case 0xF: nop_str.str.ptr = CPUID_Data.Manufacturer == AMD ?
+										"0F1F80000000000F1F840000000000" :
+										"6666666666662E0F1F840000000000"; break;
+		case 0xE: nop_str.str.ptr = CPUID_Data.Manufacturer == AMD ?
+										"0F1F80000000000F1F8000000000" :
+										"66666666662E0F1F840000000000"; break;
+		case 0xD: nop_str.str.ptr = CPUID_Data.Manufacturer == AMD ?
+										"660F1F4400000F1F8000000000" :
+										"666666662E0F1F840000000000"; break;
+		case 0xC: nop_str.str.ptr = CPUID_Data.Manufacturer == AMD ?
+										"660F1F440000660F1F440000" :
+										"6666662E0F1F840000000000"; break;
+		case 0xB: nop_str.str.ptr = CPUID_Data.Manufacturer == AMD ?
+										"0F1F440000660F1F440000" :
+										"66662E0F1F840000000000"; break;
+		case 0xA: nop_str.str.ptr =		"662E0F1F840000000000"; break;
+		case 0x9: nop_str.str.ptr =		"660F1F840000000000"; break;
+		case 0x8: nop_str.str.ptr =		"0F1F840000000000"; break;
+		case 0x7: nop_str.str.ptr =		"0F1F8000000000"; break;
+		case 0x6: nop_str.str.ptr =		"660F1F440000"; break;
+		case 0x5: nop_str.str.ptr =		"0F1F440000"; break;
+		case 0x4: nop_str.str.ptr =		"0F1F4000"; break;
+		case 0x3: nop_str.str.ptr =		"0F1F00"; break;
+		case 0x2: nop_str.str.ptr =		"6690"; break;
+		case 0x1: nop_str.str.ptr =		"90"; break;
+		default: nop_str.type = VT_NONE;
+	}
+	free((void*)name_buffer);
+	return nop_str;
+}
+
 static __declspec(noinline) const char* get_patch_value_impl(const char* expr, patch_val_t *const out, const StackSaver *const data_refs) {
 
 	ExpressionLogging("Patch value opening char: \"%hhX\"\n", expr[0]);
@@ -1124,6 +1211,10 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, p
 		expr += 6;
 		out->type = VT_BYTE;
 		out->b = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
+	}
+	else if (strnicmp(expr, "nop:", 3) == 0) {
+		expr += 4;
+		*out = GetMultibyteNOP(expr, PtrDiffStrlen(patch_val_end, expr), data_refs);
 	}
 	else {
 		out->type = VT_DWORD;
@@ -1270,19 +1361,19 @@ static __forceinline const char* is_reg_name(const char* expr, const x86_reg_t *
 	}
 
 DwordRegister:
-	//if (out) {
+	if (out) {
 		*out = deref ? *(uint32_t*)temp : (size_t)temp;
-	//}
+	}
 	return expr + 3;
 WordRegister:
-	//if (out) {
+	if (out) {
 		*out = deref ? *(uint16_t*)temp : (size_t)temp;
-	//}
+	}
 	return expr + 2;
 ByteRegister:
-	//if (out) {
+	if (out) {
 		*out = deref ? *(uint8_t*)temp : (size_t)temp;
-	//}
+	}
 	return expr + 2;
 }
 
@@ -1294,7 +1385,7 @@ static inline const char* PostfixCheck(const char* expr) {
 	return expr;
 }
 
-static const char* __fastcall consume_value_impl(const char* expr, size_t *const out, const StackSaver *const data_refs) {
+static const char* consume_value_impl(const char* expr, size_t *const out, const StackSaver *const data_refs) {
 	// cast is used for both casts and pointer sizes
 	patch_val_t cur_value;
 	cur_value.type = VT_DWORD;
@@ -1320,7 +1411,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 					expr += 7;
 					continue;
 				}
-				goto RawValue;
+				goto RawValueOrRegister;
 			case 'w': case 'W':
 				if (strnicmp(expr, "word ptr", 8) == 0) {
 					cur_value.type = VT_WORD;
@@ -1339,7 +1430,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 					expr += 9;
 					continue;
 				}
-				goto RawValue;
+				goto RawValueOrRegister;
 			case 'f': case 'F':
 				if (strnicmp(expr, "float ptr", 9) == 0) {
 					cur_value.type = VT_FLOAT;
@@ -1358,7 +1449,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 			case '!': case '~': case '+': case '-': {
 				const char* expr_next = consume_value_impl(expr + 1 + (expr[0] == expr[1]), out, data_refs);
 				if (!expr_next) goto InvalidValueError;
-				//if (out) {
+				if (out) {
 					switch ((uint8_t)expr[0] << (uint8_t)(expr[0] == expr[1])) {
 						case '~': *out = ~*out; break;
 						case '!': *out = !*out; break;
@@ -1369,14 +1460,14 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 						case '-' << 1: IncDecWarningMessage(); --*out; break;
 						case '+' << 1: IncDecWarningMessage(); ++*out; break;
 					}
-				//}
+				}
 				return PostfixCheck(expr_next);
 			}
 			case '*': {
 				// expr + 1 is used to avoid creating a loop
 				const char* expr_next = consume_value_impl(expr + 1, out, data_refs);
 				if (!expr_next) goto InvalidValueError;
-				//if (out) {
+				if (out) {
 					if (!*out) goto NullDerefWarning;
 					switch (cur_value.type) {
 						case VT_BOOL: *out = (bool)*(uint8_t*)*out; break;
@@ -1391,7 +1482,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 						case VT_FLOAT: *out = (uint32_t)*(float*)*out; break;
 						case VT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
 					}
-				//}
+				}
 				return PostfixCheck(expr_next);
 			}
 			// Casts and subexpression values
@@ -1405,7 +1496,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 					expr_next = consume_value_impl(expr_next, out, data_refs);
 					if (!expr_next) goto InvalidValueError;
 					++expr_next;
-					//if (out) {
+					if (out) {
 						switch (cur_value.type) {
 							case VT_BYTE: *out = *(uint8_t*)out; break;
 							case VT_SBYTE: *out = *(int8_t*)out; break;
@@ -1418,7 +1509,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 							case VT_FLOAT: *out = (uint32_t)*(float*)out; break;
 							// case VT_DOUBLE: *out = (uint64_t)*(double*)out; break;
 						}
-					//}
+					}
 				}
 				else {
 					// Subexpressions
@@ -1438,7 +1529,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 					const char* expr_next = eval_expr_new_impl(expr + 1, expr[0] == '[' ? ']' : '}', out, StartNoOp, 0, data_refs);
 					if (!expr_next) goto InvalidExpressionError;
 					++expr_next;
-					//if (out) {
+					if (out) {
 						if (!*out) goto NullDerefWarning;
 						switch (cur_value.type) {
 							case VT_BOOL: *out = (bool)*(uint8_t*)*out; break;
@@ -1453,7 +1544,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 							case VT_FLOAT: *out = (uint32_t)*(float*)*out; break;
 							case VT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
 						}
-					//}
+					}
 					return PostfixCheck(expr_next);
 				}
 				[[fallthrough]];
@@ -1462,7 +1553,7 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 				// DON'T use expr + 1 since that kills get_patch_value
 				const char* expr_next = get_patch_value_impl(expr, &cur_value, data_refs);
 				if (!expr_next) goto InvalidPatchValueError;
-				//if (out) {
+				if (out) {
 					switch (cur_value.type) {
 						case VT_BYTE: *out = (uint32_t)cur_value.b; break;
 						case VT_SBYTE: *out = (uint32_t)cur_value.sb; break;
@@ -1476,10 +1567,10 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 						case VT_DOUBLE: *out = (uint32_t)cur_value.d; break;
 						case VT_STRING: *out = (uint32_t)cur_value.str.ptr; break;
 						case VT_WSTRING: *out = (uint32_t)cur_value.wstr.ptr; break;
-						//case VT_CODE: InvalidCodeOptionWarningMessage(); current = 0; break;
+						case VT_CODE: goto InvalidCodeOptionWarning;
 					}
 					ExpressionLogging("Parsed patch value is %X / %d / %u\n", *out, *out, *out);
-				//}
+				}
 				return PostfixCheck(expr_next);
 			}
 			default:
@@ -1488,13 +1579,14 @@ static const char* __fastcall consume_value_impl(const char* expr, size_t *const
 				}*/
 			// Raw value or breakpoint register
 			case '&':
+RawValueOrRegister:
 				if (is_breakpoint) {
 					const char* expr_next = is_reg_name(expr, data_refs->regs, out);
 					if (expr_next) {
-						//if (out) {
+						if (out) {
 							// current is set inside is_reg_name if a register is detected
 							ExpressionLogging("Register value was %X / %d / %u\n", *out, *out, *out);
-						//}
+						}
 						return PostfixCheck(expr_next);
 					}
 				}
@@ -1506,14 +1598,14 @@ RawValue:
 						goto InvalidCharacterError;
 					}
 					
-					//if (out) {
+					if (out) {
 						ExpressionLogging(
 							"Raw value was %X / %d / %u\n"
 							"Remaining after raw value: \"%s\"\n",
 							current, current, current, expr_next
 						);
 						*out = current;
-					//}
+					}
 					return PostfixCheck(expr_next);
 				}
 		}
@@ -1534,6 +1626,9 @@ InvalidCharacterError:
 NullDerefWarning:
 	NullDerefWarningMessage();
 	return expr;
+InvalidCodeOptionWarning:
+	InvalidCodeOptionWarningMessage();
+	return expr;
 }
 
 static inline const char* __fastcall skip_value(const char* expr, const char end) {
@@ -1548,7 +1643,7 @@ static inline const char* __fastcall skip_value(const char* expr, const char end
 				return NULL;
 			default:
 				if (c == end && depth == 0) {
-					return expr + 1;
+					return expr;
 				}
 				continue;
 			case '(': case '[': case '{':
@@ -1568,7 +1663,7 @@ static inline const char* __fastcall skip_value(const char* expr, const char end
 
 static size_t expr_index = 0;
 
-static const char* __fastcall eval_expr_new_impl(const char* expr, char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *volatile data_refs) {
+static const char* eval_expr_new_impl(const char* expr, char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *volatile data_refs) {
 
 	ExpressionLogging(
 		"START SUBEXPRESSION #%zu: \"%s\" with end \"%hhX\"\n"
@@ -1580,8 +1675,8 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, char end, siz
 	op_t ops_cur = start_op;
 	op_t ops_next;
 	size_t cur_value = 0;
+	size_t* cur_value_addr = out ? &cur_value : NULL;
 
-	// Yes, this loop is awful looking, but it's intentional
 	do {
 		ExpressionLogging(
 			"Remaining expression: \"%s\"\n"
@@ -1590,7 +1685,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, char end, siz
 		);
 
 		if (ops_cur != NullOp) {
-			const char* expr_next_val = consume_value_impl(expr, &cur_value, data_refs);
+			const char* expr_next_val = consume_value_impl(expr, cur_value_addr, data_refs);
 			if (!expr_next_val) goto InvalidValueError;
 			expr = expr_next_val;
 		}
@@ -1613,7 +1708,7 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, char end, siz
 				ExpressionLogging("\tLOWER PRECEDENCE than %s\n", PrintOp(ops_next));
 				switch (ops_next) {
 					default:
-						expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+						expr = eval_expr_new_impl(expr, end, cur_value_addr, ops_next, cur_value, data_refs);
 						if (!expr) goto InvalidExpressionError;
 						ExpressionLogging(
 							"\tRETURN FROM SUBEXPRESSION\n"
@@ -1621,11 +1716,12 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, char end, siz
 							expr
 						);
 						if (expr[0] == '?') {
+							++expr;
 					case TernaryConditional:
 							if (cur_value) {
-								ExpressionLogging("Ternary TRUE compare: %s has < precedence\n", PrintOp(ops_cur));
-								if (expr++[1] != ':') {
-									expr = eval_expr_new_impl(expr, ':', &cur_value, StartNoOp, 0, data_refs);
+								ExpressionLogging("Ternary TRUE compare: \"%s\"\n", expr);
+								if (expr[0] != ':') {
+									expr = eval_expr_new_impl(expr, ':', cur_value_addr, StartNoOp, 0, data_refs);
 									if (!expr) goto InvalidExpressionError;
 								}
 								ExpressionLogging("Skipping value until %hhX in \"%s\"...\n", end, expr);
@@ -1639,13 +1735,13 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, char end, siz
 							}
 							else {
 								ExpressionLogging(
-									"Ternary FALSE compare: %s has < precedence\n"
+									"Ternary FALSE compare: \"%s\"\n"
 									"Skipping value until %hhX in \"%s\"...\n",
-									PrintOp(ops_cur), ':', expr
+									expr, ':', expr
 								);
-								expr = find_matching_end(expr, TextInt('?', ':'));
+								expr = eval_expr_new_impl(expr, ':', NULL, StartNoOp, 0, data_refs);
 								if (!expr) goto InvalidExpressionError;
-								++expr;
+								while (*expr++ != ':');
 								ExpressionLogging(
 									"Skipping completed\n"
 									"Ternary FALSE remaining: \"%s\" with end \"%hhX\"\n",
@@ -1669,19 +1765,18 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, char end, siz
 				// property instead, but everything I tried resulted in
 				// VS doubling the allocated stack space per call, which
 				// is pretty terrible for a recursive function. Screw that.
-				if ((uint8_t)(cur_prec - OpData.Precedence[Assign]) <= (OpData.Precedence[NullCoalescing] - OpData.Precedence[Assign])) {
-					expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+				if ((uint8_t)(cur_prec - OpData.Precedence[Assign]) <= (OpData.Precedence[TernaryConditional] - OpData.Precedence[Assign])) {
+					expr = eval_expr_new_impl(expr, end, cur_value_addr, ops_next, cur_value, data_refs);
 					if (!expr) goto InvalidExpressionError;
 				}
 				/*switch (cur_prec) {
-					case OpData.Precedence[NullCoalescing]:
 					case OpData.Precedence[TernaryConditional]:
 					case OpData.Precedence[Assign]:
-						expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+						expr = eval_expr_new_impl(expr, end, cur_value_addr, ops_next, cur_value, data_refs);
 						if (!expr) goto InvalidExpressionError;
 				}*/
 				/*if (OpData.Associativity[ops_cur] == RightAssociative) {
-					expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+					expr = eval_expr_new_impl(expr, end, cur_value_addr, ops_next, cur_value, data_refs);
 					if (!expr) goto InvalidExpressionError;
 				}*/
 				break;
@@ -1700,9 +1795,9 @@ static const char* __fastcall eval_expr_new_impl(const char* expr, char end, siz
 
 	} while (expr[0] != end);
 	ExpressionLogging(
-		"END SUBEXPRESSION #%zu: \"%s\" + %hhu\n"
+		"END SUBEXPRESSION #%zu: \"%s\"\n"
 		"Subexpression value was %X / %d / %u\n",
-		expr_index--, expr, 0, value, value, value
+		expr_index--, expr, value, value, value
 	);
 	if (out) *out = value;
 	return expr;

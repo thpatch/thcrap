@@ -66,27 +66,6 @@ typedef struct {
 	uint32_t retaddr;
 } x86_reg_t;
 
-enum {
-	invalid_cast = -1,
-	no_cast = 0,
-	T8_ptr = 1,
-	u8_cast = 1,
-	T16_ptr = 2,
-	u16_cast = 2,
-	T32_ptr = 4,
-	u32_cast = 4,
-	T64_ptr = 8,
-	u64_cast = 8,
-	b_cast,
-	i8_cast,
-	i16_cast,
-	i32_cast,
-	i64_cast,
-	f32_cast,
-	f64_cast
-};
-typedef uint8_t CastType;
-
 // Enum of possible types for the description of
 // a value specified by the user defined patch options
 enum {
@@ -103,7 +82,7 @@ enum {
 	VT_DOUBLE,
 	VT_STRING,
 	VT_WSTRING,
-	//VT_CODE,
+	VT_CODE,
 	VT_ADDRRET
 };
 typedef uint8_t patch_value_type_t;
@@ -123,7 +102,6 @@ typedef struct {
 		uintptr_t p;
 		float f;
 		double d;
-		unsigned char byte_array[8];
 		struct {
 			const char* ptr;
 			size_t len;

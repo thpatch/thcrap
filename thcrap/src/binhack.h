@@ -33,18 +33,18 @@
 #define BINHACK_BUFSIZE_MIN 512
 
 typedef enum {
-	END_ADDR = -1,
-	NULL_ADDR = 0,
+	INVALID_ADDR = -1,
+	END_ADDR = 0,
 	STR_ADDR = 1,
 	RAW_ADDR = 2
 } hackpoint_addr_type;
 
 typedef struct {
-	int8_t type;
 	union {
 		char* str;
-		uint32_t raw;
+		size_t raw;
 	};
+	int8_t type;
 } hackpoint_addr_t;
 
 typedef struct {
@@ -86,6 +86,15 @@ typedef struct {
 
 // Shared error message for nonexistent functions.
 int hackpoints_error_function_not_found(const char *func_name, int retval);
+
+// Parses a JSON array of string/integer addresses and returns an array
+// of hackpoint_addr_t to be parsed later by eval_hackpoint_addr.
+hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array);
+
+// Evaluates a [hackpoint_addr], potentially converting the contained string expression into an
+// integer. If HMODULE is not null, relative addresses are relative to this module.
+// Else, they are relative to the main module of the current process.
+bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, HMODULE hMod);
 
 // Parses a json binhack entry and returns a binhack object
 bool binhack_from_json(const char *name, json_t *in, binhack_t *out);

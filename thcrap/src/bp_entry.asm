@@ -8,21 +8,23 @@
   */
 
 	.intel_syntax
-	.global	_bp_entry, _bp_entry_indexptr, _bp_entry_localptr, _bp_entry_callptr, _bp_entry_end
+	.global	_bp_entry, _bp_entry_caveptr, _bp_entry_localptr, _bp_entry_callptr, _bp_entry_end
 
 _bp_entry:
 	pusha
 	pushf
 	cld
-	push	%esp
-_bp_entry_indexptr:
-	push	0x12345678
+	push	esp
+	/* TODO: Make these push a dword value of 0. Even "pushl $0" with AT&T syntax switches to the byte encoding instead of dword. */
+_bp_entry_caveptr:
+	push	0xDEADBEEF
 _bp_entry_localptr:
-	push	0x12345678
+	push	0xDEADBEEF
 _bp_entry_callptr:
-	call	_bp_entry_callptr
-	lea		%esp, [%esp+%eax+0xC]
+	call	_breakpoint_process
+	lea		esp, [esp+eax+0xC]
 	popf
 	popa
 	ret
+	.balign 16, 0xCC
 _bp_entry_end:
