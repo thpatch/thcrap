@@ -40,12 +40,43 @@ typedef enum {
 } hackpoint_addr_type;
 
 typedef struct {
-	union {
-		char* str;
-		size_t raw;
-	};
+	// Raw numeric address. Evaluation results of string addresses
+	// are written to this field to be referenced later without
+	// re-evaluating.
+	size_t raw;
+
+	// Heap allocated string expression to be evaluated.
+	char* str;
+
+	/**
+	  * Internal values
+	  */
+
+	// Value indicating which type of JSON data was used to create this
+	// hackpoint_addr.
 	int8_t type;
+
+	// Pointer to the data originally overwritten at this hackpoint_addr.
+	// Currently implemented with a union for documentation purposes since
+	// binhacks/breakpoints useincompatible methods of allocating this buffer.
+	// 
+	// TODO: In theory, this should be enough to implement binhack/breakpoint
+	// repatching by iterating through the runconfig stages in reverse and copying
+	// the buffers back to the original program.
+	union {
+		uint8_t* breakpoint_source;
+		uint8_t* binhack_source;
+	};
 } hackpoint_addr_t;
+
+// Parses a JSON array of string/integer addresses and returns an array
+// of hackpoint_addr_t to be parsed later by eval_hackpoint_addr.
+hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array);
+
+// Evaluates a [hackpoint_addr], potentially converting the contained string expression into an
+// integer. If HMODULE is not null, relative addresses are relative to this module.
+// Else, they are relative to the main module of the current process.
+bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, HMODULE hMod);
 
 typedef struct {
 	// Binhack name
@@ -86,15 +117,6 @@ typedef struct {
 
 // Shared error message for nonexistent functions.
 int hackpoints_error_function_not_found(const char *func_name, int retval);
-
-// Parses a JSON array of string/integer addresses and returns an array
-// of hackpoint_addr_t to be parsed later by eval_hackpoint_addr.
-hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array);
-
-// Evaluates a [hackpoint_addr], potentially converting the contained string expression into an
-// integer. If HMODULE is not null, relative addresses are relative to this module.
-// Else, they are relative to the main module of the current process.
-bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, HMODULE hMod);
 
 // Parses a json binhack entry and returns a binhack object
 bool binhack_from_json(const char *name, json_t *in, binhack_t *out);

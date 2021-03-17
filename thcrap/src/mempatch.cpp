@@ -71,6 +71,26 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 	return byte_ret != len;
 }
 
+void* PatchRegionCopySrc(void *ptr, const void *Prev, const void *New, void *CpyBuf, size_t len)
+{
+	DWORD oldProt;
+	void* ret = NULL;
+
+	if(VirtualCheckRegion(ptr, len)) {
+		VirtualProtect(ptr, len, PAGE_READWRITE, &oldProt);
+		if (!Prev || memcmp(ptr, Prev, len) == 0) {
+			if (!CpyBuf) {
+				CpyBuf = malloc(len);
+			}
+			memcpy(CpyBuf, ptr, len);
+			memcpy(ptr, New, len);
+			ret = CpyBuf;
+		}
+		VirtualProtect(ptr, len, oldProt, &oldProt);
+	}
+	return ret;
+}
+
 /// Import Address Table detouring
 /// ==============================
 inline int func_detour(PIMAGE_THUNK_DATA pThunk, const void *new_ptr)

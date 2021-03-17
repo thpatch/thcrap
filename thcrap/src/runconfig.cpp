@@ -255,8 +255,11 @@ void runconfig_free()
 			free(binhack.code);
 			free(binhack.expected);
 			for (size_t i = 0; binhack.addr[i].type != END_ADDR; ++i) {
-				if (binhack.addr[i].type == STR_ADDR) {
+				if (binhack.addr[i].str) {
 					free(binhack.addr[i].str);
+				}
+				if (binhack.addr[i].binhack_source) {
+					free(binhack.addr[i].binhack_source);
 				}
 			}
 			free(binhack.addr);
@@ -270,7 +273,7 @@ void runconfig_free()
 		for (auto& breakpoint : stage.breakpoints) {
 			free(breakpoint.name);
 			for (size_t i = 0; breakpoint.addr[i].type != END_ADDR; ++i) {
-				if (breakpoint.addr[i].type == STR_ADDR) {
+				if (breakpoint.addr[i].str) {
 					free(breakpoint.addr[i].str);
 				}
 			}

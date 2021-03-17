@@ -1837,5 +1837,5 @@ ExpressionError:
 		"\t\t\t\t\t\t\t\t\t\t\t\t\tRemaining after final: \"%s\"\n",
 		expr, *out, *out, *out, expr
 	);
-	return expr;
+	return NULL;
 }
