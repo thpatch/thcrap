@@ -181,7 +181,7 @@ extern "C" int BP_th135_prepareReadFile(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
-	log_printf("Patching %s...\n", fr->path.filename().u8string().c_str());
+	log_printf("Patching %s...\n", fr->path.u8string().c_str());
 	EnterCriticalSection(&fr->cs);
 	Th135File::tls_set(fr);
 	return 1;

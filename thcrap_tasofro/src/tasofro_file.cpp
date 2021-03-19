@@ -52,7 +52,7 @@ void TasofroFile::clear()
 	this->init_done = false;
 }
 
-bool TasofroFile::need_replace()
+bool TasofroFile::need_orig_file()
 {
 	// If dat_dump is enabled, we *always* need the original buffer
 	const char *dat_dump = runconfig_dat_dump_get();
@@ -67,6 +67,30 @@ bool TasofroFile::need_replace()
 	}
 
 	// We have a hook callback. It will need the original file.
+	if (this->hooks) {
+		return true;
+	}
+
+	// Nothing to do, we just let the game read its original file
+	// with its own code.
+	return false;
+}
+
+bool TasofroFile::need_replace()
+{
+	// If dat_dump is enabled, we always want to run the patching code
+	// so that we can dump the files in it
+	const char *dat_dump = runconfig_dat_dump_get();
+	if (dat_dump) {
+		return true;
+	}
+
+	// We have a replacement file, we want this one instead of the original one
+	if (this->rep_buffer) {
+		return true;
+	}
+
+	// We have a hook callback, we might return a patched file
 	if (this->hooks) {
 		return true;
 	}
@@ -132,7 +156,7 @@ void TasofroFile::replace_ReadFile_init(ReadFileStack *stack,
 	// of a file by the game, then remember this offset for future calls.
 	this->offset = SetFilePointer(stack->hFile, 0, nullptr, FILE_CURRENT);
 
-	if (this->need_replace()) {
+	if (this->need_orig_file()) {
 		this->read_from_ReadFile(stack->hFile, this->offset, this->pre_json_size);
 		decrypt(this, (BYTE*)this->game_buffer, this->pre_json_size);
 	}

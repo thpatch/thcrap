@@ -58,6 +58,8 @@ struct TasofroFile : public file_rep_t
 private:
 	void read_from_ReadFile(HANDLE hFile, DWORD fileOffset, DWORD size);
 	void init_buffer();
+	// Return true if we need to read the original file, false otherwise.
+	bool need_orig_file();
 
 	void replace_ReadFile_init(ReadFileStack *stack,
 		std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)> decrypt,
