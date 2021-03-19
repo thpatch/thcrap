@@ -136,27 +136,34 @@ static __declspec(noinline) const char* consume_float_value(const char *const ex
 	double result = _strtod_l(expr, &expr_next, lc_neutral.locale);
 	if (expr == expr_next) {
 		// Not actually a floating-point number, keep going though
-		val->type = VT_NONE;
+		val->type = PVT_NONE;
 		return expr + 1;
 	} else if ((result == HUGE_VAL || result == -HUGE_VAL) && errno == ERANGE) {
 		log_printf("ERROR: Floating point constant \"%.*s\" out of range!\n", expr_next - expr, expr);
 		return NULL;
 	}
-	if (expr_next[0] == 'f') {
-		val->type = VT_FLOAT;
-		val->f = (float)result;
-		return expr_next + 1;
-	} else {
-		val->type = VT_DOUBLE;
-		val->d = result;
-		return expr_next;
+	switch (expr_next[0] | 0x20) {
+		case 'd':
+			++expr_next;
+		default:
+			val->type = PVT_DOUBLE;
+			val->d = result;
+			return expr_next;
+		case 'f':
+			val->type = PVT_FLOAT;
+			val->f = (float)result;
+			return expr_next + 1;
+		case 'l':
+			val->type = PVT_LONGDOUBLE;
+			val->ld = dtold(result);
+			return expr_next + 1;
 	}
 }
 
 // TODO: Check if anyone uses single quotes already in code strings
 //// Char
 //else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
-//  val->type = VT_SBYTE;
+//  val->type = PVT_SBYTE;
 //	if (expr[1] == '\\') {
 //		switch (expr[2]) {
 //			case '0':  val->sb = '\0'; break;
@@ -189,43 +196,46 @@ static __forceinline const char* check_for_binhack_cast(const char* expr, patch_
 			if (expr[1] && expr[2]) {
 				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
 					case TextInt('f', '3', '2', ':'):
-						val->type = VT_FLOAT;
+						val->type = PVT_FLOAT;
 						return expr + 4;
 					case TextInt('f', '6', '4', ':'):
-						val->type = VT_DOUBLE;
+						val->type = PVT_DOUBLE;
+						return expr + 4;
+					case TextInt('f', '8', '0', ':'):
+						val->type = PVT_LONGDOUBLE;
 						return expr + 4;
 					case TextInt('u', '1', '6', ':'):
-						val->type = VT_WORD;
+						val->type = PVT_WORD;
 						return expr + 4;
 					case TextInt('i', '1', '6', ':'):
-						val->type = VT_SWORD;
+						val->type = PVT_SWORD;
 						return expr + 4;
 					case TextInt('u', '3', '2', ':'):
-						val->type = VT_DWORD;
+						val->type = PVT_DWORD;
 						return expr + 4;
 					case TextInt('i', '3', '2', ':'):
-						val->type = VT_SDWORD;
+						val->type = PVT_SDWORD;
 						return expr + 4;
 					case TextInt('u', '6', '4', ':'):
-						val->type = VT_QWORD;
+						val->type = PVT_QWORD;
 						return expr + 4;
 					case TextInt('i', '6', '4', ':'):
-						val->type = VT_SQWORD;
+						val->type = PVT_SQWORD;
 						return expr + 4;
 					default:
 						switch (temp & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
 							case TextInt('u', '8', ':'):
-								val->type = VT_BYTE;
+								val->type = PVT_BYTE;
 								return expr + 3;
 							case TextInt('i', '8', ':'):
-								val->type = VT_SBYTE;
+								val->type = PVT_SBYTE;
 								return expr + 3;
 						}
 				}
 			}
 		default:
 			//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
-			val->type = VT_DWORD;
+			val->type = PVT_DWORD;
 			return expr;
 	}
 }
@@ -237,7 +247,7 @@ size_t binhack_calc_size(const char *binhack_str)
 	}
 	size_t size = 0;
 	patch_val_t val;
-	val.type = VT_NONE;
+	val.type = PVT_NONE;
 	while (1) {
 		// Parse characters
 		switch (uint8_t cur_char = binhack_str[0]) {
@@ -246,7 +256,7 @@ size_t binhack_calc_size(const char *binhack_str)
 			case '(': case '{': case '[':
 				++binhack_str;
 				if (cur_char == '[') { // Relative patch value
-					val.type = VT_DWORD;
+					val.type = PVT_DWORD;
 				}
 				else { // Expressions
 					binhack_str = check_for_binhack_cast(binhack_str, &val);
@@ -265,7 +275,7 @@ size_t binhack_calc_size(const char *binhack_str)
 				}
 				// Found a wildcard byte, so just add
 				// a byte of size and keep going
-				val.type = VT_BYTE;
+				val.type = PVT_BYTE;
 				++binhack_str;
 				break;
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
@@ -279,7 +289,7 @@ size_t binhack_calc_size(const char *binhack_str)
 					// next character from the beginning
 					continue;
 				}
-				val.type = VT_BYTE;
+				val.type = PVT_BYTE;
 				++binhack_str;
 				break;
 			case '+': case '-': // Float
@@ -298,31 +308,35 @@ size_t binhack_calc_size(const char *binhack_str)
 
 		// Add to size
 		switch (val.type) {
-			case VT_BYTE: case VT_SBYTE:
+			case PVT_BYTE: case PVT_SBYTE:
 				size += sizeof(int8_t);
 				break;
-			case VT_WORD: case VT_SWORD:
+			case PVT_WORD: case PVT_SWORD:
 				size += sizeof(int16_t);
 				break;
-			case VT_DWORD: case VT_SDWORD:
+			case PVT_DWORD: case PVT_SDWORD:
 				size += sizeof(int32_t);
 				break;
-			case VT_QWORD: case VT_SQWORD:
+			case PVT_QWORD: case PVT_SQWORD:
 				size += sizeof(int64_t);
 				break;
-			case VT_FLOAT:
+			case PVT_FLOAT:
 				size += sizeof(float);
 				break;
-			case VT_DOUBLE:
+			case PVT_DOUBLE:
 				size += sizeof(double);
 				break;
-			case VT_STRING:
+			case PVT_LONGDOUBLE:
+				//size += sizeof(LongDouble80);
+				size += sizeof(_LDOUBLE);
+				break;
+			case PVT_STRING:
 				size += sizeof(const char*);
 				break;
-			case VT_WSTRING:
+			case PVT_WSTRING:
 				size += sizeof(const wchar_t*);
 				break;
-			case VT_CODE:
+			case PVT_CODE:
 				size += val.str.len;
 				break;
 		}
@@ -389,11 +403,16 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					if (!binhack_str) {
 						break; // Error
 					}
-					if (val.type == VT_FLOAT) {
-						val.f = (float)val.i;
-					}
-					else if (val.type == VT_DOUBLE) {
-						val.d = (double)val.i;
+					switch (val.type) {
+						case PVT_FLOAT:
+							val.f = (float)val.i;
+							break;
+						case PVT_DOUBLE:
+							val.d = (double)val.i;
+							break;
+						case PVT_LONGDOUBLE:
+							val.ld = ultold(val.i);
+							break;
 					}
 					break;
 				}
@@ -403,19 +422,20 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 						break; // Error
 					}
 					switch (val.type) {
-						case VT_BYTE:	val.b = *(uint8_t*)val.i; break;
-						case VT_SBYTE:	val.sb = *(int8_t*)val.i; break;
-						case VT_WORD:	val.w = *(uint16_t*)val.i; break;
-						case VT_SWORD:	val.sw = *(int16_t*)val.i; break;
-						case VT_DWORD:	val.i = *(uint32_t*)val.i; break;
-						case VT_SDWORD:	val.si = *(int32_t*)val.i; break;
-						case VT_QWORD:  val.q = *(uint64_t*)val.i; break;
-						case VT_SQWORD: val.sq = *(int64_t*)val.i; break;
-						case VT_FLOAT:	val.f = *(float*)val.i; break;
-						case VT_DOUBLE:	val.d = *(double*)val.i; break;
-						case VT_STRING:
-						case VT_WSTRING:
-						case VT_CODE:
+						case PVT_BYTE:		val.b = *(uint8_t*)val.i; break;
+						case PVT_SBYTE:		val.sb = *(int8_t*)val.i; break;
+						case PVT_WORD:		val.w = *(uint16_t*)val.i; break;
+						case PVT_SWORD:		val.sw = *(int16_t*)val.i; break;
+						case PVT_DWORD:		val.i = *(uint32_t*)val.i; break;
+						case PVT_SDWORD:	val.si = *(int32_t*)val.i; break;
+						case PVT_QWORD:		val.q = *(uint64_t*)val.i; break;
+						case PVT_SQWORD:	val.sq = *(int64_t*)val.i; break;
+						case PVT_FLOAT:		val.f = *(float*)val.i; break;
+						case PVT_DOUBLE:	val.d = *(double*)val.i; break;
+						case PVT_LONGDOUBLE:val.ld = *(LongDouble80*)val.i; break;
+						case PVT_STRING:
+						case PVT_WSTRING:
+						case PVT_CODE:
 							BinhackRenderError();
 					}
 					break;
@@ -438,7 +458,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				}*/
 				// Found a wildcard byte, so read the contents
 				// of the appropriate address into the buffer.
-				val.type = VT_BYTE;
+				val.type = PVT_BYTE;
 				val.b = *(unsigned char*)target_addr;
 				++binhack_str;
 				break;
@@ -465,7 +485,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 					cur_char -= 7;
 				}
 				val.b = cur_char << 4 | low_nibble;
-				val.type = VT_BYTE;
+				val.type = PVT_BYTE;
 				++binhack_str;
 				break;
 			}
@@ -485,79 +505,85 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 
 		// Render bytes
 		switch (val.type) {
-			case VT_BYTE:
+			case PVT_BYTE:
 				*(uint8_t*)binhack_buf = val.b;
 				//log_printf("Binhack rendered: %02hhX at %p\n", *(uint8_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(uint8_t);
 				target_addr += sizeof(uint8_t);
 				break;
-			case VT_SBYTE:
+			case PVT_SBYTE:
 				*(int8_t*)binhack_buf = val.sb;
 				//log_printf("Binhack rendered: %02hhX at %p\n", *(int8_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(int8_t);
 				target_addr += sizeof(int8_t);
 				break;
-			case VT_WORD:
+			case PVT_WORD:
 				*(uint16_t*)binhack_buf = val.w;
 				//log_printf("Binhack rendered: %04hX at %p\n", *(uint16_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(uint16_t);
 				target_addr += sizeof(uint16_t);
 				break;
-			case VT_SWORD:
+			case PVT_SWORD:
 				*(int16_t*)binhack_buf = val.sw;
 				//log_printf("Binhack rendered: %04hX at %p\n", *(int16_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(int16_t);
 				target_addr += sizeof(int16_t);
 				break;
-			case VT_DWORD:
+			case PVT_DWORD:
 				*(uint32_t*)binhack_buf = val.i;
 				//log_printf("Binhack rendered: %08X at %p\n", *(uint32_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(uint32_t);
 				target_addr += sizeof(uint32_t);
 				break;
-			case VT_SDWORD:
+			case PVT_SDWORD:
 				*(int32_t*)binhack_buf = val.si;
 				//log_printf("Binhack rendered: %08X at %p\n", *(int32_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(int32_t);
 				target_addr += sizeof(int32_t);
 				break;
-			case VT_QWORD:
+			case PVT_QWORD:
 				*(uint64_t*)binhack_buf = val.q;
 				//log_printf("Binhack rendered: %016X at %p\n", *(uint64_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(uint64_t);
 				target_addr += sizeof(uint64_t);
 				break;
-			case VT_SQWORD:
+			case PVT_SQWORD:
 				*(int64_t*)binhack_buf = val.sq;
 				//log_printf("Binhack rendered: %016X at %p\n", *(int64_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(int64_t);
 				target_addr += sizeof(int64_t);
 				break;
-			case VT_FLOAT:
+			case PVT_FLOAT:
 				*(float*)binhack_buf = val.f;
 				//log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(float);
 				target_addr += sizeof(float);
 				break;
-			case VT_DOUBLE:
+			case PVT_DOUBLE:
 				*(double*)binhack_buf = val.d;
 				//log_printf("Binhack rendered: %llX at %p\n", *(uint64_t*)binhack_buf, target_addr);
 				binhack_buf += sizeof(double);
 				target_addr += sizeof(double);
 				break;
-			case VT_STRING:
+			case PVT_LONGDOUBLE:
+				*(LongDouble80*)binhack_buf = val.ld;
+				//log_printf("Binhack rendered: %llX%hX at %p\n", *(uint64_t*)binhack_buf, *(uint16_t*)(binhack_buf + 8), target_addr);
+				binhack_buf += sizeof(LongDouble80);
+				target_addr += sizeof(LongDouble80);
+				break;
+			case PVT_STRING:
 				*(const char**)binhack_buf = val.str.ptr;
 				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const char**)binhack_buf, target_addr);
 				binhack_buf += sizeof(const char*);
 				target_addr += sizeof(const char*);
 				break;
-			case VT_WSTRING:
+			case PVT_WSTRING:
 				*(const wchar_t**)binhack_buf = val.wstr.ptr;
 				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const wchar_t**)binhack_buf, target_addr);
 				binhack_buf += sizeof(const wchar_t*);
 				target_addr += sizeof(const wchar_t*);
 				break;
-			case VT_CODE: {
+			case PVT_CODE: {
 				if (binhack_render(binhack_buf, target_addr, val.str.ptr)) {
 					return 1;
 				}

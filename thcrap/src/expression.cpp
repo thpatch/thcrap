@@ -611,7 +611,6 @@ static __forceinline const char* __fastcall find_next_op_impl(const char *const 
 			case '<': case '>':
 				if (expr_ref[1]) {
 					uint32_t temp;
-
 					if (expr_ref[2]) {
 						switch (temp = *(uint32_t*)expr_ref & TextInt(0xFD, 0xFD, 0xFD, 0xFF)) {
 							case TextInt('<', '<', '<', '='):
@@ -640,7 +639,6 @@ static __forceinline const char* __fastcall find_next_op_impl(const char *const 
 					}
 				}
 				goto CRetPlus1;
-
 			case 'r': case 'R':
 				if (expr_ref[1] && expr_ref[2]) {
 					c |= 0x20;
@@ -1136,7 +1134,7 @@ static __declspec(noinline) size_t GetBPFuncOrRawAddress(const char *const name,
 static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, const size_t name_length, const StackSaver *const data_refs) {
 	const char *const name_buffer = strndup(name, name_length);
 	patch_val_t nop_str;
-	nop_str.type = VT_CODE;
+	nop_str.type = PVT_CODE;
 	nop_str.str.len = 0;
 	eval_expr_new_impl(name_buffer, '\0', &nop_str.str.len, StartNoOp, 0, data_refs);
 	switch (nop_str.str.len) {
@@ -1165,7 +1163,7 @@ static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, 
 		case 0x3: nop_str.str.ptr =		"0F1F00"; break;
 		case 0x2: nop_str.str.ptr =		"6690"; break;
 		case 0x1: nop_str.str.ptr =		"90"; break;
-		default: nop_str.type = VT_NONE;
+		default: nop_str.type = PVT_NONE;
 	}
 	free((void*)name_buffer);
 	return nop_str;
@@ -1187,7 +1185,7 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, p
 	// This would be a lot simpler if there were a variant of
 	// patch_opt_get and func_get that took a length parameter
 	if (strnicmp(expr, "codecave:", 9) == 0) {
-		out->type = VT_DWORD;
+		out->type = PVT_DWORD;
 		out->i = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	}
 	else if (strnicmp(expr, "option:", 7) == 0) {
@@ -1196,7 +1194,7 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, p
 		if (option) {
 			*out = *option;
 		} else {
-			out->type = VT_NONE;
+			out->type = PVT_NONE;
 		}
 	}
 	else if (strnicmp(expr, "patch:", 6) == 0) {
@@ -1204,12 +1202,12 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, p
 		if (patch_test) {
 			*out = *patch_test;
 		} else {
-			out->type = VT_NONE;
+			out->type = PVT_NONE;
 		}
 	}
 	else if (strnicmp(expr, "cpuid:", 6) == 0) {
 		expr += 6;
-		out->type = VT_BYTE;
+		out->type = PVT_BYTE;
 		out->b = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
 	}
 	else if (strnicmp(expr, "nop:", 3) == 0) {
@@ -1217,7 +1215,7 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, p
 		*out = GetMultibyteNOP(expr, PtrDiffStrlen(patch_val_end, expr), data_refs);
 	}
 	else {
-		out->type = VT_DWORD;
+		out->type = PVT_DWORD;
 		out->i = GetBPFuncOrRawAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	}
 	return patch_val_end + 1;
@@ -1241,7 +1239,7 @@ const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs,
 
 ExpressionError:
 	ExpressionErrorMessage();
-	out->type = VT_DWORD;
+	out->type = PVT_DWORD;
 	out->i = 0;
 	ExpressionLogging(
 		"END PATCH VALUE WITH ERROR\n"
@@ -1259,36 +1257,39 @@ static inline const char* CheckCastType(const char* expr, uint8_t* out) {
 			if (expr[1] && expr[2]) {
 				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
 					case TextInt('f', '3', '2', ')'):
-						*out = VT_FLOAT;
+						*out = PVT_FLOAT;
 						return expr + 4;
 					case TextInt('f', '6', '4', ')'):
-						*out = VT_DOUBLE;
+						*out = PVT_DOUBLE;
+						return expr + 4;
+					case TextInt('f', '8', '0', ')'):
+						*out = PVT_LONGDOUBLE;
 						return expr + 4;
 					case TextInt('u', '1', '6', ')'):
-						*out = VT_WORD;
+						*out = PVT_WORD;
 						return expr + 4;
 					case TextInt('i', '1', '6', ')'):
-						*out = VT_SWORD;
+						*out = PVT_SWORD;
 						return expr + 4;
 					case TextInt('u', '3', '2', ')'):
-						*out = VT_DWORD;
+						*out = PVT_DWORD;
 						return expr + 4;
 					case TextInt('i', '3', '2', ')'):
-						*out = VT_SDWORD;
+						*out = PVT_SDWORD;
 						return expr + 4;
 					case TextInt('u', '6', '4', ')'):
-						*out = VT_QWORD;
+						*out = PVT_QWORD;
 						return expr + 4;
 					case TextInt('i', '6', '4', ')'):
-						*out = VT_SQWORD;
+						*out = PVT_SQWORD;
 						return expr + 4;
 					default:
 						switch (temp & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
 							case TextInt('u', '8', ')'):
-								*out = VT_BYTE;
+								*out = PVT_BYTE;
 								return expr + 3;
 							case TextInt('i', '8', ')'):
-								*out = VT_SBYTE;
+								*out = PVT_SBYTE;
 								return expr + 3;
 						}
 				}
@@ -1388,8 +1389,7 @@ static inline const char* PostfixCheck(const char* expr) {
 static const char* consume_value_impl(const char* expr, size_t *const out, const StackSaver *const data_refs) {
 	// cast is used for both casts and pointer sizes
 	patch_val_t cur_value;
-	cur_value.type = VT_DWORD;
-	//const char* expr_next;
+	cur_value.type = PVT_DWORD;
 
 #define breakpoint_test_var data_refs->regs
 #define is_breakpoint (breakpoint_test_var)
@@ -1407,40 +1407,47 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			// Pointer sizes
 			case 'b': case 'B':
 				if (strnicmp(expr, "byte ptr", 8) == 0) {
-					cur_value.type = VT_BYTE;
+					cur_value.type = PVT_BYTE;
 					expr += 7;
 					continue;
 				}
 				goto RawValueOrRegister;
 			case 'w': case 'W':
 				if (strnicmp(expr, "word ptr", 8) == 0) {
-					cur_value.type = VT_WORD;
+					cur_value.type = PVT_WORD;
 					expr += 7;
 					continue;
 				}
 				goto InvalidCharacterError;
 			case 'd': case 'D':
 				if (strnicmp(expr, "dword ptr", 9) == 0) {
-					cur_value.type = VT_DWORD;
+					cur_value.type = PVT_DWORD;
 					expr += 8;
 					continue;
 				}
 				if (strnicmp(expr, "double ptr", 10) == 0) {
-					cur_value.type = VT_DOUBLE;
+					cur_value.type = PVT_DOUBLE;
 					expr += 9;
 					continue;
 				}
 				goto RawValueOrRegister;
 			case 'f': case 'F':
 				if (strnicmp(expr, "float ptr", 9) == 0) {
-					cur_value.type = VT_FLOAT;
+					cur_value.type = PVT_FLOAT;
 					expr += 8;
 					continue;
 				}
 				goto RawValue;
 			case 'q': case 'Q':
 				if (strnicmp(expr, "qword ptr", 9) == 0) {
-					cur_value.type = VT_QWORD;
+					cur_value.type = PVT_QWORD;
+					expr += 8;
+					continue;
+				}
+				goto InvalidCharacterError;
+			case 't': case 'T':
+				if (strnicmp(expr, "tbyte ptr", 9) == 0) {
+					cur_value.type = PVT_LONGDOUBLE;
 					expr += 8;
 					continue;
 				}
@@ -1470,17 +1477,18 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				if (out) {
 					if (!*out) goto NullDerefWarning;
 					switch (cur_value.type) {
-						case VT_BOOL: *out = (bool)*(uint8_t*)*out; break;
-						case VT_BYTE: *out = *(uint8_t*)*out; break;
-						case VT_SBYTE: *out = *(int8_t*)*out; break;
-						case VT_WORD: *out = *(uint16_t*)*out; break;
-						case VT_SWORD: *out = *(int16_t*)*out; break;
-						case VT_DWORD: *out = *(uint32_t*)*out; break;
-						case VT_SDWORD: *out = *(int32_t*)*out; break;
-						case VT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
-						case VT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
-						case VT_FLOAT: *out = (uint32_t)*(float*)*out; break;
-						case VT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
+						//case PVT_BOOL: *out = (bool)*(uint8_t*)*out; break;
+						case PVT_BYTE: *out = *(uint8_t*)*out; break;
+						case PVT_SBYTE: *out = *(int8_t*)*out; break;
+						case PVT_WORD: *out = *(uint16_t*)*out; break;
+						case PVT_SWORD: *out = *(int16_t*)*out; break;
+						case PVT_DWORD: *out = *(uint32_t*)*out; break;
+						case PVT_SDWORD: *out = *(int32_t*)*out; break;
+						case PVT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
+						case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
+						case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
+						case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
+						case PVT_LONGDOUBLE: *out = (uint32_t)ldtol(*(LongDouble80*)*out); break;
 					}
 				}
 				return PostfixCheck(expr_next);
@@ -1498,16 +1506,16 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					++expr_next;
 					if (out) {
 						switch (cur_value.type) {
-							case VT_BYTE: *out = *(uint8_t*)out; break;
-							case VT_SBYTE: *out = *(int8_t*)out; break;
-							case VT_WORD: *out = *(uint16_t*)out; break;
-							case VT_SWORD: *out = *(int16_t*)out; break;
-							case VT_DWORD: *out = *(uint32_t*)out; break;
-							case VT_SDWORD: *out = *(int32_t*)out; break;
-							//case VT_QWORD: *out = *(uint64_t*)out; break;
-							//case VT_SQWORD: *out = *(int64_t*)out; break;
-							case VT_FLOAT: *out = (uint32_t)*(float*)out; break;
-							// case VT_DOUBLE: *out = (uint64_t)*(double*)out; break;
+							case PVT_BYTE: *out = *(uint8_t*)out; break;
+							case PVT_SBYTE: *out = *(int8_t*)out; break;
+							case PVT_WORD: *out = *(uint16_t*)out; break;
+							case PVT_SWORD: *out = *(int16_t*)out; break;
+							case PVT_DWORD: *out = *(uint32_t*)out; break;
+							case PVT_SDWORD: *out = *(int32_t*)out; break;
+							// case PVT_QWORD: *out = *(uint64_t*)out; break;
+							// case PVT_SQWORD: *out = *(int64_t*)out; break;
+							case PVT_FLOAT: *out = (uint32_t)*(float*)out; break;
+							// case PVT_DOUBLE: *out = (uint64_t)*(double*)out; break;
 						}
 					}
 				}
@@ -1532,17 +1540,17 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					if (out) {
 						if (!*out) goto NullDerefWarning;
 						switch (cur_value.type) {
-							case VT_BOOL: *out = (bool)*(uint8_t*)*out; break;
-							case VT_BYTE: *out = *(uint8_t*)*out; break;
-							case VT_SBYTE: *out = *(int8_t*)*out; break;
-							case VT_WORD: *out = *(uint16_t*)*out; break;
-							case VT_SWORD: *out = *(int16_t*)*out; break;
-							case VT_DWORD: *out = *(uint32_t*)*out; break;
-							case VT_SDWORD: *out = *(int32_t*)*out; break;
-							case VT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
-							case VT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
-							case VT_FLOAT: *out = (uint32_t)*(float*)*out; break;
-							case VT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
+							case PVT_BYTE: *out = *(uint8_t*)*out; break;
+							case PVT_SBYTE: *out = *(int8_t*)*out; break;
+							case PVT_WORD: *out = *(uint16_t*)*out; break;
+							case PVT_SWORD: *out = *(int16_t*)*out; break;
+							case PVT_DWORD: *out = *(uint32_t*)*out; break;
+							case PVT_SDWORD: *out = *(int32_t*)*out; break;
+							case PVT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
+							case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
+							case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
+							case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
+							case PVT_LONGDOUBLE: *out = (uint32_t)ldtol(*(LongDouble80*)*out); break;
 						}
 					}
 					return PostfixCheck(expr_next);
@@ -1555,19 +1563,20 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				if (!expr_next) goto InvalidPatchValueError;
 				if (out) {
 					switch (cur_value.type) {
-						case VT_BYTE: *out = (uint32_t)cur_value.b; break;
-						case VT_SBYTE: *out = (uint32_t)cur_value.sb; break;
-						case VT_WORD: *out = (uint32_t)cur_value.w; break;
-						case VT_SWORD: *out = (uint32_t)cur_value.sw; break;
-						case VT_DWORD: *out = (uint32_t)cur_value.i; break;
-						case VT_SDWORD: *out = (uint32_t)cur_value.si; break;
-						case VT_QWORD: *out = (uint32_t)cur_value.q; break;
-						case VT_SQWORD: *out = (uint32_t)cur_value.sq; break;
-						case VT_FLOAT: *out = (uint32_t)cur_value.f; break;
-						case VT_DOUBLE: *out = (uint32_t)cur_value.d; break;
-						case VT_STRING: *out = (uint32_t)cur_value.str.ptr; break;
-						case VT_WSTRING: *out = (uint32_t)cur_value.wstr.ptr; break;
-						case VT_CODE: goto InvalidCodeOptionWarning;
+						case PVT_BYTE: *out = (uint32_t)cur_value.b; break;
+						case PVT_SBYTE: *out = (uint32_t)cur_value.sb; break;
+						case PVT_WORD: *out = (uint32_t)cur_value.w; break;
+						case PVT_SWORD: *out = (uint32_t)cur_value.sw; break;
+						case PVT_DWORD: *out = (uint32_t)cur_value.i; break;
+						case PVT_SDWORD: *out = (uint32_t)cur_value.si; break;
+						case PVT_QWORD: *out = (uint32_t)cur_value.q; break;
+						case PVT_SQWORD: *out = (uint32_t)cur_value.sq; break;
+						case PVT_FLOAT: *out = (uint32_t)cur_value.f; break;
+						case PVT_DOUBLE: *out = (uint32_t)cur_value.d; break;
+						case PVT_LONGDOUBLE: *out = (uint32_t)ldtol(cur_value.ld); break;
+						case PVT_STRING: *out = (uint32_t)cur_value.str.ptr; break;
+						case PVT_WSTRING: *out = (uint32_t)cur_value.wstr.ptr; break;
+						case PVT_CODE: goto InvalidCodeOptionWarning;
 					}
 					ExpressionLogging("Parsed patch value is %X / %d / %u\n", *out, *out, *out);
 				}

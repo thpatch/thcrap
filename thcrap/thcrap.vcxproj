@@ -40,6 +40,7 @@
     <ClCompile Include="src\expression.cpp" />
     <ClCompile Include="src\fonts_charset.cpp" />
     <ClCompile Include="src\jsondata.cpp" />
+    <ClCompile Include="src\long_double.cpp" />
     <ClCompile Include="src\mempatch.cpp" />
     <ClCompile Include="src\binhack.cpp" />
     <ClCompile Include="src\bp_file.cpp" />
@@ -81,6 +82,7 @@
     <ClInclude Include="src\expression.h" />
     <ClInclude Include="src\fonts_charset.h" />
     <ClInclude Include="src\jsondata.h" />
+    <ClInclude Include="src\long_double.h" />
     <ClInclude Include="src\mempatch.h" />
     <ClInclude Include="src\binhack.h" />
     <ClInclude Include="src\bp_file.h" />

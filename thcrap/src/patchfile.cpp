@@ -439,7 +439,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		strcpy(patch_test_opt_name, "patch:");
 		strcat(patch_test_opt_name, patch.id);
 		patch_val_t patch_test_opt;
-		patch_test_opt.type = VT_DWORD;
+		patch_test_opt.type = PVT_DWORD;
 		patch_test_opt.i = patch.version;
 		patch_options[patch_test_opt_name] = patch_test_opt;
 		free(patch_test_opt_name);
@@ -696,11 +696,11 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		patch_val_t entry;
-		switch (tname[0] & 0xDF) {
-			case 'W':
+		switch (tname[0] | 0x20) {
+			case 'w':
 				if (json_is_string(j_val_val)) {
 					const char* opt_str = json_string_value(j_val_val);
-					entry.type = VT_WSTRING;
+					entry.type = PVT_WSTRING;
 					const size_t length = strlen(opt_str) + 1;
 					wchar_t* wide_str = new wchar_t[length];
 					swprintf(wide_str, length, L"%hs", opt_str);
@@ -712,10 +712,10 @@ void patch_opts_from_json(json_t *opts) {
 					continue;
 				}
 				break;
-			case 'S':
+			case 's':
 				if (json_is_string(j_val_val)) {
 					const char* opt_str = json_string_value(j_val_val);
-					entry.type = VT_STRING;
+					entry.type = PVT_STRING;
 					entry.str.ptr = strdup(opt_str);
 					entry.str.len = strlen(opt_str) + 1;
 				}
@@ -724,10 +724,10 @@ void patch_opts_from_json(json_t *opts) {
 					continue;
 				}
 				break;
-			/*case 'C':
+			/*case 'c':
 				if (json_is_string(j_val_val)) {
 					const char* opt_code_str = json_string_value(j_val_val);
-					entry.type = VT_CODE;
+					entry.type = PVT_CODE;
 					entry.str.ptr = strdup(opt_code_str);
 					entry.str.len = binhack_calc_size(opt_code_str);
 				}
@@ -736,24 +736,24 @@ void patch_opts_from_json(json_t *opts) {
 					continue;
 				}
 				break;*/
-			case 'I': {
+			case 'i': {
 				size_t value;
 				json_eval_int(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 8:
-						entry.type = VT_SBYTE;
+						entry.type = PVT_SBYTE;
 						entry.sb = (int8_t)value;
 						break;
 					case 16:
-						entry.type = VT_SWORD;
+						entry.type = PVT_SWORD;
 						entry.sw = (int16_t)value;
 						break;
 					case 32:
-						entry.type = VT_SDWORD;
+						entry.type = PVT_SDWORD;
 						entry.si = (int32_t)value;
 						break;
 					/*case 64:
-						entry.type = VT_SQWORD;
+						entry.type = PVT_SQWORD;
 						entry.sq = (int64_t)value;
 						break;*/
 					default:
@@ -762,24 +762,24 @@ void patch_opts_from_json(json_t *opts) {
 				}
 				break;
 			}
-			case 'B': case 'U': {
+			case 'b': case 'u': {
 				size_t value;
 				json_eval_int(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 8:
-						entry.type = VT_BYTE;
+						entry.type = PVT_BYTE;
 						entry.b = (uint8_t)value;
 						break;
 					case 16:
-						entry.type = VT_WORD;
+						entry.type = PVT_WORD;
 						entry.w = (uint16_t)value;
 						break;
 					case 32:
-						entry.type = VT_DWORD;
+						entry.type = PVT_DWORD;
 						entry.i = (uint32_t)value;
 						break;
 					/*case 64:
-						entry.type = VT_QWORD;
+						entry.type = PVT_QWORD;
 						entry.q = (uint64_t)value;
 						break;*/
 					default:
@@ -788,17 +788,21 @@ void patch_opts_from_json(json_t *opts) {
 				}
 				break;
 			}
-			case 'F': {
+			case 'f': {
 				double value;
 				json_eval_real(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 32:
-						entry.type = VT_FLOAT;
+						entry.type = PVT_FLOAT;
 						entry.f = (float)value;
 						break;
 					case 64:
-						entry.type = VT_DOUBLE;
+						entry.type = PVT_DOUBLE;
 						entry.d = value;
+						break;
+					case 80:
+						entry.type = PVT_LONGDOUBLE;
+						entry.ld = dtold(value);
 						break;
 					default:
 						log_printf("ERROR: invalid float type %s for option %s\n", tname, key);

@@ -28,6 +28,7 @@ extern "C" {
 #include <stdbool.h>
 #include <jansson.h>
 #include "exception.h"
+#include "long_double.h"
 #include "util.h"
 #include "jansson_ex.h"
 #include "expression.h"

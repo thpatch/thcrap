@@ -69,49 +69,63 @@ typedef struct {
 // Enum of possible types for the description of
 // a value specified by the user defined patch options
 enum {
-	VT_NONE = 0,
-	VT_BYTE,
-	VT_SBYTE,
-	VT_WORD,
-	VT_SWORD,
-	VT_DWORD,
-	VT_SDWORD,
-	VT_QWORD,
-	VT_SQWORD,
-	VT_FLOAT,
-	VT_DOUBLE,
-	VT_STRING,
-	VT_WSTRING,
-	VT_CODE,
-	VT_ADDRRET
+	PVT_NONE = 0,
+	PVT_BYTE,
+	PVT_SBYTE,
+	PVT_WORD,
+	PVT_SWORD,
+	PVT_DWORD,
+	PVT_SDWORD,
+	PVT_QWORD,
+	PVT_SQWORD,
+	PVT_FLOAT,
+	PVT_DOUBLE,
+	PVT_LONGDOUBLE,
+	PVT_STRING,
+	PVT_WSTRING,
+	PVT_CODE,
+	PVT_ADDRRET
 };
 typedef uint8_t patch_value_type_t;
 
 // Description of a value specified by the options
-typedef struct {
-	patch_value_type_t type;
-	union {
-		uint8_t b;
-		int8_t sb;
-		uint16_t w;
-		int16_t sw;
-		uint32_t i;
-		int32_t si;
-		uint64_t q;
-		int64_t sq;
-		uintptr_t p;
-		float f;
-		double d;
-		struct {
-			const char* ptr;
-			size_t len;
-		} str;
-		struct {
-			const wchar_t* ptr;
-			size_t len;
-		} wstr;
-		str_address_ret_t addr_ret;
+typedef union {
+
+	// Note: This is implemented as a struct within the main union
+	// rather than as a field in an outer struct since the compiler
+	// insisted on aligning things weirdly and taking up ~24 bytes of
+	// data for a 16 byte struct, thus preventing XMM move optimizations.
+	struct {
+		unsigned char raw_bytes[12];
+		patch_value_type_t type;
 	};
+
+	uint8_t b;
+	int8_t sb;
+	uint16_t w;
+	int16_t sw;
+	uint32_t i;
+	int32_t si;
+	uint64_t q;
+	int64_t sq;
+	uintptr_t p;
+	float f;
+	double d;
+	LongDouble80 ld;
+	struct {
+		const char* ptr;
+		size_t len;
+	} str;
+	struct {
+		const wchar_t* ptr;
+		size_t len;
+	} wstr;
+
+	// Note: This isn't *really* supposed to be a part
+	// of this union, but consume_value was struggling
+	// to optimize away a bunch of variables.
+	str_address_ret_t addr_ret;
+
 } patch_val_t;
 
 // Parses [expr], a string containing a [relative] or <absolute> patch value and writes it [out].
