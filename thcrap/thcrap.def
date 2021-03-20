@@ -139,6 +139,24 @@ EXPORTS
 	json_load_file_report
 	json_dump_log
 
+	json_string_expression_value
+	json_eval_bool
+	json_eval_int
+	json_eval_real
+	json_eval_number
+	json_object_get_eval_bool
+	json_object_get_eval_int
+	json_object_get_eval_real
+	json_object_get_eval_number
+	json_eval_bool_default
+	json_eval_int_default
+	json_eval_real_default
+	json_eval_number_default
+	json_object_get_eval_bool_default
+	json_object_get_eval_int_default
+	json_object_get_eval_real_default
+	json_object_get_eval_number_default
+
 	; JSON data storage
 	; -----------------
 	jsondata_add

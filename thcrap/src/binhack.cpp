@@ -747,7 +747,13 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
 
 		if (const char* access = json_object_get_string(in, "access")) {
-			switch (BYTE temp = !!strpbrk(access, "rR") + (!!strpbrk(access, "wW") << 1) + (!!strpbrk(access, "eExX") << 2)) {
+			BYTE temp = 0;
+			while (char c = *access++ & 0xDF) {
+				temp |= (c == 'R');
+				temp |= (c == 'W') << 1;
+				temp |= ((c == 'E') | (c == 'X')) << 2;
+			}
+			switch (temp) {
 				case 0: /*NOACCESS*/
 					log_printf("codecave %s: why would you set a codecave to no access? skipping instead...\n", name);
 					return false;
