@@ -26,5 +26,6 @@ EXPORTS
 
 	tasofro_CharNextA
 
-	BP_th175_file_desc
-	BP_th175_read_file
+	BP_th175_open_file
+	BP_th175_replaceReadFile
+	BP_th175_close_file

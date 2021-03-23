@@ -10,6 +10,7 @@
 #pragma once
 
 #include <thcrap.h>
+#include <mutex>
 #include <bp_file.h>
 
 // Pointer to the stack just before calling ReadFile.
@@ -30,9 +31,9 @@ struct TasofroFile : public file_rep_t
 	// True if the file have already been patched
 	// and re-encrypted
 	bool init_done;
-	// Critical section to prevent concurrent access
+	// Mutex to prevent concurrent access
 	// to the file by several threads
-	CRITICAL_SECTION cs;
+	std::mutex mutex;
 
 	static TasofroFile* tls_get();
 	static void tls_set(TasofroFile *file);
@@ -41,6 +42,9 @@ struct TasofroFile : public file_rep_t
 	~TasofroFile();
 
 	void init(const char *filename);
+	// Updates internal state according to the game file's initial size.
+	// Returns the maximum size that this file might need.
+	size_t init_game_file_size(size_t game_file_size);
 	void clear();
 
 	// Return true if we need (or might need) to replace the file, false otherwise.

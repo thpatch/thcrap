@@ -182,7 +182,7 @@ extern "C" int BP_th135_prepareReadFile(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	log_printf("Patching %s...\n", fr->path.u8string().c_str());
-	EnterCriticalSection(&fr->cs);
+	fr->mutex.lock();
 	Th135File::tls_set(fr);
 	return 1;
 }
@@ -199,7 +199,7 @@ extern "C" int BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
 		[fr](TasofroFile*, BYTE *buffer, DWORD size) { ICrypt::instance->cryptBlock(  buffer, size, fr->key); }
 	);
 
-	LeaveCriticalSection(&fr->cs);
+	fr->mutex.unlock();
 	Th135File::tls_set(nullptr);
 	return ret;
 }

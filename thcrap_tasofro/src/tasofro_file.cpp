@@ -27,12 +27,10 @@ TasofroFile::TasofroFile()
 {
 	memset(this, 0, sizeof(file_rep_t));
 	file_rep_clear(this);
-	InitializeCriticalSection(&this->cs);
 }
 
 TasofroFile::~TasofroFile()
 {
-	DeleteCriticalSection(&this->cs);
 	file_rep_clear(this);
 }
 
@@ -43,6 +41,19 @@ void TasofroFile::init(const char *filename)
 	if (this->rep_buffer && this->patch_size) {
 		this->rep_buffer = realloc(this->rep_buffer, POST_JSON_SIZE(this));
 	}
+}
+
+size_t TasofroFile::init_game_file_size(size_t game_file_size)
+{
+	if (game_file_size > this->pre_json_size) {
+		// The original file is bigger than our replacement file,
+		// we might need a bigger buffer.
+		this->pre_json_size = game_file_size;
+		if (this->rep_buffer) {
+			this->rep_buffer = realloc(this->rep_buffer, POST_JSON_SIZE(this));
+		}
+	}
+	return POST_JSON_SIZE(this);
 }
 
 void TasofroFile::clear()

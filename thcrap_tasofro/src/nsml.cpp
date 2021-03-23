@@ -223,8 +223,7 @@ extern "C" int BP_nsml_CPackageFileReader_openFile(x86_reg_t *regs, json_t * bp_
 	free(file_name);
 
 	if (fr->need_replace()) {
-		fr->pre_json_size = file_reader->file_size;
-		file_reader->file_size = MAX(file_reader->file_size, fr->pre_json_size) + fr->patch_size;
+		file_reader->file_size = fr->init_game_file_size(file_reader->file_size);
 	}
 	else {
 		file_rep_clear(fr);
@@ -295,10 +294,8 @@ extern "C" int BP_megamari_openFile(x86_reg_t * regs, json_t * bp_info)
 	fr->init(file_name);
 	free(file_name);
 
-	const char* dat_dump = runconfig_dat_dump_get();
-	if (fr->rep_buffer || fr->hooks || dat_dump) {
-		fr->pre_json_size = file_struct->size;
-		file_struct->size = MAX(file_struct->size, fr->pre_json_size) + fr->patch_size;
+	if (fr->need_replace()) {
+		file_struct->size = fr->init_game_file_size(file_struct->size);
 	}
 	else {
 		file_rep_clear(fr);
@@ -335,8 +332,7 @@ extern "C" int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 	else if (file_size) {
 		TasofroFile *fr = TasofroFile::tls_get();
 		if (fr) {
-			fr->pre_json_size = *file_size;
-			*file_size = MAX(*file_size, fr->pre_json_size) + fr->patch_size;
+			*file_size = fr->init_game_file_size(*file_size);
 		}
 		TasofroFile::tls_set(nullptr);
 	}
