@@ -67,7 +67,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	}
 	else if (expr[0] == '[') {
 		expr_end = eval_expr(expr + 1, ']', (size_t*)&ptr, regs, NULL);
-		if (expr_end && expr_end[0] != '\0') {
+		if (expr_end && expr_end[0] != ']') {
 			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr_end);
 		}
 		return ptr;
@@ -244,6 +244,8 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 
 		breakpoint_local_t *const cur = &breakpoints[i];
 
+		breakpoint_total_size[i] = 0;
+
 		log_printf("\n(%2d/%2d) %s... ", i + 1, bp_count, cur->name);
 
 		if (!breakpoint_local_init(cur)) {
@@ -282,9 +284,6 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 			breakpoint_total_size[i] = total_cavesize;
 			total_valid_addrs += cur_valid_addrs;
 			++valid_breakpoint_count;
-		}
-		else {
-			breakpoint_total_size[i] = 0;
 		}
 	}
 

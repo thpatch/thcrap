@@ -90,6 +90,8 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
   * function pointers, once we have a module handle.
   */
 
+void detour_disable(const char* dll_name, const char* func_name);
+
 // Defines a function pointer used to continue a detour chain. It is
 // initialized to [func], which should be the default function to be called
 // if this is the last link in the chain. The pointer will be of the type
@@ -152,10 +154,6 @@ FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback
 
 // Applies the cached detours to [hMod].
 int iat_detour_apply(HMODULE hMod);
-
-// *Not* a module function because we want to call it manually after
-// everything else has been cleaned up.
-void detour_exit(void);
 /// ---------------
 
 /// =============================

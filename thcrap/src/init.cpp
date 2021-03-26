@@ -443,7 +443,6 @@ void ExitDll()
 	runconfig_free();
 
 	SAFE_FREE(dll_dir);
-	detour_exit();
 #if defined(_MSC_VER) && defined(_DEBUG)
 	// Called in RawDllMain() in this configuration
 #else

@@ -9,7 +9,12 @@
 
 #include "thcrap.h"
 
-static json_t *detours = NULL;
+typedef struct {
+	std::unordered_map<std::string_view, UINT_PTR> funcs;
+	bool disable = false;
+} detour_func_map_t;
+
+static std::unordered_map<std::string_view, detour_func_map_t> detours;
 
 BOOL VirtualCheckRegion(const void *ptr, const size_t len)
 {
@@ -146,63 +151,79 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
 
 /// Detour chaining
 /// ---------------
-json_t* detour_get_create(const char *dll_name)
+detour_func_map_t& detour_get_create(const char *dll_name)
 {
-	json_t *ret = NULL;
-	STRLWR_DEC(dll_name);
-	STRLWR_CONV(dll_name);
-	if(!detours) {
-		detours = json_object();
+	const char* dll_name_lower = _strlwr(strdup(dll_name));
+	auto ret = detours.try_emplace(dll_name_lower);
+	if (!ret.second) {
+		free((void*)dll_name_lower);
 	}
-	ret = json_object_get_create(detours, dll_name_lower, JSON_OBJECT);
-	STRLWR_FREE(dll_name);
-
-	return ret;
+	return ret.first->second;
 }
 
 int detour_chain(const char *dll_name, int return_old_ptrs, ...)
 {
 	int ret = 0;
-	json_t *dll = detour_get_create(dll_name);
-	const char *func_name = NULL;
-	va_list va;
+	detour_func_map_t& dll = detour_get_create(dll_name);
+	if (!dll.disable) {
+		const char* func_name = NULL;
+		va_list va;
+		va_start(va, return_old_ptrs);
+		while ((func_name = va_arg(va, const char*))) {
 
-	va_start(va, return_old_ptrs);
-	while((func_name = va_arg(va, const char*))) {
-		FARPROC *old_ptr = NULL;
-		FARPROC chain_ptr;
-		const void *func_ptr = va_arg(va, const void*);
-		if(
-			return_old_ptrs
-			&& (old_ptr = va_arg(va, FARPROC*))
-			&& (chain_ptr = (FARPROC)json_object_get_hex(dll, func_name))
-			&& (chain_ptr != func_ptr)
-		) {
-			*old_ptr = chain_ptr;
+			const void* func_ptr = va_arg(va, const void*);
+
+			FARPROC* old_ptr = return_old_ptrs ? va_arg(va, FARPROC*) : NULL;
+
+			if (dll.funcs.count(func_name) && !dll.funcs[func_name]) {
+				continue;
+			}
+
+			if (FARPROC chain_ptr;
+				old_ptr
+				&& (chain_ptr = (FARPROC)dll.funcs[func_name])
+				&& (chain_ptr != func_ptr)
+				) {
+				*old_ptr = chain_ptr;
+			}
+
+			dll.funcs[func_name] = (UINT_PTR)func_ptr;
 		}
-		json_object_set_new(dll, func_name, json_integer((size_t)func_ptr));
+		va_end(va);
 	}
-	va_end(va);
 	return ret;
 }
 
 int detour_chain_w32u8(const w32u8_dll_t *dll)
 {
 	const w32u8_pair_t *pair = NULL;
-	json_t *detours_dll = NULL;
 
 	if(!dll || !dll->name || !dll->funcs) {
 		return -1;
 	}
-	detours_dll = detour_get_create(dll->name);
+	detour_func_map_t& detours_dll = detour_get_create(dll->name);
 	pair = dll->funcs;
 	while(pair && pair->ansi_name && pair->utf8_ptr) {
-		json_object_set_new(
-			detours_dll, pair->ansi_name, json_integer((size_t)pair->utf8_ptr)
-		);
+		if (const char* func_name = strdup(pair->ansi_name);
+			!detours_dll.funcs.try_emplace(func_name, (UINT_PTR)pair->utf8_ptr).second)
+		{
+			free((void*)func_name);
+		}
 		pair++;
 	}
 	return 0;
+}
+
+void detour_disable(const char* dll_name, const char* func_name)
+{
+	detour_func_map_t& dll = detour_get_create(dll_name);
+	if (func_name) {
+		dll.funcs[func_name] = NULL;
+	}
+	else {
+		dll.disable = true;
+	}
+	
 }
 
 int iat_detour_apply(HMODULE hMod)
@@ -216,42 +237,42 @@ int iat_detour_apply(HMODULE hMod)
 	}
 
 	while(pImpDesc->Name) {
-		json_t *funcs;
-		size_t func_count;
-		char *dll_name = (char*)((UINT_PTR)hMod + (UINT_PTR)pImpDesc->Name);
+		char* dll_name = strdup((char*)((UINT_PTR)hMod + (UINT_PTR)pImpDesc->Name));
 		HMODULE hDll = GetModuleHandleA(dll_name);
-		STRLWR_DEC(dll_name);
+		_strlwr(dll_name);
+		detour_func_map_t& dll = detours[dll_name];
+		if (!dll.disable) {
 
-		STRLWR_CONV(dll_name);
-		funcs = json_object_get(detours, dll_name_lower);
-		func_count = json_object_size(funcs);
+			size_t func_count = dll.funcs.size();
 
-		if(hDll && func_count) {
-			const char *func_name;
-			json_t *ptr;
-			size_t i = 0;
+			if (hDll && func_count) {
+				size_t i = 0;
 
-			log_printf("Detouring DLL functions (%s)...\n", dll_name_lower);
+				log_printf("Detouring DLL functions (%s)...\n", dll_name);
 
-			json_object_foreach(funcs, func_name, ptr) {
-				iat_detour_t detour;
-				int local_ret;
+				for (auto ptr : dll.funcs) {
+					++i;
+					if (ptr.second == NULL) {
+						continue;
+					}
+					iat_detour_t detour;
+					int local_ret;
 
-				detour.old_func = func_name;
-				detour.old_ptr = (void*)GetProcAddress(hDll, detour.old_func);
-				detour.new_ptr = (void*)json_integer_value(ptr);
+					detour.old_func = ptr.first.data();
+					detour.old_ptr = (void*)GetProcAddress(hDll, detour.old_func);
+					detour.new_ptr = (void*)ptr.second;
 
-				local_ret = iat_detour_func(hMod, pImpDesc, &detour);
+					local_ret = iat_detour_func(hMod, pImpDesc, &detour);
 
-				log_printf(
-					"(%2d/%2d) %s... %s\n",
-					i + 1, func_count, detour.old_func,
-					local_ret ? "OK" : "not found"
-				);
-				i++;
+					log_printf(
+						"(%2d/%2d) %s... %s\n",
+						i, func_count, detour.old_func,
+						local_ret ? "OK" : "not found"
+					);
+				}
 			}
+			free(dll_name);
 		}
-		STRLWR_FREE(dll_name);
 		pImpDesc++;
 	}
 	return ret;
@@ -259,9 +280,14 @@ int iat_detour_apply(HMODULE hMod)
 
 FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback)
 {
-	json_t *funcs = json_object_get_create(detours, dll_name, JSON_OBJECT);
-	FARPROC ret = (FARPROC)json_object_get_hex(funcs, func_name);
-	return ret ? ret : fallback;
+	FARPROC ret = fallback;
+	if (detours.count(dll_name)) {
+		detour_func_map_t& dll = detours[dll_name];
+		if (dll.funcs.count(func_name)) {
+			ret = (FARPROC)dll.funcs[func_name];
+		}
+	}
+	return ret;
 }
 
 int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
@@ -307,11 +333,6 @@ int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
 	}
 	VirtualProtect(vtable + lowest, bytes_to_lock, old_prot, &old_prot);
 	return replaced;
-}
-
-void detour_exit(void)
-{
-	detours = json_decref_safe(detours);
 }
 /// ----------
 

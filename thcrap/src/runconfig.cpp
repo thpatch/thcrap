@@ -182,6 +182,30 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
+	value = json_object_get(file, "detours");
+	if (value) {
+		const char* dll_name;
+		json_t* detours;
+		json_object_foreach(value, dll_name, detours) {
+			if (!detours) continue;
+			switch (json_typeof(detours)) {
+				case JSON_NULL:
+					detour_disable(dll_name, NULL);
+					break;
+				case JSON_OBJECT: {
+					const char* func_name;
+					json_t* func_json;
+					json_object_foreach(detours, func_name, func_json) {
+						if (json_is_null(func_json)) {
+							detour_disable(dll_name, func_name);
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+
 	if (load_binhacks) {
 		json_t *stages = json_object_get(file, "init_stages");
 		if ((can_overwrite || run_cfg.stages.empty()) &&
