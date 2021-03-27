@@ -119,15 +119,12 @@ void runconfig_load(json_t *file, int flags)
 		run_cfg.json = json_object();
 	}
 	if (can_overwrite) {
-		json_object_merge(run_cfg.json, file);
+		json_object_update_recursive(run_cfg.json, file);
 	}
 	else {
 		// The JSON values already in run_cfg.json should be applied
 		// over the new ones in file.
-		json_t *tmp = json_deep_copy(file);
-		json_object_merge(tmp, run_cfg.json);
-		json_decref(run_cfg.json);
-		run_cfg.json = tmp;
+		json_object_update_missing(run_cfg.json, file);
 	}
 
 	auto set_string_if_exist = [file, can_overwrite](const char* key, std::string& out) {

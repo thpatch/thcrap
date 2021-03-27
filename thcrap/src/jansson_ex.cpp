@@ -155,26 +155,13 @@ const char* json_object_get_string(const json_t *object, const char *key)
 
 json_t* json_object_merge(json_t *old_obj, json_t *new_obj)
 {
-	const char *key;
-	json_t *new_val;
-
-	if(!old_obj || !new_obj) {
+	if (!json_object_update_recursive(old_obj, new_obj)) {
+		json_decref(new_obj);
 		return old_obj;
 	}
-	if(!json_is_object(old_obj) || !json_is_object(new_obj)) {
-		json_decref(old_obj);
-		return json_incref(new_obj);
+	else {
+		return new_obj;
 	}
-	json_object_foreach(new_obj, key, new_val) {
-		json_t *old_val = json_object_get(old_obj, key);
-		if(json_is_object(old_val) && json_is_object(new_val)) {
-			// Recursion!
-			json_object_merge(old_val, new_val);
-		} else {
-			json_object_set_nocheck(old_obj, key, new_val);
-		}
-	}
-	return old_obj;
 }
 
 static int __cdecl object_key_compare_keys(const void *key1, const void *key2)

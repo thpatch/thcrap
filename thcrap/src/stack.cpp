@@ -121,13 +121,7 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 		size_t size = 0;
 		json_t *json_new = jsonvfs_get(fn, &size);
 		if (json_new) {
-			if (!ret) {
-				ret = json_new;
-			}
-			else {
-				json_object_merge(ret, json_new);
-				json_decref(json_new);
-			}
+			ret = json_object_merge(ret, json_new);
 			log_printf("\n+ vfs:%s", fn);
 			json_size += size;
 		}

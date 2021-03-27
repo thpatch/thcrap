@@ -78,13 +78,7 @@ json_t *jsonvfs_get(const std::string fn, size_t* size)
 
 			size_t cur_size = 0;
 			json_t *new_obj = handler.gen(in_data, fn_normalized, &cur_size);
-			if (!obj) {
-				obj = new_obj;
-			}
-			else {
-				json_object_merge(obj, new_obj);
-				json_decref(new_obj);
-			}
+			obj = json_object_merge(obj, new_obj);
 			if (size) {
 				*size += cur_size;
 			}

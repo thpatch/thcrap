@@ -264,11 +264,11 @@ size_t patch_json_merge(json_t **json_inout, const patch_t *patch_info, const ch
 		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
 		if(json_new) {
 			patch_print_fn(patch_info, fn);
-			if(!*json_inout) {
-				*json_inout = json_new;
-			} else {
-				json_object_merge(*json_inout, json_new);
+			if (!json_object_update_recursive(*json_inout, json_new)) {
 				json_decref(json_new);
+			}
+			else {
+				*json_inout = json_new;
 			}
 		}
 	}
@@ -369,10 +369,8 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	}
 	patch.config = json_object_get(patch_info, "config");
 	// Merge the runconfig patch array and the patch.js
-	json_t *runconfig_js = json_deep_copy(patch_info);
 	json_t *patch_js = patch_json_load(&patch, "patch.js", NULL);
-	patch_js = json_object_merge(patch_js, runconfig_js);
-	json_decref_safe(runconfig_js);
+	json_object_update_recursive(patch_js, (json_t*)patch_info);
 
 	auto set_string_if_exist = [patch_js](const char *key, char*& out) {
 		json_t *value = json_object_get(patch_js, key);

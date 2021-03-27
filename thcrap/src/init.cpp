@@ -152,8 +152,8 @@ json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 			for (const char *&file : new_chain) {
 				tmp_file_size += patch_json_merge(&json_new, patch, file);
 			}
-			json_object_merge(json_new, patch->config);
-			json_object_merge(ret, json_new);
+			json_object_update_recursive(json_new, patch->config);
+			json_object_update_recursive(ret, json_new);
 			json_decref(json_new);
 		});
 		log_printf(tmp_file_size ? "\n" : "not found\n");
