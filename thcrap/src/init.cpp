@@ -372,40 +372,35 @@ int thcrap_init_binary(size_t stage_num, HMODULE module)
 {
 	size_t stages_total = runconfig_stage_count();
 
-	if (!stages_total) {
-		return 0;
-	}
-
 	assert(stage_num < stages_total);
 	assert(bp_set.size() == stages_total);
 
+	if (stage_num < stages_total) {
+		--stages_total; // Offset by 1 to get last stage index
+		size_t stages_remaining = stages_total - stage_num;
 
-	if(stages_total >= 2) {
-		log_printf(
-			"Initialization stage %d...\n"
-			"-------------------------\n",
-			stage_num
-		);
-	}
+		if (stages_remaining != 0) {
+			log_printf(
+				"Initialization stage %d...\n"
+				"-------------------------\n",
+				stage_num
+			);
+		}
 
-	bool ret = runconfig_stage_apply(stage_num,
-		RUNCFG_STAGE_USE_MODULE | (bp_set[stage_num] ? RUNCFG_STAGE_SKIP_BREAKPOINTS : 0),
-		module);
+		bool stage_success = runconfig_stage_apply(stage_num,
+			RUNCFG_STAGE_USE_MODULE | (bp_set[stage_num] ? RUNCFG_STAGE_SKIP_BREAKPOINTS : 0),
+			module);
 
-	if(stages_total >= 2) {
-		if(ret == false && stage_num == 0 && stages_total >= 2) {
+		if (stage_success == false && stages_remaining != 0) {
 			log_printf(
 				"Failed. Jumping to last stage...\n"
 				"-------------------------\n"
 			);
-			return thcrap_init_binary(stages_total - 1, nullptr);
+			return thcrap_init_binary(stages_total, nullptr);
 		}
 	}
-
-	if(stage_num + 1 == stages_total) {
-		runconfig_print();
-		mod_func_run_all("post_init", NULL);
-	}
+	runconfig_print();
+	mod_func_run_all("post_init", NULL);
 	return 0;
 }
 
