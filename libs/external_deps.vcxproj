@@ -48,12 +48,6 @@
 
     <InputFiles Include="$(InDir)bin\zlib-ng$(Debug).dll"/>
     <InputFiles Include="$(InDir)bin\zlib-ng$(Debug).pdb"/>
-	
-	<InputFiles Include="$(InDir)bin\libcrypto-1_1.dll"/>
-	<InputFiles Include="$(InDir)bin\libssl-1_1.dll"/>
-	
-	<InputFiles Include="$(InDir)bin\libcurl$(Debug).dll"/>
-	<InputFiles Include="$(InDir)bin\libcurl$(Debug).pdb"/>
   </ItemGroup>
   <ItemGroup>
     <OutputFiles Include="@(InputFiles->'$(OutDir)%(Filename)%(Extension)')" />
