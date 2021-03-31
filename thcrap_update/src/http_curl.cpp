@@ -37,6 +37,8 @@ int CurlHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_
 
 HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
+	curl_easy_setopt(this->curl, CURLOPT_CAINFO, "bin/cacert.pem");
+
     curl_easy_setopt(this->curl, CURLOPT_FOLLOWLOCATION, 1);
 
     // Format according to RFC 7231, section 5.5.3
