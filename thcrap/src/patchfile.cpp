@@ -345,7 +345,7 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 	return desc;
 }
 
-static std::unordered_map<std::string, patch_val_t> patch_options;
+static std::unordered_map<std::string_view, patch_val_t> patch_options;
 
 patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t level)
 {
@@ -440,7 +440,6 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		patch_test_opt.type = PVT_DWORD;
 		patch_test_opt.i = patch.version;
 		patch_options[patch_test_opt_name] = patch_test_opt;
-		free(patch_test_opt_name);
 	}
 
 	set_string_if_exist("title",      patch.title);
@@ -809,14 +808,22 @@ void patch_opts_from_json(json_t *opts) {
 				break;
 			}
 		}
-		patch_options[key] = entry;
+		patch_options[strdup(key)] = entry;
 	}
 }
 
 patch_val_t* patch_opt_get(const char *name) {
-	auto val = patch_options.find(name);
-	if (val == patch_options.end()) {
-		return NULL;
+	std::string_view name_view(name);
+	if (patch_options.count(name_view)) {
+		return &patch_options[name_view];
 	}
-	return &val->second;
+	return NULL;
+}
+
+patch_val_t* patch_opt_get_len(const char* name, size_t length) {
+	std::string_view name_view(name, length);
+	if (patch_options.count(name_view)) {
+		return &patch_options[name_view];
+	}
+	return NULL;
 }

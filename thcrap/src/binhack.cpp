@@ -949,8 +949,8 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	}
 
 	if (codecave_export_count > 0) {
-		patch_func_init(codecaves_export_table, codecave_export_count);
-		free((void*)codecaves_export_table);
+		patch_func_init(codecaves_export_table);
+		free(codecaves_export_table);
 	}
 	VLA_FREE(codecaves_full_size);
 

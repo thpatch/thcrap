@@ -83,7 +83,6 @@ struct CPUID_Data_t {
 	CPUID_Data_t(void) {
 		int data[4];
 		__cpuid(data, 0);
-		uint32_t highest_leaf = data[0];
 		if (data[1] == TextInt('G', 'e', 'n', 'u') &&
 			data[3] == TextInt('i', 'n', 'e', 'I') &&
 			data[2] == TextInt('n', 't', 'e', 'l')) {
@@ -97,151 +96,76 @@ struct CPUID_Data_t {
 		else {
 			Manufacturer = Unknown;
 		}
-		if (highest_leaf >= 1) {
-			__cpuid(data, 1);
-			HasCMPXCHG8			= data[3] & 1 << 8;
-			HasCMOV				= data[3] & 1 << 15;
-			HasMMX				= data[3] & 1 << 23;
-			HasFXSAVE			= data[3] & 1 << 24;
-			HasSSE				= data[3] & 1 << 25;
-			HasSSE2				= data[3] & 1 << 26;
-			HasSSE3				= data[2] & 1;
-			HasPCLMULQDQ		= data[2] & 1 << 1;
-			HasSSSE3			= data[2] & 1 << 9;
-			HasFMA				= data[2] & 1 << 12;
-			HasCMPXCHG16B		= data[2] & 1 << 13;
-			HasSSE41			= data[2] & 1 << 19;
-			HasSSE42			= data[2] & 1 << 20;
-			HasMOVBE			= data[2] & 1 << 22;
-			HasPOPCNT			= data[2] & 1 << 23;
-			HasAVX				= data[2] & 1 << 28;
-			HasF16C				= data[2] & 1 << 29;
-		}
-		if (highest_leaf >= 7) {
-			__cpuidex(data, 7, 0);
-			HasBMI1				= data[1] & 1 << 3;
-			HasAVX2				= data[1] & 1 << 4;
-			HasERMS				= data[1] & 1 << 9;
-			HasAVX512F			= data[1] & 1 << 16;
-			HasAVX512DQ			= data[1] & 1 << 17;
-			HasADX				= data[1] & 1 << 19;
-			HasAVX512IFMA		= data[1] & 1 << 21;
-			HasAVX512PF			= data[1] & 1 << 26;
-			HasAVX512ER			= data[1] & 1 << 27;
-			HasAVX512CD			= data[1] & 1 << 28;
-			HasAVX512BW			= data[1] & 1 << 30;
-			HasAVX512VL			= data[1] & 1 << 31;
-			HasAVX512VBMI		= data[2] & 1 << 1;
-			HasAVX512VBMI2		= data[2] & 1 << 6;
-			HasGFNI				= data[2] & 1 << 8;
-			HasVPCLMULQDQ		= data[2] & 1 << 10;
-			HasAVX512VNNI		= data[2] & 1 << 11;
-			HasAVX512BITALG		= data[2] & 1 << 12;
-			HasAVX512VPOPCNTDQ	= data[2] & 1 << 14;
-			HasAVX5124VNNIW		= data[3] & 1 << 2;
-			HasAVX5124FMAPS		= data[3] & 1 << 3;
-			HasFSRM				= data[3] & 1 << 4;
-			HasAVX512VP2I		= data[3] & 1 << 8;
-			__cpuidex(data, 7, 1);
-			HasAVX512BF16		= data[0] & 1 << 5;
-		}
-		if (highest_leaf >= 2) {
-			__cpuid(data, 0x80000000);
-			highest_leaf = data[0];
-			if (highest_leaf >= 0x80000001) {
-				HasMMXEXT		= data[3] & 1 << 22;
-				Has3DNOWEXT		= data[3] & 1 << 30;
-				Has3DNOW		= data[3] & 1 << 31;
-				HasABM			= data[2] & 1 << 5;
-				HasSSE4A		= data[2] & 1 << 6;
-				HasXOP			= data[2] & 1 << 1;
-				HasFMA4			= data[2] & 1 << 16;
-				HasTBM			= data[2] & 1 << 21;
-			}
+		long* const data0 = (long*)&data[0];
+		long* const data1 = (long*)&data[1];
+		long* const data2 = (long*)&data[2];
+		long* const data3 = (long*)&data[3];
+		switch (data[0]) {
+			default: //case 7:
+				__cpuidex(data, 7, 0);
+				HasBMI1				= _bittest(data1, 3);
+				HasAVX2				= _bittest(data1, 4);
+				HasERMS				= _bittest(data1, 9);
+				HasAVX512F			= _bittest(data1, 16);
+				HasAVX512DQ			= _bittest(data1, 17);
+				HasADX				= _bittest(data1, 19);
+				HasAVX512IFMA		= _bittest(data1, 21);
+				HasAVX512PF			= _bittest(data1, 26);
+				HasAVX512ER			= _bittest(data1, 27);
+				HasAVX512CD			= _bittest(data1, 28);
+				HasAVX512BW			= _bittest(data1, 30);
+				HasAVX512VL			= _bittest(data1, 31);
+				HasAVX512VBMI		= _bittest(data2, 1);
+				HasAVX512VBMI2		= _bittest(data2, 6);
+				HasGFNI				= _bittest(data2, 8);
+				HasVPCLMULQDQ		= _bittest(data2, 10);
+				HasAVX512VNNI		= _bittest(data2, 11);
+				HasAVX512BITALG		= _bittest(data2, 12);
+				HasAVX512VPOPCNTDQ	= _bittest(data2, 14);
+				HasAVX5124VNNIW		= _bittest(data3, 2);
+				HasAVX5124FMAPS		= _bittest(data3, 3);
+				HasFSRM				= _bittest(data3, 4);
+				HasAVX512VP2I		= _bittest(data3, 8);
+				switch (data[0]) {
+					default: //case 1:
+						__cpuidex(data, 7, 1);
+						HasAVX512BF16 = _bittest(data0, 5);
+					case 0:;
+				}
+			case 6: case 5: case 4: case 3: case 2:
+				__cpuid(data, 0x80000000);
+				if (data[0] >= 0x80000001) {
+					HasMMXEXT		= _bittest(data3, 22);
+					Has3DNOWEXT		= _bittest(data3, 30);
+					Has3DNOW		= _bittest(data3, 31);
+					HasABM			= _bittest(data2, 5);
+					HasSSE4A		= _bittest(data2, 6);
+					HasXOP			= _bittest(data2, 7);
+					HasFMA4			= _bittest(data2, 16);
+					HasTBM			= _bittest(data2, 21);
+				}
+			case 1:
+				__cpuid(data, 1);
+				HasCMPXCHG8			= _bittest(data3, 8);
+				HasCMOV				= _bittest(data3, 15);
+				HasMMX				= _bittest(data3, 23);
+				HasFXSAVE			= _bittest(data3, 24);
+				HasSSE				= _bittest(data3, 25);
+				HasSSE2				= _bittest(data3, 26);
+				HasSSE3				= _bittest(data2, 1);
+				HasPCLMULQDQ		= _bittest(data2, 1);
+				HasSSSE3			= _bittest(data2, 9);
+				HasFMA				= _bittest(data2, 12);
+				HasCMPXCHG16B		= _bittest(data2, 13);
+				HasSSE41			= _bittest(data2, 19);
+				HasSSE42			= _bittest(data2, 20);
+				HasMOVBE			= _bittest(data2, 22);
+				HasPOPCNT			= _bittest(data2, 23);
+				HasAVX				= _bittest(data2, 28);
+				HasF16C				= _bittest(data2, 29);
+			case 0:;
 		}
 	}
-	//CPUID_Data_t(void) {
-	//	int data[4];
-	//	__cpuid(&data[0], 0);
-	//	if (data[1] == TextInt('G', 'e', 'n', 'u') &&
-	//		data[3] == TextInt('i', 'n', 'e', 'I') &&
-	//		data[2] == TextInt('n', 't', 'e', 'l')) {
-	//			Manufacturer = Intel;
-	//	}
-	//	else if (data[1] == TextInt('A', 'u', 't', 'h') &&
-	//			 data[3] == TextInt('e', 'n', 't', 'i') &&
-	//			 data[2] == TextInt('c', 'A', 'M', 'D')) {
-	//				Manufacturer = AMD;
-	//	}
-	//	else {
-	//		Manufacturer = Unknown;
-	//	}
-	//	switch (data[0]) {
-	//		default: //case 7:
-	//			__cpuidex(&data[0], 7, 0);
-	//			HasBMI1				= _bittest((long*)&data[1], 3);
-	//			HasAVX2				= _bittest((long*)&data[1], 4);
-	//			HasERMS				= _bittest((long*)&data[1], 9);
-	//			HasAVX512F			= _bittest((long*)&data[1], 16);
-	//			HasAVX512DQ			= _bittest((long*)&data[1], 17);
-	//			HasADX				= _bittest((long*)&data[1], 19);
-	//			HasAVX512IFMA		= _bittest((long*)&data[1], 21);
-	//			HasAVX512PF			= _bittest((long*)&data[1], 26);
-	//			HasAVX512ER			= _bittest((long*)&data[1], 27);
-	//			HasAVX512CD			= _bittest((long*)&data[1], 28);
-	//			HasAVX512BW			= _bittest((long*)&data[1], 30);
-	//			HasAVX512VL			= _bittest((long*)&data[1], 31);
-	//			HasAVX512VBMI		= _bittest((long*)&data[2], 1);
-	//			HasAVX512VBMI2		= _bittest((long*)&data[2], 6);
-	//			HasGFNI				= _bittest((long*)&data[2], 8);
-	//			HasVPCLMULQDQ		= _bittest((long*)&data[2], 10);
-	//			HasAVX512VNNI		= _bittest((long*)&data[2], 11);
-	//			HasAVX512BITALG		= _bittest((long*)&data[2], 12);
-	//			HasAVX512VPOPCNTDQ	= _bittest((long*)&data[2], 14);
-	//			HasAVX5124VNNIW		= _bittest((long*)&data[3], 2);
-	//			HasAVX5124FMAPS		= _bittest((long*)&data[3], 3);
-	//			HasFSRM				= _bittest((long*)&data[3], 4);
-	//			HasAVX512VP2I		= _bittest((long*)&data[3], 8);
-	//			switch (data[0]) {
-	//				default: //case 1:
-	//					__cpuidex(&data[0], 7, 1);
-	//					HasAVX512BF16 = _bittest((long*)&data[0], 5);
-	//				case 0:;
-	//			}
-	//		case 6: case 5: case 4: case 3: case 2:
-	//			__cpuid(&data[0], 0x80000000);
-	//			if (data[0] >= 0x80000001) {
-	//				HasMMXEXT		= _bittest((long*)&data[3], 22);
-	//				Has3DNOWEXT		= _bittest((long*)&data[3], 30);
-	//				Has3DNOW		= _bittest((long*)&data[3], 31);
-	//				HasABM			= _bittest((long*)&data[2], 5);
-	//				HasSSE4A		= _bittest((long*)&data[2], 6);
-	//				HasXOP			= _bittest((long*)&data[2], 7);
-	//				HasFMA4			= _bittest((long*)&data[2], 16);
-	//				HasTBM			= _bittest((long*)&data[2], 21);
-	//			}
-	//		case 1:
-	//			__cpuid(&data[0], 1);
-	//			HasCMPXCHG8			= _bittest((long*)&data[3], 8);
-	//			HasCMOV				= _bittest((long*)&data[3], 15);
-	//			HasMMX				= _bittest((long*)&data[3], 23);
-	//			HasFXSAVE			= _bittest((long*)&data[3], 24);
-	//			HasSSE				= _bittest((long*)&data[3], 25);
-	//			HasSSE2				= _bittest((long*)&data[3], 26);
-	//			HasSSE3				= _bittest((long*)&data[2], 1);
-	//			HasPCLMULQDQ		= _bittest((long*)&data[2], 1);
-	//			HasSSSE3			= _bittest((long*)&data[2], 9);
-	//			HasFMA				= _bittest((long*)&data[2], 12);
-	//			HasCMPXCHG16B		= _bittest((long*)&data[2], 13);
-	//			HasSSE41			= _bittest((long*)&data[2], 19);
-	//			HasSSE42			= _bittest((long*)&data[2], 20);
-	//			HasMOVBE			= _bittest((long*)&data[2], 22);
-	//			HasPOPCNT			= _bittest((long*)&data[2], 23);
-	//			HasAVX				= _bittest((long*)&data[2], 28);
-	//			HasF16C				= _bittest((long*)&data[2], 29);
-	//		case 0:;
-	//	}
-	//}
 };
 
 static const CPUID_Data_t CPUID_Data;
@@ -273,9 +197,9 @@ static bool DisableCodecaveNotFound = false;
 void DisableCodecaveNotFoundWarning(bool state) {
 	DisableCodecaveNotFound = state;
 }
-static __declspec(noinline) void CodecaveNotFoundWarningMessage(const char *const name) {
+static __declspec(noinline) void CodecaveNotFoundWarningMessage(const char *const name, size_t name_length) {
 	if (!DisableCodecaveNotFound) {
-		log_printf("EXPRESSION WARNING 3: Codecave \"%s\" not found! Returning NULL...\n", name);
+		log_printf("EXPRESSION WARNING 3: Codecave \"%*s\" not found! Returning NULL...\n", name_length, name);
 	}
 }
 
@@ -283,8 +207,8 @@ static __declspec(noinline) void PostIncDecWarningMessage(void) {
 	WarnOnce(log_printf("EXPRESSION WARNING 4: Postfix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators do nothing and are only included for future compatibility and operator precedence reasons.\n"));
 }
 
-static __declspec(noinline) void InvalidCPUFeatureWarningMessage(const char *const name) {
-	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%s\"! Assuming feature is present and returning 1...\n");
+static __declspec(noinline) void InvalidCPUFeatureWarningMessage(const char* name, size_t name_length) {
+	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%*s\"! Assuming feature is present and returning 1...\n", name_length, name);
 }
 
 static __declspec(noinline) void InvalidCodeOptionWarningMessage(void) {
@@ -311,8 +235,8 @@ static __declspec(noinline) void BadCharacterErrorMessage(void) {
 	log_printf("EXPRESSION ERROR 2: Unknown character\n");
 }
 
-static __declspec(noinline) void OptionNotFoundErrorMessage(const char *const name) {
-	log_printf("EXPRESSION ERROR 3: Option \"%s\" not found\n", name);
+static __declspec(noinline) void OptionNotFoundErrorMessage(const char* name, size_t name_length) {
+	log_printf("EXPRESSION ERROR 3: Option \"%*s\" not found\n", name_length, name);
 }
 
 static __declspec(noinline) void InvalidValueErrorMessage(const char *const str) {
@@ -953,150 +877,146 @@ static size_t ApplyOperator(const size_t value, const size_t arg, const op_t op)
 	}
 }
 
-static __declspec(noinline) const patch_val_t* GetOptionValue(const char *const name, const size_t name_length) {
-	const char *const name_buffer = strndup(name, name_length);
-	ExpressionLogging("Option: \"%s\"\n", name_buffer);
-	const patch_val_t *const option = patch_opt_get(name_buffer);
+static __declspec(noinline) const patch_val_t* GetOptionValue(const char* name, size_t name_length) {
+	ExpressionLogging("Option: \"%*s\"\n", name_length, name);
+	const patch_val_t* const option = patch_opt_get_len(name, name_length);
 	if (!option) {
-		OptionNotFoundErrorMessage(name_buffer);
+		OptionNotFoundErrorMessage(name, name_length);
 	}
-	free((void*)name_buffer);
 	return option;
 }
 
-static __declspec(noinline) const patch_val_t* GetPatchTestValue(const char *const name, const size_t name_length) {
-	const char *const name_buffer = strndup(name, name_length);
-	ExpressionLogging("PatchTest: \"%s\"\n", name_buffer);
-	const patch_val_t *const patch_test = patch_opt_get(name_buffer);
-	free((void*)name_buffer);
+static __declspec(noinline) const patch_val_t* GetPatchTestValue(const char* name, size_t name_length) {
+	ExpressionLogging("PatchTest: \"%*s\"\n", name_length, name);
+	const patch_val_t* const patch_test = patch_opt_get_len(name, name_length);
 	return patch_test;
 }
 
-static __declspec(noinline) bool GetCPUFeatureTest(const char *const name, const size_t name_length) {
-	const char *const name_buffer = strndup(name, name_length);
-	ExpressionLogging("CPUFeatureTest: \"%s\"\n", name_buffer);
+static __declspec(noinline) bool GetCPUFeatureTest(const char* name, size_t name_length) {
+	ExpressionLogging("CPUFeatureTest: \"%*s\"\n", name_length, name);
 	bool ret = false;
 	// Yuck
 	switch (name_length) {
 		case 15:
-			if		(stricmp(name_buffer, "avx512vpopcntdq") == 0) ret = CPUID_Data.HasAVX512VPOPCNTDQ;
+			if		(strnicmp(name, "avx512vpopcntdq", name_length) == 0) ret = CPUID_Data.HasAVX512VPOPCNTDQ;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 12:
-			if		(stricmp(name_buffer, "avx512bitalg") == 0) ret = CPUID_Data.HasAVX512BITALG;
-			else if (stricmp(name_buffer, "avx5124fmaps") == 0) ret = CPUID_Data.HasAVX5124FMAPS;
-			else if (stricmp(name_buffer, "avx5124vnniw") == 0) ret = CPUID_Data.HasAVX5124VNNIW;
+			if		(strnicmp(name, "avx512bitalg", name_length) == 0) ret = CPUID_Data.HasAVX512BITALG;
+			else if (strnicmp(name, "avx5124fmaps", name_length) == 0) ret = CPUID_Data.HasAVX5124FMAPS;
+			else if (strnicmp(name, "avx5124vnniw", name_length) == 0) ret = CPUID_Data.HasAVX5124VNNIW;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 11:
-			if		(stricmp(name_buffer, "avx512vbmi1") == 0) ret = CPUID_Data.HasAVX512VBMI;
-			else if (stricmp(name_buffer, "avx512vbmi2") == 0) ret = CPUID_Data.HasAVX512VBMI2;
+			if		(strnicmp(name, "avx512vbmi1", name_length) == 0) ret = CPUID_Data.HasAVX512VBMI;
+			else if (strnicmp(name, "avx512vbmi2", name_length) == 0) ret = CPUID_Data.HasAVX512VBMI2;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 10:
-			if		(stricmp(name_buffer, "cmpxchg16b") == 0) ret = CPUID_Data.HasCMPXCHG16B;
-			else if (stricmp(name_buffer, "vpclmulqdq") == 0) ret = CPUID_Data.HasVPCLMULQDQ;
-			else if (stricmp(name_buffer, "avx512ifma") == 0) ret = CPUID_Data.HasAVX512IFMA;
-			else if (stricmp(name_buffer, "avx512vnni") == 0) ret = CPUID_Data.HasAVX512VNNI;
-			else if (stricmp(name_buffer, "avx512vp2i") == 0) ret = CPUID_Data.HasAVX512VP2I;
-			else if (stricmp(name_buffer, "avx512bf16") == 0) ret = CPUID_Data.HasAVX512BF16;
+			if		(strnicmp(name, "cmpxchg16b", name_length) == 0) ret = CPUID_Data.HasCMPXCHG16B;
+			else if (strnicmp(name, "vpclmulqdq", name_length) == 0) ret = CPUID_Data.HasVPCLMULQDQ;
+			else if (strnicmp(name, "avx512ifma", name_length) == 0) ret = CPUID_Data.HasAVX512IFMA;
+			else if (strnicmp(name, "avx512vnni", name_length) == 0) ret = CPUID_Data.HasAVX512VNNI;
+			else if (strnicmp(name, "avx512vp2i", name_length) == 0) ret = CPUID_Data.HasAVX512VP2I;
+			else if (strnicmp(name, "avx512bf16", name_length) == 0) ret = CPUID_Data.HasAVX512BF16;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 9:
-			if		(stricmp(name_buffer, "pclmulqdq") == 0) ret = CPUID_Data.HasPCLMULQDQ;
+			if		(strnicmp(name, "pclmulqdq", name_length) == 0) ret = CPUID_Data.HasPCLMULQDQ;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 8:
-			if		(stricmp(name_buffer, "cmpxchg8") == 0) ret = CPUID_Data.HasCMPXCHG8;
-			else if (stricmp(name_buffer, "avx512dq") == 0) ret = CPUID_Data.HasAVX512DQ;
-			else if (stricmp(name_buffer, "avx512pf") == 0) ret = CPUID_Data.HasAVX512PF;
-			else if (stricmp(name_buffer, "avx512er") == 0) ret = CPUID_Data.HasAVX512ER;
-			else if (stricmp(name_buffer, "avx512cd") == 0) ret = CPUID_Data.HasAVX512CD;
-			else if (stricmp(name_buffer, "avx512bw") == 0) ret = CPUID_Data.HasAVX512BW;
-			else if (stricmp(name_buffer, "avx512vl") == 0) ret = CPUID_Data.HasAVX512VL;
-			else if (stricmp(name_buffer, "3dnowext") == 0) ret = CPUID_Data.Has3DNOWEXT;
+			if		(strnicmp(name, "cmpxchg8", name_length) == 0) ret = CPUID_Data.HasCMPXCHG8;
+			else if (strnicmp(name, "avx512dq", name_length) == 0) ret = CPUID_Data.HasAVX512DQ;
+			else if (strnicmp(name, "avx512pf", name_length) == 0) ret = CPUID_Data.HasAVX512PF;
+			else if (strnicmp(name, "avx512er", name_length) == 0) ret = CPUID_Data.HasAVX512ER;
+			else if (strnicmp(name, "avx512cd", name_length) == 0) ret = CPUID_Data.HasAVX512CD;
+			else if (strnicmp(name, "avx512bw", name_length) == 0) ret = CPUID_Data.HasAVX512BW;
+			else if (strnicmp(name, "avx512vl", name_length) == 0) ret = CPUID_Data.HasAVX512VL;
+			else if (strnicmp(name, "3dnowext", name_length) == 0) ret = CPUID_Data.Has3DNOWEXT;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 7:
-			if		(stricmp(name_buffer, "avx512f") == 0) ret = CPUID_Data.HasAVX512F;
+			if		(strnicmp(name, "avx512f", name_length) == 0) ret = CPUID_Data.HasAVX512F;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 6:
-			if		(stricmp(name_buffer, "popcnt") == 0) ret = CPUID_Data.HasPOPCNT;
-			else if (stricmp(name_buffer, "fxsave") == 0) ret = CPUID_Data.HasFXSAVE;
-			else if (stricmp(name_buffer, "mmxext") == 0) ret = CPUID_Data.HasMMXEXT;
+			if		(strnicmp(name, "popcnt", name_length) == 0) ret = CPUID_Data.HasPOPCNT;
+			else if (strnicmp(name, "fxsave", name_length) == 0) ret = CPUID_Data.HasFXSAVE;
+			else if (strnicmp(name, "mmxext", name_length) == 0) ret = CPUID_Data.HasMMXEXT;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 5:
-			if		(stricmp(name_buffer, "intel") == 0) ret = CPUID_Data.Manufacturer == Intel;
-			else if (stricmp(name_buffer, "ssse3") == 0) ret = CPUID_Data.HasSSSE3;
-			else if (stricmp(name_buffer, "sse41") == 0) ret = CPUID_Data.HasSSE41;
-			else if (stricmp(name_buffer, "sse42") == 0) ret = CPUID_Data.HasSSE42;
-			else if (stricmp(name_buffer, "sse4a") == 0) ret = CPUID_Data.HasSSE4A;
-			else if (stricmp(name_buffer, "movbe") == 0) ret = CPUID_Data.HasMOVBE;
-			else if (stricmp(name_buffer, "3dnow") == 0) ret = CPUID_Data.Has3DNOW;
+			if		(strnicmp(name, "intel", name_length) == 0) ret = CPUID_Data.Manufacturer == Intel;
+			else if (strnicmp(name, "ssse3", name_length) == 0) ret = CPUID_Data.HasSSSE3;
+			else if (strnicmp(name, "sse41", name_length) == 0) ret = CPUID_Data.HasSSE41;
+			else if (strnicmp(name, "sse42", name_length) == 0) ret = CPUID_Data.HasSSE42;
+			else if (strnicmp(name, "sse4a", name_length) == 0) ret = CPUID_Data.HasSSE4A;
+			else if (strnicmp(name, "movbe", name_length) == 0) ret = CPUID_Data.HasMOVBE;
+			else if (strnicmp(name, "3dnow", name_length) == 0) ret = CPUID_Data.Has3DNOW;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 4:
-			if		(stricmp(name_buffer, "cmov") == 0) ret = CPUID_Data.HasCMOV;
-			else if (stricmp(name_buffer, "sse2") == 0) ret = CPUID_Data.HasSSE2;
-			else if (stricmp(name_buffer, "sse3") == 0) ret = CPUID_Data.HasSSE3;
-			else if (stricmp(name_buffer, "avx2") == 0) ret = CPUID_Data.HasAVX2;
-			else if (stricmp(name_buffer, "bmi1") == 0) ret = CPUID_Data.HasBMI1;
-			else if (stricmp(name_buffer, "bmi2") == 0) ret = CPUID_Data.HasBMI2;
-			else if (stricmp(name_buffer, "erms") == 0) ret = CPUID_Data.HasERMS;
-			else if (stricmp(name_buffer, "fsrm") == 0) ret = CPUID_Data.HasFSRM;
-			else if (stricmp(name_buffer, "f16c") == 0) ret = CPUID_Data.HasF16C;
-			else if (stricmp(name_buffer, "gfni") == 0) ret = CPUID_Data.HasGFNI;
-			else if (stricmp(name_buffer, "fma4") == 0) ret = CPUID_Data.HasFMA4;
+			if		(strnicmp(name, "cmov", name_length) == 0) ret = CPUID_Data.HasCMOV;
+			else if (strnicmp(name, "sse2", name_length) == 0) ret = CPUID_Data.HasSSE2;
+			else if (strnicmp(name, "sse3", name_length) == 0) ret = CPUID_Data.HasSSE3;
+			else if (strnicmp(name, "avx2", name_length) == 0) ret = CPUID_Data.HasAVX2;
+			else if (strnicmp(name, "bmi1", name_length) == 0) ret = CPUID_Data.HasBMI1;
+			else if (strnicmp(name, "bmi2", name_length) == 0) ret = CPUID_Data.HasBMI2;
+			else if (strnicmp(name, "erms", name_length) == 0) ret = CPUID_Data.HasERMS;
+			else if (strnicmp(name, "fsrm", name_length) == 0) ret = CPUID_Data.HasFSRM;
+			else if (strnicmp(name, "f16c", name_length) == 0) ret = CPUID_Data.HasF16C;
+			else if (strnicmp(name, "gfni", name_length) == 0) ret = CPUID_Data.HasGFNI;
+			else if (strnicmp(name, "fma4", name_length) == 0) ret = CPUID_Data.HasFMA4;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 3:
-			if		(stricmp(name_buffer, "amd") == 0) ret = CPUID_Data.Manufacturer == AMD;
-			else if (stricmp(name_buffer, "sse") == 0) ret = CPUID_Data.HasSSE;
-			else if (stricmp(name_buffer, "fma") == 0) ret = CPUID_Data.HasFMA;
-			else if (stricmp(name_buffer, "mmx") == 0) ret = CPUID_Data.HasMMX;
-			else if (stricmp(name_buffer, "avx") == 0) ret = CPUID_Data.HasAVX;
-			else if (stricmp(name_buffer, "adx") == 0) ret = CPUID_Data.HasADX;
-			else if (stricmp(name_buffer, "abm") == 0) ret = CPUID_Data.HasABM;
-			else if (stricmp(name_buffer, "xop") == 0) ret = CPUID_Data.HasXOP;
-			else if (stricmp(name_buffer, "tbm") == 0) ret = CPUID_Data.HasTBM;
+			if		(strnicmp(name, "amd", name_length) == 0) ret = CPUID_Data.Manufacturer == AMD;
+			else if (strnicmp(name, "sse", name_length) == 0) ret = CPUID_Data.HasSSE;
+			else if (strnicmp(name, "fma", name_length) == 0) ret = CPUID_Data.HasFMA;
+			else if (strnicmp(name, "mmx", name_length) == 0) ret = CPUID_Data.HasMMX;
+			else if (strnicmp(name, "avx", name_length) == 0) ret = CPUID_Data.HasAVX;
+			else if (strnicmp(name, "adx", name_length) == 0) ret = CPUID_Data.HasADX;
+			else if (strnicmp(name, "abm", name_length) == 0) ret = CPUID_Data.HasABM;
+			else if (strnicmp(name, "xop", name_length) == 0) ret = CPUID_Data.HasXOP;
+			else if (strnicmp(name, "tbm", name_length) == 0) ret = CPUID_Data.HasTBM;
 			else	goto InvalidCPUFeatureError;
 			break;
 		default:
 InvalidCPUFeatureError:
-			InvalidCPUFeatureWarningMessage(name_buffer);
+			InvalidCPUFeatureWarningMessage(name, name_length);
 	}
-	free((void*)name_buffer);
 	return ret;
 }
 
 static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
-	char *const name_buffer = strndup(name, name_length);
-	ExpressionLogging("CodecaveAddress: \"%s\"\n", name_buffer);
-	char* user_offset_expr = strchr(name_buffer, '+');
-	if (user_offset_expr) {
-		// This prevents next read to name_buffer
-		// from containing the offset value
-		*user_offset_expr++ = '\0';
-	}
-	size_t cave_addr = func_get(name_buffer);
+	ExpressionLogging("CodecaveAddress: \"%*s\"\n", name_length, name);
+
+	const char* user_offset_expr = strchr(name, '+');
+	const size_t name_length_before_offset = user_offset_expr ? PtrDiffStrlen(user_offset_expr, name) : name_length;
+
+	size_t cave_addr = func_get_len(name, name_length_before_offset);
 	if (!cave_addr) {
-		CodecaveNotFoundWarningMessage(name_buffer);
+		CodecaveNotFoundWarningMessage(name, name_length_before_offset);
 	}
 	else {
 		if (user_offset_expr) {
+			++user_offset_expr;
 			char* user_offset_expr_next;
 			// Try a hex value by default for compatibility
 			size_t user_offset_value = strtoul(user_offset_expr, &user_offset_expr_next, 16);
 			switch ((bool)(user_offset_expr == user_offset_expr_next)) {
-				case true:
+				case true: {
 					// If a hex value doesn't work, try a subexpression
-					if (!eval_expr_new_impl(user_offset_expr, '\0', &user_offset_value, StartNoOp, 0, data_refs)) {
+					user_offset_expr = strndup(user_offset_expr, name_length - name_length_before_offset);
+					const bool expression_error = !eval_expr_new_impl(user_offset_expr, '\0', &user_offset_value, StartNoOp, 0, data_refs);
+					free((void*)user_offset_expr);
+					if (expression_error) {
 						ExpressionErrorMessage();
 						break;
 					}
 					[[fallthrough]];
+				}
 				default:
 					cave_addr += user_offset_value;
 			}
@@ -1105,38 +1025,38 @@ static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, co
 			cave_addr -= data_refs->rel_source + sizeof(void*);
 		}
 	}
-	free(name_buffer);
 	return cave_addr;
 }
 
 static __declspec(noinline) size_t GetBPFuncOrRawAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
-	const char *const name_buffer = strndup(name, name_length);
-	ExpressionLogging("BPFuncOrRawAddress: \"%s\"\n", name_buffer);
-	size_t addr = func_get(name_buffer);
+	ExpressionLogging("BPFuncOrRawAddress: \"%*s\"\n", name_length, name);
+	size_t addr = func_get_len(name, name_length);
 	switch (addr) {
-		case 0: // Will be null if the name was not a BP function
-			if (!eval_expr_new_impl(name_buffer, '\0', &addr, StartNoOp, 0, data_refs)) {
+		case 0: {// Will be null if the name was not a BP function
+			const char* const name_buffer = strndup(name, name_length);
+			const bool expression_error = !eval_expr_new_impl(name_buffer, '\0', &addr, StartNoOp, 0, data_refs);
+			free((void*)name_buffer);
+			if (expression_error) {
 				ExpressionErrorMessage();
-				// addr would still be 0, so break to
-				// free the name string and return 0
 				break;
 			}
 			[[fallthrough]];
+		}
 		default:
 			if (is_relative) {
 				addr -= data_refs->rel_source + sizeof(void*);
 			}
 	}
-	free((void*)name_buffer);
 	return addr;
 }
 
 static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, const size_t name_length, const StackSaver *const data_refs) {
-	const char *const name_buffer = strndup(name, name_length);
 	patch_val_t nop_str;
 	nop_str.type = PVT_CODE;
 	nop_str.str.len = 0;
+	const char* const name_buffer = strndup(name, name_length);
 	eval_expr_new_impl(name_buffer, '\0', &nop_str.str.len, StartNoOp, 0, data_refs);
+	free((void*)name_buffer);
 	switch (nop_str.str.len) {
 		case 0xF: nop_str.str.ptr = CPUID_Data.Manufacturer == AMD ?
 										"0F1F80000000000F1F840000000000" :
@@ -1165,7 +1085,6 @@ static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, 
 		case 0x1: nop_str.str.ptr =		"90"; break;
 		default: nop_str.type = PVT_NONE;
 	}
-	free((void*)name_buffer);
 	return nop_str;
 }
 
@@ -1182,8 +1101,6 @@ static __declspec(noinline) const char* get_patch_value_impl(const char* expr, p
 	// Increment expr so that the comparisons
 	// don't check the opening bracket
 	++expr;
-	// This would be a lot simpler if there were a variant of
-	// patch_opt_get and func_get that took a length parameter
 	if (strnicmp(expr, "codecave:", 9) == 0) {
 		out->type = PVT_DWORD;
 		out->i = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
@@ -1227,28 +1144,28 @@ const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs,
 	const StackSaver data_refs = { regs, rel_source };
 
 	const char *const expr_next = get_patch_value_impl(expr, out, &data_refs);
-	if (!expr_next) goto ExpressionError;
-	ExpressionLogging(
-		"END PATCH VALUE\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
-		"Remaining after final: \"%s\"\n",
-		expr, out->i, out->i, out->i, expr_next
-	);
+	if (expr_next) {
+		ExpressionLogging(
+			"END PATCH VALUE\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+			"Remaining after final: \"%s\"\n",
+			expr, out->i, out->i, out->i, expr_next
+		);
+	}
+	else {
+		ExpressionErrorMessage();
+		out->type = PVT_DWORD;
+		out->i = 0;
+		ExpressionLogging(
+			"END PATCH VALUE WITH ERROR\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+			"Remaining after final: \"%s\"\n",
+			expr, out->i, out->i, out->i, expr
+		);
+	}
 	return expr_next;
-
-ExpressionError:
-	ExpressionErrorMessage();
-	out->type = PVT_DWORD;
-	out->i = 0;
-	ExpressionLogging(
-		"END PATCH VALUE WITH ERROR\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tPatch value was: \"%s\"\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
-		"Remaining after final: \"%s\"\n",
-		expr, out->i, out->i, out->i, expr
-	);
-	return NULL;
 }
 
 static inline const char* CheckCastType(const char* expr, uint8_t* out) {
@@ -1826,25 +1743,25 @@ const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_re
 	const StackSaver data_refs = { regs, rel_source };
 
 	const char *const expr_next = eval_expr_new_impl(expr, end, out, StartNoOp, 0, &data_refs);
-	if (!expr_next) goto ExpressionError;
-	ExpressionLogging(
-		"END EXPRESSION\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tRemaining after final: \"%s\"\n",
-		expr, *out, *out, *out, expr_next
-	);
+	if (expr_next) {
+		ExpressionLogging(
+			"END EXPRESSION\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tRemaining after final: \"%s\"\n",
+			expr, *out, *out, *out, expr_next
+		);
+	}
+	else {
+		ExpressionErrorMessage();
+		*out = 0;
+		ExpressionLogging(
+			"END EXPRESSION WITH ERROR\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
+			"\t\t\t\t\t\t\t\t\t\t\t\t\tRemaining after final: \"%s\"\n",
+			expr, *out, *out, *out, expr
+		);
+	}
 	return expr_next;
-
-ExpressionError:
-	ExpressionErrorMessage();
-	*out = 0;
-	ExpressionLogging(
-		"END EXPRESSION WITH ERROR\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tExpression was: \"%s\"\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tFINAL result was: %X / %d / %u\n"
-		"\t\t\t\t\t\t\t\t\t\t\t\t\tRemaining after final: \"%s\"\n",
-		expr, *out, *out, *out, expr
-	);
-	return NULL;
 }

@@ -17,7 +17,7 @@ extern "C" void bp_entry(void);
 
 // Performs breakpoint lookup, invocation and stack adjustments. Returns the
 // number of bytes the stack has to be moved downwards by breakpoint_entry().
-extern "C" size_t __cdecl breakpoint_process(breakpoint_local_t *bp_local, size_t addr_index, x86_reg_t *regs);
+extern "C" size_t __cdecl breakpoint_process(breakpoint_local_t *bp_local, size_t addr_index, x86_reg_t regs);
 /// ---------
 
 /// Constants
@@ -31,19 +31,18 @@ extern "C" size_t __cdecl breakpoint_process(breakpoint_local_t *bp_local, size_
 
 size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 {
-	if (!val || json_is_null(val)) {
-		return 0;
-	}
-	if (json_is_integer(val)) {
-		return (size_t)json_integer_value(val);
-	}
-	else if (!json_is_string(val)) {
-		log_func_printf("the expression must be either an integer or a string.\n");
-		return 0;
-	}
-	const char *expr = json_string_value(val);
 	size_t ret = 0;
-	eval_expr(expr, '\0', &ret, regs, NULL);
+	if (val) {
+		if (json_typeof(val) == JSON_INTEGER) {
+			ret = (size_t)json_integer_value(val);
+		}
+		else if (json_typeof(val) == JSON_STRING) {
+			eval_expr(json_string_value(val), '\0', &ret, regs, NULL);
+		}
+		else if (json_typeof(val) != JSON_NULL) {
+			log_func_printf("the expression must be either an integer or a string.\n");
+		}
+	}
 	return ret;
 }
 
@@ -98,27 +97,46 @@ size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *ke
 
 int breakpoint_cave_exec_flag(json_t *bp_info)
 {
-	return !json_is_false(json_object_get(bp_info, "cave_exec"));
+	return json_eval_int_default(json_object_get(bp_info, "cave_exec"), 1, JEVAL_DEFAULT);
 }
 
-size_t __cdecl breakpoint_process(breakpoint_local_t *bp, size_t addr_index, x86_reg_t *regs)
-{
-	size_t esp_diff = 0;
+//size_t __cdecl breakpoint_process(breakpoint_local_t *bp, size_t addr_index, x86_reg_t *regs)
+//{
+//	// POPAD ignores the ESP register, so we have to implement our own mechanism
+//	// to be able to manipulate it.
+//	size_t esp_prev = regs->esp;
+//
+//	if(int cave_exec = bp->func(regs, bp->json_obj);
+//		cave_exec) {
+//		// Point return address to codecave.
+//		regs->retaddr = (uint32_t)bp->addr[addr_index].breakpoint_source;
+//	}
+//	size_t esp_diff = regs->esp - esp_prev;
+//	if(esp_diff) {
+//		// ESP change requested.
+//		// Shift down the regs structure by the requested amount
+//		memmove((BYTE*)(regs) + esp_diff, regs, sizeof(x86_reg_t));
+//	}
+//	return esp_diff;
+//}
 
+size_t __cdecl breakpoint_process(breakpoint_local_t *bp, size_t addr_index, x86_reg_t regs)
+{
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
 	// to be able to manipulate it.
-	size_t esp_prev = regs->esp;
-
-	int cave_exec = bp->func(regs, bp->json_obj);
-	if(cave_exec) {
+	const size_t esp_prev = regs.esp;
+	
+	if(bp->func(&regs, bp->json_obj)) {
 		// Point return address to codecave.
-		regs->retaddr = (uint32_t)bp->addr[addr_index].breakpoint_source;
+		regs.retaddr = (uint32_t)bp->addr[addr_index].breakpoint_source;
 	}
-	if(esp_prev != regs->esp) {
+	const size_t esp_diff = regs.esp - esp_prev;
+	if(esp_diff) {
 		// ESP change requested.
 		// Shift down the regs structure by the requested amount
-		esp_diff = regs->esp - esp_prev;
-		memmove((BYTE*)(regs) + esp_diff, regs, sizeof(x86_reg_t));
+		x86_reg_t temp = regs;
+		_ReadWriteBarrier();
+		*(x86_reg_t*)((BYTE*)(&regs) + esp_diff) = temp;
 	}
 	return esp_diff;
 }

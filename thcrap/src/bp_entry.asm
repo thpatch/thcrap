@@ -14,7 +14,6 @@ _bp_entry:
 	pusha
 	pushf
 	cld
-	push	esp
 	/* TODO: Make these push a dword value of 0. Even "pushl $0" with AT&T syntax switches to the byte encoding instead of dword. */
 _bp_entry_indexptr:
 	push	0xDEADBEEF
@@ -22,7 +21,7 @@ _bp_entry_localptr:
 	push	0xDEADBEEF
 _bp_entry_callptr:
 	call	_breakpoint_process
-	lea		esp, [esp+eax+0xC]
+	lea		esp, [esp+eax+0x8]
 	popf
 	popa
 	ret

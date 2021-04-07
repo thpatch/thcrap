@@ -155,7 +155,7 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 		game.len + 1 + basename.len + LOOP_INFIX.len + longest_codec_len + 1;
 
 	VLA(char, mod_fn, mod_fn_len);
-	defer({ VLA_FREE(mod_fn) });
+	defer({ VLA_FREE(mod_fn); });
 
 	char *mod_fn_p = mod_fn;
 	if(game.str) {

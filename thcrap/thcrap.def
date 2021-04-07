@@ -256,6 +256,7 @@ EXPORTS
 	; Plugins
 	; -------
 	func_get
+	func_get_len
 	func_add
 	func_remove
 	plugins_load

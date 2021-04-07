@@ -309,22 +309,21 @@ int thcrap_init(const char *run_cfg_fn)
 	stack_show_missing();
 
 	log_printf("EXE file name: %s\n", exe_fn);
-	{
-		json_t *full_cfg = identify(exe_fn);
-		if(full_cfg) {
-			runconfig_load(full_cfg, RUNCONFIG_NO_OVERWRITE);
-			json_decref(full_cfg);
+	if (json_t *full_cfg = identify(exe_fn)) {
+		runconfig_load(full_cfg, RUNCONFIG_NO_OVERWRITE);
+		json_decref(full_cfg);
 
-			oldbuild_show();
-		}
+		oldbuild_show();
 	}
 
-	log_printf("Game directory: %s\n", game_dir);
-	log_printf("Plug-in directory: %s\n", dll_dir);
+	log_printf("Game directory: %s\\\n", game_dir);
+
+	PathAppendU(dll_dir, "bin");
+	log_printf("Plug-in directory: %s\\\n", dll_dir);
 
 	log_printf("\nInitializing plug-ins...\n");
 	plugin_init(hThcrap);
-	PathAppendU(dll_dir, "bin");
+	
 	plugins_load(dll_dir);
 	PathAppendU(dll_dir, "..");
 

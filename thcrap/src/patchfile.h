@@ -104,6 +104,8 @@ void patch_opts_from_json(json_t *opts);
 // Obtains the value of a patch option
 patch_val_t* patch_opt_get(const char *name);
 
+patch_val_t* patch_opt_get_len(const char* name, size_t length);
+
 // Opens the file [fn] for read operations. Just a lightweight wrapper around
 // CreateFile(): Returns INVALID_HANDLE_VALUE on failure, and the caller must
 // call CloseHandle() on the returned value.

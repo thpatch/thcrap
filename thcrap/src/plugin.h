@@ -22,6 +22,7 @@
 // Returns a pointer to a function with the given name in the list of exported
 // functions. Basically a GetProcAddress across the engine and all plug-ins.
 UINT_PTR func_get(const char *name);
+UINT_PTR func_get_len(const char *name, size_t name_len);
 
 // Adds a pointer to a function to the list of functions used by func_get
 int func_add(const char *name, size_t addr);
@@ -73,24 +74,27 @@ void mod_func_remove(const char *pattern, mod_call_type func);
 void patch_func_remove(const char *pattern, mod_call_type func);
 
 #ifdef __cplusplus
-typedef std::unordered_map<std::string_view, std::vector<mod_call_type>> mod_funcs_t;
-typedef std::pair<std::string_view, std::vector<mod_call_type>> mod_func_pair_t;
+class mod_funcs_t : public std::unordered_map<std::string_view, std::vector<mod_call_type>> {
+public:
+	// Builds an unordered map mapping the suffixes of all module hook functions
+	// occurring in [funcs] to an array of pointers to all the functions in
+	// [funcs] with that suffix:
+	// {
+	//	"suffix": [
+	//		<function pointer>. <function pointer>. ...
+	//	],
+	//	...
+	// }
+	inline void build(exported_func_t* funcs, const char* infix);
 
-// Builds an unordered map mapping the suffixes of all module hook functions
-// occurring in [funcs] to an array of pointers to all the functions in
-// [funcs] with that suffix:
-// {
-//	"suffix": [
-//		<function pointer>. <function pointer>. ...
-//	],
-//	...
-// }
-mod_funcs_t* mod_func_build(exported_func_t *funcs, const char* infix);
+	// Runs every module hook function for [suffix] in [mod_funcs]. The execution
+	// order of the hook functions follows the order their DLLs were originally
+	// loaded in, but is undefined within the functions of a single DLL.
+	inline void run(std::string_view suffix, void* param);
 
-// Runs every module hook function for [suffix] in [mod_funcs]. The execution
-// order of the hook functions follows the order their DLLs were originally
-// loaded in, but is undefined within the functions of a single DLL.
-void mod_func_run(mod_funcs_t *funcs, const char *suffix, void *param);
+	inline void remove(std::string_view suffix, mod_call_type func);
+};
+
 #endif
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.
@@ -104,7 +108,7 @@ void patch_func_run_all(const char *pattern, void *param);
 // exports, and calling its "init" and "detour" module functions.
 int plugin_init(HMODULE hMod);
 
-int patch_func_init(exported_func_t *funcs_new, size_t func_count);
+int patch_func_init(exported_func_t *funcs_new);
 
 // Loads all thcrap plugins from the given directory.
 int plugins_load(const char *dir);
