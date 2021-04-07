@@ -1,4 +1,5 @@
 #include "thcrap.h"
+#include <deque>
 #include <sstream>
 #include <cstring>
 #include "update.h"
@@ -365,7 +366,8 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
     // from the stack.
     // The ScopedPatch wrapper will free these patches automatically
     // when patches_storage goes out of scope.
-	std::vector<ScopedPatch> patches_storage;
+	// Deque is used for its reference stability.
+	std::deque<ScopedPatch> patches_storage;
 
 	// Get the patches from the stack
 	stack_foreach_cpp([&patches](const patch_t *patch) {

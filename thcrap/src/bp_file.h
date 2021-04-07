@@ -30,25 +30,6 @@ typedef struct {
 	size_t pre_json_size;
 
 	void *game_buffer;
-
-	// Pointer to an object of the game's file class. Used as another
-	// method of linking load calls to files, if file names aren't enough.
-	void *object;
-
-	// For fragmented loading:
-	// Original file size.
-	size_t orig_size;
-
-	// Offset of the file in the archive.
-	size_t offset;
-
-	// Used to mitigate a race condition in BP_fragmented_read_file where
-	// the game opens the same file simultaneously from 2 threads.
-	// The real fix would be to make more state thread-local (instead of
-	// just a pointer), but at least for HM-style games, I probably want
-	// to do that after removing the loading of every file when the game
-	// parse its header.
-	CRITICAL_SECTION cs;
 } file_rep_t;
 
 // Initialize a file_rep_t object, and loads the replacement file and patch for file_name.
@@ -57,14 +38,8 @@ int file_rep_init(file_rep_t *fr, const char *file_name);
 // Clears a file_rep_t object.
 int file_rep_clear(file_rep_t *fr);
 
-// Retrieves a file_rep_t object cached by BP_file_header
-file_rep_t *file_rep_get(const char *filename);
-
-// Retrieves a file_rep_t object cached by BP_file_header, using its object member
-file_rep_t *file_rep_get_by_object(const void *object);
-// Set the object member of a file_rep.
-// If you want to use file_rep_get_by_object, you *must* set the object member with this function.
-void file_rep_set_object(file_rep_t *fr, void *object);
+// Return the size of the buffer needed for the patched file
+#define POST_JSON_SIZE(fr) (fr)->pre_json_size + (fr)->patch_size
 
 
 /// Thread-local storage
@@ -166,98 +141,8 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info);
   */
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
-/**
-  * Placed when the game parses its archive header. It will update
-  * the file size and save the file informations.
-  *
-  * Own JSON parameters
-  * -------------------
-  *	[file_name]
-  *		File name
-  *		Type: immediate
-  *
-  *	[file_size]
-  *		File size
-  *		Type: pointer
-  *
-  * Other breakpoints called
-  * ------------------------
-  *	None
-  */
-int BP_file_header(x86_reg_t *regs, json_t *bp_info);
-
-/**
-  * Used when the a fragmented file reader loads its file.
-  *
-  * Own JSON parameters
-  * -------------------
-  *	[file_name]
-  *		File name
-  *		Type: immediate
-  *
-  *	[file_object]
-  *		File object. Can be used to help fragmented_read_file to retrieve the file_rep
-  *		Type: immediate
-  *
-  *	[file_size]
-  *		File size. Optionnal if we didn't use BP_file_header, mandatory otherwise.
-  *		Type: pointer
-  *
-  * Other breakpoints called
-  * ------------------------
-  *	None
-  */
-int BP_fragmented_open_file(x86_reg_t *regs, json_t *bp_info);
-
-/**
-  * Overwrites a ReadFile call and writes patched data into the buffer.
-  * When apply is not true, this breakpoint just stores the filename for the next call.
-  * When apply is true, this breakpoint must be exactly over a ReadFile call.
-  * Parameters will be taken directly on the stack.
-  *
-  * Own JSON parameters
-  * -------------------
-  *	[file_name]
-  *		File name
-  *		Type: immediate
-  *
-  *	[file_object]
-  *		File object, used instead of the file name if it isn't provided
-  *		Type: immediate
-  *
-  *	[apply]
-  *		Set it to true when you're on the ReadFile call
-  *		Type: boolean
-  *
-  *	[post_read]
-  *		Optional function called right after reading the original file (fragmented_read_file_hook_t).
-  *		Type: immediate
-  *
-  *	[post_patch]
-  *		Optional function called after the file is patched, or if is it doesn't need patching (fragmented_read_file_hook_t).
-  *		Type: immediate
-  *
-  * Other breakpoints called
-  * ------------------------
-  *	None
-  */
-int BP_fragmented_read_file(x86_reg_t *regs, json_t *bp_info);
-typedef void (*fragmented_read_file_hook_t)(const file_rep_t *fr, BYTE *buffer, size_t size);
-
-/**
-  * Used when the a fragmented file reader closes its file.
-  *
-  * Own JSON parameters
-  * -------------------
-  *	[file_object]
-  *		File object, used instead of the last file used by the thread.
-  *		Type: immediate
-  *
-  * Other breakpoints called
-  * ------------------------
-  *	None
-  */
-int BP_fragmented_close_file(x86_reg_t *regs, json_t *bp_info);
+// Cool function name.
+int DumpDatFile(const char *dir, const file_rep_t *fr);
 
 int bp_file_init(void);
 void bp_file_mod_thread_exit(void);

@@ -70,6 +70,7 @@ typedef enum {
 	TH16,
 	TH165,
 	TH17,
+	TH18,
 
 	// Any future game without relevant changes
 	TH_FUTURE,

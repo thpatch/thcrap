@@ -6,14 +6,19 @@ EXPORTS
 
 	BP_th135_file_header
 	BP_th135_file_name
-	BP_th135_read_file
+	BP_th135_prepareReadFile
+	BP_th135_replaceReadFile
 
 	BP_detour_plugin
 	BP_bmpfont_fix_parameters
 
-	BP_nsml_file_header
-	BP_nsml_read_file
+	BP_nsml_CPackageFileReader_openFile
+	BP_nsml_CPackageFileReader_readFile
+	BP_nsml_CFileReader_closeFile
+	BP_megamari_openFile
 	BP_th105_open_file
+	BP_th105_replaceReadFile
+	BP_th105_close_file
 	BP_th105_font_spacing
 
 	BP_th105_fix_csv_parser
@@ -21,5 +26,6 @@ EXPORTS
 
 	tasofro_CharNextA
 
-	BP_th175_file_desc
-	BP_th175_read_file
+	BP_th175_open_file
+	BP_th175_replaceReadFile
+	BP_th175_close_file

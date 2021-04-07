@@ -75,18 +75,25 @@ int th135_init()
 }
 
 
-file_rep_t *call_file_header(x86_reg_t *regs, json_t *bp_info, const char *filename)
+bool th135_init_fr(Th135File *fr, std::filesystem::path path)
 {
-	json_t *new_bp_info = json_copy(bp_info);
-	json_object_set_new(new_bp_info, "file_name", json_integer((json_int_t)filename));
-	BP_file_header(regs, new_bp_info);
-	json_decref(new_bp_info);
-
-	file_rep_t *fr = file_rep_get(filename);
-	if (fr && (fr->rep_buffer || fr->patch || fr->hooks)) {
-		return fr;
+	fr->init(path.generic_u8string().c_str());
+	if (fr->need_replace()) {
+		return true;
 	}
-	return nullptr;
+
+	file_rep_clear(fr);
+
+	// If the game loads a DDS file and we have no corresponding DDS file,
+	// try to replace it with a PNG file (the game will deal with it)
+	if (path.extension() == ".dds") {
+		path.replace_extension(".png");
+		register_utf8_filename(path.generic_u8string().c_str());
+
+		return th135_init_fr(fr, path);
+	}
+
+	return false;
 }
 
 extern "C" int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
@@ -94,51 +101,36 @@ extern "C" int BP_th135_file_header(x86_reg_t *regs, json_t *bp_info)
 	// Parameters
 	// ----------
 	DWORD hash = json_object_get_immediate(bp_info, regs, "file_hash");
+	size_t *size = json_object_get_pointer(bp_info, regs, "file_size");
 	DWORD *key = (DWORD*)json_object_get_immediate(bp_info, regs, "file_key");
 	// ----------
 
 	if (!hash || !key)
 		return 1;
 
-	struct FileHeader *header = hash_to_file_header(hash);
-	if (!header) {
+	Th135File *fr = hash_to_Th135File(hash);
+	if (!fr) {
 		return 1;
 	}
-
-	file_rep_t *fr = call_file_header(regs, bp_info, header->path);
-
-	// If the game loads a DDS file and we have no corresponding DDS file, try to replace it with a PNG file (the game will deal with it)
-	if (!fr && strcmp(PathFindExtensionA(header->path), ".dds") == 0) {
-		char png_path[MAX_PATH];
-		strcpy(png_path, header->path);
-		strcpy(PathFindExtensionA(png_path), ".png");
-		register_filename(png_path);
-		file_rep_t *fr_png = call_file_header(regs, bp_info, png_path);
-
-		if (fr_png) {
-			fr = file_rep_get(header->path);
-			file_rep_clear(fr);
-			memcpy(fr, fr_png, sizeof(*fr));
-			memset(fr_png, 0, sizeof(*fr_png));
-			file_rep_clear(fr_png);
-			SAFE_FREE(fr->name);
-			fr->name = EnsureUTF8(header->path, strlen(header->path) + 1);
-		}
-		else {
-			fr = nullptr;
+	if (fr->hash == 0) {
+		if (!th135_init_fr(fr, fr->path)) {
+			return 1;
 		}
 	}
 
-	if (fr) {
-		header->hash = hash;
-		memcpy(header->key, key, 4 * sizeof(DWORD));
-		ICrypt::instance->convertKey(header->key);
-		fr->object = header;
+	fr->hash = hash;
+	if (!fr->rep_buffer) {
+		// We will need to allocate a buffer big enough for the original game file
+		fr->pre_json_size = *size;
 	}
-	header->fr = fr;
+	memcpy(fr->key, key, 4 * sizeof(DWORD));
+	ICrypt::instance->convertKey(fr->key);
+
+	*size = MAX(*size, fr->pre_json_size) + fr->patch_size;
 
 	return 1;
 }
+
 extern "C" int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
@@ -152,29 +144,9 @@ extern "C" int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-static void post_read(const file_rep_t *fr, BYTE *buffer, size_t size)
-{
-	const FileHeader *header = (const FileHeader*)fr->object;
-	if (header) {
-		ICrypt::instance->uncryptBlock(buffer, size, header->key);
-	}
-}
-
-static void post_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
-{
-	const FileHeader *header = (const FileHeader*)fr->object;
-	if (header) {
-		ICrypt::instance->cryptBlock(buffer, size, header->key);
-	}
-}
-
 /**
-  * Replace file, 3rd attempt - hopefully I won't have to write a 4th one.
-  * This breakpoint takes care of patching the files.
-  * It takes place in the game's file reader, right after it calls its ReadFile caller.
-  * At this point, we have the game's file structure in ESI, and so the filename's hash - we can't
-  * read the wrong file.
   * In th145, the game's file structure have the following fields:
+  *
   * void* vtable;
   * HANDLE hFile;
   * BYTE buffer[0x10000];
@@ -188,36 +160,46 @@ static void post_patch(const file_rep_t *fr, BYTE *buffer, size_t size)
   * DWORD XorOffset; // Offset used by the XOR function
   * DWORD Key[5]; // 32-bytes encryption key used for XORing. The 5th DWORD is a copy of the 1st DWORD.
   * DWORD Aux; // Contains the last DWORD read from the file. Used during XORing.
-  * We use hFile (file_struct + 4), buffer (file_struct + 8) and FileNameHash (file_struct + 0x1001c).
-  * All the other fields are listed for documentation.
   */
-extern "C" int BP_th135_read_file(x86_reg_t *regs, json_t *bp_info)
+
+extern "C" int BP_th135_prepareReadFile(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	DWORD newHash = json_object_get_immediate(bp_info, regs, "hash");
+	DWORD hash = json_object_get_immediate(bp_info, regs, "hash");
 	// ----------
 
-	static DWORD hash = 0;
+	Th135File::tls_set(nullptr);
 
-	if (newHash) {
-		hash = newHash;
-	}
 	if (!hash) {
 		return 1;
 	}
 
-	struct FileHeader *header = hash_to_file_header(hash);
-	if (!header || !header->fr || (!header->fr->rep_buffer && !header->fr->patch && !header->fr->hooks)) {
+	Th135File *fr = hash_to_Th135File(hash);
+	if (!fr || !fr->need_replace()) {
 		// Nothing to patch.
 		return 1;
 	}
 
-	json_t *new_bp_info = json_copy(bp_info);
-	json_object_set_new(new_bp_info, "file_name",  json_integer((json_int_t)header->fr->name));
-	json_object_set_new(new_bp_info, "post_read",  json_integer((json_int_t)post_read));
-	json_object_set_new(new_bp_info, "post_patch", json_integer((json_int_t)post_patch));
-	int ret = BP_fragmented_read_file(regs, new_bp_info);
-	json_decref(new_bp_info);
+	log_printf("Patching %s...\n", fr->path.u8string().c_str());
+	fr->mutex.lock();
+	Th135File::tls_set(fr);
+	return 1;
+}
+
+extern "C" int BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
+{
+	Th135File *fr = Th135File::tls_get();
+	if (!fr) {
+		return 1;
+	}
+
+	int ret = fr->replace_ReadFile(regs,
+		[fr](TasofroFile*, BYTE *buffer, DWORD size) { ICrypt::instance->uncryptBlock(buffer, size, fr->key); },
+		[fr](TasofroFile*, BYTE *buffer, DWORD size) { ICrypt::instance->cryptBlock(  buffer, size, fr->key); }
+	);
+
+	fr->mutex.unlock();
+	Th135File::tls_set(nullptr);
 	return ret;
 }
