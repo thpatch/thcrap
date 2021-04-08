@@ -55,6 +55,7 @@ It is mainly developed to facilitate self-updating, multilingual translation of 
 A ready-made Visual Studio build configuration, covering all modules and their dependencies, is provided as part of this repository. To set up the build:
 
 * Install [Visual Studio Community 2017](https://visualstudio.microsoft.com/vs/older-downloads/).
+  * You can also use [Visual Studio Community 2019](https://visualstudio.microsoft.com/fr/vs/). During installation, make sure to install the v141 and v141_xp toolsets (v141_xp is the Visual Studio 2017 compiler with Windows XP compatibilité, and v141 is required by v141_xp).
 * Make sure that you've pulled all Git submodules together with this repo:
 
 		git clone --recursive https://github.com/thpatch/thcrap.git
