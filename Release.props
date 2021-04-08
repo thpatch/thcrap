@@ -9,9 +9,18 @@
       <StringPooling>true</StringPooling>
       <!-- Ensures assert()s to be removed, among other things. -->
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <Optimization>Full</Optimization>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <AdditionalOptions>/Qfast_transcendentals /Zo /Gw %(AdditionalOptions)</AdditionalOptions>
+      <!--<AdditionalOptions>/Qpar-report:2 /Qvec-report:2 %(AdditionalOptions)</AdditionalOptions>-->
     </ClCompile>
     <Link>
       <OptimizeReferences>true</OptimizeReferences>

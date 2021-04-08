@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|x86">
+    <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x86">
+    <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
@@ -14,6 +14,10 @@
   <!-- Keep the designer happy -->
   <PropertyGroup Label="Configuration" Condition="'$(_ImportMicrosoftCppDesignTime)' != 'false'">
     <PlatformToolset>v141_xp</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- We know that XP support will be removed next year, we don't need 10 messages every build to remember that. -->
+    <XPDeprecationWarning>false</XPDeprecationWarning>
   </PropertyGroup>
   <ImportGroup Condition="'$(_ImportMicrosoftCppDesignTime)' != 'false'">
      <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -31,39 +35,35 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InputFiles Include="$(InDir)bin\jansson$(Debug).dll"/>
-    <InputFiles Include="$(InDir)bin\jansson$(Debug).pdb"/>
-
-    <InputFiles Include="$(InDir)bin\libmpg123$(Debug).lib"/>
-    <InputFiles Include="$(InDir)obj\libmpg123 $(Configuration) Static $(PlatformShortName)\libmpg123.pdb"/>
-
-    <InputFiles Include="$(InDir)bin\libogg$(Debug).lib"/>
-    <InputFiles Include="$(InDir)obj\libogg $(Configuration) Static $(PlatformShortName)\libogg.pdb"/>
-
-    <InputFiles Include="$(InDir)bin\libpng16$(Debug).dll"/>
-    <InputFiles Include="$(InDir)bin\libpng16$(Debug).pdb"/>
-
-    <InputFiles Include="$(InDir)bin\libvorbis$(Debug).lib"/>
-    <InputFiles Include="$(InDir)obj\libvorbis $(Configuration) Static $(PlatformShortName)\libvorbis_decode.pdb"/>
-
-    <InputFiles Include="$(InDir)bin\zlib-ng$(Debug).dll"/>
-    <InputFiles Include="$(InDir)bin\zlib-ng$(Debug).pdb"/>
-	
-	<InputFiles Include="$(InDir)bin\libcrypto-1_1.dll"/>
-	<InputFiles Include="$(InDir)bin\libssl-1_1.dll"/>
-	
-	<InputFiles Include="$(InDir)bin\libcurl$(Debug).dll"/>
-	<InputFiles Include="$(InDir)bin\libcurl$(Debug).pdb"/>
+    <CopyFiles Include="$(InDir)bin\*$(Debug).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\*$(Debug).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)obj\libmpg123 $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)obj\libogg $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)obj\libvorbis $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
   </ItemGroup>
-  <ItemGroup>
-    <OutputFiles Include="@(InputFiles->'$(OutDir)%(Filename)%(Extension)')" />
-  </ItemGroup>
-
-  <Target Name="Build">
-    <Copy SourceFiles="@(InputFiles)" DestinationFiles="@(OutputFiles)" SkipUnchangedFiles="true" />
+  
+  <PropertyGroup>
+    <BuildDependsOn>CopyBeforeBuild;$(BuildDependsOn);</BuildDependsOn>
+    <CleanDependsOn>CleanCopiedFiles;$(CleanDependsOn);</CleanDependsOn>
+  </PropertyGroup>
+  <Target Name="CopyBeforeBuild" Condition="'@(CopyFiles)'!=''">
+    <ItemGroup>
+      <FilesToCopy Condition="'%(CopyFiles.OutputFile)'!='' And Exists(%(CopyFiles.Identity))" Include="%(CopyFiles.Identity)" OutputFile="%(CopyFiles.OutputFile)"/>
+      <FilesToCopy Condition="'%(CopyFiles.OutputFolder)'!='' And Exists(%(CopyFiles.Identity))" Include="%(CopyFiles.Identity)" OutputFile="%(CopyFiles.OutputFolder)\%(CopyFiles.RecursiveDir)%(CopyFiles.Filename)%(CopyFiles.Extension)"/>
+    </ItemGroup>
+    <Copy SourceFiles="%(FilesToCopy.Identity)" DestinationFiles="%(FilesToCopy.OutputFile)" SkipUnchangedFiles="true">
+      <Output TaskParameter="CopiedFiles" ItemName="SuccessfullyCopiedFiles" />
+    </Copy>
+    <Message Condition="'@(FilesToCopy)'!=''" Text="Successfully copied @(SuccessfullyCopiedFiles->Count())/@(FilesToCopy->Count()) extra files from project &quot;$(ProjectName)&quot;%0A @(SuccessfullyCopiedFiles,'%0A ')" Importance="High" />
   </Target>
-
-  <Target Name="Clean">
-    <Delete Files="@(OutputFiles)" />
+  <Target Name="CleanCopiedFiles" Condition="'@(CopyFiles)'!=''">
+    <ItemGroup>
+      <FilesToClean Condition="'%(CopyFiles.OutputFile)'!='' And Exists(%(CopyFiles.OutputFile))" Include="%(CopyFiles.OutputFile)" />
+      <FilesToClean Condition="'%(CopyFiles.OutputFolder)'!='' And Exists('%(CopyFiles.OutputFolder)\%(CopyFiles.RecursiveDir)%(CopyFiles.Filename)%(CopyFiles.Extension)')" Include="%(CopyFiles.OutputFolder)\%(CopyFiles.RecursiveDir)%(CopyFiles.Filename)%(CopyFiles.Extension)" />
+    </ItemGroup>
+    <Delete Condition="Exists(%(FilesToClean.Identity))" Files="%(FilesToClean.Identity)">
+      <Output TaskParameter="DeletedFiles" ItemName="SuccessfullyCleanedFiles" />
+    </Delete>
+    <Message Condition="'@(FilesToClean)'!=''" Text="Successfully cleaned @(SuccessfullyCleanedFiles->Count())/@(FilesToClean->Count()) extra files from project &quot;$(ProjectName)&quot;%0A @(SuccessfullyCleanedFiles,'%0A ')" Importance="High" />
   </Target>
 </Project>
