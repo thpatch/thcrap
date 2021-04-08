@@ -11,7 +11,6 @@
 #include "vfs.h"
 #include <algorithm>
 #include <list>
-#include <vector>
 
 static std::vector<patch_t> stack;
 

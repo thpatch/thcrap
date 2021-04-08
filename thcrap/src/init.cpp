@@ -10,7 +10,6 @@
 #include "thcrap.h"
 #include "sha256.h"
 #include "win32_detour.h"
-#include <vector>
 
 // Both thcrap_ExitProcess and DllMain will call ExitDll,
 // which will cause a crash without this workaround

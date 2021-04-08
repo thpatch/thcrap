@@ -10,7 +10,6 @@
 #include "thcrap.h"
 #include <algorithm>
 #include <list>
-#include <vector>
 
 struct patchhook_t
 {

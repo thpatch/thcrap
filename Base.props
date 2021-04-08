@@ -51,11 +51,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)libs\external_deps\bin\;$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
     </Link>
-    <PostBuildEvent Condition="'$(ConfigurationType)'!='StaticLibrary' And '$(NoSign)'!='true'">
-	  <Command Condition="Exist($(SolutionDir)cert.pfx)">signtool sign /v /f $(SolutionDir)cert.pfx /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"</Command>
-	  <Warning Condition="!Exist($(SolutionDir)cert.pfx)" Text="$(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.%0APlease see README.md for instructions on how to generate this file." />
-    </PostBuildEvent>
   </ItemDefinitionGroup>
+  <PropertyGroup>
+    <BuildDependsOn>$(BuildDependsOn);SignBuild</BuildDependsOn>
+  </PropertyGroup>
+  <Target Name="SignBuild" Condition="'$(ConfigurationType)'!='StaticLibrary' And '$(SkipSign)'!='true'">
+    <Exec Condition="Exists('$(SolutionDir)cert.pfx')" Command='signtool sign /v /f "$(SolutionDir)cert.pfx" /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"' />
+    <Warning Condition="!Exists('$(SolutionDir)cert.pfx')" Text="$(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.%0APlease see README.md for instructions on how to generate this file." />
+  </Target>
   <PropertyGroup>
     <GASPath>$(SolutionDir)libs\external_deps\</GASPath>
   </PropertyGroup>

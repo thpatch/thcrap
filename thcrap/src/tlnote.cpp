@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <vector>
 #include "minid3d.h"
 #include "textdisp.h"
 #include "tlnote.hpp"

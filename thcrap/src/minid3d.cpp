@@ -9,7 +9,6 @@
 
 #include <thcrap.h>
 #include <minid3d.h>
-#include <vector>
 
 /// Direct3D API
 /// ------------

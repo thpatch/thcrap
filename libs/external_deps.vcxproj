@@ -17,7 +17,7 @@
     <InDir>$(ProjectDir)external_deps\</InDir>
     <OutSubdir>bin\</OutSubdir>
     <Debug Condition="'$(Configuration)'=='Debug'">_d</Debug>
-	<NoSign>true</NoSign>
+	<SkipSign>true</SkipSign>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\base.props" />

@@ -9,7 +9,6 @@
 
 #include "thcrap.h"
 #include "vfs.h"
-#include <vector>
 
 typedef struct
 {
