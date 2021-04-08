@@ -8,8 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <string>
-#include <vector>
 
 struct stage_t
 {

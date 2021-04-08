@@ -11,9 +11,8 @@
 #include "vfs.h"
 #include <algorithm>
 #include <list>
-#include <vector>
 
-std::vector<patch_t> stack;
+static std::vector<patch_t> stack;
 
 static char **resolve_chain_default(const char *fn)
 {

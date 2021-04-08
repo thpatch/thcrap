@@ -35,7 +35,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\external_deps\;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\external_deps\include\;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ExceptionHandling>Sync</ExceptionHandling>
       <FloatingPointExceptions>false</FloatingPointExceptions>
       <WarningLevel>Level3</WarningLevel>
@@ -51,16 +51,14 @@
       <AdditionalLibraryDirectories>$(SolutionDir)libs\external_deps\bin\;$(OutputPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalOptions>/PDBALTPATH:%_PDB% %(AdditionalOptions)</AdditionalOptions>
     </Link>
-    <PostBuildEvent Condition="'$(ConfigurationType)'!='StaticLibrary'">
-      <Command>if exist $(SolutionDir)cert.pfx (
-    signtool sign /v /f $(SolutionDir)cert.pfx /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"
-) else (
-    echo warning: $(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.
-    echo Please see README.md for instructions on how to generate this file.
-)
-      </Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
+  <PropertyGroup>
+    <BuildDependsOn>$(BuildDependsOn);SignBuild</BuildDependsOn>
+  </PropertyGroup>
+  <Target Name="SignBuild" Condition="'$(ConfigurationType)'!='StaticLibrary' And '$(SkipSign)'!='true'">
+    <Exec Condition="Exists('$(SolutionDir)cert.pfx')" Command='signtool sign /v /f "$(SolutionDir)cert.pfx" /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"' />
+    <Warning Condition="!Exists('$(SolutionDir)cert.pfx')" Text="$(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.%0APlease see README.md for instructions on how to generate this file." />
+  </Target>
   <PropertyGroup>
     <GASPath>$(SolutionDir)libs\external_deps\</GASPath>
   </PropertyGroup>
@@ -69,5 +67,8 @@
   </ImportGroup>
   <ImportGroup Label="ExtensionTargets">
     <Import Project="libs\external_deps\gas.targets" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="libs\external_deps\CopyFiles.props" />
   </ImportGroup>
 </Project>

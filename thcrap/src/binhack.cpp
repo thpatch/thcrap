@@ -33,7 +33,7 @@ struct LocaleHolder_t {
 	}
 };
 
-static LocaleHolder_t lc_neutral = LocaleHolder_t(LC_NUMERIC, "C");
+static LocaleHolder_t lc_neutral(LC_NUMERIC, "C");
 
 int hackpoints_error_function_not_found(const char *func_name, int retval)
 {

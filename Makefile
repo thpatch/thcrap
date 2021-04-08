@@ -173,6 +173,7 @@ THCRAP_TASOFRO_SRCS = \
 	thcrap_tasofro/src/plugin.cpp \
 	thcrap_tasofro/src/png.cpp \
 	thcrap_tasofro/src/spellcards_generator.cpp \
+	thcrap_tasofro/src/tasofro_file.cpp \
 	thcrap_tasofro/src/tfcs.cpp \
 	thcrap_tasofro/src/th135.cpp \
 	thcrap_tasofro/src/th155_bmp_font.cpp \

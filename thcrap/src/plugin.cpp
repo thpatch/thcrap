@@ -9,8 +9,6 @@
 
 #include "thcrap.h"
 #include <algorithm>
-#include <vector>
-#include <unordered_map>
 #include <string_view>
 
 static std::unordered_map<std::string_view, UINT_PTR> funcs = {

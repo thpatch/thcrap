@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <unordered_map>
 
 /// Detour chains
 /// -------------
