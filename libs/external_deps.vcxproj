@@ -10,60 +10,43 @@
       <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-
-  <!-- Keep the designer happy -->
-  <PropertyGroup Label="Configuration" Condition="'$(_ImportMicrosoftCppDesignTime)' != 'false'">
-    <PlatformToolset>v141_xp</PlatformToolset>
-  </PropertyGroup>
-  <PropertyGroup>
-    <!-- We know that XP support will be removed next year, we don't need 10 messages every build to remember that. -->
-    <XPDeprecationWarning>false</XPDeprecationWarning>
-  </PropertyGroup>
-  <ImportGroup Condition="'$(_ImportMicrosoftCppDesignTime)' != 'false'">
-     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-     <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  </ImportGroup>
-
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8B0918FE-10DA-4DDB-81F8-0137C7C52747}</ProjectGuid>
   </PropertyGroup>
   <PropertyGroup>
     <InDir>$(ProjectDir)external_deps\</InDir>
-    <OutDir>$(SolutionDir)bin\bin\</OutDir>
-    <Debug Condition="'$(Configuration)' == 'Debug'">_d</Debug>
+    <OutSubdir>bin\</OutSubdir>
+    <Debug Condition="'$(Configuration)'=='Debug'">_d</Debug>
+	<NoSign>true</NoSign>
   </PropertyGroup>
-
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(SolutionDir)\base.props" />
+  </ImportGroup>
   <ItemGroup>
-    <CopyFiles Include="$(InDir)bin\*$(Debug).dll" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\*$(Debug).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Debug).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Debug).pdb" OutputFolder="$(OutDir)" />
+
+    <CopyFiles Include="$(InDir)bin\libmpg123$(Debug).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)obj\libmpg123 $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)obj\libogg $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)obj\libvorbis $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
+
+    <CopyFiles Include="$(InDir)bin\libogg$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)obj\libogg $(Configuration) Static $(PlatformShortName)\libogg.pdb" OutputFolder="$(OutDir)" />
+
+    <CopyFiles Include="$(InDir)bin\libpng16$(Debug).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libpng16$(Debug).pdb" OutputFolder="$(OutDir)" />
+
+    <CopyFiles Include="$(InDir)bin\libvorbis$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)obj\libvorbis $(Configuration) Static $(PlatformShortName)\libvorbis_decode.pdb" OutputFolder="$(OutDir)" />
+
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).pdb" OutputFolder="$(OutDir)" />
+	
+	<CopyFiles Include="$(InDir)bin\libcrypto-1_1.dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libssl-1_1.dll" OutputFolder="$(OutDir)" />
+	
+	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).pdb" OutputFolder="$(OutDir)" />
   </ItemGroup>
-  
-  <PropertyGroup>
-    <BuildDependsOn>CopyBeforeBuild;$(BuildDependsOn);</BuildDependsOn>
-    <CleanDependsOn>CleanCopiedFiles;$(CleanDependsOn);</CleanDependsOn>
-  </PropertyGroup>
-  <Target Name="CopyBeforeBuild" Condition="'@(CopyFiles)'!=''">
-    <ItemGroup>
-      <FilesToCopy Condition="'%(CopyFiles.OutputFile)'!='' And Exists(%(CopyFiles.Identity))" Include="%(CopyFiles.Identity)" OutputFile="%(CopyFiles.OutputFile)"/>
-      <FilesToCopy Condition="'%(CopyFiles.OutputFolder)'!='' And Exists(%(CopyFiles.Identity))" Include="%(CopyFiles.Identity)" OutputFile="%(CopyFiles.OutputFolder)\%(CopyFiles.RecursiveDir)%(CopyFiles.Filename)%(CopyFiles.Extension)"/>
-    </ItemGroup>
-    <Copy SourceFiles="%(FilesToCopy.Identity)" DestinationFiles="%(FilesToCopy.OutputFile)" SkipUnchangedFiles="true">
-      <Output TaskParameter="CopiedFiles" ItemName="SuccessfullyCopiedFiles" />
-    </Copy>
-    <Message Condition="'@(FilesToCopy)'!=''" Text="Successfully copied @(SuccessfullyCopiedFiles->Count())/@(FilesToCopy->Count()) extra files from project &quot;$(ProjectName)&quot;%0A @(SuccessfullyCopiedFiles,'%0A ')" Importance="High" />
-  </Target>
-  <Target Name="CleanCopiedFiles" Condition="'@(CopyFiles)'!=''">
-    <ItemGroup>
-      <FilesToClean Condition="'%(CopyFiles.OutputFile)'!='' And Exists(%(CopyFiles.OutputFile))" Include="%(CopyFiles.OutputFile)" />
-      <FilesToClean Condition="'%(CopyFiles.OutputFolder)'!='' And Exists('%(CopyFiles.OutputFolder)\%(CopyFiles.RecursiveDir)%(CopyFiles.Filename)%(CopyFiles.Extension)')" Include="%(CopyFiles.OutputFolder)\%(CopyFiles.RecursiveDir)%(CopyFiles.Filename)%(CopyFiles.Extension)" />
-    </ItemGroup>
-    <Delete Condition="Exists(%(FilesToClean.Identity))" Files="%(FilesToClean.Identity)">
-      <Output TaskParameter="DeletedFiles" ItemName="SuccessfullyCleanedFiles" />
-    </Delete>
-    <Message Condition="'@(FilesToClean)'!=''" Text="Successfully cleaned @(SuccessfullyCleanedFiles->Count())/@(FilesToClean->Count()) extra files from project &quot;$(ProjectName)&quot;%0A @(SuccessfullyCleanedFiles,'%0A ')" Importance="High" />
-  </Target>
 </Project>
