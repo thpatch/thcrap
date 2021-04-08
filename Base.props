@@ -43,8 +43,8 @@
       <!-- This warning is inside shlobj.h -->
       <DisableSpecificWarnings>4091;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <PreprocessorDefinitions>BUILDER_NAME_W=L"$(USERNAME)";UNICODE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-	  <LanguageStandard>stdcpp17</LanguageStandard>
-	  <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 /Zc:__cplusplus /Zc:externConstexpr %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
@@ -53,10 +53,10 @@
     </Link>
     <PostBuildEvent Condition="'$(ConfigurationType)'!='StaticLibrary'">
       <Command>if exist $(SolutionDir)cert.pfx (
-	signtool sign /v /f $(SolutionDir)cert.pfx /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"
+    signtool sign /v /f $(SolutionDir)cert.pfx /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"
 ) else (
-	echo warning: $(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.
-	echo Please see README.md for instructions on how to generate this file.
+    echo warning: $(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.
+    echo Please see README.md for instructions on how to generate this file.
 )
       </Command>
     </PostBuildEvent>
