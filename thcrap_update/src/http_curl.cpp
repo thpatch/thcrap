@@ -27,7 +27,7 @@ size_t CurlHandle::writeCallbackStatic(char *ptr, size_t size, size_t nmemb, voi
 int CurlHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_t /* ultotal */, curl_off_t /* ulnow */)
 {
     auto callback = *static_cast<std::function<bool(size_t, size_t)>*>(userdata);
-    if (callback(dlnow, dltotal)) {
+    if (callback((size_t)dlnow, (size_t)dltotal)) {
         return 0;
     }
     else {

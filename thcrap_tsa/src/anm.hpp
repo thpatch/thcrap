@@ -48,7 +48,7 @@ typedef enum {
 } sprite_alpha_t;
 
 // All per-entry ANM data we need
-typedef struct {
+struct anm_entry_t {
 	// X and Y offsets of the THTX inside the image
 	png_uint_32 x;
 	png_uint_32 y;
@@ -77,10 +77,10 @@ typedef struct {
 	// non-wrapping on-image sprites, and adds the results to <sprites>
 	// if necessary.
 	void transform_and_add_sprite(const sprite_t &s_orig, BlitFunc_t blitmode);
-} anm_entry_t;
+};
 
 // Coordinates for sprite-based patching
-typedef struct {
+struct sprite_patch_t {
 	// General info
 	int bpp;
 	format_t format;
@@ -102,7 +102,7 @@ typedef struct {
 	// PNG replacement in case it's smaller than the sprite.
 	png_uint_32 copy_w;
 	png_uint_32 copy_h;
-} sprite_patch_t;
+};
 /// --------------
 
 /// Formats
