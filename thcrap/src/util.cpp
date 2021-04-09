@@ -32,19 +32,6 @@ size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t 
 	return ptr_advance(src, num);
 }
 
-void str_ascii_replace(char *str, const char from, const char to)
-{
-	if(str) {
-		char *p = str;
-		while(*p) {
-			if(p[0] == from) {
-				p[0] = to;
-			}
-			p++;
-		}
-	}
-}
-
 void str_slash_normalize(char *str)
 {
 	str_ascii_replace(str, '\\', '/');
@@ -70,7 +57,7 @@ unsigned int str_num_digits(int number)
 
 int str_num_base(const char *str)
 {
-	return !strnicmp(str, "0x", 2) ? 16 : 10;
+	return (str[0] == '0' && (str[1] | 0x20) == 'x') ? 16 : 10;
 }
 
 void str_hexdate_format(char format[11], uint32_t date)

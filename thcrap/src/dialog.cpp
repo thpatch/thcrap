@@ -251,12 +251,12 @@ void dialog_adjust(
 	UINT draw_flags;
 	BYTE button_style;
 
-	if(!adj || !adj->hDC || !item || !rep.str) {
+	if(!adj || !adj->hDC || !item || !rep.data()) {
 		return;
 	}
 	rect.right = item->cx;
-	draw_flags = DT_CALCRECT | (strchr(rep.str, '\n') ? DT_WORDBREAK : 0);
-	DrawText(adj->hDC, rep.str, rep.len, &rect, draw_flags | DT_CALCRECT);
+	draw_flags = DT_CALCRECT | (strchr(rep.data(), '\n') ? DT_WORDBREAK : 0);
+	DrawText(adj->hDC, rep.data(), rep.length(), &rect, draw_flags | DT_CALCRECT);
 
 	// Convert pixels back to dialog units
 	// (see http://msdn.microsoft.com/library/windows/desktop/ms645475%28v=vs.85%29.aspx)
@@ -321,8 +321,8 @@ size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const stringref_t *rep)
 		const sz_Or_Ord *src_sz = (sz_Or_Ord*)*src;
 		size_t dst_len = sz_or_ord_size(src);
 
-		if(rep && rep->str) {
-			dst_len = StringToUTF16((wchar_t*)dst, rep->str, rep->len + 1) * sizeof(wchar_t);
+		if(rep && rep->data()) {
+			dst_len = StringToUTF16((wchar_t*)dst, rep->data(), rep->length() + 1) * sizeof(wchar_t);
 		} else if(src_sz->ord_flag == 0 || src_sz->ord_flag == 0xffff) {
 			memcpy(dst, src_sz, dst_len);
 		} else {
@@ -383,7 +383,7 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 			 */
 			auto src_font = reinterpret_cast<const wchar_t*>(*src);
 			if(
-				(trans_font.str && !stricmp(trans_font.str, "MS Shell Dlg"))
+				(trans_font.data() && !stricmp(trans_font.data(), "MS Shell Dlg"))
 				|| (src_font && !wcsicmp(src_font, L"MS Shell Dlg"))
 			) {
 				trans_font = "MS Shell Dlg 2";

@@ -14,7 +14,7 @@
 
 /// String constants
 /// ----------------
-const stringref_t LOOP_INFIX = ".loop";
+constexpr stringref_t LOOP_INFIX = ".loop";
 /// ----------------
 
 /// Sampling rate / bit depth / channel structure
@@ -138,27 +138,27 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 {
 	log_printf(
 		"(BGM) Resolving %.*s." RESOLVE_HINT "... ",
-		basename.len, basename.str
+		basename.length(), basename.data()
 	);
 
 	size_t longest_codec_len = 0;
 	for(const auto &codec : CODECS) {
-		longest_codec_len = max(longest_codec_len, codec.ext.len);
+		longest_codec_len = max(longest_codec_len, codec.ext.length());
 	}
 
 	const stringref_t game = runconfig_game_get();
-	if (game.str == nullptr) {
+	if (game.data() == nullptr) {
 		return nullptr;
 	}
 	
 	auto mod_fn_len =
-		game.len + 1 + basename.len + LOOP_INFIX.len + longest_codec_len + 1;
+		game.length() + 1 + basename.length() + LOOP_INFIX.length() + longest_codec_len + 1;
 
 	VLA(char, mod_fn, mod_fn_len);
 	defer({ VLA_FREE(mod_fn); });
 
 	char *mod_fn_p = mod_fn;
-	if(game.str) {
+	if(game.data()) {
 		mod_fn_p = stringref_copy_advance_dst(mod_fn_p, game);
 		*(mod_fn_p++) = '/';
 	}

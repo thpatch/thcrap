@@ -52,6 +52,7 @@ void set_resolve_chain_game(resolve_chain_t function);
 // [sci] keeps the iteration state.
 int stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t direction);
 
+// TODO: Update the documentation of this function to properly reflect the current structure
 // Walks through the given patch stack, merging every file with the filename
 // [fn] into a single JSON object.
 // Returns the merged JSON object or NULL if there is no matching file

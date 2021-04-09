@@ -43,9 +43,9 @@ logger_t tlnote_log("TL note error");
 /// Structures
 /// ----------
 tlnote_t::tlnote_t(const stringref_t str)
-	: str((tlnote_string_t *)str.str), len(str.len - 1) {
-	assert(str.str[0] == TLNOTE_INLINE || str.str[0] == TLNOTE_INDEX);
-	assert(str.len > 1);
+	: str((tlnote_string_t *)str.data()), len(str.length() - 1) {
+	assert(str.data()[0] == TLNOTE_INLINE || str.data()[0] == TLNOTE_INDEX);
+	assert(str.length() > 1);
 }
 /// ----------
 
@@ -259,13 +259,13 @@ struct tlnote_rendered_t {
 
 	bool matches(const stringref_t &n2, const tlnote_env_render_t &r2) const {
 		return
-			(note.size() == n2.len)
+			(note.size() == n2.length())
 			&& (render_env == r2)
-			&& (note.compare(n2.str) == 0);
+			&& (note.compare(n2.data()) == 0);
 	}
 
 	tlnote_rendered_t(const stringref_t &note, tlnote_env_render_t render_env)
-		: note({ note.str, (size_t)note.len }), render_env(render_env) {
+		: note({ note.data(), (size_t)note.length() }), render_env(render_env) {
 	}
 };
 
@@ -280,7 +280,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 	auto fail = [formatted_note] (const char *func, HRESULT ret) {
 		log_printf(
 			"(TL notes) Error rendering \"%.*s\": %s returned 0x%x\n",
-			formatted_note.len, formatted_note.str, func, ret
+			formatted_note.length(), formatted_note.data(), func, ret
 		);
 		return nullptr;
 	};
@@ -290,7 +290,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 
 	RECT gdi_rect = { 0, 0, (LONG)render_env.region_w(), 0 };
 	DrawText(hDC,
-		formatted_note.str, formatted_note.len,
+		formatted_note.data(), formatted_note.length(),
 		&gdi_rect, DT_CALCRECT | DT_WORDBREAK | DT_CENTER
 	);
 
@@ -323,7 +323,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 	SetBkMode(hDC, TRANSPARENT);
 
 	DrawText(hDC,
-		formatted_note.str, formatted_note.len,
+		formatted_note.data(), formatted_note.length(),
 		&gdi_rect, DT_WORDBREAK | DT_CENTER
 	);
 
@@ -495,7 +495,7 @@ int32_t index_from_utf8(unsigned char &byte_len, const char buf[4])
 
 bool operator ==(const std::string &a, const stringref_t &b)
 {
-	return (a.size() == b.len) && (a.compare(b.str) == 0);
+	return (a.size() == b.length()) && (a.compare(b.data()) == 0);
 }
 
 int32_t tlnote_render(const stringref_t &note)
@@ -779,9 +779,9 @@ THCRAP_API void tlnote_remove()
 
 THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 {
-	const char *p = text.str;
+	const char *p = text.data();
 	const char *sepchar_ptr = nullptr;
-	for(decltype(text.len) i = 0; i < text.len; i++) {
+	for(size_t i = 0; i < text.length(); i++) {
 		if(*p == TLNOTE_INLINE) {
 			if(sepchar_ptr) {
 				tlnote_log.errorf(
@@ -806,20 +806,20 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 	}
 			FAIL_IF(inline_only);
 			FAIL_IF(sepchar_ptr);
-			FAIL_IF(i + 1 >= text.len);
+			FAIL_IF(i + 1 >= text.length());
 			unsigned char byte_len;
 			auto index = index_from_utf8(byte_len, p + 1);
 			FAIL_IF(index < 0);
 			size_t tlp_len = byte_len + 1;
-			FAIL_IF(text.len < i + tlp_len);
-			size_t at_end = text.len - (i + tlp_len);
+			FAIL_IF(text.length() < i + tlp_len);
+			size_t at_end = text.length() - (i + tlp_len);
 			FAIL_IF(index - RENDERED_OFFSET >= (int)rendered.size());
 
 			tlnote_t tlp = { { p, tlp_len } };
 			if(i == 0) {
-				return { { p + tlp_len, text.len - tlp_len }, tlp };
+				return { { p + tlp_len, text.length() - tlp_len }, tlp };
 			} else if(at_end == 0) {
-				return { { text.str, (size_t)(p - text.str) }, tlp };
+				return { { text.data(), (size_t)(p - text.data()) }, tlp };
 			} else {
 				FAIL_IF(1);
 			}
@@ -829,7 +829,7 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 	}
 	if(sepchar_ptr) {
 		tlnote_t tlnote = { { sepchar_ptr, (size_t)(p - sepchar_ptr) } };
-		return { { text.str, (size_t)(sepchar_ptr - text.str) }, tlnote };
+		return { { text.data(), (size_t)(sepchar_ptr - text.data()) }, tlnote };
 	}
 	return { text, {} };
 }

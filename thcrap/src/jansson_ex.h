@@ -44,6 +44,9 @@ size_t json_array_get_hex(json_t *arr, const size_t ind);
 // Convenience function for json_string_value(json_array_get(object, ind));
 const char* json_array_get_string(const json_t *arr, const size_t ind);
 
+// 
+const char* json_object_get_string_copy(const json_t* object, const char* key);
+
 // Same as json_array_get_string(), but returns an empty string ("")
 // if element #[ind] in [arr] is no valid string.
 const char* json_array_get_string_safe(const json_t *arr, const size_t ind);

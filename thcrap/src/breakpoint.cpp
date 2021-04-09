@@ -17,7 +17,7 @@ extern "C" void bp_entry(void);
 
 // Performs breakpoint lookup, invocation and stack adjustments. Returns the
 // number of bytes the stack has to be moved downwards by breakpoint_entry().
-extern "C" size_t __cdecl breakpoint_process(breakpoint_local_t *bp_local, size_t addr_index, x86_reg_t regs);
+extern "C" size_t __cdecl breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs);
 /// ---------
 
 /// Constants
@@ -100,27 +100,7 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 	return json_eval_int_default(json_object_get(bp_info, "cave_exec"), 1, JEVAL_DEFAULT);
 }
 
-//size_t __cdecl breakpoint_process(breakpoint_local_t *bp, size_t addr_index, x86_reg_t *regs)
-//{
-//	// POPAD ignores the ESP register, so we have to implement our own mechanism
-//	// to be able to manipulate it.
-//	size_t esp_prev = regs->esp;
-//
-//	if(int cave_exec = bp->func(regs, bp->json_obj);
-//		cave_exec) {
-//		// Point return address to codecave.
-//		regs->retaddr = (uint32_t)bp->addr[addr_index].breakpoint_source;
-//	}
-//	size_t esp_diff = regs->esp - esp_prev;
-//	if(esp_diff) {
-//		// ESP change requested.
-//		// Shift down the regs structure by the requested amount
-//		memmove((BYTE*)(regs) + esp_diff, regs, sizeof(x86_reg_t));
-//	}
-//	return esp_diff;
-//}
-
-size_t __cdecl breakpoint_process(breakpoint_local_t *bp, size_t addr_index, x86_reg_t regs)
+size_t __cdecl breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs)
 {
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
 	// to be able to manipulate it.
@@ -141,7 +121,7 @@ size_t __cdecl breakpoint_process(breakpoint_local_t *bp, size_t addr_index, x86
 	return esp_diff;
 }
 
-bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out) {
+bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 	if (!json_is_object(in)) {
 		log_printf("breakpoint %s: not an object\n", name);
 		return false;
@@ -200,29 +180,30 @@ static inline void __fastcall cave_fix(BYTE *cave, BYTE *bp_addr)
 	/// ------------------
 }
 
-static bool __fastcall breakpoint_local_init(
-	breakpoint_local_t *bp_local
+static bool breakpoint_local_init(
+	breakpoint_t& bp
 ) {
 
-	const char *const key = bp_local->name;
+	const char *const key = bp.name;
 	// Multi-slot support
 	const char *const slot = strchr(key, '#');
-	const size_t key_len = slot ? (size_t)(slot - key) : strlen(key);
+	const size_t key_len = slot ? PtrDiffStrlen(slot, key) : strlen(key);
 
-	VLA(char, bp_key, strlen("BP_") + key_len + 1);
+	char* bp_func_name;
 	if (strncmp(key, "codecave:", 9) != 0) {
-		strcpy(bp_key, "BP_");
-		strncat(bp_key, key, key_len);
+		bp_func_name = strndup("BP_", 3 + key_len);
+		memcpy(bp_func_name + 3, key, key_len);
+		bp_func_name[3 + key_len] = '\0';
 	} else {
-		strcpy(bp_key, key);
+		bp_func_name = strndup(key, key_len);
 	}
-	bp_local->func = (BreakpointFunc_t)func_get(bp_key);
+	bp.func = (BreakpointFunc_t)func_get(bp_func_name);
 
-	const bool func_found = (bool)bp_local->func;
+	const bool func_found = (bool)bp.func;
 	if (!func_found) {
-		hackpoints_error_function_not_found(bp_key, 0);
+		hackpoints_error_function_not_found(bp_func_name);
 	}
-	VLA_FREE(bp_key);
+	free(bp_func_name);
 	return func_found;
 }
 
@@ -239,7 +220,7 @@ static const size_t bp_entry_index = &bp_entry_indexptr + 1 - (uint8_t*)&bp_entr
 static const size_t bp_entry_local = &bp_entry_localptr + 1 - (uint8_t*)&bp_entry;
 static const size_t bp_entry_call  = &bp_entry_callptr  + 1 - (uint8_t*)&bp_entry;
 
-int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE hMod)
+int breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
 {
 	if(!breakpoints || !bp_count) {
 		log_printf("No breakpoints to set up.\n");
@@ -260,24 +241,24 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 
 	for (size_t i = 0; i < bp_count; ++i) {
 
-		breakpoint_local_t *const cur = &breakpoints[i];
+		breakpoint_t& cur = breakpoints[i];
 
 		breakpoint_total_size[i] = 0;
 
-		log_printf("\n(%2d/%2d) %s... ", i + 1, bp_count, cur->name);
+		log_printf("\n(%2d/%2d) %s... ", i + 1, bp_count, cur.name);
 
 		if (!breakpoint_local_init(cur)) {
 			// Not found message inside function
 			continue;
 		}
 
-		size_t cavesize = cur->cavesize;
+		size_t cavesize = cur.cavesize;
 		size_t total_cavesize = AlignUpToMultipleOf2(cavesize + CALL_LEN, 16);
 
 		size_t cur_valid_addrs = 0;
 
 		size_t addr;
-		for (hackpoint_addr_t* cur_addr = cur->addr;
+		for (hackpoint_addr_t* cur_addr = cur.addr;
 			 eval_hackpoint_addr(cur_addr, &addr, hMod);
 			 ++cur_addr) {
 
@@ -288,7 +269,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 
 			log_printf("\nat 0x%p... ", addr);
 
-			if (!VirtualCheckRegion((const void*)addr, cur->cavesize)) {
+			if (!VirtualCheckRegion((const void*)addr, cur.cavesize)) {
 				cur_addr->type = INVALID_ADDR;
 				log_printf("not enough source bytes, skipping... ", addr);
 				continue;
@@ -348,7 +329,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 
 	for (size_t i = 0; i < bp_count; ++i) {
 		if (breakpoint_total_size[i]) {
-			const breakpoint_local_t *const cur = &breakpoints[i];
+			const breakpoint_t *const cur = &breakpoints[i];
 
 			const size_t cavesize = cur->cavesize;
 
@@ -370,7 +351,7 @@ int breakpoints_apply(breakpoint_local_t *breakpoints, size_t bp_count, HMODULE 
 				}
 
 				PatchBPEntryInst(callcave_p, bp_entry_index, size_t, cur_valid_addrs++);
-				PatchBPEntryInst(callcave_p, bp_entry_local, const breakpoint_local_t*, cur);
+				PatchBPEntryInst(callcave_p, bp_entry_local, const breakpoint_t*, cur);
 				PatchBPEntryInst(callcave_p, bp_entry_call, size_t, (size_t)&breakpoint_process - (size_t)bp_instance_ptr - sizeof(void*));
 
 				// CALL bp_entry

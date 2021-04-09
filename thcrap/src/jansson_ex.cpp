@@ -153,6 +153,15 @@ const char* json_object_get_string(const json_t *object, const char *key)
 	return json_string_value(json_object_get(object, key));
 }
 
+const char* json_object_get_string_copy(const json_t *object, const char *key)
+{
+	if(!key) {
+		return NULL;
+	}
+	const char* str = json_string_value(json_object_get(object, key));
+	return str ? strdup(str) : NULL;
+}
+
 json_t* json_object_merge(json_t *old_obj, json_t *new_obj)
 {
 	if (!json_object_update_recursive(old_obj, new_obj)) {
@@ -206,11 +215,11 @@ template <typename T, size_t N> T json_tuple_value(
 {
 	T ret;
 	if(json_array_size(arr) != N) {
-		const stringref_t ERR_FMT = "Must be specified as a JSON array in [%s] format.";
-		const stringref_t SEP = ", ";
-		auto allnames_len = SEP.len * (N - 1);
+		constexpr stringref_t ERR_FMT = "Must be specified as a JSON array in [%s] format.";
+		constexpr stringref_t SEP = ", ";
+		size_t allnames_len = SEP.length() * (N - 1);
 		for(auto &i : value_names) {
-			allnames_len += i.len;
+			allnames_len += i.length();
 		}
 		VLA(char, allnames, allnames_len + 1);
 		defer({ VLA_FREE(allnames); });
@@ -222,8 +231,8 @@ template <typename T, size_t N> T json_tuple_value(
 		}
 		p = stringref_copy_advance_dst(p, value_names[N - 1]);
 
-		ret.err.resize(ERR_FMT.len + allnames_len + 1);
-		sprintf(&ret.err[0], ERR_FMT.str, allnames);
+		ret.err.resize(ERR_FMT.length() + allnames_len + 1);
+		sprintf(&ret.err[0], ERR_FMT.data(), allnames);
 		return ret;
 	}
 	for(unsigned int i = 0; i < N; i++) {

@@ -46,7 +46,7 @@ typedef struct {
 	size_t raw;
 
 	// Heap allocated string expression to be evaluated.
-	char* str;
+	const char* str;
 
 	/**
 	  * Internal values
@@ -80,13 +80,13 @@ bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, HMODULE 
 
 typedef struct {
 	// Binhack name
-	char *name;
+	const char *name;
 	// Binhack description
-	char *title;
+	const char *title;
 	// Binhack code
-	char *code;
+	const char *code;
 	// Expected code at the binhack address
-	char *expected;
+	const char *expected;
 	// Binhack addresses (NULL-terminated array)
 	// They are passed as strings and resolved by binhacks_apply.
 	hackpoint_addr_t* addr;
@@ -102,9 +102,9 @@ typedef enum {
 
 typedef struct {
 	// Codecave name
-	char *name;
+	const char *name;
 	// Codecave code
-	char *code;
+	const char *code;
 	// Codecave size
 	size_t size;
 	// Codecave fill
@@ -116,7 +116,7 @@ typedef struct {
 } codecave_t;
 
 // Shared error message for nonexistent functions.
-int hackpoints_error_function_not_found(const char *func_name, int retval);
+void hackpoints_error_function_not_found(const char *func_name);
 
 // Parses a json binhack entry and returns a binhack object
 bool binhack_from_json(const char *name, json_t *in, binhack_t *out);

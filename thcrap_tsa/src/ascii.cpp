@@ -131,14 +131,14 @@ int ascii_vpatchf_th06(
 		return 0;
 	};
 
-	const stringref_t TH06_ASCII_PREFIX = "th06_ascii_";
+	constexpr stringref_t TH06_ASCII_PREFIX = "th06_ascii_";
 
 	auto id = strings_id(fmt);
-	if(!id || strncmp(id, TH06_ASCII_PREFIX.str, TH06_ASCII_PREFIX.len)) {
+	if(!id || strncmp(id, TH06_ASCII_PREFIX.data(), TH06_ASCII_PREFIX.length())) {
 		auto single_str = strings_vsprintf((size_t)&pos, fmt, va);
 		return putfunc(ClassPtr, pos, single_str);
 	}
-	id += TH06_ASCII_PREFIX.len;
+	id += TH06_ASCII_PREFIX.length();
 
 	/// Specially rendered strings that ignore the original format
 	/// ----------------------------------------------------------
@@ -173,10 +173,10 @@ int ascii_vpatchf_th06(
 		auto score = va_arg(va, int);
 
 		auto stage_fmt = strings_get_fallback({ "th06_ascii_centered_stage_format", "STAGE %d" });
-		VLA(char, buf, stage_fmt.len + SCORE_LEN + 1);
+		VLA(char, buf, stage_fmt.length() + SCORE_LEN + 1);
 		defer({ VLA_FREE(buf); });
 
-		sprintf(buf, stage_fmt.str, stage_id);
+		sprintf(buf, stage_fmt.data(), stage_id);
 		pos.x = ascii_align_right(SPLIT_POINT, buf);
 		putfunc(ClassPtr, pos, buf);
 
@@ -186,8 +186,8 @@ int ascii_vpatchf_th06(
 	}
 	// Result format - print name and the (bracketed stage) separately,
 	// and scale the score to always fit into 9 digits
-	const stringref_t ID_RESULT = "result_score_format";
-	if(!strncmp(id, ID_RESULT.str, ID_RESULT.len)) {
+	constexpr stringref_t ID_RESULT = "result_score_format";
+	if(!strncmp(id, ID_RESULT.data(), ID_RESULT.length())) {
 		auto name = va_arg(va, const char*);
 		auto score = va_arg(va, int);
 
@@ -196,11 +196,11 @@ int ascii_vpatchf_th06(
 
 		put_10_digit_score_and_advance_x(pos, false, score);
 
-		id += ID_RESULT.len;
+		id += ID_RESULT.length();
 
 		if(!strcmp(id, "_clear")) {
 			auto str = strings_get_fallback({ "th06_ascii_result_clear", "(C)" });
-			return putfunc(ClassPtr, pos, str.str);
+			return putfunc(ClassPtr, pos, str.data());
 		}
 		int stage = 1;
 		if(strcmp(id, "_1")) {
@@ -211,15 +211,15 @@ int ascii_vpatchf_th06(
 	}
 	// Ranks in the Result screen after clearing the game - use the
 	// regular translations rather than these right-aligned duplicates.
-	const stringref_t ID_RESULT_RANK = "result_rank_";
-	if(!strncmp(id, ID_RESULT_RANK.str, ID_RESULT_RANK.len)) {
-		stringref_t rank = id + ID_RESULT_RANK.len;
+	constexpr stringref_t ID_RESULT_RANK = "result_rank_";
+	if(!strncmp(id, ID_RESULT_RANK.data(), ID_RESULT_RANK.length())) {
+		stringref_t rank = id + ID_RESULT_RANK.length();
 		const char *fallback = fmt;
 		while(*fallback == ' ') {
 			fallback++;
 		}
 
-		VLA(char, regular_rank_id, TH06_ASCII_PREFIX.len + rank.len + 1);
+		VLA(char, regular_rank_id, TH06_ASCII_PREFIX.length() + rank.length() + 1);
 		defer({ VLA_FREE(regular_rank_id); });
 
 		auto p = regular_rank_id;
@@ -227,17 +227,17 @@ int ascii_vpatchf_th06(
 		p = stringref_copy_advance_dst(p, rank);
 
 		auto str = strings_get_fallback({ regular_rank_id, fallback });
-		pos.x = ascii_align_right(398.0f, str.str);
-		return putfunc(ClassPtr, pos, str.str);
+		pos.x = ascii_align_right(398.0f, str.data());
+		return putfunc(ClassPtr, pos, str.data());
 	}
 	/// ----------------------------------------------------------
 
 	auto single_str = strings_vsprintf((size_t)&pos, fmt, va);
 
 	// Strings centered inside the playfield
-	const auto PLAYFIELD_CENTER = 224.0f;
-	const stringref_t ID_CENTERED = "centered";
-	if(!strncmp(id, ID_CENTERED.str, ID_CENTERED.len)) {
+	const float PLAYFIELD_CENTER = 224.0f;
+	constexpr stringref_t ID_CENTERED = "centered";
+	if(!strncmp(id, ID_CENTERED.data(), ID_CENTERED.length())) {
 		pos.x = ascii_align_center(PLAYFIELD_CENTER, single_str);
 	} else if(!strcmp(id, "fullpower")) {
 		auto center_cur = pos.x + (ascii_extent("Full Power Mode!!") / 2.0f);
@@ -260,11 +260,11 @@ int ascii_vpatchf_th165(
 )
 {
 	auto single_str = strings_vsprintf((size_t)&pos, fmt, va);
-	const stringref_t REPLAY_SAVE_PREFIX = "th165_ascii_replay_save";
+	constexpr stringref_t REPLAY_SAVE_PREFIX = "th165_ascii_replay_save";
 
 	// Center the replay save menu inside the playfield
 	auto id = strings_id(fmt);
-	if(id && !strncmp(id, REPLAY_SAVE_PREFIX.str, REPLAY_SAVE_PREFIX.len)) {
+	if(id && !strncmp(id, REPLAY_SAVE_PREFIX.data(), REPLAY_SAVE_PREFIX.length())) {
 		const auto PLAYFIELD_CENTER = 320.0f;
 		pos.x = ascii_align_center(PLAYFIELD_CENTER, single_str);
 	}
@@ -296,7 +296,7 @@ void ascii_repatch()
 		json_object_set_new(stringdefs, id, json_stringn(str.c_str(), str.size()));
 	};
 	auto right_pad = [] (const stringref_t& strref, int padchars) {
-		auto str = std::string(strref.str, strref.len);
+		auto str = std::string(strref.data(), strref.length());
 		if(padchars <= 0) {
 			return str;
 		}
@@ -306,7 +306,7 @@ void ascii_repatch()
 	// TH165: Recreate the Replay format strings
 	if(game_id == TH165) {
 		size_t day_width_max = 0;
-		const string_named_t TH165_DAYS[] = {
+		constexpr static string_named_t TH165_DAYS[] = {
 			{ "th165_ascii_replay_sun", "Sun" },
 			{ "th165_ascii_replay_mon", "Mon" },
 			{ "th165_ascii_replay_tue", "Tue" },
@@ -332,17 +332,17 @@ void ascii_repatch()
 		};
 		for(auto &day : TH165_DAYS) {
 			auto str = strings_get_fallback(day);
-			day_width_max = MAX(day_width_max, str.len);
+			day_width_max = MAX(day_width_max, str.length());
 		}
 		const int USERNAME_LEN = 4;
 		auto number = strings_get_fallback({ "th06_ascii_2_digit_number_format", "No.%.2d" });
 		auto user = strings_get_fallback({ "th06_ascii_replay_user", "User" });
-		size_t number_printed_len = _scprintf(number.str, 25);
+		size_t number_printed_len = _scprintf(number.data(), 25);
 		// The save menu shouldn't be made larger depending on the User translation
-		auto replay_col1_len = MAX(MAX(number_printed_len, user.len), USERNAME_LEN);
-		auto number_save = std::string(number.str, number.len);
+		auto replay_col1_len = MAX(MAX(number_printed_len, user.length()), USERNAME_LEN);
+		auto number_save = std::string(number.data(), number.length());
 		auto number_padded = right_pad(number, replay_col1_len - number_printed_len);
-		auto user_padded = right_pad(user, replay_col1_len - user.len);
+		auto user_padded = right_pad(user, replay_col1_len - user.length());
 		auto username_padded = right_pad("%s", replay_col1_len - USERNAME_LEN);
 
 		const std::string NAME_AND_DATE_EMPTY = " ------------ --/--/-- ";

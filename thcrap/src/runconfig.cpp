@@ -14,7 +14,7 @@ struct stage_t
 	HMODULE module;
 	std::vector<binhack_t> binhacks;
 	std::vector<codecave_t> codecaves;
-	std::vector<breakpoint_local_t> breakpoints;
+	std::vector<breakpoint_t> breakpoints;
 };
 
 struct runconfig_t
@@ -54,13 +54,7 @@ static void runconfig_stage_load(json_t *stage_json)
 	const char *key;
 	json_t *value;
 
-	json_t *module = json_object_get(stage_json, "module");
-	if (json_is_integer(module)) {
-		stage.module = (HMODULE)json_integer_value(module);
-	}
-	else {
-		stage.module = nullptr;
-	}
+	stage.module = (HMODULE)json_object_get_eval_int_default(stage_json, "module", NULL, JEVAL_STRICT | JEVAL_NO_EXPRS);
 
 	json_t *options = json_object_get(stage_json, "options");
 	if (options) {
@@ -97,7 +91,7 @@ static void runconfig_stage_load(json_t *stage_json)
 	json_t *breakpoints = json_object_get(stage_json, "breakpoints");
 	json_object_foreach(breakpoints, key, value) {
 
-		breakpoint_local_t breakpoint;
+		breakpoint_t breakpoint;
 		if (!breakpoint_from_json(key, value, &breakpoint)) {
 			continue;
 		}
@@ -269,13 +263,13 @@ void runconfig_free()
 	run_cfg.dat_dump.clear();
 	for (auto& stage : run_cfg.stages) {
 		for (auto& binhack : stage.binhacks) {
-			free(binhack.name);
-			free(binhack.title);
-			free(binhack.code);
-			free(binhack.expected);
+			free((void*)binhack.name);
+			free((void*)binhack.title);
+			free((void*)binhack.code);
+			free((void*)binhack.expected);
 			for (size_t i = 0; binhack.addr[i].type != END_ADDR; ++i) {
 				if (binhack.addr[i].str) {
-					free(binhack.addr[i].str);
+					free((void*)binhack.addr[i].str);
 				}
 				if (binhack.addr[i].binhack_source) {
 					free(binhack.addr[i].binhack_source);
@@ -285,15 +279,15 @@ void runconfig_free()
 		}
 		stage.binhacks.clear();
 		for (auto& codecave : stage.codecaves) {
-			free(codecave.name);
-			free(codecave.code);
+			free((void*)codecave.name);
+			free((void*)codecave.code);
 		}
 		stage.codecaves.clear();
 		for (auto& breakpoint : stage.breakpoints) {
-			free(breakpoint.name);
+			free((void*)breakpoint.name);
 			for (size_t i = 0; breakpoint.addr[i].type != END_ADDR; ++i) {
 				if (breakpoint.addr[i].str) {
-					free(breakpoint.addr[i].str);
+					free((void*)breakpoint.addr[i].str);
 				}
 			}
 			free(breakpoint.addr);

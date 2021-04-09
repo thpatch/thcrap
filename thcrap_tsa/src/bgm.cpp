@@ -18,7 +18,7 @@ extern "C" {
 
 #pragma comment(lib, "thcrap_bgmmod" DEBUG_OR_RELEASE)
 
-const stringref_t LOOPMOD_FN = "loops.js";
+constexpr stringref_t LOOPMOD_FN = "loops.js";
 
 // The game's own thbgm.fmt structure. Necessary for mapping seek positions
 // back to file names for BGM modding, and repatchability of loop point
@@ -52,11 +52,11 @@ int bgm_find(uint32_t offset)
 int bgm_find(stringref_t fn)
 {
 	assert(bgm_fmt);
-	if(fn.len > sizeof(bgm_fmt->fn)) {
+	if(fn.length() > sizeof(bgm_fmt->fn)) {
 		return -1;
 	}
 	return _bgm_find([fn] (const bgm_fmt_t &track) {
-		return !strncmp(track.fn, fn.str, fn.len);
+		return !strncmp(track.fn, fn.data(), fn.length());
 	});
 };
 
@@ -346,12 +346,12 @@ int loopmod_fmt()
 			if(!game_is_trial()) {
 				log_mboxf(nullptr, MB_OK | MB_ICONEXCLAMATION,
 					"Error applying %s: Track \"%s\" does not exist.",
-					LOOPMOD_FN.str, track_name.str
+					LOOPMOD_FN.data(), track_name.data()
 				);
 			} else {
 				log_printf(
 					"Error applying %s: Track \"%s\" does not exist.",
-					LOOPMOD_FN.str, track_name.str
+					LOOPMOD_FN.data(), track_name.data()
 				);
 			}
 			return false;
@@ -369,7 +369,7 @@ int loopmod_fmt()
 		auto *loop_end = json_object_get(track_mod, "loop_end");
 
 		if(loop_start || loop_end) {
-			log_printf("[BGM] [Loopmod] Changing %s\n", track_name.str);
+			log_printf("[BGM] [Loopmod] Changing %s\n", track_name.data());
 		}
 		if(loop_start) {
 			uint32_t val = (uint32_t)json_integer_value(loop_start);
@@ -383,7 +383,7 @@ int loopmod_fmt()
 	};
 
 	// Looping this way makes error reporting a bit easier.
-	json_t *loops = jsondata_game_get(LOOPMOD_FN.str);
+	json_t *loops = jsondata_game_get(LOOPMOD_FN.data());
 	const char *key;
 	const json_t *track_mod;
 	json_object_foreach(loops, key, track_mod) {
@@ -451,11 +451,11 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 		auto mod = stack_bgm_resolve(basename);
 		if(mod) {
 			if(!is_allowed(mod->pcmf)) {
-				stringref_t PCMF_LINE_FMT = "\n• ";
+				constexpr stringref_t PCMF_LINE_FMT = "\n• ";
 				size_t supported_len = 0;
 				size_t desc_len = sizeof(pcm_format_t::desc_t);
 				for(const auto &pcmf : allowed_pcmfs) {
-					supported_len += PCMF_LINE_FMT.len + desc_len;
+					supported_len += PCMF_LINE_FMT.length() + desc_len;
 				}
 				VLA(char, supported, supported_len + 1);
 				char *p = supported;
@@ -520,7 +520,7 @@ int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	defer( VLA_FREE(fn_base) );
 	memcpy(fn_base, fn, fn_base_len);
 	fn_base[fn_base_len] = '\0';
-	patch = json_object_get(jsondata_game_get(LOOPMOD_FN.str), fn_base);
+	patch = json_object_get(jsondata_game_get(LOOPMOD_FN.data()), fn_base);
 
 	if(!json_is_object(patch)) {
 		return false;
@@ -856,7 +856,7 @@ HRESULT WINAPI bgm_DirectSoundCreate8(
 /// ================
 extern "C" __declspec(dllexport) void bgm_mod_init(void)
 {
-	jsondata_game_add(LOOPMOD_FN.str);
+	jsondata_game_add(LOOPMOD_FN.data());
 	// Kioh Gyoku is a thing...
 	if(game_id < TH07) {
 		patchhook_register("*.pos", patch_pos, keep_original_size);
@@ -902,7 +902,7 @@ extern "C" __declspec(dllexport) void bgm_mod_repatch(json_t *files_changed)
 	const char *fn;
 	json_t *val;
 	json_object_foreach(files_changed, fn, val) {
-		if(strstr(fn, LOOPMOD_FN.str)) {
+		if(strstr(fn, LOOPMOD_FN.data())) {
 			loopmod_fmt();
 		}
 	}

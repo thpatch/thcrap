@@ -440,8 +440,8 @@ int layout_process(layout_state_t *lay, layout_func_t func, const char *str, siz
 	}
 
 	auto tln = tlnote_find({ str, len }, false);
-	str = tln.regular.str;
-	len = tln.regular.len;
+	str = tln.regular.data();
+	len = tln.regular.length();
 	lay->tlnote = tln.tlnote;
 
 	if(hBitmap) {

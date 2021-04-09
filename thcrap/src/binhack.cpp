@@ -35,7 +35,7 @@ struct LocaleHolder_t {
 
 static LocaleHolder_t lc_neutral(LC_NUMERIC, "C");
 
-int hackpoints_error_function_not_found(const char *func_name, int retval)
+void hackpoints_error_function_not_found(const char *func_name)
 {
 	if (runconfig_msgbox_invalid_func()) {
 		if (log_mboxf("Binary Hack error", MB_OKCANCEL | MB_ICONERROR, "ERROR: function '%s' not found! ", func_name) == IDCANCEL) {
@@ -51,7 +51,6 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 			, func_name, PROJECT_NAME_SHORT()
 		);
 	}
-	return retval;
 }
 
 hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array)
@@ -327,8 +326,7 @@ size_t binhack_calc_size(const char *binhack_str)
 				size += sizeof(double);
 				break;
 			case PVT_LONGDOUBLE:
-				//size += sizeof(LongDouble80);
-				size += sizeof(_LDOUBLE);
+				size += sizeof(LongDouble80);
 				break;
 			case PVT_STRING:
 				size += sizeof(const char*);

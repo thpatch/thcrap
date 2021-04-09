@@ -72,7 +72,7 @@ struct blitmode_t {
 	stringref_t desc;
 };
 
-const blitmode_t BLITMODES[] = {
+constexpr blitmode_t BLITMODES[] = {
 	{
 		"auto",
 		nullptr,
@@ -361,20 +361,20 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 	if(json_is_string(blitmode_j)) {
 		auto blitmode = json_string_value(blitmode_j);
 		for(const auto &mode : BLITMODES) {
-			if(!strcmp(mode.name.str, blitmode)) {
+			if(!strcmp(mode.name.data(), blitmode)) {
 				return mode.func;
 			}
 		}
 	}
-	stringref_t MODE_DESC_FMT = "\n\n• \"%s\": %s";
+	constexpr stringref_t MODE_DESC_FMT = "\n\n• \"%s\": %s";
 	size_t modes_len = 0;
 	for(const auto &mode : BLITMODES) {
-		modes_len += MODE_DESC_FMT.len + mode.name.len + mode.desc.len;
+		modes_len += MODE_DESC_FMT.length() + mode.name.length() + mode.desc.length();
 	}
 	VLA(char, modes, modes_len + 1);
 	char *p = modes;
 	for(const auto &mode : BLITMODES) {
-		p += sprintf(p, MODE_DESC_FMT.str, mode.name.str, mode.desc.str);
+		p += sprintf(p, MODE_DESC_FMT.data(), mode.name.data(), mode.desc.data());
 	}
 
 	va_list va;

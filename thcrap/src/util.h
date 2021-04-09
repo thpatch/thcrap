@@ -22,10 +22,9 @@ size_t ptr_advance(const unsigned char **src, size_t num);
 size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num);
 
 // Copies [num] bytes from [src] to [dst] and returns [dst] advanced by [num].
-__inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
+inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 {
-	memcpy(dst, src, num);
-	return dst + num;
+	return ((char*)memcpy(dst, src, num)) + num;
 }
 /// --------
 
@@ -33,7 +32,7 @@ __inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 /// -------
 #define PtrDiffStrlen(end_ptr, start_ptr) ((end_ptr) - (start_ptr))
 
-__inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
+inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 {
 	assert(src);
 	dst[len] = '\0';
@@ -42,48 +41,29 @@ __inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 
 #ifdef __cplusplus
 // Reference to a string somewhere else in memory with a given length.
-// TODO: Rip out and change to std::string_view once C++17 is more widespread.
-typedef struct stringref_t {
-	const char *str;
-	size_t len;
+// Extends std::string_view to add a json string constructor.
+class stringref_t : public std::string_view {
+public:
+	stringref_t(const json_t* json) : std::string_view(json_string_value(json), json_string_length(json)) {}
+	using std::string_view::string_view;
+};
 
-	// No default constructor = no potential uninitialized
-	// string pointer = good
-
-	stringref_t(const char *i_str) {
-		if (i_str) {
-			str = i_str;
-			len = strlen(i_str);
-		}
-		else {
-			str = nullptr;
-			len = 0;
-		}
-	}
-	stringref_t(const char *i_str, size_t i_len) {
-		if (i_str) {
-			str = i_str;
-			len = i_len;
-		}
-		else {
-			str = nullptr;
-			len = 0;
-		}
-	}
-
-	stringref_t(const json_t *json)
-		: str(json_string_value(json)), len(json_string_length(json)) {
-	}
-} stringref_t;
-
-__inline char* stringref_copy_advance_dst(char *dst, const stringref_t &strref)
- {
-	return strncpy_advance_dst(dst, strref.str, strref.len);
+inline char* stringref_copy_advance_dst(char *dst, const stringref_t &strref)
+{
+	return strncpy_advance_dst(dst, strref.data(), strref.length());
 }
 #endif
 
 // Replaces every occurence of the ASCII character [from] in [str] with [to].
-void str_ascii_replace(char *str, const char from, const char to);
+inline void str_ascii_replace(char* str, const char from, const char to)
+{
+	char c;
+	do {
+		c = *str;
+		if (c == from) *str = to;
+		++str;
+	} while (c);
+}
 
 // Changes directory slashes in [str] to '/'.
 void str_slash_normalize(char *str);

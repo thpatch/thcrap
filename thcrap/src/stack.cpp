@@ -64,9 +64,8 @@ static size_t chain_get_size(char **chain)
 	if (!chain) {
 		return 0;
 	}
-	size_t size;
-	for (size = 0; chain[size]; size++) {
-	}
+	size_t size = 0;
+	while (chain[size]) ++size;
 	return size;
 }
 
@@ -75,7 +74,7 @@ void chain_free(char **chain)
 	if (!chain) {
 		return;
 	}
-	for (size_t i = 0; chain && chain[i]; i++) {
+	for (size_t i = 0; chain[i]; i++) {
 		free(chain[i]);
 	}
 	free(chain);
@@ -116,7 +115,7 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 	size_t json_size = 0;
 
 	for (size_t n = 0; chain[n]; n++) {
-		const char *fn = chain[n];
+		const char *const fn = chain[n];
 		size_t size = 0;
 		json_t *json_new = jsonvfs_get(fn, &size);
 		if (json_new) {

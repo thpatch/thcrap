@@ -39,10 +39,9 @@ typedef struct {
 	  */
 
 	// Name of the breakpoint
-	char *name;
+	const char *name;
 
 	// Size of the original code sliced out at [addr].
-	// Must be inside BP_SourceCave_Limits.
 	size_t cavesize;
 
 	// Json variables associated with the breakpoint. Usually comes from
@@ -62,10 +61,10 @@ typedef struct {
 
 	// Function to be called when the breakpoint is hit
 	BreakpointFunc_t func;
-} breakpoint_local_t;
+} breakpoint_t;
 
 typedef struct {
-	breakpoint_local_t *bp_local;
+	breakpoint_t *bp;
 	size_t bp_count;
 
 	// Contains the original code bytes we overwrote
@@ -98,7 +97,7 @@ size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *ke
 /// =====================================
 
 // Parses a json breakpoint entry and returns a breakpoint object
-bool breakpoint_from_json(const char *name, json_t *in, breakpoint_local_t *out);
+bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out);
 
 // Returns 0 if "cave_exec" in [bp_info] is set to false, 1 otherwise.
 // Should be used as the return value for a breakpoint function after it made
@@ -109,7 +108,7 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.
-int breakpoints_apply(breakpoint_local_t *breakpoints, size_t breakpoints_count, HMODULE hMod);
+int breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod);
 
 // Removes all breakpoints in the given set.
 // TODO: Implement!

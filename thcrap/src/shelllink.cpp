@@ -69,7 +69,7 @@ HRESULT CreateLink(
 
 int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 {
-	const stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
+	constexpr stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
 	int ret = 0;
 	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
@@ -84,11 +84,11 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 	{
 		const char *key = NULL;
 		json_t *cur_game = NULL;
-		VLA(char, self_path, self_fn_len + loader_exe.len);
+		VLA(char, self_path, self_fn_len + loader_exe.length());
 		strcpy(self_path, self_fn);
 
 		strcat(self_fn, "bin\\");
-		strcat(self_fn, loader_exe.str);
+		strcat(self_fn, loader_exe.data());
 
 		log_printf("Creating shortcuts");
 

@@ -135,7 +135,7 @@ struct patch_line_t {
 	tlnote_encoded_index_t tli;
 
 	bool valid() const {
-		return line.str != nullptr;
+		return line.data() != nullptr;
 	}
 
 	operator bool() { return valid(); }
@@ -195,15 +195,15 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 {
 	tlnote_encoded_index_t tli;
 	stringref_t line = json_array_get(diff_lines, cur_line);
-	if(!line.str) {
+	if(!line.data()) {
 		return {};
 	}
 	// Validate that the string is valid TSA ruby syntax.
 	// Important because the games themselves (surprise, suprise) don't verify
 	// the return value of the strchr() call used to get the parameters.
 	// Thus, they would simply crash if a | is not followed by two commas.
-	if(line.str[0] == '|') {
-		auto *p2 = strchr(line.str + 1, ',');
+	if(line.data()[0] == '|') {
+		auto *p2 = strchr(line.data() + 1, ',');
 		if(strchr(p2 + 1, ',') == nullptr) {
 			return {};
 		}
@@ -225,26 +225,26 @@ patch_line_t patch_msg_state_t::diff_line_cur(int extra_param_len)
 	// and the TL note.
 	size_t len_trimmed = 0;
 	auto limit = 0xFF - 1 - extra_param_len - tli.len();
-	while(len_trimmed < line.len) {
+	while(len_trimmed < line.length()) {
 		auto old_len_trimmed = len_trimmed;
 		len_trimmed++;
 		// Every string that gets here is UTF-8 anyway.
-		while((line.str[len_trimmed] & 0xc0) == 0x80) {
+		while((line.data()[len_trimmed] & 0xc0) == 0x80) {
 			len_trimmed++;
 		}
-		if(len_trimmed > limit || len_trimmed > line.len) {
+		if(len_trimmed > limit || len_trimmed > line.length()) {
 			len_trimmed = old_len_trimmed;
 			break;
 		}
 	}
-	return { line.str, len_trimmed, tli };
+	return { line.data(), len_trimmed, tli };
 }
 
 void patch_msg_state_t::replace_line(th06_msg_t &cmd_out, replacer_t replacer, const patch_line_t &pl)
 {
 	assert(pl.valid());
 	if(pl.tli) {
-		auto pl_full_len = pl.line.len + pl.tli.len();
+		auto pl_full_len = pl.line.length() + pl.tli.len();
 		assert(pl_full_len <= 0xFE - replacer.extra_param_len);
 		VLA(char, pl_full, pl_full_len + 1);
 
@@ -309,7 +309,7 @@ void replace_line(char *dst, patch_msg_state_t *state, const stringref_t &rep)
 	}
 
 	if(state->format->enc_func) {
-		state->format->enc_func((uint8_t *)dst, rep.len + 1);
+		state->format->enc_func((uint8_t *)dst, rep.length() + 1);
 	}
 }
 
@@ -318,7 +318,7 @@ const replacer_t REP_HARD_LINE = {
 	{
 		auto* line = (hard_line_data_t*)cmd_out.data;
 		line->linenum = (uint16_t)state.cur_line;
-		cmd_out.length = (uint8_t)rep.len + 4 + 1;
+		cmd_out.length = (uint8_t)rep.length() + 4 + 1;
 		replace_line(line->str, &state, rep);
 	}
 };
@@ -326,7 +326,7 @@ const replacer_t REP_HARD_LINE = {
 const replacer_t REP_AUTO_LINE = {
 	0, [] (th06_msg_t &cmd_out, patch_msg_state_t &state, const stringref_t &rep)
 	{
-		cmd_out.length = (uint8_t)rep.len + 1;
+		cmd_out.length = (uint8_t)rep.length() + 1;
 		replace_line((char *)cmd_out.data, &state, rep);
 	}
 };
@@ -387,7 +387,7 @@ void box_end(patch_msg_state_t *state)
 			th06_msg_t *new_line_cmd = th06_msg_advance(state->last_line_cmd);
 			ptrdiff_t move_len;
 			size_t line_offset;
-			auto line_len_full = pl.line.len + pl.tli.len() + 1;
+			auto line_len_full = pl.line.length() + pl.tli.len() + 1;
 
 			move_len = (uint8_t*)th06_msg_advance(state->cmd_out) - (uint8_t*)new_line_cmd;
 			line_offset = sizeof(th06_msg_t) + replacer.extra_param_len;
