@@ -4,54 +4,66 @@
 // A quick implementation of a few CRT functions because we don't link with the CRT.
 size_t my_wcslen(const wchar_t *str)
 {
-	size_t n = 0;
-	while (str[n]) {
-		n++;
-	}
-	return n;
+	const wchar_t* str_read = str - 1;
+	while (*++str_read);
+	return str_read - str;
 }
 
 int my_wcscmp(const wchar_t *s1, const wchar_t *s2)
 {
-	while (*s1 && *s1 == *s2) {
-		s1++;
-		s2++;
-	}
-	return *s2 - *s1;
+	int w, ret;
+	while (
+		(ret = (w = *s1++) - *s2++) // Compute whether *s1 and *s2 match
+		&& w // Check that neither *s1 nor *s2 is the null terminator
+	);
+	return ret;
 }
 
 // Returns the pointer to the end of dst, so that you can chain the call to append
 // several strings.
 LPWSTR my_strcpy(LPWSTR dst, LPCWSTR src)
 {
-	while (*src) {
-		*dst = *src;
-		src++;
-		dst++;
-	}
-	*dst = '\0';
-	return dst;
+	while (*dst++ = *src++);
+	return dst - 1;
 }
 
 void *my_memcpy(void *dst, const void *src, size_t n)
 {
-	char *d = dst;
-	const char *s = src;
+	unsigned char* start = dst;
+	unsigned char* const end = start + n;
+	const unsigned char* source = src;
 
-	while (n-- > 0)
-		*d++ = *s++;
+	while (start != end) {
+		*start++ = *source++;
+	}
 
-	return dst;
+	return start - n;
 }
 
 void *my_memset(void *dst, int ch, size_t n)
 {
-	char *d = dst;
+	unsigned char *start = dst;
+	unsigned char *const end = start + n;
+	
+	// Structuring the loop like this with the assignment
+	// between the if/do statements prevents the compiler
+	// trying to substitute the loop with a call to memset
+	// while also producing near-identical assembly to:
+	// 
+	// const unsigned char c = ch;
+	// while (start != end) {
+	//     _ReadWriteBarrier();
+	//     *start++ = c;
+	// }
 
-	while (n-- > 0)
-		*d++ = ch;
+	if (start != end) {
+		const unsigned char c = ch;
+		do {
+			*start++ = c;
+		} while (start != end);
+	}
 
-	return dst;
+	return start - n;
 }
 
 void *my_alloc(size_t num, size_t size)
