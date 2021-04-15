@@ -74,6 +74,8 @@ void mod_func_remove(const char *pattern, mod_call_type func);
 void patch_func_remove(const char *pattern, mod_call_type func);
 
 #ifdef __cplusplus
+extern "C++" {
+
 class mod_funcs_t : public std::unordered_map<std::string_view, std::vector<mod_call_type>> {
 public:
 	// Builds an unordered map mapping the suffixes of all module hook functions
@@ -95,6 +97,7 @@ public:
 	inline void remove(std::string_view suffix, mod_call_type func);
 };
 
+}
 #endif
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.

@@ -20,7 +20,7 @@ const char* strings_id(const char* str);
 const json_t* strings_get(const char *id);
 
 #ifdef __cplusplus
-}
+extern "C++" {
 
 // Like strings_get(), but with a fallback onto [def] if no string for [id]
 // is available.
@@ -31,7 +31,7 @@ struct string_named_t {
 
 THCRAP_API stringref_t strings_get_fallback(const string_named_t& sn);
 
-extern "C" {
+}
 #endif
 
 // Returns the translated string for [in] from the string definition table,

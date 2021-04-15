@@ -109,7 +109,7 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 /// "Custom types"
 /// --------------
 #ifdef __cplusplus
-}
+extern "C++" {
 
 struct json_custom_value_t {
 	std::string err;
@@ -131,7 +131,7 @@ struct json_xywh_t : public json_custom_value_t {
 // doesn't match this format. Currently only accepting positive integers!
 THCRAP_API json_xywh_t json_xywh_value(const json_t *arr);
 
-extern "C" {
+}
 #endif
 /// --------------
 

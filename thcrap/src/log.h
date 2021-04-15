@@ -61,7 +61,7 @@ void log_mbox_set_owner(HWND hwnd);
 /// Per-module loggers
 /// ------------------
 #ifdef __cplusplus
-}
+extern "C++" {
 
 class logger_t {
 	const char *err_caption;
@@ -83,7 +83,7 @@ public:
 	}
 };
 
-extern "C" {
+}
 #endif
 /// ------------------
 
