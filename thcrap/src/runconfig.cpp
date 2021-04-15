@@ -220,9 +220,11 @@ void runconfig_load_from_file(const char *path)
 
 void runconfig_print()
 {
-	log_printf("---------------------------\n");
-	log_printf("Complete run configuration:\n");
-	log_printf("---------------------------\n");
+	log_printf(
+		"---------------------------\n"
+		"Complete run configuration:\n"
+		"---------------------------\n"
+	);
 	log_printf("  console: %s\n",      run_cfg.console ? "true" : "false");
 	log_printf("  thcrap dir: '%s'\n", run_cfg.thcrap_dir.c_str());
 	log_printf("  runcfg fn: '%s'\n",  run_cfg.runcfg_fn.c_str());
@@ -236,15 +238,21 @@ void runconfig_print()
 	}
 	log_print("\n");
 	log_printf("  dat_dump: '%s'\n", run_cfg.dat_dump.c_str());
-	log_printf("---------------------------\n");
-	log_printf("Patch stack:\n");
-	log_printf("---------------------------\n");
+	log_printf(
+		"---------------------------\n"
+		"Patch stack:\n"
+		"---------------------------\n"
+	);
 	stack_print();
-	log_printf("---------------------------\n");
-	log_printf("Run configuration JSON:\n");
-	log_printf("---------------------------\n");
+	log_printf(
+		"---------------------------\n"
+		"Run configuration JSON:\n"
+		"---------------------------\n"
+	);
 	json_dump_log(run_cfg.json, JSON_INDENT(2));
-	log_printf("---------------------------\n");
+	log_printf(
+		"---------------------------\n"
+	);
 }
 
 void runconfig_free()

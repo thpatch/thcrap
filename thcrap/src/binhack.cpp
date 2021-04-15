@@ -48,7 +48,7 @@ void hackpoints_error_function_not_found(const char *func_name)
 #else
 			"(outdated or corrupt %s installation, maybe?)"
 #endif
-			, func_name, PROJECT_NAME_SHORT()
+			, func_name, PROJECT_NAME_SHORT
 		);
 	}
 }

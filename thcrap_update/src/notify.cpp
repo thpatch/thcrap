@@ -25,11 +25,11 @@ static UINT self_msg_type[] = {
 	MB_ICONEXCLAMATION, // SELF_NO_TARGET_VERSION
 };
 
-static const char *self_header_failure =
+static const char self_header_failure[] =
 	"A new version (${build}) of the ${project} is available.\n"
 	"\n";
 
-static const char *self_body[] = {
+static const char *const self_body[] = {
 	// SELF_OK
 	"The ${project} has been successfully updated to version ${build}.\n"
 	"\n"
@@ -114,7 +114,7 @@ static const char *self_body[] = {
 	"otherwise specified"
 };
 
-const char *self_sig_error =
+static const char self_sig_error[] =
 	"\n"
 	"We advise against downloading it from the originating website until "
 	"this problem has been resolved.";
@@ -152,19 +152,22 @@ int update_notify_thcrap(void)
 	if(ret == SELF_NO_SIG || ret == SELF_SIG_FAIL) {
 		strings_strcat(SELF_MSG_SLOT, self_sig_error);
 	}
-	strings_replace(SELF_MSG_SLOT, "${project}", PROJECT_NAME());
-	strings_replace(SELF_MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
+	strings_replace(SELF_MSG_SLOT, "${project}", PROJECT_NAME);
+	strings_replace(SELF_MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT);
 	strings_replace(SELF_MSG_SLOT, "${build}", self_get_target_version());
 	strings_replace(SELF_MSG_SLOT, "${thcrap_dir}", thcrap_dir);
-	strings_replace(SELF_MSG_SLOT, "${desc_url}", PROJECT_URL());
+	strings_replace(SELF_MSG_SLOT, "${desc_url}", PROJECT_URL);
 	self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", arc_fn);
 
 	// Write message
 	// Default is false, and the value is going to be written later anyway. Doing it now would result in a useless IO write
 	if (ret != SELF_OK && globalconfig_get_boolean("skip_check_mbox", false)) {
-		log_print("---------------------------\n");
-		log_printf("%s\n", self_msg);
-		log_print("---------------------------\n");
+		log_printf(
+			"---------------------------\n"
+			"%s\n"
+			"---------------------------\n"
+			, self_msg
+		);
 	}
 	else {
 		log_mboxf(NULL, MB_OK | self_msg_type[ret], self_msg);

@@ -10,12 +10,12 @@
 #pragma once
 
 // Project stats
-const char* PROJECT_NAME(void);
-const char* PROJECT_NAME_SHORT(void);
-const char* PROJECT_URL(void);
-DWORD PROJECT_VERSION(void);
-const char* PROJECT_VERSION_STRING(void);
-const char* PROJECT_BRANCH(void);
+THCRAP_API extern const char PROJECT_NAME[];
+THCRAP_API extern const char PROJECT_NAME_SHORT[];
+THCRAP_API extern const char PROJECT_URL[];
+THCRAP_API extern const uint32_t PROJECT_VERSION;
+THCRAP_API extern const char PROJECT_VERSION_STRING[];
+THCRAP_API extern const char PROJECT_BRANCH[];
 
 // Returns the value matching key in config converted in bool
 // If key isn't in config it returns default_value with errno ENOENT

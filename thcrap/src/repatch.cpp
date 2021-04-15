@@ -124,7 +124,7 @@ DWORD WINAPI repatch_watcher(void*)
 
 	OVERLAPPED ol_changes = {};
 	HANDLE hIOCompPort = CreateIoCompletionPort(
-		INVALID_HANDLE_VALUE, NULL, PROJECT_VERSION(), 0
+		INVALID_HANDLE_VALUE, NULL, PROJECT_VERSION, 0
 	);
 	for(i = 0; i < dir_handles_num; i++) {
 		if(dir_handles[i] != INVALID_HANDLE_VALUE) {

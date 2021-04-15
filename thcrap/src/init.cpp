@@ -26,19 +26,19 @@ static std::vector<bool> bp_set; // One per stage
 
 /// Old game build message
 /// ----------------------
-const char *oldbuild_title = "Old version detected";
+static const char oldbuild_title[] = "Old version detected";
 
-const char *oldbuild_header =
+static const char oldbuild_header[] =
 	"You are running an old version of ${game_title} (${build_running}).\n"
 	"\n";
 
-const char *oldbuild_maybe_supported =
+static const char oldbuild_maybe_supported[] =
 	"${project_short} may or may not work with this version, so we recommend updating to the latest official version (${build_latest}).";
 
-const char *oldbuild_not_supported =
+static const char oldbuild_not_supported[] =
 	"${project_short} will *not* work with this version. Please update to the latest official version, ${build_latest}.";
 
-const char *oldbuild_url =
+static const char oldbuild_url[] =
 	"\n"
 	"\n"
 	"You can download the update at\n"
@@ -67,18 +67,18 @@ void oldbuild_show()
 		// • What if one patch in the stack *does* provide support for
 		//   this older version, but others don't?
 		// • Stringlocs are also part of support. -.-
-		const auto *BUILD_JS_FORMAT = "%s.%s.js";
-		auto *game_str = runconfig_game_get();
-		auto *build_str = runconfig_build_get();
-		auto build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
+		const char BUILD_JS_FORMAT[] = "%s.%s.js";
+		const char *game_str = runconfig_game_get();
+		const char *build_str = runconfig_build_get();
+		const int build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
 		VLA(char, build_js_fn, build_js_fn_len);
 		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
 		char *build_js_chain[] = {
 			build_js_fn,
 			nullptr
 		};
-		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
-		auto supported = build_js != nullptr;
+		json_t *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
+		const bool supported = build_js != nullptr;
 		json_decref_safe(build_js);
 		VLA_FREE(build_js_fn);
 
@@ -98,8 +98,8 @@ void oldbuild_show()
 		strings_replace(MSG_SLOT, "${game_title}", title);
 		strings_replace(MSG_SLOT, "${build_running}", build_str);
 		strings_replace(MSG_SLOT, "${build_latest}", runconfig_latest_get());
-		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
-		auto *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
+		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT);
+		const char *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
 
 		log_mbox(oldbuild_title, MB_OK | msg_type, msg);
 	}
@@ -188,8 +188,10 @@ json_t* identify(const char *exe_fn)
 	id_array = identify_by_hash(exe_fn, &exe_size, versions_js);
 	if(!id_array) {
 		size_cmp = 1;
-		log_printf("failed!\n");
-		log_printf("File size lookup... ");
+		log_printf(
+			"failed!\n"
+			"File size lookup... "
+		);
 		id_array = identify_by_size(exe_size, versions_js);
 
 		if(!id_array) {
@@ -264,7 +266,7 @@ json_t* identify(const char *exe_fn)
 			"We will take a look at it, and add support if possible.\n"
 			"\n"
 			"Apply patches for the identified game version regardless (on your own risk)?",
-			PROJECT_NAME_SHORT(), game, build, variety, exe_fn
+			PROJECT_NAME_SHORT, game, build, variety, exe_fn
 		);
 		if(ret == IDNO) {
 			run_ver = json_decref_safe(run_ver);
@@ -280,7 +282,7 @@ void thcrap_detour(HMODULE hProc)
 	size_t mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
 	VLA(char, mod_name, mod_name_len);
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
-	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
+	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT, mod_name);
 
 	iat_detour_apply(hProc);
 	VLA_FREE(mod_name);
@@ -318,9 +320,11 @@ int thcrap_init(const char *run_cfg_fn)
 	log_printf("Game directory: %s\\\n", game_dir);
 
 	PathAppendU(dll_dir, "bin");
-	log_printf("Plug-in directory: %s\\\n", dll_dir);
-
-	log_printf("\nInitializing plug-ins...\n");
+	log_printf(
+		"Plug-in directory: %s\\\n"
+		"\nInitializing plug-ins...\n"
+		, dll_dir
+	);
 	plugin_init(hThcrap);
 	
 	plugins_load(dll_dir);

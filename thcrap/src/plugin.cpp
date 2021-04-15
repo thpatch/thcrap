@@ -171,7 +171,7 @@ int plugins_load(const char *dir)
 	std::vector<char*> dlls;
 
 	const size_t dir_len = strlen(dir);
-	char* const dll_path = strndup(dir, MAX_PATH + 1);
+	char* const dll_path = strndup(dir, MAX_PATH + 8);
 	strcat(dll_path, "\\*.dll");
 
 	{

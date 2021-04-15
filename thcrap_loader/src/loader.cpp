@@ -103,7 +103,7 @@ int __cdecl win32_utf8_main(int argc, const char *argv[])
 			"- The run configuration file must end in .js to be recognized as such.\n"
 			"- %s\n"
 			"- Also, later command-line parameters take priority over earlier ones.\n",
-			PROJECT_NAME(), EXE_HELP
+			PROJECT_NAME, EXE_HELP
 		);
 		ret = -1;
 		goto end;
