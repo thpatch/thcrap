@@ -15,7 +15,7 @@
 // Globals
 // -------
 static FILE *log_file = NULL;
-static int console_open = 0;
+static bool console_open = false;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
@@ -207,13 +207,13 @@ static HWND guess_mbox_owner()
 
 int log_mbox(const char *caption, const UINT type, const char *text)
 {
-	if(!caption) {
-		caption = PROJECT_NAME();
-	}
-	log_print("---------------------------\n");
-	log_printf("%s\n", text);
-	log_print("---------------------------\n");
-	return MessageBox(guess_mbox_owner(), text, caption, type);
+	log_printf(
+		"---------------------------\n"
+		"%s\n"
+		"---------------------------\n"
+		, text
+	);
+	return MessageBox(guess_mbox_owner(), text, (caption ? caption : PROJECT_NAME), type);
 }
 
 int log_vmboxf(const char *caption, const UINT type, const char *text, va_list va)
@@ -260,7 +260,7 @@ static void OpenConsole(void)
 	/// This breaks all normal, unlogged printf() calls to stdout!
 	// _setmode(_fileno(stdout), _O_U16TEXT);
 
-	console_open = 1;
+	console_open = true;
 }
 
 /// Per-module loggers
@@ -307,22 +307,21 @@ void log_init(int console)
 		OpenConsole();
 	}
 	if(log_file) {
-		size_t i;
-		size_t line_len = strlen(PROJECT_NAME()) + strlen(" logfile") + 1;
-		VLA(unsigned char, line, line_len * UTF8_MUL);
 
-		for(i = 0; i < line_len - 1; i++) {
-			// HARRY UP, anyone?
-			line[i*3+0] = 0xe2;
-			line[i*3+1] = 0x80;
-			line[i*3+2] = 0x95;
+		constexpr std::string_view DashUChar = u8"―";
+
+		const size_t line_len = (strlen(PROJECT_NAME) + strlen(" logfile")) * DashUChar.length();
+		VLA(char, line, line_len + 1);
+		line[line_len] = '\0';
+		
+		for (size_t i = 0; i < line_len; i += DashUChar.length()) {
+			memcpy(&line[i], DashUChar.data(), DashUChar.length());
 		}
-		line[i*3] = 0;
 
 		fprintf(log_file, "%s\n", line);
-		fprintf(log_file, "%s logfile\n", PROJECT_NAME());
-		fprintf(log_file, "Branch: %s\n", PROJECT_BRANCH());
-		fprintf(log_file, "Version: %s\n", PROJECT_VERSION_STRING());
+		fprintf(log_file, "%s logfile\n", PROJECT_NAME);
+		fprintf(log_file, "Branch: %s\n", PROJECT_BRANCH);
+		fprintf(log_file, "Version: %s\n", PROJECT_VERSION_STRING);
 		fprintf(log_file, "Build time: "  __DATE__ " " __TIME__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
@@ -363,7 +362,7 @@ void log_init(int console)
 			"Moving %s to a different directory will probably fix this.\n"
 			"\n"
 			"Continue?",
-			full_fn, strerror(errno), PROJECT_NAME_SHORT()
+			full_fn, strerror(errno), PROJECT_NAME_SHORT
 		);
 		if(ret == IDCANCEL) {
 			auto pExitProcess = ((void (__stdcall*)(UINT))detour_top(
