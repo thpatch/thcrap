@@ -116,6 +116,7 @@
     <ClInclude Include="src\xpcompat.h" />
     <ClInclude Include="src\zip.h" />
     <GAS Include="src\bp_entry.asm" />
+    <GAS Include="src\inject_func.asm" />
     <None Include="thcrap.def" />
   </ItemGroup>
 </Project>

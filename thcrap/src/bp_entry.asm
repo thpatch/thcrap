@@ -10,15 +10,19 @@
 	.intel_syntax
 	.global	_bp_entry, _bp_entry_indexptr, _bp_entry_localptr, _bp_entry_callptr, _bp_entry_end
 
+	.macro pushDW value
+	.byte 0x68
+	.int \value
+	.endm
+
 _bp_entry:
 	pusha
 	pushf
 	cld
-	/* TODO: Make these push a dword value of 0. Even "pushl $0" with AT&T syntax switches to the byte encoding instead of dword. */
 _bp_entry_indexptr:
-	push	0xDEADBEEF
+	pushDW	0x00000000
 _bp_entry_localptr:
-	push	0xDEADBEEF
+	pushDW	0x00000000
 _bp_entry_callptr:
 	call	_breakpoint_process
 	lea		esp, [esp+eax+0x8]
