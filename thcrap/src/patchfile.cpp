@@ -798,7 +798,7 @@ void patch_opts_from_json(json_t *opts) {
 						break;
 					case 80:
 						entry.type = PVT_LONGDOUBLE;
-						entry.ld = dtold(value);
+						entry.ld = /*(LongDouble80)*/value;
 						break;
 					default:
 						log_printf("ERROR: invalid float type %s for option %s\n", tname, key);

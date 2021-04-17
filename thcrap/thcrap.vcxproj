@@ -40,7 +40,6 @@
     <ClCompile Include="src\expression.cpp" />
     <ClCompile Include="src\fonts_charset.cpp" />
     <ClCompile Include="src\jsondata.cpp" />
-    <ClCompile Include="src\long_double.cpp" />
     <ClCompile Include="src\mempatch.cpp" />
     <ClCompile Include="src\binhack.cpp" />
     <ClCompile Include="src\bp_file.cpp" />

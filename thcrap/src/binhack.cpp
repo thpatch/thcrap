@@ -154,7 +154,7 @@ static __declspec(noinline) const char* consume_float_value(const char *const ex
 			return expr_next + 1;
 		case 'l':
 			val->type = PVT_LONGDOUBLE;
-			val->ld = dtold(result);
+			val->ld = /*(LongDouble80)*/result;
 			return expr_next + 1;
 	}
 }
@@ -409,7 +409,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 							val.d = (double)val.i;
 							break;
 						case PVT_LONGDOUBLE:
-							val.ld = ultold(val.i);
+							val.ld = /*(LongDouble80)*/val.i;
 							break;
 					}
 					break;

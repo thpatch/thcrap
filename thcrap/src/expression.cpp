@@ -1405,7 +1405,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 						case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
 						case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
 						case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
-						case PVT_LONGDOUBLE: *out = (uint32_t)ldtol(*(LongDouble80*)*out); break;
+						case PVT_LONGDOUBLE: *out = (uint32_t)*(LongDouble80*)*out; break;
 					}
 				}
 				return PostfixCheck(expr_next);
@@ -1467,7 +1467,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 							case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
 							case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
 							case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
-							case PVT_LONGDOUBLE: *out = (uint32_t)ldtol(*(LongDouble80*)*out); break;
+							case PVT_LONGDOUBLE: *out = (uint32_t)*(LongDouble80*)*out; break;
 						}
 					}
 					return PostfixCheck(expr_next);
@@ -1490,7 +1490,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 						case PVT_SQWORD: *out = (uint32_t)cur_value.sq; break;
 						case PVT_FLOAT: *out = (uint32_t)cur_value.f; break;
 						case PVT_DOUBLE: *out = (uint32_t)cur_value.d; break;
-						case PVT_LONGDOUBLE: *out = (uint32_t)ldtol(cur_value.ld); break;
+						case PVT_LONGDOUBLE: *out = (uint32_t)cur_value.ld; break;
 						case PVT_STRING: *out = (uint32_t)cur_value.str.ptr; break;
 						case PVT_WSTRING: *out = (uint32_t)cur_value.wstr.ptr; break;
 						case PVT_CODE: goto InvalidCodeOptionWarning;
