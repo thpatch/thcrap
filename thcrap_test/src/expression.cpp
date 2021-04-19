@@ -287,3 +287,54 @@ TEST(ExpressionTest, ExpressionTesting16B) {
 	}
 	EXPECT_EQ(expr_ret, UINT_MAX);
 }
+
+TEST(LongDoubleBS, LongDoubleTest1) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	EXPECT_EQ((double)LD1, 2.0);
+}
+
+TEST(LongDoubleBS, LongDoubleTest2) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	LD1 = LD1 + 1;
+	EXPECT_EQ((double)LD1, 3.0);
+}
+
+TEST(LongDoubleBS, LongDoubleTest3) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	uint64_t UI641 = LD1 + 100ull;
+	EXPECT_EQ(UI641, 102ull);
+}
+
+TEST(LongDoubleBS, LongDoubleTest5) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	double D1 = 2.0;
+	bool B1 = LD1;
+	bool B2 = D1;
+	EXPECT_EQ(B1, B2);
+}
+
+TEST(LongDoubleBS, LongDoubleTest6) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	LongDouble80 LD2 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFF, 0x3F };
+	bool B1 = LD1 > LD2;
+	EXPECT_EQ(B1, true);
+}
+
+TEST(LongDoubleBS, LongDoubleTest7) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	int I1 = LD1 += 4;
+	I1 << LD1 + 2;
+	EXPECT_EQ(I1, 6);
+}
+
+TEST(LongDoubleBS, LongDoubleTest8) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	bool B1 = LD1 == LD1 + 2;
+	EXPECT_EQ(B1, false);
+}
+
+TEST(LongDoubleBS, LongDoubleTest9) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	LD1 + 4;
+	EXPECT_EQ((double)LD1, 2.0);
+}
