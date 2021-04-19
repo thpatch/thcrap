@@ -331,8 +331,11 @@ size_t binhack_calc_size(const char *binhack_str)
 			case PVT_STRING:
 				size += sizeof(const char*);
 				break;
-			case PVT_WSTRING:
-				size += sizeof(const wchar_t*);
+			case PVT_STRING16:
+				size += sizeof(const char16_t*);
+				break;
+			case PVT_STRING32:
+				size += sizeof(const char32_t*);
 				break;
 			case PVT_CODE:
 				size += val.str.len;
@@ -432,7 +435,8 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 						case PVT_DOUBLE:	val.d = *(double*)val.i; break;
 						case PVT_LONGDOUBLE:val.ld = *(LongDouble80*)val.i; break;
 						case PVT_STRING:
-						case PVT_WSTRING:
+						case PVT_STRING16:
+						case PVT_STRING32:
 						case PVT_CODE:
 							BinhackRenderError();
 					}
@@ -575,11 +579,17 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				binhack_buf += sizeof(const char*);
 				target_addr += sizeof(const char*);
 				break;
-			case PVT_WSTRING:
-				*(const wchar_t**)binhack_buf = val.wstr.ptr;
-				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const wchar_t**)binhack_buf, target_addr);
-				binhack_buf += sizeof(const wchar_t*);
-				target_addr += sizeof(const wchar_t*);
+			case PVT_STRING16:
+				*(const char16_t**)binhack_buf = val.str16.ptr;
+				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const char16_t**)binhack_buf, target_addr);
+				binhack_buf += sizeof(const char16_t*);
+				target_addr += sizeof(const char16_t*);
+				break;
+			case PVT_STRING32:
+				*(const char32_t**)binhack_buf = val.str32.ptr;
+				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const char32_t**)binhack_buf, target_addr);
+				binhack_buf += sizeof(const char32_t*);
+				target_addr += sizeof(const char32_t*);
 				break;
 			case PVT_CODE: {
 				if (binhack_render(binhack_buf, target_addr, val.str.ptr)) {
@@ -713,7 +723,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 
 		switch (json_object_get_eval_int(in, "size", &size_val, JEVAL_STRICT)) {
 			default:
-				log_printf("ERROR: invalid json type for size of codecave %s, must be integer or string\n", name);
+				log_printf("ERROR: invalid json type for size of codecave %s, must be 32-bit integer or string\n", name);
 				return false;
 			case JEVAL_SUCCESS: {
 				if (!size_val) {
@@ -723,7 +733,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				size_t count_val;
 				switch (json_object_get_eval_int(in, "count", &count_val, JEVAL_STRICT)) {
 					default:
-						log_printf("ERROR: invalid json type specified for count of codecave %s, must be integer or string\n", name);
+						log_printf("ERROR: invalid json type specified for count of codecave %s, must be 32-bit integer or string\n", name);
 						return false;
 					case JEVAL_SUCCESS:
 						if (!count_val) {
@@ -790,7 +800,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 
 		switch (json_object_get_eval_int(in, "fill", &fill_val, JEVAL_STRICT)) {
 			default:
-				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be integer or string\n", name);
+				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be 32-bit integer or string\n", name);
 				return false;
 			case JEVAL_SUCCESS:
 			case JEVAL_NULL_PTR:

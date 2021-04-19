@@ -154,18 +154,53 @@ size_t json_string_expression_value(json_t* json);
 
 typedef enum {
 	JEVAL_SUCCESS = 0,
-	JEVAL_NULL_PTR = 1,
+
+	// Json object was null
+	JEVAL_NULL_PTR = 1, 
+
+	// Strict flag was specified and the json
+	// could not be converted to the output type
 	JEVAL_ERROR_STRICT_TYPE_MISMATCH = 2,
-	JEVAL_ERROR_STRING_NO_EXPRS = 3
+
+	// NoExprs flag was specified and the json
+	// contained a string expression
+	JEVAL_ERROR_STRING_NO_EXPRS = 3,
+
+	// Int64RangeErr flag was specified and the
+	// json integer value would not fit in size_t
+	JEVAL_OUT_OF_RANGE = 4 
 } jeval_error_t;
 
 enum {
-	JEVAL_DEFAULT	= 0b00000,
+	// Default flags: JEVAL_LENIENT | JEVAL_USE_EXPRS | JEVAL_INT64_TRUNCATE
+	JEVAL_DEFAULT		= 0b00000,
 
-	JEVAL_LENIENT	= 0b00000,
-	JEVAL_STRICT	= 0b00100,
-	JEVAL_USE_EXPRS	= 0b00000,
-	JEVAL_NO_EXPRS	= 0b01000
+	// Json evaluation will attempt to provide
+	// a return value regardless of json type
+	JEVAL_LENIENT		= 0b00000,
+
+	// Json evaluation will return an error code
+	// when parsing a json type incompatible with
+	// the return type
+	JEVAL_STRICT		= 0b00100,
+
+	// Json evaluation will consider string types
+	// to be valid for returning a numeric value
+	// and parse them as expressions
+	JEVAL_USE_EXPRS		= 0b00000,
+
+	// Json evaluation will return an error code
+	// when parsing a json string type
+	JEVAL_NO_EXPRS		= 0b01000,
+
+	// Json evaluation will truncate large values
+	// when returning a 32-bit integer.
+	JEVAL_INT_TRUNCATE	= 0b00000,
+
+	// Json evaluation will return an error code
+	// when instead of of truncating large values
+	// when returning a 32-bit integer.
+	JEVAL_INT_RANGE_ERR	= 0b10000
 };
 typedef uint8_t jeval_flags_t;
 
@@ -175,12 +210,14 @@ typedef uint8_t jeval_flags_t;
 // modified for any return value except JEVAL_SUCCESS.
 jeval_error_t json_eval_bool(json_t* val, bool* out, jeval_flags_t flags);
 jeval_error_t json_eval_int(json_t* val, size_t* out, jeval_flags_t flags);
+jeval_error_t json_eval_int64(json_t* val, json_int_t* out, jeval_flags_t flags);
 jeval_error_t json_eval_real(json_t* val, double* out, jeval_flags_t flags);
 jeval_error_t json_eval_number(json_t* val, double* out, jeval_flags_t flags);
 
 // Convenience functions for json_eval_type(json_object_get(object, key), out, flags);
 jeval_error_t json_object_get_eval_bool(json_t* object, const char* key, bool* out, jeval_flags_t flags);
 jeval_error_t json_object_get_eval_int(json_t* object, const char* key, size_t* out, jeval_flags_t flags);
+jeval_error_t json_object_get_eval_int64(json_t* object, const char* key, json_int_t* out, jeval_flags_t flags);
 jeval_error_t json_object_get_eval_real(json_t* object, const char* key, double* out, jeval_flags_t flags);
 jeval_error_t json_object_get_eval_number(json_t* object, const char* key, double* out, jeval_flags_t flags);
 
@@ -189,11 +226,13 @@ jeval_error_t json_object_get_eval_number(json_t* object, const char* key, doubl
 // could not be performed.
 bool json_eval_bool_default(json_t* val, bool default_ret, jeval_flags_t flags);
 size_t json_eval_int_default(json_t* val, size_t default_ret, jeval_flags_t flags);
+json_int_t json_eval_int64_default(json_t* val, json_int_t default_ret, jeval_flags_t flags);
 double json_eval_real_default(json_t* val, double default_ret, jeval_flags_t flags);
 double json_eval_number_default(json_t* val, double default_ret, jeval_flags_t flags);
 
 // Convenience functions for json_eval_type_default(json_object_get(object, key), default_ret, flags);
 bool json_object_get_eval_bool_default(json_t* object, const char* key, bool default_ret, jeval_flags_t flags);
 size_t json_object_get_eval_int_default(json_t* object, const char* key, size_t default_ret, jeval_flags_t flags);
+json_int_t json_object_get_eval_int64_default(json_t* object, const char* key, json_int_t default_ret, jeval_flags_t flags);
 double json_object_get_eval_real_default(json_t* object, const char* key, double default_ret, jeval_flags_t flags);
 double json_object_get_eval_number_default(json_t* object, const char* key, double default_ret, jeval_flags_t flags);

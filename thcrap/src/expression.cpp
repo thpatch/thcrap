@@ -1492,7 +1492,8 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 						case PVT_DOUBLE: *out = (uint32_t)cur_value.d; break;
 						case PVT_LONGDOUBLE: *out = (uint32_t)cur_value.ld; break;
 						case PVT_STRING: *out = (uint32_t)cur_value.str.ptr; break;
-						case PVT_WSTRING: *out = (uint32_t)cur_value.wstr.ptr; break;
+						case PVT_STRING16: *out = (uint32_t)cur_value.str16.ptr; break;
+						case PVT_STRING32: *out = (uint32_t)cur_value.str32.ptr; break;
 						case PVT_CODE: goto InvalidCodeOptionWarning;
 					}
 					ExpressionLogging("Parsed patch value is %X / %d / %u\n", *out, *out, *out);
@@ -1766,15 +1767,69 @@ const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_re
 	return expr_next;
 }
 
-patch_val_t __vectorcall patch_val_not(patch_val_t Val) {
+void patch_val_set_op(const char* op_str, patch_val_t* Val) {
+	if (op_str) {
+		op_t op;
+		(void)find_next_op_impl(op_str, &op);
+		switch (op) {
+			case MultiplyAssign:
+			case DivideAssign:
+			case ModuloAssign:
+			case AddAssign:
+			case SubtractAssign:
+			case ArithmeticLeftShiftAssign:
+			case LogicalLeftShiftAssign:
+			case ArithmeticRightShiftAssign:
+			case LogicalRightShiftAssign:
+			case CircularLeftShiftAssign:
+			case CircularRightShiftAssign:
+			case AndAssign:
+			case NandAssign:
+			case XorAssign:
+			case XnorAssign:
+			case OrAssign:
+			case NorAssign:
+				op -= '=';
+				[[fallthrough]];
+			case Multiply:
+			case Divide:
+			case Modulo:
+			case Add:
+			case Subtract:
+			case ArithmeticLeftShift:
+			case LogicalLeftShift:
+			case ArithmeticRightShift:
+			case LogicalRightShift:
+			case CircularLeftShift:
+			case CircularRightShift:
+			case BitwiseAnd:
+			case BitwiseNand:
+			case BitwiseXor:
+			case BitwiseXnor:
+			case BitwiseOr:
+			case BitwiseNor:
+				Val->merge_op = op;
+				return;
+		}
+	}
+	Val->merge_op = Add;
+	return;
+}
+
+patch_val_t patch_val_not(patch_val_t Val) {
 	// It'll be fiiiiiiine, right? (Probably not, but I'll fix it later)
 	Val.q = ~Val.q;
 	return Val;
 }
 
-patch_val_t __vectorcall patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2) {
+patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2) {
 	op_t op;
-	(void)find_next_op_impl(op_str, &op);
+	if (op_str) {
+		(void)find_next_op_impl(op_str, &op);
+	}
+	else {
+		op = Val1.merge_op;
+	}
 	switch (op) {
 		case MultiplyAssign: case Multiply:
 			return patch_val_mul(Val1, Val2);
@@ -1831,7 +1886,7 @@ case PVT_DOUBLE:		ret.d = Val1.d op Val2.d; break; \
 case PVT_LONGDOUBLE:	ret.ld = Val1.ld op Val2.ld; break;
 
 #define MakePatchOpFunc(op_name, op) \
-patch_val_t __vectorcall patch_val_ ## op_name (patch_val_t Val1, patch_val_t Val2) { \
+patch_val_t patch_val_ ## op_name (patch_val_t Val1, patch_val_t Val2) { \
 	patch_val_t ret; \
 	switch (ret.type = Val1.type) { \
 		case PVT_BYTE:			ret.b = Val1.b op Val2.b; break; \
@@ -1864,7 +1919,7 @@ MakePatchOpFunc(and, &);
 MakePatchOpFunc(or, |);
 MakePatchOpFunc(xor, ^);
 
-patch_val_t __vectorcall patch_val_rol(patch_val_t Val1, patch_val_t Val2) {
+patch_val_t patch_val_rol(patch_val_t Val1, patch_val_t Val2) {
 	patch_val_t ret;
 	switch (ret.type = Val1.type) {
 		case PVT_BYTE:			ret.b = Val1.b << Val2.b | Val1.b >> (sizeof(Val1.b) * CHAR_BIT - Val2.b); break;
@@ -1882,7 +1937,7 @@ patch_val_t __vectorcall patch_val_rol(patch_val_t Val1, patch_val_t Val2) {
 	return ret;
 }
 
-patch_val_t __vectorcall patch_val_ror(patch_val_t Val1, patch_val_t Val2) {
+patch_val_t patch_val_ror(patch_val_t Val1, patch_val_t Val2) {
 	patch_val_t ret;
 	switch (ret.type = Val1.type) {
 		case PVT_BYTE:			ret.b = Val1.b >> Val2.b | Val1.b << (sizeof(Val1.b) * CHAR_BIT - Val2.b); break;

@@ -692,28 +692,59 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		patch_val_t entry;
-		switch (tname[0] | 0x20) {
-			case 'w':
-				if (json_is_string(j_val_val)) {
-					const char* opt_str = json_string_value(j_val_val);
-					entry.type = PVT_WSTRING;
-					const size_t length = strlen(opt_str) + 1;
-					wchar_t* wide_str = new wchar_t[length];
-					swprintf(wide_str, length, L"%hs", opt_str);
-					entry.wstr.ptr = wide_str;
-					entry.wstr.len = length;
-				}
-				else {
-					log_printf("ERROR: invalid json type for wide string option %s\n", key);
-					continue;
-				}
-				break;
-			case 's':
-				if (json_is_string(j_val_val)) {
-					const char* opt_str = json_string_value(j_val_val);
-					entry.type = PVT_STRING;
-					entry.str.ptr = strdup(opt_str);
-					entry.str.len = strlen(opt_str) + 1;
+		switch (const uint8_t type_char = tname[0] | 0x20) {
+			case 's': case 'w':
+				if (const char* opt_str = json_string_value(j_val_val)) {
+					const size_t narrow_len = strlen(opt_str) + 1;
+					size_t char_size;
+					if (tname[1] != '\0') char_size = strtol(tname + 1, nullptr, 10);
+					else char_size = (type_char == 's' ? sizeof(char) : sizeof(wchar_t)) * CHAR_BIT;
+					switch (char_size) {
+						case 8:
+							entry.type = PVT_STRING;
+							entry.str.len = narrow_len;
+							entry.str.ptr = strdup(opt_str);
+							break;
+						case 16: {
+							entry.type = PVT_STRING16;
+							entry.str16.len = narrow_len * 2;
+							char16_t* str_16 = new char16_t[narrow_len];
+							const char* opt_str_end = opt_str + narrow_len;
+							size_t c = mbrtoc16(nullptr, nullptr, 0, nullptr);
+							for (char16_t* write_str = str_16; c = mbrtoc16(write_str, opt_str, opt_str_end - opt_str, nullptr); ++write_str) {
+								if (c > 0) opt_str += c;
+								else if (c > -3) break;
+							}
+							if (c != 0) {
+								delete[] str_16;
+								log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
+								continue;
+							}
+							entry.str16.ptr = str_16;
+							break;
+						}
+						case 32: {
+							entry.type = PVT_STRING32;
+							entry.str32.len = narrow_len * 4;
+							char32_t* str_32 = new char32_t[narrow_len];
+							const char* opt_str_end = opt_str + narrow_len;
+							size_t c = mbrtoc32(nullptr, nullptr, 0, nullptr);
+							for (char32_t* write_str = str_32; c = mbrtoc32(write_str, opt_str, opt_str_end - opt_str, nullptr); ++write_str) {
+								if (c > 0) opt_str += c;
+								else if (c > -3) break;
+							}
+							if (c != 0) {
+								delete[] str_32;
+								log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
+								continue;
+							}
+							entry.str32.ptr = str_32;
+							break;
+						}
+						default:
+							log_printf("ERROR: invalid char size %s for string option %s\n", tname + 1, key);
+							continue;
+					}
 				}
 				else {
 					log_printf("ERROR: invalid json type for string option %s\n", key);
@@ -733,8 +764,8 @@ void patch_opts_from_json(json_t *opts) {
 				}
 				break;*/
 			case 'i': {
-				size_t value;
-				json_eval_int(j_val_val, &value, JEVAL_DEFAULT);
+				json_int_t value;
+				json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 8:
 						entry.type = PVT_SBYTE;
@@ -748,19 +779,19 @@ void patch_opts_from_json(json_t *opts) {
 						entry.type = PVT_SDWORD;
 						entry.si = (int32_t)value;
 						break;
-					/*case 64:
+					case 64:
 						entry.type = PVT_SQWORD;
 						entry.sq = (int64_t)value;
-						break;*/
+						break;
 					default:
-						log_printf("ERROR: invalid integer size %s for option %s\n", tname, key);
+						log_printf("ERROR: invalid integer size %s for option %s\n", tname + 1, key);
 						continue;
 				}
 				break;
 			}
 			case 'b': case 'u': {
-				size_t value;
-				json_eval_int(j_val_val, &value, JEVAL_DEFAULT);
+				json_int_t value;
+				json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 8:
 						entry.type = PVT_BYTE;
@@ -774,12 +805,12 @@ void patch_opts_from_json(json_t *opts) {
 						entry.type = PVT_DWORD;
 						entry.i = (uint32_t)value;
 						break;
-					/*case 64:
+					case 64:
 						entry.type = PVT_QWORD;
 						entry.q = (uint64_t)value;
-						break;*/
+						break;
 					default:
-						log_printf("ERROR: invalid integer size %s for option %s\n", tname, key);
+						log_printf("ERROR: invalid integer size %s for option %s\n", tname + 1, key);
 						continue;
 				}
 				break;
@@ -801,35 +832,32 @@ void patch_opts_from_json(json_t *opts) {
 						entry.ld = /*(LongDouble80)*/value;
 						break;
 					default:
-						log_printf("ERROR: invalid float type %s for option %s\n", tname, key);
+						log_printf("ERROR: invalid float size %s for option %s\n", tname + 1, key);
 						continue;
 				}
 				break;
 			}
 		}
-		if (const char* slot = strchr(key, '#')) {
-			if (patch_val_t* existing_opt = patch_opt_get_len(key, PtrDiffStrlen(slot, key))) {
+		const char* op_str = json_object_get_string(j_val, "op");
+		patch_val_set_op(op_str, &entry);
+		if (const char* slot = strchr(key, '#'); slot && slot[1] != '\0') {
+			const size_t key_len = PtrDiffStrlen(slot, key);
+			if (patch_val_t* existing_opt = patch_opt_get_len(key, key_len)) {
 				if (existing_opt->type == entry.type) {
-					patch_val_t result;
-					if (const char* op_str = json_object_get_string(j_val, "op")) {
-						result = patch_val_op_str(op_str, *existing_opt, entry);
-					}
-					else {
-						result = patch_val_add(*existing_opt, entry);
-					}
+					patch_val_t result = patch_val_op_str(op_str, *existing_opt, entry);
 					if (result.type != PVT_NONE) {
 						*existing_opt = result;
 					}
 					else {
-						// Future error
+						log_printf("ERROR: invalid operation for option type, values not merged\n");
 					}
 				}
 				else {
-					// Future error
+					log_printf("ERROR: invalid option types do not match, values not merged\n");
 				}
 			}
 			else {
-				patch_options[strndup(key, PtrDiffStrlen(slot, key))] = entry;
+				patch_options[strndup(key, key_len)] = entry;
 			}
 		}
 		patch_options[strdup(key)] = entry;

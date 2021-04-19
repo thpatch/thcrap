@@ -8,6 +8,7 @@
   */
 
 #pragma once
+#include <uchar.h>
 
 // Register structure in PUSHAD+PUSHFD order at the beginning of a function
 typedef struct {
@@ -82,7 +83,9 @@ enum {
 	PVT_DOUBLE,
 	PVT_LONGDOUBLE,
 	PVT_STRING,
-	PVT_WSTRING,
+	PVT_STRING8 = PVT_STRING,
+	PVT_STRING16,
+	PVT_STRING32,
 	PVT_CODE,
 	PVT_ADDRRET
 };
@@ -98,6 +101,8 @@ typedef union {
 	struct {
 		unsigned char raw_bytes[12];
 		patch_value_type_t type;
+		uint8_t merge_op; // Op values not exposed outside expression.cpp
+		// Room for 2 more bytes of flags or other data
 	};
 
 	uint8_t b;
@@ -117,9 +122,13 @@ typedef union {
 		size_t len;
 	} str;
 	struct {
-		const wchar_t* ptr;
+		const char16_t* ptr;
 		size_t len;
-	} wstr;
+	} str16;
+	struct {
+		const char32_t* ptr;
+		size_t len;
+	} str32;
 
 	// Note: This isn't *really* supposed to be a part
 	// of this union, but consume_value was struggling
@@ -148,17 +157,19 @@ const char* parse_brackets(const char* str, char c);
 // [rel_source] is the address used when computing a relative value.
 const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);
 
-patch_val_t __vectorcall patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2);
+void patch_val_set_op(const char* op_str, patch_val_t* Val);
 
-patch_val_t __vectorcall patch_val_add(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_sub(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_mul(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_div(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_mod(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_shl(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_shr(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_rol(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_ror(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_and(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_or(patch_val_t Val1, patch_val_t Val2);
-patch_val_t __vectorcall patch_val_xor(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2);
+
+patch_val_t patch_val_add(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_sub(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_mul(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_div(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_mod(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_shl(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_shr(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_rol(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_ror(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_and(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_or(patch_val_t Val1, patch_val_t Val2);
+patch_val_t patch_val_xor(patch_val_t Val1, patch_val_t Val2);

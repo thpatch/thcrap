@@ -378,17 +378,21 @@ size_t json_string_expression_value(json_t* json) {
 }
 
 enum : uint8_t {
-	JEVAL_TYPE_MASK	= 0b0011,
-	JEVAL_BOOL		= 0b0000,
-	JEVAL_INTEGER	= 0b0001,
-	JEVAL_REAL		= 0b0010,
-	JEVAL_NUMBER	= 0b0011,
+  //JEVAL_DEFAULT		= 0b00000,
 
-	JEVAL_MODE_MASK	= 0b1100,
-	//JEVAL_LENIENT	= 0b0000,
-	//JEVAL_STRICT	= 0b0100,
-	//JEVAL_USE_EXPRS	= 0b0000,
-	//JEVAL_NO_EXPRS	= 0b1000
+	JEVAL_TYPE_MASK		= 0b00011,
+	JEVAL_BOOL			= 0b00000,
+	JEVAL_INTEGER		= 0b00001,
+	JEVAL_REAL			= 0b00010,
+	JEVAL_NUMBER		= 0b00011,
+
+	JEVAL_MODE_MASK		= 0b11100,
+  //JEVAL_LENIENT		= 0b00000,
+  //JEVAL_STRICT		= 0b00100,
+  //JEVAL_USE_EXPRS		= 0b00000,
+  //JEVAL_NO_EXPRS		= 0b01000,
+  //JEVAL_INT_TRUNCATE	= 0b00000,
+  //JEVAL_INT_RANGE_ERR	= 0b10000
 };
 
 // TODO: Would it be beneficial to convert to a
@@ -400,7 +404,7 @@ static inline jeval_error_t json_evaluate(json_t* json, uint8_t eval_config, voi
 	const bool strict = eval_config & JEVAL_STRICT;
 
 #define SetOutValues(bool_val, int_val, real_val) \
-eval_type == JEVAL_INTEGER ? *(size_t*)out = int_val : \
+eval_type == JEVAL_INTEGER ? *(json_int_t*)out = int_val : \
 eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
 *(double*)out = real_val;
 
@@ -421,21 +425,21 @@ eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
 		}
 		case JSON_INTEGER: {
 			if (strict & !((eval_type == JEVAL_INTEGER) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
-			const size_t int_value = (size_t)json_integer_value(json);
+			const json_int_t int_value = json_integer_value(json);
 			SetOutValues((bool)int_value, int_value, (double)int_value);
 			return JEVAL_SUCCESS;
 		}
 		case JSON_REAL: {
 			if (strict & !((eval_type == JEVAL_REAL) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
 			const double real_value = json_real_value(json);
-			SetOutValues((bool)real_value, (size_t)real_value, real_value);
+			SetOutValues((bool)real_value, (json_int_t)real_value, real_value);
 			return JEVAL_SUCCESS;
 		}
 		case JSON_STRING: {
 			if (!(eval_config & JEVAL_NO_EXPRS)); else return JEVAL_ERROR_STRING_NO_EXPRS;
 			if (strict & (eval_type == JEVAL_REAL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
 			const size_t expr_value = json_string_expression_value(json);
-			SetOutValues((bool)expr_value, expr_value, (double)expr_value);
+			SetOutValues((bool)expr_value, (json_int_t)expr_value, (double)expr_value);
 			return JEVAL_SUCCESS;
 		}
 	}
@@ -449,6 +453,20 @@ eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
 }
 
 [[nodiscard]] jeval_error_t json_eval_int(json_t* val, size_t* out, jeval_flags_t flags) {
+	json_int_t temp;
+	jeval_error_t ret = json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), &temp);
+	if (ret == JEVAL_SUCCESS) {
+		if ((flags & JEVAL_INT_RANGE_ERR) && temp > SIZE_MAX) {
+			ret = JEVAL_OUT_OF_RANGE;
+		}
+		else {
+			*out = (size_t)temp;
+		}
+	}
+	return ret;
+}
+
+[[nodiscard]] jeval_error_t json_eval_int64(json_t* val, json_int_t* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), out);
 }
 
@@ -469,6 +487,10 @@ eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
 	return json_eval_int(json_object_get(object, key), out, flags);
 }
 
+[[nodiscard]] jeval_error_t json_object_get_eval_int64(json_t* object, const char* key, json_int_t* out, jeval_flags_t flags) {
+	return json_eval_int64(json_object_get(object, key), out, flags);
+}
+
 [[nodiscard]] jeval_error_t json_object_get_eval_real(json_t* object, const char* key, double* out, jeval_flags_t flags) {
 	return json_eval_real(json_object_get(object, key), out, flags);
 }
@@ -487,6 +509,12 @@ bool json_eval_bool_default(json_t* val, bool default_ret, jeval_flags_t flags) 
 size_t json_eval_int_default(json_t* val, size_t default_ret, jeval_flags_t flags) {
 	size_t ret = default_ret;
 	(void)json_eval_int(val, &ret, flags);
+	return ret;
+}
+
+json_int_t json_eval_int64_default(json_t* val, json_int_t default_ret, jeval_flags_t flags) {
+	json_int_t ret = default_ret;
+	(void)json_eval_int64(val, &ret, flags);
 	return ret;
 }
 
@@ -512,6 +540,12 @@ bool json_object_get_eval_bool_default(json_t* object, const char* key, bool def
 size_t json_object_get_eval_int_default(json_t* object, const char* key, size_t default_ret, jeval_flags_t flags) {
 	size_t ret = default_ret;
 	(void)json_eval_int(json_object_get(object, key), &ret, flags);
+	return ret;
+}
+
+json_int_t json_object_get_eval_int64_default(json_t* object, const char* key, json_int_t default_ret, jeval_flags_t flags) {
+	json_int_t ret = default_ret;
+	(void)json_eval_int64(json_object_get(object, key), &ret, flags);
 	return ret;
 }
 
