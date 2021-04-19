@@ -1765,3 +1765,137 @@ const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_re
 	}
 	return expr_next;
 }
+
+patch_val_t __vectorcall patch_val_not(patch_val_t Val) {
+	// It'll be fiiiiiiine, right? (Probably not, but I'll fix it later)
+	Val.q = ~Val.q;
+	return Val;
+}
+
+patch_val_t __vectorcall patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2) {
+	op_t op;
+	(void)find_next_op_impl(op_str, &op);
+	switch (op) {
+		case MultiplyAssign: case Multiply:
+			return patch_val_mul(Val1, Val2);
+		case DivideAssign: case Divide:
+			return patch_val_div(Val1, Val2);
+		case ModuloAssign: case Modulo:
+			return patch_val_mod(Val1, Val2);
+		case AddAssign: case Add:
+			return patch_val_add(Val1, Val2);
+		case SubtractAssign: case Subtract:
+			return patch_val_sub(Val1, Val2);
+		case ArithmeticLeftShiftAssign: case ArithmeticLeftShift:
+		case LogicalLeftShiftAssign: case LogicalLeftShift:
+			return patch_val_shr(Val1, Val2);
+		case ArithmeticRightShiftAssign: case ArithmeticRightShift:
+		case LogicalRightShiftAssign: case LogicalRightShift:
+			return patch_val_shl(Val1, Val2);
+		case CircularLeftShiftAssign: case CircularLeftShift:
+			return patch_val_rol(Val1, Val2);
+		case CircularRightShiftAssign: case CircularRightShift:
+			return patch_val_ror(Val1, Val2);
+		case AndAssign: case BitwiseAnd:
+			return patch_val_and(Val1, Val2);
+		case NandAssign: case BitwiseNand:
+			return patch_val_not(patch_val_and(Val1, Val2));
+		case XorAssign: case BitwiseXor:
+			return patch_val_xor(Val1, Val2);
+		case XnorAssign: case BitwiseXnor:
+			return patch_val_not(patch_val_xor(Val1, Val2));
+		case OrAssign: case BitwiseOr:
+			return patch_val_or(Val1, Val2);
+		case NorAssign: case BitwiseNor:
+			return patch_val_not(patch_val_or(Val1, Val2));
+		case ThreeWay: case Less: case LessEqual: case Greater: case GreaterEqual: case Equal: case NotEqual: case LogicalAnd: case LogicalNand: case LogicalXor: case LogicalXnor: case LogicalOr: case LogicalNor:
+			log_printf("Options cannot use logical or comparison operators!\n");
+			break;
+		case Assign:
+			log_printf("Options cannot use assignment!\n");
+			break;
+		case Comma: case Gomma:
+			log_printf("but why tho\n");
+			break;
+	}
+	{
+		patch_val_t bad_ret;
+		bad_ret.type = PVT_NONE;
+		return bad_ret;
+	}
+}
+
+#define PatchOpFloatVals(op) \
+case PVT_FLOAT:			ret.f = Val1.f op Val2.f; break; \
+case PVT_DOUBLE:		ret.d = Val1.d op Val2.d; break; \
+case PVT_LONGDOUBLE:	ret.ld = Val1.ld op Val2.ld; break;
+
+#define MakePatchOpFunc(op_name, op) \
+patch_val_t __vectorcall patch_val_ ## op_name (patch_val_t Val1, patch_val_t Val2) { \
+	patch_val_t ret; \
+	switch (ret.type = Val1.type) { \
+		case PVT_BYTE:			ret.b = Val1.b op Val2.b; break; \
+		case PVT_SBYTE:			ret.sb = Val1.sb op Val2.sb; break; \
+		case PVT_WORD:			ret.w = Val1.w op Val2.w; break; \
+		case PVT_SWORD:			ret.sw = Val1.sw op Val2.sw; break; \
+		case PVT_DWORD:			ret.i = Val1.i op Val2.i; break; \
+		case PVT_SDWORD:		ret.si = Val1.si op Val2.si; break; \
+		case PVT_QWORD:			ret.q = Val1.q op Val2.q; break; \
+		case PVT_SQWORD:		ret.sq = Val1.sq op Val2.sq; break; \
+		PatchOpFloatVals(op) \
+		default: \
+			ret.type = PVT_NONE; \
+	} \
+	return ret; \
+}
+
+MakePatchOpFunc(add, +);
+MakePatchOpFunc(sub, -);
+MakePatchOpFunc(mul, *);
+MakePatchOpFunc(div, /);
+
+#undef PatchOpFloatVals
+#define PatchOpFloatVals(op)
+
+MakePatchOpFunc(mod, %);
+MakePatchOpFunc(shl, <<);
+MakePatchOpFunc(shr, >>);
+MakePatchOpFunc(and, &);
+MakePatchOpFunc(or, |);
+MakePatchOpFunc(xor, ^);
+
+patch_val_t __vectorcall patch_val_rol(patch_val_t Val1, patch_val_t Val2) {
+	patch_val_t ret;
+	switch (ret.type = Val1.type) {
+		case PVT_BYTE:			ret.b = Val1.b << Val2.b | Val1.b >> (sizeof(Val1.b) * CHAR_BIT - Val2.b); break;
+		case PVT_SBYTE:			ret.sb = Val1.sb << Val2.sb | Val1.sb >> (sizeof(Val1.sb) * CHAR_BIT - Val2.sb); break;
+		case PVT_WORD:			ret.w = Val1.w << Val2.w | Val1.w >> (sizeof(Val1.w) * CHAR_BIT - Val2.w); break;
+		case PVT_SWORD:			ret.sw = Val1.sw << Val2.sw | Val1.sw >> (sizeof(Val1.sw) * CHAR_BIT - Val2.sw); break;
+		case PVT_DWORD:			ret.i = Val1.i << Val2.i | Val1.i >> (sizeof(Val1.i) * CHAR_BIT - Val2.i); break;
+		case PVT_SDWORD:		ret.si = Val1.si << Val2.si | Val1.si >> (sizeof(Val1.si) * CHAR_BIT - Val2.si); break;
+		case PVT_QWORD:			ret.q = Val1.q << Val2.q | Val1.q >> (sizeof(Val1.q) * CHAR_BIT - Val2.q); break;
+		case PVT_SQWORD:		ret.sq = Val1.sq << Val2.sq | Val1.sq >> (sizeof(Val1.sq) * CHAR_BIT - Val2.sq); break;
+		PatchOpFloatVals(op)
+		default:
+			ret.type = PVT_NONE;
+	}
+	return ret;
+}
+
+patch_val_t __vectorcall patch_val_ror(patch_val_t Val1, patch_val_t Val2) {
+	patch_val_t ret;
+	switch (ret.type = Val1.type) {
+		case PVT_BYTE:			ret.b = Val1.b >> Val2.b | Val1.b << (sizeof(Val1.b) * CHAR_BIT - Val2.b); break;
+		case PVT_SBYTE:			ret.sb = Val1.sb >> Val2.sb | Val1.sb << (sizeof(Val1.sb) * CHAR_BIT - Val2.sb); break;
+		case PVT_WORD:			ret.w = Val1.w >> Val2.w | Val1.w << (sizeof(Val1.w) * CHAR_BIT - Val2.w); break;
+		case PVT_SWORD:			ret.sw = Val1.sw >> Val2.sw | Val1.sw << (sizeof(Val1.sw) * CHAR_BIT - Val2.sw); break;
+		case PVT_DWORD:			ret.i = Val1.i >> Val2.i | Val1.i << (sizeof(Val1.i) * CHAR_BIT - Val2.i); break;
+		case PVT_SDWORD:		ret.si = Val1.si >> Val2.si | Val1.si << (sizeof(Val1.si) * CHAR_BIT - Val2.si); break;
+		case PVT_QWORD:			ret.q = Val1.q >> Val2.q | Val1.q << (sizeof(Val1.q) * CHAR_BIT - Val2.q); break;
+		case PVT_SQWORD:		ret.sq = Val1.sq >> Val2.sq | Val1.sq << (sizeof(Val1.sq) * CHAR_BIT - Val2.sq); break;
+			PatchOpFloatVals(op)
+		default:
+			ret.type = PVT_NONE;
+	}
+	return ret;
+}

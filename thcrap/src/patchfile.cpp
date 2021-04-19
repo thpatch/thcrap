@@ -807,6 +807,31 @@ void patch_opts_from_json(json_t *opts) {
 				break;
 			}
 		}
+		if (const char* slot = strchr(key, '#')) {
+			if (patch_val_t* existing_opt = patch_opt_get_len(key, PtrDiffStrlen(slot, key))) {
+				if (existing_opt->type == entry.type) {
+					patch_val_t result;
+					if (const char* op_str = json_object_get_string(j_val, "op")) {
+						result = patch_val_op_str(op_str, *existing_opt, entry);
+					}
+					else {
+						result = patch_val_add(*existing_opt, entry);
+					}
+					if (result.type != PVT_NONE) {
+						*existing_opt = result;
+					}
+					else {
+						// Future error
+					}
+				}
+				else {
+					// Future error
+				}
+			}
+			else {
+				patch_options[strndup(key, PtrDiffStrlen(slot, key))] = entry;
+			}
+		}
 		patch_options[strdup(key)] = entry;
 	}
 }

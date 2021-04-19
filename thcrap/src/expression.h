@@ -147,3 +147,18 @@ const char* parse_brackets(const char* str, char c);
 // [regs] is either the current register structure if called from a breakpoint or null.
 // [rel_source] is the address used when computing a relative value.
 const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);
+
+patch_val_t __vectorcall patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2);
+
+patch_val_t __vectorcall patch_val_add(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_sub(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_mul(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_div(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_mod(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_shl(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_shr(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_rol(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_ror(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_and(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_or(patch_val_t Val1, patch_val_t Val2);
+patch_val_t __vectorcall patch_val_xor(patch_val_t Val1, patch_val_t Val2);
