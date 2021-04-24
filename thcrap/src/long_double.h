@@ -306,7 +306,6 @@ extern "C++" {
 		__forceinline operator T() {
 			LoadToX87(*this);
 			T ret = StoreFromX87<T>();
-			__asm FSTP ST(0);
 			return ret;
 		}
 
