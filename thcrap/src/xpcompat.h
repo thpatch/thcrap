@@ -12,7 +12,7 @@
 
 /// Slim Reader/Writer Locks
 /// ------------------------
-typedef void __stdcall srwlock_func_t(PSRWLOCK SRWLock);
+typedef void TH_STDCALL srwlock_func_t(PSRWLOCK SRWLock);
 
 #define AcquireSRWLockExclusive srwlock_funcs[0]
 #define ReleaseSRWLockExclusive srwlock_funcs[1]
@@ -55,7 +55,7 @@ THCRAP_API extern srwlock_func_t *srwlock_funcs[4];
 		return (type *)tlsstruct_get(name.slot, sizeof(type), (tlsstruct_ctor_t *)ctor); \
 	} \
 	\
-	extern "C" __declspec(dllexport) void name##_mod_thread_exit(void) \
+	extern "C" TH_EXPORT void name##_mod_thread_exit(void) \
 	{ \
 		tlsstruct_free(name.slot, (tlsstruct_dtor_t *)dtor); \
 	}

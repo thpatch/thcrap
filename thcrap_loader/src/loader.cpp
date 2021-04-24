@@ -45,7 +45,7 @@ const char* game_lookup(const json_t *games_js, const char *game, const char *ba
 
 #include <win32_utf8/entry_winmain.c>
 
-int __cdecl win32_utf8_main(int argc, const char *argv[])
+int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 {
 	size_t rel_start_len = GetCurrentDirectoryU(0, NULL);
 	VLA(char, rel_start, (rel_start_len + 1));

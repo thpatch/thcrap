@@ -738,13 +738,13 @@ bool tlnote_frame(d3d_version_t ver, IDirect3DDevice *d3dd)
 	return true;
 }
 
-HRESULT __stdcall tlnote_d3dd8_EndScene(IDirect3DDevice *that)
+HRESULT TH_STDCALL tlnote_d3dd8_EndScene(IDirect3DDevice *that)
 {
 	tlnote_frame(D3D8, that);
 	return chain_d3dd8_EndScene(that);
 }
 
-HRESULT __stdcall tlnote_d3dd9_EndScene(IDirect3DDevice *that)
+HRESULT TH_STDCALL tlnote_d3dd9_EndScene(IDirect3DDevice *that)
 {
 	tlnote_frame(D3D9, that);
 	return chain_d3dd9_EndScene(that);
@@ -850,7 +850,7 @@ THCRAP_API tlnote_encoded_index_t tlnote_removal_index()
 
 /// Module functions
 /// ----------------
-extern "C" __declspec(dllexport) void tlnote_mod_detour(void)
+extern "C" TH_EXPORT void tlnote_mod_detour(void)
 {
 	vtable_detour_t d3d8[] = {
 		{ 35, (void*)tlnote_d3dd8_EndScene, (void**)&chain_d3dd8_EndScene },

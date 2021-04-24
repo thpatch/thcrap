@@ -11,10 +11,12 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#include "compiler_support.h"
+
 #ifdef THCRAP_EXPORTS
-# define THCRAP_API __declspec(dllexport)
+# define THCRAP_API TH_EXPORT
 #else
-# define THCRAP_API __declspec(dllimport)
+# define THCRAP_API TH_IMPORT
 #endif
 
 #ifdef __cplusplus

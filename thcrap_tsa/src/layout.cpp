@@ -605,7 +605,7 @@ size_t GetTextExtentBase(HDC hdc, const json_t *str_obj)
 	return size.cx;
 }
 
-size_t __stdcall text_extent_full(const char *str)
+size_t TH_STDCALL text_extent_full(const char *str)
 {
 	layout_state_t lay = { text_dc };
 	STRLEN_DEC(str);
@@ -614,7 +614,7 @@ size_t __stdcall text_extent_full(const char *str)
 	return lay.cur_x;
 }
 
-size_t __stdcall text_extent_full_for_font(const char *str, HFONT font)
+size_t TH_STDCALL text_extent_full_for_font(const char *str, HFONT font)
 {
 	// TH08 doesn't create the DC prior to the first binhacked call of this.
 	auto dc = layout_CreateCompatibleDC(nullptr);
@@ -624,17 +624,17 @@ size_t __stdcall text_extent_full_for_font(const char *str, HFONT font)
 	return ret;
 }
 
-size_t __stdcall GetTextExtent(const char *str)
+size_t TH_STDCALL GetTextExtent(const char *str)
 {
 	return text_extent_full(str) / 2;
 }
 
-size_t __stdcall GetTextExtentForFont(const char *str, HFONT font)
+size_t TH_STDCALL GetTextExtentForFont(const char *str, HFONT font)
 {
 	return text_extent_full_for_font(str, font) / 2;
 }
 
-size_t __stdcall GetTextExtentForFontID(const char *str, size_t id)
+size_t TH_STDCALL GetTextExtentForFontID(const char *str, size_t id)
 {
 	auto font = font_block_get(id);
 	return GetTextExtentForFont(str, font.unwrap_or(nullptr));

@@ -9,6 +9,9 @@
 
 #pragma once
 
+#define TH_CALLER_FREE TH_NODISCARD_REASON("Return value must be freed by caller!")
+#define TH_CHECK_RET TH_NODISCARD_REASON("Return value must be checked to determine validity of other outputs!")
+
 /// Pointers
 /// --------
 #define AlignUpToMultipleOf(val, mul) ((val) - ((val) % (mul)) + (mul))
@@ -106,7 +109,7 @@ void str_hexdate_format(char format[11], uint32_t date);
 /// -------
 
 // Custom strndup variant that returns (size + 1) bytes.
-inline char* strdup_size(const char* src, size_t size) {
+inline TH_CALLER_FREE char* strdup_size(const char* src, size_t size) {
 	char* ret = (char*)malloc(size + 1);
 	if (!ret) return NULL;
 	// strncpy will 0 pad
@@ -118,13 +121,13 @@ inline char* strdup_size(const char* src, size_t size) {
 
 // C23 compliant implementation of strndup
 // Allocates a buffer of (strnlen(s, size) + 1) bytes.
-inline char* strndup(const char* src, size_t size) {
+inline TH_CALLER_FREE char* strndup(const char* src, size_t size) {
 	return strdup_size(src, strnlen(src, size));
 }
 
 #ifdef __cplusplus
 // Custom strdup variant that efficiently concatenates two strings.
-inline char* strdup_cat(std::string_view str1, std::string_view str2) {
+inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view str2) {
 	char* ret = (char*)malloc(str1.length() + str2.length() + 1);
 	ret[str1.length() + str2.length()] = '\0';
 	str2.copy(ret + str1.copy(ret, str1.length()), str2.length());

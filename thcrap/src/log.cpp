@@ -368,7 +368,7 @@ void log_init(int console)
 			full_fn, strerror(errno), PROJECT_NAME_SHORT
 		);
 		if(ret == IDCANCEL) {
-			auto pExitProcess = ((void (__stdcall*)(UINT))detour_top(
+			auto pExitProcess = ((void (TH_STDCALL*)(UINT))detour_top(
 				"kernel32.dll", "ExitProcess", (FARPROC)thcrap_ExitProcess
 			));
 			pExitProcess(-1);

@@ -17,7 +17,7 @@
 #else
 // Using __noop makes the compiler check the validity of
 // the macro contents without actually compiling them.
-#define ExpressionLogging(...) __noop(__VA_ARGS__)
+#define ExpressionLogging(...) TH_EVAL_NOOP(__VA_ARGS__)
 #endif
 
 enum ManufacturerID : int8_t {
@@ -178,15 +178,15 @@ static const CPUID_Data_t CPUID_Data;
 	}\
 } while (0)
 
-static __declspec(noinline) void IncDecWarningMessage(void) {
+static TH_NOINLINE void IncDecWarningMessage(void) {
 	WarnOnce(log_print("EXPRESSION WARNING 0: Prefix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators only function to add one to a value, but do not actually modify it.\n"));
 }
 
-static __declspec(noinline) void AssignmentWarningMessage(void) {
+static TH_NOINLINE void AssignmentWarningMessage(void) {
 	WarnOnce(log_print("EXPRESSION WARNING 1: Assignment operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators are only included for future compatibility and operator precedence reasons.\n"));
 }
 
-static __declspec(noinline) void PatchValueWarningMessage(const char *const name) {
+static TH_NOINLINE void PatchValueWarningMessage(const char *const name) {
 	log_printf("EXPRESSION WARNING 2: Unknown patch value type \"%s\", using value 0\n", name);
 }
 
@@ -197,49 +197,49 @@ static bool DisableCodecaveNotFound = false;
 void DisableCodecaveNotFoundWarning(bool state) {
 	DisableCodecaveNotFound = state;
 }
-static __declspec(noinline) void CodecaveNotFoundWarningMessage(const char *const name, size_t name_length) {
+static TH_NOINLINE void CodecaveNotFoundWarningMessage(const char *const name, size_t name_length) {
 	if (!DisableCodecaveNotFound) {
 		log_printf("EXPRESSION WARNING 3: Codecave \"%.*s\" not found! Returning NULL...\n", name_length, name);
 	}
 }
 
-static __declspec(noinline) void PostIncDecWarningMessage(void) {
+static TH_NOINLINE void PostIncDecWarningMessage(void) {
 	WarnOnce(log_print("EXPRESSION WARNING 4: Postfix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators do nothing and are only included for future compatibility and operator precedence reasons.\n"));
 }
 
-static __declspec(noinline) void InvalidCPUFeatureWarningMessage(const char* name, size_t name_length) {
+static TH_NOINLINE void InvalidCPUFeatureWarningMessage(const char* name, size_t name_length) {
 	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%.*s\"! Assuming feature is present and returning 1...\n", name_length, name);
 }
 
-static __declspec(noinline) void InvalidCodeOptionWarningMessage(void) {
+static TH_NOINLINE void InvalidCodeOptionWarningMessage(void) {
 	log_print("EXPRESSION WARNING 6: Code options are not valid in expressions! Returning NULL...\n");
 }
 
-static __declspec(noinline) void NullDerefWarningMessage(void) {
+static TH_NOINLINE void NullDerefWarningMessage(void) {
 	log_print("EXPRESSION WARNING 7: Attempted to dereference NULL value! Returning NULL...\n");
 }
 
-static __declspec(noinline) void ExpressionErrorMessage(void) {
+static TH_NOINLINE void ExpressionErrorMessage(void) {
 	log_print("EXPRESSION ERROR: Error parsing expression!\n");
 }
 
-static __declspec(noinline) void GroupingBracketErrorMessage(void) {
+static TH_NOINLINE void GroupingBracketErrorMessage(void) {
 	log_print("EXPRESSION ERROR 0: Unmatched grouping brackets\n");
 }
 
-static __declspec(noinline) void ValueBracketErrorMessage(void) {
+static TH_NOINLINE void ValueBracketErrorMessage(void) {
 	log_print("EXPRESSION ERROR 1: Unmatched patch value brackets\n");
 }
 
-static __declspec(noinline) void BadCharacterErrorMessage(void) {
+static TH_NOINLINE void BadCharacterErrorMessage(void) {
 	log_print("EXPRESSION ERROR 2: Unknown character\n");
 }
 
-static __declspec(noinline) void OptionNotFoundErrorMessage(const char* name, size_t name_length) {
+static TH_NOINLINE void OptionNotFoundErrorMessage(const char* name, size_t name_length) {
 	log_printf("EXPRESSION ERROR 3: Option \"%.*s\" not found\n", name_length, name);
 }
 
-static __declspec(noinline) void InvalidValueErrorMessage(const char *const str) {
+static TH_NOINLINE void InvalidValueErrorMessage(const char *const str) {
 	log_printf("EXPRESSION ERROR 4: Invalid value \"%s\"\n", str);
 }
 
@@ -484,7 +484,7 @@ const char* parse_brackets(const char* str, char c) {
 	return NULL;
 }
 
-static __declspec(noinline) const char* find_next_op_impl(const char *const expr, op_t *const out) {
+static TH_NOINLINE const char* TH_FASTCALL find_next_op_impl(const char *const expr, op_t *const out) {
 	uint8_t c;
 	const char* expr_ref = expr - 1;
 	while (1) {
@@ -646,7 +646,7 @@ CTimes2PlusEqualRetPlus3:
 }
 
 // Returns a string containing a textual representation of the operator
-static inline const char *const PrintOp(const op_t op) {
+static TH_NOINLINE const char *const PrintOp(const op_t op) {
 	switch (op) {
 		case StartNoOp: return "StartNoOp";
 		case Power: return "**";
@@ -722,7 +722,7 @@ enum : int8_t {
 	HigherThanPrev = -1
 };
 
-static inline size_t __fastcall ApplyPower(size_t value, size_t arg) {
+static inline size_t TH_FASTCALL ApplyPower(size_t value, size_t arg) {
 	if (arg == 0) return 1;
 	size_t result = 1;
 	switch (unsigned long power; _BitScanReverse(&power, arg), power) {
@@ -877,7 +877,7 @@ static size_t ApplyOperator(const size_t value, const size_t arg, const op_t op)
 	}
 }
 
-static __declspec(noinline) const patch_val_t* GetOptionValue(const char* name, size_t name_length) {
+static TH_NOINLINE const patch_val_t* GetOptionValue(const char* name, size_t name_length) {
 	ExpressionLogging("Option: \"%.*s\"\n", name_length, name);
 	const patch_val_t* const option = patch_opt_get_len(name, name_length);
 	if (!option) {
@@ -886,13 +886,13 @@ static __declspec(noinline) const patch_val_t* GetOptionValue(const char* name, 
 	return option;
 }
 
-static __declspec(noinline) const patch_val_t* GetPatchTestValue(const char* name, size_t name_length) {
+static TH_NOINLINE const patch_val_t* GetPatchTestValue(const char* name, size_t name_length) {
 	ExpressionLogging("PatchTest: \"%.*s\"\n", name_length, name);
 	const patch_val_t* const patch_test = patch_opt_get_len(name, name_length);
 	return patch_test;
 }
 
-static __declspec(noinline) bool GetCPUFeatureTest(const char* name, size_t name_length) {
+static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) {
 	ExpressionLogging("CPUFeatureTest: \"%.*s\"\n", name_length, name);
 	bool ret = false;
 	// Yuck
@@ -989,7 +989,7 @@ InvalidCPUFeatureError:
 	return ret;
 }
 
-static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
+static TH_NOINLINE size_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
 	ExpressionLogging("CodecaveAddress: \"%.*s\"\n", name_length, name);
 
 	const char* user_offset_expr = strchr(name, '+');
@@ -1028,7 +1028,7 @@ static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, co
 	return cave_addr;
 }
 
-static __declspec(noinline) size_t GetBPFuncOrRawAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
+static TH_NOINLINE size_t GetBPFuncOrRawAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
 	ExpressionLogging("BPFuncOrRawAddress: \"%.*s\"\n", name_length, name);
 	size_t addr = func_get_len(name, name_length);
 	switch (addr) {
@@ -1050,7 +1050,7 @@ static __declspec(noinline) size_t GetBPFuncOrRawAddress(const char *const name,
 	return addr;
 }
 
-static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, const size_t name_length, const StackSaver *const data_refs) {
+static TH_NOINLINE patch_val_t GetMultibyteNOP(const char *const name, const size_t name_length, const StackSaver *const data_refs) {
 	patch_val_t nop_str;
 	nop_str.type = PVT_CODE;
 	nop_str.str.len = 0;
@@ -1088,7 +1088,7 @@ static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, 
 	return nop_str;
 }
 
-static __declspec(noinline) const char* get_patch_value_impl(const char* expr, patch_val_t *const out, const StackSaver *const data_refs) {
+static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_t *const out, const StackSaver *const data_refs) {
 
 	ExpressionLogging("Patch value opening char: \"%hhX\"\n", expr[0]);
 	const bool is_relative = expr[0] == '[';
@@ -1265,7 +1265,7 @@ static inline const char* CheckCastType(const char* expr, uint8_t* out) {
 	}*/
 }
 
-static __forceinline const char* is_reg_name(const char* expr, const x86_reg_t *const regs, size_t* out) {
+static TH_FORCEINLINE const char* is_reg_name(const char* expr, const x86_reg_t *const regs, size_t* out) {
 
 	enum : uint8_t {
 		REG_EDI = 0b0000, // 0
@@ -1409,7 +1409,7 @@ ByteRegister:
 	return expr + 2;*/
 }
 
-static __forceinline const char* PostfixCheck(const char* expr) {
+static TH_FORCEINLINE const char* PostfixCheck(const char* expr) {
 	if ((expr[0] == '+' || expr[0] == '-') && expr[0] == expr[1]) {
 		PostIncDecWarningMessage();
 		return expr + 2;
@@ -1684,7 +1684,7 @@ InvalidCodeOptionWarning:
 	return expr;
 }
 
-static inline const char* __fastcall skip_value(const char* expr, const char end) {
+static inline const char* TH_FASTCALL skip_value(const char* expr, const char end) {
 	--expr;
 	int depth = 0;
 	while(1) {
@@ -1863,7 +1863,7 @@ InvalidExpressionError:
 	return NULL;
 }
 
-const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source) {
+const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source) {
 	expr_index = 0;
 	ExpressionLogging("START EXPRESSION \"%s\" with end \"%hhX\"\n", expr, end);
 

@@ -15,13 +15,13 @@
 #define Direct3DCreate_(x) \
 	x(UINT, SDKVersion)
 
-#define DIRECT3DCREATE(name) void*** __stdcall name(Direct3DCreate_(FULLDEC))
+#define DIRECT3DCREATE(name) void*** TH_STDCALL name(Direct3DCreate_(FULLDEC))
 
 typedef DIRECT3DCREATE(Direct3DCreate_type);
 /// ------------
 
 // "Direct3D Device Detour" :P
-HRESULT __stdcall d3ddd_CreateDevice(
+HRESULT TH_STDCALL d3ddd_CreateDevice(
 	d3d_CreateDevice_type *c_orig, const std::vector<vtable_detour_t >& detours,
 	d3d_CreateDevice_(FULLDEC)
 )
@@ -33,7 +33,7 @@ HRESULT __stdcall d3ddd_CreateDevice(
 	return ret;
 }
 
-void*** __stdcall d3ddd_Direct3DCreate(
+void*** TH_STDCALL d3ddd_Direct3DCreate(
 	Direct3DCreate_type *c_orig, size_t vtable_index,
 	d3d_CreateDevice_type *cd_new, d3d_CreateDevice_type **cd_old,
 	Direct3DCreate_(FULLDEC)
@@ -84,7 +84,7 @@ int d3d_device_detour(
 	Direct3DCreate_type *chain_Direct3DCreate##ver; \
 	d3d_CreateDevice_type *chain_d3d_CreateDevice##ver; \
 	\
-	HRESULT __stdcall d3ddd_CreateDevice##ver(d3d_CreateDevice_(FULLDEC)) \
+	HRESULT TH_STDCALL d3ddd_CreateDevice##ver(d3d_CreateDevice_(FULLDEC)) \
 	{ \
 		return d3ddd_CreateDevice( \
 			chain_d3d_CreateDevice##ver, detours_d3dd##ver, \

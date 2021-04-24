@@ -17,7 +17,7 @@ extern "C" {
 
 // Reads the PNG file [fn]. The returned value is an array of lines. It has to be freed by the caller.
 // If this function is successful, bpp will be either 24 or 32.
-BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp, bool gray_to_rgb = true);
+TH_CALLER_FREE BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp, bool gray_to_rgb = true);
 
 // Reads the IHDR chunk in the PNG file [fn], and extract some informations.
 // If this function is successful, bpp will be either 24 or 32.

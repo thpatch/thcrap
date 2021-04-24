@@ -245,7 +245,7 @@ void stack_show_motds(void)
 	}
 }
 
-extern "C" __declspec(dllexport) void motd_mod_post_init(void)
+extern "C" TH_EXPORT void motd_mod_post_init(void)
 {
 	stack_show_motds();
 }

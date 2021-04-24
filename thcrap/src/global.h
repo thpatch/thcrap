@@ -33,8 +33,8 @@ int globalconfig_set_integer(const char* key, const long long value);
 void globalconfig_release(void);
 
 // Memory management
-void* __cdecl thcrap_alloc(size_t size);
-void  __cdecl thcrap_free(void *mem);
+void* TH_CDECL thcrap_alloc(size_t size);
+void  TH_CDECL thcrap_free(void *mem);
 
 // Convenience macro for binary file names that differ between Debug and
 // Release builds.

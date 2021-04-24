@@ -27,12 +27,12 @@ float ascii_align_right(float x, const char *str);
 // the incoming format string and draw substrings at different positions and
 // with different ASCII state parameters.
 // The return value is handed back directly to ascii_vpatchf().
-typedef int __cdecl ascii_put_func_t(void *classptr, vector3_t &pos, const char *str);
+typedef int TH_CDECL ascii_put_func_t(void *classptr, vector3_t &pos, const char *str);
 
 // Main ASCII patching function, internally branching depending on the
 // currently running game, and calling out to [putfunc] for every string to be
 // rendered. Returns the return value of [putfunc].
-extern "C" int __stdcall ascii_vpatchf(
+extern "C" int TH_STDCALL ascii_vpatchf(
 	ascii_put_func_t &putfunc, vector3_t &pos, const char* fmt, va_list va
 );
 
@@ -61,4 +61,4 @@ extern "C" int __stdcall ascii_vpatchf(
  * ------------------------
  *	None
  */
-extern "C" __declspec(dllexport) int BP_ascii_params(x86_reg_t *regs, json_t *bp_info);
+extern "C" TH_EXPORT int BP_ascii_params(x86_reg_t *regs, json_t *bp_info);

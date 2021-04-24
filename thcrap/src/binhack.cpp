@@ -128,7 +128,7 @@ inline bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, H
 // Declared noinline since float values aren't used
 // frequently and otherwise binhack_calc_size/binhack_render
 // waste a whole register storing the address of errno
-static __declspec(noinline) const char* consume_float_value(const char *const expr, patch_val_t *const val)
+static TH_NOINLINE const char* consume_float_value(const char *const expr, patch_val_t *const val)
 {
 	char* expr_next;
 	errno = 0;
@@ -188,7 +188,7 @@ static __declspec(noinline) const char* consume_float_value(const char *const ex
 // Declared forceinline since the compiler can't
 // figure it out otherwise and copy/pasting this
 // into two functions would be a pain
-static __forceinline const char* check_for_binhack_cast(const char* expr, patch_val_t *const val)
+static TH_FORCEINLINE const char* check_for_binhack_cast(const char* expr, patch_val_t *const val)
 {
 	switch (const uint8_t c = expr[0] | 0x20) {
 		case 'i': case 'u': case 'f':

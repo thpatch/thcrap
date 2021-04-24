@@ -31,9 +31,11 @@ void log_nprint(const char *text, size_t n);
 void log_vprintf(const char *format, va_list va);
 void log_printf(const char *format, ...);
 #ifdef NDEBUG
-# define log_debugf(text, ...)
+// Using __noop makes the compiler check the validity of the
+// macro contents for syntax errors without actually compiling them.
+# define log_debugf(...) TH_EVAL_NOOP(__VA_ARGS__)
 #else
-# define log_debugf log_printf
+# define log_debugf(...) log_printf(__VA_ARGS__)
 #endif
 
 #ifdef _MSC_VER

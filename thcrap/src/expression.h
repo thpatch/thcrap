@@ -71,17 +71,17 @@ typedef struct {
 // a value specified by the user defined patch options
 enum {
 	PVT_NONE = 0,
-	PVT_BYTE,
-	PVT_SBYTE,
-	PVT_WORD,
-	PVT_SWORD,
-	PVT_DWORD,
-	PVT_SDWORD,
-	PVT_QWORD,
-	PVT_SQWORD,
-	PVT_FLOAT,
-	PVT_DOUBLE,
-	PVT_LONGDOUBLE,
+	PVT_BYTE = 1,
+	PVT_SBYTE = 2,
+	PVT_WORD = 3,
+	PVT_SWORD = 4,
+	PVT_DWORD = 5,
+	PVT_SDWORD = 6,
+	PVT_QWORD = 7,
+	PVT_SQWORD = 8,
+	PVT_FLOAT = 9,
+	PVT_DOUBLE = 10,
+	PVT_LONGDOUBLE = 11,
 	PVT_STRING,
 	PVT_STRING8 = PVT_STRING,
 	PVT_STRING16,
@@ -155,7 +155,7 @@ const char* parse_brackets(const char* str, char c);
 // Returns a pointer to the character following the parsed expression or NULL on error.
 // [regs] is either the current register structure if called from a breakpoint or null.
 // [rel_source] is the address used when computing a relative value.
-const char* __fastcall eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);
+const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);
 
 void patch_val_set_op(const char* op_str, patch_val_t* Val);
 

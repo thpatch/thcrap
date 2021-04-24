@@ -128,15 +128,15 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size);
 /// ----------
 // Returns the full patch-relative name of a game-relative file.
 // Return value has to be free()d by the caller!
-char* fn_for_game(const char *fn);
+TH_CALLER_FREE char* fn_for_game(const char *fn);
 
 // Returns the alternate file name for [fn] specific to the
 // currently running build. Return value has to be free()d by the caller!
-char* fn_for_build(const char *fn);
+TH_CALLER_FREE char* fn_for_build(const char *fn);
 
 // Returns the full path of a patch-relative file name.
 // Return value has to be free()d by the caller!
-char* fn_for_patch(const patch_t *patch_info, const char *fn);
+TH_CALLER_FREE char* fn_for_patch(const patch_t *patch_info, const char *fn);
 
 // Prints the full path of a patch-relative file name to the log.
 void patch_print_fn(const patch_t *patch_info, const char *fn);
@@ -221,7 +221,7 @@ void patchhook_register(const char *ext, func_patch_t patch_func, func_patch_siz
 
 // Builds an array of patch hook functions for [fn].
 // Has to be free()'d by the caller!
-struct patchhook_t* patchhooks_build(const char *fn);
+TH_CALLER_FREE struct patchhook_t* patchhooks_build(const char *fn);
 
 // Loads the jdiff file for a hook, and guess the patched file size.
 json_t* patchhooks_load_diff(const struct patchhook_t *hook_array, const char *fn, size_t *size);

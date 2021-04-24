@@ -271,7 +271,7 @@ int ascii_vpatchf_th165(
 	return putfunc(params.ClassPtr(), pos, single_str);
 }
 
-extern "C" int __stdcall ascii_vpatchf(
+extern "C" int TH_STDCALL ascii_vpatchf(
 	ascii_put_func_t &putfunc, vector3_t &pos, const char* fmt, va_list va
 )
 {
@@ -284,7 +284,7 @@ extern "C" int __stdcall ascii_vpatchf(
 	return putfunc(params.ClassPtr(), pos, single_str);
 }
 
-extern "C" __declspec(dllexport) int BP_ascii_params(x86_reg_t *regs, json_t *bp_info)
+extern "C" TH_EXPORT int BP_ascii_params(x86_reg_t *regs, json_t *bp_info)
 {
 	return params.update(regs, bp_info);
 }
@@ -378,7 +378,7 @@ void ascii_repatch()
 	}
 }
 
-extern "C" __declspec(dllexport) void ascii_mod_repatch(json_t *files_changed)
+extern "C" TH_EXPORT void ascii_mod_repatch(json_t *files_changed)
 {
 	const char *fn;
 	json_t *val;
@@ -389,7 +389,7 @@ extern "C" __declspec(dllexport) void ascii_mod_repatch(json_t *files_changed)
 	}
 }
 
-extern "C" __declspec(dllexport) void ascii_mod_init(json_t *files_changed)
+extern "C" TH_EXPORT void ascii_mod_init(json_t *files_changed)
 {
 	ascii_repatch();
 }

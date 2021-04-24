@@ -76,6 +76,7 @@
     <ClCompile Include="src\win32_detour.cpp" />
     <ClCompile Include="src\xpcompat.cpp" />
     <ClCompile Include="src\zip.cpp" />
+    <ClInclude Include="src\compiler_support.h" />
     <ClInclude Include="src\dialog.h" />
     <ClInclude Include="src\exception.h" />
     <ClInclude Include="src\expression.h" />

@@ -17,7 +17,7 @@ extern "C" void bp_entry(void);
 
 // Performs breakpoint lookup, invocation and stack adjustments. Returns the
 // number of bytes the stack has to be moved downwards by breakpoint_entry().
-extern "C" size_t __cdecl breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs);
+extern "C" size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs);
 /// ---------
 
 /// Constants
@@ -102,7 +102,7 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 	return json_eval_int_default(json_object_get(bp_info, "cave_exec"), 1, JEVAL_DEFAULT);
 }
 
-size_t __cdecl breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs)
+size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs)
 {
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
 	// to be able to manipulate it.
@@ -165,7 +165,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 	return true;
 }
 
-static inline void __fastcall cave_fix(BYTE *cave, BYTE *bp_addr)
+static inline void TH_FASTCALL cave_fix(BYTE *cave, BYTE *bp_addr)
 {
 	/// Fix relative stuff
 	/// ------------------

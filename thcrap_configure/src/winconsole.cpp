@@ -227,7 +227,7 @@ void ConsoleDialog::setMode(Mode mode) {
 static WNDPROC getClassWindowProc(HINSTANCE hInstance, LPCWSTR lpClassName) {
 	WNDCLASS wndClass;
 	if (!GetClassInfoW(hInstance, lpClassName, &wndClass))
-		assert(0);
+		TH_UNREACHABLE;
 	return wndClass.lpfnWndProc;
 }
 

@@ -589,13 +589,13 @@ protected:
 public:
 	bgm_fake_IDirectSoundNotify(IUnknown *parent) : parent(parent) {}
 
-	HRESULT __stdcall QueryInterface(REFIID riid, LPVOID * ppvObj) {
+	HRESULT TH_STDCALL QueryInterface(REFIID riid, LPVOID * ppvObj) {
 		return parent->QueryInterface(riid, ppvObj);
 	}
-	ULONG __stdcall AddRef() {
+	ULONG TH_STDCALL AddRef() {
 		return parent->AddRef();
 	}
-	ULONG __stdcall Release() {
+	ULONG TH_STDCALL Release() {
 		return parent->Release();
 	}
 
@@ -636,9 +636,9 @@ public:
 		delete[] fake_buffer;
 	}
 
-	HRESULT __stdcall QueryInterface(REFIID riid, LPVOID * ppvObj);
-	ULONG __stdcall AddRef();
-	ULONG __stdcall Release();
+	HRESULT TH_STDCALL QueryInterface(REFIID riid, LPVOID * ppvObj);
+	ULONG TH_STDCALL AddRef();
+	ULONG TH_STDCALL Release();
 
 	// IDirectSoundBuffer methods
 	STDMETHOD(GetCaps)(LPDSBCAPS pDSBufferCaps) {
@@ -854,7 +854,7 @@ HRESULT WINAPI bgm_DirectSoundCreate8(
 
 /// Module functions
 /// ================
-extern "C" __declspec(dllexport) void bgm_mod_init(void)
+extern "C" TH_EXPORT void bgm_mod_init(void)
 {
 	jsondata_game_add(LOOPMOD_FN.data());
 	// Kioh Gyoku is a thing...
@@ -866,7 +866,7 @@ extern "C" __declspec(dllexport) void bgm_mod_init(void)
 	}
 }
 
-extern "C" __declspec(dllexport) void bgm_mod_detour(void)
+extern "C" TH_EXPORT void bgm_mod_detour(void)
 {
 	auto dsound = GetModuleHandleA("dsound.dll");
 	if(dsound) {
@@ -894,7 +894,7 @@ extern "C" __declspec(dllexport) void bgm_mod_detour(void)
 	}
 }
 
-extern "C" __declspec(dllexport) void bgm_mod_repatch(json_t *files_changed)
+extern "C" TH_EXPORT void bgm_mod_repatch(json_t *files_changed)
 {
 	if(!bgm_fmt) {
 		return;

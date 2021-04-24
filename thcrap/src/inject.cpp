@@ -88,7 +88,7 @@ DETOUR_CHAIN_DEF(LoadLibraryW);
   * from the DLL to "initialize" it. The function should be in the format shown below,
   * one parameter and no return type. Do not forget to prefix extern "C" if you are in C++.
   *
-  *		__declspec(dllexport) void FunctionName(void*)
+  *		TH_EXPORT void FunctionName(void*)
   *
   * The function that is called in the injected DLL -MUST- return, the loader
   * waits for the thread to terminate before removing the allocated space and

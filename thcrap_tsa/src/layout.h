@@ -37,22 +37,22 @@ size_t GetTextExtentBase(HDC hdc, const json_t *str_obj);
 
 /// Internal, full-size text extent functions
 /// -----------------------------------------
-size_t __stdcall text_extent_full(const char *str);
-size_t __stdcall text_extent_full_for_font(const char *str, HFONT font);
+size_t TH_STDCALL text_extent_full(const char *str);
+size_t TH_STDCALL text_extent_full_for_font(const char *str, HFONT font);
 /// -----------------------------------------
 
 /// Public, half-size text extent functions. Actively used by breakpoints!
 /// ----------------------------------------------------------------------
 // Calculates the rendered length of [str] on the current text DC
 // with the currently selected font, taking layout markup into account.
-size_t __stdcall GetTextExtent(const char *str);
+size_t TH_STDCALL GetTextExtent(const char *str);
 
 // GetTextExtent with an additional font parameter.
 // [font] is temporarily selected into the DC for the length calcuation.
-size_t __stdcall GetTextExtentForFont(const char *str, HFONT font);
+size_t TH_STDCALL GetTextExtentForFont(const char *str, HFONT font);
 
 // GetTextExtentForFont with the font pointer pulled from the TSA font block.
-size_t __stdcall GetTextExtentForFontID(const char *str, size_t id);
+size_t TH_STDCALL GetTextExtentForFontID(const char *str, size_t id);
 /// ----------------------------------------------------------------------
 
 // Calculates the half-size X offset at which to display [ruby] to make it
@@ -91,8 +91,8 @@ size_t ruby_offset_half(
  * ------------------------
  *	None
 */
-__declspec(dllexport) int BP_widest_string(x86_reg_t *regs, json_t *bp_info);
-__declspec(dllexport) int BP_widest_string_f(x86_reg_t *regs, json_t *bp_info);
+TH_EXPORT int BP_widest_string(x86_reg_t *regs, json_t *bp_info);
+TH_EXPORT int BP_widest_string_f(x86_reg_t *regs, json_t *bp_info);
 
 int layout_mod_init(HMODULE hMod);
 void layout_mod_detour(void);

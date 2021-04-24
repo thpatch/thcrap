@@ -12,7 +12,7 @@
 /**
   * To be identified as such, every thcrap plugin must export a function named
   *
-  * int __stdcall thcrap_plugin_init()
+  * int TH_STDCALL thcrap_plugin_init()
   *
   * which should return 0 on success, and anything else if the plugin should
   * be removed. This function is called directly after the plugin was loaded
@@ -64,7 +64,7 @@ bool func_remove(const char *name);
   */
 
 // Module function type.
-typedef void (__cdecl *mod_call_type)(void *param);
+typedef void (TH_CDECL *mod_call_type)(void *param);
 
 // Removes a module hook function from the unordered map of module hook function
 // This function is nessesairy for plugins to be able to unload themselves

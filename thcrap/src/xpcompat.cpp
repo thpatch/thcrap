@@ -22,7 +22,7 @@ THCRAP_API srwlock_func_t *srwlock_funcs[4];
 // •  0: released
 // • >0: shared
 
-void __stdcall XP_AcquireSRWLockExclusive(PSRWLOCK SRWLock)
+void TH_STDCALL XP_AcquireSRWLockExclusive(PSRWLOCK SRWLock)
 {
 	long *val = (long *)&SRWLock->Ptr;
 	SPIN_UNTIL(*val == 0);
@@ -31,7 +31,7 @@ void __stdcall XP_AcquireSRWLockExclusive(PSRWLOCK SRWLock)
 	}
 };
 
-void __stdcall XP_ReleaseSRWLockExclusive(PSRWLOCK SRWLock)
+void TH_STDCALL XP_ReleaseSRWLockExclusive(PSRWLOCK SRWLock)
 {
 	long *val = (long *)&SRWLock->Ptr;
 	assert(*val == -1);
@@ -40,14 +40,14 @@ void __stdcall XP_ReleaseSRWLockExclusive(PSRWLOCK SRWLock)
 	}
 };
 
-void __stdcall XP_AcquireSRWLockShared(PSRWLOCK SRWLock)
+void TH_STDCALL XP_AcquireSRWLockShared(PSRWLOCK SRWLock)
 {
 	long *val = (long *)&SRWLock->Ptr;
 	SPIN_UNTIL(*val >= 0);
 	InterlockedIncrement(val);
 };
 
-void __stdcall XP_ReleaseSRWLockShared(PSRWLOCK SRWLock)
+void TH_STDCALL XP_ReleaseSRWLockShared(PSRWLOCK SRWLock)
 {
 	long *val = (long *)&SRWLock->Ptr;
 	assert(*val >= 1);

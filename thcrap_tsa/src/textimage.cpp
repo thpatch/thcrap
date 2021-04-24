@@ -27,7 +27,7 @@ logger_t textimage_log("Text image error");
 
 /// Game memory pointers
 /// ====================
-HRESULT (__stdcall *D3DXCreateTextureFromFileInMemoryEx)(
+HRESULT (TH_STDCALL*D3DXCreateTextureFromFileInMemoryEx)(
 	IDirect3DDevice *pDevice,
 	const void *pSrcData,
 	uint32_t SrcData,

@@ -97,10 +97,10 @@ void globalconfig_release(void)
 	global_cfg = json_incref(NULL);
 }
 
-void* __cdecl thcrap_alloc(size_t size) {
+void* TH_CDECL thcrap_alloc(size_t size) {
 	return malloc(size);
 }
 
-void __cdecl thcrap_free(void *mem) {
+void TH_CDECL thcrap_free(void *mem) {
 	free(mem);
 }
