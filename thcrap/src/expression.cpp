@@ -179,11 +179,11 @@ static const CPUID_Data_t CPUID_Data;
 } while (0)
 
 static __declspec(noinline) void IncDecWarningMessage(void) {
-	WarnOnce(log_printf("EXPRESSION WARNING 0: Prefix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators only function to add one to a value, but do not actually modify it.\n"));
+	WarnOnce(log_print("EXPRESSION WARNING 0: Prefix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators only function to add one to a value, but do not actually modify it.\n"));
 }
 
 static __declspec(noinline) void AssignmentWarningMessage(void) {
-	WarnOnce(log_printf("EXPRESSION WARNING 1: Assignment operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators are only included for future compatibility and operator precedence reasons.\n"));
+	WarnOnce(log_print("EXPRESSION WARNING 1: Assignment operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators are only included for future compatibility and operator precedence reasons.\n"));
 }
 
 static __declspec(noinline) void PatchValueWarningMessage(const char *const name) {
@@ -199,44 +199,44 @@ void DisableCodecaveNotFoundWarning(bool state) {
 }
 static __declspec(noinline) void CodecaveNotFoundWarningMessage(const char *const name, size_t name_length) {
 	if (!DisableCodecaveNotFound) {
-		log_printf("EXPRESSION WARNING 3: Codecave \"%*s\" not found! Returning NULL...\n", name_length, name);
+		log_printf("EXPRESSION WARNING 3: Codecave \"%.*s\" not found! Returning NULL...\n", name_length, name);
 	}
 }
 
 static __declspec(noinline) void PostIncDecWarningMessage(void) {
-	WarnOnce(log_printf("EXPRESSION WARNING 4: Postfix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators do nothing and are only included for future compatibility and operator precedence reasons.\n"));
+	WarnOnce(log_print("EXPRESSION WARNING 4: Postfix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators do nothing and are only included for future compatibility and operator precedence reasons.\n"));
 }
 
 static __declspec(noinline) void InvalidCPUFeatureWarningMessage(const char* name, size_t name_length) {
-	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%*s\"! Assuming feature is present and returning 1...\n", name_length, name);
+	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%.*s\"! Assuming feature is present and returning 1...\n", name_length, name);
 }
 
 static __declspec(noinline) void InvalidCodeOptionWarningMessage(void) {
-	log_printf("EXPRESSION WARNING 6: Code options are not valid in expressions! Returning NULL...\n");
+	log_print("EXPRESSION WARNING 6: Code options are not valid in expressions! Returning NULL...\n");
 }
 
 static __declspec(noinline) void NullDerefWarningMessage(void) {
-	log_printf("EXPRESSION WARNING 7: Attempted to dereference NULL value! Returning NULL...\n");
+	log_print("EXPRESSION WARNING 7: Attempted to dereference NULL value! Returning NULL...\n");
 }
 
 static __declspec(noinline) void ExpressionErrorMessage(void) {
-	log_printf("EXPRESSION ERROR: Error parsing expression!\n");
+	log_print("EXPRESSION ERROR: Error parsing expression!\n");
 }
 
 static __declspec(noinline) void GroupingBracketErrorMessage(void) {
-	log_printf("EXPRESSION ERROR 0: Unmatched grouping brackets\n");
+	log_print("EXPRESSION ERROR 0: Unmatched grouping brackets\n");
 }
 
 static __declspec(noinline) void ValueBracketErrorMessage(void) {
-	log_printf("EXPRESSION ERROR 1: Unmatched patch value brackets\n");
+	log_print("EXPRESSION ERROR 1: Unmatched patch value brackets\n");
 }
 
 static __declspec(noinline) void BadCharacterErrorMessage(void) {
-	log_printf("EXPRESSION ERROR 2: Unknown character\n");
+	log_print("EXPRESSION ERROR 2: Unknown character\n");
 }
 
 static __declspec(noinline) void OptionNotFoundErrorMessage(const char* name, size_t name_length) {
-	log_printf("EXPRESSION ERROR 3: Option \"%*s\" not found\n", name_length, name);
+	log_printf("EXPRESSION ERROR 3: Option \"%.*s\" not found\n", name_length, name);
 }
 
 static __declspec(noinline) void InvalidValueErrorMessage(const char *const str) {
@@ -484,7 +484,7 @@ const char* parse_brackets(const char* str, char c) {
 	return NULL;
 }
 
-static __forceinline const char* __fastcall find_next_op_impl(const char *const expr, op_t *const out) {
+static __declspec(noinline) const char* find_next_op_impl(const char *const expr, op_t *const out) {
 	uint8_t c;
 	const char* expr_ref = expr - 1;
 	while (1) {
@@ -878,7 +878,7 @@ static size_t ApplyOperator(const size_t value, const size_t arg, const op_t op)
 }
 
 static __declspec(noinline) const patch_val_t* GetOptionValue(const char* name, size_t name_length) {
-	ExpressionLogging("Option: \"%*s\"\n", name_length, name);
+	ExpressionLogging("Option: \"%.*s\"\n", name_length, name);
 	const patch_val_t* const option = patch_opt_get_len(name, name_length);
 	if (!option) {
 		OptionNotFoundErrorMessage(name, name_length);
@@ -887,13 +887,13 @@ static __declspec(noinline) const patch_val_t* GetOptionValue(const char* name, 
 }
 
 static __declspec(noinline) const patch_val_t* GetPatchTestValue(const char* name, size_t name_length) {
-	ExpressionLogging("PatchTest: \"%*s\"\n", name_length, name);
+	ExpressionLogging("PatchTest: \"%.*s\"\n", name_length, name);
 	const patch_val_t* const patch_test = patch_opt_get_len(name, name_length);
 	return patch_test;
 }
 
 static __declspec(noinline) bool GetCPUFeatureTest(const char* name, size_t name_length) {
-	ExpressionLogging("CPUFeatureTest: \"%*s\"\n", name_length, name);
+	ExpressionLogging("CPUFeatureTest: \"%.*s\"\n", name_length, name);
 	bool ret = false;
 	// Yuck
 	switch (name_length) {
@@ -990,7 +990,7 @@ InvalidCPUFeatureError:
 }
 
 static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
-	ExpressionLogging("CodecaveAddress: \"%*s\"\n", name_length, name);
+	ExpressionLogging("CodecaveAddress: \"%.*s\"\n", name_length, name);
 
 	const char* user_offset_expr = strchr(name, '+');
 	const size_t name_length_before_offset = user_offset_expr ? PtrDiffStrlen(user_offset_expr, name) : name_length;
@@ -1008,7 +1008,7 @@ static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, co
 			switch ((bool)(user_offset_expr == user_offset_expr_next)) {
 				case true: {
 					// If a hex value doesn't work, try a subexpression
-					user_offset_expr = strndup(user_offset_expr, name_length - name_length_before_offset);
+					user_offset_expr = strdup_size(user_offset_expr, name_length - name_length_before_offset);
 					const bool expression_error = !eval_expr_new_impl(user_offset_expr, '\0', &user_offset_value, StartNoOp, 0, data_refs);
 					free((void*)user_offset_expr);
 					if (expression_error) {
@@ -1029,11 +1029,11 @@ static __declspec(noinline) size_t GetCodecaveAddress(const char *const name, co
 }
 
 static __declspec(noinline) size_t GetBPFuncOrRawAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
-	ExpressionLogging("BPFuncOrRawAddress: \"%*s\"\n", name_length, name);
+	ExpressionLogging("BPFuncOrRawAddress: \"%.*s\"\n", name_length, name);
 	size_t addr = func_get_len(name, name_length);
 	switch (addr) {
 		case 0: {// Will be null if the name was not a BP function
-			const char* const name_buffer = strndup(name, name_length);
+			const char* const name_buffer = strdup_size(name, name_length);
 			const bool expression_error = !eval_expr_new_impl(name_buffer, '\0', &addr, StartNoOp, 0, data_refs);
 			free((void*)name_buffer);
 			if (expression_error) {
@@ -1054,7 +1054,7 @@ static __declspec(noinline) patch_val_t GetMultibyteNOP(const char *const name, 
 	patch_val_t nop_str;
 	nop_str.type = PVT_CODE;
 	nop_str.str.len = 0;
-	const char* const name_buffer = strndup(name, name_length);
+	const char* const name_buffer = strdup_size(name, name_length);
 	eval_expr_new_impl(name_buffer, '\0', &nop_str.str.len, StartNoOp, 0, data_refs);
 	free((void*)name_buffer);
 	switch (nop_str.str.len) {
@@ -1169,7 +1169,56 @@ const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs,
 }
 
 static inline const char* CheckCastType(const char* expr, uint8_t* out) {
-	switch (const uint8_t c = expr[0] | 0x20) {
+	uint8_t type = 0;
+	switch (*expr++ & 0xDF) {
+		default:
+			return NULL;
+		case 'I':
+			++type;
+		case 'U':
+			++type;
+			switch (*expr++) {
+				default:
+					return NULL;
+				case '6':
+					if (*expr++ != '4') return NULL;
+					type += 6;
+					break;
+				case '3':
+					if (*expr++ != '2') return NULL;
+					type += 4;
+					break;
+				case '1':
+					if (*expr++ != '6') return NULL;
+					type += 2;
+					break;
+				case '8':
+					break;
+			}
+			break;
+		case 'F':
+			type = PVT_FLOAT;
+			switch (*expr++) {
+				default:
+					return NULL;
+				case '8':
+					if (*expr++ != '0') return NULL;
+					type += 2;
+					break;
+				case '6':
+					if (*expr++ != '4') return NULL;
+					type += 1;
+					break;
+				case '3':
+					if (*expr++ != '2') return NULL;
+			}
+			break;
+	}
+	if (*expr++ != ')') return NULL;
+	*out = type;
+	return expr;
+
+	/*switch (const uint8_t c = expr[0] | 0x20) {
 		case 'i': case 'u': case 'f':
 			if (expr[1] && expr[2]) {
 				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
@@ -1213,17 +1262,82 @@ static inline const char* CheckCastType(const char* expr, uint8_t* out) {
 			}
 		default:
 			return NULL;
-	}
+	}*/
 }
 
 static __forceinline const char* is_reg_name(const char* expr, const x86_reg_t *const regs, size_t* out) {
 
+	enum : uint8_t {
+		REG_EDI = 0b0000, // 0
+		REG_ESI = 0b0001, // 1
+		REG_EBP = 0b0010, // 2
+		REG_ESP = 0b0011, // 3
+		REG_EBX = 0b0100, // 4
+		REG_EDX = 0b0101, // 5
+		REG_ECX = 0b0110, // 6
+		REG_EAX = 0b0111, // 7
+	};
+
+	enum : uint8_t {
+		REG_DW = 0b00, // 0
+		REG_BL = 0b01, // 1
+		REG_BH = 0b10, // 2
+		REG_W  = 0b11, // 3
+	};
+
 	bool deref;
 	expr += !(deref = expr[0] != '&');
 
-	const void* temp;
+	uint8_t out_reg = REG_EDI;
+	uint8_t letter1 = *expr++ & 0xDF;
+	uint8_t out_size = letter1 == 'E' ? letter1 = *expr++ & 0xDF, REG_DW : REG_W;
+	uint8_t letter2 = *expr++ & 0xDF;
+	switch (letter1) {
+		default:
+			return NULL;
+		case 'S':
+			out_reg |= REG_ESI;
+		case 'B':
+			if (letter2 == 'P') {
+				out_reg |= REG_EBP;
+				goto RegEnd;
+			}
+		case 'D':
+			if (letter2 == 'I') goto RegEnd;
+			out_reg |= letter1 == 'B' ? REG_EBX : REG_EDX;
+			break;
+		case 'A':
+			out_reg |= REG_EAX;
+			break;
+		case 'C':
+			out_reg |= REG_ECX;
+	}
+	if (letter2 != 'X' && !(out_size &= ((letter2 == 'L') | ((letter2 == 'H') << 1)))) return NULL;
+RegEnd:
+	union single_reg {
+		uint32_t dword;
+		uint16_t word;
+		uint8_t byte;
+	}* temp = (single_reg*)regs + out_reg + 1;
+	temp = (single_reg*)((size_t)temp + (out_size == REG_BH));
+	if (!out) return expr;
+	if (!deref) {
+		*out = (size_t)temp;
+		return expr;
+	}
+	switch (out_size) {
+		case REG_DW:
+			*out = temp->dword;
+			return expr;
+		case REG_W:
+			*out = temp->word;
+			return expr;
+		default:
+			*out = temp->byte;
+			return expr;
+	}
 
-	switch (uint8_t next_c = expr[1]; uint8_t c = expr[0] | 0x20) {
+	/*switch (uint8_t next_c = expr[1]; uint8_t c = expr[0] | 0x20) {
 		case 'e':
 			switch (c |
 					(next_c | 0x20) << 8 |
@@ -1292,10 +1406,10 @@ ByteRegister:
 	if (out) {
 		*out = deref ? *(uint8_t*)temp : (size_t)temp;
 	}
-	return expr + 2;
+	return expr + 2;*/
 }
 
-static inline const char* PostfixCheck(const char* expr) {
+static __forceinline const char* PostfixCheck(const char* expr) {
 	if ((expr[0] == '+' || expr[0] == '-') && expr[0] == expr[1]) {
 		PostIncDecWarningMessage();
 		return expr + 2;
@@ -1315,6 +1429,44 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 	--expr;
 	while (1) {
 		switch ((uint8_t)*++expr) {
+			default:
+				goto InvalidCharacterError;
+			// Raw value or breakpoint register
+			case '&':
+			case 'a': case 'A': case 'c': case 'C': case 'e': case 'E':
+			case 's': case 'S':
+			RawValueOrRegister:
+				if (is_breakpoint) {
+					if (const char* expr_next = is_reg_name(expr, data_refs->regs, out)) {
+						if (out) {
+							// current is set inside is_reg_name if a register is detected
+							ExpressionLogging("Register value was %X / %d / %u\n", *out, *out, *out);
+						}
+						return PostfixCheck(expr_next);
+					}
+				}
+			case 'r': case 'R':
+			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+				{
+				RawValue:
+					size_t current = str_address_value(expr, nullptr, &cur_value.addr_ret);
+					const char* expr_next = cur_value.addr_ret.endptr;
+					if (expr == expr_next || (cur_value.addr_ret.error && cur_value.addr_ret.error != STR_ADDRESS_ERROR_GARBAGE)) {
+						/*if (expr[0] == end) {
+							return expr;
+						}*/
+						goto InvalidCharacterError;
+					}
+					if (out) {
+						ExpressionLogging(
+							"Raw value was %X / %d / %u\n"
+							"Remaining after raw value: \"%s\"\n",
+							current, current, current, expr_next
+						);
+						*out = current;
+					}
+					return PostfixCheck(expr_next);
+				}
 			// Somehow it ran out of expression string, so stop parsing
 			case '\0':
 				goto InvalidValueError;
@@ -1372,7 +1524,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			// Unary Operators
 			case '!': case '~': case '+': case '-': {
 				const char* expr_next = consume_value_impl(expr + 1 + (expr[0] == expr[1]), out, data_refs);
-				if (!expr_next) goto InvalidValueError;
+				if (expr_next); else goto InvalidValueError;
 				if (out) {
 					switch ((uint8_t)expr[0] << (uint8_t)(expr[0] == expr[1])) {
 						case '~': *out = ~*out; break;
@@ -1390,22 +1542,26 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '*': {
 				// expr + 1 is used to avoid creating a loop
 				const char* expr_next = consume_value_impl(expr + 1, out, data_refs);
-				if (!expr_next) goto InvalidValueError;
+				if (expr_next); else goto InvalidValueError;
 				if (out) {
-					if (!*out) goto NullDerefWarning;
-					switch (cur_value.type) {
-						//case PVT_BOOL: *out = (bool)*(uint8_t*)*out; break;
-						case PVT_BYTE: *out = *(uint8_t*)*out; break;
-						case PVT_SBYTE: *out = *(int8_t*)*out; break;
-						case PVT_WORD: *out = *(uint16_t*)*out; break;
-						case PVT_SWORD: *out = *(int16_t*)*out; break;
-						case PVT_DWORD: *out = *(uint32_t*)*out; break;
-						case PVT_SDWORD: *out = *(int32_t*)*out; break;
-						case PVT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
-						case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
-						case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
-						case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
-						case PVT_LONGDOUBLE: *out = (uint32_t)*(LongDouble80*)*out; break;
+					if (*out); else goto NullDerefWarning;
+					if (cur_value.type == PVT_DWORD) {
+						*out = *(uint32_t*)*out;
+					}
+					else {
+						switch (cur_value.type) {
+							case PVT_BYTE: *out = *(uint8_t*)*out; break;
+							case PVT_SBYTE: *out = *(int8_t*)*out; break;
+							case PVT_WORD: *out = *(uint16_t*)*out; break;
+							case PVT_SWORD: *out = *(int16_t*)*out; break;
+							//case PVT_DWORD: *out = *(uint32_t*)*out; break;
+							case PVT_SDWORD: *out = *(int32_t*)*out; break;
+							case PVT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
+							case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
+							case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
+							case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
+							case PVT_LONGDOUBLE: *out = (uint32_t)*(LongDouble80*)*out; break;
+						}
 					}
 				}
 				return PostfixCheck(expr_next);
@@ -1419,7 +1575,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					ExpressionLogging("Cast success\n");
 					// Casts
 					expr_next = consume_value_impl(expr_next, out, data_refs);
-					if (!expr_next) goto InvalidValueError;
+					if (expr_next); else goto InvalidValueError;
 					++expr_next;
 					if (out) {
 						switch (cur_value.type) {
@@ -1439,7 +1595,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				else {
 					// Subexpressions
 					expr_next = eval_expr_new_impl(expr, ')', out, StartNoOp, 0, data_refs);
-					if (!expr_next) goto InvalidExpressionError;
+					if (expr_next); else goto InvalidExpressionError;
 					++expr_next;
 				}
 				return PostfixCheck(expr_next);
@@ -1452,22 +1608,27 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					// expr + 1 is used to avoid creating a loop
 					//expr_next = eval_expr_new_impl(expr + 1, c == '[' ? ']' : '}', current_addr, StartNoOp, 0, data_refs);
 					const char* expr_next = eval_expr_new_impl(expr + 1, expr[0] == '[' ? ']' : '}', out, StartNoOp, 0, data_refs);
-					if (!expr_next) goto InvalidExpressionError;
+					if (expr_next); else goto InvalidExpressionError;
 					++expr_next;
 					if (out) {
-						if (!*out) goto NullDerefWarning;
-						switch (cur_value.type) {
-							case PVT_BYTE: *out = *(uint8_t*)*out; break;
-							case PVT_SBYTE: *out = *(int8_t*)*out; break;
-							case PVT_WORD: *out = *(uint16_t*)*out; break;
-							case PVT_SWORD: *out = *(int16_t*)*out; break;
-							case PVT_DWORD: *out = *(uint32_t*)*out; break;
-							case PVT_SDWORD: *out = *(int32_t*)*out; break;
-							case PVT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
-							case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
-							case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
-							case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
-							case PVT_LONGDOUBLE: *out = (uint32_t)*(LongDouble80*)*out; break;
+						if (*out); else goto NullDerefWarning;
+						if (cur_value.type == PVT_DWORD) {
+							*out = *(uint32_t*)*out;
+						}
+						else {
+							switch (cur_value.type) {
+								case PVT_BYTE: *out = *(uint8_t*)*out; break;
+								case PVT_SBYTE: *out = *(int8_t*)*out; break;
+								case PVT_WORD: *out = *(uint16_t*)*out; break;
+								case PVT_SWORD: *out = *(int16_t*)*out; break;
+								//case PVT_DWORD: *out = *(uint32_t*)*out; break;
+								case PVT_SDWORD: *out = *(int32_t*)*out; break;
+								case PVT_QWORD: *out = (uint32_t)*(uint64_t*)*out; break;
+								case PVT_SQWORD: *out = (uint32_t)*(int64_t*)*out; break;
+								case PVT_FLOAT: *out = (uint32_t)*(float*)*out; break;
+								case PVT_DOUBLE: *out = (uint32_t)*(double*)*out; break;
+								case PVT_LONGDOUBLE: *out = (uint32_t)*(LongDouble80*)*out; break;
+							}
 						}
 					}
 					return PostfixCheck(expr_next);
@@ -1477,7 +1638,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '<': {
 				// DON'T use expr + 1 since that kills get_patch_value
 				const char* expr_next = get_patch_value_impl(expr, &cur_value, data_refs);
-				if (!expr_next) goto InvalidPatchValueError;
+				if (expr_next); else goto InvalidPatchValueError;
 				if (out) {
 					switch (cur_value.type) {
 						case PVT_BYTE: *out = (uint32_t)cur_value.b; break;
@@ -1500,41 +1661,6 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				}
 				return PostfixCheck(expr_next);
 			}
-			default:
-				/*if (expr[0] == end) {
-					return expr;
-				}*/
-			// Raw value or breakpoint register
-			case '&':
-RawValueOrRegister:
-				if (is_breakpoint) {
-					const char* expr_next = is_reg_name(expr, data_refs->regs, out);
-					if (expr_next) {
-						if (out) {
-							// current is set inside is_reg_name if a register is detected
-							ExpressionLogging("Register value was %X / %d / %u\n", *out, *out, *out);
-						}
-						return PostfixCheck(expr_next);
-					}
-				}
-				{
-RawValue:
-					size_t current = str_address_value(expr, nullptr, &cur_value.addr_ret);
-					const char* expr_next = cur_value.addr_ret.endptr;
-					if (expr == expr_next || (cur_value.addr_ret.error && cur_value.addr_ret.error != STR_ADDRESS_ERROR_GARBAGE)) {
-						goto InvalidCharacterError;
-					}
-					
-					if (out) {
-						ExpressionLogging(
-							"Raw value was %X / %d / %u\n"
-							"Remaining after raw value: \"%s\"\n",
-							current, current, current, expr_next
-						);
-						*out = current;
-					}
-					return PostfixCheck(expr_next);
-				}
 		}
 	}
 
@@ -1613,7 +1739,7 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 
 		if (ops_cur != NullOp) {
 			const char* expr_next_val = consume_value_impl(expr, cur_value_addr, data_refs);
-			if (!expr_next_val) goto InvalidValueError;
+			if (expr_next_val); else goto InvalidValueError;
 			expr = expr_next_val;
 		}
 
@@ -1636,7 +1762,7 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 				switch (ops_next) {
 					default:
 						expr = eval_expr_new_impl(expr, end, cur_value_addr, ops_next, cur_value, data_refs);
-						if (!expr) goto InvalidExpressionError;
+						if (expr); else goto InvalidExpressionError;
 						ExpressionLogging(
 							"\tRETURN FROM SUBEXPRESSION\n"
 							"\tRemaining: \"%s\"\n",
@@ -1649,11 +1775,11 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 								ExpressionLogging("Ternary TRUE compare: \"%s\"\n", expr);
 								if (expr[0] != ':') {
 									expr = eval_expr_new_impl(expr, ':', cur_value_addr, StartNoOp, 0, data_refs);
-									if (!expr) goto InvalidExpressionError;
+									if (expr); else goto InvalidExpressionError;
 								}
 								ExpressionLogging("Skipping value until %hhX in \"%s\"...\n", end, expr);
 								expr = skip_value(expr, end);
-								if (!expr) goto InvalidExpressionError;
+								if (expr); else goto InvalidExpressionError;
 								ExpressionLogging(
 									"Skipping completed\n"
 									"Ternary TRUE remaining: \"%s\" with end \"%hhX\"\n",
@@ -1667,7 +1793,7 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 									expr, ':', expr
 								);
 								expr = eval_expr_new_impl(expr, ':', NULL, StartNoOp, 0, data_refs);
-								if (!expr) goto InvalidExpressionError;
+								if (expr); else goto InvalidExpressionError;
 								while (*expr++ != ':');
 								ExpressionLogging(
 									"Skipping completed\n"
@@ -1694,7 +1820,7 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 				// is pretty terrible for a recursive function. Screw that.
 				if ((uint8_t)(cur_prec - OpData.Precedence[Assign]) <= (OpData.Precedence[TernaryConditional] - OpData.Precedence[Assign])) {
 					expr = eval_expr_new_impl(expr, end, cur_value_addr, ops_next, cur_value, data_refs);
-					if (!expr) goto InvalidExpressionError;
+					if (expr); else goto InvalidExpressionError;
 				}
 				/*switch (cur_prec) {
 					case OpData.Precedence[TernaryConditional]:
@@ -1864,13 +1990,13 @@ patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t V
 		case NorAssign: case BitwiseNor:
 			return patch_val_not(patch_val_or(Val1, Val2));
 		case ThreeWay: case Less: case LessEqual: case Greater: case GreaterEqual: case Equal: case NotEqual: case LogicalAnd: case LogicalNand: case LogicalXor: case LogicalXnor: case LogicalOr: case LogicalNor:
-			log_printf("Options cannot use logical or comparison operators!\n");
+			log_print("Options cannot use logical or comparison operators!\n");
 			break;
 		case Assign:
-			log_printf("Options cannot use assignment!\n");
+			log_print("Options cannot use assignment!\n");
 			break;
 		case Comma: case Gomma:
-			log_printf("but why tho\n");
+			log_print("but why tho\n");
 			break;
 	}
 	{

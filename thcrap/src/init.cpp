@@ -70,7 +70,7 @@ void oldbuild_show()
 		const char BUILD_JS_FORMAT[] = "%s.%s.js";
 		const char *game_str = runconfig_game_get();
 		const char *build_str = runconfig_build_get();
-		const int build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
+		const int build_js_fn_len = snprintf(NULL, 0, BUILD_JS_FORMAT, game_str, build_str) + 1;
 		VLA(char, build_js_fn, build_js_fn_len);
 		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
 		char *build_js_chain[] = {

@@ -189,18 +189,15 @@ char* strings_storage_get(const size_t slot, size_t min_len)
 
 const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
 {
-	char *ret = NULL;
-	size_t str_len;
-
 	format = strings_lookup(format, NULL);
 	strings_va_lookup(va, format);
 
 	if(!format) {
 		return NULL;
 	}
-	str_len = _vscprintf(format, va) + 1;
+	int str_len = vsnprintf(NULL, 0, format, va) + 1;
 
-	ret = strings_storage_get(slot, str_len);
+	char* ret = strings_storage_get(slot, str_len);
 	if(ret) {
 		vsprintf(ret, format, va);
 		return ret;

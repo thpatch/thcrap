@@ -129,7 +129,7 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
 	}
 
-	log_printf(ret ? "\n" : "not found\n");
+	log_print(ret ? "\n" : "not found\n");
 	if(file_size) {
 		*file_size = json_size;
 	}

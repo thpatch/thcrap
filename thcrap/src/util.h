@@ -105,8 +105,32 @@ void str_hexdate_format(char format[11], uint32_t date);
 	VLA_FREE(str##_lower);
 /// -------
 
+// Custom strndup variant that returns (size + 1) bytes.
+inline char* strdup_size(const char* src, size_t size) {
+	char* ret = (char*)malloc(size + 1);
+	if (!ret) return NULL;
+	// strncpy will 0 pad
+	if (!memccpy(ret, src, '\0', size)) {
+		ret[size] = '\0';
+	}
+	return ret;
+}
+
 // C23 compliant implementation of strndup
-char* strndup(const char* source, size_t size);
+// Allocates a buffer of (strnlen(s, size) + 1) bytes.
+inline char* strndup(const char* src, size_t size) {
+	return strdup_size(src, strnlen(src, size));
+}
+
+#ifdef __cplusplus
+// Custom strdup variant that efficiently concatenates two strings.
+inline char* strdup_cat(std::string_view str1, std::string_view str2) {
+	char* ret = (char*)malloc(str1.length() + str2.length() + 1);
+	ret[str1.length() + str2.length()] = '\0';
+	str2.copy(ret + str1.copy(ret, str1.length()), str2.length());
+	return ret;
+}
+#endif
 
 #define STR_ADDRESS_ERROR_NONE 0
 #define STR_ADDRESS_ERROR_OVERFLOW 0x1

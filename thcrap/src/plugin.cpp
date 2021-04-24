@@ -30,6 +30,8 @@ static std::unordered_map<std::string_view, UINT_PTR> funcs = {
 	{ "th_memccpy", (size_t)&_memccpy },
 	{ "th_strdup", (size_t)&strdup },
 	{ "th_strndup", (size_t)&strndup },
+	{ "th_strdup_size", (size_t)&strdup_size },
+	{ "th_strdup_cat", (size_t)&strdup_cat },
 
 	{ "th_strcmp", (size_t)&strcmp },
 	{ "th_strncmp", (size_t)&strncmp },
@@ -53,7 +55,6 @@ static std::unordered_map<std::string_view, UINT_PTR> funcs = {
 };
 static mod_funcs_t mod_funcs = {};
 static mod_funcs_t patch_funcs = {};
-//static std::unordered_map<std::string_view, HMODULE> plugins;
 static std::vector<HMODULE> plugins;
 
 UINT_PTR func_get(const char *name)
@@ -171,7 +172,7 @@ int plugins_load(const char *dir)
 	std::vector<char*> dlls;
 
 	const size_t dir_len = strlen(dir);
-	char* const dll_path = strndup(dir, MAX_PATH + 8);
+	char* const dll_path = strdup_size(dir, MAX_PATH + 8);
 	strcat(dll_path, "\\*.dll");
 
 	{
@@ -197,10 +198,10 @@ int plugins_load(const char *dir)
 	// LoadLibraryEx() with LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
 	// requires an absolute path to not fail with GetLastError() == 87.
 	char *const fn_start = &dll_path[dir_len + 1];
-	for (auto dll : dlls) {
+	for (char* dll : dlls) {
 		strcpy(fn_start, dll);
-		plugin_load(dll_path, fn_start);
 		free(dll);
+		plugin_load(dll_path, fn_start);
 	}
 	free(dll_path);
 	return 0;

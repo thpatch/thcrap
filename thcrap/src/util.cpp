@@ -69,16 +69,6 @@ void str_hexdate_format(char format[11], uint32_t date)
 	);
 }
 
-extern "C" char* strndup(const char* src, size_t size) {
-	char* ret = (char*)malloc(size + 1);
-	if (!ret) return NULL;
-	// strncpy will 0 pad
-	if (!_memccpy(ret, src, '\0', size)) {
-		ret[size] = '\0';
-	}
-	return ret;
-}
-
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 {
 	int base = 0;

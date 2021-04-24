@@ -143,7 +143,7 @@ json_t *json5_loadb(const void *buffer, size_t size, char **error);
 json_t* json_load_file_report(const char *json_fn);
 
 // log_print for json_dump
-int json_dump_log(const json_t *json, size_t flags);
+void json_dump_log(const json_t *json, size_t flags);
 
 /// ------
 

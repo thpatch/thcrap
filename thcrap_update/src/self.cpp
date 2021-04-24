@@ -457,7 +457,7 @@ static self_result_t self_replace(zip_t *zip)
 	self_result_t ret = SELF_REPLACE_ERROR;
 	if(zip) {
 		// + 1 for the underscore
-		size_t prefix_backup_len = _scprintf(PREFIX_BACKUP, PROJECT_VERSION_STRING) + 1 + 1;
+		int prefix_backup_len = snprintf(NULL, 0, PREFIX_BACKUP, PROJECT_VERSION_STRING) + 1 + 1;
 		VLA(char, prefix_backup, prefix_backup_len);
 		char backup_dir[TEMP_FN_LEN];
 		const char *fn;

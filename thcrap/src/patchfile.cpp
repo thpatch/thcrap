@@ -304,11 +304,12 @@ void patch_show_motd(const patch_t *patch_info)
 		return;
 	}
 	if (!patch_info->motd_title) {
-		std::string title = std::string("Message from ") + patch_info->id;
-		log_mboxf(title.c_str(), patch_info->motd_type, patch_info->motd);
+		char* title = strdup_cat("Message from ", patch_info->id);
+		log_mbox(title, patch_info->motd_type, patch_info->motd);
+		free(title);
 	}
 	else {
-		log_mboxf(patch_info->motd_title, patch_info->motd_type, patch_info->motd);
+		log_mbox(patch_info->motd_title, patch_info->motd_type, patch_info->motd);
 	}
 }
 
@@ -765,7 +766,7 @@ void patch_opts_from_json(json_t *opts) {
 				break;*/
 			case 'i': {
 				json_int_t value;
-				json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
+				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 8:
 						entry.type = PVT_SBYTE;
@@ -791,7 +792,7 @@ void patch_opts_from_json(json_t *opts) {
 			}
 			case 'b': case 'u': {
 				json_int_t value;
-				json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
+				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 8:
 						entry.type = PVT_BYTE;
@@ -817,7 +818,7 @@ void patch_opts_from_json(json_t *opts) {
 			}
 			case 'f': {
 				double value;
-				json_eval_real(j_val_val, &value, JEVAL_DEFAULT);
+				(void)json_eval_real(j_val_val, &value, JEVAL_DEFAULT);
 				switch (strtol(tname + 1, nullptr, 10)) {
 					case 32:
 						entry.type = PVT_FLOAT;
@@ -840,8 +841,8 @@ void patch_opts_from_json(json_t *opts) {
 		}
 		const char* op_str = json_object_get_string(j_val, "op");
 		patch_val_set_op(op_str, &entry);
-		if (const char* slot = strchr(key, '#'); slot && slot[1] != '\0') {
-			const size_t key_len = PtrDiffStrlen(slot, key);
+		if (const char* slot = strchr(key, '#')) {
+			const size_t key_len = PtrDiffStrlen(slot, key) + 1;
 			if (patch_val_t* existing_opt = patch_opt_get_len(key, key_len)) {
 				if (existing_opt->type == entry.type) {
 					patch_val_t result = patch_val_op_str(op_str, *existing_opt, entry);
@@ -857,7 +858,7 @@ void patch_opts_from_json(json_t *opts) {
 				}
 			}
 			else {
-				patch_options[strndup(key, key_len)] = entry;
+				patch_options[strdup_size(key, key_len)] = entry;
 			}
 		}
 		patch_options[strdup(key)] = entry;

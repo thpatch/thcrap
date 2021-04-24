@@ -96,28 +96,6 @@ DETOUR_CHAIN_DEF(LoadLibraryW);
   * handling, so the end user knows if something went wrong.
   */
 
-unsigned char* memcpy_advance_dst(unsigned char *dst, const void *src, size_t num)
-{
-	memcpy(dst, src, num);
-	return dst + num;
-}
-
-// The C++ standard doesn't allow converting from a function to a void*.
-// So we can't take a generic void*, we need to take either a void*
-// or a function pointer of any type.
-template<typename T>
-unsigned char* ptrcpy_advance_dst(unsigned char *dst, T *src)
-{
-	*((uintptr_t*)dst) = (uintptr_t)src;
-	return dst + sizeof(void*);
-}
-
-unsigned char* StringToUTF16_advance_dst(unsigned char *dst, const char *src)
-{
-	size_t conv_len = StringToUTF16((wchar_t*)dst, src, -1);
-	return dst + (conv_len * sizeof(wchar_t));
-}
-
 extern "C" {
 	extern const uint8_t inject;
 	extern const uint8_t inject_dlldirptr;
@@ -268,7 +246,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 		case 2: {
 			static const char *const injectError2Format =
 				"Could not load the function: %s";
-			char *const injectError2 = (char*)malloc(_scprintf(injectError2Format, func_name) + 1);
+			char *const injectError2 = (char*)malloc(snprintf(NULL, 0, injectError2Format, func_name) + 1);
 			sprintf(injectError2, injectError2Format, func_name);
 			MessageBoxA(0, injectError2, "Error", MB_ICONERROR);
 			free(injectError2);
@@ -315,7 +293,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 	int ret = 0;
 	char* exe_fn_local = strdup(exe_fn);
 	str_slash_normalize_win(exe_fn_local);
-	char* exe_dir = strndup(exe_fn_local, PtrDiffStrlen(strrchr(exe_fn_local, '\\') + 1, exe_fn_local));
+	char* exe_dir = strdup_size(exe_fn_local, PtrDiffStrlen(strrchr(exe_fn_local, '\\') + 1, exe_fn_local));
 	STARTUPINFOA si = {};
 	PROCESS_INFORMATION pi = {};
 

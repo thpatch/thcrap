@@ -57,9 +57,9 @@ const char* lasterror_str()
 	return lasterror_str_for(GetLastError());
 }
 
-void log_set_hook(void(*hookproc)(const char*), void(*hookproc2)(const char*,size_t)){
-	log_print_hook = hookproc;
-	log_nprint_hook = hookproc2;
+void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*,size_t)){
+	log_print_hook = print_hook;
+	log_nprint_hook = nprint_hook;
 }
 
 // Rotation
@@ -90,12 +90,6 @@ void log_rotate(void)
 }
 // --------
 
-#define VLA_VSPRINTF(str, va) \
-	size_t str##_full_len = _vscprintf(str, va) + 1; \
-	VLA(char, str##_full, str##_full_len); \
-	/* vs*n*printf is not available in msvcrt.dll. Doesn't matter anyway. */ \
-	vsprintf(str##_full, str, va);
-
 void log_print(const char *str)
 {
 	if(console_open) {
@@ -103,7 +97,6 @@ void log_print(const char *str)
 	}
 	if(log_file) {
 		fprintf(log_file, "%s", str);
-		fflush(log_file);
 	}
 	if(log_print_hook) {
 		log_print_hook(str);
@@ -113,33 +106,44 @@ void log_print(const char *str)
 void log_nprint(const char *str, size_t n)
 {
 	if(console_open) {
-		fwrite(str, n, 1, stdout);
+		fprintf(stdout, "%.*s", n, str);
 	}
 	if(log_file) {
-		fwrite(str, n, 1, log_file);
+		fprintf(log_file, "%.*s", n, str);
 	}
 	if (log_nprint_hook) {
 		log_nprint_hook(str, n);
 	}
 }
 
-void log_vprintf(const char *str, va_list va)
-{
-	if(str) {
-		VLA_VSPRINTF(str, va);
-		log_print(str_full);
-		VLA_FREE(str_full);
+void log_print_fast(const char* str, size_t n) {
+	if (console_open) {
+		fwrite(str, n, 1, stdout);
+	}
+	if (log_file) {
+		fwrite(str, n, 1, log_file);
+	}
+	if (log_print_hook) {
+		log_print_hook(str);
 	}
 }
 
-void log_printf(const char *str, ...)
+void log_vprintf(const char *format, va_list va)
 {
-	if(str) {
-		va_list va;
-		va_start(va, str);
-		log_vprintf(str, va);
-		va_end(va);
+	if (const int total_size = vsnprintf(NULL, 0, format, va); total_size > 0) {
+		VLA(char, str, total_size + 1);
+		vsprintf(str, format, va);
+		log_print_fast(str, total_size);
+		VLA_FREE(str);
 	}
+}
+
+void log_printf(const char *format, ...)
+{
+	va_list va;
+	va_start(va, format);
+	log_vprintf(format, va);
+	va_end(va);
 }
 
 /**
@@ -216,26 +220,26 @@ int log_mbox(const char *caption, const UINT type, const char *text)
 	return MessageBox(guess_mbox_owner(), text, (caption ? caption : PROJECT_NAME), type);
 }
 
-int log_vmboxf(const char *caption, const UINT type, const char *text, va_list va)
+int log_vmboxf(const char *caption, const UINT type, const char *format, va_list va)
 {
 	int ret = 0;
-	if(text) {
-		VLA_VSPRINTF(text, va);
-		ret = log_mbox(caption, type, text_full);
-		VLA_FREE(text_full);
+	if(format) {
+		if (const int total_size = vsnprintf(NULL, 0, format, va); total_size > 0) {
+			VLA(char, formatted_str, total_size + 1);
+			vsprintf(formatted_str, format, va);
+			ret = log_mbox(caption, type, formatted_str);
+			VLA_FREE(formatted_str);
+		}
 	}
 	return ret;
 }
 
-int log_mboxf(const char *caption, const UINT type, const char *text, ...)
+int log_mboxf(const char *caption, const UINT type, const char *format, ...)
 {
-	int ret = 0;
-	if(text) {
-		va_list va;
-		va_start(va, text);
-		ret = log_vmboxf(caption, type, text, va);
-		va_end(va);
-	}
+	va_list va;
+	va_start(va, format);
+	int ret = log_vmboxf(caption, type, format, va);
+	va_end(va);
 	return ret;
 }
 
@@ -265,25 +269,23 @@ static void OpenConsole(void)
 
 /// Per-module loggers
 /// ------------------
-std::nullptr_t logger_t::verrorf(const char *text, va_list va) const
+std::nullptr_t logger_t::verrorf(const char *format, va_list va) const
 {
-	auto mbox = [this, va] (const char *str) {
-		log_vmboxf(err_caption, MB_OK | MB_ICONERROR, str, va);
-	};
-	if(prefix) {
-		std::string prefixed = prefix + std::string(text);
-		mbox(prefixed.c_str());
-	} else {
-		mbox(text);
+	if (const int total_size = vsnprintf(NULL, 0, format, va); total_size > 0) {
+		VLA(char, formatted_str, total_size + 1 + prefix.length());
+		memcpy(formatted_str, prefix.data(), prefix.length());
+		vsprintf(formatted_str + prefix.length(), format, va);
+		log_mbox(err_caption, MB_OK | MB_ICONERROR, formatted_str);
+		VLA_FREE(formatted_str);
 	}
 	return nullptr;
 }
 
-std::nullptr_t logger_t::errorf(const char *text, ...) const
+std::nullptr_t logger_t::errorf(const char *format, ...) const
 {
 	va_list va;
-	va_start(va, text);
-	auto ret = verrorf(text, va);
+	va_start(va, format);
+	auto ret = verrorf(format, va);
 	va_end(va);
 	return ret;
 }
@@ -299,6 +301,7 @@ void log_init(int console)
 	if (log_handle != INVALID_HANDLE_VALUE) {
 		int fd = _open_osfhandle((intptr_t)log_handle, _O_TEXT);
 		log_file = _fdopen(fd, "wt");
+		setvbuf(log_file, NULL, _IONBF, 0);
 	}
 #ifdef _DEBUG
 	OpenConsole();

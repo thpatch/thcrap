@@ -379,7 +379,7 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 
 	va_list va;
 	va_start(va, context);
-	size_t ctx_len = _vscprintf(context, va);
+	int ctx_len = vsnprintf(NULL, 0, context, va);
 	VLA(char, ctx, ctx_len + 1);
 	vsprintf(ctx, context, va);
 	header_mod_log.errorf(

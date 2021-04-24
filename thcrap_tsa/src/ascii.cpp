@@ -337,7 +337,7 @@ void ascii_repatch()
 		const int USERNAME_LEN = 4;
 		auto number = strings_get_fallback({ "th06_ascii_2_digit_number_format", "No.%.2d" });
 		auto user = strings_get_fallback({ "th06_ascii_replay_user", "User" });
-		size_t number_printed_len = _scprintf(number.data(), 25);
+		size_t number_printed_len = snprintf(NULL, 0, number.data(), 25);
 		// The save menu shouldn't be made larger depending on the User translation
 		auto replay_col1_len = MAX(MAX(number_printed_len, user.length()), USERNAME_LEN);
 		auto number_save = std::string(number.data(), number.length());

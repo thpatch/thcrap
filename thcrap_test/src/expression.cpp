@@ -270,6 +270,16 @@ TEST(ExpressionTest, ExpressionTesting15B) {
 	EXPECT_EQ(expr_ret, (size_t)&DummyRegs.ah + 1);
 }
 
+TEST(ExpressionTest, ExpressionTesting15C) {
+	size_t expr_ret = 0;
+	DummyRegs.esi = 2;
+	ExprRepeatTest{
+		expr_ret = 0;
+		eval_expr("esi", '\0', &expr_ret, &DummyRegs, NULL);
+	}
+	EXPECT_EQ(expr_ret, DummyRegs.esi);
+}
+
 TEST(ExpressionTest, ExpressionTesting16A) {
 	size_t expr_ret = 0;
 	ExprRepeatTest{

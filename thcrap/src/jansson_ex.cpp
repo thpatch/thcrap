@@ -244,7 +244,7 @@ template <typename T, size_t N> T json_tuple_value(
 		}
 		if(failed) {
 			auto ERR_FMT = "Coordinate #%u (%s) must be a positive JSON integer.";
-			ret.err.resize(_scprintf(ERR_FMT, i + 1, value_names[i]));
+			ret.err.resize(snprintf(NULL, 0, ERR_FMT, i + 1, value_names[i]));
 			sprintf(&ret.err[0], ERR_FMT, i + 1, value_names[i]);
 			return ret;
 		}
@@ -358,15 +358,11 @@ start:
 	return ret;
 }
 
-static int __cdecl dump_to_log(const char *buffer, size_t size, void*)
+void json_dump_log(const json_t *json, size_t flags)
 {
-	log_nprint(buffer, size);
-	return 0;
-}
-
-int json_dump_log(const json_t *json, size_t flags)
-{
-	return json_dump_callback(json, dump_to_log, NULL, flags);
+	char* str = json_dumps(json, flags);
+	log_print(str);
+	free(str);
 }
 
 size_t json_string_expression_value(json_t* json) {

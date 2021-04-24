@@ -618,14 +618,13 @@ static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_co
 int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
 {
 	if (!binhacks_count) {
-		log_printf("No binary hacks to apply.\n");
+		log_print("No binary hacks to apply.\n");
 		return 0;
 	}
 
-	const size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
-	int failed = binhacks_total;
+	size_t failed = binhacks_total_count(binhacks, binhacks_count);
 
-	log_printf(
+	log_print(
 		"------------------------\n"
 		"Applying binary hacks...\n"
 		"------------------------"
@@ -640,15 +639,15 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 		const binhack_t *const cur = &binhacks[i];
 
 		if (cur->title) {
-			log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_total, cur->title, cur->name);
+			log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_count, cur->title, cur->name);
 		} else {
-			log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_total, cur->name);
+			log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_count, cur->name);
 		}
 		
 		// calculated byte size of the hack
 		const size_t asm_size = binhack_calc_size(cur->code);
 		if(!asm_size) {
-			log_printf("invalid code string size, skipping...\n");
+			log_print("invalid code string size, skipping...\n");
 			continue;
 		}
 		if (asm_size > current_asm_buf_size) {
@@ -662,7 +661,7 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 			use_expected = false;
 		}
 		else if (exp_size != asm_size) {
-			log_printf("different sizes for expected and new code (%z != %z), skipping verification... ", exp_size, asm_size);
+			log_printf("different sizes for expected and new code (%zu != %zu), skipping verification... ", exp_size, asm_size);
 			use_expected = false;
 		}
 		else {
@@ -686,24 +685,24 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 			log_printf("\nat 0x%p... ", addr);
 
 			if(binhack_render(asm_buf, addr, cur->code)) {
-				log_printf("invalid code string, skipping...");
+				log_print("invalid code string, skipping...");
 				continue;
 			}
 			if (use_expected && binhack_render(exp_buf, addr, cur->expected)) {
-				log_printf("invalid expected string, skipping verification... ");
+				log_print("invalid expected string, skipping verification... ");
 				use_expected = false;
 			}
 			if(!(cur_addr->binhack_source = (uint8_t*)PatchRegionCopySrc((void*)addr, use_expected ? exp_buf : NULL, asm_buf, NULL, asm_size))) {
-				log_printf("expected bytes not matched, skipping... ");
+				log_print("expected bytes not matched, skipping... ");
+				--failed;
 				continue;
 			}
-			log_printf("OK");
-			failed--;
+			log_print("OK");
 		}
 	}
 	free(asm_buf);
 	free(exp_buf);
-	log_printf("\n");
+	log_print("\n");
 	return failed;
 }
 
@@ -752,7 +751,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 
 		code = json_object_get_string(in, "code");
 
-		json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
+		(void)json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
 
 		if (const char* access = json_object_get_string(in, "access")) {
 			BYTE temp = 0;
@@ -846,9 +845,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	}
 
 	out->code = strdup(code);
-	char *const name_str = strndup("codecave:", strlen(name) + 10);
-	strcpy(name_str + 9, name);
-	out->name = name_str;
+	out->name = strdup_cat("codecave:", name);
 	out->access_type = access_val;
 	out->size = size_val;
 	out->fill = (BYTE)fill_val;
@@ -862,7 +859,7 @@ int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		return 0;
 	}
 
-	log_printf(
+	log_print(
 		"------------------------\n"
 		"Applying codecaves...\n"
 		"------------------------\n"

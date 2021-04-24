@@ -31,19 +31,21 @@ extern "C" size_t __cdecl breakpoint_process(breakpoint_t *bp, size_t addr_index
 
 size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 {
-	size_t ret = 0;
 	if (val) {
-		if (json_typeof(val) == JSON_INTEGER) {
-			ret = (size_t)json_integer_value(val);
+		const auto jtype = json_typeof(val);
+		if (jtype == JSON_INTEGER) {
+			return (size_t)json_integer_value(val);
 		}
-		else if (json_typeof(val) == JSON_STRING) {
+		else if (jtype == JSON_STRING) {
+			size_t ret = 0;
 			eval_expr(json_string_value(val), '\0', &ret, regs, NULL);
+			return ret;
 		}
-		else if (json_typeof(val) != JSON_NULL) {
+		else if (jtype != JSON_NULL) {
 			log_func_printf("the expression must be either an integer or a string.\n");
 		}
 	}
-	return ret;
+	return 0;
 }
 
 size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
@@ -191,11 +193,9 @@ static bool breakpoint_local_init(
 
 	char* bp_func_name;
 	if (strncmp(key, "codecave:", 9) != 0) {
-		bp_func_name = strndup("BP_", 3 + key_len);
-		memcpy(bp_func_name + 3, key, key_len);
-		bp_func_name[3 + key_len] = '\0';
+		bp_func_name = strdup_cat("BP_", { key, key_len });
 	} else {
-		bp_func_name = strndup(key, key_len);
+		bp_func_name = strdup_size(key, key_len);
 	}
 	bp.func = (BreakpointFunc_t)func_get(bp_func_name);
 
@@ -223,7 +223,7 @@ static const size_t bp_entry_call  = &bp_entry_callptr  + 1 - (uint8_t*)&bp_entr
 int breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
 {
 	if(!breakpoints || !bp_count) {
-		log_printf("No breakpoints to set up.\n");
+		log_print("No breakpoints to set up.\n");
 		return 0;
 	}
 
@@ -233,7 +233,7 @@ int breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
 
 	VLA(size_t, breakpoint_total_size, bp_count);
 
-	log_printf(
+	log_print(
 		"-------------------------\n"
 		"Setting up breakpoints...\n"
 		"-------------------------"
@@ -275,7 +275,7 @@ int breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
 				continue;
 			}
 			++cur_valid_addrs;
-			log_printf("OK");
+			log_print("OK");
 			sourcecaves_total_size += total_cavesize;
 		}
 
@@ -287,7 +287,7 @@ int breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
 	}
 
 	if (!total_valid_addrs) {
-		log_printf("No breakpoints to render.\n");
+		log_print("No breakpoints to render.\n");
 		return 0;
 	}
 
@@ -304,7 +304,8 @@ int breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
 	}
 
 	log_printf(
-		"\n-------------------------\n"
+		"\n"
+		"-------------------------\n"
 		"Rendering breakpoints... (source cave at 0x%p, call cave at 0x%p)\n"
 		"-------------------------\n",
 		cave_source, cave_call
