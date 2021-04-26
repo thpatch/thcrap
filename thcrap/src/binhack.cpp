@@ -615,7 +615,7 @@ static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_co
 	return ret;
 }
 
-int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
 {
 	if (!binhacks_count) {
 		log_print("No binary hacks to apply.\n");
@@ -694,10 +694,10 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 			}
 			if(!(cur_addr->binhack_source = (uint8_t*)PatchRegionCopySrc((void*)addr, use_expected ? exp_buf : NULL, asm_buf, NULL, asm_size))) {
 				log_print("expected bytes not matched, skipping... ");
-				--failed;
 				continue;
 			}
 			log_print("OK");
+			--failed;
 		}
 	}
 	free(asm_buf);
@@ -854,7 +854,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	return true;
 }
 
-int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
+size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	if (codecaves_count == 0) {
 		return 0;
 	}

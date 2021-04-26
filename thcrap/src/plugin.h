@@ -87,7 +87,7 @@ public:
 	//	],
 	//	...
 	// }
-	inline void build(exported_func_t* funcs, const char* infix);
+	inline void build(exported_func_t* funcs, std::string_view infix);
 
 	// Runs every module hook function for [suffix] in [mod_funcs]. The execution
 	// order of the hook functions follows the order their DLLs were originally

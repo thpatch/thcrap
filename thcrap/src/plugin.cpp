@@ -216,12 +216,11 @@ int plugins_close(void)
 	return 0;
 }
 
-inline void mod_funcs_t::build(exported_func_t* funcs, const char* infix) {
-	if (funcs && infix) {
-		const size_t infix_len = strlen(infix);
+inline void mod_funcs_t::build(exported_func_t* funcs, std::string_view infix) {
+	if (funcs) {
 		while (funcs->name && funcs->func) {
-			if (const char* p = strstr(funcs->name, infix);
-				p && *(p += infix_len) != '\0') {
+			if (const char* p = strstr(funcs->name, infix.data());
+				p && *(p += infix.length()) != '\0') {
 				(*this)[p].push_back((mod_call_type)funcs->func);
 			}
 			++funcs;

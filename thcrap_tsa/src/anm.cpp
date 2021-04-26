@@ -1000,19 +1000,21 @@ int stack_game_png_apply(anm_entry_t &entry)
 {
 	int ret = -1;
 	if(entry.thtx && entry.name) {
-		stack_chain_iterate_t sci = {};
-		char **chain = resolve_chain_game(entry.name);
+		stack_chain_iterate_t sci;
+		sci.fn = NULL;
 		ret = 0;
-		if(chain && chain[0]) {
+		if(char** chain = resolve_chain_game(entry.name);
+			chain && chain[0])
+		{
 			log_printf("(PNG) Resolving %s... ", chain[0]);
-		}
-		while(stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
-			if(!patch_png_apply(entry, sci.patch_info, sci.fn)) {
-				ret = 1;
+			while (stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
+				if (!patch_png_apply(entry, sci.patch_info, sci.fn)) {
+					ret = 1;
+				}
 			}
+			log_print(ret ? "\n" : "not found\n");
+			chain_free(chain);
 		}
-		log_printf(ret ? "\n" : "not found\n");
-		free(chain);
 	}
 	return ret;
 }
@@ -1033,11 +1035,11 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	auto *anm_entry_out = (uint8_t *)file_inout;
 	auto *endptr = (uint8_t *)(file_inout) + size_in;
 
-	log_printf("---- ANM ----\n");
+	log_debugf("---- ANM ----\n");
 
 	while(anm_entry_out && anm_entry_out < endptr) {
-		if(anm_entry_init(hdr_m, entry, anm_entry_out, patch)) {
-			log_printf("Corrupt ANM file or format definition, aborting ...\n");
+		if(!anm_entry_init(hdr_m, entry, anm_entry_out, patch)); else {
+			log_print("Corrupt ANM file or format definition, aborting ...\n");
 			break;
 		}
 		if(entry.hasdata) {
@@ -1064,6 +1066,6 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	png_image_clear(bounds);
 	png_image_clear(png);
 
-	log_printf("-------------\n");
+	log_debugf("-------------\n");
 	return 1;
 }

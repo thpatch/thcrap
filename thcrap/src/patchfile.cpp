@@ -226,7 +226,11 @@ HANDLE patch_file_stream(const patch_t *patch_info, const char *fn)
 
 void* patch_file_load(const patch_t *patch_info, const char *fn, size_t *file_size)
 {
-	return file_stream_read(patch_file_stream(patch_info, fn), file_size);
+	HANDLE handle = patch_file_stream(patch_info, fn);
+	if (handle != INVALID_HANDLE_VALUE) {
+		return file_stream_read(handle, file_size);
+	}
+	return NULL;
 }
 
 int patch_file_store(const patch_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size)

@@ -42,7 +42,8 @@ void png_error_callback(png_structp png_ptr, png_const_charp msg)
 // PNG reading core is adapted from http://www.libpng.org/pub/png/book/chapter13.html
 BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp, bool gray_to_rgb)
 {
-	stack_chain_iterate_t sci = {};
+	stack_chain_iterate_t sci;
+	sci.fn = NULL;
 	BYTE *file_buffer = nullptr;
 	file_buffer_t file = {};
 
@@ -56,12 +57,12 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 	}
 	if (!file_buffer) {
 		log_print("not found\n");
-		free(chain);
+		chain_free(chain);
 		return nullptr;
 	}
 	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
-	free(chain);
+	chain_free(chain);
 	file.buffer = file_buffer;
 	
 	if (!png_check_sig(file.buffer, 8)) {
@@ -114,7 +115,8 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 
 bool png_image_get_IHDR(const char *fn, uint32_t *width, uint32_t *height, uint8_t *bpp)
 {
-	stack_chain_iterate_t sci = {};
+	stack_chain_iterate_t sci;
+	sci.fn = NULL;
 	BYTE *file_buffer = nullptr;
 	file_buffer_t file = {};
 
@@ -128,12 +130,12 @@ bool png_image_get_IHDR(const char *fn, uint32_t *width, uint32_t *height, uint8
 	}
 	if (!file_buffer) {
 		log_print("not found\n");
-		free(chain);
+		chain_free(chain);
 		return false;
 	}
 	patch_print_fn(sci.patch_info, sci.fn);
 	log_print("\n");
-	free(chain);
+	chain_free(chain);
 	file.buffer = file_buffer;
 
 	if (!png_check_sig(file.buffer, 8)) {

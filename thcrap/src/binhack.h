@@ -92,13 +92,14 @@ typedef struct {
 	hackpoint_addr_t* addr;
 } binhack_t;
 
-typedef enum {
+enum {
 	READONLY = 0,
 	READWRITE = 1,
 	EXECUTE = 2,
 	EXECUTE_READ = 3,
 	EXECUTE_READWRITE = 4
-} CodecaveAccessType;
+};
+typedef uint8_t CodecaveAccessType;
 
 typedef struct {
 	// Codecave name
@@ -132,7 +133,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 // If HMODULE is not null, relative addresses are relative to this module.
 // Else, they are relative to the main module of the current process.
 // Returns the number of binary hacks that could not be applied.
-int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod);
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod);
 
 
 // Adds every codecave in [codecaves] on the current process.
@@ -146,7 +147,7 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 //		"test_cave": "somecode"
 //		}
 // }
-int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
+size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
 
 // Parses a json codecave entry and returns a codecave object
 bool codecave_from_json(const char *name, json_t *in, codecave_t *out);
