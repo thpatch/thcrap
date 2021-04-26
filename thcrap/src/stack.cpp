@@ -98,15 +98,19 @@ bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, s
 		//Defining this as a macro instead of a bool generates efficient CMOVS
 		#define is_reverse (bool)(direction < 0)
 		{
+			const size_t stack_size = stack.size();
+			if (stack_size); else {
+				// Failsafe for when there are no patches
+				return false;
+			}
+			sci->patch_limit = (is_reverse ? -1 : stack_size);
+			sci->patch_step =  (is_reverse ? stack_size : -1) + direction;
+			sci->patch_info = &stack[sci->patch_step];
+		}{
 			const size_t chain_size = chain_get_size(chain);
 			sci->chain_limit = (is_reverse ? -1 : chain_size);
 			sci->chain_reset = (is_reverse ? chain_size : -1) + direction;
 			sci->fn = chain[sci->chain_step = sci->chain_reset];
-		}{
-			const size_t stack_size = stack.size();
-			sci->patch_limit = (is_reverse ? -1 : stack_size);
-			sci->patch_step = (is_reverse ? stack_size : -1) + direction;
-			sci->patch_info = &stack[sci->patch_step];
 		}
 		#undef is_reverse
 		return true;
