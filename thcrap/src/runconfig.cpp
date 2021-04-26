@@ -436,24 +436,29 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 {
 	assert(stage_num < run_cfg.stages.size());
 	stage_t& stage = run_cfg.stages[stage_num];
-	HMODULE hMod;
-	int ret = 0;
+	size_t failed = 0;
 
 	if (flags & RUNCFG_STAGE_USE_MODULE) {
-		hMod = module;
-	}
-	else {
-		hMod = stage.module;
+		module = stage.module;
 	}
 
-	ret += codecaves_apply(stage.codecaves.data(), stage.codecaves.size());
-	ret += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), hMod);
+	failed += codecaves_apply(stage.codecaves.data(), stage.codecaves.size());
+	failed += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), module);
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
-		// FIXME: this workaround is needed, because breakpoints don't check what they overwrite
-		if (!(ret != 0 && stage_num == 0 && run_cfg.stages.size() >= 2)) {
-			ret += breakpoints_apply(stage.breakpoints.data(), stage.breakpoints.size(), hMod);
+		const size_t breakpoint_count = stage.breakpoints.size();
+		if (stage_num == 0 && run_cfg.stages.size() > 1) {
+			// Explicitly check the number of breakpoints when using
+			// multiple init stages so that the last stage will still
+			// be loaded even when all first stage breakpoints were
+			// ignored or failed during initial parsing.
+			// 
+			// FIXME: testing failed is needed because breakpoints don't check what they overwrite
+			if (failed > 0 || breakpoint_count == 0) {
+				return false;
+			}
 		}
+		failed += breakpoints_apply(stage.breakpoints.data(), breakpoint_count, module);
 	}
 
-	return ret == 0;
+	return failed == 0;
 }

@@ -356,9 +356,8 @@ int thcrap_init(const char *run_cfg_fn)
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
-	const size_t runconfig_stages = runconfig_stage_count();
-	bp_set.resize(runconfig_stages, false);
-	return runconfig_stages ? thcrap_init_binary(0, nullptr) : 0;
+	bp_set.resize(runconfig_stage_count(), false);
+	return thcrap_init_binary(0, nullptr);
 }
 
 int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
@@ -375,7 +374,6 @@ int thcrap_init_binary(size_t stage_num, HMODULE module)
 {
 	size_t stages_total = runconfig_stage_count();
 
-	assert(stage_num < stages_total);
 	assert(bp_set.size() == stages_total);
 
 	if (stage_num < stages_total) {

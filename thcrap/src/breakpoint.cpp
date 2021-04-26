@@ -228,7 +228,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 	}
 
 	size_t sourcecaves_total_size = 0;
-	size_t valid_breakpoint_count = 0;
+	size_t failed = bp_count;
 	size_t total_valid_addrs = 0;
 
 	VLA(size_t, breakpoint_total_size, bp_count);
@@ -282,13 +282,13 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		if (cur_valid_addrs) {
 			breakpoint_total_size[i] = total_cavesize;
 			total_valid_addrs += cur_valid_addrs;
-			++valid_breakpoint_count;
+			--failed;
 		}
 	}
 
 	if (!total_valid_addrs) {
-		log_print("No breakpoints to render.\n");
-		return 0;
+		log_print("No valid breakpoints to render.\n");
+		return failed;
 	}
 
 	uint8_t *const cave_source = (BYTE*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
@@ -385,5 +385,5 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 	VirtualProtect(cave_source, sourcecaves_total_size, PAGE_EXECUTE, &idgaf);
 	VirtualProtect(cave_call, callcaves_total_size, PAGE_EXECUTE, &idgaf);
 
-	return bp_count - valid_breakpoint_count;
+	return failed;
 }
