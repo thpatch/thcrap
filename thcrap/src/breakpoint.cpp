@@ -220,7 +220,7 @@ static const size_t bp_entry_index = &bp_entry_indexptr + 1 - (uint8_t*)&bp_entr
 static const size_t bp_entry_local = &bp_entry_localptr + 1 - (uint8_t*)&bp_entry;
 static const size_t bp_entry_call  = &bp_entry_callptr  + 1 - (uint8_t*)&bp_entry;
 
-size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
+size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod, size_t stage_num)
 {
 	if(!breakpoints || !bp_count) {
 		log_print("No breakpoints to set up.\n");
@@ -288,7 +288,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 	if (!total_valid_addrs) {
 		log_print("No breakpoints to render.\n");
-		return 0;
+		return runconfig_stage_count() - stage_num;
 	}
 
 	uint8_t *const cave_source = (BYTE*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);

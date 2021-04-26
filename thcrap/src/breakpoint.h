@@ -108,7 +108,7 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.
-size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod);
+size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod, size_t stage_count);
 
 // Removes all breakpoints in the given set.
 // TODO: Implement!

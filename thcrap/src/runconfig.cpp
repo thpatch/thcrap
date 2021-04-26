@@ -451,7 +451,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
 		// FIXME: this workaround is needed, because breakpoints don't check what they overwrite
 		if (!(ret != 0 && stage_num == 0 && run_cfg.stages.size() >= 2)) {
-			ret += breakpoints_apply(stage.breakpoints.data(), stage.breakpoints.size(), hMod);
+			ret += breakpoints_apply(stage.breakpoints.data(), stage.breakpoints.size(), hMod, stage_num);
 		}
 	}
 
