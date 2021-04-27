@@ -188,7 +188,7 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 			patch_print_fn(sci.patch_info, sci.fn);
 
 			//const auto &codec = CODECS[sci.step % elementsof(CODECS)];
-			const auto &codec = CODECS[sci.chain_step];
+			const auto &codec = CODECS[sci.chain_step % elementsof(CODECS)];
 			// Kinda ugly, but makes sure that we keep using whatever
 			// else we might have added to the link of the chain.
 			auto sci_fn_end = sci.fn;
