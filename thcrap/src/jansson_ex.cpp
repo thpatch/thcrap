@@ -33,6 +33,12 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
+TH_CALLER_FREE char* json_string_copy(const json_t* object) {
+	char* str = (char*)json_string_value(object);
+	if (str) str = strdup(str);
+	return str;
+}
+
 int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
@@ -64,6 +70,20 @@ size_t json_array_get_hex(json_t *arr, const size_t ind)
 		return ret;
 	}
 	return 0;
+}
+
+TH_CALLER_FREE char** json_string_array_copy(const json_t *arr) {
+	char** ret = NULL;
+	if (json_is_array(arr)) {
+		const size_t array_size = json_array_size(arr);
+		ret = (char**)malloc((array_size + 1) * sizeof(char*));
+		ret[array_size] = NULL;
+		json_t* array_elem;
+		json_array_foreach_scoped(size_t, i, arr, array_elem) {
+			ret[i] = json_string_copy(array_elem);
+		}
+	}
+	return ret;
 }
 
 const char* json_array_get_string(const json_t *arr, const size_t ind)
@@ -145,6 +165,13 @@ size_t json_object_get_hex(json_t *object, const char *key)
 	return 0;
 }
 
+TH_CALLER_FREE char** json_object_get_string_array_copy(const json_t* object, const char* key) {
+	if (!key) {
+		return NULL;
+	}
+	return json_string_array_copy(json_object_get(object, key));
+}
+
 const char* json_object_get_string(const json_t *object, const char *key)
 {
 	if(!key) {
@@ -153,13 +180,12 @@ const char* json_object_get_string(const json_t *object, const char *key)
 	return json_string_value(json_object_get(object, key));
 }
 
-const char* json_object_get_string_copy(const json_t *object, const char *key)
+TH_CALLER_FREE char* json_object_get_string_copy(const json_t *object, const char *key)
 {
 	if(!key) {
 		return NULL;
 	}
-	const char* str = json_string_value(json_object_get(object, key));
-	return str ? strdup(str) : NULL;
+	return json_string_copy(json_object_get(object, key));;
 }
 
 json_t* json_object_merge(json_t *old_obj, json_t *new_obj)
@@ -444,11 +470,11 @@ eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
 #undef SetOutValues
 }
 
-[[nodiscard]] jeval_error_t json_eval_bool(json_t* val, bool* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_eval_bool(json_t* val, bool* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_BOOL | (flags & JEVAL_MODE_MASK), out);
 }
 
-[[nodiscard]] jeval_error_t json_eval_int(json_t* val, size_t* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_eval_int(json_t* val, size_t* out, jeval_flags_t flags) {
 	json_int_t temp;
 	jeval_error_t ret = json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), &temp);
 	if (ret == JEVAL_SUCCESS) {
@@ -462,36 +488,36 @@ eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
 	return ret;
 }
 
-[[nodiscard]] jeval_error_t json_eval_int64(json_t* val, json_int_t* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_eval_int64(json_t* val, json_int_t* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), out);
 }
 
-[[nodiscard]] jeval_error_t json_eval_real(json_t* val, double* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_eval_real(json_t* val, double* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_REAL | (flags & JEVAL_MODE_MASK), out);
 }
 
-[[nodiscard]] jeval_error_t json_eval_number(json_t* val, double* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_eval_number(json_t* val, double* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_NUMBER | (flags & JEVAL_MODE_MASK), out);
 }
 
 
-[[nodiscard]] jeval_error_t json_object_get_eval_bool(json_t* object, const char* key, bool* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_object_get_eval_bool(json_t* object, const char* key, bool* out, jeval_flags_t flags) {
 	return json_eval_bool(json_object_get(object, key), out, flags);
 }
 
-[[nodiscard]] jeval_error_t json_object_get_eval_int(json_t* object, const char* key, size_t* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_object_get_eval_int(json_t* object, const char* key, size_t* out, jeval_flags_t flags) {
 	return json_eval_int(json_object_get(object, key), out, flags);
 }
 
-[[nodiscard]] jeval_error_t json_object_get_eval_int64(json_t* object, const char* key, json_int_t* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_object_get_eval_int64(json_t* object, const char* key, json_int_t* out, jeval_flags_t flags) {
 	return json_eval_int64(json_object_get(object, key), out, flags);
 }
 
-[[nodiscard]] jeval_error_t json_object_get_eval_real(json_t* object, const char* key, double* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_object_get_eval_real(json_t* object, const char* key, double* out, jeval_flags_t flags) {
 	return json_eval_real(json_object_get(object, key), out, flags);
 }
 
-[[nodiscard]] jeval_error_t json_object_get_eval_number(json_t* object, const char* key, double* out, jeval_flags_t flags) {
+TH_CHECK_RET jeval_error_t json_object_get_eval_number(json_t* object, const char* key, double* out, jeval_flags_t flags) {
 	return json_eval_number(json_object_get(object, key), out, flags);
 }
 

@@ -131,11 +131,9 @@ void runconfig_load(json_t *file, int flags)
 	set_string_if_exist("title", run_cfg.title);
 	set_string_if_exist("url_update", run_cfg.update_url);
 
-	value = json_object_get(file, "console");
-	if (value) {
-		run_cfg.console = json_is_true(value);
-	}
-	run_cfg.msgbox_invalid_func = json_is_true(json_object_get(run_cfg.json, "msgbox_invalid_func"));
+	run_cfg.console = json_object_get_eval_bool_default(file, "console", false, JEVAL_NO_EXPRS);
+	run_cfg.msgbox_invalid_func = json_object_get_eval_bool_default(file, "msgbox_invalid_func", false, JEVAL_NO_EXPRS);
+
 	value = json_object_get(file, "dat_dump");
 	if (value && (run_cfg.dat_dump.empty() || can_overwrite)) {
 		if (json_is_string(value)) {
@@ -164,9 +162,8 @@ void runconfig_load(json_t *file, int flags)
 
 	value = json_object_get(file, "patches");
 	if (value) {
-		size_t i;
 		json_t *patch;
-		json_array_foreach(value, i, patch) {
+		json_array_foreach_scoped(size_t, i, value, patch) {
 			stack_add_patch_from_json(patch);
 		}
 	}
@@ -213,44 +210,44 @@ void runconfig_load(json_t *file, int flags)
 void runconfig_load_from_file(const char *path)
 {
 	json_t *new_cfg = json_load_file_report(path);
-	runconfig_load(new_cfg, 0);
+	runconfig_load(new_cfg, RUNCFG_STAGE_DEFAULT);
 	runconfig_runcfg_fn_set(path);
 	json_decref(new_cfg);
 }
 
 void runconfig_print()
 {
-	log_printf(
+	log_print(
 		"---------------------------\n"
 		"Complete run configuration:\n"
 		"---------------------------\n"
 	);
-	log_printf("  console: %s\n",      run_cfg.console ? "true" : "false");
+	log_printf("  console: %s\n",      BoolStr(run_cfg.console));
 	log_printf("  thcrap dir: '%s'\n", run_cfg.thcrap_dir.c_str());
 	log_printf("  runcfg fn: '%s'\n",  run_cfg.runcfg_fn.c_str());
-	log_printf("  game id: '%s'\n",    run_cfg.game.c_str());
-	log_printf("  build id: '%s'\n",   run_cfg.build.c_str());
+	log_printf("  game id: '%s'\n",    run_cfg.game.data());
+	log_printf("  build id: '%s'\n",   run_cfg.build.data());
 	log_printf("  game title: '%s'\n", run_cfg.title.c_str());
 	log_printf("  update URL: '%s'\n", run_cfg.update_url.c_str());
-	log_printf("  latest:", run_cfg);
+	log_print ("  latest:");
 	for (const std::string& it : run_cfg.latest) {
 		log_printf(" '%s'", it.c_str());
 	}
 	log_print("\n");
 	log_printf("  dat_dump: '%s'\n", run_cfg.dat_dump.c_str());
-	log_printf(
+	log_print(
 		"---------------------------\n"
 		"Patch stack:\n"
 		"---------------------------\n"
 	);
 	stack_print();
-	log_printf(
+	log_print(
 		"---------------------------\n"
 		"Run configuration JSON:\n"
 		"---------------------------\n"
 	);
 	json_dump_log(run_cfg.json, JSON_INDENT(2));
-	log_printf(
+	log_print(
 		"---------------------------\n"
 	);
 }
@@ -258,8 +255,8 @@ void runconfig_print()
 void runconfig_free()
 {
 	stack_free();
-	json_decref_safe(run_cfg.json);
-	run_cfg.json = nullptr;
+	run_cfg.json = json_decref_safe(run_cfg.json);
+	assert(!run_cfg.json);
 	run_cfg.console = false;
 	run_cfg.thcrap_dir.clear();
 	run_cfg.runcfg_fn.clear();
@@ -354,6 +351,16 @@ const char *runconfig_game_get()
 const char *runconfig_build_get()
 {
 	return run_cfg.build.empty() == false ? run_cfg.build.c_str() : nullptr;
+}
+
+std::string_view runconfig_game_get_view()
+{
+	return run_cfg.game;
+}
+
+std::string_view runconfig_build_get_view()
+{
+	return run_cfg.build;
 }
 
 void runconfig_build_set(const char *build)

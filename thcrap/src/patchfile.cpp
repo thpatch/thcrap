@@ -80,50 +80,28 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size)
 
 char* fn_for_build(const char *fn)
 {
-	const char *build = runconfig_build_get();
-	size_t name_len;
-	size_t ret_len;
-	const char *first_ext = fn;
-	char *ret;
-
-	if(!fn || !build) {
-		return NULL;
+	auto build_view = runconfig_build_get_view();
+	if (!build_view.empty()) {
+		const size_t fn_length = PtrDiffStrlen(strchr(fn, '.'), fn);
+		return strdup_cat({ fn, fn_length + 1 }, build_view, fn + fn_length);
 	}
-	ret_len = strlen(fn) + 1 + strlen(build) + 1;
-	ret = (char*)malloc(ret_len);
-	if(!ret) {
-		return NULL;
+	else {
+		return nullptr;
 	}
-
-	// We need to do this on our own here because the build ID should be placed
-	// *before* the first extension.
-	while(*first_ext && *first_ext != '.') {
-		first_ext++;
-	}
-	name_len = (first_ext - fn);
-	strncpy(ret, fn, name_len);
-	sprintf(ret + name_len, ".%s%s", build, first_ext);
-	return ret;
 }
 
 char* fn_for_game(const char *fn)
 {
-	const char *game_id = runconfig_game_get();
-	if (!game_id) {
-		return strdup(fn);
-	} else if (!fn) {
-		return NULL;
+	auto game_id = runconfig_game_get_view();
+	if (!game_id.empty()) {
+		if (fn) {
+			return strdup_cat(game_id, '/', fn);
+		}
 	}
-	size_t game_id_len = strlen(game_id) + 1;
-	char *full_fn;
-
-	full_fn = (char*)malloc(game_id_len + strlen(fn) + 1);
-
-	full_fn[0] = 0; // Because strcat
-	strncpy(full_fn, game_id, game_id_len);
-	strcat(full_fn, "/");
-	strcat(full_fn, fn);
-	return full_fn;
+	else if (fn) {
+		return strdup(fn);
+	}
+	return NULL;
 }
 
 void patch_print_fn(const patch_t *patch_info, const char *fn)
@@ -165,25 +143,18 @@ int dir_create_for_fn(const char *fn)
 
 char* fn_for_patch(const patch_t *patch_info, const char *fn)
 {
-	size_t patch_fn_len;
 	char *patch_fn = NULL;
 
 	if(!patch_info || !patch_info->archive || !fn) {
 		return NULL;
 	}
-	/*
-	if(archive[archive_len - 1] != '\\' && archive[archive_len - 1] != '/') {
+	/*if(char archive_end = patch_info->archive[strlen(patch_info->archive) - 1];
+		archive_end != '\\' && archive_end != '/') {
 		// ZIP archives not yet supported
 		return NULL;
-	}
-	*/
-	// patch_fn = archive + fn
-	patch_fn_len = strlen(patch_info->archive) + 1 + strlen(fn) + 1;
-	patch_fn = (char*)malloc(patch_fn_len * sizeof(char));
+	}*/
 
-	strcpy(patch_fn, patch_info->archive);
-	PathAddBackslashU(patch_fn);
-	strcat(patch_fn, fn);
+	patch_fn = strdup_cat(patch_info->archive, '/', fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;
 }
@@ -226,6 +197,7 @@ HANDLE patch_file_stream(const patch_t *patch_info, const char *fn)
 
 void* patch_file_load(const patch_t *patch_info, const char *fn, size_t *file_size)
 {
+	if (file_size) *file_size = 0;
 	HANDLE handle = patch_file_stream(patch_info, fn);
 	if (handle != INVALID_HANDLE_VALUE) {
 		return file_stream_read(handle, file_size);
@@ -360,54 +332,33 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	}
 	if (PathIsRelativeU(patch_path)) {
 		// Add the current directory to the patch archive field
-		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 2;
-		char *full_patch_path = (char *)malloc(full_patch_path_len);
-		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
-		strcpy(PathAddBackslashU(full_patch_path), patch_path);
-		str_slash_normalize(full_patch_path);
-		patch.archive = full_patch_path;
+		const size_t patch_len = strlen(patch_path) + 1; // Includes + 1 for path separator
+		const size_t dir_len = GetCurrentDirectory(0, NULL); // Includes null terminator
+		char *full_patch_path = patch.archive = (char *)malloc(patch_len + dir_len);
+		GetCurrentDirectory(dir_len, full_patch_path);
+		full_patch_path += dir_len;
+		full_patch_path[-1] = '/';
+		memcpy(full_patch_path, patch_path, patch_len);
 	}
 	else {
 		patch.archive = strdup(patch_path);
-		str_slash_normalize(patch.archive);
 	}
+	str_slash_normalize(patch.archive);
 	patch.config = json_object_get(patch_info, "config");
 	// Merge the runconfig patch array and the patch.js
 	json_t *patch_js = patch_json_load(&patch, "patch.js", NULL);
 	json_object_update_recursive(patch_js, (json_t*)patch_info);
 
-	auto set_string_if_exist = [patch_js](const char *key, char*& out) {
-		json_t *value = json_object_get(patch_js, key);
-		if (value) {
-			out = strdup(json_string_value(value));
-		}
-	};
-	auto set_array_if_exist = [patch_js](const char *key, char **&out) {
-		json_t *array = json_object_get(patch_js, key);
-		if (array && json_is_array(array)) {
-			out = new char*[json_array_size(array) + 1];
-			size_t i = 0;
-			json_t *it;
-			json_array_foreach(array, i, it) {
-				out[i] = strdup(json_string_value(it));
-			}
-			out[i] = nullptr;
-		}
-	};
-
 	json_t* id = json_object_get(patch_js, "id");
-	if (id && json_is_string(id)) {
-		patch.id = strdup(json_string_value(id));
+	if (json_is_string(id)) {
+		patch.id = json_string_copy(id);
 	} else if (patch.archive) {
 		const char* patch_folder = strrchr(patch.archive, '/');
 		if (patch_folder && patch_folder != patch.archive) {
 			// Don't read backwards past the beginning of the string
 			do {
 				if (patch_folder[-1] == '/') {
-					const size_t length = strlen(patch_folder);
-					patch.id = (char*)malloc(length);
-					strncpy(patch.id, patch_folder, length - 1);
-					patch.id[length - 1] = '\0';
+					patch.id = strndup(patch_folder, strlen(patch_folder) - 1);
 					break;
 				}
 			} while (--patch_folder != patch.archive);
@@ -427,7 +378,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 				if (!end_sub_version[0]) break;
 				version_string = end_sub_version;
 			}
-			patch.version = sub_versions[0] << 24 | sub_versions[1] << 16 | sub_versions[2] << 8 | sub_versions[3];
+			patch.version = TextInt(sub_versions[3], sub_versions[2], sub_versions[1], sub_versions[0]);
 		} else if (json_is_integer(version)) {
 			patch.version = (uint32_t)json_integer_value(version);
 		}
@@ -437,60 +388,47 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	}
 
 	if (patch.id) {
-		char* patch_test_opt_name = (char*)malloc(strlen(patch.id) + 7);
-		strcpy(patch_test_opt_name, "patch:");
-		strcat(patch_test_opt_name, patch.id);
+		char* patch_test_opt_name = strdup_cat("patch:", patch.id);
 		patch_val_t patch_test_opt;
 		patch_test_opt.type = PVT_DWORD;
 		patch_test_opt.i = patch.version;
 		patch_options[patch_test_opt_name] = patch_test_opt;
 	}
 
-	set_string_if_exist("title",      patch.title);
-	set_array_if_exist( "servers",    patch.servers);
-	set_array_if_exist( "ignore",     patch.ignore);
-	set_string_if_exist("motd",       patch.motd);
-	set_string_if_exist("motd_title", patch.motd_title);
+	patch.title = json_object_get_string_copy(patch_js, "title");
+	patch.servers = json_object_get_string_array_copy(patch_js, "servers");
+	patch.ignore = json_object_get_string_array_copy(patch_js, "ignore");
+	patch.motd = json_object_get_string_copy(patch_js, "motd");
+	patch.motd_title = json_object_get_string_copy(patch_js, "motd_title");
 	patch.level = level;
 
-	patch.update = true;
-	json_t *update = json_object_get(patch_js, "update");
-	if (update && json_is_false(update)) {
-		patch.update = false;
-	}
+	patch.update = json_object_get_eval_bool_default(patch_js, "update", true, JEVAL_NO_EXPRS);
 
 	json_t *dependencies = json_object_get(patch_js, "dependencies");
 	if (json_is_array(dependencies)) {
-		patch.dependencies = new patch_desc_t[json_array_size(dependencies) + 1];
-		size_t i;
+		const size_t array_size = json_array_size(dependencies);
+		patch.dependencies = new patch_desc_t[array_size + 1];
+		patch.dependencies[array_size].patch_id = NULL;
 		json_t *val;
-		json_array_foreach(dependencies, i, val) {
+		json_array_foreach_scoped(size_t, i, dependencies, val) {
 			patch.dependencies[i] = patch_dep_to_desc(json_string_value(val));
 		}
-		patch.dependencies[i].patch_id = nullptr;
 	}
 
 	json_t *fonts = json_object_get(patch_js, "fonts");
 	if (json_is_object(fonts)) {
-		std::vector<char*> fonts_vector;
-		const char *font_fn;
-		json_t *val;
-		json_object_foreach(fonts, font_fn, val) {
-			fonts_vector.push_back(strdup(font_fn));
-		}
-		patch.fonts = new char*[fonts_vector.size() + 1];
+		const size_t array_size = json_object_size(fonts);
+		patch.fonts = new char*[array_size + 1];
+		patch.fonts[array_size] = NULL;
+		const char* font_fn;
+		json_t* val;
 		size_t i = 0;
-		for (char *it : fonts_vector) {
-			patch.fonts[i] = it;
-			i++;
+		json_object_foreach(fonts, font_fn, val) {
+			patch.fonts[i++] = strdup(font_fn);
 		}
-		patch.fonts[i] = nullptr;
 	}
 
-	json_t *motd_type = json_object_get(patch_js, "motd_type");
-	if (motd_type && json_is_integer(motd_type)) {
-		patch.motd_type = (DWORD)json_integer_value(motd_type);
-	}
+	patch.motd_type = (DWORD)json_object_get_eval_int_default(patch_js, "motd_type", 0, JEVAL_STRICT | JEVAL_NO_EXPRS);
 
 	json_decref(patch_js);
 	return patch;
@@ -507,19 +445,19 @@ void patch_free(patch_t *patch)
 		free(patch->archive);
 		free(patch->id);
 		free(patch->title);
-		free(patch->motd);
-		free(patch->motd_title);
+		free((void*)patch->motd);
+		free((void*)patch->motd_title);
 		if (patch->servers) {
 			for (size_t i = 0; patch->servers[i]; i++) {
 				free(patch->servers[i]);
 			}
-			delete[] patch->servers;
+			free(patch->servers);
 		}
 		if (patch->ignore) {
 			for (size_t i = 0; patch->ignore[i]; i++) {
 				free(patch->ignore[i]);
 			}
-			delete[] patch->ignore;
+			free(patch->ignore);
 		}
 		if (patch->fonts) {
 			for (size_t i = 0; patch->fonts[i]; i++) {
@@ -556,9 +494,7 @@ int patch_rel_to_abs(patch_t *patch_info, const char *base_path)
 		char *base_dir;
 
 		if (!PathIsRelativeA(base_path)) {
-			base_path_len = strlen(base_path) + 1;
-			base_dir = (char*)malloc(base_path_len);
-			strncpy(base_dir, base_path, base_path_len);
+			base_dir = strdup(base_path);
 		}
 		else {
 			base_path_len = GetCurrentDirectory(0, NULL) + strlen(base_path) + 1;
@@ -636,13 +572,10 @@ json_t *patchhooks_load_diff(const patchhook_t *hook_array, const char *fn, size
 	}
 	json_t *patch;
 
-	size_t diff_fn_len = strlen(fn) + strlen(".jdiff") + 1;
 	size_t diff_size = 0;
-	VLA(char, diff_fn, diff_fn_len);
-	strcpy(diff_fn, fn);
-	strcat(diff_fn, ".jdiff");
+	char* diff_fn = strdup_cat(fn, ".jdiff");
 	patch = stack_game_json_resolve(diff_fn, &diff_size);
-	VLA_FREE(diff_fn);
+	free(diff_fn);
 
 	if (size) {
 		*size = 0;

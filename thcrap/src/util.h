@@ -12,13 +12,16 @@
 #define TH_CALLER_FREE TH_NODISCARD_REASON("Return value must be freed by caller!")
 #define TH_CHECK_RET TH_NODISCARD_REASON("Return value must be checked to determine validity of other outputs!")
 
+#define BoolStr(Boolean) (Boolean ? "true" : "false")
+
 /// Pointers
 /// --------
 #define AlignUpToMultipleOf(val, mul) ((val) - ((val) % (mul)) + (mul))
 #define AlignUpToMultipleOf2(val, mul) (((val) + (mul) - 1) & -(mul))
 
-size_t dword_align(const size_t val);
-BYTE* ptr_dword_align(const BYTE *in);
+#define dword_align(val) (size_t)AlignUpToMultipleOf2((size_t)(val), 4)
+#define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))
+
 // Advances [src] by [num] and returns [num].
 size_t ptr_advance(const unsigned char **src, size_t num);
 // Copies [num] bytes from [src] to [dst] and advances [src].
@@ -47,7 +50,7 @@ inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 // Extends std::string_view to add a json string constructor.
 class stringref_t : public std::string_view {
 public:
-	stringref_t(const json_t* json) : std::string_view(json_string_value(json), json_string_length(json)) {}
+	inline stringref_t(const json_t* json) : std::string_view(json_string_value(json), json_string_length(json)) {}
 	using std::string_view::string_view;
 };
 
@@ -95,17 +98,6 @@ int str_num_base(const char *str);
 // Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [format]
 void str_hexdate_format(char format[11], uint32_t date);
 
-// Creates a lowercase copy of [str].
-#define STRLWR_DEC(str) \
-	STRLEN_DEC(str); \
-	VLA(char, str##_lower, str##_len);
-
-#define STRLWR_CONV(str) \
-	memcpy(str##_lower, str, str##_len); \
-	strlwr(str##_lower); \
-
-#define STRLWR_FREE(str) \
-	VLA_FREE(str##_lower);
 /// -------
 
 // Custom strndup variant that returns (size + 1) bytes.
@@ -126,12 +118,44 @@ inline TH_CALLER_FREE char* strndup(const char* src, size_t size) {
 }
 
 #ifdef __cplusplus
-// Custom strdup variant that efficiently concatenates two strings.
+extern "C++" {
+
+// Custom strdup variants that efficiently concatenate 2-3 strings.
+// Structured specifically so that the compiler can optimize the copy
+// operations into MOVs for any string literals.
+
 inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view str2) {
-	char* ret = (char*)malloc(str1.length() + str2.length() + 1);
-	ret[str1.length() + str2.length()] = '\0';
-	str2.copy(ret + str1.copy(ret, str1.length()), str2.length());
+	const size_t total_size = str1.length() + str2.length();
+	char* ret = (char*)malloc(total_size + 1);
+	ret[total_size] = '\0';
+	char* ret_temp = ret;
+	ret_temp += str1.copy(ret_temp, str1.length());
+	str2.copy(ret_temp, str2.length());
 	return ret;
+}
+
+inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, char sep, std::string_view str2) {
+	const size_t total_size = str1.length() + sizeof(sep) + str2.length();
+	char* ret = (char*)malloc(total_size + 1);
+	ret[total_size] = '\0';
+	char* ret_temp = ret;
+	ret_temp += str1.copy(ret_temp, str1.length());
+	*ret_temp++ = sep;
+	str2.copy(ret_temp, str2.length());
+	return ret;
+}
+
+inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view sep, std::string_view str2) {
+	const size_t total_size = str1.length() + sep.length() + str2.length();
+	char* ret = (char*)malloc(total_size + 1);
+	ret[total_size] = '\0';
+	char* ret_temp = ret;
+	ret_temp += str1.copy(ret_temp, str1.length());
+	ret_temp += sep.copy(ret_temp, sep.length());
+	str2.copy(ret_temp, str2.length());
+	return ret;
+}
+
 }
 #endif
 

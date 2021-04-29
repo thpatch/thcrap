@@ -82,7 +82,7 @@ hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array)
 
 	json_flex_array_foreach_scoped(size_t, i, addr_array, it) {
 		if (json_is_string(it)) {
-			ret[addr_count].str = strdup(json_string_value(it));
+			ret[addr_count].str = json_string_copy(it);
 			ret[addr_count].raw = 0;
 			ret[addr_count].type = STR_ADDR;
 			ret[addr_count].binhack_source = NULL;
@@ -369,13 +369,10 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	const char *expected = json_object_get_string(in, "expected");
-	const char *title = json_object_get_string(in, "title");
-
 	out->name = strdup(name);
-	out->title = strdup(title);
+	out->title = json_object_get_string_copy(in, "title");
 	out->code = strdup(code);
-	out->expected = strdup(expected);
+	out->expected = json_object_get_string_copy(in, "expected");
 	out->addr = addrs;
 
 	return true;
@@ -838,13 +835,14 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		if (code_size > size_val) {
 			size_val = code_size;
 		}
+		code = strdup(code);
 	}
 	else if (!size_val) {
 		log_printf("codecave %s without \"code\" or \"size\" ignored\n", name);
 		return false;
 	}
 
-	out->code = strdup(code);
+	out->code = code;
 	out->name = strdup_cat("codecave:", name);
 	out->access_type = access_val;
 	out->size = size_val;

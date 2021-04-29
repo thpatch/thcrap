@@ -10,16 +10,6 @@
 #include "thcrap.h"
 #include <errno.h>
 
-size_t dword_align(const size_t val)
-{
-	return (val + 3) & ~3;
-}
-
-BYTE* ptr_dword_align(const BYTE *in)
-{
-	return (BYTE*)dword_align((UINT_PTR)in);
-}
-
 size_t ptr_advance(const unsigned char **src, size_t num)
 {
 	*src += num;

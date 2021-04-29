@@ -140,12 +140,12 @@ TEST(RunconfigTest, Console)
         EXPECT_TRUE(runconfig_console_get());
     }
 
-    // Only true enable the console. Ignore other values.
+    // Any value convertable to true enables the console.
     {
         ScopedRunconfig runconfig(json_pack("{s:i}",
             "console", 1
         ));
-        EXPECT_FALSE(runconfig_console_get());
+        EXPECT_TRUE(runconfig_console_get());
     }
 
     EXPECT_EQ(runconfig_console_get(), false);

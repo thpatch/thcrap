@@ -90,9 +90,9 @@ typedef struct
 
 	// MOTD: message that can be displayed by a patch on startup (from patch.js)
 	// Message content
-	char *motd;
+	const char *motd;
 	// Message title (optional)
-	char *motd_title;
+	const char *motd_title;
 	// Message type. See the uType parameter in https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebox
 	// Optional, defaults to 0 (MB_OK)
 	DWORD motd_type;

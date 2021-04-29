@@ -31,7 +31,6 @@ static std::unordered_map<std::string_view, UINT_PTR> funcs = {
 	{ "th_strdup", (size_t)&strdup },
 	{ "th_strndup", (size_t)&strndup },
 	{ "th_strdup_size", (size_t)&strdup_size },
-	{ "th_strdup_cat", (size_t)&strdup_cat },
 
 	{ "th_strcmp", (size_t)&strcmp },
 	{ "th_strncmp", (size_t)&strncmp },

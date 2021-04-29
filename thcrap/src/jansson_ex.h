@@ -31,6 +31,10 @@ json_t* json_decref_safe(json_t *json);
 // must remain as strings, use json_eval_int instead.
 size_t json_hex_value(json_t *val);
 
+/// Strings
+/// ------
+TH_CALLER_FREE char* json_string_copy(const json_t *object);
+
 /// Arrays
 /// ------
 // Like json_array_set(_new), but expands the array if necessary.
@@ -41,11 +45,10 @@ int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value);
 // automatically converting the JSON value to an integer if necessary.
 size_t json_array_get_hex(json_t *arr, const size_t ind);
 
+TH_CALLER_FREE char** json_string_array_copy(const json_t *arr);
+
 // Convenience function for json_string_value(json_array_get(object, ind));
 const char* json_array_get_string(const json_t *arr, const size_t ind);
-
-// 
-const char* json_object_get_string_copy(const json_t* object, const char* key);
 
 // Same as json_array_get_string(), but returns an empty string ("")
 // if element #[ind] in [arr] is no valid string.
@@ -92,8 +95,14 @@ json_t* json_object_numkey_get(const json_t *object, const json_int_t key);
 // converting the JSON value to an integer if necessary.
 size_t json_object_get_hex(json_t *object, const char *key);
 
+// Convenience function for json_string_array_copy(json_object_get(object, key));
+TH_CALLER_FREE char** json_object_get_string_array_copy(const json_t *object, const char* key);
+
 // Convenience function for json_string_value(json_object_get(object, key));
 const char* json_object_get_string(const json_t *object, const char *key);
+
+// Convenience function for json_string_copy(json_object_get(object, key));
+TH_CALLER_FREE char* json_object_get_string_copy(const json_t *object, const char *key);
 
 // Merge [new_obj] recursively into [old_obj].
 // [new_obj] has priority; any element of [old_obj] that is present
