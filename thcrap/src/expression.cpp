@@ -992,7 +992,8 @@ InvalidCPUFeatureError:
 static TH_NOINLINE size_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
 	ExpressionLogging("CodecaveAddress: \"%.*s\"\n", name_length, name);
 
-	const char* user_offset_expr = strchr(name, '+');
+	// memchr == strnchr
+	const char* user_offset_expr = (const char*)memchr(name, '+', name_length);
 	const size_t name_length_before_offset = user_offset_expr ? PtrDiffStrlen(user_offset_expr, name) : name_length;
 
 	size_t cave_addr = func_get_len(name, name_length_before_offset);
