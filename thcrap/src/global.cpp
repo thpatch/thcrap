@@ -11,34 +11,15 @@
 
 json_t* global_cfg = NULL;
 
-const char* PROJECT_NAME(void)
-{
-	return "Touhou Community Reliant Automatic Patcher";
-}
-const char* PROJECT_NAME_SHORT(void)
-{
-	return "thcrap";
-}
-const char* PROJECT_URL(void)
-{
-	return "https://www.thpatch.net/wiki/Touhou_Patch_Center:Download";
-}
-DWORD PROJECT_VERSION(void)
-{
-	return 0x20210117;
-}
-const char* PROJECT_VERSION_STRING(void)
-{
-	static char ver_str[11] = {0};
-	if(!ver_str[0]) {
-		str_hexdate_format(ver_str, PROJECT_VERSION());
-	}
-	return ver_str;
-}
-const char* PROJECT_BRANCH(void)
-{
-	return "stable";
-}
+#define SetProjectVersion(Year, Month, Day) \
+const uint32_t PROJECT_VERSION = 0x ## Year ## Month ## Day; \
+const char PROJECT_VERSION_STRING[] = #Year "-" #Month "-" #Day;
+
+const char PROJECT_NAME[] = "Touhou Community Reliant Automatic Patcher";
+const char PROJECT_NAME_SHORT[] = "thcrap";
+const char PROJECT_URL[] = "https://www.thpatch.net/wiki/Touhou_Patch_Center:Download";
+SetProjectVersion(2021, 01, 17);
+const char PROJECT_BRANCH[] = "stable";
 
 void globalconfig_init(void)
 {
@@ -116,10 +97,10 @@ void globalconfig_release(void)
 	global_cfg = json_incref(NULL);
 }
 
-void* __cdecl thcrap_alloc(size_t size) {
+void* TH_CDECL thcrap_alloc(size_t size) {
 	return malloc(size);
 }
 
-void __cdecl thcrap_free(void *mem) {
+void TH_CDECL thcrap_free(void *mem) {
 	free(mem);
 }

@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <map>
 #include <algorithm>
 
 int file_rep_init(file_rep_t *fr, const char *file_name)

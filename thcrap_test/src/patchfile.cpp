@@ -106,9 +106,10 @@ TEST(PatchFile, FnForPatch)
     free(fn);
     free(patch.archive);
 
+    // Double slash is accepted just fine by Windows
     patch.archive = strdup("C:/Path/to/thcrap/repos/repo_name/patch_name/");
     fn = fn_for_patch(&patch, "test.js");
-    EXPECT_STREQ(fn, "C:/Path/to/thcrap/repos/repo_name/patch_name/test.js");
+    EXPECT_STREQ(fn, "C:/Path/to/thcrap/repos/repo_name/patch_name//test.js");
     free(fn);
     free(patch.archive);
 }

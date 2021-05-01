@@ -53,7 +53,7 @@
  * ------------------------
  *	BP_textimage_load
  */
-extern "C" __declspec(dllexport) int BP_textimage_init(x86_reg_t *regs, json_t *bp_info);
+extern "C" TH_EXPORT int BP_textimage_init(x86_reg_t *regs, json_t *bp_info);
 
 /*
  * Defines and (re-)loads text images.
@@ -109,7 +109,7 @@ extern "C" __declspec(dllexport) int BP_textimage_init(x86_reg_t *regs, json_t *
  * ------------------------
  *	None
  */
-extern "C" __declspec(dllexport) int BP_textimage_load(x86_reg_t *regs, json_t *bp_info);
+extern "C" TH_EXPORT int BP_textimage_load(x86_reg_t *regs, json_t *bp_info);
 
 /*
  * Replaces a sprite from the gamee with one from a text image.
@@ -132,7 +132,7 @@ extern "C" __declspec(dllexport) int BP_textimage_load(x86_reg_t *regs, json_t *
  * ------------------------
  *	None
  */
-extern "C" __declspec(dllexport) int BP_textimage_set(x86_reg_t *regs, json_t *bp_info);
+extern "C" TH_EXPORT int BP_textimage_set(x86_reg_t *regs, json_t *bp_info);
 
 /*
  * Only executes the code cave if for every given image, a sprite has been
@@ -149,7 +149,7 @@ extern "C" __declspec(dllexport) int BP_textimage_set(x86_reg_t *regs, json_t *b
  * ------------------------
  *	None
  */
-extern "C" __declspec(dllexport) int BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info);
+extern "C" TH_EXPORT int BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info);
 
-extern "C" __declspec(dllexport) void textimage_mod_repatch(json_t *files_changed);
-extern "C" __declspec(dllexport) void textimage_mod_exit();
+extern "C" TH_EXPORT void textimage_mod_repatch(json_t *files_changed);
+extern "C" TH_EXPORT void textimage_mod_exit();

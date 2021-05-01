@@ -129,7 +129,7 @@ DWORD WINAPI self_window_create_and_run(void *param)
 	}
 
 	strings_strcat(TEXT_SLOT, TEXT);
-	text_final = strings_replace(TEXT_SLOT, "${project}", PROJECT_NAME());
+	text_final = strings_replace(TEXT_SLOT, "${project}", PROJECT_NAME);
 
 	DrawText(hDC, text_final, -1, &label_rect, DT_CALCRECT);
 
@@ -145,7 +145,7 @@ DWORD WINAPI self_window_create_and_run(void *param)
 	wnd_rect.top = (screen_rect.bottom / 2) - (wnd_rect.bottom / 2);
 
 	state->hWnd = CreateWindowExU(
-		wnd_style_ex, (LPSTR)WC_DIALOG, PROJECT_NAME(), wnd_style,
+		wnd_style_ex, (LPSTR)WC_DIALOG, PROJECT_NAME, wnd_style,
 		RECT_EXPAND(wnd_rect), NULL, NULL, hMod, NULL
 	);
 
@@ -457,14 +457,14 @@ static self_result_t self_replace(zip_t *zip)
 	self_result_t ret = SELF_REPLACE_ERROR;
 	if(zip) {
 		// + 1 for the underscore
-		size_t prefix_backup_len = _scprintf(PREFIX_BACKUP, PROJECT_VERSION_STRING()) + 1 + 1;
+		int prefix_backup_len = snprintf(NULL, 0, PREFIX_BACKUP, PROJECT_VERSION_STRING) + 1 + 1;
 		VLA(char, prefix_backup, prefix_backup_len);
 		char backup_dir[TEMP_FN_LEN];
 		const char *fn;
 		json_t *val;
 		size_t i;
 
-		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING());
+		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING);
 		if(!PathFileExistsU(prefix_backup)) {
 			strncpy(backup_dir, prefix_backup, sizeof(backup_dir));
 		} else {
@@ -516,7 +516,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		return SELF_VERSION_CHECK_ERROR;
 	}
 
-	const char* branch = PROJECT_BRANCH();
+	const char* branch = PROJECT_BRANCH;
 	json_t* branch_json = json_object_get(*netpaths, branch);
 	if (!branch_json) {
 		return SELF_NO_UPDATE;
@@ -527,7 +527,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		return SELF_NO_TARGET_VERSION;
 	}
 
-	if (latest_version <= PROJECT_VERSION()) {
+	if (latest_version <= PROJECT_VERSION) {
 		return SELF_NO_UPDATE;
 	}
 
@@ -545,7 +545,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 			continue;
 		}
 
-		if (milestone > PROJECT_VERSION() && milestone < target_version) {
+		if (milestone > PROJECT_VERSION && milestone < target_version) {
 			netpath = json_string_value(value);
 			target_version = milestone;
 		}

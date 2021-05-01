@@ -567,7 +567,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	{
 		json_t *game = identify(exe_fn);
 		if (game) {
-			runconfig_load(game, RUNCONFIG_NO_OVERWRITE);
+			runconfig_load(game, RUNCONFIG_NO_OVERWRITE | RUNCONFIG_NO_BINHACKS);
 			json_decref(game);
 		}
 	}

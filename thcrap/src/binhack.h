@@ -29,32 +29,95 @@
 
 #pragma once
 
+// TODO: Test whether a different default size is more efficient.
+#define BINHACK_BUFSIZE_MIN 512
+
+typedef enum {
+	INVALID_ADDR = -1,
+	END_ADDR = 0,
+	STR_ADDR = 1,
+	RAW_ADDR = 2
+} hackpoint_addr_type;
+
+typedef struct {
+	// Raw numeric address. Evaluation results of string addresses
+	// are written to this field to be referenced later without
+	// re-evaluating.
+	size_t raw;
+
+	// Heap allocated string expression to be evaluated.
+	const char* str;
+
+	/**
+	  * Internal values
+	  */
+
+	// Value indicating which type of JSON data was used to create this
+	// hackpoint_addr.
+	int8_t type;
+
+	// Pointer to the data originally overwritten at this hackpoint_addr.
+	// Currently implemented with a union for documentation purposes since
+	// binhacks/breakpoints useincompatible methods of allocating this buffer.
+	// 
+	// TODO: In theory, this should be enough to implement binhack/breakpoint
+	// repatching by iterating through the runconfig stages in reverse and copying
+	// the buffers back to the original program.
+	union {
+		uint8_t* breakpoint_source;
+		uint8_t* binhack_source;
+	};
+} hackpoint_addr_t;
+
+// Parses a JSON array of string/integer addresses and returns an array
+// of hackpoint_addr_t to be parsed later by eval_hackpoint_addr.
+hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array);
+
+// Evaluates a [hackpoint_addr], potentially converting the contained string expression into an
+// integer. If HMODULE is not null, relative addresses are relative to this module.
+// Else, they are relative to the main module of the current process.
+bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, HMODULE hMod);
+
 typedef struct {
 	// Binhack name
-	char *name;
+	const char *name;
 	// Binhack description
-	char *title;
+	const char *title;
 	// Binhack code
-	char *code;
+	const char *code;
 	// Expected code at the binhack address
-	char *expected;
+	const char *expected;
 	// Binhack addresses (NULL-terminated array)
 	// They are passed as strings and resolved by binhacks_apply.
-	char **addr;
+	hackpoint_addr_t* addr;
 } binhack_t;
+
+enum {
+	READONLY = 0,
+	READWRITE = 1,
+	EXECUTE = 2,
+	EXECUTE_READ = 3,
+	EXECUTE_READWRITE = 4
+};
+typedef uint8_t CodecaveAccessType;
 
 typedef struct {
 	// Codecave name
-	char *name;
+	const char *name;
 	// Codecave code
-	char *code;
+	const char *code;
+	// Codecave size
+	size_t size;
+	// Codecave fill
+	BYTE fill;
+	// Codecave export status
+	bool export_codecave;
+	// Read, write, execute flags
+	CodecaveAccessType access_type;
 } codecave_t;
 
-// Returns whether [c] is a valid hexadecimal character
-int is_valid_hex(char c);
-
 // Shared error message for nonexistent functions.
-int hackpoints_error_function_not_found(const char *func_name, int retval);
+void hackpoints_error_function_not_found(const char *func_name);
 
 // Parses a json binhack entry and returns a binhack object
 bool binhack_from_json(const char *name, json_t *in, binhack_t *out);
@@ -70,7 +133,7 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 // If HMODULE is not null, relative addresses are relative to this module.
 // Else, they are relative to the main module of the current process.
 // Returns the number of binary hacks that could not be applied.
-int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod);
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod);
 
 
 // Adds every codecave in [codecaves] on the current process.
@@ -84,4 +147,7 @@ int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMo
 //		"test_cave": "somecode"
 //		}
 // }
-int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
+size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
+
+// Parses a json codecave entry and returns a codecave object
+bool codecave_from_json(const char *name, json_t *in, codecave_t *out);

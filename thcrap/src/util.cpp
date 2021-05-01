@@ -10,16 +10,6 @@
 #include "thcrap.h"
 #include <errno.h>
 
-size_t dword_align(const size_t val)
-{
-	return (val + 3) & ~3;
-}
-
-BYTE* ptr_dword_align(const BYTE *in)
-{
-	return (BYTE*)dword_align((UINT_PTR)in);
-}
-
 size_t ptr_advance(const unsigned char **src, size_t num)
 {
 	*src += num;
@@ -30,19 +20,6 @@ size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t 
 {
 	memcpy(dst, *src, num);
 	return ptr_advance(src, num);
-}
-
-void str_ascii_replace(char *str, const char from, const char to)
-{
-	if(str) {
-		char *p = str;
-		while(*p) {
-			if(p[0] == from) {
-				p[0] = to;
-			}
-			p++;
-		}
-	}
 }
 
 void str_slash_normalize(char *str)
@@ -70,7 +47,7 @@ unsigned int str_num_digits(int number)
 
 int str_num_base(const char *str)
 {
-	return !strnicmp(str, "0x", 2) ? 16 : 10;
+	return (str[0] == '0' && (str[1] | 0x20) == 'x') ? 16 : 10;
 }
 
 void str_hexdate_format(char format[11], uint32_t date)
@@ -85,26 +62,21 @@ void str_hexdate_format(char format[11], uint32_t date)
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 {
 	int base = 0;
-	size_t offset = 0;
 	size_t val = 0;
-	char *endptr_temp;
-	char **endptr = ret ? (char **)&ret->endptr : &endptr_temp;
+	char **endptr = ret ? (char **)&ret->endptr : NULL;
 
-	if(str[0] != '\0') {
-		// Module-relative hex values
-		if(!strnicmp(str, "Rx", 2)) {
-			val += (size_t)(hMod ? hMod : GetModuleHandle(NULL));
-			base = 16;
-			offset = 2;
-		}
-		// TODO: This should really scan all characters of the string,
-		// not just the first one.
-		else if('a' <= tolower(str[0]) && tolower(str[0]) <= 'f') {
-			base = 16;
+	switch (str[0] | 0x20) {
+		case 'r':
+			val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
+		case '0':
+		{
+			const bool is_hex = (*++str | 0x20) == 'x';
+			str += is_hex;
+			base = is_hex ? 16 : 10;
 		}
 	}
 	errno = 0;
-	val += strtol(str + offset, endptr, base);
+	val += strtoul(str, endptr, base);
 
 	if(ret) {
 		ret->error = STR_ADDRESS_ERROR_NONE;
@@ -112,9 +84,23 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 		if(errno == ERANGE) {
 			ret->error |= STR_ADDRESS_ERROR_OVERFLOW;
 		}
-		if(*endptr[0] != '\0') {
+		if(endptr && *endptr[0] != '\0') {
 			ret->error |= STR_ADDRESS_ERROR_GARBAGE;
 		}
 	}
 	return val;
+}
+
+bool is_valid_hex(char c) {
+	c |= 0x20;
+	return ((uint8_t)(c - '0') < 10) | ((uint8_t)(c - 'a') < 6);
+}
+
+int8_t hex_value(char c) {
+	c |= 0x20;
+	c -= '0';
+	if ((uint8_t)c < 10) return c;
+	c -= 49;
+	if ((uint8_t)c < 6) return c + 10;
+	return -1;
 }

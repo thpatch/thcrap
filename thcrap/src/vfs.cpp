@@ -9,41 +9,32 @@
 
 #include "thcrap.h"
 #include "vfs.h"
-#include <vector>
 
-typedef struct
-{
+struct jsonvfs_handler_t {
 	std::string out_pattern;
 	std::unordered_set<std::string> in_fns;
 	jsonvfs_generator_t *gen;
-} jsonvfs_handler_t;
+};
 
 static std::vector<jsonvfs_handler_t> vfs_handlers;
 
-void jsonvfs_add(const std::string out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen)
+void jsonvfs_add(const char* out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen)
 {
-	jsonvfs_handler_t handler {
-		out_pattern,
-		in_fns,
-		gen
-	};
-	size_t i = handler.out_pattern.find('\\');
-	while (i != std::string::npos) {
-		handler.out_pattern[i] = '/';
-		i = out_pattern.find('\\');
-	}
+	char* str = strdup(out_pattern);
+	str_slash_normalize(str);
 	for (auto& s : in_fns) {
 		jsondata_add(s.c_str());
 	}
-	vfs_handlers.push_back(handler);
+	vfs_handlers.push_back({ str, in_fns, gen });
+	free(str);
 }
 
-void jsonvfs_game_add(const std::string out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen)
+void jsonvfs_game_add(const char* out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen)
 {
-	jsonvfs_handler_t handler;
-	char *str;
+	jsonvfs_handler_t& handler = vfs_handlers.emplace_back();
+	char* str;
 
-	str = fn_for_game(out_pattern.c_str());
+	str = fn_for_game(out_pattern);
 	str_slash_normalize(str);
 	handler.out_pattern = str;
 	SAFE_FREE(str);
@@ -55,19 +46,16 @@ void jsonvfs_game_add(const std::string out_pattern, std::unordered_set<std::str
 		SAFE_FREE(str);
 	}
 	handler.gen = gen;
-
-	vfs_handlers.push_back(handler);
 }
 
-json_t *jsonvfs_get(const std::string fn, size_t* size)
+json_t *jsonvfs_get(const char* fn, size_t* size)
 {
 	json_t *obj = NULL;
 	if (size) {
 		*size = 0;
 	}
 
-	VLA(char, fn_normalized, fn.length() + 1);
-	strcpy(fn_normalized, fn.c_str());
+	char* fn_normalized = strdup(fn);
 	str_slash_normalize(fn_normalized);
 	for (auto& handler : vfs_handlers) {
 		if (PathMatchSpec(fn_normalized, handler.out_pattern.c_str())) {
@@ -78,20 +66,14 @@ json_t *jsonvfs_get(const std::string fn, size_t* size)
 
 			size_t cur_size = 0;
 			json_t *new_obj = handler.gen(in_data, fn_normalized, &cur_size);
-			if (!obj) {
-				obj = new_obj;
-			}
-			else {
-				json_object_merge(obj, new_obj);
-				json_decref(new_obj);
-			}
+			obj = json_object_merge(obj, new_obj);
 			if (size) {
 				*size += cur_size;
 			}
 		}
 	}
 
-	VLA_FREE(fn_normalized);
+	free(fn_normalized);
 	return obj;
 }
 
@@ -178,12 +160,12 @@ static json_t *map_generator(std::unordered_map<std::string, json_t*> in_data, c
 	return json_map_patch(map, in);
 }
 
-void jsonvfs_add_map(const std::string out_pattern, std::string in_fn)
+void jsonvfs_add_map(const char* out_pattern, std::unordered_set<std::string> in_fns)
 {
-	jsonvfs_add(out_pattern, { in_fn }, map_generator);
+	jsonvfs_add(out_pattern, in_fns, map_generator);
 }
 
-void jsonvfs_game_add_map(const std::string out_pattern, std::string in_fn)
+void jsonvfs_game_add_map(const char* out_pattern, std::unordered_set<std::string> in_fns)
 {
-	jsonvfs_game_add(out_pattern, { in_fn }, map_generator);
+	jsonvfs_game_add(out_pattern, in_fns, map_generator);
 }

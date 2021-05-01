@@ -2,10 +2,16 @@ EXPORTS
 	; Binary hacks
 	; -------------
 	is_valid_hex
+	hex_value
 	binhack_calc_size
 	binhack_from_json
 	binhack_render
 	binhacks_apply
+
+	; Expression parsing
+	; ----------------
+	get_patch_value
+	eval_expr
 
 	; File breakpoints
 	; ----------------
@@ -125,6 +131,28 @@ EXPORTS
 	json_load_file_report
 	json_dump_log
 
+	json_string_expression_value
+	json_eval_bool
+	json_eval_int
+	json_eval_int64
+	json_eval_real
+	json_eval_number
+	json_object_get_eval_bool
+	json_object_get_eval_int
+	json_object_get_eval_int64
+	json_object_get_eval_real
+	json_object_get_eval_number
+	json_eval_bool_default
+	json_eval_int_default
+	json_eval_int64_default
+	json_eval_real_default
+	json_eval_number_default
+	json_object_get_eval_bool_default
+	json_object_get_eval_int_default
+	json_object_get_eval_int64_default
+	json_object_get_eval_real_default
+	json_object_get_eval_number_default
+
 	; JSON data storage
 	; -----------------
 	jsondata_add
@@ -169,8 +197,6 @@ EXPORTS
 	iat_detour_apply
 
 	vtable_detour
-
-	detour_exit
 
 	; Patch files
 	; -----------
@@ -226,11 +252,14 @@ EXPORTS
 	; Plugins
 	; -------
 	func_get
+	func_get_len
 	func_add
 	func_remove
 	plugins_load
 	plugins_close
 	mod_func_remove
+	patch_func_run_all
+	patch_func_remove
 
 	; Detour promotion
 	; ----------------

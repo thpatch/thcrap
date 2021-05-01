@@ -93,7 +93,7 @@ inline std::wstring to_utf16(std::string_view str)
 }
 inline std::string stringf(const char *format, va_list va)
 {
-	size_t len = _vscprintf(format, va);
+	int len = vsnprintf(NULL, 0, format, va);
 	std::string str(len, '\0');
 	vsnprintf(str.data(), str.size() + 1, format, va);
 	str.resize(strlen(str.c_str()));

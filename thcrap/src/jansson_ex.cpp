@@ -33,6 +33,12 @@ size_t json_hex_value(json_t *val)
 	return (size_t)json_integer_value(val);
 }
 
+TH_CALLER_FREE char* json_string_copy(const json_t* object) {
+	char* str = (char*)json_string_value(object);
+	if (str) str = strdup(str);
+	return str;
+}
+
 int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);
@@ -64,6 +70,20 @@ size_t json_array_get_hex(json_t *arr, const size_t ind)
 		return ret;
 	}
 	return 0;
+}
+
+TH_CALLER_FREE char** json_string_array_copy(const json_t *arr) {
+	char** ret = NULL;
+	if (json_is_array(arr)) {
+		const size_t array_size = json_array_size(arr);
+		ret = (char**)malloc((array_size + 1) * sizeof(char*));
+		ret[array_size] = NULL;
+		json_t* array_elem;
+		json_array_foreach_scoped(size_t, i, arr, array_elem) {
+			ret[i] = json_string_copy(array_elem);
+		}
+	}
+	return ret;
 }
 
 const char* json_array_get_string(const json_t *arr, const size_t ind)
@@ -145,6 +165,13 @@ size_t json_object_get_hex(json_t *object, const char *key)
 	return 0;
 }
 
+TH_CALLER_FREE char** json_object_get_string_array_copy(const json_t* object, const char* key) {
+	if (!key) {
+		return NULL;
+	}
+	return json_string_array_copy(json_object_get(object, key));
+}
+
 const char* json_object_get_string(const json_t *object, const char *key)
 {
 	if(!key) {
@@ -153,28 +180,23 @@ const char* json_object_get_string(const json_t *object, const char *key)
 	return json_string_value(json_object_get(object, key));
 }
 
+TH_CALLER_FREE char* json_object_get_string_copy(const json_t *object, const char *key)
+{
+	if(!key) {
+		return NULL;
+	}
+	return json_string_copy(json_object_get(object, key));;
+}
+
 json_t* json_object_merge(json_t *old_obj, json_t *new_obj)
 {
-	const char *key;
-	json_t *new_val;
-
-	if(!old_obj || !new_obj) {
+	if (!json_object_update_recursive(old_obj, new_obj)) {
+		json_decref(new_obj);
 		return old_obj;
 	}
-	if(!json_is_object(old_obj) || !json_is_object(new_obj)) {
-		json_decref(old_obj);
-		return json_incref(new_obj);
+	else {
+		return new_obj;
 	}
-	json_object_foreach(new_obj, key, new_val) {
-		json_t *old_val = json_object_get(old_obj, key);
-		if(json_is_object(old_val) && json_is_object(new_val)) {
-			// Recursion!
-			json_object_merge(old_val, new_val);
-		} else {
-			json_object_set_nocheck(old_obj, key, new_val);
-		}
-	}
-	return old_obj;
 }
 
 static int __cdecl object_key_compare_keys(const void *key1, const void *key2)
@@ -219,11 +241,11 @@ template <typename T, size_t N> T json_tuple_value(
 {
 	T ret;
 	if(json_array_size(arr) != N) {
-		const stringref_t ERR_FMT = "Must be specified as a JSON array in [%s] format.";
-		const stringref_t SEP = ", ";
-		auto allnames_len = SEP.len * (N - 1);
+		constexpr stringref_t ERR_FMT = "Must be specified as a JSON array in [%s] format.";
+		constexpr stringref_t SEP = ", ";
+		size_t allnames_len = SEP.length() * (N - 1);
 		for(auto &i : value_names) {
-			allnames_len += i.len;
+			allnames_len += i.length();
 		}
 		VLA(char, allnames, allnames_len + 1);
 		defer({ VLA_FREE(allnames); });
@@ -235,8 +257,8 @@ template <typename T, size_t N> T json_tuple_value(
 		}
 		p = stringref_copy_advance_dst(p, value_names[N - 1]);
 
-		ret.err.resize(ERR_FMT.len + allnames_len + 1);
-		sprintf(&ret.err[0], ERR_FMT.str, allnames);
+		ret.err.resize(ERR_FMT.length() + allnames_len + 1);
+		sprintf(&ret.err[0], ERR_FMT.data(), allnames);
 		return ret;
 	}
 	for(unsigned int i = 0; i < N; i++) {
@@ -248,7 +270,7 @@ template <typename T, size_t N> T json_tuple_value(
 		}
 		if(failed) {
 			auto ERR_FMT = "Coordinate #%u (%s) must be a positive JSON integer.";
-			ret.err.resize(_scprintf(ERR_FMT, i + 1, value_names[i]));
+			ret.err.resize(snprintf(NULL, 0, ERR_FMT, i + 1, value_names[i]));
 			sprintf(&ret.err[0], ERR_FMT, i + 1, value_names[i]);
 			return ret;
 		}
@@ -362,13 +384,201 @@ start:
 	return ret;
 }
 
-static int __cdecl dump_to_log(const char *buffer, size_t size, void*)
+void json_dump_log(const json_t *json, size_t flags)
 {
-	log_nprint(buffer, size);
-	return 0;
+	char* str = json_dumps(json, flags);
+	log_print(str);
+	free(str);
 }
 
-int json_dump_log(const json_t *json, size_t flags)
-{
-	return json_dump_callback(json, dump_to_log, NULL, flags);
+size_t json_string_expression_value(json_t* json) {
+	size_t ret = 0;
+	if (json_is_string(json)) {
+		(void)eval_expr(json_string_value(json), '\0', &ret, NULL, NULL);
+	}
+	return ret;
+}
+
+enum : uint8_t {
+  //JEVAL_DEFAULT		= 0b00000,
+
+	JEVAL_TYPE_MASK		= 0b00011,
+	JEVAL_BOOL			= 0b00000,
+	JEVAL_INTEGER		= 0b00001,
+	JEVAL_REAL			= 0b00010,
+	JEVAL_NUMBER		= 0b00011,
+
+	JEVAL_MODE_MASK		= 0b11100,
+  //JEVAL_LENIENT		= 0b00000,
+  //JEVAL_STRICT		= 0b00100,
+  //JEVAL_USE_EXPRS		= 0b00000,
+  //JEVAL_NO_EXPRS		= 0b01000,
+  //JEVAL_INT_TRUNCATE	= 0b00000,
+  //JEVAL_INT_RANGE_ERR	= 0b10000
+};
+
+// TODO: Would it be beneficial to convert to a
+// template so that some of the flags can be
+// processed at compiletime with an if constexpr?
+static inline jeval_error_t json_evaluate(json_t* json, uint8_t eval_config, void* out) {
+	if (json); else return JEVAL_NULL_PTR;
+	#define eval_type (eval_config & JEVAL_TYPE_MASK)
+	const bool strict = eval_config & JEVAL_STRICT;
+
+#define SetOutValues(bool_val, int_val, real_val) \
+eval_type == JEVAL_INTEGER ? *(json_int_t*)out = int_val : \
+eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
+*(double*)out = real_val;
+
+	switch (json_type jtype = json_typeof(json)) {
+		case JSON_OBJECT: case JSON_NULL: case JSON_ARRAY:
+			if (strict) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+			SetOutValues(false, 0, 0.0);
+			return JEVAL_SUCCESS;
+		case JSON_FALSE: {
+			if (strict & (eval_type != JEVAL_BOOL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+			SetOutValues(false, 0, 0.0);
+			return JEVAL_SUCCESS;
+		}
+		case JSON_TRUE: {
+			if (strict & (eval_type != JEVAL_BOOL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+			SetOutValues(true, 1, 1.0);
+			return JEVAL_SUCCESS;
+		}
+		case JSON_INTEGER: {
+			if (strict & !((eval_type == JEVAL_INTEGER) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+			const json_int_t int_value = json_integer_value(json);
+			SetOutValues((bool)int_value, int_value, (double)int_value);
+			return JEVAL_SUCCESS;
+		}
+		case JSON_REAL: {
+			if (strict & !((eval_type == JEVAL_REAL) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+			const double real_value = json_real_value(json);
+			SetOutValues((bool)real_value, (json_int_t)real_value, real_value);
+			return JEVAL_SUCCESS;
+		}
+		case JSON_STRING: {
+			if (!(eval_config & JEVAL_NO_EXPRS)); else return JEVAL_ERROR_STRING_NO_EXPRS;
+			if (strict & (eval_type == JEVAL_REAL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+			const size_t expr_value = json_string_expression_value(json);
+			SetOutValues((bool)expr_value, (json_int_t)expr_value, (double)expr_value);
+			return JEVAL_SUCCESS;
+		}
+	}
+	return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+
+#undef SetOutValues
+}
+
+TH_CHECK_RET jeval_error_t json_eval_bool(json_t* val, bool* out, jeval_flags_t flags) {
+	return json_evaluate(val, JEVAL_BOOL | (flags & JEVAL_MODE_MASK), out);
+}
+
+TH_CHECK_RET jeval_error_t json_eval_int(json_t* val, size_t* out, jeval_flags_t flags) {
+	json_int_t temp;
+	jeval_error_t ret = json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), &temp);
+	if (ret == JEVAL_SUCCESS) {
+		if ((flags & JEVAL_INT_RANGE_ERR) && temp > SIZE_MAX) {
+			ret = JEVAL_OUT_OF_RANGE;
+		}
+		else {
+			*out = (size_t)temp;
+		}
+	}
+	return ret;
+}
+
+TH_CHECK_RET jeval_error_t json_eval_int64(json_t* val, json_int_t* out, jeval_flags_t flags) {
+	return json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), out);
+}
+
+TH_CHECK_RET jeval_error_t json_eval_real(json_t* val, double* out, jeval_flags_t flags) {
+	return json_evaluate(val, JEVAL_REAL | (flags & JEVAL_MODE_MASK), out);
+}
+
+TH_CHECK_RET jeval_error_t json_eval_number(json_t* val, double* out, jeval_flags_t flags) {
+	return json_evaluate(val, JEVAL_NUMBER | (flags & JEVAL_MODE_MASK), out);
+}
+
+
+TH_CHECK_RET jeval_error_t json_object_get_eval_bool(json_t* object, const char* key, bool* out, jeval_flags_t flags) {
+	return json_eval_bool(json_object_get(object, key), out, flags);
+}
+
+TH_CHECK_RET jeval_error_t json_object_get_eval_int(json_t* object, const char* key, size_t* out, jeval_flags_t flags) {
+	return json_eval_int(json_object_get(object, key), out, flags);
+}
+
+TH_CHECK_RET jeval_error_t json_object_get_eval_int64(json_t* object, const char* key, json_int_t* out, jeval_flags_t flags) {
+	return json_eval_int64(json_object_get(object, key), out, flags);
+}
+
+TH_CHECK_RET jeval_error_t json_object_get_eval_real(json_t* object, const char* key, double* out, jeval_flags_t flags) {
+	return json_eval_real(json_object_get(object, key), out, flags);
+}
+
+TH_CHECK_RET jeval_error_t json_object_get_eval_number(json_t* object, const char* key, double* out, jeval_flags_t flags) {
+	return json_eval_number(json_object_get(object, key), out, flags);
+}
+
+
+bool json_eval_bool_default(json_t* val, bool default_ret, jeval_flags_t flags) {
+	bool ret = default_ret;
+	(void)json_eval_bool(val, &ret, flags);
+	return ret;
+}
+
+size_t json_eval_int_default(json_t* val, size_t default_ret, jeval_flags_t flags) {
+	size_t ret = default_ret;
+	(void)json_eval_int(val, &ret, flags);
+	return ret;
+}
+
+json_int_t json_eval_int64_default(json_t* val, json_int_t default_ret, jeval_flags_t flags) {
+	json_int_t ret = default_ret;
+	(void)json_eval_int64(val, &ret, flags);
+	return ret;
+}
+
+double json_eval_real_default(json_t* val, double default_ret, jeval_flags_t flags) {
+	double ret = default_ret;
+	(void)json_eval_real(val, &ret, flags);
+	return ret;
+}
+
+double json_eval_number_default(json_t* val, double default_ret, jeval_flags_t flags) {
+	double ret = default_ret;
+	(void)json_eval_number(val, &ret, flags);
+	return ret;
+}
+
+
+bool json_object_get_eval_bool_default(json_t* object, const char* key, bool default_ret, jeval_flags_t flags) {
+	bool ret = default_ret;
+	(void)json_eval_bool(json_object_get(object, key), &ret, flags);
+	return ret;
+}
+
+size_t json_object_get_eval_int_default(json_t* object, const char* key, size_t default_ret, jeval_flags_t flags) {
+	size_t ret = default_ret;
+	(void)json_eval_int(json_object_get(object, key), &ret, flags);
+	return ret;
+}
+
+json_int_t json_object_get_eval_int64_default(json_t* object, const char* key, json_int_t default_ret, jeval_flags_t flags) {
+	json_int_t ret = default_ret;
+	(void)json_eval_int64(json_object_get(object, key), &ret, flags);
+	return ret;
+}
+
+double json_object_get_eval_real_default(json_t* object, const char* key, double default_ret, jeval_flags_t flags) {
+	double ret = default_ret;
+	(void)json_eval_real(json_object_get(object, key), &ret, flags);
+	return ret;
+}
+
+double json_object_get_eval_number_default(json_t* object, const char* key, double default_ret, jeval_flags_t flags) {
+	double ret = default_ret;
+	(void)json_eval_number(json_object_get(object, key), &ret, flags);
+	return ret;
 }

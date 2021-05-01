@@ -11,10 +11,12 @@
 
 #define WIN32_LEAN_AND_MEAN
 
+#include "compiler_support.h"
+
 #ifdef THCRAP_EXPORTS
-# define THCRAP_API __declspec(dllexport)
+# define THCRAP_API TH_EXPORT
 #else
-# define THCRAP_API __declspec(dllimport)
+# define THCRAP_API TH_IMPORT
 #endif
 
 #ifdef __cplusplus
@@ -28,11 +30,16 @@ extern "C" {
 #endif
 
 #include <win32_utf8.h>
+// The bundled CRT includes a standards compliant snprintf,
+// so the old macro definition to _snprintf is obsolete.
+#undef snprintf
 #include <stdbool.h>
 #include <jansson.h>
 #include "exception.h"
+#include "long_double.h"
 #include "util.h"
 #include "jansson_ex.h"
+#include "expression.h"
 #include "global.h"
 #include "runconfig.h"
 #include "log.h"

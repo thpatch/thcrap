@@ -109,7 +109,7 @@ int game_is_trial(void)
 	return trial;
 }
 
-extern "C" __declspec(dllexport) const char* steam_appid(void)
+extern "C" TH_EXPORT const char* steam_appid(void)
 {
 	int trial = game_is_trial();
 	switch(game_id) {
@@ -151,7 +151,7 @@ size_t tlnote_remove_size_hook(const char *fn, json_t *patch, size_t patch_size)
 	return 0;
 }
 
-int __stdcall thcrap_plugin_init()
+int TH_STDCALL thcrap_plugin_init()
 {
 	if(stack_remove_if_unneeded("base_tsa")) {
 		return 1;

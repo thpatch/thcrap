@@ -12,7 +12,7 @@
 /**
   * To be identified as such, every thcrap plugin must export a function named
   *
-  * int __stdcall thcrap_plugin_init()
+  * int TH_STDCALL thcrap_plugin_init()
   *
   * which should return 0 on success, and anything else if the plugin should
   * be removed. This function is called directly after the plugin was loaded
@@ -22,6 +22,7 @@
 // Returns a pointer to a function with the given name in the list of exported
 // functions. Basically a GetProcAddress across the engine and all plug-ins.
 UINT_PTR func_get(const char *name);
+UINT_PTR func_get_len(const char *name, size_t name_len);
 
 // Adds a pointer to a function to the list of functions used by func_get
 int func_add(const char *name, size_t addr);
@@ -63,40 +64,54 @@ bool func_remove(const char *name);
   */
 
 // Module function type.
-typedef void (*mod_call_type)(void *param);
+typedef void (TH_CDECL *mod_call_type)(void *param);
 
 // Removes a module hook function from the unordered map of module hook function
 // This function is nessesairy for plugins to be able to unload themselves
 void mod_func_remove(const char *pattern, mod_call_type func);
 
+// Removes a patch hook function from the unordered map of patch hook function
+void patch_func_remove(const char *pattern, mod_call_type func);
+
 #ifdef __cplusplus
-typedef std::unordered_map<std::string_view, std::vector<mod_call_type>> mod_funcs_t;
-typedef std::pair<std::string_view, std::vector<mod_call_type>> mod_func_pair_t;
+extern "C++" {
 
-// Builds an unordered map mapping the suffixes of all module hook functions
-// occurring in [funcs] to an array of pointers to all the functions in
-// [funcs] with that suffix:
-// {
-//	"suffix": [
-//		<function pointer>. <function pointer>. ...
-//	],
-//	...
-// }
-mod_funcs_t* mod_func_build(exported_func_t *funcs);
+class mod_funcs_t : public std::unordered_map<std::string_view, std::vector<mod_call_type>> {
+public:
+	// Builds an unordered map mapping the suffixes of all module hook functions
+	// occurring in [funcs] to an array of pointers to all the functions in
+	// [funcs] with that suffix:
+	// {
+	//	"suffix": [
+	//		<function pointer>. <function pointer>. ...
+	//	],
+	//	...
+	// }
+	inline void build(exported_func_t* funcs, std::string_view infix);
 
-// Runs every module hook function for [suffix] in [mod_funcs]. The execution
-// order of the hook functions follows the order their DLLs were originally
-// loaded in, but is undefined within the functions of a single DLL.
-void mod_func_run(mod_funcs_t *funcs, const char *suffix, void *param);
+	// Runs every module hook function for [suffix] in [mod_funcs]. The execution
+	// order of the hook functions follows the order their DLLs were originally
+	// loaded in, but is undefined within the functions of a single DLL.
+	inline void run(std::string_view suffix, void* param);
+
+	inline void remove(std::string_view suffix, mod_call_type func);
+};
+
+}
+#endif
 
 // Calls mod_fun_run() with all registered functions from all thcrap DLLs.
 void mod_func_run_all(const char *suffix, void *param);
+
+// Calls mod_fun_run() with all registered functions from patches.
+void patch_func_run_all(const char *pattern, void *param);
 /// ===================
-#endif
 
 // Initializes a plug-in DLL at [hMod]. This means registering all of its
 // exports, and calling its "init" and "detour" module functions.
 int plugin_init(HMODULE hMod);
+
+int patch_func_init(exported_func_t *funcs_new);
 
 // Loads all thcrap plugins from the given directory.
 int plugins_load(const char *dir);

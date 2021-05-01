@@ -10,12 +10,12 @@
 #pragma once
 
 // Project stats
-const char* PROJECT_NAME(void);
-const char* PROJECT_NAME_SHORT(void);
-const char* PROJECT_URL(void);
-DWORD PROJECT_VERSION(void);
-const char* PROJECT_VERSION_STRING(void);
-const char* PROJECT_BRANCH(void);
+THCRAP_API extern const char PROJECT_NAME[];
+THCRAP_API extern const char PROJECT_NAME_SHORT[];
+THCRAP_API extern const char PROJECT_URL[];
+THCRAP_API extern const uint32_t PROJECT_VERSION;
+THCRAP_API extern const char PROJECT_VERSION_STRING[];
+THCRAP_API extern const char PROJECT_BRANCH[];
 
 // Returns the value matching key in config converted in bool
 // If key isn't in config it returns default_value with errno ENOENT
@@ -33,8 +33,8 @@ int globalconfig_set_integer(const char* key, const long long value);
 void globalconfig_release(void);
 
 // Memory management
-void* __cdecl thcrap_alloc(size_t size);
-void  __cdecl thcrap_free(void *mem);
+void* TH_CDECL thcrap_alloc(size_t size);
+void  TH_CDECL thcrap_free(void *mem);
 
 // Convenience macro for binary file names that differ between Debug and
 // Release builds.

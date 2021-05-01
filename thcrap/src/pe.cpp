@@ -106,52 +106,41 @@ PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 	return NULL;
 }
 
-int GetExportedFunctions(exported_func_t **funcs, HMODULE hDll)
+exported_func_t* GetExportedFunctions(HMODULE hDll)
 {
-	IMAGE_EXPORT_DIRECTORY *ExportDesc;
-	UINT_PTR *func_ptrs = NULL;
-	UINT_PTR *name_ptrs = NULL;
-	WORD *name_indices = NULL;
-	UINT_PTR dll_base = (UINT_PTR)hDll; // All this type-casting is annoying
-	WORD i, j; // can only ever be 16-bit values
-
-	if(!funcs) {
-		return -1;
-	}
-
-	ExportDesc = GetDllExportDesc(hDll);
+	IMAGE_EXPORT_DIRECTORY* ExportDesc = GetDllExportDesc(hDll);
 	if(!ExportDesc) {
-		return -2;
+		return NULL;
 	}
 
-	func_ptrs = (UINT_PTR*)(ExportDesc->AddressOfFunctions + dll_base);
-	name_ptrs = (UINT_PTR*)(ExportDesc->AddressOfNames + dll_base);
-	name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
+	UINT_PTR dll_base = (UINT_PTR)hDll; // All this type-casting is annoying
+	UINT_PTR *func_ptrs = (UINT_PTR*)(ExportDesc->AddressOfFunctions + dll_base);
+	UINT_PTR *name_ptrs = (UINT_PTR*)(ExportDesc->AddressOfNames + dll_base);
+	WORD *name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
 
-	*funcs = (exported_func_t*)malloc((ExportDesc->NumberOfFunctions + 1) * sizeof(exported_func_t));
+	exported_func_t* funcs = (exported_func_t*)malloc((ExportDesc->NumberOfFunctions + 1) * sizeof(exported_func_t));
+	funcs[ExportDesc->NumberOfFunctions] = {0, 0};
 
-	for(i = 0; i < ExportDesc->NumberOfFunctions; i++) {
-		UINT_PTR name_ptr = 0;
-		const char *name;
-		char auto_name[DECIMAL_DIGITS_BOUND(UINT_PTR) + 1];
+	// i and j can only ever be 16-bit values
+	char auto_name[_MAX_ITOSTR_BASE10_COUNT];
+	for(WORD i = 0; i < ExportDesc->NumberOfFunctions; i++) {
+		const char *name = NULL;
 
 		// Look up name
-		for(j = 0; (j < ExportDesc->NumberOfNames && !name_ptr); j++) {
+		for(WORD j = 0; j < ExportDesc->NumberOfNames; j++) {
 			if(name_indices[j] == i) {
-				name_ptr = name_ptrs[j];
+				name = (const char*)(dll_base + name_ptrs[j]);
+				break;
 			}
 		}
-		if(name_ptr) {
-			name = (const char*)(dll_base + name_ptr);
-		} else {
+		if(!name) {
 			itoa(i + ExportDesc->Base, auto_name, 10);
 			name = auto_name;
 		}
-		(*funcs)[i].name = name;
-		(*funcs)[i].func = dll_base + func_ptrs[i];
+		funcs[i].name = name;
+		funcs[i].func = dll_base + func_ptrs[i];
 	}
-	(*funcs)[ExportDesc->NumberOfFunctions] = {};
-	return ExportDesc->NumberOfFunctions;
+	return funcs;
 }
 
 HMODULE GetModuleContaining(void *addr)

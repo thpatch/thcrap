@@ -108,7 +108,7 @@ int game_is_trial(void);
  * ------------------------
  *	None
  */
-__declspec(dllexport) int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info);
+TH_EXPORT int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info);
 /// -----------
 
 /// ------

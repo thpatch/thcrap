@@ -30,6 +30,16 @@ const char *runconfig_game_get();
 // Returns the game build, for example "v1.00a"
 const char *runconfig_build_get();
 
+#ifdef __cplusplus
+extern "C++" {
+	// Returns the game id, for example "th06"
+	std::string_view runconfig_game_get_view();
+
+	// Returns the game build, for example "v1.00a"
+	std::string_view runconfig_build_get_view();
+}
+#endif
+
 // Returns the prettiest representation of a game title available,
 // in this order:
 // • 1. Localized game title from the string table
@@ -58,7 +68,8 @@ size_t runconfig_stage_count();
 // Return true if the binhack parser if it should show a message box, should it fail to find a function
 bool runconfig_msgbox_invalid_func();
 
-#define RUNCFG_STAGE_USE_MODULE 1
+#define RUNCFG_STAGE_DEFAULT 0
+#define RUNCFG_STAGE_USE_MODULE	1
 #define RUNCFG_STAGE_SKIP_BREAKPOINTS 2
 // Apply the binhacks, codecaves and breakpoints of a stage.
 // If flags contains RUNCFG_STAGE_USE_MODULE, module is used as the base
@@ -75,6 +86,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module);
   */
 
 #define RUNCONFIG_NO_OVERWRITE 1
+#define RUNCONFIG_NO_BINHACKS 2
 
 // Load a run configuration.
 // If called several times, the new configuration will be merged with the old one

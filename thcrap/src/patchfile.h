@@ -69,6 +69,8 @@ typedef struct
 	char *archive;
 	// Patch id (from patch.js)
 	char *id;
+	// Patch version (from patch.js)
+	uint32_t version;
 	// Patch description (from patch.js)
 	char *title;
 	// Servers list (NULL-terminated) (from patch.js)
@@ -88,44 +90,21 @@ typedef struct
 
 	// MOTD: message that can be displayed by a patch on startup (from patch.js)
 	// Message content
-	char *motd;
+	const char *motd;
 	// Message title (optional)
-	char *motd_title;
+	const char *motd_title;
 	// Message type. See the uType parameter in https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-messagebox
 	// Optional, defaults to 0 (MB_OK)
 	DWORD motd_type;
 } patch_t;
 
-// Enum of possible types for the description of
-// a value specified by the user defined patch options
-enum patch_opt_val_type {
-	PATCH_OPT_VAL_INVALID = -1,
-	PATCH_OPT_VAL_BYTE = 0,
-	PATCH_OPT_VAL_WORD = 1,
-	PATCH_OPT_VAL_DWORD = 2,
-	PATCH_OPT_VAL_FLOAT = 3,
-	PATCH_OPT_VAL_DOUBLE = 4,
-};
-
-// Description of a value specified by the options
-typedef struct {
-	uint32_t t;
-	uint32_t size;
-	union type_t {
-		BYTE byte;
-		WORD word;
-		DWORD dword;
-		float f;
-		double d;
-		BYTE byte_array[8];
-	} val;
-} patch_opt_val_t;
-
 // Parses and error checks patch options from game_id.js
 void patch_opts_from_json(json_t *opts);
 
 // Obtains the value of a patch option
-patch_opt_val_t* patch_opt_get(const char *name);
+patch_val_t* patch_opt_get(const char *name);
+
+patch_val_t* patch_opt_get_len(const char* name, size_t length);
 
 // Opens the file [fn] for read operations. Just a lightweight wrapper around
 // CreateFile(): Returns INVALID_HANDLE_VALUE on failure, and the caller must
@@ -149,15 +128,15 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size);
 /// ----------
 // Returns the full patch-relative name of a game-relative file.
 // Return value has to be free()d by the caller!
-char* fn_for_game(const char *fn);
+TH_CALLER_FREE char* fn_for_game(const char *fn);
 
 // Returns the alternate file name for [fn] specific to the
 // currently running build. Return value has to be free()d by the caller!
-char* fn_for_build(const char *fn);
+TH_CALLER_FREE char* fn_for_build(const char *fn);
 
 // Returns the full path of a patch-relative file name.
 // Return value has to be free()d by the caller!
-char* fn_for_patch(const patch_t *patch_info, const char *fn);
+TH_CALLER_FREE char* fn_for_patch(const patch_t *patch_info, const char *fn);
 
 // Prints the full path of a patch-relative file name to the log.
 void patch_print_fn(const patch_t *patch_info, const char *fn);
@@ -242,7 +221,7 @@ void patchhook_register(const char *ext, func_patch_t patch_func, func_patch_siz
 
 // Builds an array of patch hook functions for [fn].
 // Has to be free()'d by the caller!
-struct patchhook_t* patchhooks_build(const char *fn);
+TH_CALLER_FREE struct patchhook_t* patchhooks_build(const char *fn);
 
 // Loads the jdiff file for a hook, and guess the patched file size.
 json_t* patchhooks_load_diff(const struct patchhook_t *hook_array, const char *fn, size_t *size);

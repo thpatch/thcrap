@@ -32,9 +32,10 @@ PIMAGE_EXPORT_DIRECTORY GetDllExportDesc(HMODULE hMod);
 // Returns the section header named [section_name]
 PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name);
 
-// Adds the names and function pointers of all exported functions in the DLL
-// at [hDll] to the JSON object [funcs].
-int GetExportedFunctions(exported_func_t **funcs, HMODULE hDll);
+// Returns an array of the names and function pointers of all exported functions
+// in the DLL at [hDll].
+// Return value has to be free()d by the caller if not NULL!
+TH_CALLER_FREE exported_func_t* GetExportedFunctions(HMODULE hDll);
 
 // Shorthand for GetModuleHandleEx() with GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS.
 // Returns a nullptr on failure.
@@ -60,5 +61,5 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName);
 // Reads a null-terminated string from [hProcess], beginning at [lpBaseAddress].
 // Correctly handles strings crossing memory page boundaries.
 // Return value has to be free()d by the caller!
-char* ReadProcessString(HANDLE hProcess, LPCVOID lpBaseAddress);
+TH_CALLER_FREE char* ReadProcessString(HANDLE hProcess, LPCVOID lpBaseAddress);
 /// ------

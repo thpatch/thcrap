@@ -18,9 +18,24 @@
  * always looks for a decimal point, and so we have to dynamically allocate
  * (and free) The Neutral Locale instead. C is garbage.
  */
-_locale_t lc_neutral = nullptr;
+struct LocaleHolder_t {
+	_locale_t locale = nullptr;
 
-int hackpoints_error_function_not_found(const char *func_name, int retval)
+	LocaleHolder_t(int category, const char* locale_str) {
+		locale = _create_locale(category, locale_str);
+	}
+
+	~LocaleHolder_t() {
+		if (locale) {
+			_free_locale(locale);
+			locale = nullptr;
+		}
+	}
+};
+
+static LocaleHolder_t lc_neutral(LC_NUMERIC, "C");
+
+void hackpoints_error_function_not_found(const char *func_name)
 {
 	if (runconfig_msgbox_invalid_func()) {
 		if (log_mboxf("Binary Hack error", MB_OKCANCEL | MB_ICONERROR, "ERROR: function '%s' not found! ", func_name) == IDCANCEL) {
@@ -33,151 +48,300 @@ int hackpoints_error_function_not_found(const char *func_name, int retval)
 #else
 			"(outdated or corrupt %s installation, maybe?)"
 #endif
-			"\n", func_name, PROJECT_NAME_SHORT()
+			, func_name, PROJECT_NAME_SHORT
 		);
 	}
-	return retval;
 }
 
-int is_valid_hex(char c)
+hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array)
 {
-	return
-		('0' <= c && c <= '9') ||
-		('A' <= c && c <= 'F') ||
-		('a' <= c && c <= 'f');
+
+	if (!addr_array) {
+		return NULL;
+	}
+
+	size_t addr_count = 0;
+
+	json_t *it;
+	json_flex_array_foreach_scoped(size_t, i, addr_array, it) {
+		if (json_is_integer(it) || json_is_string(it)) {
+			++addr_count;
+		}
+	}
+	if (!addr_count) {
+		return NULL;
+	}
+
+	hackpoint_addr_t* ret = new hackpoint_addr_t[addr_count + 1];
+	ret[addr_count].str = NULL;
+	ret[addr_count].raw = 0;
+	ret[addr_count].type = END_ADDR;
+	ret[addr_count].binhack_source = NULL;
+
+	addr_count = 0;
+
+	json_flex_array_foreach_scoped(size_t, i, addr_array, it) {
+		if (json_is_string(it)) {
+			ret[addr_count].str = json_string_copy(it);
+			ret[addr_count].raw = 0;
+			ret[addr_count].type = STR_ADDR;
+			ret[addr_count].binhack_source = NULL;
+			++addr_count;
+		}
+		else if (json_is_integer(it)) {
+			ret[addr_count].str = NULL;
+			ret[addr_count].raw = (uint32_t)json_integer_value(it);
+			ret[addr_count].type = RAW_ADDR;
+			ret[addr_count].binhack_source = NULL;
+			++addr_count;
+		}
+	}
+
+	return ret;
 }
 
-enum value_type_t {
-	VT_NONE = 0,
-	VT_BYTE = 1, // sizeof(char)
-	VT_FLOAT = 4, // sizeof(float)
-	VT_DOUBLE = 8 // sizeof(double)
-};
-
-struct value_t {
-	value_type_t type = VT_NONE;
-	union {
-		unsigned char b;
-		float f;
-		double d;
-	};
-
-	size_t size() {
-		return (size_t)type;
-	}
-};
-
-// Returns false only if parsing should be aborted.
-bool consume_value(value_t &val, const char** str)
+inline bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, size_t* out, HMODULE hMod)
 {
-	assert(str);
-
-	const char *c = *str;
-
-	// Double / float
-	if(*c == '+' || *c == '-') {
-		if(!lc_neutral) {
-			lc_neutral = _create_locale(LC_NUMERIC, "C");
-		}
-		char *endptr;
-
-		errno = 0;
-		double result = _strtod_l(*str, &endptr, lc_neutral);
-		if(errno == ERANGE && (result == HUGE_VAL || result == -HUGE_VAL)) {
-			auto val_len = (endptr - *str);
-			log_printf(
-				"ERROR: Floating point constant \"%.*s\" out of range!\n",
-				val_len, str
-			);
-			return false;
-		} else if(endptr == *str) {
-			// Not actually a floating-point number, keep going though
-			*str += 1;
-			return true;
-		}
-		if(*endptr == 'f') {
-			val.type = VT_FLOAT;
-			val.f = (float)result;
-			endptr++;
-		} else {
-			val.type = VT_DOUBLE;
-			val.d = result;
-		}
-		if(*endptr != ' ' && *endptr != '\0') {
-			val.type = VT_NONE;
-			*str += 1;
-		} else {
-			*str = endptr;
+	if (hackpoint_addr) {
+		size_t addr = 0;
+		switch (int8_t addr_type = hackpoint_addr->type) {
+			case STR_ADDR:
+				eval_expr(hackpoint_addr->str, '\0', &addr, NULL, (size_t)hMod);
+				hackpoint_addr->raw = addr;
+				[[fallthrough]];
+			case RAW_ADDR:
+				addr = hackpoint_addr->raw;
+				if (!addr) {
+					hackpoint_addr->type = INVALID_ADDR;
+				}
+				[[fallthrough]];
+			case INVALID_ADDR:
+				*out = addr;
+				return true;
+			default:; //case END_ADDR:
 		}
 	}
-	// Byte
-	else if(is_valid_hex(c[0]) && is_valid_hex(c[1])) {
-		char conv[3];
-		conv[2] = 0;
-		memcpy(conv, *str, 2);
-		val.type = VT_BYTE;
-		val.b = (unsigned char)strtol(conv, nullptr, 16);
-		*str += 2;
+	return false;
+}
+
+// Returns NULL only if parsing should be aborted.
+// Declared noinline since float values aren't used
+// frequently and otherwise binhack_calc_size/binhack_render
+// waste a whole register storing the address of errno
+static TH_NOINLINE const char* consume_float_value(const char *const expr, patch_val_t *const val)
+{
+	char* expr_next;
+	errno = 0;
+	double result = _strtod_l(expr, &expr_next, lc_neutral.locale);
+	if (expr == expr_next) {
+		// Not actually a floating-point number, keep going though
+		val->type = PVT_NONE;
+		return expr + 1;
+	} else if ((result == HUGE_VAL || result == -HUGE_VAL) && errno == ERANGE) {
+		log_printf("ERROR: Floating point constant \"%.*s\" out of range!\n", expr_next - expr, expr);
+		return NULL;
 	}
-	// Nothing, keep going
-	else {
-		*str += 1;
+	switch (expr_next[0] | 0x20) {
+		case 'd':
+			++expr_next;
+		default:
+			val->type = PVT_DOUBLE;
+			val->d = result;
+			return expr_next;
+		case 'f':
+			val->type = PVT_FLOAT;
+			val->f = (float)result;
+			return expr_next + 1;
+		case 'l':
+			val->type = PVT_LONGDOUBLE;
+			val->ld = /*(LongDouble80)*/result;
+			return expr_next + 1;
 	}
-	return true;
+}
+
+// TODO: Check if anyone uses single quotes already in code strings
+//// Char
+//else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
+//  val->type = PVT_SBYTE;
+//	if (expr[1] == '\\') {
+//		switch (expr[2]) {
+//			case '0':  val->sb = '\0'; break;
+//			case 'a':  val->sb = '\a'; break;
+//			case 'b':  val->sb = '\b'; break;
+//			case 'f':  val->sb = '\f'; break;
+//			case 'n':  val->sb = '\n'; break;
+//			case 'r':  val->sb = '\r'; break;
+//			case 't':  val->sb = '\t'; break;
+//			case 'v':  val->sb = '\v'; break;
+//			case '\\': val->sb = '\\'; break;
+//			case '\'': val->sb = '\''; break;
+//			case '\"': val->sb = '\"'; break;
+//			case '\?': val->sb = '\?'; break;
+//			default:   val->sb = expr[2]; break;
+//		}
+//	} else {
+//		val->sb = expr[1];
+//	}
+//	return expr_next + 1;
+//}
+
+// Declared forceinline since the compiler can't
+// figure it out otherwise and copy/pasting this
+// into two functions would be a pain
+static TH_FORCEINLINE const char* check_for_binhack_cast(const char* expr, patch_val_t *const val)
+{
+	switch (const uint8_t c = expr[0] | 0x20) {
+		case 'i': case 'u': case 'f':
+			if (expr[1] && expr[2]) {
+				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
+					case TextInt('f', '3', '2', ':'):
+						val->type = PVT_FLOAT;
+						return expr + 4;
+					case TextInt('f', '6', '4', ':'):
+						val->type = PVT_DOUBLE;
+						return expr + 4;
+					case TextInt('f', '8', '0', ':'):
+						val->type = PVT_LONGDOUBLE;
+						return expr + 4;
+					case TextInt('u', '1', '6', ':'):
+						val->type = PVT_WORD;
+						return expr + 4;
+					case TextInt('i', '1', '6', ':'):
+						val->type = PVT_SWORD;
+						return expr + 4;
+					case TextInt('u', '3', '2', ':'):
+						val->type = PVT_DWORD;
+						return expr + 4;
+					case TextInt('i', '3', '2', ':'):
+						val->type = PVT_SDWORD;
+						return expr + 4;
+					case TextInt('u', '6', '4', ':'):
+						val->type = PVT_QWORD;
+						return expr + 4;
+					case TextInt('i', '6', '4', ':'):
+						val->type = PVT_SQWORD;
+						return expr + 4;
+					default:
+						switch (temp & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
+							case TextInt('u', '8', ':'):
+								val->type = PVT_BYTE;
+								return expr + 3;
+							case TextInt('i', '8', ':'):
+								val->type = PVT_SBYTE;
+								return expr + 3;
+						}
+				}
+			}
+		default:
+			//log_printf("WARNING: no binhack expression size specified, assuming dword...\n");
+			val->type = PVT_DWORD;
+			return expr;
+	}
 }
 
 size_t binhack_calc_size(const char *binhack_str)
 {
-	size_t size = 0;
-	const char *c = binhack_str;
-	const char *fs = NULL; // function start
-	if(!binhack_str) {
+	if (!binhack_str) {
 		return 0;
 	}
-	while(*c) {
-		if(*c == '[' || *c == '<') {
-			if(fs) {
-				log_printf("ERROR: Nested function pointers near %s!\n", c);
-				return 0;
-			}
-			fs = c + 1;
-			c++;
-		} else if(fs) {
-			if((*c == ']' || *c == '>')) {
-				if (strncmp(fs, "option:", 7) == 0) {
-					fs += 7;
-					size_t opt_name_len = c - fs;
-					VLA(char, opt_name, opt_name_len + 1);
-					defer(VLA_FREE(opt_name));
-					strncpy(opt_name, fs, opt_name_len);
-					opt_name[opt_name_len] = 0;
-					patch_opt_val_t *opt = patch_opt_get(opt_name);
-					fs = nullptr;
-					if (opt) {
-						size += opt->size;
-					} else {
-						log_printf("ERROR: option %s does not exist\n", opt_name);
-						return 0;
-					}
-				} else {
-					size += sizeof(void*);
-					fs = nullptr;
+	size_t size = 0;
+	patch_val_t val;
+	val.type = PVT_NONE;
+	while (1) {
+		// Parse characters
+		switch (uint8_t cur_char = binhack_str[0]) {
+			case '\0': // End of string
+				return size;
+			case '(': case '{': case '[':
+				++binhack_str;
+				if (cur_char == '[') { // Relative patch value
+					val.type = PVT_DWORD;
 				}
-			}
-			c++;
-		} else {
-			value_t val;
-			if(!consume_value(val, &c)) {
-				return 0;
-			}
-			size += val.size();
+				else { // Expressions
+					binhack_str = check_for_binhack_cast(binhack_str, &val);
+				}
+				binhack_str = parse_brackets(binhack_str, cur_char);
+				break;
+			case '<': // Absolute patch value
+				binhack_str = get_patch_value(binhack_str, &val, NULL, 0);
+				break;
+			case '?': // Wildcard byte
+				++binhack_str;
+				if (binhack_str[0] != '?') {
+					// Not a full wildcard byte, ignore current character
+					// and parse the next character from the beginning
+					continue;
+				}
+				// Found a wildcard byte, so just add
+				// a byte of size and keep going
+				val.type = PVT_BYTE;
+				++binhack_str;
+				break;
+			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+			case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+				// Raw byte
+				++binhack_str;
+				if (!is_valid_hex(binhack_str[0])) {
+					// Next character doesn't form complete byte, so
+					// ignore the current character and parse the
+					// next character from the beginning
+					continue;
+				}
+				val.type = PVT_BYTE;
+				++binhack_str;
+				break;
+			case '+': case '-': // Float
+				binhack_str = consume_float_value(binhack_str, &val);
+				break;
+			default: // Skip character
+				++binhack_str;
+				continue;
+		}
+
+		// Check for errors
+		if (!binhack_str) {
+			// Binhack calc size error
+			return 0;
+		}
+
+		// Add to size
+		switch (val.type) {
+			case PVT_BYTE: case PVT_SBYTE:
+				size += sizeof(int8_t);
+				break;
+			case PVT_WORD: case PVT_SWORD:
+				size += sizeof(int16_t);
+				break;
+			case PVT_DWORD: case PVT_SDWORD:
+				size += sizeof(int32_t);
+				break;
+			case PVT_QWORD: case PVT_SQWORD:
+				size += sizeof(int64_t);
+				break;
+			case PVT_FLOAT:
+				size += sizeof(float);
+				break;
+			case PVT_DOUBLE:
+				size += sizeof(double);
+				break;
+			case PVT_LONGDOUBLE:
+				size += sizeof(LongDouble80);
+				break;
+			case PVT_STRING:
+				size += sizeof(const char*);
+				break;
+			case PVT_STRING16:
+				size += sizeof(const char16_t*);
+				break;
+			case PVT_STRING32:
+				size += sizeof(const char32_t*);
+				break;
+			case PVT_CODE:
+				size += val.str.len;
+				break;
 		}
 	}
-	if(fs) {
-		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
-		size = 0;
-	}
-	return size;
 }
 
 bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
@@ -187,290 +351,619 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	json_t *addr = json_object_get(in, "addr");
-	const char *title = json_object_get_string(in, "title");;
-	const char *code = json_object_get_string(in, "code");
-	const char *expected = json_object_get_string(in, "expected");
-	bool ignore = json_is_true(json_object_get(in, "ignore"));
-
-	if (ignore) {
+	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
-	if (!code || json_flex_array_size(addr) == 0) {
+
+	const char *code = json_object_get_string(in, "code");
+	if (!code) {
 		// Ignore binhacks with missing fields
 		// It usually means the binhack doesn't apply for this game or game version.
 		return false;
 	}
 
-	out->name = strdup(name);
-	out->title = strdup(title);
-	out->code = strdup(code);
-	out->expected = strdup(expected);
-	out->addr = new char*[(json_flex_array_size(addr) + 1)];
-
-	size_t i;
-	json_t *it;
-	json_flex_array_foreach(addr, i, it) {
-		if (json_is_string(it)) {
-			out->addr[i] = strdup(json_string_value(it));
-		}
+	hackpoint_addr_t *addrs = hackpoint_addrs_from_json(json_object_get(in, "addr"));
+	if (!addrs) {
+		// Ignore binhacks with no valid addresses
+		return false;
 	}
-	out->addr[i] = nullptr;
+
+	out->name = strdup(name);
+	out->title = json_object_get_string_copy(in, "title");
+	out->code = strdup(code);
+	out->expected = json_object_get_string_copy(in, "expected");
+	out->addr = addrs;
 
 	return true;
 }
 
 int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_str)
 {
-	const char *c = binhack_str;
-	const char *fs = NULL; // function start
-	size_t written = 0;
-	int func_rel = 0; // Relative function pointer flag
-	int ret = 0;
-	int func_name_len = 0;
-	UINT_PTR func_user_offset = 0;
-	char func_name_end = ']';
-
-	if(!binhack_buf || !binhack_str) {
+	if (!binhack_buf || !binhack_str) {
 		return -1;
 	}
 
-	while(*c) {
-		if(*c == '[' || *c == '<') {
-			func_user_offset = 0;
-			if(fs) {
-				log_printf("ERROR: Nested function pointers near %s!\n", c);
+	//const bool can_deref_target = target_addr != NULL;
+#define BinhackRenderError() binhack_str = NULL;
+
+	patch_val_t val;
+
+	while (1) {
+		// Parse characters
+		switch (uint8_t cur_char = binhack_str[0]) {
+			case '\0': // End of string
 				return 0;
-			}
-			func_rel = (*c == '[');
-			if (func_rel) {
-				func_name_end = ']';
-			} else {
-				func_name_end = '>';
-			}
-			fs = c + 1;
-			c++;
-		} else if(fs && (*c == ']' || *c == '>')) {
-			VLA(char, function, func_name_len + 1);
-			defer({ VLA_FREE(function); });
-			size_t fp = 0;
-
-			strncpy(function, fs, func_name_len);
-			function[func_name_len] = 0;
-
-			if (!func_rel) {
-				if (strncmp(function, "option:", 7) == 0) { // strlen("option:") = 7
-					patch_opt_val_t *option = patch_opt_get(function + 7);
-					if (!option) {
-						log_printf("ERROR: option %s not found\n", function + 7);
-						return 3;
+			case '(': case '{': // Expression
+				binhack_str = check_for_binhack_cast(++binhack_str, &val);
+				if (cur_char == '(') { // Raw value
+					binhack_str = eval_expr(binhack_str, ')', &val.i, NULL, target_addr);
+					if (!binhack_str) {
+						break; // Error
 					}
-					memcpy(binhack_buf, option->val.byte_array, option->size);
-					binhack_buf += option->size;
-					fs = 0; func_name_len = 0; c++;
+					switch (val.type) {
+						case PVT_FLOAT:
+							val.f = (float)val.i;
+							break;
+						case PVT_DOUBLE:
+							val.d = (double)val.i;
+							break;
+						case PVT_LONGDOUBLE:
+							val.ld = /*(LongDouble80)*/val.i;
+							break;
+					}
+					break;
+				}
+				else { // Dereference
+					binhack_str = eval_expr(binhack_str, '}', &val.i, NULL, target_addr);
+					if (!binhack_str) {
+						break; // Error
+					}
+					switch (val.type) {
+						case PVT_BYTE:		val.b = *(uint8_t*)val.i; break;
+						case PVT_SBYTE:		val.sb = *(int8_t*)val.i; break;
+						case PVT_WORD:		val.w = *(uint16_t*)val.i; break;
+						case PVT_SWORD:		val.sw = *(int16_t*)val.i; break;
+						case PVT_DWORD:		val.i = *(uint32_t*)val.i; break;
+						case PVT_SDWORD:	val.si = *(int32_t*)val.i; break;
+						case PVT_QWORD:		val.q = *(uint64_t*)val.i; break;
+						case PVT_SQWORD:	val.sq = *(int64_t*)val.i; break;
+						case PVT_FLOAT:		val.f = *(float*)val.i; break;
+						case PVT_DOUBLE:	val.d = *(double*)val.i; break;
+						case PVT_LONGDOUBLE:val.ld = *(LongDouble80*)val.i; break;
+						case PVT_STRING:
+						case PVT_STRING16:
+						case PVT_STRING32:
+						case PVT_CODE:
+							BinhackRenderError();
+					}
+					break;
+				}
+			case '[': case '<': // Patch value
+				binhack_str = get_patch_value(binhack_str, &val, NULL, target_addr);
+				break;
+			case '?': // Wildcard byte
+				++binhack_str;
+				if (binhack_str[0] != '?') {
+					// Not a full wildcard byte, ignore current character
+					// and parse the next character from the beginning
 					continue;
 				}
-			}
-
-			fp = (size_t)func_get(function);
-			if(fp) {
-				fp += func_user_offset;
-				if(func_rel) {
-					fp -= target_addr + written + sizeof(void*);
+				/*if (!can_deref_target) {
+					// Please just don't use an invalid address for
+					// target_addr, it makes this hard to implement
+					BinhackRenderError();
+					break;
+				}*/
+				// Found a wildcard byte, so read the contents
+				// of the appropriate address into the buffer.
+				val.type = PVT_BYTE;
+				val.b = *(unsigned char*)target_addr;
+				++binhack_str;
+				break;
+			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
+			case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+			case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
+			{ // Raw byte
+				++binhack_str;
+				uint8_t low_nibble = binhack_str[0] - '0';
+				if (low_nibble >= 10) {
+					low_nibble &= 0xDF;
+					low_nibble -= 17;
+					if (low_nibble > 6) {
+						// Next character doesn't form complete byte, so
+						// ignore the current character and parse the
+						// next character from the beginning
+						continue;
+					}
+					low_nibble += 10;
 				}
-				memcpy(binhack_buf, &fp, sizeof(void*));
-				binhack_buf += sizeof(void*);
-				written += sizeof(void*);
-			} else {
-				return hackpoints_error_function_not_found(function, 2);
-			}
-			fs = NULL;
-			if(ret) {
+				cur_char -= '0'; // high_nibble
+				if (cur_char >= 10) {
+					cur_char &= 0xDF;
+					cur_char -= 7;
+				}
+				val.b = cur_char << 4 | low_nibble;
+				val.type = PVT_BYTE;
+				++binhack_str;
 				break;
 			}
-			func_name_len = 0; c++;
-		} else if(fs && *c == '+') {
-			const char *user_offset_end = strchr(c, func_name_end);
-			size_t offset_str_len = user_offset_end - c - 1;
-			if (offset_str_len > sizeof(UINT_PTR) * 2) {
-				c = user_offset_end;
+			case '+': case '-': // Float
+				binhack_str = consume_float_value(binhack_str, &val);
+				break;
+			default: // Skip character
+				++binhack_str;
 				continue;
-			}
-			char offset_str[sizeof(UINT_PTR) * 2 + 4];
-			strncpy(offset_str, c + 1, offset_str_len);
-			offset_str[offset_str_len] = 0;
-			char *_endptr;
-			func_user_offset = strtol(offset_str, &_endptr, 16);
-			c = user_offset_end;
-		} else if(fs) {
-			c++;
-			func_name_len++;
-		} else {
-			value_t val;
-			if(!consume_value(val, &c)) {
-				return 1;
-			}
-			const char *copy_ptr = nullptr;
-			switch(val.type) {
-			case VT_BYTE:   copy_ptr = (const char *)&val.b; break;
-			case VT_FLOAT:  copy_ptr = (const char *)&val.f; break;
-			case VT_DOUBLE: copy_ptr = (const char *)&val.d; break;
-			default:        break; // -Wswitch...
-			}
-			if(copy_ptr) {
-				binhack_buf = (BYTE *)memcpy_advance_dst(
-					(char *)binhack_buf, copy_ptr, val.size()
-				);
-				written += val.size();
+		}
+
+		// Check for errors
+		if (!binhack_str) {
+			log_printf("Binhack render error!\n");
+			return 1;
+		}
+
+		// Render bytes
+		switch (val.type) {
+			case PVT_BYTE:
+				*(uint8_t*)binhack_buf = val.b;
+				//log_printf("Binhack rendered: %02hhX at %p\n", *(uint8_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(uint8_t);
+				target_addr += sizeof(uint8_t);
+				break;
+			case PVT_SBYTE:
+				*(int8_t*)binhack_buf = val.sb;
+				//log_printf("Binhack rendered: %02hhX at %p\n", *(int8_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int8_t);
+				target_addr += sizeof(int8_t);
+				break;
+			case PVT_WORD:
+				*(uint16_t*)binhack_buf = val.w;
+				//log_printf("Binhack rendered: %04hX at %p\n", *(uint16_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(uint16_t);
+				target_addr += sizeof(uint16_t);
+				break;
+			case PVT_SWORD:
+				*(int16_t*)binhack_buf = val.sw;
+				//log_printf("Binhack rendered: %04hX at %p\n", *(int16_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int16_t);
+				target_addr += sizeof(int16_t);
+				break;
+			case PVT_DWORD:
+				*(uint32_t*)binhack_buf = val.i;
+				//log_printf("Binhack rendered: %08X at %p\n", *(uint32_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(uint32_t);
+				target_addr += sizeof(uint32_t);
+				break;
+			case PVT_SDWORD:
+				*(int32_t*)binhack_buf = val.si;
+				//log_printf("Binhack rendered: %08X at %p\n", *(int32_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int32_t);
+				target_addr += sizeof(int32_t);
+				break;
+			case PVT_QWORD:
+				*(uint64_t*)binhack_buf = val.q;
+				//log_printf("Binhack rendered: %016X at %p\n", *(uint64_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(uint64_t);
+				target_addr += sizeof(uint64_t);
+				break;
+			case PVT_SQWORD:
+				*(int64_t*)binhack_buf = val.sq;
+				//log_printf("Binhack rendered: %016X at %p\n", *(int64_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(int64_t);
+				target_addr += sizeof(int64_t);
+				break;
+			case PVT_FLOAT:
+				*(float*)binhack_buf = val.f;
+				//log_printf("Binhack rendered: %X at %p\n", *(uint32_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(float);
+				target_addr += sizeof(float);
+				break;
+			case PVT_DOUBLE:
+				*(double*)binhack_buf = val.d;
+				//log_printf("Binhack rendered: %llX at %p\n", *(uint64_t*)binhack_buf, target_addr);
+				binhack_buf += sizeof(double);
+				target_addr += sizeof(double);
+				break;
+			case PVT_LONGDOUBLE:
+				*(LongDouble80*)binhack_buf = val.ld;
+				//log_printf("Binhack rendered: %llX%hX at %p\n", *(uint64_t*)binhack_buf, *(uint16_t*)(binhack_buf + 8), target_addr);
+				binhack_buf += sizeof(LongDouble80);
+				target_addr += sizeof(LongDouble80);
+				break;
+			case PVT_STRING:
+				*(const char**)binhack_buf = val.str.ptr;
+				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const char**)binhack_buf, target_addr);
+				binhack_buf += sizeof(const char*);
+				target_addr += sizeof(const char*);
+				break;
+			case PVT_STRING16:
+				*(const char16_t**)binhack_buf = val.str16.ptr;
+				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const char16_t**)binhack_buf, target_addr);
+				binhack_buf += sizeof(const char16_t*);
+				target_addr += sizeof(const char16_t*);
+				break;
+			case PVT_STRING32:
+				*(const char32_t**)binhack_buf = val.str32.ptr;
+				//log_printf("Binhack rendered: %zX at %p\n", (size_t)*(const char32_t**)binhack_buf, target_addr);
+				binhack_buf += sizeof(const char32_t*);
+				target_addr += sizeof(const char32_t*);
+				break;
+			case PVT_CODE: {
+				if (binhack_render(binhack_buf, target_addr, val.str.ptr)) {
+					return 1;
+				}
+				binhack_buf += val.str.len;
+				target_addr += val.str.len;
+				break;
 			}
 		}
 	}
-	if(fs) {
-		log_printf("ERROR: Function name '%s' not terminated...\n", fs);
-		ret = 1;
-	}
-	return ret;
 }
 
 // Returns the number of all individual instances of binary hacks in [binhacks].
 static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_count)
 {
-	int ret = 0;
+	size_t ret = 0;
 	for (size_t i = 0; i < binhacks_count; i++) {
-		for (size_t j = 0; binhacks[i].addr[j]; j++) {
+		for (size_t j = 0; binhacks[i].addr[j].type != END_ADDR; j++) {
 			ret++;
 		}
 	}
 	return ret;
 }
 
-int binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
 {
-	size_t c = 0;
-	size_t binhacks_total = binhacks_total_count(binhacks, binhacks_count);
-	int failed = binhacks_total;
-
-	if(!binhacks_count) {
-		log_printf("No binary hacks to apply.\n");
+	if (!binhacks_count) {
+		log_print("No binary hacks to apply.\n");
 		return 0;
 	}
 
-	log_printf("Applying binary hacks...\n");
-	log_printf("------------------------\n");
+	size_t failed = binhacks_total_count(binhacks, binhacks_count);
+
+	log_print(
+		"------------------------\n"
+		"Applying binary hacks...\n"
+		"------------------------"
+	);
+
+	size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
+	BYTE* asm_buf = (BYTE*)malloc(BINHACK_BUFSIZE_MIN);
+	size_t current_exp_buf_size = BINHACK_BUFSIZE_MIN;
+	BYTE* exp_buf = (BYTE*)malloc(BINHACK_BUFSIZE_MIN);
 
 	for(size_t i = 0; i < binhacks_count; i++) {
-		const binhack_t& cur = binhacks[i];
+		const binhack_t *const cur = &binhacks[i];
 
+		if (cur->title) {
+			log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_count, cur->title, cur->name);
+		} else {
+			log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_count, cur->name);
+		}
+		
 		// calculated byte size of the hack
-		size_t asm_size = binhack_calc_size(cur.code);
-		size_t exp_size = binhack_calc_size(cur.expected);
+		const size_t asm_size = binhack_calc_size(cur->code);
 		if(!asm_size) {
+			log_print("invalid code string size, skipping...\n");
 			continue;
 		}
-
-		VLA(BYTE, asm_buf, asm_size);
-		VLA(BYTE, exp_buf, exp_size);
-		for(size_t j = 0; cur.addr[j]; j++) {
-			auto addr = str_address_value(cur.addr[j], hMod, NULL);
-			if(!addr) {
-				continue;
-			}
-			log_printf("(%2d/%2d) 0x%p ", ++c, binhacks_total, addr);
-			if(cur.title) {
-				log_printf("%s (%s)... ", cur.title, cur.name);
-			} else {
-				log_printf("%s...", cur.name);
-			}
-			if(binhack_render(asm_buf, addr, cur.code)) {
-				continue;
-			}
-			if(exp_size > 0 && exp_size != asm_size) {
-				log_printf("different sizes for expected and new code, skipping verification... ");
-				exp_size = 0;
-			} else if(binhack_render(exp_buf, addr, cur.expected)) {
-				exp_size = 0;
-			}
-			if(PatchRegion((void*)addr, exp_size ? exp_buf : NULL, asm_buf, asm_size)) {
-				log_printf("OK\n");
-				failed--;
-			} else {
-				log_printf("expected bytes not matched, skipping...\n");
-			}
+		if (asm_size > current_asm_buf_size) {
+			asm_buf = (BYTE*)realloc(asm_buf, asm_size);
+			current_asm_buf_size = asm_size;
 		}
-		VLA_FREE(asm_buf);
-		VLA_FREE(exp_buf);
+
+		bool use_expected;
+		if (const size_t exp_size = binhack_calc_size(cur->expected);
+			!exp_size) {
+			use_expected = false;
+		}
+		else if (exp_size != asm_size) {
+			log_printf("different sizes for expected and new code (%zu != %zu), skipping verification... ", exp_size, asm_size);
+			use_expected = false;
+		}
+		else {
+			if (exp_size > current_exp_buf_size) {
+				exp_buf = (BYTE*)realloc(exp_buf, exp_size);
+				current_exp_buf_size = exp_size;
+			}
+			use_expected = true;
+		}
+		
+		size_t addr;
+		for (hackpoint_addr_t* cur_addr = cur->addr;
+			 eval_hackpoint_addr(cur_addr, &addr, hMod);
+			 ++cur_addr) {
+
+			if (!addr) {
+				// NULL_ADDR
+				continue;
+			}
+
+			log_printf("\nat 0x%p... ", addr);
+
+			if(binhack_render(asm_buf, addr, cur->code)) {
+				log_print("invalid code string, skipping...");
+				continue;
+			}
+			if (use_expected && binhack_render(exp_buf, addr, cur->expected)) {
+				log_print("invalid expected string, skipping verification... ");
+				use_expected = false;
+			}
+			if(!(cur_addr->binhack_source = (uint8_t*)PatchRegionCopySrc((void*)addr, use_expected ? exp_buf : NULL, asm_buf, NULL, asm_size))) {
+				log_print("expected bytes not matched, skipping... ");
+				continue;
+			}
+			log_print("OK");
+			--failed;
+		}
 	}
-	log_printf("------------------------\n");
+	free(asm_buf);
+	free(exp_buf);
+	log_print("\n");
 	return failed;
 }
 
-int codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
+bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
+	// Default properties
+	size_t size_val = 0;
+	const char* code = NULL;
+	bool export_val = false;
+	CodecaveAccessType access_val = EXECUTE_READWRITE;
+	size_t fill_val = 0;
+
+	if (json_is_object(in)) {
+		if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
+			log_printf("codecave %s: ignored\n", name);
+			return false;
+		}
+
+		switch (json_object_get_eval_int(in, "size", &size_val, JEVAL_STRICT)) {
+			default:
+				log_printf("ERROR: invalid json type for size of codecave %s, must be 32-bit integer or string\n", name);
+				return false;
+			case JEVAL_SUCCESS: {
+				if (!size_val) {
+					log_printf("codecave %s with size 0 ignored\n", name);
+					return false;
+				}
+				size_t count_val;
+				switch (json_object_get_eval_int(in, "count", &count_val, JEVAL_STRICT)) {
+					default:
+						log_printf("ERROR: invalid json type specified for count of codecave %s, must be 32-bit integer or string\n", name);
+						return false;
+					case JEVAL_SUCCESS:
+						if (!count_val) {
+							log_printf("codecave %s with count 0 ignored\n", name);
+							return false;
+						}
+						size_val *= count_val;
+					case JEVAL_NULL_PTR:
+						break;
+				}
+				break;
+			}
+			case JEVAL_NULL_PTR:
+				break;
+		}
+
+		code = json_object_get_string(in, "code");
+
+		(void)json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
+
+		if (const char* access = json_object_get_string(in, "access")) {
+			BYTE temp = 0;
+			while (char c = *access++ & 0xDF) {
+				temp |= (c == 'R');
+				temp |= (c == 'W') << 1;
+				temp |= ((c == 'E') | (c == 'X')) << 2;
+			}
+			switch (temp) {
+				case 0: /*NOACCESS*/
+					log_printf("codecave %s: why would you set a codecave to no access? skipping instead...\n", name);
+					return false;
+				case 1: /*READONLY*/
+					access_val = (CodecaveAccessType)(temp - 1);
+					break;
+				case 2: /*WRITE*/
+					log_printf("codecave %s: write-only codecaves can't be set, using read-write instead...\n", name);
+					[[fallthrough]];
+				case 3: /*READWRITE*/ case 4: /*EXECUTE*/ case 5: /*EXECUTE-READ*/
+					access_val = (CodecaveAccessType)(temp - 2);
+					break;
+				case 6: /*EXECUTE-WRITE*/
+					log_printf("codecave %s: execute-write codecaves can't be set, using execute-read-write instead...\n", name);
+					[[fallthrough]];
+				case 7: /*EXECUTE-READWRITE*/
+					access_val = (CodecaveAccessType)(temp - 3);
+					break;
+			}
+			if (export_val && access_val != EXECUTE && access_val != EXECUTE_READ) {
+				log_printf("codecave %s: export can only be applied to execute or execute-read codecaves\n", name);
+				export_val = false;
+			}
+		}
+		else {
+			if ((code && !size_val) || export_val) {
+				access_val = EXECUTE;
+			}
+			else if (size_val && !code) {
+				access_val = READWRITE;
+			}
+			//else {
+			//    access_val = EXECUTE_READWRITE;
+			//}
+		}
+
+		switch (json_object_get_eval_int(in, "fill", &fill_val, JEVAL_STRICT)) {
+			default:
+				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be 32-bit integer or string\n", name);
+				return false;
+			case JEVAL_SUCCESS:
+			case JEVAL_NULL_PTR:
+				break;
+		}
+		
+	}
+	else if (json_is_string(in)) {
+		// size_val = 0;
+		code = json_string_value(in);
+		// export_val = false;
+		// access_val = EXECUTE_READWRITE;
+		// fill_val = 0;
+	}
+	else if (json_is_integer(in)) {
+		size_val = (size_t)json_integer_value(in);
+		// code = NULL;
+		// export_val = false;
+		access_val = READWRITE;
+		// fill_val = 0;
+	}
+	else {
+		// Don't print an error, this can be used for comments
+		return false;
+	}
+
+	// Validate codecave size early
+	if (code) {
+		DisableCodecaveNotFoundWarning(true);
+		const size_t code_size = binhack_calc_size(code);
+		DisableCodecaveNotFoundWarning(false);
+		if (!code_size && !size_val) {
+			log_printf("codecave %s with size 0 ignored\n", name);
+			return false;
+		}
+		if (code_size > size_val) {
+			size_val = code_size;
+		}
+		code = strdup(code);
+	}
+	else if (!size_val) {
+		log_printf("codecave %s without \"code\" or \"size\" ignored\n", name);
+		return false;
+	}
+
+	out->code = code;
+	out->name = strdup_cat("codecave:", name);
+	out->access_type = access_val;
+	out->size = size_val;
+	out->fill = (BYTE)fill_val;
+	out->export_codecave = export_val;
+
+	return true;
+}
+
+size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	if (codecaves_count == 0) {
 		return 0;
 	}
 
-	log_printf("Applying codecaves...\n");
-	log_printf("------------------------\n");
+	log_print(
+		"------------------------\n"
+		"Applying codecaves...\n"
+		"------------------------\n"
+	);
 
-	const size_t codecave_sep_size_min = 3;
-	size_t codecaves_total_size = 0;
+	const size_t codecave_sep_size_min = 1;
 
-	struct codecave_local_state_t {
-		size_t size;
-		size_t size_full;
-	};
+	//One size for each valid access flag combo
+	size_t codecaves_alloc_size[5] = { 0, 0, 0, 0, 0 };
 
-	VLA(codecave_local_state_t, codecaves_local_state, (codecaves_count + 1) * sizeof(codecave_local_state_t));
-	codecaves_local_state[codecaves_count] = {};
+	size_t codecave_export_count = 0;
+
+	VLA(size_t, codecaves_full_size, codecaves_count * sizeof(size_t));
 
 	// First pass: calc the complete codecave size
-	for (size_t i = 0; i < codecaves_count; i++) {
-		codecaves_local_state[i].size = binhack_calc_size(codecaves[i].code);
-
-		size_t temp = codecaves_local_state[i].size + codecave_sep_size_min;
-		codecaves_local_state[i].size_full = temp - (temp % 16) + 16;
-
-		codecaves_total_size += codecaves_local_state[i].size_full;
+	for (size_t i = 0; i < codecaves_count; ++i) {
+		if (codecaves[i].export_codecave) {
+			++codecave_export_count;
+		}
+		const size_t size = codecaves[i].size + codecave_sep_size_min;
+		codecaves_full_size[i] = AlignUpToMultipleOf2(size, 16);
+		codecaves_alloc_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
 
-	BYTE *codecave_buf = (BYTE*)VirtualAlloc(NULL, codecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-
-	// Second pass: Gather the addresses, so that codecaves can refer to each other.
-	BYTE *current_cave = codecave_buf;
-
-	for (size_t i = 0; i < codecaves_count; i++) {
-		const char *codecave_name = codecaves[i].name;
-		
-		VLA(char, codecave_full_name, strlen(codecave_name) + 10); // strlen("codecave:") = 9
-		strcpy(codecave_full_name, "codecave:");
-		strcpy(codecave_full_name + 9, codecave_name);
-		func_add(codecave_full_name, (size_t)current_cave);
-
-		current_cave += codecaves_local_state[i].size_full;
-
-		VLA_FREE(codecave_full_name);
-	}
-
-	// Third pass: Write all of the code
-	current_cave = codecave_buf;
-
-	for (size_t i = 0; i < codecaves_count; i++) {
-		const char* code = codecaves[i].code;
-		binhack_render(current_cave, (size_t)current_cave, code);
-
-		current_cave += codecaves_local_state[i].size;
-		for (size_t j = 0; j < codecaves_local_state[i].size_full - codecaves_local_state[i].size; j++) {
-			*current_cave = 0xCC; current_cave++;
+	BYTE* codecave_buf[5] = { NULL, NULL, NULL, NULL, NULL };
+	for (int i = 0; i < 5; ++i) {
+		if (codecaves_alloc_size[i] > 0) {
+			codecave_buf[i] = (BYTE*)VirtualAlloc(NULL, codecaves_alloc_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			if (codecave_buf[i]) {
+				/*
+				*  TODO: Profile whether it's faster to memset the whole block
+				*  here or just the extra padding required after each codecave.
+				*  Apply the same thing to breakpoint sourcecaves.
+				*/
+				//memset(codecave_buf[i], 0xCC, codecaves_total_size[i]);
+			}
+			else {
+				//Should probably put an abort error here
+			}
 		}
 	}
 
-	VLA_FREE(codecaves_local_state);
+	// Second pass: Gather the addresses, so that codecaves can refer to each other.
+	BYTE* current_cave[5];
+	for (int i = 0; i < 5; ++i) {
+		current_cave[i] = codecave_buf[i];
+	}
 
+	exported_func_t* codecaves_export_table;
+	if (codecave_export_count > 0) {
+		codecaves_export_table = (exported_func_t*)malloc((codecave_export_count + 1) * sizeof(exported_func_t));
+		codecaves_export_table[codecave_export_count].name = NULL;
+		codecaves_export_table[codecave_export_count].func = 0;
+	}
+	size_t export_index = 0;
+	
+	for (size_t i = 0; i < codecaves_count; i++) {
+		const CodecaveAccessType access = codecaves[i].access_type;
+
+		log_printf("Recording codecave: \"%s\" at %p\n", codecaves[i].name, (size_t)current_cave[access]);
+		func_add(codecaves[i].name, (size_t)current_cave[access]);
+
+		if (codecaves[i].export_codecave) {
+			codecaves_export_table[export_index].name = codecaves[i].name;
+			codecaves_export_table[export_index].func = (UINT_PTR)current_cave[access];
+			++export_index;
+		}
+
+		current_cave[access] += codecaves_full_size[i];
+	}
+
+	// Third pass: Write all of the code
+	for (int i = 0; i < 5; ++i) {
+		current_cave[i] = codecave_buf[i];
+	}
+
+	for (size_t i = 0; i < codecaves_count; i++) {
+		const char* code = codecaves[i].code;
+		const CodecaveAccessType access = codecaves[i].access_type;
+		if (codecaves[i].fill) {
+			// VirtualAlloc zeroes memory, so don't bother when fill is 0
+			memset(current_cave[access], codecaves[i].fill, codecaves[i].size);
+		}
+		if (code) {
+			binhack_render(current_cave[access], (size_t)current_cave[access], code);
+		}
+
+		current_cave[access] += codecaves[i].size;
+		for (size_t j = codecaves[i].size; j < codecaves_full_size[i]; ++j) {
+			*(current_cave[access]++) = 0xCC;
+		}
+	}
+
+	if (codecave_export_count > 0) {
+		patch_func_init(codecaves_export_table);
+		free(codecaves_export_table);
+	}
+	VLA_FREE(codecaves_full_size);
+
+	const DWORD page_access_type_array[5] = { PAGE_READONLY, PAGE_READWRITE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE };
+	DWORD idgaf;
+
+	for (int i = 0; i < 5; ++i) {
+		if (codecave_buf[i]) {
+			VirtualProtect(codecave_buf[i], codecaves_alloc_size[i], page_access_type_array[i], &idgaf);
+		}
+	}
 	return 0;
-}
-
-extern "C" __declspec(dllexport) void binhack_mod_exit()
-{
-	SAFE_CLEANUP(_free_locale, lc_neutral);
 }

@@ -74,7 +74,7 @@ template <typename T> bool pov_to_xy(T &x, T& y, Ranges<T> &ranges, DWORD pov)
  * into a different port than the one they were in before.
  */
 
-typedef MMRESULT __stdcall joyGetPosEx_type(
+typedef MMRESULT TH_STDCALL joyGetPosEx_type(
 	UINT uJoyID,
 	JOYINFOEX *pji
 );
@@ -93,7 +93,7 @@ struct winmm_joy_caps_t
 
 std::unique_ptr<winmm_joy_caps_t[]> joy_info;
 
-MMRESULT __stdcall my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
+MMRESULT TH_STDCALL my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
 {
 	if(!pji) {
 		return MMSYSERR_INVALPARAM;
@@ -127,7 +127,7 @@ MMRESULT __stdcall my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
 
 /// DirectInput API
 /// ---------------
-#define DIRECTINPUT8CREATE(name) HRESULT __stdcall name( \
+#define DIRECTINPUT8CREATE(name) HRESULT TH_STDCALL name( \
 	HINSTANCE hinst, \
 	DWORD dwVersion, \
 	REFIID riidltf, \
@@ -135,26 +135,26 @@ MMRESULT __stdcall my_joyGetPosEx(UINT uJoyID, JOYINFOEX *pji)
 	void *punkOuter \
 )
 
-#define DI8_CREATEDEVICE(name) HRESULT __stdcall name( \
+#define DI8_CREATEDEVICE(name) HRESULT TH_STDCALL name( \
 	void*** that, \
 	REFGUID rguid, \
 	void ****ppDevice, \
 	void *pUnkOuter \
 )
 
-#define DID8_GETPROPERTY(name) HRESULT __stdcall name( \
+#define DID8_GETPROPERTY(name) HRESULT TH_STDCALL name( \
 	void*** that, \
 	REFGUID rguidProp, \
 	DIPROPHEADER *pdiph \
 )
 
-#define DID8_SETPROPERTY(name) HRESULT __stdcall name( \
+#define DID8_SETPROPERTY(name) HRESULT TH_STDCALL name( \
 	void*** that, \
 	REFGUID rguidProp, \
 	const DIPROPHEADER *pdiph \
 )
 
-#define DID8_GETDEVICESTATE(name) HRESULT __stdcall name( \
+#define DID8_GETDEVICESTATE(name) HRESULT TH_STDCALL name( \
 	void*** that, \
 	DWORD cbData, \
 	void **lpvData \
@@ -271,7 +271,7 @@ DIRECTINPUT8CREATE(my_DirectInput8Create)
 }
 /// ---------------
 
-extern "C" __declspec(dllexport) void input_mod_detour(void)
+extern "C" TH_EXPORT void input_mod_detour(void)
 {
 	// This conveniently returns the number of *possible* joysticks, *not* the
 	// number of joysticks currently connected.

@@ -11,11 +11,10 @@
 #include "vfs.h"
 #include <algorithm>
 #include <list>
-#include <vector>
 
 static std::vector<patch_t> stack;
 
-static char **resolve_chain_default(const char *fn)
+TH_CALLER_FREE static char **resolve_chain_default(const char *fn)
 {
 	if (!fn) {
 		return nullptr;
@@ -28,7 +27,7 @@ static char **resolve_chain_default(const char *fn)
 	return chain;
 }
 
-static char **resolve_chain_game_default(const char *fn)
+TH_CALLER_FREE static char **resolve_chain_game_default(const char *fn)
 {
 	char *fn_common = fn_for_game(fn);
 	const char *fn_common_ptr = fn_common ? fn_common : fn;
@@ -65,9 +64,8 @@ static size_t chain_get_size(char **chain)
 	if (!chain) {
 		return 0;
 	}
-	size_t size;
-	for (size = 0; chain[size]; size++) {
-	}
+	size_t size = 0;
+	while (chain[size]) ++size;
 	return size;
 }
 
@@ -76,58 +74,62 @@ void chain_free(char **chain)
 	if (!chain) {
 		return;
 	}
-	for (size_t i = 0; chain && chain[i]; i++) {
+	for (size_t i = 0; chain[i]; i++) {
 		free(chain[i]);
 	}
 	free(chain);
 }
 
-int stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t direction)
+bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t direction)
 {
-	size_t chain_size = chain_get_size(chain);
-	if(sci && direction && chain_size) {
-		int chain_idx;
-		// Setup
-		if(!sci->patches) {
-			sci->patches = stack.data();
-			sci->nb_patches = stack.size();
-			sci->step =
-				(direction < 0) ? (sci->nb_patches * chain_size) - 1 : 0
-			;
-		} else {
-			sci->step += direction;
-		}
-		chain_idx = sci->step % chain_size;
-		sci->fn = chain[chain_idx];
-		if(chain_idx == (direction < 0) * (chain_size - 1)) {
-			size_t patch_idx = sci->step / chain_size;
-			if (patch_idx >= sci->nb_patches) {
-				return 0;
+	if (sci->fn) {
+		size_t cur_chain_step = sci->chain_step + direction;
+		if (cur_chain_step == sci->chain_limit) {
+			if ((sci->patch_step += direction) == sci->patch_limit) {
+				return false;
 			}
-			sci->patch_info = &sci->patches[patch_idx];
+			sci->patch_info = &stack[sci->patch_step];
+			cur_chain_step = sci->chain_reset;
 		}
+		sci->fn = chain[sci->chain_step = cur_chain_step];
+		return true;
 	}
-	return 1;
+	else {
+		//Defining this as a macro instead of a bool generates efficient CMOVS
+		#define is_reverse (bool)(direction < 0)
+		{
+			const size_t stack_size = stack.size();
+			if (stack_size); else {
+				// Failsafe for when there are no patches
+				return false;
+			}
+			sci->patch_limit = (is_reverse ? -1 : stack_size);
+			sci->patch_step =  (is_reverse ? stack_size : -1) + direction;
+			sci->patch_info = &stack[sci->patch_step];
+		}{
+			const size_t chain_size = chain_get_size(chain);
+			sci->chain_limit = (is_reverse ? -1 : chain_size);
+			sci->chain_reset = (is_reverse ? chain_size : -1) + direction;
+			sci->fn = chain[sci->chain_step = sci->chain_reset];
+		}
+		#undef is_reverse
+		return true;
+	}
 }
 
 json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 {
 	json_t *ret = NULL;
-	stack_chain_iterate_t sci = {};
+	stack_chain_iterate_t sci;
+	sci.fn = NULL;
 	size_t json_size = 0;
 
 	for (size_t n = 0; chain[n]; n++) {
-		const char *fn = chain[n];
+		const char *const fn = chain[n];
 		size_t size = 0;
 		json_t *json_new = jsonvfs_get(fn, &size);
 		if (json_new) {
-			if (!ret) {
-				ret = json_new;
-			}
-			else {
-				json_object_merge(ret, json_new);
-				json_decref(json_new);
-			}
+			ret = json_object_merge(ret, json_new);
 			log_printf("\n+ vfs:%s", fn);
 			json_size += size;
 		}
@@ -137,7 +139,7 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
 	}
 
-	log_printf(ret ? "\n" : "not found\n");
+	log_print(ret ? "\n" : "not found\n");
 	if(file_size) {
 		*file_size = json_size;
 	}
@@ -158,7 +160,8 @@ json_t* stack_json_resolve(const char *fn, size_t *file_size)
 
 HANDLE stack_file_resolve_chain(char **chain)
 {
-	stack_chain_iterate_t sci = {};
+	stack_chain_iterate_t sci;
+	sci.fn = NULL;
 
 	// Both the patch stack and the chain have to be traversed backwards: Later
 	// patches take priority over earlier ones, and build-specific files are
@@ -177,7 +180,8 @@ HANDLE stack_file_resolve_chain(char **chain)
 
 char* stack_fn_resolve_chain(char **chain)
 {
-	stack_chain_iterate_t sci = {};
+	stack_chain_iterate_t sci;
+	sci.fn = NULL;
 
 	// Both the patch stack and the chain have to be traversed backwards: Later
 	// patches take priority over earlier ones, and build-specific files are
@@ -207,7 +211,11 @@ HANDLE stack_game_file_stream(const char *fn)
 
 void* stack_game_file_resolve(const char *fn, size_t *file_size)
 {
-	return file_stream_read(stack_game_file_stream(fn), file_size);
+	HANDLE handle = stack_game_file_stream(fn);
+	if (handle != INVALID_HANDLE_VALUE) {
+		return file_stream_read(handle, file_size);
+	}
+	return NULL;
 }
 
 json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
@@ -253,7 +261,7 @@ void stack_show_motds(void)
 	}
 }
 
-extern "C" __declspec(dllexport) void motd_mod_post_init(void)
+extern "C" TH_EXPORT void motd_mod_post_init(void)
 {
 	stack_show_motds();
 }

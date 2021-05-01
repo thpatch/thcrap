@@ -18,11 +18,13 @@ typedef enum {
 // Iteration state. [patch_info] and [fn] hold the current patch and chain
 // file name after each call to stack_chain_iterate().
 typedef struct {
-	const patch_t *patches;
-	size_t nb_patches;
-	int step;
-	const patch_t *patch_info;
-	const char *fn;
+	size_t chain_step;
+	size_t chain_limit;
+	size_t chain_reset;
+	size_t patch_step;
+	size_t patch_limit;
+	const patch_t* patch_info;
+	const char* fn;
 } stack_chain_iterate_t;
 
 typedef char** (*resolve_chain_t)(const char *fn);
@@ -34,7 +36,7 @@ typedef char** (*resolve_chain_t)(const char *fn);
 // name returned by fn_for_build().
 // All resolving functions that take a chain parameter (instead of a file
 // name) should use the chain created by this function.
-char **resolve_chain(const char *fn);
+TH_CALLER_FREE char **resolve_chain(const char *fn);
 
 // Free a chain created by resolve_chain
 void chain_free(char **chain);
@@ -43,15 +45,16 @@ void chain_free(char **chain);
 void set_resolve_chain(resolve_chain_t function);
 
 // Builds a chain for a game-local file name.
-char **resolve_chain_game(const char *fn);
+TH_CALLER_FREE char **resolve_chain_game(const char *fn);
 
 // Set a user-defined function used to create the chain returned by resolve_chain_game.
 void set_resolve_chain_game(resolve_chain_t function);
 
 // Repeatedly iterate through the stack using the given resolving [chain].
 // [sci] keeps the iteration state.
-int stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t direction);
+bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t direction);
 
+// TODO: Update the documentation of this function to properly reflect the current structure
 // Walks through the given patch stack, merging every file with the filename
 // [fn] into a single JSON object.
 // Returns the merged JSON object or NULL if there is no matching file
@@ -80,7 +83,7 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size);
 
 // Generic file name resolver. Returns the file name of the existing file
 // matching the [chain] with the highest priority inside the patch stack.
-char* stack_fn_resolve_chain(char **chain);
+TH_CALLER_FREE char* stack_fn_resolve_chain(char **chain);
 
 /// Information
 /// -----------

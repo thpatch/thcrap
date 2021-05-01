@@ -25,10 +25,10 @@ extern "C" {
 	  * If it returns a non-NULL value, the return value will be used as if a file
 	  * with this content exists at the top of the patch stack.
 	  */
-	void jsonvfs_add(const std::string out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen);
+	void jsonvfs_add(const char* out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen);
 
 	// Same as jsonvfs_add, but all file names are game-relative.
-	void jsonvfs_game_add(const std::string out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen);
+	void jsonvfs_game_add(const char* out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen);
 
 	/**
 	  * Generate a VFS file from a JSON map file.
@@ -41,12 +41,12 @@ extern "C" {
 	  * the generated jdiff file will be like this:
 	  * { "key": 5 }
 	  */
-	void jsonvfs_add_map(const std::string out_pattern, std::string in_fn);
+	void jsonvfs_add_map(const char* out_pattern, std::unordered_set<std::string> in_fns);
 
 	// Same as jsonvfs_add_map, but all file names are game-relative.
-	void jsonvfs_game_add_map(const std::string out_pattern, std::string in_fn);
+	void jsonvfs_game_add_map(const char* out_pattern, std::unordered_set<std::string> in_fns);
 
 
 	// Return a file from the vfs if it exists.
-	json_t *jsonvfs_get(const std::string fn, size_t* size);
+	json_t *jsonvfs_get(const char* fn, size_t* size);
 }

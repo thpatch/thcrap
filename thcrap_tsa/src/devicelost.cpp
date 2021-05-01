@@ -10,12 +10,12 @@
 #include <thcrap.h>
 #include <minid3d.h>
 
-typedef HRESULT __stdcall d3dd9_TestCooperativeLevel(void ***);
+typedef HRESULT TH_STDCALL d3dd9_TestCooperativeLevel(void ***);
 
 // Original member function pointers
-static int(__stdcall*orig_d3dd9_Reset)(void***, D3DPRESENT_PARAMETERS*) = NULL;
+static int(TH_STDCALL*orig_d3dd9_Reset)(void***, D3DPRESENT_PARAMETERS*) = NULL;
 
-int __stdcall my_d3dd9_Reset(void*** that, D3DPRESENT_PARAMETERS* pPresentationParameters) {
+int TH_STDCALL my_d3dd9_Reset(void*** that, D3DPRESENT_PARAMETERS* pPresentationParameters) {
 	auto TestCooperativeLevel = (d3dd9_TestCooperativeLevel *)(*that)[3];
 	int rv = D3D_OK;
 	int coop = TestCooperativeLevel(that);

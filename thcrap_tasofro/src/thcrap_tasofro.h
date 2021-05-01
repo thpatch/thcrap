@@ -57,7 +57,7 @@ extern tasofro_game_t game_id;
 extern "C" {
 #endif
 
-int __stdcall thcrap_plugin_init();
+int TH_STDCALL thcrap_plugin_init();
 int nsml_init();
 int th135_init();
 int th175_init();

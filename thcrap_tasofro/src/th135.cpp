@@ -40,10 +40,10 @@ int th135_init()
 	patchhook_register("*.nhtex", patch_nhtex, get_nhtex_size);
 
 	if (game_id >= TH155) {
-		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							"spells.js");
-		jsonvfs_game_add_map("data/story/spell_list/*.csv.jdiff",				"spells.js");
-		jsonvfs_game_add_map("data/actor/*.nut.jdiff",							"spells.js"); // Last words
-		jsonvfs_game_add_map("*.nut.jdiff",										"nut_strings.js");
+		jsonvfs_game_add_map("data/spell/*.csv.jdiff",							{ "spells.js" });
+		jsonvfs_game_add_map("data/story/spell_list/*.csv.jdiff",				{ "spells.js" });
+		jsonvfs_game_add_map("data/actor/*.nut.jdiff",							{ "spells.js" }); // Last words
+		jsonvfs_game_add_map("*.nut.jdiff",										{ "nut_strings.js" });
 		patchhook_register("data/font/*.bmp", patch_bmp_font, get_bmp_font_size);
 	}
 	else if (game_id >= TH145) {
@@ -53,8 +53,8 @@ int th135_init()
 	}
 	else {
 		jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",					{ "spells.js" }, spell_story_generator);
-		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						"spellcomments.js");
-		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						"spells.js");
+		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						{ "spellcomments.js" });
+		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						{ "spells.js" });
 	}
 
 	char *bgm_pattern_fn = fn_for_game("data/bgm/bgm.csv.jdiff");
@@ -64,7 +64,7 @@ int th135_init()
 	SAFE_FREE(bgm_pattern_fn);
 	if (game_id >= TH155) {
 		char *staffroll_fn = fn_for_game("data/system/ed/staffroll.csv.jdiff");
-		jsonvfs_add_map(staffroll_fn, "themes.js");
+		jsonvfs_add_map(staffroll_fn, { "themes.js" });
 		SAFE_FREE(staffroll_fn);
 	}
 

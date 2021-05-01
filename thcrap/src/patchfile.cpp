@@ -10,7 +10,6 @@
 #include "thcrap.h"
 #include <algorithm>
 #include <list>
-#include <vector>
 
 struct patchhook_t
 {
@@ -81,50 +80,28 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size)
 
 char* fn_for_build(const char *fn)
 {
-	const char *build = runconfig_build_get();
-	size_t name_len;
-	size_t ret_len;
-	const char *first_ext = fn;
-	char *ret;
-
-	if(!fn || !build) {
-		return NULL;
+	auto build_view = runconfig_build_get_view();
+	if (!build_view.empty()) {
+		const size_t fn_length = PtrDiffStrlen(strchr(fn, '.'), fn);
+		return strdup_cat({ fn, fn_length + 1 }, build_view, fn + fn_length);
 	}
-	ret_len = strlen(fn) + 1 + strlen(build) + 1;
-	ret = (char*)malloc(ret_len);
-	if(!ret) {
-		return NULL;
+	else {
+		return nullptr;
 	}
-
-	// We need to do this on our own here because the build ID should be placed
-	// *before* the first extension.
-	while(*first_ext && *first_ext != '.') {
-		first_ext++;
-	}
-	name_len = (first_ext - fn);
-	strncpy(ret, fn, name_len);
-	sprintf(ret + name_len, ".%s%s", build, first_ext);
-	return ret;
 }
 
 char* fn_for_game(const char *fn)
 {
-	const char *game_id = runconfig_game_get();
-	if (!game_id) {
-		return strdup(fn);
-	} else if (!fn) {
-		return NULL;
+	auto game_id = runconfig_game_get_view();
+	if (!game_id.empty()) {
+		if (fn) {
+			return strdup_cat(game_id, '/', fn);
+		}
 	}
-	size_t game_id_len = strlen(game_id) + 1;
-	char *full_fn;
-
-	full_fn = (char*)malloc(game_id_len + strlen(fn) + 1);
-
-	full_fn[0] = 0; // Because strcat
-	strncpy(full_fn, game_id, game_id_len);
-	strcat(full_fn, "/");
-	strcat(full_fn, fn);
-	return full_fn;
+	else if (fn) {
+		return strdup(fn);
+	}
+	return NULL;
 }
 
 void patch_print_fn(const patch_t *patch_info, const char *fn)
@@ -166,25 +143,18 @@ int dir_create_for_fn(const char *fn)
 
 char* fn_for_patch(const patch_t *patch_info, const char *fn)
 {
-	size_t patch_fn_len;
 	char *patch_fn = NULL;
 
 	if(!patch_info || !patch_info->archive || !fn) {
 		return NULL;
 	}
-	/*
-	if(archive[archive_len - 1] != '\\' && archive[archive_len - 1] != '/') {
+	/*if(char archive_end = patch_info->archive[strlen(patch_info->archive) - 1];
+		archive_end != '\\' && archive_end != '/') {
 		// ZIP archives not yet supported
 		return NULL;
-	}
-	*/
-	// patch_fn = archive + fn
-	patch_fn_len = strlen(patch_info->archive) + 1 + strlen(fn) + 1;
-	patch_fn = (char*)malloc(patch_fn_len * sizeof(char));
+	}*/
 
-	strcpy(patch_fn, patch_info->archive);
-	PathAddBackslashU(patch_fn);
-	strcat(patch_fn, fn);
+	patch_fn = strdup_cat(patch_info->archive, '/', fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;
 }
@@ -227,7 +197,12 @@ HANDLE patch_file_stream(const patch_t *patch_info, const char *fn)
 
 void* patch_file_load(const patch_t *patch_info, const char *fn, size_t *file_size)
 {
-	return file_stream_read(patch_file_stream(patch_info, fn), file_size);
+	if (file_size) *file_size = 0;
+	HANDLE handle = patch_file_stream(patch_info, fn);
+	if (handle != INVALID_HANDLE_VALUE) {
+		return file_stream_read(handle, file_size);
+	}
+	return NULL;
 }
 
 int patch_file_store(const patch_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size)
@@ -264,11 +239,11 @@ size_t patch_json_merge(json_t **json_inout, const patch_t *patch_info, const ch
 		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
 		if(json_new) {
 			patch_print_fn(patch_info, fn);
-			if(!*json_inout) {
-				*json_inout = json_new;
-			} else {
-				json_object_merge(*json_inout, json_new);
+			if (!json_object_update_recursive(*json_inout, json_new)) {
 				json_decref(json_new);
+			}
+			else {
+				*json_inout = json_new;
 			}
 		}
 	}
@@ -305,11 +280,12 @@ void patch_show_motd(const patch_t *patch_info)
 		return;
 	}
 	if (!patch_info->motd_title) {
-		std::string title = std::string("Message from ") + patch_info->id;
-		log_mboxf(title.c_str(), patch_info->motd_type, patch_info->motd);
+		char* title = strdup_cat("Message from ", patch_info->id);
+		log_mbox(title, patch_info->motd_type, patch_info->motd);
+		free(title);
 	}
 	else {
-		log_mboxf(patch_info->motd_title, patch_info->motd_type, patch_info->motd);
+		log_mbox(patch_info->motd_title, patch_info->motd_type, patch_info->motd);
 	}
 }
 
@@ -345,6 +321,8 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 	return desc;
 }
 
+static std::unordered_map<std::string_view, patch_val_t> patch_options;
+
 patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t level)
 {
 	patch_t patch = {};
@@ -354,88 +332,103 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	}
 	if (PathIsRelativeU(patch_path)) {
 		// Add the current directory to the patch archive field
-		size_t full_patch_path_len = strlen(patch_path) + GetCurrentDirectoryU(0, NULL) + 2;
-		char *full_patch_path = (char *)malloc(full_patch_path_len);
-		GetCurrentDirectoryU(full_patch_path_len, full_patch_path);
-		strcpy(PathAddBackslashU(full_patch_path), patch_path);
-		str_slash_normalize(full_patch_path);
-		patch.archive = full_patch_path;
+		const size_t patch_len = strlen(patch_path) + 1; // Includes + 1 for path separator
+		const size_t dir_len = GetCurrentDirectory(0, NULL); // Includes null terminator
+		char *full_patch_path = patch.archive = (char *)malloc(patch_len + dir_len);
+		GetCurrentDirectory(dir_len, full_patch_path);
+		full_patch_path += dir_len;
+		full_patch_path[-1] = '/';
+		memcpy(full_patch_path, patch_path, patch_len);
 	}
 	else {
 		patch.archive = strdup(patch_path);
 	}
+	str_slash_normalize(patch.archive);
 	patch.config = json_object_get(patch_info, "config");
 	// Merge the runconfig patch array and the patch.js
-	json_t *runconfig_js = json_deep_copy(patch_info);
 	json_t *patch_js = patch_json_load(&patch, "patch.js", NULL);
-	patch_js = json_object_merge(patch_js, runconfig_js);
-	json_decref_safe(runconfig_js);
+	json_object_update_recursive(patch_js, (json_t*)patch_info);
 
-	auto set_string_if_exist = [patch_js](const char *key, char*& out) {
-		json_t *value = json_object_get(patch_js, key);
-		if (value) {
-			out = strdup(json_string_value(value));
+	json_t* id = json_object_get(patch_js, "id");
+	if (json_is_string(id)) {
+		patch.id = json_string_copy(id);
+	} else if (patch.archive) {
+		const char* patch_folder = strrchr(patch.archive, '/');
+		if (patch_folder && patch_folder != patch.archive) {
+			// Don't read backwards past the beginning of the string
+			do {
+				if (patch_folder[-1] == '/') {
+					patch.id = strndup(patch_folder, strlen(patch_folder) - 1);
+					break;
+				}
+			} while (--patch_folder != patch.archive);
 		}
-	};
-	auto set_array_if_exist = [patch_js](const char *key, char **&out) {
-		json_t *array = json_object_get(patch_js, key);
-		if (array && json_is_array(array)) {
-			out = new char*[json_array_size(array) + 1];
-			size_t i = 0;
-			json_t *it;
-			json_array_foreach(array, i, it) {
-				out[i] = strdup(json_string_value(it));
+	}
+
+	patch.version = 0;
+	json_t* version = json_object_get(patch_js, "version");
+	if (version) {
+		if (json_is_string(version)) {
+			const char* version_string = json_string_value(version);
+			char* end_sub_version;
+			uint8_t sub_versions[4] = { 0 };
+			for (int i = 0; i < 4; ++i) {
+				sub_versions[i] = (uint8_t)strtoul(version_string, &end_sub_version, 10);
+				for (; end_sub_version[0] && !isdigit(end_sub_version[0]); ++end_sub_version);
+				if (!end_sub_version[0]) break;
+				version_string = end_sub_version;
 			}
-			out[i] = nullptr;
+			patch.version = TextInt(sub_versions[3], sub_versions[2], sub_versions[1], sub_versions[0]);
+		} else if (json_is_integer(version)) {
+			patch.version = (uint32_t)json_integer_value(version);
 		}
-	};
+	}
+	if (!patch.version) {
+		patch.version = 1;
+	}
 
-	set_string_if_exist("id",         patch.id);
-	set_string_if_exist("title",      patch.title);
-	set_array_if_exist( "servers",    patch.servers);
-	set_array_if_exist( "ignore",     patch.ignore);
-	set_string_if_exist("motd",       patch.motd);
-	set_string_if_exist("motd_title", patch.motd_title);
+	if (patch.id) {
+		char* patch_test_opt_name = strdup_cat("patch:", patch.id);
+		patch_val_t patch_test_opt;
+		patch_test_opt.type = PVT_DWORD;
+		patch_test_opt.i = patch.version;
+		patch_options[patch_test_opt_name] = patch_test_opt;
+	}
+
+	patch.title = json_object_get_string_copy(patch_js, "title");
+	patch.servers = json_object_get_string_array_copy(patch_js, "servers");
+	patch.ignore = json_object_get_string_array_copy(patch_js, "ignore");
+	patch.motd = json_object_get_string_copy(patch_js, "motd");
+	patch.motd_title = json_object_get_string_copy(patch_js, "motd_title");
 	patch.level = level;
 
-	patch.update = true;
-	json_t *update = json_object_get(patch_js, "update");
-	if (update && json_is_false(update)) {
-		patch.update = false;
-	}
+	patch.update = json_object_get_eval_bool_default(patch_js, "update", true, JEVAL_NO_EXPRS);
 
 	json_t *dependencies = json_object_get(patch_js, "dependencies");
 	if (json_is_array(dependencies)) {
-		patch.dependencies = new patch_desc_t[json_array_size(dependencies) + 1];
-		size_t i;
+		const size_t array_size = json_array_size(dependencies);
+		patch.dependencies = new patch_desc_t[array_size + 1];
+		patch.dependencies[array_size].patch_id = NULL;
 		json_t *val;
-		json_array_foreach(dependencies, i, val) {
+		json_array_foreach_scoped(size_t, i, dependencies, val) {
 			patch.dependencies[i] = patch_dep_to_desc(json_string_value(val));
 		}
-		patch.dependencies[i].patch_id = nullptr;
 	}
 
 	json_t *fonts = json_object_get(patch_js, "fonts");
 	if (json_is_object(fonts)) {
-		std::vector<char*> fonts_vector;
-		const char *font_fn;
-		json_t *val;
-		json_object_foreach(fonts, font_fn, val) {
-			fonts_vector.push_back(strdup(font_fn));
-		}
-		patch.fonts = new char*[fonts_vector.size() + 1];
+		const size_t array_size = json_object_size(fonts);
+		patch.fonts = new char*[array_size + 1];
+		patch.fonts[array_size] = NULL;
+		const char* font_fn;
+		json_t* val;
 		size_t i = 0;
-		for (char *it : fonts_vector) {
-			patch.fonts[i] = it;
-			i++;
+		json_object_foreach(fonts, font_fn, val) {
+			patch.fonts[i++] = strdup(font_fn);
 		}
-		patch.fonts[i] = nullptr;
 	}
 
-	json_t *motd_type = json_object_get(patch_js, "motd_type");
-	if (motd_type && json_is_integer(motd_type)) {
-		patch.motd_type = (DWORD)json_integer_value(motd_type);
-	}
+	patch.motd_type = (DWORD)json_object_get_eval_int_default(patch_js, "motd_type", 0, JEVAL_STRICT | JEVAL_NO_EXPRS);
 
 	json_decref(patch_js);
 	return patch;
@@ -452,19 +445,19 @@ void patch_free(patch_t *patch)
 		free(patch->archive);
 		free(patch->id);
 		free(patch->title);
-		free(patch->motd);
-		free(patch->motd_title);
+		free((void*)patch->motd);
+		free((void*)patch->motd_title);
 		if (patch->servers) {
 			for (size_t i = 0; patch->servers[i]; i++) {
 				free(patch->servers[i]);
 			}
-			delete[] patch->servers;
+			free(patch->servers);
 		}
 		if (patch->ignore) {
 			for (size_t i = 0; patch->ignore[i]; i++) {
 				free(patch->ignore[i]);
 			}
-			delete[] patch->ignore;
+			free(patch->ignore);
 		}
 		if (patch->fonts) {
 			for (size_t i = 0; patch->fonts[i]; i++) {
@@ -501,9 +494,7 @@ int patch_rel_to_abs(patch_t *patch_info, const char *base_path)
 		char *base_dir;
 
 		if (!PathIsRelativeA(base_path)) {
-			base_path_len = strlen(base_path) + 1;
-			base_dir = (char*)malloc(base_path_len);
-			strncpy(base_dir, base_path, base_path_len);
+			base_dir = strdup(base_path);
 		}
 		else {
 			base_path_len = GetCurrentDirectory(0, NULL) + strlen(base_path) + 1;
@@ -581,13 +572,10 @@ json_t *patchhooks_load_diff(const patchhook_t *hook_array, const char *fn, size
 	}
 	json_t *patch;
 
-	size_t diff_fn_len = strlen(fn) + strlen(".jdiff") + 1;
 	size_t diff_size = 0;
-	VLA(char, diff_fn, diff_fn_len);
-	strcpy(diff_fn, fn);
-	strcat(diff_fn, ".jdiff");
+	char* diff_fn = strdup_cat(fn, ".jdiff");
 	patch = stack_game_json_resolve(diff_fn, &diff_size);
-	VLA_FREE(diff_fn);
+	free(diff_fn);
 
 	if (size) {
 		*size = 0;
@@ -625,8 +613,6 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 	return ret;
 }
 
-static std::unordered_map<std::string, patch_opt_val_t> patch_options;
-
 void patch_opts_from_json(json_t *opts) {
 	const char *key;
 	json_t *j_val;
@@ -636,72 +622,198 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 		json_t *j_val_val = json_object_get(j_val, "val");
-		if (!(json_is_number(j_val_val) || json_is_string(j_val_val))) {
-			log_printf("ERROR: invalid format for value of option %s\n", key);
+		if (!j_val_val) {
 			continue;
 		}
 		const char *tname = json_object_get_string(j_val, "type");
-		patch_opt_val_t entry = {};
-		entry.size = strtol(tname + 1, nullptr, 10) / 8;
-		switch (tname[0]) {
-		case 'i': {
-			if (!json_is_integer(j_val_val) && !json_is_string(j_val_val)) {
-				log_printf("ERROR: invalid value specified for integer option %s\n", key);
-				continue;
-			}
-			entry.val.dword = json_hex_value(j_val_val);
-			switch (entry.size) {
-			case 1: entry.t = PATCH_OPT_VAL_BYTE;  break;
-			case 2: entry.t = PATCH_OPT_VAL_WORD;  break;
-			case 4: entry.t = PATCH_OPT_VAL_DWORD; break;
-			default:
-				log_printf("ERROR: invalid integer type %s for option %s\n", tname, key);
-				continue;
-			}
-			break;
+		if (!tname) {
+			continue;
 		}
-		case 'f': {
-			double real_val;
-			switch (json_typeof(j_val_val)) {
-			case JSON_STRING:
-				real_val = atof(json_string_value(j_val_val));
+		patch_val_t entry;
+		switch (const uint8_t type_char = tname[0] | 0x20) {
+			case 's': case 'w':
+				if (const char* opt_str = json_string_value(j_val_val)) {
+					const size_t narrow_len = strlen(opt_str) + 1;
+					size_t char_size;
+					if (tname[1] != '\0') char_size = strtol(tname + 1, nullptr, 10);
+					else char_size = (type_char == 's' ? sizeof(char) : sizeof(wchar_t)) * CHAR_BIT;
+					switch (char_size) {
+						case 8:
+							entry.type = PVT_STRING;
+							entry.str.len = narrow_len;
+							entry.str.ptr = strdup(opt_str);
+							break;
+						case 16: {
+							entry.type = PVT_STRING16;
+							entry.str16.len = narrow_len * 2;
+							char16_t* str_16 = new char16_t[narrow_len];
+							const char* opt_str_end = opt_str + narrow_len;
+							size_t c = mbrtoc16(nullptr, nullptr, 0, nullptr);
+							for (char16_t* write_str = str_16; c = mbrtoc16(write_str, opt_str, opt_str_end - opt_str, nullptr); ++write_str) {
+								if (c > 0) opt_str += c;
+								else if (c > -3) break;
+							}
+							if (c != 0) {
+								delete[] str_16;
+								log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
+								continue;
+							}
+							entry.str16.ptr = str_16;
+							break;
+						}
+						case 32: {
+							entry.type = PVT_STRING32;
+							entry.str32.len = narrow_len * 4;
+							char32_t* str_32 = new char32_t[narrow_len];
+							const char* opt_str_end = opt_str + narrow_len;
+							size_t c = mbrtoc32(nullptr, nullptr, 0, nullptr);
+							for (char32_t* write_str = str_32; c = mbrtoc32(write_str, opt_str, opt_str_end - opt_str, nullptr); ++write_str) {
+								if (c > 0) opt_str += c;
+								else if (c > -3) break;
+							}
+							if (c != 0) {
+								delete[] str_32;
+								log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
+								continue;
+							}
+							entry.str32.ptr = str_32;
+							break;
+						}
+						default:
+							log_printf("ERROR: invalid char size %s for string option %s\n", tname + 1, key);
+							continue;
+					}
+				}
+				else {
+					log_printf("ERROR: invalid json type for string option %s\n", key);
+					continue;
+				}
 				break;
-
-			case JSON_INTEGER:
-			case JSON_REAL:
-				real_val = json_number_value(j_val_val);
+			/*case 'c':
+				if (json_is_string(j_val_val)) {
+					const char* opt_code_str = json_string_value(j_val_val);
+					entry.type = PVT_CODE;
+					entry.str.ptr = strdup(opt_code_str);
+					entry.str.len = binhack_calc_size(opt_code_str);
+				}
+				else {
+					log_printf("ERROR: invalid json type for code option %s\n", key);
+					continue;
+				}
+				break;*/
+			case 'i': {
+				json_int_t value;
+				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
+				switch (strtol(tname + 1, nullptr, 10)) {
+					case 8:
+						entry.type = PVT_SBYTE;
+						entry.sb = (int8_t)value;
+						break;
+					case 16:
+						entry.type = PVT_SWORD;
+						entry.sw = (int16_t)value;
+						break;
+					case 32:
+						entry.type = PVT_SDWORD;
+						entry.si = (int32_t)value;
+						break;
+					case 64:
+						entry.type = PVT_SQWORD;
+						entry.sq = (int64_t)value;
+						break;
+					default:
+						log_printf("ERROR: invalid integer size %s for option %s\n", tname + 1, key);
+						continue;
+				}
 				break;
-
-			default:
-				log_printf("ERROR: invalid value specified for integer option %s\n", key);
-				continue;
 			}
-			switch (entry.size) {
-			case 4: {
-				entry.t = PATCH_OPT_VAL_FLOAT;
-				entry.val.f = (float)real_val;
+			case 'b': case 'u': {
+				json_int_t value;
+				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
+				switch (strtol(tname + 1, nullptr, 10)) {
+					case 8:
+						entry.type = PVT_BYTE;
+						entry.b = (uint8_t)value;
+						break;
+					case 16:
+						entry.type = PVT_WORD;
+						entry.w = (uint16_t)value;
+						break;
+					case 32:
+						entry.type = PVT_DWORD;
+						entry.i = (uint32_t)value;
+						break;
+					case 64:
+						entry.type = PVT_QWORD;
+						entry.q = (uint64_t)value;
+						break;
+					default:
+						log_printf("ERROR: invalid integer size %s for option %s\n", tname + 1, key);
+						continue;
+				}
 				break;
 			}
-			case 8: {
-				entry.t = PATCH_OPT_VAL_DOUBLE;
-				entry.val.d = real_val;
+			case 'f': {
+				double value;
+				(void)json_eval_real(j_val_val, &value, JEVAL_DEFAULT);
+				switch (strtol(tname + 1, nullptr, 10)) {
+					case 32:
+						entry.type = PVT_FLOAT;
+						entry.f = (float)value;
+						break;
+					case 64:
+						entry.type = PVT_DOUBLE;
+						entry.d = value;
+						break;
+					case 80:
+						entry.type = PVT_LONGDOUBLE;
+						entry.ld = /*(LongDouble80)*/value;
+						break;
+					default:
+						log_printf("ERROR: invalid float size %s for option %s\n", tname + 1, key);
+						continue;
+				}
 				break;
-
-			default:
-				log_printf("ERROR: invalid float type %s for option %s\n", tname, key);
-				continue;
-			}
 			}
 		}
+		const char* op_str = json_object_get_string(j_val, "op");
+		patch_val_set_op(op_str, &entry);
+		if (const char* slot = strchr(key, '#')) {
+			const size_t key_len = PtrDiffStrlen(slot, key) + 1;
+			if (patch_val_t* existing_opt = patch_opt_get_len(key, key_len)) {
+				if (existing_opt->type == entry.type) {
+					patch_val_t result = patch_val_op_str(op_str, *existing_opt, entry);
+					if (result.type != PVT_NONE) {
+						*existing_opt = result;
+					}
+					else {
+						log_printf("ERROR: invalid operation for option type, values not merged\n");
+					}
+				}
+				else {
+					log_printf("ERROR: invalid option types do not match, values not merged\n");
+				}
+			}
+			else {
+				patch_options[strdup_size(key, key_len)] = entry;
+			}
 		}
-		patch_options[key] = entry;
+		patch_options[strdup(key)] = entry;
 	}
 }
 
-patch_opt_val_t* patch_opt_get(const char *name) {
-	auto val = patch_options.find(name);
-	if (val == patch_options.end()) {
-		return NULL;
+patch_val_t* patch_opt_get(const char *name) {
+	std::string_view name_view(name);
+	if (patch_options.count(name_view)) {
+		return &patch_options[name_view];
 	}
-	return &val->second;
+	return NULL;
+}
+
+patch_val_t* patch_opt_get_len(const char* name, size_t length) {
+	std::string_view name_view(name, length);
+	if (patch_options.count(name_view)) {
+		return &patch_options[name_view];
+	}
+	return NULL;
 }

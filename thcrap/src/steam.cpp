@@ -14,7 +14,7 @@
   *
   * Game-supporting plugins need to implement
   *
-  * 	const char* __cdecl steam_appid(void)
+  * 	const char* TH_CDECL steam_appid(void)
   *
   * to return the AppID for the currently running game as a string, or a
   * nullptr if it wasn't released on Steam.
@@ -28,15 +28,15 @@ const char *STEAM_API_DLL_FN = "steam_api64.dll";
 const char *STEAM_API_DLL_FN = "steam_api.dll";
 #endif
 
-typedef const char* __cdecl steam_appid_func_t(void);
+typedef const char* TH_CDECL steam_appid_func_t(void);
 
 // Steam API
 // ---------
 HMODULE hSteamAPI;
 HKEY hSteamProcess;
 
-typedef bool __cdecl DLL_FUNC_TYPE(SteamAPI, Init)();
-typedef bool __cdecl DLL_FUNC_TYPE(SteamAPI, Shutdown)();
+typedef bool TH_CDECL DLL_FUNC_TYPE(SteamAPI, Init)();
+typedef bool TH_CDECL DLL_FUNC_TYPE(SteamAPI, Shutdown)();
 
 DLL_FUNC_DEF(SteamAPI, Init);
 DLL_FUNC_DEF(SteamAPI, Shutdown);
@@ -45,7 +45,7 @@ DLL_FUNC_DEF(SteamAPI, Shutdown);
 	SteamAPI_##func = (SteamAPI_##func##_t*)GetProcAddress(hSteamAPI, "SteamAPI_"#func);
 // ---------
 
-extern "C" __declspec(dllexport) void steam_mod_post_init(void)
+extern "C" TH_EXPORT void steam_mod_post_init(void)
 {
 	// Got an AppID?
 	auto steam_appid_func = (steam_appid_func_t*)func_get("steam_appid");
@@ -103,7 +103,7 @@ extern "C" __declspec(dllexport) void steam_mod_post_init(void)
 	log_printf("[Steam] Initialized for AppID %s\n", appid);
 }
 
-extern "C" __declspec(dllexport) void steam_mod_exit(void)
+extern "C" TH_EXPORT void steam_mod_exit(void)
 {
 	RegCloseKey(hSteamProcess);
 	if(!SteamAPI_Shutdown) {

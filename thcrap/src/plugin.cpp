@@ -9,13 +9,52 @@
 
 #include "thcrap.h"
 #include <algorithm>
-#include <vector>
-#include <unordered_map>
 #include <string_view>
 
-static std::unordered_map<std::string_view, UINT_PTR> funcs = {};
+static std::unordered_map<std::string_view, UINT_PTR> funcs = {
+	{ "th_malloc", (size_t)&malloc },
+	{ "th_calloc", (size_t)&calloc },
+	{ "th_realloc", (size_t)&realloc },
+	{ "th_free", (size_t)&free },
+	{ "th_msize", (size_t)&_msize },
+	{ "th_expand", (size_t)&_expand },
+	{ "th_aligned_malloc", (size_t)&_aligned_malloc },
+	{ "th_aligned_realloc", (size_t)&_aligned_realloc },
+	{ "th_aligned_free", (size_t)&_aligned_free },
+	{ "th_aligned_msize", (size_t)&_aligned_msize },
+
+	{ "th_memcpy", (size_t)&memcpy },
+	{ "th_memmove", (size_t)&memmove },
+	{ "th_memcmp", (size_t)&memcmp },
+	{ "th_memset", (size_t)&memset },
+	{ "th_memccpy", (size_t)&_memccpy },
+	{ "th_strdup", (size_t)&strdup },
+	{ "th_strndup", (size_t)&strndup },
+	{ "th_strdup_size", (size_t)&strdup_size },
+
+	{ "th_strcmp", (size_t)&strcmp },
+	{ "th_strncmp", (size_t)&strncmp },
+	{ "th_stricmp", (size_t)&stricmp },
+	{ "th_strnicmp", (size_t)&strnicmp },
+	{ "th_strcpy", (size_t)&strcpy },
+	{ "th_strncpy", (size_t)&strncpy },
+	{ "th_strcat", (size_t)&strcat },
+	{ "th_strncat", (size_t)&strncat },
+	{ "th_strlen", (size_t)&strlen },
+	{ "th_strnlen_s", (size_t)&strnlen_s },
+
+	{ "th_sprintf", (size_t)&sprintf },
+	{ "th_snprintf", (size_t)&snprintf },
+	{ "th_sscanf", (size_t)&sscanf },
+
+	{ "th_GetLastError", (size_t)&GetLastError },
+	{ "th_GetProcAddress", (size_t)&GetProcAddress },
+	{ "th_GetModuleHandleA", (size_t)&GetModuleHandleA },
+	{ "th_GetModuleHandleW", (size_t)&GetModuleHandleW },
+};
 static mod_funcs_t mod_funcs = {};
-static json_t *plugins = NULL;
+static mod_funcs_t patch_funcs = {};
+static std::vector<HMODULE> plugins;
 
 UINT_PTR func_get(const char *name)
 {
@@ -23,6 +62,17 @@ UINT_PTR func_get(const char *name)
 	if (existing == funcs.end()) {
 		return 0;
 	} else {
+		return existing->second;
+	}
+}
+
+UINT_PTR func_get_len(const char *name, size_t name_len)
+{
+	auto existing = funcs.find({ name, name_len });
+	if (existing == funcs.end()) {
+		return 0;
+	}
+	else {
 		return existing->second;
 	}
 }
@@ -38,53 +88,49 @@ int func_add(const char *name, size_t addr) {
 		existing->second = addr;
 		return 1;
 	}
-	
 }
 
 bool func_remove(const char *name) {
-	auto existing = funcs.find(name);
-	if (existing != funcs.end()) {
-		std::string_view a = existing->first;
-		funcs.erase(existing);
-		free((void*)a.data());
-		return true;
+	auto& former_func = funcs.extract(name);
+	const bool func_removed = !former_func.empty();
+	if (func_removed) {
+		free((void*)former_func.key().data());
 	}
-	return false;
+	return func_removed;
+}
+
+int patch_func_init(exported_func_t *funcs)
+{
+	if (funcs) {
+		mod_funcs_t patch_funcs_new;
+		patch_funcs_new.build(funcs, "_patch_");
+		patch_funcs_new.run("init", NULL);
+		patch_funcs.merge(patch_funcs_new);
+	}
+	return 0;
 }
 
 int plugin_init(HMODULE hMod)
 {
-	exported_func_t *funcs_new;
-	int func_count = GetExportedFunctions(&funcs_new, hMod);
-	if(func_count > 0) {
-		mod_funcs_t *mod_funcs_new = mod_func_build(funcs_new);
-		mod_func_run(mod_funcs_new, "init", NULL);
-		mod_func_run(mod_funcs_new, "detour", NULL);
-		for (mod_func_pair_t pair : *mod_funcs_new) {
-			std::string_view key = pair.first;
-			std::vector<mod_call_type> arr = pair.second;
-
-			mod_funcs[key].insert(mod_funcs[key].end(), arr.begin(), arr.end());
-		}
+	if(exported_func_t* funcs_new = GetExportedFunctions(hMod)) {
+		mod_funcs_t mod_funcs_new;
+		mod_funcs_new.build(funcs_new, "_mod_");
+		mod_funcs_new.run("init", NULL);
+		mod_funcs_new.run("detour", NULL);
+		mod_funcs.merge(mod_funcs_new);
 		for (int i = 0; funcs_new[i].func != 0 && funcs_new[i].name != nullptr; i++) {
 			funcs[funcs_new[i].name] = funcs_new[i].func;
 		}
-		delete mod_funcs_new;
-		func_count = 0;
+		free(funcs_new);
 	}	
-	return func_count;
+	return 0;
 }
 
-void plugin_load(const char *dir, const char *fn)
+void plugin_load(const char *const fn_abs, const char *fn)
 {
-	// LoadLibraryEx() with LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
-	// requires an absolute path to not fail with GetLastError() == 87.
-	STRLEN_DEC(dir);
-	STRLEN_DEC(fn);
-	VLA(char, fn_abs, dir_len + fn_len);
-	defer(VLA_FREE(fn_abs));
-
-	const bool is_debug_plugin = strlen(fn) >= strlen("_d.dll") && strcmp(fn + strlen(fn) - strlen("_d.dll"), "_d.dll") == 0;
+	const size_t fn_len = strlen(fn);
+	const size_t dbg_len = strlen("_d.dll");
+	const bool is_debug_plugin = fn_len >= dbg_len && strcmp(fn + fn_len - dbg_len, "_d.dll") == 0;
 #ifdef _DEBUG
 	if (!is_debug_plugin) {
 		log_printf("[Plugin] %s: release plugin ignored in debug mode (or this dll is not a plugin)\n", fn);
@@ -97,112 +143,123 @@ void plugin_load(const char *dir, const char *fn)
 	}
 #endif
 
-	sprintf(fn_abs, "%s\\%s", dir, fn);
-
-	auto plugin = LoadLibraryExU(fn_abs, nullptr,
-		LOAD_WITH_ALTERED_SEARCH_PATH
-	);
-	if(!plugin) {
-		log_printf("[Plugin] Error loading %s: %s\n", fn_abs, lasterror_str());
-		return;
-	}
-	FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
-	if(func && !func()) {
-		log_printf("[Plugin] %s: initialized and active\n", fn);
-		plugin_init(plugin);
-		json_object_set_new(plugins, fn, json_integer((size_t)plugin));
-	} else {
-		if(func) {
-			log_printf("[Plugin] %s: not used for this game\n", fn);
+	if (HMODULE plugin = LoadLibraryExU(fn_abs, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)) {
+		switch (FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
+				(uintptr_t)func) {
+			default:
+				if (!func()) {
+					log_printf("[Plugin] %s: initialized and active\n", fn);
+					plugin_init(plugin);
+					plugins.push_back(plugin);
+					break;
+				}
+				log_printf("[Plugin] %s: not used for this game\n", fn);
+				[[fallthrough]];
+			case NULL:
+				FreeLibrary(plugin);
 		}
-		FreeLibrary(plugin);
+	}
+	else {
+		log_printf("[Plugin] Error loading %s: %s\n", fn_abs, lasterror_str());
 	}
 }
 
 int plugins_load(const char *dir)
 {
-	BOOL ret = 0;
-	WIN32_FIND_DATAA w32fd;
-	HANDLE hFind = FindFirstFile("bin\\*.dll", &w32fd);
-	if(hFind == INVALID_HANDLE_VALUE) {
-		return 1;
-	}
 	// Apparently, successful self-updates can cause infinite loops?
 	// This is safer anyway.
-	std::vector<std::string> dlls;
-	if(!json_is_object(plugins)) {
-		plugins = json_object();
-	}
-	while(!ret) {
-		// Necessary to avoid the nonsensical "Bad Image" message
-		// box if you try to LoadLibrary() a 0-byte file.
-		if(w32fd.nFileSizeHigh > 0 || w32fd.nFileSizeLow > 0) {
-			// Yes, "*.dll" means "*.dll*" in FindFirstFile.
-			// https://blogs.msdn.microsoft.com/oldnewthing/20050720-16/?p=34883
-			if(!stricmp(PathFindExtensionA(w32fd.cFileName), ".dll")) {
-				dlls.push_back(w32fd.cFileName);
-			}
+	std::vector<char*> dlls;
+
+	const size_t dir_len = strlen(dir);
+	char* const dll_path = strdup_size(dir, MAX_PATH + 8);
+	strcat(dll_path, "\\*.dll");
+
+	{
+		WIN32_FIND_DATAA w32fd;
+		HANDLE hFind = FindFirstFile(dll_path, &w32fd);
+		if (hFind == INVALID_HANDLE_VALUE) {
+			return 1;
 		}
-		ret = W32_ERR_WRAP(FindNextFile(hFind, &w32fd));
+		do {
+			// Necessary to avoid the nonsensical "Bad Image" message
+			// box if you try to LoadLibrary() a 0-byte file.
+			if (w32fd.nFileSizeLow | w32fd.nFileSizeHigh) {
+				// Yes, "*.dll" means "*.dll*" in FindFirstFile.
+				// https://blogs.msdn.microsoft.com/oldnewthing/20050720-16/?p=34883
+				if (!stricmp(PathFindExtensionA(w32fd.cFileName), ".dll")) {
+					dlls.push_back(strdup(w32fd.cFileName));
+				}
+			}
+		} while (FindNextFile(hFind, &w32fd));
+		FindClose(hFind);
 	}
-	for(auto dll : dlls) {
-		plugin_load(dir, dll.c_str());
+	
+	// LoadLibraryEx() with LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR
+	// requires an absolute path to not fail with GetLastError() == 87.
+	char *const fn_start = &dll_path[dir_len + 1];
+	for (char* dll : dlls) {
+		strcpy(fn_start, dll);
+		free(dll);
+		plugin_load(dll_path, fn_start);
 	}
-	FindClose(hFind);
+	free(dll_path);
 	return 0;
 }
 
 int plugins_close(void)
 {
-	const char *key;
-	json_t *val;
-
 	log_printf("Removing plug-ins...\n");
-	json_object_foreach(plugins, key, val) {
-		HINSTANCE hInst = (HINSTANCE)json_integer_value(val);
-		if(hInst) {
-			FreeLibrary(hInst);
-		}
+	for (HMODULE plugin_module : plugins) {
+		FreeLibrary(plugin_module);
 	}
-	plugins = json_decref_safe(plugins);
 	return 0;
 }
 
-mod_funcs_t* mod_func_build(exported_func_t *funcs)
-{
-	// This function is not exported
-	mod_funcs_t *ret = new mod_funcs_t;
-	const char *infix = "_mod_";
-	size_t infix_len = strlen(infix);
-	for (int i = 0; funcs[i].name != nullptr && funcs[i].func != 0; i++) {
-		const char *p = strstr(funcs[i].name, infix);
-		if(p) {
-			p += infix_len;
-			(*ret)[p].push_back((mod_call_type)funcs[i].func);
+inline void mod_funcs_t::build(exported_func_t* funcs, std::string_view infix) {
+	if (funcs) {
+		while (funcs->name && funcs->func) {
+			if (const char* p = strstr(funcs->name, infix.data());
+				p && *(p += infix.length()) != '\0') {
+				(*this)[p].push_back((mod_call_type)funcs->func);
+			}
+			++funcs;
 		}
 	}
-	return ret;
 }
 
-void mod_func_run(mod_funcs_t *mod_funcs, const char *pattern, void *param)
-{
-	std::vector<mod_call_type> func_array = (*mod_funcs)[pattern];
-	for(mod_call_type &func : func_array) {
-		if(func) {
-			func(param);
-		}
+inline void mod_funcs_t::run(std::string_view suffix, void* param) {
+	std::vector<mod_call_type>& func_array = (*this)[suffix];
+	for (mod_call_type func : func_array) {
+		func(param);
 	}
 }
 
 void mod_func_run_all(const char *pattern, void *param)
 {
-	mod_func_run(&mod_funcs, pattern, param);
+	mod_funcs.run(pattern, param);
+	patch_funcs.run(pattern, param);
 }
 
-void mod_func_remove(const char *pattern, mod_call_type func) {
-	std::vector<mod_call_type> &func_array = mod_funcs[pattern];
+void patch_func_run_all(const char *pattern, void *param)
+{
+	patch_funcs.run(pattern, param);
+}
+
+inline void mod_funcs_t::remove(std::string_view suffix, mod_call_type func)
+{
+	std::vector<mod_call_type>& func_array = (*this)[suffix];
 	auto elem = std::find_if(func_array.begin(), func_array.end(), [&func](mod_call_type func_in_array) {
 		return func_in_array == func;
-	});
+		});
 	func_array.erase(elem);
+}
+
+void mod_func_remove(const char *pattern, mod_call_type func)
+{
+	mod_funcs.remove(pattern, func);
+}
+
+void patch_func_remove(const char *pattern, mod_call_type func)
+{
+	patch_funcs.remove(pattern, func);
 }

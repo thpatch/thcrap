@@ -112,8 +112,8 @@ int nsml_init()
 		jsonvfs_add(bgm_fn, { "themes.js" }, bgm_generator);
 		SAFE_FREE(bgm_fn);
 
-		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", "spells.js");
-		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", "spells.js");
+		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", { "spells.js" });
+		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", { "spells.js" });
 	}
 	else if (game_id == TH123) {
 		set_resolve_chain_game(th123_resolve_chain_game);
@@ -125,17 +125,17 @@ int nsml_init()
 		}
 
 		char *bgm_fn = fn_for_game("data/csv/system/music*.cv1.jdiff");
-		jsonvfs_add_map(bgm_fn, "themes.js");
+		jsonvfs_add_map(bgm_fn, { "themes.js" });
 		SAFE_FREE(bgm_fn);
 
 		char *pattern_spell = fn_for_game("data/csv/*/spellcard.cv1.jdiff");
 		char *pattern_story = fn_for_game("data/csv/*/storyspell.cv1.jdiff");
 		char *spells_th105 = fn_for_th105("spells.js");
 		char *spells_th123 = fn_for_game("spells.js");
-		jsonvfs_add_map(pattern_spell, spells_th105);
-		jsonvfs_add_map(pattern_spell, spells_th123);
-		jsonvfs_add_map(pattern_story, spells_th105);
-		jsonvfs_add_map(pattern_story, spells_th123);
+		jsonvfs_add_map(pattern_spell, { spells_th105 });
+		jsonvfs_add_map(pattern_spell, { spells_th123 });
+		jsonvfs_add_map(pattern_story, { spells_th105 });
+		jsonvfs_add_map(pattern_story, { spells_th123 });
 		SAFE_FREE(pattern_spell);
 		SAFE_FREE(pattern_story);
 		SAFE_FREE(spells_th105);

@@ -20,12 +20,12 @@ typedef enum {
 #define VARNAMES(type, varname) varname
 
 #define MINID3D_TYPEDEF(rettype, func) \
-	typedef rettype __stdcall func##_type(func##_(FULLDEC));
+	typedef rettype TH_STDCALL func##_type(func##_(FULLDEC));
 
 #define MINID3D_VTABLE_FUNC_DEF(rettype, func, vtable_index_d3d8, vtable_index_d3d9) \
 	MINID3D_TYPEDEF(rettype, func) \
 	\
-	__inline rettype func(d3d_version_t ver, func##_(FULLDEC)) \
+	inline rettype func(d3d_version_t ver, func##_(FULLDEC)) \
 	{ \
 		FARPROC *vt = *(FARPROC**)that; \
 		func##_type *fp = (func##_type*)( \
@@ -458,10 +458,10 @@ MINID3D_VTABLE_FUNC_DEF(HRESULT, d3ds_GetDesc, 8, 12)
 	x(IDirect3DDevice*, that), \
 	x(DWORD, FVF)
 
-__inline HRESULT d3dd_GetBackBuffer(d3d_version_t ver, d3dd8_GetBackBuffer_(FULLDEC))
+inline HRESULT d3dd_GetBackBuffer(d3d_version_t ver, d3dd8_GetBackBuffer_(FULLDEC))
 {
-	typedef HRESULT __stdcall ft8(d3dd8_GetBackBuffer_(FULLDEC));
-	typedef HRESULT __stdcall ft9(d3dd9_GetBackBuffer_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft8(d3dd8_GetBackBuffer_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft9(d3dd9_GetBackBuffer_(FULLDEC));
 	FARPROC *vt = *(FARPROC**)that;
 	return
 		(ver == D3D8) ? ((ft8*)vt[16])(d3dd8_GetBackBuffer_(VARNAMES)) :
@@ -469,10 +469,10 @@ __inline HRESULT d3dd_GetBackBuffer(d3d_version_t ver, d3dd8_GetBackBuffer_(FULL
 		((ft8*)NULL)(d3dd8_GetBackBuffer_(VARNAMES));
 }
 
-__inline HRESULT d3dd_CreateTexture(d3d_version_t ver, d3dd8_CreateTexture_(FULLDEC))
+inline HRESULT d3dd_CreateTexture(d3d_version_t ver, d3dd8_CreateTexture_(FULLDEC))
 {
-	typedef HRESULT __stdcall ft8(d3dd8_CreateTexture_(FULLDEC));
-	typedef HRESULT __stdcall ft9(d3dd9_CreateTexture_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft8(d3dd8_CreateTexture_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft9(d3dd9_CreateTexture_(FULLDEC));
 	FARPROC *vt = *(FARPROC**)that;
 	return
 		(ver == D3D8) ? ((ft8*)vt[20])(d3dd8_CreateTexture_(VARNAMES)) :
@@ -483,29 +483,29 @@ __inline HRESULT d3dd_CreateTexture(d3d_version_t ver, d3dd8_CreateTexture_(FULL
 MINID3D_VTABLE_FUNC_DEF(HRESULT, d3dd_EndScene, 35, 42)
 MINID3D_VTABLE_FUNC_DEF(HRESULT, d3dd_SetViewport, 40, 47)
 
-__inline HRESULT d3dd_ApplyStateBlock(d3d_version_t ver, d3dd8_ApplyStateBlock_(FULLDEC))
+inline HRESULT d3dd_ApplyStateBlock(d3d_version_t ver, d3dd8_ApplyStateBlock_(FULLDEC))
 {
-	typedef HRESULT __stdcall ft8(d3dd8_ApplyStateBlock_(FULLDEC));
-	typedef HRESULT __stdcall ft9(d3dsb9_Apply_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft8(d3dd8_ApplyStateBlock_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft9(d3dsb9_Apply_(FULLDEC));
 	return
 		(ver == D3D8) ? (*(ft8***)that)[54](d3dd8_ApplyStateBlock_(VARNAMES)) :
 		(ver == D3D9) ? (*(ft9***) pSB)[ 5](d3dsb9_Apply_(VARNAMES)) :
 		((FARPROC)NULL)();
 }
 
-__inline HRESULT d3dd_CaptureStateBlock(d3d_version_t ver, d3dd8_CaptureStateBlock_(FULLDEC))
+inline HRESULT d3dd_CaptureStateBlock(d3d_version_t ver, d3dd8_CaptureStateBlock_(FULLDEC))
 {
-	typedef HRESULT __stdcall ft8(d3dd8_CaptureStateBlock_(FULLDEC));
-	typedef HRESULT __stdcall ft9(d3dsb9_Capture_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft8(d3dd8_CaptureStateBlock_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft9(d3dsb9_Capture_(FULLDEC));
 	return
 		(ver == D3D8) ? (*(ft8***)that)[55](d3dd8_CaptureStateBlock_(VARNAMES)) :
 		(ver == D3D9) ? (*(ft9***)pSB)[4](d3dsb9_Capture_(VARNAMES)) :
 		((FARPROC)NULL)();
 }
 
-__inline HRESULT d3dd_DeleteStateBlock(d3d_version_t ver, d3dd8_DeleteStateBlock_(FULLDEC))
+inline HRESULT d3dd_DeleteStateBlock(d3d_version_t ver, d3dd8_DeleteStateBlock_(FULLDEC))
 {
-	typedef HRESULT __stdcall ft8(d3dd8_DeleteStateBlock_(FULLDEC));
+	typedef HRESULT TH_STDCALL ft8(d3dd8_DeleteStateBlock_(FULLDEC));
 	return
 		(ver == D3D8) ? (*(ft8***)that)[56](d3dd8_DeleteStateBlock_(VARNAMES)) :
 		(ver == D3D9) ? ((IUnknown*)pSB)->Release() :

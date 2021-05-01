@@ -10,7 +10,6 @@
 #include "thcrap.h"
 #include "sha256.h"
 #include "win32_detour.h"
-#include <vector>
 
 // Both thcrap_ExitProcess and DllMain will call ExitDll,
 // which will cause a crash without this workaround
@@ -27,19 +26,19 @@ static std::vector<bool> bp_set; // One per stage
 
 /// Old game build message
 /// ----------------------
-const char *oldbuild_title = "Old version detected";
+static const char oldbuild_title[] = "Old version detected";
 
-const char *oldbuild_header =
+static const char oldbuild_header[] =
 	"You are running an old version of ${game_title} (${build_running}).\n"
 	"\n";
 
-const char *oldbuild_maybe_supported =
+static const char oldbuild_maybe_supported[] =
 	"${project_short} may or may not work with this version, so we recommend updating to the latest official version (${build_latest}).";
 
-const char *oldbuild_not_supported =
+static const char oldbuild_not_supported[] =
 	"${project_short} will *not* work with this version. Please update to the latest official version, ${build_latest}.";
 
-const char *oldbuild_url =
+static const char oldbuild_url[] =
 	"\n"
 	"\n"
 	"You can download the update at\n"
@@ -68,18 +67,18 @@ void oldbuild_show()
 		// • What if one patch in the stack *does* provide support for
 		//   this older version, but others don't?
 		// • Stringlocs are also part of support. -.-
-		const auto *BUILD_JS_FORMAT = "%s.%s.js";
-		auto *game_str = runconfig_game_get();
-		auto *build_str = runconfig_build_get();
-		auto build_js_fn_len = _scprintf(BUILD_JS_FORMAT, game_str, build_str) + 1;
+		const char BUILD_JS_FORMAT[] = "%s.%s.js";
+		const char *game_str = runconfig_game_get();
+		const char *build_str = runconfig_build_get();
+		const int build_js_fn_len = snprintf(NULL, 0, BUILD_JS_FORMAT, game_str, build_str) + 1;
 		VLA(char, build_js_fn, build_js_fn_len);
 		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
 		char *build_js_chain[] = {
 			build_js_fn,
 			nullptr
 		};
-		auto *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
-		auto supported = build_js != nullptr;
+		json_t *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
+		const bool supported = build_js != nullptr;
 		json_decref_safe(build_js);
 		VLA_FREE(build_js_fn);
 
@@ -99,8 +98,8 @@ void oldbuild_show()
 		strings_replace(MSG_SLOT, "${game_title}", title);
 		strings_replace(MSG_SLOT, "${build_running}", build_str);
 		strings_replace(MSG_SLOT, "${build_latest}", runconfig_latest_get());
-		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT());
-		auto *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
+		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT);
+		const char *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
 
 		log_mbox(oldbuild_title, MB_OK | msg_type, msg);
 	}
@@ -152,8 +151,8 @@ json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 			for (const char *&file : new_chain) {
 				tmp_file_size += patch_json_merge(&json_new, patch, file);
 			}
-			json_object_merge(json_new, patch->config);
-			json_object_merge(ret, json_new);
+			json_object_update_recursive(json_new, patch->config);
+			json_object_update_recursive(ret, json_new);
 			json_decref(json_new);
 		});
 		log_printf(tmp_file_size ? "\n" : "not found\n");
@@ -189,8 +188,10 @@ json_t* identify(const char *exe_fn)
 	id_array = identify_by_hash(exe_fn, &exe_size, versions_js);
 	if(!id_array) {
 		size_cmp = 1;
-		log_printf("failed!\n");
-		log_printf("File size lookup... ");
+		log_printf(
+			"failed!\n"
+			"File size lookup... "
+		);
 		id_array = identify_by_size(exe_size, versions_js);
 
 		if(!id_array) {
@@ -265,7 +266,7 @@ json_t* identify(const char *exe_fn)
 			"We will take a look at it, and add support if possible.\n"
 			"\n"
 			"Apply patches for the identified game version regardless (on your own risk)?",
-			PROJECT_NAME_SHORT(), game, build, variety, exe_fn
+			PROJECT_NAME_SHORT, game, build, variety, exe_fn
 		);
 		if(ret == IDNO) {
 			run_ver = json_decref_safe(run_ver);
@@ -281,7 +282,7 @@ void thcrap_detour(HMODULE hProc)
 	size_t mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
 	VLA(char, mod_name, mod_name_len);
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
-	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT(), mod_name);
+	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT, mod_name);
 
 	iat_detour_apply(hProc);
 	VLA_FREE(mod_name);
@@ -309,22 +310,23 @@ int thcrap_init(const char *run_cfg_fn)
 	stack_show_missing();
 
 	log_printf("EXE file name: %s\n", exe_fn);
-	{
-		json_t *full_cfg = identify(exe_fn);
-		if(full_cfg) {
-			runconfig_load(full_cfg, RUNCONFIG_NO_OVERWRITE);
-			json_decref(full_cfg);
+	if (json_t *full_cfg = identify(exe_fn)) {
+		runconfig_load(full_cfg, RUNCONFIG_NO_OVERWRITE);
+		json_decref(full_cfg);
 
-			oldbuild_show();
-		}
+		oldbuild_show();
 	}
 
-	log_printf("Game directory: %s\n", game_dir);
-	log_printf("Plug-in directory: %s\n", dll_dir);
+	log_printf("Game directory: %s\\\n", game_dir);
 
-	log_printf("\nInitializing plug-ins...\n");
-	plugin_init(hThcrap);
 	PathAppendU(dll_dir, "bin");
+	log_printf(
+		"Plug-in directory: %s\\\n"
+		"\nInitializing plug-ins...\n"
+		, dll_dir
+	);
+	plugin_init(hThcrap);
+	
 	plugins_load(dll_dir);
 	PathAppendU(dll_dir, "..");
 
@@ -372,40 +374,34 @@ int thcrap_init_binary(size_t stage_num, HMODULE module)
 {
 	size_t stages_total = runconfig_stage_count();
 
-	if (!stages_total) {
-		return 0;
-	}
-
-	assert(stage_num < stages_total);
 	assert(bp_set.size() == stages_total);
 
+	if (stage_num < stages_total) {
+		--stages_total; // Offset by 1 to get last stage index
+		size_t stages_remaining = stages_total - stage_num;
 
-	if(stages_total >= 2) {
-		log_printf(
-			"Initialization stage %d...\n"
-			"-------------------------\n",
-			stage_num
-		);
-	}
+		if (stages_remaining != 0) {
+			log_printf(
+				"Initialization stage %d...\n"
+				"-------------------------\n",
+				stage_num
+			);
+		}
 
-	bool ret = runconfig_stage_apply(stage_num,
-		RUNCFG_STAGE_USE_MODULE | (bp_set[stage_num] ? RUNCFG_STAGE_SKIP_BREAKPOINTS : 0),
-		module);
+		bool stage_success = runconfig_stage_apply(stage_num,
+			RUNCFG_STAGE_USE_MODULE | (bp_set[stage_num] ? RUNCFG_STAGE_SKIP_BREAKPOINTS : 0),
+			module);
 
-	if(stages_total >= 2) {
-		if(ret == false && stage_num == 0 && stages_total >= 2) {
+		if (stage_success == false && stages_remaining != 0) {
 			log_printf(
 				"Failed. Jumping to last stage...\n"
 				"-------------------------\n"
 			);
-			return thcrap_init_binary(stages_total - 1, nullptr);
+			return thcrap_init_binary(stages_total, nullptr);
 		}
 	}
-
-	if(stage_num + 1 == stages_total) {
-		runconfig_print();
-		mod_func_run_all("post_init", NULL);
-	}
+	runconfig_print();
+	mod_func_run_all("post_init", NULL);
 	return 0;
 }
 
@@ -443,7 +439,6 @@ void ExitDll()
 	runconfig_free();
 
 	SAFE_FREE(dll_dir);
-	detour_exit();
 #if defined(_MSC_VER) && defined(_DEBUG)
 	// Called in RawDllMain() in this configuration
 #else

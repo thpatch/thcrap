@@ -9,26 +9,36 @@
 
 #pragma once
 
+#define TH_CALLER_FREE TH_NODISCARD_REASON("Return value must be freed by caller!")
+#define TH_CHECK_RET TH_NODISCARD_REASON("Return value must be checked to determine validity of other outputs!")
+
+#define BoolStr(Boolean) (Boolean ? "true" : "false")
+
 /// Pointers
 /// --------
-size_t dword_align(const size_t val);
-BYTE* ptr_dword_align(const BYTE *in);
+#define AlignUpToMultipleOf(val, mul) ((val) - ((val) % (mul)) + (mul))
+#define AlignUpToMultipleOf2(val, mul) (((val) + (mul) - 1) & -(mul))
+
+#define dword_align(val) (size_t)AlignUpToMultipleOf2((size_t)(val), 4)
+#define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))
+
 // Advances [src] by [num] and returns [num].
 size_t ptr_advance(const unsigned char **src, size_t num);
 // Copies [num] bytes from [src] to [dst] and advances [src].
 size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num);
 
 // Copies [num] bytes from [src] to [dst] and returns [dst] advanced by [num].
-__inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
+inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 {
-	memcpy(dst, src, num);
-	return dst + num;
+	return ((char*)memcpy(dst, src, num)) + num;
 }
 /// --------
 
 /// Strings
 /// -------
-__inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
+#define PtrDiffStrlen(end_ptr, start_ptr) ((end_ptr) - (start_ptr))
+
+inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 {
 	assert(src);
 	dst[len] = '\0';
@@ -37,48 +47,29 @@ __inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 
 #ifdef __cplusplus
 // Reference to a string somewhere else in memory with a given length.
-// TODO: Rip out and change to std::string_view once C++17 is more widespread.
-typedef struct stringref_t {
-	const char *str;
-	size_t len;
+// Extends std::string_view to add a json string constructor.
+class stringref_t : public std::string_view {
+public:
+	inline stringref_t(const json_t* json) : std::string_view(json_string_value(json), json_string_length(json)) {}
+	using std::string_view::string_view;
+};
 
-	// No default constructor = no potential uninitialized
-	// string pointer = good
-
-	stringref_t(const char *i_str) {
-		if (i_str) {
-			str = i_str;
-			len = strlen(i_str);
-		}
-		else {
-			str = nullptr;
-			len = 0;
-		}
-	}
-	stringref_t(const char *i_str, size_t i_len) {
-		if (i_str) {
-			str = i_str;
-			len = i_len;
-		}
-		else {
-			str = nullptr;
-			len = 0;
-		}
-	}
-
-	stringref_t(const json_t *json)
-		: str(json_string_value(json)), len(json_string_length(json)) {
-	}
-} stringref_t;
-
-__inline char* stringref_copy_advance_dst(char *dst, const stringref_t &strref)
- {
-	return strncpy_advance_dst(dst, strref.str, strref.len);
+inline char* stringref_copy_advance_dst(char *dst, const stringref_t &strref)
+{
+	return strncpy_advance_dst(dst, strref.data(), strref.length());
 }
 #endif
 
 // Replaces every occurence of the ASCII character [from] in [str] with [to].
-void str_ascii_replace(char *str, const char from, const char to);
+inline void str_ascii_replace(char* str, const char from, const char to)
+{
+	char c;
+	do {
+		c = *str;
+		if (c == from) *str = to;
+		++str;
+	} while (c);
+}
 
 // Changes directory slashes in [str] to '/'.
 void str_slash_normalize(char *str);
@@ -107,18 +98,66 @@ int str_num_base(const char *str);
 // Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [format]
 void str_hexdate_format(char format[11], uint32_t date);
 
-// Creates a lowercase copy of [str].
-#define STRLWR_DEC(str) \
-	STRLEN_DEC(str); \
-	VLA(char, str##_lower, str##_len);
-
-#define STRLWR_CONV(str) \
-	memcpy(str##_lower, str, str##_len); \
-	strlwr(str##_lower); \
-
-#define STRLWR_FREE(str) \
-	VLA_FREE(str##_lower);
 /// -------
+
+// Custom strndup variant that returns (size + 1) bytes.
+inline TH_CALLER_FREE char* strdup_size(const char* src, size_t size) {
+	char* ret = (char*)malloc(size + 1);
+	if (!ret) return NULL;
+	// strncpy will 0 pad
+	if (!memccpy(ret, src, '\0', size)) {
+		ret[size] = '\0';
+	}
+	return ret;
+}
+
+// C23 compliant implementation of strndup
+// Allocates a buffer of (strnlen(s, size) + 1) bytes.
+inline TH_CALLER_FREE char* strndup(const char* src, size_t size) {
+	return strdup_size(src, strnlen(src, size));
+}
+
+#ifdef __cplusplus
+extern "C++" {
+
+// Custom strdup variants that efficiently concatenate 2-3 strings.
+// Structured specifically so that the compiler can optimize the copy
+// operations into MOVs for any string literals.
+
+inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view str2) {
+	const size_t total_size = str1.length() + str2.length();
+	char* ret = (char*)malloc(total_size + 1);
+	ret[total_size] = '\0';
+	char* ret_temp = ret;
+	ret_temp += str1.copy(ret_temp, str1.length());
+	str2.copy(ret_temp, str2.length());
+	return ret;
+}
+
+inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, char sep, std::string_view str2) {
+	const size_t total_size = str1.length() + sizeof(sep) + str2.length();
+	char* ret = (char*)malloc(total_size + 1);
+	ret[total_size] = '\0';
+	char* ret_temp = ret;
+	ret_temp += str1.copy(ret_temp, str1.length());
+	*ret_temp++ = sep;
+	str2.copy(ret_temp, str2.length());
+	return ret;
+}
+
+inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view sep, std::string_view str2) {
+	const size_t total_size = str1.length() + sep.length() + str2.length();
+	char* ret = (char*)malloc(total_size + 1);
+	ret[total_size] = '\0';
+	char* ret_temp = ret;
+	ret_temp += str1.copy(ret_temp, str1.length());
+	ret_temp += sep.copy(ret_temp, sep.length());
+	str2.copy(ret_temp, str2.length());
+	return ret;
+}
+
+}
+#endif
 
 #define STR_ADDRESS_ERROR_NONE 0
 #define STR_ADDRESS_ERROR_OVERFLOW 0x1
@@ -139,16 +178,30 @@ typedef struct {
   *	- "0x": Hexadecimal, as expected.
   *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
   *	        If hMod is NULL, the main module of the current process is used.
-  *	- Everything else is parsed as a decimal number.
+  *	- Everything else is parsed as a hexadecimal or decimal number depending on
+  *   whether hexadecimal digits are present.
   *
   * [ret] can be a nullptr if a potential parse error and/or a pointer to the
   * end of the parsed address are not needed.
   */
 size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
 
+// Returns whether [c] is a valid hexadecimal character
+bool is_valid_hex(char c);
+
+// Returns either the hexadecimal value of [c]
+// or -1 if [c] is not a valid hexadecimal character
+int8_t hex_value(char c);
+
+#ifdef __cplusplus
+
+// Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer
+constexpr uint32_t TextInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
+	return c4 << 24 | c3 << 16 | c2 << 8 | c1;
+}
+
 /// Geometry
 /// --------
-#ifdef __cplusplus
 struct vector2_t {
 	union {
 		struct {

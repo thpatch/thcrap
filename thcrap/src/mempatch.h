@@ -21,6 +21,16 @@ BOOL VirtualCheckCode(const void *ptr);
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
 int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
 
+// If the current value in [ptr] equals [Prev], copies [len] bytes from [ptr] to a buffer
+// based on [CpyBuf] and then writes [len] bytes from [New] to [ptr]. If [CpyBuf] is NULL,
+// a buffer of [len] bytes is allocated and returned, else [CpyBuf] is used as a pointer to an
+// already allocated buffer. Returns NULL on failure.
+// 
+// TODO: The jank about allocating a buffer when [CpyBuf] is NULL only exists to provide
+// basic support for binhacks saving what they overwrite. That behavior should be replaced
+// once binhacks are able to allocate a unified sourcecave buffer before being rendered.
+void* PatchRegionCopySrc(void *ptr, const void *Prev, const void *New, void *CpyBuf, size_t len);
+
 /// Import Address Table patching
 /// =============================
 
@@ -79,6 +89,8 @@ int iat_detour_func(HMODULE hMod, PIMAGE_IMPORT_DESCRIPTOR pImpDesc, const iat_d
   * To apply the chain, we then simply patch the IAT with the last recorded
   * function pointers, once we have a module handle.
   */
+
+void detour_disable(const char* dll_name, const char* func_name);
 
 // Defines a function pointer used to continue a detour chain. It is
 // initialized to [func], which should be the default function to be called
@@ -142,10 +154,6 @@ FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback
 
 // Applies the cached detours to [hMod].
 int iat_detour_apply(HMODULE hMod);
-
-// *Not* a module function because we want to call it manually after
-// everything else has been cleaned up.
-void detour_exit(void);
 /// ---------------
 
 /// =============================

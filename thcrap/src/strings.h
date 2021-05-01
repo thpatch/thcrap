@@ -20,7 +20,7 @@ const char* strings_id(const char* str);
 const json_t* strings_get(const char *id);
 
 #ifdef __cplusplus
-}
+extern "C++" {
 
 // Like strings_get(), but with a fallback onto [def] if no string for [id]
 // is available.
@@ -31,14 +31,14 @@ struct string_named_t {
 
 THCRAP_API stringref_t strings_get_fallback(const string_named_t& sn);
 
-extern "C" {
+}
 #endif
 
 // Returns the translated string for [in] from the string definition table,
 // or [in] itself if no translation is available.
 // Optionally returns the length of the returned string in [out_len], without
 // the terminating \0, if [out_len] is not a nullptr.
-const char* __cdecl strings_lookup(const char *in, size_t *out_len);
+const char* TH_CDECL strings_lookup(const char *in, size_t *out_len);
 
 // String lookup for variable argument lists. Parses [format] and calls
 // [strings_lookup] for every string parameter in [va].
