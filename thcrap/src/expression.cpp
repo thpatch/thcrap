@@ -1450,7 +1450,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 				{
 				RawValue:
-					size_t current = str_address_value(expr, nullptr, &cur_value.addr_ret);
+					size_t current = str_address_value(expr, (HMODULE)data_refs->rel_source, &cur_value.addr_ret);
 					const char* expr_next = cur_value.addr_ret.endptr;
 					if (expr == expr_next || (cur_value.addr_ret.error && cur_value.addr_ret.error != STR_ADDRESS_ERROR_GARBAGE)) {
 						/*if (expr[0] == end) {

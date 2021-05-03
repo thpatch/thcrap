@@ -445,7 +445,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 	stage_t& stage = run_cfg.stages[stage_num];
 	size_t failed = 0;
 
-	if (flags & RUNCFG_STAGE_USE_MODULE) {
+	if (!(flags & RUNCFG_STAGE_USE_MODULE)) {
 		module = stage.module;
 	}
 
