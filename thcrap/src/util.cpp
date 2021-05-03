@@ -66,8 +66,21 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 	char **endptr = ret ? (char **)&ret->endptr : NULL;
 
 	switch (str[0] | 0x20) {
+		case 'v':
 		case 'r':
-			val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
+			if (!hMod)
+				hMod = GetModuleHandle(NULL);
+	}
+	switch (str[0] | 0x20) {
+		case 'v': {
+			size_t pe_offset = ((PIMAGE_DOS_HEADER)hMod)->e_lfanew;
+			PIMAGE_NT_HEADERS pe = (PIMAGE_NT_HEADERS)((size_t)hMod + pe_offset);
+			val -= pe->OptionalHeader.ImageBase;
+			[[fallthrough]];
+		}
+		case 'r':
+			val += (size_t)hMod;
+			[[fallthrough]];
 		case '0':
 		{
 			const bool is_hex = (*++str | 0x20) == 'x';
