@@ -102,7 +102,7 @@ const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
 
 size_t json_flex_array_size(const json_t *json)
 {
-	return json ? (json_is_array(json) ? json_array_size(json) : 1) : 0;
+	return json && !json_is_null(json) ? (json_is_array(json) ? json_array_size(json) : 1) : 0;
 }
 
 json_t *json_flex_array_get(json_t *flarr, size_t ind)
