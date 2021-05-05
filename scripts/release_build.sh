@@ -61,13 +61,13 @@ function parse_input
     if [ -z "$GITHUB_TOKEN" ];  then echo "--github-token is required"  ; exit 1; fi
 }
 
-function	confirm
+function confirm
 {
     read -p "$1 [y/N] " -n 1 -r
     echo    # (optional) move to a new line
     if [[ ! $REPLY =~ ^[Yy]$ ]]
     then
-	[[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
+    [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1 # handle exits from shell or function but don't exit interactive shell
     fi
 }
 
@@ -80,29 +80,23 @@ git pull
 git submodule update --init --recursive
 git status
 confirm "Continue?"
-
-# Update the version number in global.cpp, and commit
-if ! grep "return 0x$(date -d "$DATE" +%Y%m%d);" thcrap/src/global.cpp ; then
-    sed -e "s/return 0x20[12][0-9][01][0-9][0-3][0-9];/return 0x$(date -d "$DATE" +%Y%m%d);/" -i thcrap/src/global.cpp
-    git add thcrap/src/global.cpp
-    git commit -m "Update version number"
-fi
 cd ..
 
 # build
 cd git_thcrap
-"$MSBUILD_PATH" /target:Rebuild /property:USERNAME=$MSBUILD_USER /property:Configuration=Release /verbosity:minimal | \
-	grep -e warning -e error | \
-	grep -v -e 'Number of'
+"$MSBUILD_PATH" /target:Rebuild /property:USERNAME=$MSBUILD_USER /property:Configuration=Release /verbosity:minimal \
+    /property:ThcrapVersionY=$(date -d "$DATE" +%Y) /property:ThcrapVersionM=$(date -d "$DATE" +%m) /property:ThcrapVersionD=$(date -d "$DATE" +%d) \
+    | grep -e warning -e error \
+    | grep -v -e 'Number of'
 cd ..
 
 # Prepare the release directory
 if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))" != "$FILES_LIST" ]; then
-	echo "The list of files to copy doesn't match. Files list:"
-	cd git_thcrap/bin
-	ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'
-	cd -
-	confirm "Continue anuway?"
+    echo "The list of files to copy doesn't match. Files list:"
+    cd git_thcrap/bin
+    ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'
+    cd -
+    confirm "Continue anuway?"
 fi
 rm -rf thcrap # Using -f for readonly files
 mkdir thcrap

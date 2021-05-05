@@ -11,14 +11,24 @@
 
 json_t* global_cfg = NULL;
 
-#define SetProjectVersion(Year, Month, Day) \
-const uint32_t PROJECT_VERSION = 0x ## Year ## Month ## Day; \
-const char PROJECT_VERSION_STRING[] = #Year "-" #Month "-" #Day;
+#define QUOTE2(x) #x
+#define QUOTE(x) QUOTE2(x)
+constexpr uint32_t IntToVersion(uint32_t n)
+{
+	if (n < 10)
+		return n;
+	return IntToVersion(n / 10) * 16 + n % 10;
+}
+constexpr uint32_t DateToVersion(uint32_t y, uint32_t m, uint32_t d)
+{
+	return IntToVersion(y) * 0x10000 + IntToVersion(m) * 0x100 + IntToVersion(d);
+}
 
 const char PROJECT_NAME[] = "Touhou Community Reliant Automatic Patcher";
 const char PROJECT_NAME_SHORT[] = "thcrap";
 const char PROJECT_URL[] = "https://www.thpatch.net/wiki/Touhou_Patch_Center:Download";
-SetProjectVersion(2021, 01, 17);
+constexpr uint32_t PROJECT_VERSION = DateToVersion(PROJECT_VERSION_Y, PROJECT_VERSION_M, PROJECT_VERSION_D);
+const char PROJECT_VERSION_STRING[] = QUOTE(PROJECT_VERSION_Y) "-" QUOTE(PROJECT_VERSION_M) "-" QUOTE(PROJECT_VERSION_D);
 const char PROJECT_BRANCH[] = "stable";
 
 void globalconfig_init(void)
