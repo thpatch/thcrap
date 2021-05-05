@@ -16,9 +16,9 @@
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <ThcrapVersionY>2021</ThcrapVersionY>
-    <ThcrapVersionM>01</ThcrapVersionM>
-    <ThcrapVersionD>32</ThcrapVersionD>
+    <ThcrapVersionY>9999</ThcrapVersionY>
+    <ThcrapVersionM>99</ThcrapVersionM>
+    <ThcrapVersionD>99</ThcrapVersionD>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
