@@ -258,7 +258,7 @@ void Update::run(const std::list<const patch_t*>& patchs)
 
 patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
 {
-    if (!repo || !repo->servers) {
+    if (!repo || !repo->servers || !repo->servers[0]) {
         return patch_build(sel);
     }
 
