@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Have to be in the same order as the output of `ls *.exe bin/*.exe bin/*.dll bin/*.json`
-FILES_LIST="bin/act_nut_lib.dll bin/bmpfont_create_gdi.dll bin/bmpfont_create_gdiplus.dll bin/jansson.dll bin/libpng16.dll bin/steam_api.dll bin/thcrap_configure.exe bin/thcrap.dll bin/thcrap_i18n.dll bin/thcrap_loader.exe bin/thcrap_tasofro.dll bin/thcrap_test.exe bin/thcrap_tsa.dll bin/thcrap_update.dll bin/update.json bin/vc_redist.x86.exe bin/win32_utf8.dll bin/zlib-ng.dll thcrap_configure.exe thcrap_loader.exe"
+FILES_LIST="bin/act_nut_lib.dll bin/bmpfont_create_gdi.dll bin/bmpfont_create_gdiplus.dll bin/cacert.pem bin/jansson.dll bin/libcrypto-1_1.dll bin/libcurl.dll bin/libpng16.dll bin/libssl-1_1.dll bin/steam_api.dll bin/thcrap_configure.exe bin/thcrap.dll bin/thcrap_i18n.dll bin/thcrap_loader.exe bin/thcrap_tasofro.dll bin/thcrap_test.exe bin/thcrap_tsa.dll bin/thcrap_update.dll bin/update.json bin/vc_redist.x86.exe bin/win32_utf8.dll bin/zlib-ng.dll thcrap_configure.exe thcrap_loader.exe"
 
 # Arguments. Every argument without a default value is mandatory.
 DATE="$(date)"
@@ -78,6 +78,8 @@ parse_input "$@"
 cd git_thcrap
 git pull
 git submodule update --init --recursive
+echo "Cleaning previous build artifacts..."
+git clean -qxf -e cert.pfx
 git status
 confirm "Continue?"
 cd ..
@@ -91,12 +93,12 @@ cd git_thcrap
 cd ..
 
 # Prepare the release directory
-if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))" != "$FILES_LIST" ]; then
+if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/cacert.pem bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))" != "$FILES_LIST" ]; then
     echo "The list of files to copy doesn't match. Files list:"
     cd git_thcrap/bin
     ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'
-    cd -
-    confirm "Continue anuway?"
+    cd - > /dev/null
+    confirm "Continue anyway?"
 fi
 rm -rf thcrap # Using -f for readonly files
 mkdir thcrap
@@ -113,12 +115,34 @@ cd ../../..
 
 # Copy the release to the test directory
 mkdir -p thcrap_test # don't fail if it exists
+rm -r thcrap_test/bin/ 2>/dev/null # Make sure to not keep leftover binaries from a previous build
 cp -r thcrap/* thcrap_test/
+
+# Build the upgrade test version
+cd git_thcrap
+"$MSBUILD_PATH" /target:Build /property:USERNAME=$MSBUILD_USER /property:Configuration=Release /verbosity:minimal \
+    /property:ThcrapVersionY=0001 /property:ThcrapVersionM=01 /property:ThcrapVersionD=01 \
+    | grep -e warning -e error \
+    | grep -v -e 'Number of'
+cd ..
+
+# Copy the upgrade test version to its test directory
+mkdir -p thcrap_test_upgrade # don't fail if it exists
+rm -r thcrap_test_upgrade/bin/ 2>/dev/null # Make sure to not keep leftover binaries from a previous build
+cp -r thcrap/* thcrap_test_upgrade/
+# TODO: copy only the files needed
+cp -r git_thcrap/bin/* thcrap_test_upgrade/
 
 cd thcrap_test
 explorer.exe .
 cd ..
 confirm "Time to test the release! Press y if everything works fine."
+
+cd thcrap_test_upgrade
+explorer.exe .
+cd ..
+confirm "Test the upgrade, and press y if everything works fine."
+
 
 # Create the zip and its signature
 rm -f thcrap.zip
@@ -131,9 +155,6 @@ rm -f thcrap_symbols.zip
 cd git_thcrap/bin
 7z a ../../thcrap_symbols.zip *
 cd ../..
-
-echo 'Pushing "Update version number" on thcrap'
-git -C git_thcrap push
 
 # Create the commits history
 commits="$(git -C git_thcrap log --reverse --format=oneline $(git -C git_thcrap tag | tail -1)^{commit}..HEAD~1)"
