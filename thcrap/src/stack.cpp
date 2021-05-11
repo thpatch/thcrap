@@ -20,9 +20,8 @@ TH_CALLER_FREE static char **resolve_chain_default(const char *fn)
 		return nullptr;
 	}
 	char **chain = (char**)malloc(3 * sizeof(char *));
-	char *fn_build = fn_for_build(fn);
 	chain[0] = strdup(fn);
-	chain[1] = fn_build;
+	chain[1] = fn_for_build(fn);
 	chain[2] = nullptr;
 	return chain;
 }
@@ -99,7 +98,7 @@ bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, s
 		#define is_reverse (bool)(direction < 0)
 		{
 			const size_t stack_size = stack.size();
-			if (stack_size); else {
+			if unexpected(!stack_size) {
 				// Failsafe for when there are no patches
 				return false;
 			}

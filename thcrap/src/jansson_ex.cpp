@@ -102,7 +102,20 @@ const char* json_array_get_string_safe(const json_t *arr, const size_t ind)
 
 size_t json_flex_array_size(const json_t *json)
 {
-	return json && !json_is_null(json) ? (json_is_array(json) ? json_array_size(json) : 1) : 0;
+	// Optimizes better than a ternary operator
+	size_t ret = 0;
+	if (json) {
+		json_type jtype = json_typeof(json);
+		if (jtype == JSON_ARRAY) {
+			ret = json_array_size(json);
+		}
+		else {
+			// Return 0 for JSON_NULL
+			// and 1 for everything else
+			ret = (jtype != JSON_NULL);
+		}
+	}
+	return ret;
 }
 
 json_t *json_flex_array_get(json_t *flarr, size_t ind)
@@ -421,53 +434,56 @@ enum : uint8_t {
 // template so that some of the flags can be
 // processed at compiletime with an if constexpr?
 static inline jeval_error_t json_evaluate(json_t* json, uint8_t eval_config, void* out) {
-	if (json); else return JEVAL_NULL_PTR;
-	#define eval_type (eval_config & JEVAL_TYPE_MASK)
-	const bool strict = eval_config & JEVAL_STRICT;
+	if (json) {
+
+		#define eval_type (eval_config & JEVAL_TYPE_MASK)
+		const bool strict = eval_config & JEVAL_STRICT;
 
 #define SetOutValues(bool_val, int_val, real_val) \
-eval_type == JEVAL_INTEGER ? *(json_int_t*)out = int_val : \
-eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
-*(double*)out = real_val;
+		eval_type == JEVAL_INTEGER ? *(json_int_t*)out = int_val : \
+		eval_type == JEVAL_BOOL ? *(bool*)out = bool_val : \
+		*(double*)out = real_val;
 
-	switch (json_type jtype = json_typeof(json)) {
-		case JSON_OBJECT: case JSON_NULL: case JSON_ARRAY:
-			if (strict) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
-			SetOutValues(false, 0, 0.0);
-			return JEVAL_SUCCESS;
-		case JSON_FALSE: {
-			if (strict & (eval_type != JEVAL_BOOL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
-			SetOutValues(false, 0, 0.0);
-			return JEVAL_SUCCESS;
+		switch (json_type jtype = json_typeof(json)) {
+			case JSON_OBJECT: case JSON_NULL: case JSON_ARRAY:
+				if (strict) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+				SetOutValues(false, 0, 0.0);
+				return JEVAL_SUCCESS;
+			case JSON_FALSE: {
+				if (strict & (eval_type != JEVAL_BOOL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+				SetOutValues(false, 0, 0.0);
+				return JEVAL_SUCCESS;
+			}
+			case JSON_TRUE: {
+				if (strict & (eval_type != JEVAL_BOOL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+				SetOutValues(true, 1, 1.0);
+				return JEVAL_SUCCESS;
+			}
+			case JSON_INTEGER: {
+				if (strict & !((eval_type == JEVAL_INTEGER) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+				const json_int_t int_value = json_integer_value(json);
+				SetOutValues((bool)int_value, int_value, (double)int_value);
+				return JEVAL_SUCCESS;
+			}
+			case JSON_REAL: {
+				if (strict & !((eval_type == JEVAL_REAL) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+				const double real_value = json_real_value(json);
+				SetOutValues((bool)real_value, (json_int_t)real_value, real_value);
+				return JEVAL_SUCCESS;
+			}
+			case JSON_STRING: {
+				if unexpected(eval_config & JEVAL_NO_EXPRS) return JEVAL_ERROR_STRING_NO_EXPRS;
+				if (strict & (eval_type == JEVAL_REAL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+				const size_t expr_value = json_string_expression_value(json);
+				SetOutValues((bool)expr_value, (json_int_t)expr_value, (double)expr_value);
+				return JEVAL_SUCCESS;
+			}
 		}
-		case JSON_TRUE: {
-			if (strict & (eval_type != JEVAL_BOOL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
-			SetOutValues(true, 1, 1.0);
-			return JEVAL_SUCCESS;
-		}
-		case JSON_INTEGER: {
-			if (strict & !((eval_type == JEVAL_INTEGER) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
-			const json_int_t int_value = json_integer_value(json);
-			SetOutValues((bool)int_value, int_value, (double)int_value);
-			return JEVAL_SUCCESS;
-		}
-		case JSON_REAL: {
-			if (strict & !((eval_type == JEVAL_REAL) | (eval_type == JEVAL_NUMBER))) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
-			const double real_value = json_real_value(json);
-			SetOutValues((bool)real_value, (json_int_t)real_value, real_value);
-			return JEVAL_SUCCESS;
-		}
-		case JSON_STRING: {
-			if (!(eval_config & JEVAL_NO_EXPRS)); else return JEVAL_ERROR_STRING_NO_EXPRS;
-			if (strict & (eval_type == JEVAL_REAL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
-			const size_t expr_value = json_string_expression_value(json);
-			SetOutValues((bool)expr_value, (json_int_t)expr_value, (double)expr_value);
-			return JEVAL_SUCCESS;
-		}
-	}
-	return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
+		return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
 
 #undef SetOutValues
+	}
+	return JEVAL_NULL_PTR;
 }
 
 TH_CHECK_RET jeval_error_t json_eval_bool(json_t* val, bool* out, jeval_flags_t flags) {

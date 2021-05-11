@@ -14,6 +14,23 @@
 
 #define BoolStr(Boolean) (Boolean ? "true" : "false")
 
+/*
+Even when using C++20 [[unlikely]] attributes, MSVC prioritizes the first branch of
+an if statement, which can screw up branch prediction in hot code.
+
+Thus something like:	if (!pointer) [[unlikely]] return NULL;
+
+Will *at best* be compiled to something like:
+
+MOV EAX, pointer; TEST EAX, EAX; JZ SkipRet; RET;
+
+The simplest workaround in hot code that needs a lot of conditions while remaining
+readable is to invert the condition, make the first branch an empty statement, and put
+the intended staements in an else block. However, this still looks extremely weird and
+confusing, so this macro exists to better document the intent.
+*/
+#define unexpected(condition) (!(condition)) TH_LIKELY; TH_UNLIKELY else
+
 /// Pointers
 /// --------
 #define AlignUpToMultipleOf(val, mul) ((val) - ((val) % (mul)) + (mul))
@@ -21,6 +38,9 @@
 
 #define dword_align(val) (size_t)AlignUpToMultipleOf2((size_t)(val), 4)
 #define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))
+
+#define CurrentImageBase ((uintptr_t)GetModuleHandle(NULL))
+//#define CurrentImageBaseFast (*(uintptr_t*)(__readfsdword(0x30) + 0x8))
 
 // Advances [src] by [num] and returns [num].
 size_t ptr_advance(const unsigned char **src, size_t num);
@@ -178,6 +198,8 @@ typedef struct {
   *	- "0x": Hexadecimal, as expected.
   *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
   *	        If hMod is NULL, the main module of the current process is used.
+  * - "0": Decimal, since accidental octal bugs are evil.
+  * - "R": Decimal version of "Rx".
   *	- Everything else is parsed as a hexadecimal or decimal number depending on
   *   whether hexadecimal digits are present.
   *

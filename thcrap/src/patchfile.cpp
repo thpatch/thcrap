@@ -632,7 +632,8 @@ void patch_opts_from_json(json_t *opts) {
 		patch_val_t entry;
 		switch (const uint8_t type_char = tname[0] | 0x20) {
 			case 's': case 'w':
-				if (const char* opt_str = json_string_value(j_val_val)) {
+				if (json_is_string(j_val_val)) {
+					const char* opt_str = json_string_value(j_val_val);
 					const size_t narrow_len = strlen(opt_str) + 1;
 					size_t char_size;
 					if (tname[1] != '\0') char_size = strtol(tname + 1, nullptr, 10);
@@ -649,7 +650,7 @@ void patch_opts_from_json(json_t *opts) {
 							char16_t* str_16 = new char16_t[narrow_len];
 							const char* opt_str_end = opt_str + narrow_len;
 							size_t c = mbrtoc16(nullptr, nullptr, 0, nullptr);
-							for (char16_t* write_str = str_16; c = mbrtoc16(write_str, opt_str, opt_str_end - opt_str, nullptr); ++write_str) {
+							for (char16_t* write_str = str_16; c = mbrtoc16(write_str, opt_str, PtrDiffStrlen(opt_str_end, opt_str), nullptr); ++write_str) {
 								if (c > 0) opt_str += c;
 								else if (c > -3) break;
 							}
@@ -667,7 +668,7 @@ void patch_opts_from_json(json_t *opts) {
 							char32_t* str_32 = new char32_t[narrow_len];
 							const char* opt_str_end = opt_str + narrow_len;
 							size_t c = mbrtoc32(nullptr, nullptr, 0, nullptr);
-							for (char32_t* write_str = str_32; c = mbrtoc32(write_str, opt_str, opt_str_end - opt_str, nullptr); ++write_str) {
+							for (char32_t* write_str = str_32; c = mbrtoc32(write_str, opt_str, PtrDiffStrlen(opt_str_end, opt_str), nullptr); ++write_str) {
 								if (c > 0) opt_str += c;
 								else if (c > -3) break;
 							}
@@ -693,8 +694,14 @@ void patch_opts_from_json(json_t *opts) {
 				if (json_is_string(j_val_val)) {
 					const char* opt_code_str = json_string_value(j_val_val);
 					entry.type = PVT_CODE;
-					entry.str.ptr = strdup(opt_code_str);
-					entry.str.len = binhack_calc_size(opt_code_str);
+					entry.code.ptr = strdup(opt_code_str);
+
+					// Don't warn about codecave references.
+					DisableCodecaveNotFoundWarning(true);
+					entry.code.len = binhack_calc_size(opt_code_str);
+					DisableCodecaveNotFoundWarning(false);
+
+					entry.code.count = 1;
 				}
 				else {
 					log_printf("ERROR: invalid json type for code option %s\n", key);

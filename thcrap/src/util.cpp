@@ -59,15 +59,18 @@ void str_hexdate_format(char format[11], uint32_t date)
 	);
 }
 
-size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
+size_t str_address_value(const char *str, HMODULE CustomModuleBase, str_address_ret_t *ret)
 {
+	errno = 0;
+
 	int base = 0;
 	size_t val = 0;
 	char **endptr = ret ? (char **)&ret->endptr : NULL;
 
 	switch (str[0] | 0x20) {
 		case 'r':
-			val = (size_t)(hMod ? hMod : GetModuleHandle(NULL));
+			val = (CustomModuleBase != NULL ? (uintptr_t)CustomModuleBase : (uintptr_t)CurrentImageBase);
+			[[fallthrough]];
 		case '0':
 		{
 			const bool is_hex = (*++str | 0x20) == 'x';
@@ -75,9 +78,9 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret)
 			base = is_hex ? 16 : 10;
 		}
 	}
-	errno = 0;
-	val += strtoul(str, endptr, base);
 
+	val += strtoul(str, endptr, base);
+	
 	if(ret) {
 		ret->error = STR_ADDRESS_ERROR_NONE;
 

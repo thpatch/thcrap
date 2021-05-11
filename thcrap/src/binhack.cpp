@@ -338,7 +338,7 @@ size_t binhack_calc_size(const char *binhack_str)
 				size += sizeof(const char32_t*);
 				break;
 			case PVT_CODE:
-				size += val.str.len;
+				size += val.code.len * val.code.count;
 				break;
 		}
 	}
@@ -351,7 +351,8 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
+	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
+		!json_object_get_eval_bool_default(in, "enable", true, JEVAL_DEFAULT)) {
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
@@ -589,11 +590,13 @@ int binhack_render(BYTE *binhack_buf, size_t target_addr, const char *binhack_st
 				target_addr += sizeof(const char32_t*);
 				break;
 			case PVT_CODE: {
-				if (binhack_render(binhack_buf, target_addr, val.str.ptr)) {
-					return 1;
+				while (val.code.count--) {
+					if unexpected(binhack_render(binhack_buf, target_addr, val.code.ptr)) {
+						return 1;
+					}
+					binhack_buf += val.code.len;
+					target_addr += val.code.len;
 				}
-				binhack_buf += val.str.len;
-				target_addr += val.str.len;
 				break;
 			}
 		}
@@ -648,8 +651,14 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 			continue;
 		}
 		if (asm_size > current_asm_buf_size) {
-			asm_buf = (BYTE*)realloc(asm_buf, asm_size);
-			current_asm_buf_size = asm_size;
+			if (void* temp = realloc(asm_buf, asm_size)) {
+				asm_buf = (BYTE*)temp;
+				current_asm_buf_size = asm_size;
+			}
+			else {
+				log_printf("buffer reallocation failure (%zu bytes), skipping...\n", asm_size);
+				continue;
+			}
 		}
 
 		bool use_expected;
@@ -663,8 +672,14 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 		}
 		else {
 			if (exp_size > current_exp_buf_size) {
-				exp_buf = (BYTE*)realloc(exp_buf, exp_size);
-				current_exp_buf_size = exp_size;
+				if (void* temp = realloc(exp_buf, exp_size)) {
+					exp_buf = (BYTE*)temp;
+					current_exp_buf_size = exp_size;
+				}
+				else {
+					log_printf("buffer reallocation failure (%zu bytes), skipping...\n", exp_size);
+					continue;
+				}
 			}
 			use_expected = true;
 		}
@@ -712,7 +727,8 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	size_t fill_val = 0;
 
 	if (json_is_object(in)) {
-		if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
+		if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
+			!json_object_get_eval_bool_default(in, "enable", true, JEVAL_DEFAULT)) {
 			log_printf("codecave %s: ignored\n", name);
 			return false;
 		}

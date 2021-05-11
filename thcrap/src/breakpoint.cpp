@@ -129,7 +129,8 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 		return false;
 	}
 
-	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT)) {
+	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
+		!json_object_get_eval_bool_default(in, "enable", true, JEVAL_DEFAULT)) {
 		log_printf("breakpoint %s: ignored\n", name);
 		return false;
 	}
@@ -335,9 +336,14 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 			const size_t cavesize = cur->cavesize;
 
 			if (cavesize > current_asm_buf_size) {
-				asm_buf = (BYTE*)realloc(asm_buf, cavesize);
-				memset(asm_buf + current_asm_buf_size, x86_NOP, current_asm_buf_size - cavesize);
-				current_asm_buf_size = cavesize;
+				if (void* temp = realloc(asm_buf, cavesize)) {
+					asm_buf = (BYTE*)temp;
+					memset(asm_buf + current_asm_buf_size, x86_NOP, current_asm_buf_size - cavesize);
+					current_asm_buf_size = cavesize;
+				}
+				else {
+					continue;
+				}
 			}
 
 			size_t cur_valid_addrs = 0;

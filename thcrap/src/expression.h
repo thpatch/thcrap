@@ -129,6 +129,11 @@ typedef union {
 		const char32_t* ptr;
 		size_t len;
 	} str32;
+	struct {
+		const char* ptr;
+		size_t len;
+		size_t count;
+	} code;
 
 	// Note: This isn't *really* supposed to be a part
 	// of this union, but consume_value was struggling
@@ -160,16 +165,3 @@ const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_r
 void patch_val_set_op(const char* op_str, patch_val_t* Val);
 
 patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2);
-
-patch_val_t patch_val_add(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_sub(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_mul(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_div(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_mod(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_shl(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_shr(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_rol(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_ror(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_and(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_or(patch_val_t Val1, patch_val_t Val2);
-patch_val_t patch_val_xor(patch_val_t Val1, patch_val_t Val2);
