@@ -144,7 +144,13 @@ int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, js
 	const char *key;
 	json_t *value;
 	json_object_foreach(patch, key, value) {
-		ActNut::Object *child = actnutobj->getChild(key);
+		ActNut::Object *child;
+		if (strcmp(key, "/") == 0) {
+			child = actnutobj;
+		}
+		else {
+			child = actnutobj->getChild(key);
+		}
 		if (!child) {
 			log_printf("Act/Nut: key %s not found\n", key);
 			continue;
