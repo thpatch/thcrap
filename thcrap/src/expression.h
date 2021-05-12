@@ -13,26 +13,99 @@
 // Register structure in PUSHAD+PUSHFD order at the beginning of a function
 typedef struct {
 	union {
+#ifdef TH_X64
+		uint64_t rflags;
+#endif
 		uint32_t eflags;
 		uint16_t flags;
+		uint8_t low_flags;
+	};
+#ifdef TH_X64
+	union {
+		uint64_t r15;
+		uint32_t r15d;
+		uint16_t r15w;
+		uint8_t r15b;
 	};
 	union {
+		uint64_t r14;
+		uint32_t r14d;
+		uint16_t r14w;
+		uint8_t r14b;
+	};
+	union {
+		uint64_t r13;
+		uint32_t r13d;
+		uint16_t r13w;
+		uint8_t r13b;
+	};
+	union {
+		uint64_t r12;
+		uint32_t r12d;
+		uint16_t r12w;
+		uint8_t r12b;
+	};
+	union {
+		uint64_t r11;
+		uint32_t r11d;
+		uint16_t r11w;
+		uint8_t r11b;
+	};
+	union {
+		uint64_t r10;
+		uint32_t r10d;
+		uint16_t r10w;
+		uint8_t r10b;
+	};
+	union {
+		uint64_t r9;
+		uint32_t r9d;
+		uint16_t r9w;
+		uint8_t r9b;
+	};
+	union {
+		uint64_t r8;
+		uint32_t r8d;
+		uint16_t r8w;
+		uint8_t r8b;
+	};
+#endif
+	union {
+#ifdef TH_X64
+		uint64_t rdi;
+		uint8_t dil;
+#endif
 		uint32_t edi;
 		uint16_t di;
 	};
 	union {
+#ifdef TH_X64
+		uint64_t rsi;
+		uint8_t sil;
+#endif
 		uint32_t esi;
 		uint16_t si;
 	};
 	union {
+#ifdef TH_X64
+		uint64_t rbp;
+		uint8_t bpl;
+#endif
 		uint32_t ebp;
 		uint16_t bp;
 	};
 	union {
+#ifdef TH_X64
+		uint64_t rsp;
+		uint8_t spl;
+#endif
 		uint32_t esp;
 		uint16_t sp;
 	};
 	union {
+#ifdef TH_X64
+		uint64_t rbx;
+#endif
 		uint32_t ebx;
 		uint16_t bx;
 		struct {
@@ -41,6 +114,9 @@ typedef struct {
 		};
 	};
 	union {
+#ifdef TH_X64
+		uint64_t rdx;
+#endif
 		uint32_t edx;
 		uint16_t dx;
 		struct {
@@ -49,6 +125,9 @@ typedef struct {
 		};
 	};
 	union {
+#ifdef TH_X64
+		uint64_t rcx;
+#endif
 		uint32_t ecx;
 		uint16_t cx;
 		struct {
@@ -57,6 +136,9 @@ typedef struct {
 		};
 	};
 	union {
+#ifdef TH_X64
+		uint64_t rax;
+#endif
 		uint32_t eax;
 		uint16_t ax;
 		struct {
@@ -64,7 +146,7 @@ typedef struct {
 			uint8_t ah;
 		};
 	};
-	uint32_t retaddr;
+	uintptr_t retaddr;
 } x86_reg_t;
 
 // Enum of possible types for the description of

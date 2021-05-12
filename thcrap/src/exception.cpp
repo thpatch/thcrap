@@ -11,44 +11,47 @@
 
 void log_print_context(PCONTEXT ctx)
 {
-	if(!ctx) {
-		return;
-	}
-#ifdef __x86_64__
-	log_printf(
-		"\nRegisters:\n"
-		"RAX: 0x%p RCX: 0x%p RDX: 0x%p RBX: 0x%p\n"
-		"RSP: 0x%p RBP: 0x%p RSI: 0x%p RDI: 0x%p\n",
-		ctx->Rax, ctx->Rcx, ctx->Rdx, ctx->Rbx,
-		ctx->Rsp, ctx->Rbp, ctx->Rsi, ctx->Rdi
-	);
+	if (ctx) {
+#ifdef TH_X64
+		log_printf(
+			"\n"
+			"Registers:\n"
+			"RAX: %#zX RCX: %#zX RDX: %#zX RBX: %#zX\n"
+			"RSP: %#zX RBP: %#zX RSI: %#zX RDI: %#zX\n"
+			"R8:  %#zX R9:  %#zX R10: %#zX R11: %#zX\n"
+			"R12: %#zX R13: %#zX R14: %#zX R15: %#zX"
+			, ctx->Rax, ctx->Rcx, ctx->Rdx, ctx->Rbx
+			, ctx->Rsp, ctx->Rbp, ctx->Rsi, ctx->Rdi
+			, ctx->R8,  ctx->R9,  ctx->R10, ctx->R11
+			, ctx->R12, ctx->R13, ctx->R14, ctx->R15
+		);
 #else
-	log_printf(
-		"\nRegisters:\n"
-		"EAX: 0x%p ECX: 0x%p EDX: 0x%p EBX: 0x%p\n"
-		"ESP: 0x%p EBP: 0x%p ESI: 0x%p EDI: 0x%p\n",
-		ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx,
-		ctx->Esp, ctx->Ebp, ctx->Esi, ctx->Edi
-	);
+		log_printf(
+			"\n"
+			"Registers:\n"
+			"EAX: %#zX ECX: %#zX EDX: %#zX EBX: %#zX\n"
+			"ESP: %#zX EBP: %#zX ESI: %#zX EDI: %#zX\n"
+			, ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx
+			, ctx->Esp, ctx->Ebp, ctx->Esi, ctx->Edi
+		);
 #endif
+	}
 }
 
 void log_print_rva_and_module(HMODULE mod, void *addr)
 {
-	if(!mod) {
-		log_print("\n");
-		return;
+	if(mod) {
+		size_t crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
+		VLA(char, crash_fn, crash_fn_len);
+		if (GetModuleFileNameU(mod, crash_fn, crash_fn_len)) {
+			log_printf(
+				" (Rx%zX) (%s)",
+				(uintptr_t)addr - (uintptr_t)mod,
+				PathFindFileNameU(crash_fn)
+			);
+		}
+		VLA_FREE(crash_fn);
 	}
-	size_t crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
-	VLA(char, crash_fn, crash_fn_len);
-	if(GetModuleFileNameU(mod, crash_fn, crash_fn_len)) {
-		log_printf(
-			" (Rx%x) (%s)",
-			(uint8_t *)addr - (uint8_t *)mod,
-			PathFindFileNameU(crash_fn)
-		);
-	}
-	VLA_FREE(crash_fn);
 	log_print("\n");
 }
 
@@ -63,26 +66,30 @@ static const char *get_cxx_eh_typename(LPEXCEPTION_RECORD lpER)
 	// https://www.geoffchappell.com/studies/msvc/language/predefined/
 	// http://www.openrce.org/articles/full_view/21
 
-	ULONG_PTR base;
-#ifdef __x86_64__
-	if (lpER->NumberParameters < 4)
+	uintptr_t base;
+
+#ifdef TH_X64
+	if (lpER->NumberParameters < 4) {
 		return nullptr;
+	}
 	base = lpER->ExceptionInformation[3];
 #else
-	if (lpER->NumberParameters < 3)
+	if (lpER->NumberParameters < 3) {
 		return nullptr;
+	}
 	base = 0;
 #endif
 
-	if (lpER->ExceptionCode != EH_EXCEPTION_NUMBER)
+	if (lpER->ExceptionCode != EH_EXCEPTION_NUMBER ||
+		lpER->ExceptionInformation[0] != EH_MAGIC_NUMBER1) {
 		return nullptr;
-	if (lpER->ExceptionInformation[0] != EH_MAGIC_NUMBER1)
-		return nullptr;
+	}
 
 	DWORD *throwInfo = (DWORD*)(base + lpER->ExceptionInformation[2]);
 	DWORD *catchableTypeArray = (DWORD*)(base + throwInfo[3]);
-	if (catchableTypeArray[0] < 1) // array size
+	if (catchableTypeArray[0] < 1) { // array size
 		return nullptr;
+	}
 	DWORD *catchableType = (DWORD*)(base + catchableTypeArray[1]);
 	void **typeDescriptor = (void**)(base + catchableType[1]);
 	return (const char*)(&typeDescriptor[2]);
@@ -120,12 +127,13 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 	log_printf(
 		"\n"
 		"===\n"
-		"Exception %x at 0x%p",
+		"Exception %#Xl at 0x%p",
 		lpER->ExceptionCode, lpER->ExceptionAddress
 	);
 	log_print_rva_and_module(crash_mod, lpER->ExceptionAddress);
-	if (name)
+	if (name) {
 		log_printf("C++ EH type: %s\n", name);
+	}
 	log_print_context(lpEI->ContextRecord);
 
 	// "Windows Server 2003 and Windows XP: The sum of the FramesToSkip
@@ -138,9 +146,9 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		frames_to_skip, elementsof(trace), trace, nullptr
 	);
 	if(captured) {
-		log_printf("\nStack trace:\n");
+		log_print("\nStack trace:\n");
 
-		decltype(captured) skip = 0;
+		USHORT skip = 0;
 		if(crash_mod) {
 			while(
 				GetModuleContaining(trace[skip]) != crash_mod
@@ -152,13 +160,13 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 		if(skip == captured) {
 			skip = 0;
 		}
-		for(decltype(captured) i = skip; i < captured; i++) {
+		for(USHORT i = skip; i < captured; i++) {
 			HMODULE mod = GetModuleContaining(trace[i]);
 			log_printf("[%02u] 0x%p", captured - i, trace[i]);
 			log_print_rva_and_module(mod, trace[i]);
 		}
 	}
-	log_printf(
+	log_print(
 		"===\n"
 		"\n"
 	);

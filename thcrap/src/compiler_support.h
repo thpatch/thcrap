@@ -489,7 +489,7 @@
 #elif MSVC_COMPAT
 #define TH_FORCEINLINE __forceinline
 #else
-#define TH_FORCEINLINE
+#define TH_FORCEINLINE inline
 #endif
 
 // - Naked Equivalent Attribute

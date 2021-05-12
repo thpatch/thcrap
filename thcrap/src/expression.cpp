@@ -1007,7 +1007,7 @@ static size_t GetCodecaveAddress(const char *const name, const size_t name_lengt
 			++user_offset_expr;
 			char* user_offset_expr_next;
 			// Try a hex value by default for compatibility
-			size_t user_offset_value = strtoul(user_offset_expr, &user_offset_expr_next, 16);
+			size_t user_offset_value = strtouz(user_offset_expr, &user_offset_expr_next, 16);
 			switch ((bool)(user_offset_expr == user_offset_expr_next)) {
 				case true: {
 					// If a hex value doesn't work, try a subexpression
@@ -1295,63 +1295,142 @@ static inline const char* CheckCastType(const char* expr, uint8_t* out) {
 static TH_FORCEINLINE const char* is_reg_name(const char* expr, const x86_reg_t *const regs, size_t* out) {
 
 	enum : uint8_t {
-		REG_EDI = 0b0000, // 0
-		REG_ESI = 0b0001, // 1
-		REG_EBP = 0b0010, // 2
-		REG_ESP = 0b0011, // 3
-		REG_EBX = 0b0100, // 4
-		REG_EDX = 0b0101, // 5
-		REG_ECX = 0b0110, // 6
-		REG_EAX = 0b0111, // 7
+#ifdef TH_X64
+		REG_R15,
+		REG_R14,
+		REG_R13,
+		REG_R12,
+		REG_R11,
+		REG_R10,
+		REG_R9,
+		REG_R8,
+#endif
+		
+		REG_EDI, // 0b_000
+		REG_ESI, // 0b_001
+		REG_EBP, // 0b_010
+		REG_ESP, // 0b_011
+		REG_EBX, // 0b_100
+		REG_EDX, // 0b_101
+		REG_ECX, // 0b_110
+		REG_EAX, // 0b_111
 	};
 
 	enum : uint8_t {
-		REG_DW = 0b00, // 0
-		REG_BL = 0b01, // 1
-		REG_BH = 0b10, // 2
-		REG_W  = 0b11, // 3
+		REG_DW = 0b000, // 0
+		REG_BL = 0b001, // 1
+		REG_BH = 0b010, // 2
+		REG_W  = 0b011, // 3
+#ifdef TH_X64
+		REG_QW = 0b100, // 4
+#endif
 	};
 
 	bool deref;
 	expr += !(deref = expr[0] != '&');
 
-	uint8_t out_reg = REG_EDI;
 	uint8_t letter1 = *expr++ & 0xDF;
-	uint8_t out_size = letter1 == 'E' ? letter1 = *expr++ & 0xDF, REG_DW : REG_W;
-	uint8_t letter2 = *expr++ & 0xDF;
-	switch (letter1) {
-		default:
-			return NULL;
-		case 'S':
-			out_reg |= REG_ESI;
-		case 'B':
-			if (letter2 == 'P') {
-				out_reg |= REG_EBP;
+	uint8_t out_reg;
+	uint8_t out_size;
+#ifdef TH_X64
+	if (letter1 == 'R') {
+	    out_size = REG_QW;
+		switch (letter1 = *expr++) {
+			default:
+				goto RexReg;
+			case '1':
+				letter1 = *expr++;
+				if ((letter1 - '0') > 5) return NULL;
+				out_reg = '5' - letter1;
+				break;
+			case '9':
+				out_reg = REG_R9;
+				break;
+			case '8':
+				out_reg = REG_R8;
+		}
+		switch (letter1 = *expr & 0xDF) {
+			default:
 				goto RegEnd;
-			}
-		case 'D':
-			if (letter2 == 'I') goto RegEnd;
-			out_reg |= letter1 == 'B' ? REG_EBX : REG_EDX;
-			break;
-		case 'A':
-			out_reg |= REG_EAX;
-			break;
-		case 'C':
-			out_reg |= REG_ECX;
+			case 'B':
+				out_size = REG_BL;
+				break;
+			case 'D':
+				out_size = REG_DW;
+				break;
+			case 'W':
+				out_size = REG_W;
+				break;
+		}
+		++expr;
 	}
-	if (letter2 != 'X' && !(out_size &= ((letter2 == 'L') | ((letter2 == 'H') << 1)))) return NULL;
+	else {
+#endif
+		out_reg = REG_EDI;
+		out_size = letter1 == 'E' ? letter1 = *expr++ & 0xDF, REG_DW : REG_W;
+#ifdef TH_X64
+	RexReg:
+#endif
+		uint8_t letter2 = *expr++ & 0xDF;
+		switch (letter1) {
+			default:
+				return NULL;
+			case 'S':
+				out_reg |= REG_ESI;
+			case 'B':
+				if (letter2 == 'P') {
+					out_reg |= REG_EBP;
+#ifdef TH_X64
+					if (out_size != REG_W) goto RegEnd;
+					bool low_reg;
+					expr += (low_reg = ((*expr & 0xDF) == 'L'));
+					out_size -= low_reg << 1;
+#endif
+					goto RegEnd;
+				}
+			case 'D':
+				if (letter2 == 'I') {
+				    if (letter1 == 'B') return NULL;
+#ifdef TH_X64
+					if (out_size != REG_W) goto RegEnd;
+					bool low_reg;
+					expr += (low_reg = ((*expr & 0xDF) == 'L'));
+					out_size -= low_reg << 1;
+#endif
+					goto RegEnd;
+				}
+				out_reg |= letter1 == 'B' ? REG_EBX : REG_EDX;
+				break;
+			case 'A':
+				out_reg |= REG_EAX;
+				break;
+			case 'C':
+				out_reg |= REG_ECX;
+		}
+		if (letter2 != 'X' && !(out_size &= ((letter2 == 'L') | ((letter2 == 'H') << 1)))) return NULL;
+#ifdef TH_X64
+	}
+#endif
 RegEnd:
 	union single_reg {
+#ifdef TH_X64
+		uint64_t qword;
+#endif
 		uint32_t dword;
 		uint16_t word;
 		uint8_t byte;
 	}* temp = (single_reg*)regs + out_reg + 1;
-	temp = (single_reg*)((size_t)temp + (out_size == REG_BH));
+	(char*&)temp += (out_size == REG_BH);
 	if (!deref) {
-		*out = (size_t)temp;
+		*out = (uintptr_t)temp;
 		return expr;
 	}
 	switch (out_size) {
+#ifdef TH_X64
+	    case REG_QW:
+	        *out = temp->qword;
+	        return expr;
+#endif
 		case REG_DW:
 			*out = temp->dword;
 			return expr;
@@ -1457,6 +1536,9 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '&':
 			case 'a': case 'A': case 'c': case 'C': case 'e': case 'E':
 			case 's': case 'S':
+#ifdef TH_X64
+			case 'r': case 'R':
+#endif
 			RawValueOrRegister:
 				if (is_breakpoint) {
 					if (expr_next = is_reg_name(expr, data_refs->regs, out)) {
@@ -1466,7 +1548,9 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 						//return PostfixCheck(expr_next);
 					}
 				}
+#ifndef TH_X64
 			case 'r': case 'R':
+#endif
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 				{
 				RawValue:
@@ -1582,10 +1666,14 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 						case PVT_SWORD: *out = *(int16_t*)out; break;
 						case PVT_DWORD: *out = *(uint32_t*)out; break;
 						case PVT_SDWORD: *out = *(int32_t*)out; break;
-						// case PVT_QWORD: *out = *(uint64_t*)out; break;
-						// case PVT_SQWORD: *out = *(int64_t*)out; break;
+#ifdef TH_X64
+						case PVT_QWORD: *out = *(uint64_t*)out; break;
+						case PVT_SQWORD: *out = *(int64_t*)out; break;
+#endif
 						case PVT_FLOAT: *out = (uint32_t)*(float*)out; break;
-						// case PVT_DOUBLE: *out = (uint64_t)*(double*)out; break;
+#ifdef TH_X64
+						case PVT_DOUBLE: *out = (uint64_t)*(double*)out; break;
+#endif
 					}
 				}
 				else {

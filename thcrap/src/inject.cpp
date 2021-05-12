@@ -348,9 +348,9 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 void* entry_from_context(HANDLE hThread)
 {
 	CONTEXT context = {};
-	context.ContextFlags = CONTEXT_FULL;
+	context.ContextFlags = CONTEXT_INTEGER;
 	if(GetThreadContext(hThread, &context)) {
-#ifdef __x86_64__
+#ifdef TH_X64
 		return (void*)context.Rax;
 #else
 		return (void*)context.Eax;
@@ -380,12 +380,12 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 	while (true) {
 		context.ContextFlags = CONTEXT_CONTROL;
 		GetThreadContext(hThread, &context);
-#ifdef __x86_64__
-		UINT_PTR ip = context.Rip;
+#ifdef TH_X64
+		uintptr_t ip = context.Rip;
 #else
-		UINT_PTR ip = context.Eip;
+		uintptr_t ip = context.Eip;
 #endif
-		if (ip != (UINT_PTR)addr) {
+		if (ip != (uintptr_t)addr) {
 			break ;
 		}
 		ResumeThread(hThread);

@@ -79,7 +79,7 @@ size_t str_address_value(const char *str, HMODULE CustomModuleBase, str_address_
 		}
 	}
 
-	val += strtoul(str, endptr, base);
+	val += strtouz(str, endptr, base);
 	
 	if(ret) {
 		ret->error = STR_ADDRESS_ERROR_NONE;

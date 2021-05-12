@@ -13,6 +13,10 @@
 
 #include "compiler_support.h"
 
+#ifdef _M_X64
+#define TH_X64
+#endif
+
 #ifdef THCRAP_EXPORTS
 # define THCRAP_API TH_EXPORT
 #else

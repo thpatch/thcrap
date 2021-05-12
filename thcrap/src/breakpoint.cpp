@@ -105,22 +105,30 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs)
 {
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
-	// to be able to manipulate it.
-	const size_t esp_prev = regs.esp;
+	// to be able to manipulate it. 
+#ifdef TH_X64
+	const size_t stack_ptr_prev = regs.rsp;
+#else
+	const size_t stack_ptr_prev = regs.esp;
+#endif
 	
 	if(bp->func(&regs, bp->json_obj)) {
 		// Point return address to codecave.
 		regs.retaddr = (uint32_t)bp->addr[addr_index].breakpoint_source;
 	}
-	const size_t esp_diff = regs.esp - esp_prev;
-	if(esp_diff) {
+#ifdef TH_X64
+	const size_t stack_ptr_diff = regs.rsp - stack_ptr_prev;
+#else
+	const size_t stack_ptr_diff = regs.esp - stack_ptr_prev;
+#endif
+	if(stack_ptr_diff) {
 		// ESP change requested.
 		// Shift down the regs structure by the requested amount
 		x86_reg_t temp = regs;
 		_ReadWriteBarrier();
-		*(x86_reg_t*)((BYTE*)(&regs) + esp_diff) = temp;
+		*(x86_reg_t*)((BYTE*)(&regs) + stack_ptr_diff) = temp;
 	}
-	return esp_diff;
+	return stack_ptr_diff;
 }
 
 bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {

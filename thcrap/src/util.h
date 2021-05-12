@@ -56,6 +56,16 @@ inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 
 /// Strings
 /// -------
+
+// String to size_t
+size_t TH_FORCEINLINE strtouz(const char* str, char** str_end, int base) {
+#ifdef TH_X64
+	return strtoull(str, str_end, base);
+#else
+	return strtoul(str, str_end, base);
+#endif
+}
+
 #define PtrDiffStrlen(end_ptr, start_ptr) ((end_ptr) - (start_ptr))
 
 inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
