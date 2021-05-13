@@ -11,52 +11,52 @@
 #include <algorithm>
 #include <string_view>
 
-static std::unordered_map<std::string_view, UINT_PTR> funcs = {
-	{ "th_malloc", (size_t)&malloc },
-	{ "th_calloc", (size_t)&calloc },
-	{ "th_realloc", (size_t)&realloc },
-	{ "th_free", (size_t)&free },
-	{ "th_msize", (size_t)&_msize },
-	{ "th_expand", (size_t)&_expand },
-	{ "th_aligned_malloc", (size_t)&_aligned_malloc },
-	{ "th_aligned_realloc", (size_t)&_aligned_realloc },
-	{ "th_aligned_free", (size_t)&_aligned_free },
-	{ "th_aligned_msize", (size_t)&_aligned_msize },
+static std::unordered_map<std::string_view, uintptr_t> funcs = {
+	{ "th_malloc", (uintptr_t)&malloc },
+	{ "th_calloc", (uintptr_t)&calloc },
+	{ "th_realloc", (uintptr_t)&realloc },
+	{ "th_free", (uintptr_t)&free },
+	{ "th_msize", (uintptr_t)&_msize },
+	{ "th_expand", (uintptr_t)&_expand },
+	{ "th_aligned_malloc", (uintptr_t)&_aligned_malloc },
+	{ "th_aligned_realloc", (uintptr_t)&_aligned_realloc },
+	{ "th_aligned_free", (uintptr_t)&_aligned_free },
+	{ "th_aligned_msize", (uintptr_t)&_aligned_msize },
 
-	{ "th_memcpy", (size_t)&memcpy },
-	{ "th_memmove", (size_t)&memmove },
-	{ "th_memcmp", (size_t)&memcmp },
-	{ "th_memset", (size_t)&memset },
-	{ "th_memccpy", (size_t)&_memccpy },
-	{ "th_strdup", (size_t)&strdup },
-	{ "th_strndup", (size_t)&strndup },
-	{ "th_strdup_size", (size_t)&strdup_size },
+	{ "th_memcpy", (uintptr_t)&memcpy },
+	{ "th_memmove", (uintptr_t)&memmove },
+	{ "th_memcmp", (uintptr_t)&memcmp },
+	{ "th_memset", (uintptr_t)&memset },
+	{ "th_memccpy", (uintptr_t)&memccpy },
+	{ "th_strdup", (uintptr_t)&strdup },
+	{ "th_strndup", (uintptr_t)&strndup },
+	{ "th_strdup_size", (uintptr_t)&strdup_size },
 
-	{ "th_strcmp", (size_t)&strcmp },
-	{ "th_strncmp", (size_t)&strncmp },
-	{ "th_stricmp", (size_t)&stricmp },
-	{ "th_strnicmp", (size_t)&strnicmp },
-	{ "th_strcpy", (size_t)&strcpy },
-	{ "th_strncpy", (size_t)&strncpy },
-	{ "th_strcat", (size_t)&strcat },
-	{ "th_strncat", (size_t)&strncat },
-	{ "th_strlen", (size_t)&strlen },
-	{ "th_strnlen_s", (size_t)&strnlen_s },
+	{ "th_strcmp", (uintptr_t)&strcmp },
+	{ "th_strncmp", (uintptr_t)&strncmp },
+	{ "th_stricmp", (uintptr_t)&stricmp },
+	{ "th_strnicmp", (uintptr_t)&strnicmp },
+	{ "th_strcpy", (uintptr_t)&strcpy },
+	{ "th_strncpy", (uintptr_t)&strncpy },
+	{ "th_strcat", (uintptr_t)&strcat },
+	{ "th_strncat", (uintptr_t)&strncat },
+	{ "th_strlen", (uintptr_t)&strlen },
+	{ "th_strnlen_s", (uintptr_t)&strnlen_s },
 
-	{ "th_sprintf", (size_t)&sprintf },
-	{ "th_snprintf", (size_t)&snprintf },
-	{ "th_sscanf", (size_t)&sscanf },
+	{ "th_sprintf", (uintptr_t)&sprintf },
+	{ "th_snprintf", (uintptr_t)&snprintf },
+	{ "th_sscanf", (uintptr_t)&sscanf },
 
-	{ "th_GetLastError", (size_t)&GetLastError },
-	{ "th_GetProcAddress", (size_t)&GetProcAddress },
-	{ "th_GetModuleHandleA", (size_t)&GetModuleHandleA },
-	{ "th_GetModuleHandleW", (size_t)&GetModuleHandleW },
+	{ "th_GetLastError", (uintptr_t)&GetLastError },
+	{ "th_GetProcAddress", (uintptr_t)&GetProcAddress },
+	{ "th_GetModuleHandleA", (uintptr_t)&GetModuleHandleA },
+	{ "th_GetModuleHandleW", (uintptr_t)&GetModuleHandleW },
 };
 static mod_funcs_t mod_funcs = {};
 static mod_funcs_t patch_funcs = {};
 static std::vector<HMODULE> plugins;
 
-UINT_PTR func_get(const char *name)
+uintptr_t func_get(const char *name)
 {
 	auto existing = funcs.find(name);
 	if (existing == funcs.end()) {
@@ -66,7 +66,7 @@ UINT_PTR func_get(const char *name)
 	}
 }
 
-UINT_PTR func_get_len(const char *name, size_t name_len)
+uintptr_t func_get_len(const char *name, size_t name_len)
 {
 	auto existing = funcs.find({ name, name_len });
 	if (existing == funcs.end()) {
@@ -77,14 +77,14 @@ UINT_PTR func_get_len(const char *name, size_t name_len)
 	}
 }
 
-int func_add(const char *name, size_t addr) {
+int func_add(const char *name, uintptr_t addr) {
 	auto existing = funcs.find(name);
 	if (existing == funcs.end()) {
 		funcs[strdup(name)] = addr;
 		return 0;
 	}
 	else {
-		log_printf("Overwriting function/codecave %s\n");
+		log_printf("Overwriting function/codecave %s\n", name);
 		existing->second = addr;
 		return 1;
 	}
@@ -208,7 +208,7 @@ int plugins_load(const char *dir)
 
 int plugins_close(void)
 {
-	log_printf("Removing plug-ins...\n");
+	log_print("Removing plug-ins...\n");
 	for (HMODULE plugin_module : plugins) {
 		FreeLibrary(plugin_module);
 	}

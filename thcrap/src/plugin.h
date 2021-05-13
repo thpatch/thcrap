@@ -21,11 +21,11 @@
 
 // Returns a pointer to a function with the given name in the list of exported
 // functions. Basically a GetProcAddress across the engine and all plug-ins.
-UINT_PTR func_get(const char *name);
-UINT_PTR func_get_len(const char *name, size_t name_len);
+uintptr_t func_get(const char *name);
+uintptr_t func_get_len(const char *name, size_t name_len);
 
 // Adds a pointer to a function to the list of functions used by func_get
-int func_add(const char *name, size_t addr);
+int func_add(const char *name, uintptr_t addr);
 
 // Removes a function from the list of functions used by func_get
 // This function is nessesairy for plugins to be able to unload themselves
@@ -50,10 +50,10 @@ bool func_remove(const char *name);
   * • "post_init" (NULL)
   *   Called after the initialization of thcrap and all modules is complete.
   *
-  * • "repatch" (json_t *files_changed)
-  *   Called when the given files have been changed outside the game and need
-  *   to be reloaded. [files_changed] is a JSON object with the respective file
-  *   names as keys.
+  * • "repatch" (const char* files_changed[])
+  *   Called when files from a patch have been changed outside the game and
+  *   need to be reloaded. [files_changed] contains the full path of each
+  *   changed file and is terminated with an extra NULL pointer.
   *
   * • "thread_exit" (NULL)
   *   Called whenever a thread in the process exits (DLL_THREAD_DETACH in

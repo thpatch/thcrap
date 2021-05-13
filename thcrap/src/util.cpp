@@ -96,7 +96,7 @@ size_t str_address_value(const char *str, HMODULE CustomModuleBase, str_address_
 
 bool is_valid_hex(char c) {
 	c |= 0x20;
-	return ((uint8_t)(c - '0') < 10) | ((uint8_t)(c - 'a') < 6);
+	return is_valid_decimal(c) | ((uint8_t)(c - 'a') < 6);
 }
 
 int8_t hex_value(char c) {

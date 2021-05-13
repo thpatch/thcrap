@@ -164,12 +164,19 @@ enum {
 	PVT_FLOAT = 9,
 	PVT_DOUBLE = 10,
 	PVT_LONGDOUBLE = 11,
-	PVT_STRING,
+#ifdef TH_X64
+	PVT_DEFAULT = PVT_QWORD,
+	PVT_POINTER = PVT_QWORD,
+#else
+	PVT_DEFAULT = PVT_DWORD,
+	PVT_POINTER = PVT_DWORD,
+#endif
+	PVT_STRING = 12,
 	PVT_STRING8 = PVT_STRING,
-	PVT_STRING16,
-	PVT_STRING32,
-	PVT_CODE,
-	PVT_ADDRRET
+	PVT_STRING16 = 13,
+	PVT_STRING32 = 14,
+	PVT_CODE = 15,
+	PVT_ADDRRET = 16
 };
 typedef uint8_t patch_value_type_t;
 
@@ -195,6 +202,7 @@ typedef union {
 	int32_t si;
 	uint64_t q;
 	int64_t sq;
+	size_t z; // Default
 	uintptr_t p;
 	float f;
 	double d;
@@ -228,13 +236,13 @@ typedef union {
 // Returns a pointer to the character following the parsed patch value or NULL on error.
 // [regs] is either the current register structure if called from a breakpoint or null.
 // [rel_source] is the address used when computing a relative value.
-const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, size_t rel_source);
+const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, uintptr_t rel_source);
 
 void DisableCodecaveNotFoundWarning(bool state);
 
 // Returns a pointer to the register [regname] in [regs]. [endptr] behaves
 // like the endptr parameter of strtol(), and can be a nullptr if not needed.
-size_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
+uint32_t* reg(x86_reg_t *regs, const char *regname, const char **endptr);
 
 const char* parse_brackets(const char* str, char c);
 
@@ -242,7 +250,7 @@ const char* parse_brackets(const char* str, char c);
 // Returns a pointer to the character following the parsed expression or NULL on error.
 // [regs] is either the current register structure if called from a breakpoint or null.
 // [rel_source] is the address used when computing a relative value.
-const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, size_t rel_source);
+const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, uintptr_t rel_source);
 
 void patch_val_set_op(const char* op_str, patch_val_t* Val);
 

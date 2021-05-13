@@ -221,6 +221,8 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
 // Returns whether [c] is a valid hexadecimal character
 bool is_valid_hex(char c);
 
+#define is_valid_decimal(c) ((uint8_t)((c) - '0') < 10)
+
 // Returns either the hexadecimal value of [c]
 // or -1 if [c] is not a valid hexadecimal character
 int8_t hex_value(char c);
