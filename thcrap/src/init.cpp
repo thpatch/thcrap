@@ -77,10 +77,10 @@ void oldbuild_show()
 			build_js_fn,
 			nullptr
 		};
-		json_t *build_js = stack_json_resolve_chain(build_js_chain, nullptr);
-		const bool supported = build_js != nullptr;
-		json_decref_safe(build_js);
+		json_t* build_js = stack_json_resolve_chain(build_js_chain, nullptr);
 		VLA_FREE(build_js_fn);
+		const bool supported = build_js != nullptr;
+		json_decref(build_js);
 
 		strings_strclr(MSG_SLOT);
 		strings_strcat(MSG_SLOT, oldbuild_header);
@@ -108,24 +108,21 @@ void oldbuild_show()
 
 json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
-	unsigned char *file_buffer = (unsigned char*)file_read(fn, file_size);
-	SHA256_CTX sha256_ctx;
-	BYTE hash[32];
-	char hash_str[65];
-	int i;
+	json_t* ret = NULL;
+	if (json_t* json_hashes = json_object_get(versions, "hashes")) {
+		if (unsigned char* file_buffer = (unsigned char*)file_read(fn, file_size)) {
 
-	if(!file_buffer) {
-		return NULL;
-	}
-	sha256_init(&sha256_ctx);
-	sha256_update(&sha256_ctx, file_buffer, *file_size);
-	sha256_final(&sha256_ctx, hash);
-	SAFE_FREE(file_buffer);
+			SHA256_HASH hash = sha256_calc(file_buffer, *file_size);
+			free(file_buffer);
 
-	for(i = 0; i < 32; i++) {
-		sprintf(hash_str + (i * 2), "%02x", hash[i]);
+			char hash_str[65];
+			for (size_t i = 0; i < 8; i++) {
+				sprintf(hash_str + (i * 8), "%x", _byteswap_ulong(hash.dwords[i]));
+			}
+			ret = json_object_get(json_hashes, hash_str);
+		}
 	}
-	return json_object_get(json_object_get(versions, "hashes"), hash_str);
+	return ret;
 }
 
 json_t* identify_by_size(size_t file_size, json_t *versions)
@@ -155,7 +152,7 @@ json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
 			json_object_update_recursive(ret, json_new);
 			json_decref(json_new);
 		});
-		log_printf(tmp_file_size ? "\n" : "not found\n");
+		log_print(tmp_file_size ? "\n" : "not found\n");
 		if (file_size) *file_size = tmp_file_size;
 	}
 	chain_free(chain);
@@ -253,7 +250,7 @@ json_t* identify(const char *exe_fn)
 			"You have attached %s to an unknown game version.\n"
 			"According to the file size, this is most likely\n"
 			"\n"
-			"\t%s %s %s\n"
+			"%s %s %s\n"
 			"\n"
 			"but we haven't tested this exact variety yet and thus can't confirm that the patches will work.\n"
 			"They might crash the game, damage your save files or cause even worse problems.\n"

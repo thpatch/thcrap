@@ -5,22 +5,21 @@
   * ----
   *
   * SHA-256 hash implementation
-  * From http://bradconte.com/sha256_c.html
+  * From https://web.archive.org/web/20120415202539/http://bradconte.com:80/sha256_c.html
   */
 
 #pragma once
+#include <stdint.h>
+#include <immintrin.h>
 
-// Signed variables are for wimps
-#define uchar unsigned char // 8-bit byte
-#define uint unsigned long // 32-bit word
+typedef union {
+	uint32_t dwords[8];
+	uint64_t qwords[4];
+	uint8_t bytes[32];
+	struct {
+		__m128i lower_simd;
+		__m128i upper_simd;
+	};
+} SHA256_HASH;
 
-typedef struct {
-   uchar data[64];
-   uint datalen;
-   uint bitlen[2];
-   uint state[8];
-} SHA256_CTX;
-
-void sha256_init(SHA256_CTX *ctx);
-void sha256_update(SHA256_CTX *ctx, uchar data[], uint len);
-void sha256_final(SHA256_CTX *ctx, uchar hash[]);
+SHA256_HASH sha256_calc(const uint8_t data[], size_t length);

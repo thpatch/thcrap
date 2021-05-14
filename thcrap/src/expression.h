@@ -238,6 +238,8 @@ typedef union {
 // [rel_source] is the address used when computing a relative value.
 const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, uintptr_t rel_source);
 
+bool CPU_Supports_SHA(void);
+
 void DisableCodecaveNotFoundWarning(bool state);
 
 // Returns a pointer to the register [regname] in [regs]. [endptr] behaves

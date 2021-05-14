@@ -57,6 +57,7 @@ struct CPUID_Data_t {
 		bool HasAVX512PF = false;
 		bool HasAVX512ER = false;
 		bool HasAVX512CD = false;
+		bool HasSHA = false;
 		bool HasAVX512BW = false;
 		bool HasAVX512VL = false;
 		bool HasAVX512VBMI = false;
@@ -113,6 +114,7 @@ struct CPUID_Data_t {
 				HasAVX512PF			= _bittest(data1, 26);
 				HasAVX512ER			= _bittest(data1, 27);
 				HasAVX512CD			= _bittest(data1, 28);
+				HasSHA				= _bittest(data1, 29);
 				HasAVX512BW			= _bittest(data1, 30);
 				HasAVX512VL			= _bittest(data1, 31);
 				HasAVX512VBMI		= _bittest(data2, 1);
@@ -169,6 +171,10 @@ struct CPUID_Data_t {
 };
 
 static const CPUID_Data_t CPUID_Data;
+
+bool CPU_Supports_SHA(void) {
+	return CPUID_Data.HasSHA;
+}
 
 #define WarnOnce(warning) do {\
 	static bool AlreadyDisplayedWarning = false;\
@@ -985,6 +991,7 @@ static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) 
 			else if (strnicmp(name, "mmx", name_length) == 0) ret = CPUID_Data.HasMMX;
 			else if (strnicmp(name, "avx", name_length) == 0) ret = CPUID_Data.HasAVX;
 			else if (strnicmp(name, "adx", name_length) == 0) ret = CPUID_Data.HasADX;
+			else if (strnicmp(name, "sha", name_length) == 0) ret = CPUID_Data.HasSHA;
 			else if (strnicmp(name, "abm", name_length) == 0) ret = CPUID_Data.HasABM;
 			else if (strnicmp(name, "xop", name_length) == 0) ret = CPUID_Data.HasXOP;
 			else if (strnicmp(name, "tbm", name_length) == 0) ret = CPUID_Data.HasTBM;
