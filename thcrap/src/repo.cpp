@@ -41,6 +41,7 @@ repo_t *RepoLoadJson(json_t *repo_js)
 			json_object_foreach(patches, patch_id, patch_title) {
 				patch->patch_id = strdup(patch_id);
 				patch->title = json_string_copy(patch_title);
+				++patch;
 			}
 		}
 	}
