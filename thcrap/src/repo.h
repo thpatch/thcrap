@@ -24,7 +24,7 @@ typedef struct {
 } repo_t;
 
 // Returns the local file name of a repository file.
-char *RepoGetLocalFN(const char *id);
+TH_CALLER_FREE char *RepoGetLocalFN(const char *id);
 
 repo_t *RepoLocalNext(HANDLE *hFind);
 

@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <forward_list>
 
 /**
   * This module provides a simple container for other modules to store their
@@ -16,11 +17,11 @@
   * automatic, transparent and thread-safe repatching.
   *
   * Instead of simply storing the contents of every file directly as a value
-  * to its file name key, it is wrapped into a JSON array. To repatch a file,
-  * jsondata_mod_repatch() then simply inserts the new version to the front
-  * of the array. Because jsondata_get() always accesses the first element of
-  * this array, it therefore always returns a constant reference to the most
-  * current version of a file in memory.
+  * to its file name key, it is wrapped into a forward list. To repatch a file,
+  * jsondata_mod_repatch() then simply inserts the new version at the front
+  * of the list. Because forwards lists never invalidate references when adding
+  * new elements, jsondata_get() is able to return a constant reference to the
+  * most current version of a file merely by referencing the first element.
   *
   * This is very important, given that passing constant memory addresses to
   * strings back to the game is one of the main uses of custom JSON data in
@@ -29,63 +30,57 @@
   * module.
   *
   * However, this also means that every old version of a file will be kept in
-  * memory until jsondata_mod_exit() is called. I see no straightforward way
-  * to safely clean up unused references, short of the heap inspection methods
+  * memory until the destructor of jsondata is called. I see no straightforward
+  * way to safely clean up unused references, short of the heap inspection methods
   * used by garbage collectors.
   */
 
-json_t *jsondata = NULL;
+std::unordered_map<std::string_view, std::forward_list<UniqueJsonPtr>> jsondata;
 
-template<typename T>
-T jsondata_game_func(const char *fn, T (*func)(const char *fn))
-{
-	char *game_fn = fn_for_game(fn);
-	T ret = func(game_fn);
-	SAFE_FREE(game_fn);
-	return ret;
+void jsondata_add(const char* fn) {
+	auto existing = jsondata.find(fn);
+	auto& list = (existing == jsondata.end()) ? jsondata[strdup(fn)] : existing->second;
+	list.emplace_front(stack_json_resolve(fn, NULL));
 }
 
-int jsondata_add(const char *fn)
-{
-	json_t *data_array = NULL;
-	json_t *data = NULL;
-	// Since the order of the *_mod_init functions is undefined, [jsondata]
-	// needs to be created here - otherwise we'll miss some data!
-	if(!jsondata) {
-		jsondata = json_object();
+void jsondata_game_add(const char* fn) {
+	if (char* game_fn = fn_for_game(fn)) {
+		jsondata_add(game_fn);
+		free(game_fn);
 	}
-	data_array = json_object_get_create(jsondata, fn, JSON_ARRAY);
-	data = stack_json_resolve(fn, NULL);
-	return json_array_insert_new(data_array, 0, data);
 }
 
-int jsondata_game_add(const char *fn)
-{
-	return jsondata_game_func(fn, jsondata_add);
+json_t* jsondata_get(const char* fn) {
+	auto existing = jsondata.find(fn);
+	if (existing != jsondata.end()) {
+		return existing->second.front().get();
+	}
+	return NULL;
 }
 
-json_t* jsondata_get(const char *fn)
-{
-	return json_array_get(json_object_get(jsondata, fn), 0);
+json_t* jsondata_game_get(const char* fn) {
+	if (char* game_fn = fn_for_game(fn)) {
+		json_t* ret = jsondata_get(game_fn);
+		free(game_fn);
+		return ret;
+	}
+	return NULL;
 }
 
-json_t* jsondata_game_get(const char *fn)
-{
-	return jsondata_game_func(fn, jsondata_get);
-}
+//void jsondata_mod_repatch(const char* files_changed[]) {
+//	while (const char* fn = *files_changed++) {
+//		auto existing = jsondata.find(fn);
+//		if (existing != jsondata.end()) {
+//			existing->second.emplace_front(stack_json_resolve(fn, NULL));
+//		}
+//	}
+//}
 
-void jsondata_mod_repatch(const json_t *files_changed)
-{
-	const char *key;
-	json_t *val;
-	json_object_foreach(jsondata, key, val) {
-		if(json_object_get(files_changed, key)) {
-			jsondata_add(key);
+void jsondata_mod_repatch(const json_t* files_changed) {
+	for (auto& data : jsondata) {
+		const char* fn = data.first.data();
+		if (json_object_get(files_changed, fn)) {
+			data.second.emplace_front(stack_json_resolve(fn, NULL));
 		}
 	}
-}
-
-void jsondata_mod_exit(void)
-{
-	jsondata = json_decref_safe(jsondata);
 }

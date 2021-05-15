@@ -121,18 +121,9 @@ inline void sha256_init(SHA256_CTX *ctx)
 
 inline void sha256_update(SHA256_CTX *ctx, const uint8_t data[], uint32_t len)
 {
-    if (ctx->datalen) {
-        size_t temp = 64 - ctx->datalen;
-        memcpy(&ctx->data[ctx->datalen], data, temp);
-        ctx->datalen = 0;
-        data += temp;
-        len -= temp;
-        sha256_transform(ctx, ctx->data);
-        ctx->bitlen.qword += 512;
-    }
     size_t blocks = len / 64;
     ctx->datalen = len % 64;
-    ctx->bitlen.qword += blocks * 512;
+    ctx->bitlen.qword = blocks * 512;
     for (size_t i = 0; i < blocks; ++i) {
         memcpy(ctx->data, data, 64);
         data += 64;

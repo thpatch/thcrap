@@ -378,6 +378,15 @@ void ascii_repatch()
 	}
 }
 
+//extern "C" TH_EXPORT void ascii_mod_repatch(const char* files_changed[]) {
+//	while (const char* fn = *files_changed++) {
+//		if (strstr(fn, "stringdefs.")) {
+//			ascii_repatch();
+//			break;
+//		}
+//	}
+//}
+
 extern "C" TH_EXPORT void ascii_mod_repatch(json_t *files_changed)
 {
 	const char *fn;
@@ -385,6 +394,7 @@ extern "C" TH_EXPORT void ascii_mod_repatch(json_t *files_changed)
 	json_object_foreach(files_changed, fn, val) {
 		if(strstr(fn, "stringdefs.")) {
 			ascii_repatch();
+			break;
 		}
 	}
 }

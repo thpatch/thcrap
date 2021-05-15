@@ -164,7 +164,6 @@ EXPORTS
 	jsondata_get
 	jsondata_game_get
 	jsondata_mod_repatch
-	jsondata_mod_exit
 
 	; Fonts and charsets
 	; ------------------

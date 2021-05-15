@@ -132,6 +132,7 @@ struct sprite_runtime_t
 /// ===============
 // Lists all registered text images.
 std::vector<textimage_t *> Images;
+size_t longest_image_filename = 0;
 
 // Maps sprite slots to their runtime data.
 std::unordered_map<uint32_t, sprite_runtime_t> SpriteRuntimeMap;
@@ -420,7 +421,12 @@ textimage_t* textimage_t::create(
 	textimage_t *lower
 )
 {
-	auto fn = json_object_get_string(desc, "filename");
+	const char* fn = NULL;
+	size_t fn_len;
+	if (json_t* filename_json = json_object_get(desc, "filename")) {
+		fn = json_string_value(filename_json);
+		fn_len = json_string_length(filename_json);
+	}
 	if(!fn) {
 		return textimage_log.errorf(
 			"%s[%u]: \"filename\" must be a string", slotstr, priority
@@ -465,6 +471,7 @@ textimage_t* textimage_t::create(
 	}
 	auto ret = new textimage_t;
 	ret->fn = fn;
+	if (fn_len > longest_image_filename) longest_image_filename = fn_len;
 	ret->priority = priority;
 	ret->texture_slot = texture_slot.unwrap();
 	ret->sprite_slot = sprite_slot;
@@ -731,26 +738,32 @@ int BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info)
 }
 /// ===========
 
+//void textimage_mod_repatch(const char* files_changed[]) {
+//	std::string_view game_name = runconfig_game_get();
+//	char* check_fn = strdup_size(game_name.data(), game_name.size() + longest_image_filename + 1);
+//	char* base_fn = check_fn + game_name.size();
+//	*base_fn++ = '/';
+//	for (textimage_t* image : Images) {
+//		strcpy(base_fn, image->fn);
+//		const char** all_changes = files_changed;
+//		while (const char* fn = *all_changes++) {
+//			if (strstr(fn, check_fn)) {
+//				image->reload(true);
+//				break;
+//			}
+//		}
+//	}
+//	free(check_fn);
+//}
+
 void textimage_mod_repatch(json_t *files_changed)
 {
-	auto game = runconfig_game_get();
-	auto game_len = strlen(game);
-	size_t check_basename_len = 0;
-
-	for(auto image : Images) {
-		auto this_len = strlen(image->fn) + 1;
-		check_basename_len = max(check_basename_len, this_len);
-	};
-
-	VLA(char, check_fn, game_len + 1 + check_basename_len);
-	char *check_basename = memcpy_advance_dst(
-		memcpy_advance_dst(
-			check_fn, game, game_len
-		), "/", 1
-	);
-
-	for(auto image : Images) {
-		strncpy(check_basename, image->fn, check_basename_len);
+	std::string_view game_name = runconfig_game_get();
+	char* check_fn = strdup_size(game_name.data(), game_name.size() + longest_image_filename + 1);
+	char* base_fn = check_fn + game_name.size();
+	*base_fn++ = '/';
+	for (textimage_t* image : Images) {
+		strcpy(base_fn, image->fn);
 
 		const char *changed_fn;
 		json_t *changed_val;
@@ -760,7 +773,7 @@ void textimage_mod_repatch(json_t *files_changed)
 			}
 		}
 	}
-	VLA_FREE(check_fn);
+	free(check_fn);
 }
 
 void textimage_mod_exit()

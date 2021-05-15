@@ -151,5 +151,6 @@ extern "C" TH_EXPORT int BP_textimage_set(x86_reg_t *regs, json_t *bp_info);
  */
 extern "C" TH_EXPORT int BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info);
 
+//extern "C" TH_EXPORT void textimage_mod_repatch(const char* files_changed[]);
 extern "C" TH_EXPORT void textimage_mod_repatch(json_t *files_changed);
 extern "C" TH_EXPORT void textimage_mod_exit();

@@ -894,16 +894,27 @@ extern "C" TH_EXPORT void bgm_mod_detour(void)
 	}
 }
 
+//extern "C" TH_EXPORT void bgm_mod_repatch(const char* files_changed[]) {
+//	if (bgm_fmt) {
+//		while (const char* fn = *files_changed++) {
+//			if (strstr(fn, LOOPMOD_FN.data())) {
+//				loopmod_fmt();
+//				break;
+//			}
+//		}
+//	}
+//}
+
 extern "C" TH_EXPORT void bgm_mod_repatch(json_t *files_changed)
 {
-	if(!bgm_fmt) {
-		return;
-	}
-	const char *fn;
-	json_t *val;
-	json_object_foreach(files_changed, fn, val) {
-		if(strstr(fn, LOOPMOD_FN.data())) {
-			loopmod_fmt();
+	if(bgm_fmt) {
+		const char *fn;
+		json_t *val;
+		json_object_foreach(files_changed, fn, val) {
+			if(strstr(fn, LOOPMOD_FN.data())) {
+				loopmod_fmt();
+				break;
+			}
 		}
 	}
 }
