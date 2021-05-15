@@ -152,8 +152,8 @@ typedef struct {
 // Enum of possible types for the description of
 // a value specified by the user defined patch options
 enum {
-	PVT_NONE = 0,
-	PVT_BYTE = 1,
+	PVT_NONE = 0, PVT_UNKNOWN = PVT_NONE,
+	PVT_BYTE = 1, PVT_BOOL = PVT_BYTE,
 	PVT_SBYTE = 2,
 	PVT_WORD = 3,
 	PVT_SWORD = 4,

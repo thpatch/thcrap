@@ -114,7 +114,7 @@ size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_
 	
 	if(bp->func(&regs, bp->json_obj)) {
 		// Point return address to codecave.
-		regs.retaddr = (uint32_t)bp->addr[addr_index].breakpoint_source;
+		regs.retaddr = (uintptr_t)bp->addr[addr_index].breakpoint_source;
 	}
 #ifdef TH_X64
 	const size_t stack_ptr_diff = regs.rsp - stack_ptr_prev;
@@ -126,7 +126,7 @@ size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_
 		// Shift down the regs structure by the requested amount
 		x86_reg_t temp = regs;
 		_ReadWriteBarrier();
-		*(x86_reg_t*)((BYTE*)(&regs) + stack_ptr_diff) = temp;
+		*(x86_reg_t*)((uint8_t*)(&regs) + stack_ptr_diff) = temp;
 	}
 	return stack_ptr_diff;
 }
@@ -174,19 +174,19 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 	return true;
 }
 
-static inline void TH_FASTCALL cave_fix(BYTE *cave, BYTE *bp_addr)
+static inline void TH_FASTCALL cave_fix(uint8_t*cave, uint8_t *bp_addr)
 {
 	/// Fix relative stuff
 	/// ------------------
 
 	// #1: Relative far call / jump at the very beginning
 	if(cave[0] == x86_CALL_NEAR_REL32 || cave[0] == x86_JMP_NEAR_REL32) {
-		size_t dist_old = *((size_t*)(cave + 1));
-		size_t dist_new = dist_old + bp_addr - cave;
+		uint32_t dist_old = *((uint32_t*)(cave + 1));
+		uint32_t dist_new = dist_old + bp_addr - cave;
 
-		*(size_t*)(cave + 1) = dist_new;
+		*(uint32_t*)(cave + 1) = dist_new;
 
-		log_printf("fixing rel.addr. 0x%p to 0x%p... \n", dist_old, dist_new);
+		log_printf("fixing rel offset 0x%X to 0x%X... \n", dist_old, dist_new);
 	}
 	/// ------------------
 }
@@ -266,7 +266,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 		size_t cur_valid_addrs = 0;
 
-		size_t addr;
+		uintptr_t addr;
 		for (hackpoint_addr_t* cur_addr = cur.addr;
 			 eval_hackpoint_addr(cur_addr, &addr, hMod);
 			 ++cur_addr) {
@@ -300,11 +300,11 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		return failed;
 	}
 
-	uint8_t *const cave_source = (BYTE*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	uint8_t *const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 	memset(cave_source, x86_INT3, sourcecaves_total_size);
 
 	const size_t callcaves_total_size = total_valid_addrs * bp_entry_size;
-	uint8_t *const cave_call = (BYTE*)VirtualAlloc(0, callcaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	uint8_t *const cave_call = (uint8_t*)VirtualAlloc(0, callcaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 	for (uint8_t *callcave_fill = cave_call, *const callcave_fill_end = cave_call + callcaves_total_size;
 		 callcave_fill < callcave_fill_end;
@@ -320,11 +320,11 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		cave_source, cave_call
 	);
 
-	BYTE *sourcecave_p = cave_source;
-	BYTE *callcave_p = cave_call;
+	uint8_t* sourcecave_p = cave_source;
+	uint8_t* callcave_p = cave_call;
 
 	size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
-	BYTE* asm_buf = (BYTE*)malloc(BINHACK_BUFSIZE_MIN);
+	uint8_t* asm_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
 	// CALL bp_entry
 	asm_buf[0] = x86_CALL_NEAR_REL32;
 	if constexpr (BINHACK_BUFSIZE_MIN > CALL_LEN) {
@@ -333,7 +333,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 #define PatchBPEntryInst(bp_entry_instance, bp_entry_offset, type, value) \
 {\
-	type *const bp_instance_ptr = (type*const)((size_t)(bp_entry_instance) + (size_t)(bp_entry_offset));\
+	type *const bp_instance_ptr = (type*const)((uintptr_t)(bp_entry_instance) + (size_t)(bp_entry_offset));\
 	*bp_instance_ptr = (type)(value);\
 }
 
@@ -345,7 +345,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 			if (cavesize > current_asm_buf_size) {
 				if (void* temp = realloc(asm_buf, cavesize)) {
-					asm_buf = (BYTE*)temp;
+					asm_buf = (uint8_t*)temp;
 					memset(asm_buf + current_asm_buf_size, x86_NOP, current_asm_buf_size - cavesize);
 					current_asm_buf_size = cavesize;
 				}
@@ -355,7 +355,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 			}
 
 			size_t cur_valid_addrs = 0;
-			size_t addr;
+			uintptr_t addr;
 			for (hackpoint_addr_t* cur_addr = cur->addr;
 				 eval_hackpoint_addr(cur_addr, &addr, hMod);
 				 ++cur_addr) {
@@ -365,26 +365,26 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 					continue;
 				}
 
-				PatchBPEntryInst(callcave_p, bp_entry_index, size_t, cur_valid_addrs++);
+				PatchBPEntryInst(callcave_p, bp_entry_index, uint32_t, cur_valid_addrs++);
 				PatchBPEntryInst(callcave_p, bp_entry_local, const breakpoint_t*, cur);
-				PatchBPEntryInst(callcave_p, bp_entry_call, size_t, (size_t)&breakpoint_process - (size_t)bp_instance_ptr - sizeof(void*));
+				PatchBPEntryInst(callcave_p, bp_entry_call, uint32_t, (uintptr_t)&breakpoint_process - (uintptr_t)bp_instance_ptr - sizeof(void*));
 
 				// CALL bp_entry
-				const size_t bp_dist = (size_t)callcave_p - (addr + CALL_LEN);
+				const uint32_t bp_dist = (uintptr_t)callcave_p - (addr + CALL_LEN);
 				// Opcode is set earlier and doesn't change
-				*(size_t*)&asm_buf[1] = bp_dist;
+				*(uint32_t*)&asm_buf[1] = bp_dist;
 
 				callcave_p += bp_entry_size;
 
 				/// Cave assembly
 				// Copy old code to cave
 				if (cur_addr->breakpoint_source = (uint8_t*)PatchRegionCopySrc((void*)addr, NULL, asm_buf, sourcecave_p, cavesize)) {
-					cave_fix(sourcecave_p, (BYTE*)addr);
+					cave_fix(sourcecave_p, (uint8_t*)addr);
 
 					// JMP addr
-					const size_t cave_dist = addr - ((size_t)sourcecave_p + CALL_LEN);
+					const uint32_t cave_dist = addr - ((uintptr_t)sourcecave_p + CALL_LEN);
 					sourcecave_p[cavesize] = x86_JMP_NEAR_REL32;
-					*(size_t*)&sourcecave_p[cavesize + 1] = cave_dist;
+					*(uint32_t*)&sourcecave_p[cavesize + 1] = cave_dist;
 
 					sourcecave_p += breakpoint_total_size[i];
 				}

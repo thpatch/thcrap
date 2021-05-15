@@ -3,10 +3,14 @@ EXPORTS
 	; -------------
 	is_valid_hex
 	hex_value
-	binhack_calc_size
 	binhack_from_json
-	binhack_render
 	binhacks_apply
+
+	code_string_calc_size
+	code_string_render
+
+	binhack_calc_size=code_string_calc_size
+	binhack_render=code_string_render
 
 	; Expression parsing
 	; ----------------
@@ -46,12 +50,12 @@ EXPORTS
 
 	; Globals
 	; -------
-	PROJECT_NAME
-	PROJECT_NAME_SHORT
-	PROJECT_URL
-	PROJECT_VERSION
-	PROJECT_VERSION_STRING
-	PROJECT_BRANCH
+	PROJECT_NAME DATA
+	PROJECT_NAME_SHORT DATA
+	PROJECT_URL DATA
+	PROJECT_VERSION DATA
+	PROJECT_VERSION_STRING DATA
+	PROJECT_BRANCH DATA
 	runconfig_load
 	runconfig_load_from_file
 	runconfig_free
