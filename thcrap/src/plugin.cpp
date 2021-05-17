@@ -59,22 +59,19 @@ static std::vector<HMODULE> plugins;
 uintptr_t func_get(const char *name)
 {
 	auto existing = funcs.find(name);
-	if (existing == funcs.end()) {
-		return 0;
-	} else {
+	if (existing != funcs.end()) {
 		return existing->second;
 	}
+	return NULL;
 }
 
 uintptr_t func_get_len(const char *name, size_t name_len)
 {
 	auto existing = funcs.find({ name, name_len });
-	if (existing == funcs.end()) {
-		return 0;
-	}
-	else {
+	if (existing != funcs.end()) {
 		return existing->second;
 	}
+	return NULL;
 }
 
 int func_add(const char *name, uintptr_t addr) {
@@ -118,7 +115,7 @@ int plugin_init(HMODULE hMod)
 		mod_funcs_new.run("init", NULL);
 		mod_funcs_new.run("detour", NULL);
 		mod_funcs.merge(mod_funcs_new);
-		for (int i = 0; funcs_new[i].func != 0 && funcs_new[i].name != nullptr; i++) {
+		for (size_t i = 0; funcs_new[i].func != 0 && funcs_new[i].name != nullptr; i++) {
 			funcs[funcs_new[i].name] = funcs_new[i].func;
 		}
 		free(funcs_new);

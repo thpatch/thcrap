@@ -53,7 +53,7 @@ void hackpoints_error_function_not_found(const char *func_name)
 	}
 }
 
-TH_CALLER_FREE hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array)
+TH_CALLER_DELETEA hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array)
 {
 
 	if (!addr_array) {

@@ -80,14 +80,12 @@ int file_write(const char *fn, const void *file_buffer, const size_t file_size)
 
 char* fn_for_build(const char *fn)
 {
-	auto build_view = runconfig_build_get_view();
+	std::string_view build_view = runconfig_build_get_view();
 	if (!build_view.empty()) {
 		const size_t fn_length = PtrDiffStrlen(strchr(fn, '.'), fn);
 		return strdup_cat({ fn, fn_length + 1 }, build_view, fn + fn_length);
 	}
-	else {
-		return nullptr;
-	}
+	return NULL;
 }
 
 char* fn_for_game(const char *fn)
@@ -106,17 +104,13 @@ char* fn_for_game(const char *fn)
 
 void patch_print_fn(const patch_t *patch_info, const char *fn)
 {
-	const char *archive;
-	if(!patch_info || !fn) {
-		return;
-	}
-
-	archive = patch_info->archive;
-	char archive_final_char = archive[strlen(archive) - 1];
-	if (archive_final_char != '/' && archive_final_char != '\\') {
-		log_printf("\n%*s+ %s/%s", patch_info->level, " ", archive, fn);
-	} else {
-		log_printf("\n%*s+ %s%s", patch_info->level, " ", archive, fn);
+	if (patch_info && fn) {
+		const char* archive = patch_info->archive;
+		char end_char = archive[patch_info->archive_length - 1];
+		log_printf(
+			(end_char == '/') | (end_char == '\\') ? "\n%*s+ %s%s" : "\n%*s+ %s/%s"
+			, patch_info->level, "", archive, fn
+		);
 	}
 }
 
@@ -124,16 +118,12 @@ int dir_create_for_fn(const char *fn)
 {
 	int ret = -1;
 	if(fn) {
-		STRLEN_DEC(fn);
 		char *fn_dir = PathFindFileNameU(fn);
-		if(fn_dir && (fn_dir != fn)) {
-			VLA(char, fn_copy, fn_len);
-			int fn_pos = fn_dir - fn;
-
-			strncpy(fn_copy, fn, fn_len);
-			fn_copy[fn_pos] = '\0';
-			ret = CreateDirectory(fn_copy, NULL);
-			VLA_FREE(fn_copy);
+		size_t path_length = PtrDiffStrlen(fn_dir, fn);
+		if(path_length) {
+			fn_dir = strdup_size(fn, path_length);
+			ret = CreateDirectory(fn_dir, NULL);
+			free(fn_dir);
 		} else {
 			ret = 0;
 		}
@@ -148,13 +138,13 @@ char* fn_for_patch(const patch_t *patch_info, const char *fn)
 	if(!patch_info || !patch_info->archive || !fn) {
 		return NULL;
 	}
-	/*if(char archive_end = patch_info->archive[strlen(patch_info->archive) - 1];
+	/*if(char archive_end = patch_info->archive[patch_info->archive_length - 1];
 		archive_end != '\\' && archive_end != '/') {
 		// ZIP archives not yet supported
 		return NULL;
 	}*/
 
-	patch_fn = strdup_cat(patch_info->archive, '/', fn);
+	patch_fn = strdup_cat({ patch_info->archive, patch_info->archive_length }, '/', fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;
 }
@@ -291,12 +281,18 @@ void patch_show_motd(const patch_t *patch_info)
 
 patch_t patch_build(const patch_desc_t *desc)
 {
-	std::string archive;
-	patch_t patch = {};
-
-	archive = std::string("repos/") + desc->repo_id + "/" + desc->patch_id + "/";
-	patch.archive = strdup(archive.c_str());
-	return patch;
+	std::string_view repo_id = desc->repo_id;
+	std::string_view patch_id = desc->patch_id;
+	static constexpr std::string_view repos = "repos/";
+	char* archive = (char*)malloc(repos.length() + repo_id.length() + 1 + patch_id.length() + 2);
+	char* archive_write = archive;
+	archive_write += repos.copy(archive_write, repos.length());
+	archive_write += repo_id.copy(archive_write, repo_id.length());
+	*archive_write++ = '/';
+	archive_write += patch_id.copy(archive_write, patch_id.length());
+	*archive_write++ = '/';
+	*archive_write = '\0';
+	return patch_t{ archive, PtrDiffStrlen(archive_write, archive) };
 }
 
 patch_desc_t patch_dep_to_desc(const char *dep_str)
@@ -344,6 +340,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		patch.archive = strdup(patch_path);
 	}
 	str_slash_normalize(patch.archive);
+	patch.archive_length = strlen(patch.archive);
 	patch.config = json_object_get(patch_info, "config");
 	// Merge the runconfig patch array and the patch.js
 	json_t *patch_js = patch_json_load(&patch, "patch.js", NULL);
@@ -370,16 +367,17 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	if (version) {
 		if (json_is_string(version)) {
 			const char* version_string = json_string_value(version);
-			char* end_sub_version;
-			uint8_t sub_versions[4] = { 0 };
-			for (int i = 0; i < 4; ++i) {
-				sub_versions[i] = (uint8_t)strtoul(version_string, &end_sub_version, 10);
-				for (; end_sub_version[0] && !isdigit(end_sub_version[0]); ++end_sub_version);
-				if (!end_sub_version[0]) break;
-				version_string = end_sub_version;
+			union {
+				unsigned char sub[4];
+				uint32_t combined;
+			} version = { 0,0,0,0 };
+			int parsed = sscanf(version_string, "%hhu[-.]%hhu[-.]%hhu[-.]%hhu", &version.sub[3], &version.sub[2], &version.sub[1], &version.sub[0]);
+			if (parsed != EOF) {
+				uint8_t shift = (4 - parsed) * CHAR_BIT;
+				patch.version = version.combined >> shift;
 			}
-			patch.version = TextInt(sub_versions[3], sub_versions[2], sub_versions[1], sub_versions[0]);
-		} else if (json_is_integer(version)) {
+		}
+		else if (json_is_integer(version)) {
 			patch.version = (uint32_t)json_integer_value(version);
 		}
 	}
@@ -490,36 +488,37 @@ int patch_rel_to_abs(patch_t *patch_info, const char *base_path)
 	// PathCanonicalize(), a "proper" reimplementation is not exactly trivial.
 	// So we play along for now.
 	if(PathIsRelativeA(patch_info->archive)) {
-		size_t base_path_len;
-		char *base_dir;
+		char * abs_archive;
+
+		size_t archive_len = patch_info->archive_length + 1;
 
 		if (!PathIsRelativeA(base_path)) {
-			base_dir = strdup(base_path);
+			size_t base_path_len = strlen(base_path) + 1;
+			size_t abs_archive_len = base_path_len + archive_len;
+			abs_archive = strdup_size(base_path, abs_archive_len);
 		}
 		else {
-			base_path_len = GetCurrentDirectory(0, NULL) + strlen(base_path) + 1;
-			base_dir = (char*)malloc(base_path_len);
-			GetCurrentDirectory(base_path_len, base_dir);
-			PathAppendA(base_dir, base_path);
+			size_t base_path_len = GetCurrentDirectory(0, NULL) + strlen(base_path) + 1;
+			size_t abs_archive_len = base_path_len + archive_len;
+			abs_archive = (char*)malloc(abs_archive_len);
+			GetCurrentDirectory(abs_archive_len, abs_archive);
+			PathAppendA(abs_archive, base_path);
 		}
-		str_slash_normalize_win(base_dir);
+		str_slash_normalize_win(abs_archive);
 
 		if (!PathIsDirectoryA(base_path)) {
-			PathRemoveFileSpec(base_dir); 
+			PathRemoveFileSpec(abs_archive);
 		}
 
-		size_t archive_len = strlen(patch_info->archive) + 1;
-		size_t abs_archive_len = base_path_len + archive_len;
 		VLA(char, archive_win, archive_len);
-		char *abs_archive = (char*)malloc(abs_archive_len);
-
-		strncpy(archive_win, patch_info->archive, archive_len);
+		memcpy(archive_win, patch_info->archive, archive_len);
 		str_slash_normalize_win(archive_win);
 
-		PathCombineA(abs_archive, base_dir, archive_win);
+		PathCombineA(abs_archive, abs_archive, archive_win);
+		free(patch_info->archive);
 		patch_info->archive = abs_archive;
+		patch_info->archive_length = strlen(abs_archive);
 
-		free(base_dir);
 		VLA_FREE(archive_win);
 		return 0;
 	}
@@ -535,11 +534,7 @@ void patchhook_register(const char *wildcard, func_patch_t patch_func, func_patc
 	// pointers here! Some game support code might only want to hook
 	// [patch_size_func] to e.g. conveniently run some generic, non-
 	// file-related code as early as possible.
-	patchhook_t hook = {};
-	hook.wildcard = wildcard_normalized;
-	hook.patch_func = patch_func;
-	hook.patch_size_func = patch_size_func;
-	patchhooks.push_back(hook);
+	patchhooks.emplace_back(patchhook_t{ wildcard_normalized, patch_func, patch_size_func });
 }
 
 patchhook_t *patchhooks_build(const char *fn)
@@ -810,17 +805,17 @@ void patch_opts_from_json(json_t *opts) {
 }
 
 patch_val_t* patch_opt_get(const char *name) {
-	std::string_view name_view(name);
-	if (patch_options.count(name_view)) {
-		return &patch_options[name_view];
+	auto existing = patch_options.find(name);
+	if (existing != patch_options.end()) {
+		return &existing->second;
 	}
 	return NULL;
 }
 
 patch_val_t* patch_opt_get_len(const char* name, size_t length) {
-	std::string_view name_view(name, length);
-	if (patch_options.count(name_view)) {
-		return &patch_options[name_view];
+	auto existing = patch_options.find({ name, length });
+	if (existing != patch_options.end()) {
+		return &existing->second;
 	}
 	return NULL;
 }

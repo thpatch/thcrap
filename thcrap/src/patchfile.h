@@ -67,6 +67,7 @@ typedef struct
 	// Patch root path
 	// Pulled from the run configuration then edited to make it an absolute path
 	char *archive;
+	size_t archive_length;
 	// Patch id (from patch.js)
 	char *id;
 	// Patch version (from patch.js)

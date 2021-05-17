@@ -117,7 +117,7 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 
 			char hash_str[65];
 			for (size_t i = 0; i < 8; i++) {
-				sprintf(hash_str + (i * 8), "%x", _byteswap_ulong(hash.dwords[i]));
+				sprintf(hash_str + (i * 8), "%08x", _byteswap_ulong(hash.dwords[i]));
 			}
 			ret = json_object_get(json_hashes, hash_str);
 		}

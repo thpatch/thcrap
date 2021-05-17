@@ -50,7 +50,7 @@ static runconfig_t run_cfg;
 
 static void runconfig_stage_load(json_t *stage_json)
 {
-	stage_t stage;
+	stage_t& stage = run_cfg.stages.emplace_back();
 	const char *key;
 	json_t *value;
 
@@ -97,8 +97,6 @@ static void runconfig_stage_load(json_t *stage_json)
 		}
 		stage.breakpoints.push_back(breakpoint);
 	}
-
-	run_cfg.stages.push_back(stage);
 }
 
 void runconfig_load(json_t *file, int flags)
@@ -121,7 +119,7 @@ void runconfig_load(json_t *file, int flags)
 
 	auto set_string_if_exist = [file, can_overwrite](const char* key, std::string& out) {
 		json_t *value = json_object_get(file, key);
-		if (value && (out.empty() || can_overwrite)) {
+		if (value && (can_overwrite || out.empty())) {
 			out = json_string_value(value);
 		}
 	};
@@ -135,7 +133,7 @@ void runconfig_load(json_t *file, int flags)
 	run_cfg.msgbox_invalid_func = json_object_get_eval_bool_default(file, "msgbox_invalid_func", false, JEVAL_NO_EXPRS);
 
 	value = json_object_get(file, "dat_dump");
-	if (value && (run_cfg.dat_dump.empty() || can_overwrite)) {
+	if (value && (can_overwrite || run_cfg.dat_dump.empty())) {
 		if (json_is_string(value)) {
 			run_cfg.dat_dump = json_string_value(value);
 		}
@@ -148,12 +146,11 @@ void runconfig_load(json_t *file, int flags)
 	}
 
 	value = json_object_get(file, "latest");
-	if (value && (run_cfg.latest.empty() || can_overwrite)) {
-		size_t i;
+	if (value && (can_overwrite || run_cfg.latest.empty())) {
 		json_t *latest_entry;
 
 		run_cfg.latest.clear();
-		json_flex_array_foreach(value, i, latest_entry) {
+		json_flex_array_foreach_scoped(size_t, i, value, latest_entry) {
 			if (json_is_string(latest_entry)) {
 				run_cfg.latest.push_back(json_string_value(latest_entry));
 			}
@@ -198,8 +195,7 @@ void runconfig_load(json_t *file, int flags)
 			(stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) || json_object_get(file, "options")
 			) {
 			run_cfg.stages.clear();
-			size_t i;
-			json_flex_array_foreach(stages, i, value) {
+			json_flex_array_foreach_scoped(size_t, i, stages, value) {
 				runconfig_stage_load(value);
 			};
 			runconfig_stage_load(file);
@@ -225,8 +221,8 @@ void runconfig_print()
 	log_printf("  console: %s\n",      BoolStr(run_cfg.console));
 	log_printf("  thcrap dir: '%s'\n", run_cfg.thcrap_dir.c_str());
 	log_printf("  runcfg fn: '%s'\n",  run_cfg.runcfg_fn.c_str());
-	log_printf("  game id: '%s'\n",    run_cfg.game.data());
-	log_printf("  build id: '%s'\n",   run_cfg.build.data());
+	log_printf("  game id: '%s'\n",    run_cfg.game.c_str());
+	log_printf("  build id: '%s'\n",   run_cfg.build.c_str());
 	log_printf("  game title: '%s'\n", run_cfg.title.c_str());
 	log_printf("  update URL: '%s'\n", run_cfg.update_url.c_str());
 	log_print ("  latest:");

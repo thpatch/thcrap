@@ -140,8 +140,7 @@ inline void sha256_final(SHA256_CTX *ctx)
     ctx->data[ctx->datalen] = 0x80;
     bool short_padding = ctx->datalen < 56;
     size_t i = ctx->datalen;
-    size_t pad_count = short_padding ? 56 : 64;
-    while (++i < pad_count) {
+    while (++i < 64) {
         ctx->data[i] = 0x00;
     }
     if (!short_padding) {

@@ -17,4 +17,4 @@ json_t* jsondata_get(const char *fn);
 json_t* jsondata_game_get(const char *fn);
 
 //void jsondata_mod_repatch(const char* files_changed[]);
-void jsondata_mod_repatch(const json_t *files_changed);
+void jsondata_mod_repatch(json_t *files_changed);

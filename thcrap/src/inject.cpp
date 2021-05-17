@@ -150,45 +150,45 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	const size_t grand_total_size = dll_dir_total_size + dll_fn_total_size + func_name_total_size + param_total_size + inject_size;
 
 	// The workspace we will build the codecave on locally.
-	BYTE *const Buffer = (BYTE *const)malloc(grand_total_size);
+	uint8_t *const Buffer = (uint8_t *const)malloc(grand_total_size);
 
 #define PatchInjectInst(inject_instance, inject_offset, type, value) \
 {\
-	type *const inject_instance_ptr = (type *const)((size_t)(inject_instance) + (size_t)(inject_offset));\
+	type *const inject_instance_ptr = (type *const)((uintptr_t)(inject_instance) + (size_t)(inject_offset));\
 	*inject_instance_ptr = (type)(value);\
 }
 
 	// Allocate space for the codecave in the process
-	BYTE *const CodecaveAddress = (BYTE*)VirtualAllocEx(hProcess, 0, grand_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+	uint8_t *const CodecaveAddress = (uint8_t*)VirtualAllocEx(hProcess, 0, grand_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 
 	// Calculate an offset value to produce correct addresses
 	// when writing the codecave to the other process.
 	const size_t BufferOffset = CodecaveAddress - Buffer;
 
-	BYTE* workspace = Buffer;
+	uint8_t* workspace = Buffer;
 
-	BYTE* inject_ptr = (BYTE*)memcpy(workspace, &inject, inject_size);
+	uint8_t* inject_ptr = (uint8_t*)memcpy(workspace, &inject, inject_size);
 	workspace += inject_size;
 
 	// Function Parameter
-	BYTE *const param_ptr = (BYTE*)memcpy(workspace, param, param_size) + BufferOffset;
+	uint8_t *const param_ptr = (uint8_t*)memcpy(workspace, param, param_size) + BufferOffset;
 	workspace += param_total_size;
 	PatchInjectInst(inject_ptr, inject_funcparam, const void*, param_ptr);
 
 	// Directory name
 	if (dll_dir) {
-		BYTE *const dll_dir_ptr = (BYTE*)memcpy(workspace, dll_dir, dll_dir_size) + BufferOffset;
+		uint8_t *const dll_dir_ptr = (uint8_t*)memcpy(workspace, dll_dir, dll_dir_size) + BufferOffset;
 		workspace += dll_dir_total_size;
 		PatchInjectInst(inject_ptr, inject_dlldir, const wchar_t*, dll_dir_ptr);
 	}
 	
 	// Dll Name
-	BYTE *const dll_fn_ptr = (BYTE*)memcpy(workspace, dll_fn, dll_fn_size) + BufferOffset;
+	uint8_t *const dll_fn_ptr = (uint8_t*)memcpy(workspace, dll_fn, dll_fn_size) + BufferOffset;
 	workspace += dll_fn_total_size;
 	PatchInjectInst(inject_ptr, inject_dllname, const wchar_t*, dll_fn_ptr);
 
 	// Function Name
-	BYTE *const func_name_ptr = (BYTE*)memcpy(workspace, func_name, func_name_size) + BufferOffset;
+	uint8_t *const func_name_ptr = (uint8_t *)memcpy(workspace, func_name, func_name_size) + BufferOffset;
 	PatchInjectInst(inject_ptr, inject_funcname, const char*, func_name_ptr);
 
 	PatchInjectInst(inject_ptr, inject_loadlibraryflags, size_t, PathIsRelativeW(dll_fn) || !have_kb2533623 ? 0 : LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
@@ -449,7 +449,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 }
 
 // Injection calls shared between the U and W versions
-static void inject_CreateProcess_helper(
+static inline void inject_CreateProcess_helper(
 	LPPROCESS_INFORMATION lpPI,
 	LPCSTR lpAppName,
 	DWORD dwCreationFlags

@@ -71,7 +71,7 @@ typedef struct {
 
 // Parses a JSON array of string/integer addresses and returns an array
 // of hackpoint_addr_t to be parsed later by eval_hackpoint_addr.
-TH_CALLER_FREE hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array);
+TH_CALLER_DELETEA hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array);
 
 // Evaluates a [hackpoint_addr], potentially converting the contained string expression into an
 // integer. If HMODULE is not null, relative addresses are relative to this module.

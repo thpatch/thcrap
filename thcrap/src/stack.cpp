@@ -14,7 +14,8 @@
 
 static std::vector<patch_t> stack;
 
-TH_CALLER_FREE static char **resolve_chain_default(const char *fn)
+TH_CALLER_CLEANUP(chain_free)
+static char **resolve_chain_default(const char *fn)
 {
 	if (!fn) {
 		return nullptr;
@@ -26,7 +27,8 @@ TH_CALLER_FREE static char **resolve_chain_default(const char *fn)
 	return chain;
 }
 
-TH_CALLER_FREE static char **resolve_chain_game_default(const char *fn)
+TH_CALLER_CLEANUP(chain_free)
+static char **resolve_chain_game_default(const char *fn)
 {
 	char *fn_common = fn_for_game(fn);
 	const char *fn_common_ptr = fn_common ? fn_common : fn;
@@ -60,23 +62,21 @@ void set_resolve_chain_game(resolve_chain_t function)
 
 static size_t chain_get_size(char **chain)
 {
-	if (!chain) {
-		return 0;
-	}
 	size_t size = 0;
-	while (chain[size]) ++size;
+	if (chain) {
+		while (chain[size]) ++size;
+	}
 	return size;
 }
 
 void chain_free(char **chain)
 {
-	if (!chain) {
-		return;
+	if (chain) {
+		for (size_t i = 0; chain[i]; i++) {
+			free(chain[i]);
+		}
+		free(chain);
 	}
-	for (size_t i = 0; chain[i]; i++) {
-		free(chain[i]);
-	}
-	free(chain);
 }
 
 bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, sci_dir_t direction)
@@ -119,8 +119,7 @@ bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, s
 json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 {
 	json_t *ret = NULL;
-	stack_chain_iterate_t sci;
-	sci.fn = NULL;
+	
 	size_t json_size = 0;
 
 	for (size_t n = 0; chain[n]; n++) {
@@ -134,6 +133,8 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 		}
 	}
 
+	stack_chain_iterate_t sci;
+	sci.fn = NULL;
 	while (stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
 		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
 	}
@@ -173,7 +174,7 @@ HANDLE stack_file_resolve_chain(char **chain)
 			return ret;
 		}
 	}
-	log_printf("not found\n");
+	log_print("not found\n");
 	return INVALID_HANDLE_VALUE;
 }
 
@@ -322,16 +323,32 @@ void stack_print()
 	log_print("\n");
 
 	for (const patch_t& patch : stack) {
-		log_printf("[%d] %s:\n", patch.level, patch.id);
+		log_printf("\n"
+				   "[%zu] %s:\n", patch.level, patch.id);
 		log_printf("  archive: %s\n", patch.archive);
 		log_printf("  title: %s\n", patch.title);
-		log_printf("  ignore: %s\n", patch.ignore ? "true" : "false");
-		log_printf("  update: %s\n", patch.update ? "true" : "false");
-		log_print("  servers:");
-		for (i = 0; patch.servers && patch.servers[i]; i++) {
-			log_printf(" '%s'", patch.servers[i]);
+		log_printf("  update: %s\n", BoolStr(patch.update));
+
+		bool print_ignores = patch.ignore != NULL;
+		log_print(print_ignores ?
+				   "  ignore:" :
+				   "  ignore: ''"
+		);
+		if (print_ignores) {
+			for (size_t i = 0; patch.ignore[i]; ++i) {
+				log_printf(" '%s'", patch.ignore[i]);
+			}
 		}
-		log_print("\n");
+		bool print_servers = patch.servers != NULL;
+		log_print(print_servers ?
+				  "\n  servers:" :
+				  "\n  servers: ''"
+		);
+		if (print_servers) {
+			for (size_t i = 0; patch.servers[i]; ++i) {
+				log_printf(" '%s'", patch.servers[i]);
+			}
+		}
 	}
 	log_print("\n");
 }

@@ -9,7 +9,10 @@
 
 #pragma once
 
-#define TH_CALLER_FREE TH_NODISCARD_REASON("Return value must be freed by caller!")
+#define TH_CALLER_CLEANUP(func) TH_NODISCARD_REASON("Return value must be passed to '"#func"' by caller!")
+#define TH_CALLER_FREE TH_CALLER_CLEANUP(free)
+#define TH_CALLER_DELETE TH_CALLER_CLEANUP(delete)
+#define TH_CALLER_DELETEA TH_CALLER_CLEANUP(delete[])
 #define TH_CHECK_RET TH_NODISCARD_REASON("Return value must be checked to determine validity of other outputs!")
 
 #define BoolStr(Boolean) (Boolean ? "true" : "false")
@@ -66,7 +69,7 @@ size_t TH_FORCEINLINE strtouz(const char* str, char** str_end, int base) {
 #endif
 }
 
-#define PtrDiffStrlen(end_ptr, start_ptr) ((end_ptr) - (start_ptr))
+#define PtrDiffStrlen(end_ptr, start_ptr) ((size_t)((end_ptr) - (start_ptr)))
 
 inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 {
@@ -175,14 +178,14 @@ inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, char sep, std::str
 	return ret;
 }
 
-inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view sep, std::string_view str2) {
-	const size_t total_size = str1.length() + sep.length() + str2.length();
+inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view str2, std::string_view str3) {
+	const size_t total_size = str1.length() + str2.length() + str3.length();
 	char* ret = (char*)malloc(total_size + 1);
 	ret[total_size] = '\0';
 	char* ret_temp = ret;
 	ret_temp += str1.copy(ret_temp, str1.length());
-	ret_temp += sep.copy(ret_temp, sep.length());
-	str2.copy(ret_temp, str2.length());
+	ret_temp += str2.copy(ret_temp, str2.length());
+	str3.copy(ret_temp, str3.length());
 	return ret;
 }
 

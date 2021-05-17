@@ -36,7 +36,8 @@ typedef char** (*resolve_chain_t)(const char *fn);
 // name returned by fn_for_build().
 // All resolving functions that take a chain parameter (instead of a file
 // name) should use the chain created by this function.
-TH_CALLER_FREE char **resolve_chain(const char *fn);
+TH_CALLER_CLEANUP(chain_free)
+char **resolve_chain(const char *fn);
 
 // Free a chain created by resolve_chain
 void chain_free(char **chain);
@@ -45,7 +46,8 @@ void chain_free(char **chain);
 void set_resolve_chain(resolve_chain_t function);
 
 // Builds a chain for a game-local file name.
-TH_CALLER_FREE char **resolve_chain_game(const char *fn);
+TH_CALLER_CLEANUP(chain_free)
+char **resolve_chain_game(const char *fn);
 
 // Set a user-defined function used to create the chain returned by resolve_chain_game.
 void set_resolve_chain_game(resolve_chain_t function);
