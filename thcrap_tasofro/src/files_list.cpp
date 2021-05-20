@@ -19,8 +19,6 @@
 #include "files_list.h"
 #include "crypt.h"
 
-std::unordered_map<DWORD, Th135File> hashToFile;
-
 // Used if dat_dump != false.
 // Contains fileslist.js plus all the files found while the game was running.
 
@@ -92,6 +90,11 @@ private:
 		}
 
 		std::scoped_lock lock(this->mutex);
+		auto it = this->files_list.find(fn);
+		if (it != this->files_list.end()) {
+			return;
+		}
+
 		this->queue.push(fn);
 		this->cv.notify_one();
 	}
@@ -112,16 +115,7 @@ void register_filename(const char *path)
 	if (!path || path[1] == ':') {
 		return;
 	}
-
-	DWORD hash = ICrypt::instance->SpecialFNVHash(path, path + strlen(path));
-	auto& file = hashToFile[hash];
-
-	if (file.path.empty()) {
-		file.path = path;
-		file.offset = SIZE_MAX;
-
-		FileslistDump::add(path);
-	}
+	FileslistDump::add(path);
 }
 
 int LoadFileNameList(const char* FileName)
@@ -182,29 +176,4 @@ int LoadFileNameListFromJson(json_t *fileslist)
 		register_utf8_filename(json_string_value(file));
 	}
 	return 0;
-}
-
-DWORD filename_to_hash(const char* filename)
-{
-	return ICrypt::instance->SpecialFNVHash(filename, filename + strlen(filename));
-}
-
-Th135File *Th135File::tls_get()
-{
-	return static_cast<Th135File*>(TasofroFile::tls_get());
-}
-
-void Th135File::tls_set(Th135File *file)
-{
-	TasofroFile::tls_set(file);
-}
-
-Th135File* hash_to_Th135File(DWORD hash)
-{
-	std::unordered_map<DWORD, Th135File>::iterator it = hashToFile.find(hash);
-
-	if (it != hashToFile.end())
-		return &it->second;
-	else
-		return NULL;
 }

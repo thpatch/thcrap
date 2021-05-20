@@ -226,7 +226,6 @@ extern "C" int BP_nsml_CPackageFileReader_openFile(x86_reg_t *regs, json_t * bp_
 		file_reader->file_size = fr->init_game_file_size(file_reader->file_size);
 	}
 	else {
-		file_rep_clear(fr);
 		delete fr;
 		return 1;
 	}
@@ -280,7 +279,7 @@ extern "C" int BP_megamari_openFile(x86_reg_t * regs, json_t * bp_info)
 		return 1;
 	}
 
-	// We didn't look for a closeFile breakpoint, so just close the lase file whenever we open a new one.
+	// We didn't look for a closeFile breakpoint, so just close the last file whenever we open a new one.
 	// It seems to work well enough.
 	if (TasofroFile::tls_get()) {
 		delete TasofroFile::tls_get();
@@ -298,7 +297,6 @@ extern "C" int BP_megamari_openFile(x86_reg_t * regs, json_t * bp_info)
 		file_struct->size = fr->init_game_file_size(file_struct->size);
 	}
 	else {
-		file_rep_clear(fr);
 		delete fr;
 		return 1;
 	}
@@ -383,9 +381,9 @@ extern "C" int BP_th105_close_file(x86_reg_t *regs, json_t *bp_info)
 		LeaveCriticalSection(&cs);
 		return 1;
 	}
-	file_rep_t& fr = it->second;
+	TasofroFile& fr = it->second;
 
-	file_rep_clear(&fr);
+	fr.clear();
 	th105_open_files_list.erase(it);
 	LeaveCriticalSection(&cs);
 	return 1;

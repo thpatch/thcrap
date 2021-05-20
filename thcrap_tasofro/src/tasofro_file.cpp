@@ -31,7 +31,7 @@ TasofroFile::TasofroFile()
 
 TasofroFile::~TasofroFile()
 {
-	file_rep_clear(this);
+	this->clear();
 }
 
 void TasofroFile::init(const char *filename)
@@ -58,6 +58,9 @@ size_t TasofroFile::init_game_file_size(size_t game_file_size)
 
 void TasofroFile::clear()
 {
+	if (this->game_buffer) {
+		SAFE_FREE(this->game_buffer);
+	}
 	file_rep_clear(this);
 	this->offset = 0;
 	this->init_done = false;
@@ -115,6 +118,7 @@ void TasofroFile::read_from_ReadFile(HANDLE hFile, DWORD fileOffset, DWORD size)
 {
 	DWORD nbOfBytesRead;
 
+	SAFE_FREE(this->game_buffer);
 	this->game_buffer = malloc(size);
 	this->pre_json_size = size;
 
@@ -141,6 +145,7 @@ void TasofroFile::init_buffer()
 		return ;
 	}
 
+	SAFE_FREE(this->rep_buffer);
 	this->rep_buffer = malloc(POST_JSON_SIZE(this));
 	memcpy(this->rep_buffer, this->game_buffer, this->pre_json_size);
 	// Patch the game
