@@ -131,11 +131,6 @@ static void patch_actnut_as_string(ActNut::Object *elem, json_t *json)
 
 int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, json_t *patch)
 {
-	if (patch == nullptr) {
-		// Nothing to do
-		return 0;
-	}
-
 	if (actnutobj == nullptr) {
 		log_print("Act/Nut: parsing failed\n");
 		return -1;
@@ -181,12 +176,22 @@ int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, js
 
 int patch_act(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
+	if (patch == nullptr) {
+		// Nothing to do
+		return 0;
+	}
+
 	Act::File *file = Act::read_act_from_bytes((uint8_t *)file_inout, size_in);
 	return patch_act_nut(file, file_inout, size_out, patch);
 }
 
 int patch_nut(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch)
 {
+	if (patch == nullptr) {
+		// Nothing to do
+		return 0;
+	}
+
 	Nut::Stream *stream = Nut::read_nut_from_bytes((uint8_t *)file_inout, size_in);
 	return patch_act_nut(stream, file_inout, size_out, patch);
 }
