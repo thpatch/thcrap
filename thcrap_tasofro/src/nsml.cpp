@@ -448,10 +448,12 @@ extern "C" int nsml_mod_init()
 
 extern "C" void nsml_mod_detour(void)
 {
-	detour_chain("gdi32.dll", 0,
-		"GetGlyphOutlineA", th105_GetGlyphOutlineU,
-		NULL
+	if (game_id == TH105 || game_id == TH123) {
+		detour_chain("gdi32.dll", 0,
+			"GetGlyphOutlineA", th105_GetGlyphOutlineU,
+			NULL
 		);
+	}
 }
 
 extern "C" void nsml_mod_exit()

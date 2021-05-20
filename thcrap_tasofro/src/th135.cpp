@@ -226,8 +226,10 @@ BOOL WINAPI th135_CloseHandle(
 
 void tasofro_mod_detour(void)
 {
-	detour_chain("kernel32.dll", 1,
-		"CloseHandle", th135_CloseHandle, &chain_CloseHandle,
-		nullptr
-	);
+	if (game_id == TH135 || game_id == TH145 || game_id == TH155) {
+		detour_chain("kernel32.dll", 1,
+			"CloseHandle", th135_CloseHandle, &chain_CloseHandle,
+			nullptr
+		);
+	}
 }
