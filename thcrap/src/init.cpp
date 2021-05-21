@@ -287,6 +287,12 @@ void thcrap_detour(HMODULE hProc)
 
 int thcrap_init(const char *run_cfg_fn)
 {
+	bool perf_tested = true;
+	LARGE_INTEGER begin_time;
+	if (!QueryPerformanceCounter(&begin_time)) {
+		perf_tested = false;
+	}
+
 	HMODULE hProc = GetModuleHandle(NULL);
 
 	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
@@ -354,7 +360,21 @@ int thcrap_init(const char *run_cfg_fn)
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	bp_set.resize(runconfig_stage_count(), false);
-	return thcrap_init_binary(0, nullptr);
+
+	int ret = thcrap_init_binary(0, nullptr);
+
+	if (perf_tested) {
+		LARGE_INTEGER end_time;
+		LARGE_INTEGER perf_freq;
+		QueryPerformanceFrequency(&perf_freq);
+		QueryPerformanceCounter(&end_time);
+		double time = (double)(end_time.QuadPart - begin_time.QuadPart) / perf_freq.QuadPart;
+		log_printf("Initialization completed in %f seconds\n", time);
+	} else {
+		log_print("Initialization completed, but measuring performance failed\n");
+	}
+
+	return ret;
 }
 
 int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
