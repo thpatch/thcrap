@@ -37,9 +37,6 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <ItemDefinitionGroup>
-    <ClCompile>
-      <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
-    </ClCompile>
     <Link>
       <AdditionalDependencies>delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/DELAYLOAD:comdlg32.dll /DELAYLOAD:dsound.dll /DELAYLOAD:gdi32.dll /DELAYLOAD:ole32.dll /DELAYLOAD:psapi.dll /DELAYLOAD:shell32.dll /DELAYLOAD:shlwapi.dll /DELAYLOAD:user32.dll /DELAYLOAD:version.dll /DELAYLOAD:wininet.dll %(AdditionalOptions)</AdditionalOptions>

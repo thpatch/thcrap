@@ -369,9 +369,18 @@ int thcrap_init(const char *run_cfg_fn)
 		QueryPerformanceFrequency(&perf_freq);
 		QueryPerformanceCounter(&end_time);
 		double time = (double)(end_time.QuadPart - begin_time.QuadPart) / perf_freq.QuadPart;
-		log_printf("Initialization completed in %f seconds\n", time);
+		log_printf(
+			"---------------------------\n"
+			"Initialization completed in %f seconds\n"
+			"---------------------------\n"
+			, time
+		);
 	} else {
-		log_print("Initialization completed, but measuring performance failed\n");
+		log_print(
+			"---------------------------\n"
+			"Initialization completed, but measuring performance failed\n"
+			"---------------------------\n"
+		);
 	}
 
 	return ret;
