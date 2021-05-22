@@ -130,7 +130,11 @@ void log_print_fast(const char* str, size_t n) {
 
 void log_vprintf(const char *format, va_list va)
 {
-	if (const int total_size = vsnprintf(NULL, 0, format, va); total_size > 0) {
+	va_list va2;
+	va_copy(va2, va);
+	const int total_size = vsnprintf(NULL, 0, format, va2);
+	va_end(va2);
+	if (total_size > 0) {
 		VLA(char, str, total_size + 1);
 		vsprintf(str, format, va);
 		log_print_fast(str, total_size);
@@ -224,7 +228,11 @@ int log_vmboxf(const char *caption, const UINT type, const char *format, va_list
 {
 	int ret = 0;
 	if(format) {
-		if (const int total_size = vsnprintf(NULL, 0, format, va); total_size > 0) {
+		va_list va2;
+		va_copy(va2, va);
+		const int total_size = vsnprintf(NULL, 0, format, va2);
+		va_end(va2);
+		if (total_size > 0) {
 			VLA(char, formatted_str, total_size + 1);
 			vsprintf(formatted_str, format, va);
 			ret = log_mbox(caption, type, formatted_str);
@@ -271,7 +279,11 @@ static void OpenConsole(void)
 /// ------------------
 std::nullptr_t logger_t::verrorf(const char *format, va_list va) const
 {
-	if (const int total_size = vsnprintf(NULL, 0, format, va); total_size > 0) {
+	va_list va2;
+	va_copy(va2, va);
+	const int total_size = vsnprintf(NULL, 0, format, va2);
+	va_end(va2);
+	if (total_size > 0) {
 		VLA(char, formatted_str, total_size + 1 + prefix.length());
 		memcpy(formatted_str, prefix.data(), prefix.length());
 		vsprintf(formatted_str + prefix.length(), format, va);

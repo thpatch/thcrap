@@ -256,7 +256,7 @@ typedef struct {
 	const uintptr_t rel_source;
 } StackSaver;
 
-static const char* eval_expr_new_impl(const char* expr, const char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *const data_refs);
+static const char* eval_expr_impl(const char* expr, const char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *const data_refs);
 static const char* consume_value_impl(const char* expr, size_t *const out, const StackSaver *const data_refs);
 
 uint32_t* reg(x86_reg_t *regs, const char *regname, const char **endptr) {
@@ -452,41 +452,6 @@ struct OpData_t {
 };
 
 static constexpr OpData_t OpData;
-
-static inline const char* find_matching_end(const char* str, uint16_t delims_in) {
-	union {
-		uint16_t in;
-		struct {
-			char start;
-			char end;
-		};
-	} delims = { delims_in };
-	size_t depth = 0;
-	--str;
-	while (*++str) {
-		depth += (*str == delims.start) - (*str == delims.end);
-		if (!depth) return str;
-	}
-	return NULL;
-};
-
-const char* parse_brackets(const char* str, char c) {
-	--str;
-	int32_t paren_count = 0;
-	int32_t square_count = 0;
-	do {
-		paren_count += (c == '(') - (c == ')');
-		square_count += (c == '[') - (c == ']');
-		if (const int32_t temp = (paren_count | square_count);
-			temp == 0) {
-			return str;
-		}
-		else if (temp < 0) {
-			return NULL;
-		}
-	} while (c = *++str);
-	return NULL;
-}
 
 static inline const char* find_next_op_impl(const char* const expr, op_t* const out, char end) {
 	uint8_t c;
@@ -1022,7 +987,7 @@ static uintptr_t GetCodecaveAddress(const char *const name, const size_t name_le
 			switch ((bool)(user_offset_expr == user_offset_expr_next)) {
 				case true: {
 					// If a hex value doesn't work, try a subexpression
-					if unexpected(!eval_expr_new_impl(user_offset_expr, is_relative ? ']' : '>', &user_offset_value, StartNoOp, 0, data_refs)) {
+					if unexpected(!eval_expr_impl(user_offset_expr, is_relative ? ']' : '>', &user_offset_value, StartNoOp, 0, data_refs)) {
 						ExpressionErrorMessage();
 						break;
 					}
@@ -1044,7 +1009,7 @@ static uintptr_t GetBPFuncOrRawAddress(const char *const name, const size_t name
 	uintptr_t addr = func_get_len(name, name_length);
 	switch (addr) {
 		case 0: {// Will be null if the name was not a BP function
-			if unexpected(!eval_expr_new_impl(name, is_relative ? ']' : '>', &addr, StartNoOp, 0, data_refs)) {
+			if unexpected(!eval_expr_impl(name, is_relative ? ']' : '>', &addr, StartNoOp, 0, data_refs)) {
 				ExpressionErrorMessage();
 				break;
 			}
@@ -1101,7 +1066,7 @@ static patch_val_t GetMultibyteNOP(const char *const name, char end_char, const 
 	patch_val_t nop_str;
 	nop_str.type = PVT_CODE;
 	nop_str.code.len = 0;
-	(void)eval_expr_new_impl(name, end_char, &nop_str.code.len, StartNoOp, 0, data_refs);
+	(void)eval_expr_impl(name, end_char, &nop_str.code.len, StartNoOp, 0, data_refs);
 	bool valid_nop_length = (nop_str.code.len != 0);
 	nop_str.code.count = (size_t)valid_nop_length;
 	if (valid_nop_length) {
@@ -1123,6 +1088,23 @@ static patch_val_t GetMultibyteNOP(const char *const name, char end_char, const 
 	}
 	return nop_str;
 }
+
+static inline const char* find_matching_end(const char* str, uint16_t delims_in) {
+	union {
+		uint16_t in;
+		struct {
+			char start;
+			char end;
+		};
+	} delims = { delims_in };
+	size_t depth = 0;
+	--str;
+	while (*++str) {
+		depth += (*str == delims.start) - (*str == delims.end);
+		if (!depth) return str;
+	}
+	return NULL;
+};
 
 static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_t *const out, const StackSaver *const data_refs) {
 
@@ -1248,52 +1230,6 @@ static inline const char* CheckCastType(const char* expr, uint8_t* out) {
 	if (*expr++ != ')') return NULL;
 	*out = type;
 	return expr;
-
-	/*switch (const uint8_t c = expr[0] | 0x20) {
-		case 'i': case 'u': case 'f':
-			if (expr[1] && expr[2]) {
-				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
-					case TextInt('f', '3', '2', ')'):
-						*out = PVT_FLOAT;
-						return expr + 4;
-					case TextInt('f', '6', '4', ')'):
-						*out = PVT_DOUBLE;
-						return expr + 4;
-					case TextInt('f', '8', '0', ')'):
-						*out = PVT_LONGDOUBLE;
-						return expr + 4;
-					case TextInt('u', '1', '6', ')'):
-						*out = PVT_WORD;
-						return expr + 4;
-					case TextInt('i', '1', '6', ')'):
-						*out = PVT_SWORD;
-						return expr + 4;
-					case TextInt('u', '3', '2', ')'):
-						*out = PVT_DWORD;
-						return expr + 4;
-					case TextInt('i', '3', '2', ')'):
-						*out = PVT_SDWORD;
-						return expr + 4;
-					case TextInt('u', '6', '4', ')'):
-						*out = PVT_QWORD;
-						return expr + 4;
-					case TextInt('i', '6', '4', ')'):
-						*out = PVT_SQWORD;
-						return expr + 4;
-					default:
-						switch (temp & TextInt(0xFF, 0xFF, 0xFF, '\0')) {
-							case TextInt('u', '8', ')'):
-								*out = PVT_BYTE;
-								return expr + 3;
-							case TextInt('i', '8', ')'):
-								*out = PVT_SBYTE;
-								return expr + 3;
-						}
-				}
-			}
-		default:
-			return NULL;
-	}*/
 }
 
 static TH_FORCEINLINE const char* is_reg_name(const char* expr, const x86_reg_t *const regs, size_t* out) {
@@ -1615,7 +1551,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				}
 				else {
 					// Subexpressions
-					expr_next = eval_expr_new_impl(expr, ')', out, StartNoOp, 0, data_refs);
+					expr_next = eval_expr_impl(expr, ')', out, StartNoOp, 0, data_refs);
 					if unexpected(!expr_next) goto InvalidExpressionError;
 					++expr_next;
 				}
@@ -1626,7 +1562,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				if (is_breakpoint) {
 					// Dereference
 					// expr + 1 is used to avoid creating a loop
-					expr_next = eval_expr_new_impl(expr + 1, ']', out, StartNoOp, 0, data_refs);
+					expr_next = eval_expr_impl(expr + 1, ']', out, StartNoOp, 0, data_refs);
 					if unexpected(!expr_next) goto InvalidExpressionError;
 					++expr_next;
 			SharedDeref:
@@ -1754,7 +1690,7 @@ static inline const char* TH_FASTCALL skip_value(const char* expr, const char en
 static size_t expr_index = 0;
 static size_t dummy_cur_value = (size_t)&dummy_cur_value;
 
-static const char* eval_expr_new_impl(const char* expr, char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *volatile data_refs) {
+static const char* eval_expr_impl(const char* expr, char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *volatile data_refs) {
 
 	ExpressionLogging(
 		"START SUBEXPRESSION #%zu: \"%s\" with end \"%hhX\"\n"
@@ -1798,7 +1734,7 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 				ExpressionLogging("\tLOWER PRECEDENCE than %s\n", PrintOp(ops_next));
 				switch (ops_next) {
 					default:
-						expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+						expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
 						if unexpected(!expr) goto InvalidExpressionError;
 						ExpressionLogging(
 							"\tRETURN FROM SUBEXPRESSION\n"
@@ -1813,7 +1749,7 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 							if (cur_value) {
 								ExpressionLogging("Ternary TRUE compare: \"%s\"\n", expr);
 								if (expr[0] != ':') {
-									expr = eval_expr_new_impl(expr, ':', &cur_value, StartNoOp, 0, data_refs);
+									expr = eval_expr_impl(expr, ':', &cur_value, StartNoOp, 0, data_refs);
 									if unexpected(!expr) goto InvalidExpressionError;
 								}
 								ExpressionLogging("Skipping value until %hhX in \"%s\"...\n", end, expr);
@@ -1832,7 +1768,7 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 									expr, ':', expr
 								);
 								DisableCodecaveNotFound = true;
-								expr = eval_expr_new_impl(expr, ':', &dummy_cur_value, StartNoOp, 0, data_refs);
+								expr = eval_expr_impl(expr, ':', &dummy_cur_value, StartNoOp, 0, data_refs);
 								DisableCodecaveNotFound = false;
 								if unexpected(!expr) goto InvalidExpressionError;
 								while (*expr++ != ':');
@@ -1860,17 +1796,17 @@ static const char* eval_expr_new_impl(const char* expr, char end, size_t *const 
 				// VS doubling the allocated stack space per call, which
 				// is pretty terrible for a recursive function. Screw that.
 				if ((uint8_t)(cur_prec - OpData.Precedence[Assign]) <= (OpData.Precedence[TernaryConditional] - OpData.Precedence[Assign])) {
-					expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+					expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
 					if unexpected(!expr) goto InvalidExpressionError;
 				}
 				/*switch (cur_prec) {
 					case OpData.Precedence[TernaryConditional]:
 					case OpData.Precedence[Assign]:
-						expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+						expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
 						if unexpected(!expr) goto InvalidExpressionError;
 				}*/
 				/*if (OpData.Associativity[ops_cur] == RightAssociative) {
-					expr = eval_expr_new_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
+					expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
 					if unexpected(!expr) goto InvalidExpressionError;
 				}*/
 				break;
@@ -1910,7 +1846,7 @@ const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_r
 
 	const StackSaver data_refs = { regs, rel_source };
 
-	const char *const expr_next = eval_expr_new_impl(expr, end, out, StartNoOp, 0, &data_refs);
+	const char *const expr_next = eval_expr_impl(expr, end, out, StartNoOp, 0, &data_refs);
 	if (expr_next) {
 		ExpressionLogging(
 			"END EXPRESSION\n"

@@ -239,6 +239,26 @@ static TH_FORCEINLINE const char* check_for_code_string_cast(const char* expr, p
 	}
 }
 
+static inline const char* parse_brackets(const char* str, char c) {
+	--str;
+	int32_t paren_count = 0;
+	int32_t square_count = 0;
+	int32_t curly_count = 0;
+	do {
+		paren_count += (c == '(') - (c == ')');
+		square_count += (c == '[') - (c == ']');
+		curly_count += (c == '{') - (c == '}');
+		if (const int32_t temp = (paren_count | square_count | curly_count);
+			temp == 0) {
+			return str;
+		}
+		else if (temp < 0) {
+			return NULL;
+		}
+	} while (c = *++str);
+	return NULL;
+}
+
 size_t code_string_calc_size(const char* code_str) {
 	if (!code_str) {
 		return 0;
