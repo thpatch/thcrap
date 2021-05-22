@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 #include <atomic>
-#include "3rdparty/ThreadPool.h"
+#include <libs/include/ThreadPool.h>
 #include "file.h"
 
 class Downloader
