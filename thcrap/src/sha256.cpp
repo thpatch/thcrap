@@ -67,11 +67,11 @@ uint32_t k[64] = {
 	0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
 
-void sha256_transform(SHA256_CTX *ctx, uint8_t data[])
+void sha256_transform(SHA256_CTX *ctx)
 {
 	uint32_t a,b,c,d,e,f,g,h;
     uint32_t t1,t2,m[64];
-	uint32_t *data_uint = (uint32_t*)data;
+	uint32_t *data_uint = (uint32_t*)ctx->data;
 
 	for(size_t i = 0; i < 16; ++i) {
 		m[i] = bswap_32(data_uint[i]);
@@ -127,7 +127,7 @@ inline void sha256_update(SHA256_CTX *ctx, const uint8_t data[], uint32_t len)
     for (size_t i = 0; i < blocks; ++i) {
         memcpy(ctx->data, data, 64);
         data += 64;
-        sha256_transform(ctx, ctx->data);
+        sha256_transform(ctx);
     }
     if (ctx->datalen) {
         memcpy(ctx->data, data, ctx->datalen);
@@ -144,7 +144,7 @@ inline void sha256_final(SHA256_CTX *ctx)
         ctx->data[i] = 0x00;
     }
     if (!short_padding) {
-        sha256_transform(ctx, ctx->data);
+        sha256_transform(ctx);
         memset(ctx->data, 0, 64);
     }
 
@@ -153,7 +153,7 @@ inline void sha256_final(SHA256_CTX *ctx)
     uint32_t* data_uint = (uint32_t*)ctx->data;
 	data_uint[15] = bswap_32(ctx->bitlen.dwords[0]);
 	data_uint[14] = bswap_32(ctx->bitlen.dwords[1]);
-	sha256_transform(ctx, ctx->data);
+	sha256_transform(ctx);
 
 	// Since this implementation uses little endian byte ordering and SHA uses big endian,
 	// reverse all the bytes when copying the final state to the output hash.
@@ -360,33 +360,24 @@ void sha256_intrinsic(SHA256_HASH* state, const uint8_t data[], size_t length) {
 }
 
 SHA256_HASH sha256_calc(const uint8_t data[], size_t length) {
-    /*if (CPU_Supports_SHA()) {
-        hash = initial_state;
-        size_t extra_bytes_length = length % 64;
-        size_t full_blocks_length = length / 64;
-        if (full_blocks_length) {
-            full_blocks_length *= 64;
-            sha256_intrinsic(&hash, data, full_blocks_length);
-            data += full_blocks_length;
+    SHA256_CTX sha256_ctx;
+    sha256_ctx.state = initial_state;
+    size_t blocks = length / 64;
+    sha256_ctx.datalen = length % 64;
+    sha256_ctx.bitlen.qword = blocks * 512;
+    if (!CPU_Supports_SHA()) {
+        for (size_t i = 0; i < blocks; ++i) {
+            memcpy(sha256_ctx.data, data, 64);
+            data += 64;
+            sha256_transform(&sha256_ctx);
         }
-        union {
-            SHA256_HASH temp[2];
-            uint64_t qwords[8];
-            uint8_t bytes[128];
-        } extra[128] = { 0 };
-        memcpy(extra, data, extra_bytes_length);
-        uint8_t* after_extra = extra->bytes + extra_bytes_length;
-        *after_extra++ = 0x80;
-        if (extra_bytes_length < 56) {
-            // TODO: Figure out how to implement padding bytes with this
+        if (sha256_ctx.datalen) {
+            memcpy(sha256_ctx.data, data, sha256_ctx.datalen);
         }
-        return hash;
-	}
-	else {*/
-        SHA256_CTX sha256_ctx;
-        sha256_init(&sha256_ctx);
-        sha256_update(&sha256_ctx, data, length);
-        sha256_final(&sha256_ctx);
-        return sha256_ctx.state;
-	//}
+    }
+    else {
+        sha256_intrinsic(&sha256_ctx.state, data, blocks * 64);
+    }
+    sha256_final(&sha256_ctx);
+    return sha256_ctx.state;
 }

@@ -16,10 +16,10 @@ void log_print_context(PCONTEXT ctx)
 		log_printf(
 			"\n"
 			"Registers:\n"
-			"RAX: %#zX RCX: %#zX RDX: %#zX RBX: %#zX\n"
-			"RSP: %#zX RBP: %#zX RSI: %#zX RDI: %#zX\n"
-			"R8:  %#zX R9:  %#zX R10: %#zX R11: %#zX\n"
-			"R12: %#zX R13: %#zX R14: %#zX R15: %#zX"
+			"RAX: 0x%p RCX: 0x%p RDX: 0x%p RBX: 0x%p\n"
+			"RSP: 0x%p RBP: 0x%p RSI: 0x%p RDI: 0x%p\n"
+			"R8:  0x%p R9:  0x%p R10: 0x%p R11: 0x%p\n"
+			"R12: 0x%p R13: 0x%p R14: 0x%p R15: 0x%p"
 			, ctx->Rax, ctx->Rcx, ctx->Rdx, ctx->Rbx
 			, ctx->Rsp, ctx->Rbp, ctx->Rsi, ctx->Rdi
 			, ctx->R8,  ctx->R9,  ctx->R10, ctx->R11
@@ -29,8 +29,8 @@ void log_print_context(PCONTEXT ctx)
 		log_printf(
 			"\n"
 			"Registers:\n"
-			"EAX: %#zX ECX: %#zX EDX: %#zX EBX: %#zX\n"
-			"ESP: %#zX EBP: %#zX ESI: %#zX EDI: %#zX\n"
+			"EAX: 0x%p ECX: 0x%p EDX: 0x%p EBX: 0x%p\n"
+			"ESP: 0x%p EBP: 0x%p ESI: 0x%p EDI: 0x%p\n"
 			, ctx->Eax, ctx->Ecx, ctx->Edx, ctx->Ebx
 			, ctx->Esp, ctx->Ebp, ctx->Esi, ctx->Edi
 		);
@@ -127,7 +127,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 	log_printf(
 		"\n"
 		"===\n"
-		"Exception %#Xl at 0x%p",
+		"Exception %#lX at 0x%p",
 		lpER->ExceptionCode, lpER->ExceptionAddress
 	);
 	log_print_rva_and_module(crash_mod, lpER->ExceptionAddress);
