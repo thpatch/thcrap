@@ -286,8 +286,6 @@ static void OpenConsole(void)
 	// To match the behavior of the native Windows console, Wine additionally
 	// needs read rights because its WriteConsole() implementation calls
 	// GetConsoleMode(), and setvbuf() because… I don't know?
-	freopen("CONOUT$", "w+b", stdout);
-	setvbuf(stdout, NULL, _IONBF, 0);
 
 	/// This breaks all normal, unlogged printf() calls to stdout!
 	// _setmode(_fileno(stdout), _O_U16TEXT);
@@ -334,9 +332,6 @@ void log_init(int console)
 #ifdef _DEBUG
 	OpenConsole();
 #else
-	if(console) {
-		OpenConsole();
-	}
 	if(log_file) {
 
 		constexpr std::string_view DashUChar = u8"―";
@@ -349,26 +344,29 @@ void log_init(int console)
 			memcpy(&line[i], DashUChar.data(), DashUChar.length());
 		}
 
-		fprintf(log_file, "%s\n", line);
-		fprintf(log_file, "%s logfile\n", PROJECT_NAME);
-		fprintf(log_file, "Branch: %s\n", PROJECT_BRANCH);
-		fprintf(log_file, "Version: %s\n", PROJECT_VERSION_STRING);
-		fprintf(log_file, "Build time: "  __DATE__ " " __TIME__ "\n");
+		log_printf("%s\n", line);
+		log_printf("%s logfile\n", PROJECT_NAME);
+		log_printf("Branch: %s\n", PROJECT_BRANCH);
+		log_printf("Version: %s\n", PROJECT_VERSION_STRING);
+		log_printf("Build time: "  __DATE__ " " __TIME__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
 			const wchar_t *builder = BUILDER_NAME_W;
 			UTF8_DEC(builder);
 			UTF8_CONV(builder);
-			fprintf(log_file, "Built by: %s\n", builder_utf8);
+			log_printf("Built by: %s\n", builder_utf8);
 			UTF8_FREE(builder);
 		}
 #elif defined(BUILDER_NAME)
-		fprintf(log_file, "Built by: %s\n", BUILDER_NAME);
+		log_printf("Built by: %s\n", BUILDER_NAME);
 #endif
-		fprintf(log_file, "Command line: %s\n", GetCommandLineU());
-		fprintf(log_file, "%s\n\n", line);
-		fflush(log_file);
+		log_printf("Command line: %s\n", GetCommandLineU());
+		log_printf("%s\n\n", line);
+		FlushFileBuffers(log_file);
 		VLA_FREE(line);
+	}
+	if (console) {
+		OpenConsole();
 	}
 #endif
 	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
