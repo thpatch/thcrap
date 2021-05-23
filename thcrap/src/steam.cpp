@@ -12,12 +12,8 @@
   * the current game, but this also gives us the Steam overlay for free.
   * Doesn't seem to have any drawbacks either.
   *
-  * Game-supporting plugins need to implement
-  *
-  * 	const char* TH_CDECL steam_appid(void)
-  *
-  * to return the AppID for the currently running game as a string, or a
-  * nullptr if it wasn't released on Steam.
+  * To support Steam integration a patch needs to provide a "steam_appid"
+  *	in it's GAMENAME.VERSION.js, GAMENAME.js or global.js file
   */
 
 #include "thcrap.h"
@@ -53,8 +49,22 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 		return;
 	}
 
-	auto appid = steam_appid_func();
-	if(!appid) {
+	std::string appid = "";
+
+	json_t *appid_obj = json_object_get(runconfig_json_get(), "steam_appid");
+	if (appid_obj) {
+		switch (json_typeof(appid_obj)) {
+		case JSON_STRING:
+			appid = json_string_value(appid_obj);
+		case JSON_INTEGER:
+			appid = std::to_string(json_integer_value(appid_obj));
+		case JSON_REAL:
+			appid = std::to_string(json_real_value(appid_obj));
+		}
+	}
+
+	// Got AppID?
+	if (appid == "") {
 		return;
 	}
 
@@ -93,7 +103,7 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 		return;
 	}
 	
-	SetEnvironmentVariableU("SteamAppId", appid);
+	SetEnvironmentVariableU("SteamAppId", appid.c_str());
 	if(!SteamAPI_Init()) {
 		// TODO: Figure out why?
 		log_printf("[Steam] Initialization for AppID %s failed\n", appid);
