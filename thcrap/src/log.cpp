@@ -15,9 +15,9 @@
 // -------
 // Globals
 // -------
-static FILE *log_file = NULL;
+static HANDLE log_file = INVALID_HANDLE_VALUE;
 static bool console_open = false;
-static std::unique_ptr<ThreadPool> log_queue;
+static ThreadPool *log_queue = NULL;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
@@ -96,11 +96,30 @@ void log_print(const char *str)
 {
 	if (log_queue) {
 		log_queue->enqueue([str = strdup(str)]() {
+			DWORD byteRet;
 			if (console_open) {
-				fprintf(stdout, "%s", str);
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, strlen(str), &byteRet, NULL);
 			}
 			if (log_file) {
-				fprintf(log_file, "%s", str);
+				WriteFile(log_file, str, strlen(str), &byteRet, NULL);
+			}
+			if (log_print_hook) {
+				log_print_hook(str);
+			}
+			free(str);
+		});
+	}
+}
+
+void log_print_fast(const char* str, size_t n) {
+	if (log_queue) {
+		log_queue->enqueue([str = strndup(str, n), n]() {
+			DWORD byteRet;
+			if (console_open) {
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
+			}
+			if (log_file != INVALID_HANDLE_VALUE) {
+				WriteFile(log_file, str, n, &byteRet, NULL);
 			}
 			if (log_print_hook) {
 				log_print_hook(str);
@@ -113,32 +132,16 @@ void log_print(const char *str)
 void log_nprint(const char *str, size_t n)
 {
 	if (log_queue) {
-		log_queue->enqueue([str = strdup(str), n]() {
+		log_queue->enqueue([str = strndup(str, n), n]() {
+			DWORD byteRet;
 			if (console_open) {
-				fprintf(stdout, "%.*s", str);
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
 			}
-			if (log_file) {
-				fprintf(log_file, "%.*s", str);
+			if (log_file != INVALID_HANDLE_VALUE) {
+				WriteFile(log_file, str, n, &byteRet, NULL);
 			}
 			if (log_nprint_hook) {
 				log_nprint_hook(str, n);
-			}
-			free(str);
-		});
-	}
-}
-
-void log_print_fast(const char* str, size_t n) {
-	if (log_queue) {
-		log_queue->enqueue([str = strndup(str, n), n]() {
-			if (console_open) {
-				fwrite(str, n, 1, stdout);
-			}
-			if (log_file) {
-				fwrite(str, n, 1, log_file);
-			}
-			if (log_print_hook) {
-				log_print_hook(str);
 			}
 			free(str);
 		});
@@ -326,13 +329,8 @@ void log_init(int console)
 	log_rotate();
 
 	// Using CreateFile, _open_osfhandle and _fdopen instead of plain fopen because we need the flag FILE_SHARE_DELETE for log rotation
-	HANDLE log_handle = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (log_handle != INVALID_HANDLE_VALUE) {
-		int fd = _open_osfhandle((intptr_t)log_handle, _O_TEXT);
-		log_file = _fdopen(fd, "wt");
-		setvbuf(log_file, NULL, _IONBF, 0);
-	}
-	log_queue = std::make_unique<ThreadPool>(1);
+	log_file = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	log_queue = new ThreadPool(1);
 #ifdef _DEBUG
 	OpenConsole();
 #else
@@ -386,7 +384,7 @@ void log_init(int console)
 	log_filemapping = CreateFileMappingU(
 		INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 1, full_fn
 	);
-	if(!log_file && GetLastError() != ERROR_ALREADY_EXISTS) {
+	if(log_file == INVALID_HANDLE_VALUE && GetLastError() != ERROR_ALREADY_EXISTS) {
 		auto ret = log_mboxf(nullptr, MB_OKCANCEL | MB_ICONHAND,
 			"Error creating %s: %s\n"
 			"\n"
@@ -408,12 +406,14 @@ void log_init(int console)
 
 void log_exit(void)
 {
-	if(console_open) {
+	// Run the destructor to ensure all remaining log messages were printed
+	delete log_queue;
+
+	if(console_open)
 		FreeConsole();
-	}
 	if(log_file) {
 		CloseHandle(log_filemapping);
-		fclose(log_file);
-		log_file = NULL;
+		CloseHandle(log_file);
+		log_file = INVALID_HANDLE_VALUE;
 	}
 }
