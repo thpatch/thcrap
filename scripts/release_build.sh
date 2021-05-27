@@ -92,6 +92,16 @@ cd git_thcrap
     | grep -v -e 'Number of'
 cd ..
 
+# Run unit tests
+rm -rf "tmp_$DATE"
+mkdir "tmp_$DATE"
+cd "tmp_$DATE"
+../git_thcrap/bin/bin/thcrap_test.exe
+UNITTEST_STATUS=$?
+cd ..
+rm -rf "tmp_$DATE"
+test $UNITTEST_STATUS -eq 0 || confirm 'Unit tests failed! Continue anyway?'
+
 # Prepare the release directory
 if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/cacert.pem bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))" != "$FILES_LIST" ]; then
     echo "The list of files to copy doesn't match. Files list:"
