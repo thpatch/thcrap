@@ -119,6 +119,10 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 			for (size_t i = 0; i < 8; i++) {
 				sprintf(hash_str + (i * 8), "%08x", _byteswap_ulong(hash.dwords[i]));
 			}
+			log_printf(
+				"\nHash: %s\n"
+				, hash_str
+			);
 			ret = json_object_get(json_hashes, hash_str);
 		}
 	}
@@ -175,24 +179,24 @@ json_t* identify(const char *exe_fn)
 
 	// Result of the EXE identification
 	json_t *id_array = NULL;
-	int size_cmp = 0;
+	bool size_cmp = false;
 
 	if(!versions_js) {
 		goto end;
 	}
-	log_printf("Hashing executable... ");
+	log_print("Hashing executable... ");
 
 	id_array = identify_by_hash(exe_fn, &exe_size, versions_js);
 	if(!id_array) {
-		size_cmp = 1;
-		log_printf(
+		size_cmp = true;
+		log_print(
 			"failed!\n"
 			"File size lookup... "
 		);
 		id_array = identify_by_size(exe_size, versions_js);
 
 		if(!id_array) {
-			log_printf("failed!\n");
+			log_print("failed!\n");
 			goto end;
 		}
 	}
@@ -207,7 +211,7 @@ json_t* identify(const char *exe_fn)
 	codepage = json_hex_value(codepage_obj);
 
 	if(!game || !build) {
-		log_printf("Invalid version format!");
+		log_print("Invalid version format!");
 		goto end;
 	}
 
@@ -246,8 +250,8 @@ json_t* identify(const char *exe_fn)
 		if(game_title) {
 			game = game_title;
 		}
-		ret = log_mboxf("Unknown version detected", MB_YESNO | MB_ICONQUESTION,
-			"You have attached %s to an unknown game version.\n"
+		ret = log_mboxf("Unrecognized version detected", MB_YESNO | MB_ICONQUESTION,
+			"You have attached %s to an unrecognized game version.\n"
 			"According to the file size, this is most likely\n"
 			"\n"
 			"%s %s %s\n"
@@ -369,9 +373,18 @@ int thcrap_init(const char *run_cfg_fn)
 		QueryPerformanceFrequency(&perf_freq);
 		QueryPerformanceCounter(&end_time);
 		double time = (double)(end_time.QuadPart - begin_time.QuadPart) / perf_freq.QuadPart;
-		log_printf("Initialization completed in %f seconds\n", time);
+		log_printf(
+			"---------------------------\n"
+			"Initialization completed in %f seconds\n"
+			"---------------------------\n"
+			, time
+		);
 	} else {
-		log_print("Initialization completed, but measuring performance failed\n");
+		log_print(
+			"---------------------------\n"
+			"Initialization completed, but measuring performance failed\n"
+			"---------------------------\n"
+		);
 	}
 
 	return ret;

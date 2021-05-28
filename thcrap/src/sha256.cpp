@@ -371,12 +371,14 @@ SHA256_HASH sha256_calc(const uint8_t data[], size_t length) {
             data += 64;
             sha256_transform(&sha256_ctx);
         }
-        if (sha256_ctx.datalen) {
-            memcpy(sha256_ctx.data, data, sha256_ctx.datalen);
-        }
     }
     else {
-        sha256_intrinsic(&sha256_ctx.state, data, blocks * 64);
+        blocks *= 64;
+        sha256_intrinsic(&sha256_ctx.state, data, blocks);
+        data += blocks;
+    }
+    if (sha256_ctx.datalen) {
+        memcpy(sha256_ctx.data, data, sha256_ctx.datalen);
     }
     sha256_final(&sha256_ctx);
     return sha256_ctx.state;

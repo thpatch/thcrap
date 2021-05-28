@@ -244,7 +244,7 @@ void runconfig_print()
 	);
 	json_dump_log(run_cfg.json, JSON_INDENT(2));
 	log_print(
-		"---------------------------\n"
+		"\n---------------------------\n"
 	);
 }
 
