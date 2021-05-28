@@ -258,7 +258,7 @@ json_t* identify(const char *exe_fn)
 			"Please post <%s> in one of the following places:\n"
 			"\n"
 			"• Discord: http://discord.thpatch.net\n"
-			"• IRC: #thcrap on irc.freenode.net. Webchat at https://webchat.freenode.net/?channels=#thcrap\n"
+			"• IRC: #thcrap on irc.libera.chat:6697. Webchat at https://web.libera.chat/?channels=#thcrap\n"
 			"\n"
 			"We will take a look at it, and add support if possible.\n"
 			"\n"
