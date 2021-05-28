@@ -100,14 +100,18 @@ TEST(PatchFile, FnForPatch)
     fn = fn_for_patch(nullptr, "test.js");
     EXPECT_EQ(fn, nullptr);
 
-    patch.archive = strdup("C:/Path/to/thcrap/repos/repo_name/patch_name");
+    std::string_view test_pathA = "C:/Path/to/thcrap/repos/repo_name/patch_name";
+    patch.archive = strdup(test_pathA.data());
+    patch.archive_length = test_pathA.length();
     fn = fn_for_patch(&patch, "test.js");
     EXPECT_STREQ(fn, "C:/Path/to/thcrap/repos/repo_name/patch_name/test.js");
     free(fn);
     free(patch.archive);
 
     // Double slash is accepted just fine by Windows
-    patch.archive = strdup("C:/Path/to/thcrap/repos/repo_name/patch_name/");
+    std::string_view test_pathB = "C:/Path/to/thcrap/repos/repo_name/patch_name/";
+    patch.archive = strdup(test_pathB.data());
+    patch.archive_length = test_pathB.length();
     fn = fn_for_patch(&patch, "test.js");
     EXPECT_STREQ(fn, "C:/Path/to/thcrap/repos/repo_name/patch_name//test.js");
     free(fn);
