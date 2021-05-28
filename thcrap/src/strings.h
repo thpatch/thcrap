@@ -26,7 +26,7 @@ extern "C++" {
 // is available.
 struct string_named_t {
 	const char *id;
-	const stringref_t &fallback;
+	const stringref_t fallback;
 };
 
 THCRAP_API stringref_t strings_get_fallback(const string_named_t& sn);
