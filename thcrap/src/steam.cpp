@@ -43,12 +43,6 @@ DLL_FUNC_DEF(SteamAPI, Shutdown);
 
 extern "C" TH_EXPORT void steam_mod_post_init(void)
 {
-	// Got an AppID?
-	auto steam_appid_func = (steam_appid_func_t*)func_get("steam_appid");
-	if(!steam_appid_func) {
-		return;
-	}
-
 	std::string appid = "";
 
 	json_t *appid_obj = json_object_get(runconfig_json_get(), "steam_appid");
@@ -56,10 +50,13 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 		switch (json_typeof(appid_obj)) {
 		case JSON_STRING:
 			appid = json_string_value(appid_obj);
+			break;
 		case JSON_INTEGER:
 			appid = std::to_string(json_integer_value(appid_obj));
+			break;
 		case JSON_REAL:
 			appid = std::to_string(json_real_value(appid_obj));
+			break;
 		}
 	}
 
