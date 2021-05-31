@@ -117,7 +117,10 @@ void register_filename(const char *path)
 	auto& file = hashToFile[hash];
 
 	if (file.path.empty()) {
-		file.path = path;
+		WCHAR_T_DEC(path);
+		WCHAR_T_CONV(path);
+		file.path = path_w;
+		WCHAR_T_FREE(path);
 		file.offset = SIZE_MAX;
 
 		FileslistDump::add(path);
