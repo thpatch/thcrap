@@ -146,18 +146,17 @@ static json_t *map_generator(std::unordered_map<std::string, json_t*> in_data, c
 		*out_size = 0;
 	}
 
-	if (in_data.size() == 0) {
+	if (in_data.empty()) {
 		return NULL;
 	}
-	json_t *in = in_data.begin()->second;
 
 	const std::string map_fn = out_fn.substr(0, out_fn.size() - 6) + ".map";
 	json_t *map = stack_json_resolve(map_fn.c_str(), out_size);
-	if (map == NULL) {
-		return NULL;
+	if (map) {
+		return json_map_patch(map, in_data.begin()->second);
 	}
-
-	return json_map_patch(map, in);
+	return NULL;
+	
 }
 
 void jsonvfs_add_map(const char* out_pattern, std::unordered_set<std::string> in_fns)

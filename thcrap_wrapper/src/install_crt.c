@@ -3,25 +3,83 @@
 const int BORDER_W = 26;
 const int BORDER_H = 13;
 
-static int isCrtInstalled()
+// TODO: Get these dynamically from the bundled installer
+#define SuppliedCRTVersionMajor		14u
+#define SuppliedCRTVersionMinor		22u
+#define SuppliedCRTVersionBuild		27821u
+#define SuppliedCRTVersionRebuild	0u
+
+typedef enum {
+	NotInstalled,
+	NeedsUpdate,
+	IsCurrent
+} CrtStatus_t;
+
+static const WCHAR* crt_install_message = L"";
+
+static CrtStatus_t CheckCRTStatus()
 {
 	// Look in the registry
 	HKEY Key;
-	size_t pcbData = 4;
-	DWORD RtInstalled = 0;
-	LSTATUS ret;
+	LSTATUS status;
 
-	ret = RegOpenKeyW(
+	status = RegOpenKeyW(
 		HKEY_LOCAL_MACHINE,
 		L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86",
 		&Key
 	);
 
-	if (ret == ERROR_SUCCESS) {
-		RegQueryValueExW(Key, L"Installed", NULL, NULL, (LPBYTE)&RtInstalled, &pcbData);
+	CrtStatus_t CrtStatus;
+
+	if (status != ERROR_SUCCESS) {
+		CrtStatus = NotInstalled;
+	}
+	else {
+		DWORD key_data;
+		DWORD data_size;
+		DWORD reg_type;
+
+		data_size = 4;
+		status = RegQueryValueExW(Key, L"Installed", NULL, &reg_type, (LPBYTE)&key_data, &data_size);
+		if (status != ERROR_SUCCESS || reg_type != REG_DWORD || key_data == 0) {
+			CrtStatus = NotInstalled;
+			goto CloseKeyAndReturn;
+		}
+
+		data_size = 4;
+		status = RegQueryValueExW(Key, L"Major", NULL, &reg_type, (LPBYTE)&key_data, &data_size);
+		if (status != ERROR_SUCCESS || reg_type != REG_DWORD || key_data < SuppliedCRTVersionMajor) {
+			CrtStatus = NeedsUpdate;
+			goto CloseKeyAndReturn;
+		}
+
+		data_size = 4;
+		status = RegQueryValueExW(Key, L"Minor", NULL, &reg_type, (LPBYTE)&key_data, &data_size);
+		if (status != ERROR_SUCCESS || reg_type != REG_DWORD || key_data < SuppliedCRTVersionMinor) {
+			CrtStatus = NeedsUpdate;
+			goto CloseKeyAndReturn;
+		}
+
+		data_size = 4;
+		status = RegQueryValueExW(Key, L"Bld", NULL, &reg_type, (LPBYTE)&key_data, &data_size);
+		if (status != ERROR_SUCCESS || reg_type != REG_DWORD || key_data < SuppliedCRTVersionBuild) {
+			CrtStatus = NeedsUpdate;
+			goto CloseKeyAndReturn;
+		}
+
+		data_size = 4;
+		status = RegQueryValueExW(Key, L"Rbld", NULL, &reg_type, (LPBYTE)&key_data, &data_size);
+		if (status != ERROR_SUCCESS || reg_type != REG_DWORD || key_data < SuppliedCRTVersionRebuild) {
+			CrtStatus = NeedsUpdate;
+			goto CloseKeyAndReturn;
+		}
+
+		CrtStatus = IsCurrent;
+			
+	CloseKeyAndReturn:
 		RegCloseKey(Key);
 	}
-	return RtInstalled;
+	return CrtStatus;
 }
 
 static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -50,9 +108,8 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
-		LPCWSTR text = L"Installing some required files, please wait...";
 		HGDIOBJ hOldFont = SelectObject(hdc, hFont);
-		TextOut(hdc, BORDER_W, BORDER_H, text, my_wcslen(text));
+		TextOut(hdc, BORDER_W, BORDER_H, crt_install_message, my_wcslen(crt_install_message));
 		SelectObject(hdc, hOldFont);
 		EndPaint(hwnd, &ps);
 		break;
@@ -140,8 +197,15 @@ static HWND createCrtInstallPopup()
 
 void installCrt(LPWSTR ApplicationPath)
 {
-	if (isCrtInstalled()) {
-		return;
+	switch (CheckCRTStatus()) {
+		case IsCurrent:
+			return;
+		case NotInstalled:
+			crt_install_message = L"Installing some required files, please wait...";
+			break;
+		case NeedsUpdate:
+			crt_install_message = L"Updating some required files, please wait...";
+			break;
 	}
 
 	// Start the VC runtime installer
