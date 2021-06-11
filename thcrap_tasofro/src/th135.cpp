@@ -85,8 +85,8 @@ extern "C" int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-// In th145 and th155, the game's file structure have the following layout (TODO: check vtable for th145)
-struct AVFileReaderVtable
+// The games' file structure have the following layout
+struct Th155AVFileReaderVtable
 {
 	void (*vtable0)();
 	bool (*OpenFileOrSomething)(void *filenameOrSomething); // Like openFile, but the parameter can be either a filename or... something, I'm not sure why. This function isn't used anyway.
@@ -100,9 +100,26 @@ struct AVFileReaderVtable
 	DWORD (*GetFilenameHash)(void);
 };
 
-struct AVFileReader // Inherits from AVPackageReader
+struct Th135AVFileReader // Inherits from AVPackageFileReader
 {
-	/* +00000 */ AVFileReaderVtable *vtable;
+	/* +00000 */ void *vtable;
+	/* +00004 */ BYTE buffer[0x10000];
+	/* +10004 */ DWORD LastReadFileSize; // Last value returned in lpNumberOfBytesRead in ReadFile
+	/* +10008 */ DWORD unk1; // An offset or a size used when reading from the archive file
+	/* +1000C */ HANDLE hFile;
+	/* +10010 */ DWORD unk2; // An offset or a size updated after reading from the archive file
+	/* +10014 */ DWORD Offset; // Offset for the reader
+	/* +10018 */ DWORD FileSize;
+	/* +1001C */ DWORD FileNameHash;
+	/* +10020 */ DWORD unk3;
+	/* +10024 */ DWORD XorOffset; // Offset used by the XOR function
+	/* +10028 */ DWORD Key[5]; // 32-bytes encryption key used for XORing. The 5th DWORD is a copy of the 1st DWORD.
+};
+
+// th145 and th155
+struct Th145AVFileReader // Inherits from AVPackageReader
+{
+	/* +00000 */ Th155AVFileReaderVtable *vtable; // The th145 vtable is different
 	/* +00004 */ HANDLE hFile;
 	/* +00008 */ BYTE buffer[0x10000];
 	/* +10008 */ DWORD LastReadFileSize; // Last value returned in lpNumberOfBytesRead in ReadFile
@@ -155,17 +172,9 @@ bool th135_init_fr(Th135File *fr, const char *path)
 	return ret;
 }
 
-extern "C" int BP_th135_openFile(x86_reg_t * regs, json_t * bp_info)
+template<typename T>
+int th135_openFileCommon(const char *filename, T *file)
 {
-	// Parameters
-	// ----------
-	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "filename");
-	AVFileReader *file = (AVFileReader*)json_object_get_immediate(bp_info, regs, "reader");
-	// ----------
-
-	if (!filename || !file)
-		return 1;
-
 	Th135File *fr = new Th135File();
 	if (!th135_init_fr(fr, filename)) {
 		delete fr;
@@ -186,6 +195,39 @@ extern "C" int BP_th135_openFile(x86_reg_t * regs, json_t * bp_info)
 	}
 
 	return 1;
+}
+
+extern "C" int BP_th135_openFile(x86_reg_t * regs, json_t * bp_info)
+{
+	// Parameters
+	// ----------
+	const char *filename_ = (const char*)json_object_get_immediate(bp_info, regs, "filename");
+	Th135AVFileReader *file = (Th135AVFileReader*)json_object_get_immediate(bp_info, regs, "reader");
+	// ----------
+	thread_local const char *filename = nullptr;
+
+	if (filename_)
+		filename = filename_;
+	if (!filename || !file)
+		return 1;
+
+	int ret = th135_openFileCommon(filename, file);
+	filename = 0;
+	return ret;
+}
+
+extern "C" int BP_th145_openFile(x86_reg_t * regs, json_t * bp_info)
+{
+	// Parameters
+	// ----------
+	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "filename");
+	Th145AVFileReader *file = (Th145AVFileReader*)json_object_get_immediate(bp_info, regs, "reader");
+	// ----------
+
+	if (!filename || !file)
+		return 1;
+
+	return th135_openFileCommon(filename, file);
 }
 
 extern "C" int BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)

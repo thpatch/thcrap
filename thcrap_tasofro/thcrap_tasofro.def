@@ -7,6 +7,7 @@ EXPORTS
 
 	BP_th135_file_name
 	BP_th135_openFile
+	BP_th145_openFile
 	BP_th135_replaceReadFile
 
 	BP_detour_plugin
