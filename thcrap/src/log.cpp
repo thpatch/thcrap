@@ -286,6 +286,8 @@ static void OpenConsole(void)
 	// To match the behavior of the native Windows console, Wine additionally
 	// needs read rights because its WriteConsole() implementation calls
 	// GetConsoleMode(), and setvbuf() because… I don't know?
+	freopen("CONOUT$", "w+b", stdout);
+	setvbuf(stdout, NULL, _IONBF, 0);
 
 	/// This breaks all normal, unlogged printf() calls to stdout!
 	// _setmode(_fileno(stdout), _O_U16TEXT);
