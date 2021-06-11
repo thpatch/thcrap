@@ -688,6 +688,9 @@ static void stickStoryLines(std::list<TasofroPl::ALine*>& lines)
 			while (storyLineIsFinished(**it) == false) {
 				std::list<TasofroPl::ALine*>::iterator next = it;
 				++next;
+				if (next == lines.end()) {
+					break;
+				}
 				if ((*next)->getType() == TasofroPl::TEXT) {
 					(**it)[0] += "\n" + (**next)[0];
 					lines.erase(next);

@@ -3,10 +3,11 @@ EXPORTS
 	nsml_mod_init
 	nsml_mod_detour
 	nsml_mod_exit
+	tasofro_mod_detour
 
-	BP_th135_file_header
 	BP_th135_file_name
-	BP_th135_prepareReadFile
+	BP_th135_openFile
+	BP_th145_openFile
 	BP_th135_replaceReadFile
 
 	BP_detour_plugin

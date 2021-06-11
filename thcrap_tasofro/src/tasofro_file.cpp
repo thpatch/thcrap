@@ -31,7 +31,7 @@ TasofroFile::TasofroFile()
 
 TasofroFile::~TasofroFile()
 {
-	file_rep_clear(this);
+	this->clear();
 }
 
 void TasofroFile::init(const char *filename)
@@ -58,6 +58,9 @@ size_t TasofroFile::init_game_file_size(size_t game_file_size)
 
 void TasofroFile::clear()
 {
+	if (this->game_buffer) {
+		SAFE_FREE(this->game_buffer);
+	}
 	file_rep_clear(this);
 	this->offset = 0;
 	this->init_done = false;
@@ -115,6 +118,7 @@ void TasofroFile::read_from_ReadFile(HANDLE hFile, DWORD fileOffset, DWORD size)
 {
 	DWORD nbOfBytesRead;
 
+	SAFE_FREE(this->game_buffer);
 	this->game_buffer = malloc(size);
 	this->pre_json_size = size;
 
@@ -130,38 +134,32 @@ void TasofroFile::init_buffer()
 		DumpDatFile(dat_dump, this);
 	}
 
-	if (this->rep_buffer) {
-		// Already initialized
-		SAFE_FREE(this->game_buffer);
-		return ;
-	}
 	if (!this->hooks) {
 		// No patches to apply
 		SAFE_FREE(this->game_buffer);
 		return ;
 	}
 
-	this->rep_buffer = malloc(POST_JSON_SIZE(this));
-	memcpy(this->rep_buffer, this->game_buffer, this->pre_json_size);
+	if (!this->rep_buffer) {
+		this->rep_buffer = malloc(POST_JSON_SIZE(this));
+		memcpy(this->rep_buffer, this->game_buffer, this->pre_json_size);
+	}
+	// We filled rep_buffer, we won't need this one anymore
+	SAFE_FREE(this->game_buffer);
+
 	// Patch the game
 	if (!patchhooks_run(this->hooks, this->rep_buffer, POST_JSON_SIZE(this), this->pre_json_size, this->name, this->patch)) {
-		// If we didn't change the file in any way, we can free the rep buffer.
-		SAFE_FREE(this->game_buffer);
-		SAFE_FREE(this->rep_buffer);
 		// Remove the hooks so that next calls won't try to patch the file.
 		// This is only an optimization, avoiding to re-read the file, but this
 		// optimization is required as long as we don't detect open/close calls
 		// and try to re-open a file on every read call.
 		SAFE_FREE(this->hooks);
 	}
-
-	// We filled rep_buffer, we won't need this one anymore
-	SAFE_FREE(this->game_buffer);
 }
 
 void TasofroFile::replace_ReadFile_init(ReadFileStack *stack,
-	std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)> decrypt,
-	std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)> crypt)
+	std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)>& decrypt,
+	std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)>& crypt)
 {
 	// In order to get the correct offset, we wait until the 1st read
 	// of a file by the game, then remember this offset for future calls.
