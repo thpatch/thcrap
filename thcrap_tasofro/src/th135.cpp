@@ -123,6 +123,10 @@ std::mutex openFilesMutex;
 
 bool th135_init_fr(Th135File *fr, std::filesystem::path path)
 {
+	if (path.is_absolute()) {
+		path = path.lexically_relative(std::filesystem::current_path());
+	}
+
 	fr->init(path.generic_u8string().c_str());
 	if (fr->need_replace()) {
 		return true;
@@ -140,6 +144,15 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path path)
 	}
 
 	return false;
+}
+
+bool th135_init_fr(Th135File *fr, const char *path)
+{
+	WCHAR_T_DEC(path);
+	WCHAR_T_CONV(path);
+	bool ret = th135_init_fr(fr, path_w);
+	WCHAR_T_FREE(path);
+	return ret;
 }
 
 extern "C" int BP_th135_openFile(x86_reg_t * regs, json_t * bp_info)
