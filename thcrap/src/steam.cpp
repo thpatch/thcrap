@@ -107,7 +107,7 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 		return;
 	}
 
-	log_printf("[Steam] Initialized for AppID %s\n", appid);
+	log_printf("[Steam] Initialized for AppID %s\n", appid.c_str());
 }
 
 extern "C" TH_EXPORT void steam_mod_exit(void)
