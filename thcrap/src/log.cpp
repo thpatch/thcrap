@@ -10,14 +10,12 @@
 #include "thcrap.h"
 #include <io.h>
 #include <fcntl.h>
-#include <ThreadPool.h>
 
 // -------
 // Globals
 // -------
 static FILE *log_file = NULL;
 static bool console_open = false;
-static std::unique_ptr<ThreadPool> log_queue;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
@@ -94,54 +92,39 @@ void log_rotate(void)
 
 void log_print(const char *str)
 {
-	if (log_queue) {
-		log_queue->enqueue([str = strdup(str)]() {
-			if (console_open) {
-				fprintf(stdout, "%s", str);
-			}
-			if (log_file) {
-				fprintf(log_file, "%s", str);
-			}
-			if (log_print_hook) {
-				log_print_hook(str);
-			}
-			free(str);
-		});
+	if(console_open) {
+		fprintf(stdout, "%s", str);
+	}
+	if(log_file) {
+		fprintf(log_file, "%s", str);
+	}
+	if(log_print_hook) {
+		log_print_hook(str);
 	}
 }
 
 void log_nprint(const char *str, size_t n)
 {
-	if (log_queue) {
-		log_queue->enqueue([str = strdup(str), n]() {
-			if (console_open) {
-				fprintf(stdout, "%.*s", str);
-			}
-			if (log_file) {
-				fprintf(log_file, "%.*s", str);
-			}
-			if (log_nprint_hook) {
-				log_nprint_hook(str, n);
-			}
-			free(str);
-		});
+	if(console_open) {
+		fprintf(stdout, "%.*s", n, str);
+	}
+	if(log_file) {
+		fprintf(log_file, "%.*s", n, str);
+	}
+	if (log_nprint_hook) {
+		log_nprint_hook(str, n);
 	}
 }
 
 void log_print_fast(const char* str, size_t n) {
-	if (log_queue) {
-		log_queue->enqueue([str = strndup(str, n), n]() {
-			if (console_open) {
-				fwrite(str, n, 1, stdout);
-			}
-			if (log_file) {
-				fwrite(str, n, 1, log_file);
-			}
-			if (log_print_hook) {
-				log_print_hook(str);
-			}
-			free(str);
-		});
+	if (console_open) {
+		fwrite(str, n, 1, stdout);
+	}
+	if (log_file) {
+		fwrite(str, n, 1, log_file);
+	}
+	if (log_print_hook) {
+		log_print_hook(str);
 	}
 }
 
@@ -332,7 +315,6 @@ void log_init(int console)
 		log_file = _fdopen(fd, "wt");
 		setvbuf(log_file, NULL, _IONBF, 0);
 	}
-	log_queue = std::make_unique<ThreadPool>(1);
 #ifdef _DEBUG
 	OpenConsole();
 #else
