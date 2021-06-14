@@ -103,7 +103,7 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 	SetEnvironmentVariableU("SteamAppId", appid.c_str());
 	if(!SteamAPI_Init()) {
 		// TODO: Figure out why?
-		log_printf("[Steam] Initialization for AppID %s failed\n", appid);
+		log_printf("[Steam] Initialization for AppID %s failed\n", appid.c_str());
 		return;
 	}
 
