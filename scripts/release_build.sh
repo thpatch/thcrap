@@ -167,7 +167,7 @@ cd git_thcrap/bin
 cd ../..
 
 # Create the commits history
-commits="$(git -C git_thcrap log --reverse --format=oneline $(git -C git_thcrap tag | tail -1)^{commit}..HEAD~1)"
+commits="$(git -C git_thcrap log --reverse --format=oneline $(git -C git_thcrap tag | tail -1)^{commit}..HEAD)"
 
 cat > commit_github.txt <<EOF
 Add a release comment if you want to.
