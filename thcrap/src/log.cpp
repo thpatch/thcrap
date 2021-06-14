@@ -363,7 +363,89 @@ void log_init(int console)
 		log_printf("Built by: %s\n", BUILDER_NAME);
 #endif
 		log_printf("Command line: %s\n", GetCommandLineU());
-		log_printf("%s\n\n", line);
+		log_print("\nSystem Information:\n");
+
+		char cpu_brand[0x40] = {};
+		__cpuidex((int*)cpu_brand, 0x80000002, 0);
+		__cpuidex((int*)cpu_brand + 16, 0x80000003, 0);
+		__cpuidex((int*)cpu_brand + 32, 0x80000004, 0);
+		log_printf("CPU: %s\n", cpu_brand);
+
+		MEMORYSTATUSEX ram_stats = { sizeof(MEMORYSTATUSEX) };
+		GlobalMemoryStatusEx(&ram_stats);
+
+		float ram_total = ram_stats.ullTotalPhys;
+		int div_count_total = 0;
+		for (;;) {
+			int temp = ram_total / 1024;
+			if (temp) {
+				ram_total = ram_total / 1024;
+				div_count_total++;
+			}
+			else {
+				break;
+			}
+		}
+
+		float ram_left = ram_stats.ullAvailPhys;
+		int div_count_left = 0;
+		for (;;) {
+			int temp = ram_left / 1024;
+			if (temp) {
+				ram_left = ram_left / 1024;
+				div_count_left++;
+			}
+			else {
+				break;
+			}
+		}
+
+		const char* size_units[] = {
+			"B",
+			"KiB",
+			"MiB",
+			"GiB",
+			"TiB",
+			"PiB"
+		};
+
+		log_printf("RAM: %.2f%s free out of %.1f%s, %d%% used\n",
+			ram_left, size_units[div_count_left],
+			ram_total, size_units[div_count_total],
+			ram_stats.dwMemoryLoad
+		);
+
+		log_print("Screens:\n");
+
+		DISPLAY_DEVICEA display_device = {};
+		display_device.cb = sizeof(display_device);
+		for (int i = 0;
+			EnumDisplayDevicesA(NULL, i, &display_device, EDD_GET_DEVICE_INTERFACE_NAME);
+			i++
+			)
+		{
+			if ((display_device.StateFlags | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP)) {
+				DEVMODEA d;
+				d.dmSize = sizeof(d);
+				DISPLAY_DEVICEA mon = {};
+				mon.cb = sizeof(mon);
+				if (!EnumDisplayDevicesA(display_device.DeviceName, 0, &mon, EDD_GET_DEVICE_INTERFACE_NAME)) {
+					continue;
+				}
+
+				log_printf("%s on %s: ", mon.DeviceString, display_device.DeviceString);
+
+				EnumDisplaySettingsA(display_device.DeviceName, ENUM_CURRENT_SETTINGS, &d);
+				if ((d.dmFields & DM_PELSHEIGHT) && !(d.dmFields & DM_PAPERSIZE)) {
+					log_printf("%dx%d@%d %dHz\n", d.dmPelsWidth, d.dmPelsHeight, d.dmBitsPerPel, d.dmDisplayFrequency);
+				}
+			}
+		}
+
+		log_printf("Windows version: %s\n", windows_version());
+
+		log_printf("%s\n\n", line);		
+		
 		FlushFileBuffers(log_file);
 		VLA_FREE(line);
 	}
