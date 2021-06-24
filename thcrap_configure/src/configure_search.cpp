@@ -14,28 +14,29 @@
 
 static const char games_js_fn[] = "config/games.js";
 
-static const char* ChooseLocation(const char *id, json_t *locs)
+static const game_search_result* ChooseLocation(game_search_result *locs, size_t& pos_begin)
 {
-	size_t num_versions = json_object_size(locs);
+	game_search_result *ret = nullptr;
+
+	std::string id = locs[pos_begin].id;
+	size_t pos_end = pos_begin + 1;
+	while (locs[pos_end].id && id == locs[pos_end].id)
+		pos_end++;
+
+	size_t num_versions = pos_end - pos_begin;
 	if(num_versions == 1) {
-		const char *loc = json_object_iter_key(json_object_iter(locs));
-		const char *variety = json_object_get_string(locs, loc);
+		log_printf("Found %s (%s) at %s\n", locs[pos_begin].id, locs[pos_begin].description, locs[pos_begin].path);
 
-		log_printf("Found %s (%s) at %s\n", id, variety, loc);
-
-		return loc;
+		ret = &locs[pos_begin];
 	} else if(num_versions > 1) {
-		const char *loc;
-		json_t *val;
 		size_t i = 0;
 		size_t loc_num;
 
-		log_printf("Found %d versions of %s:\n\n", num_versions, id);
+		log_printf("Found %d versions of %s:\n\n", num_versions, id.c_str());
 
-		json_object_foreach(locs, loc, val) {
-			++i;
-			con_clickable(std::to_wstring(i),
-				to_utf16(stringf(" [%2d] %s: %s", i, loc, json_string_value(val))));
+		for (size_t i = 0; pos_begin + i < pos_end; i++) {
+			con_clickable(std::to_wstring(i + 1),
+				to_utf16(stringf(" [%2d] %s: %s", i + 1, locs[pos_begin + i].path, locs[pos_begin + i].description)));
 		}
 		printf("\n");
 		do {
@@ -44,14 +45,12 @@ static const char* ChooseLocation(const char *id, json_t *locs)
 			if (swscanf(console_read().c_str(), L"%u", &loc_num) != 1)
 				loc_num = 0;
 		} while (loc_num < 1 || loc_num > num_versions);
-		i = 0;
-		json_object_foreach(locs, loc, val) {
-			if(++i == loc_num) {
-				return loc;
-			}
-		}
+
+		ret = &locs[pos_begin + loc_num - 1];
 	}
-	return NULL;
+
+	pos_begin = pos_end;
+	return ret;
 }
 
 // Work around a bug in Windows 7 and later by sending
@@ -191,6 +190,22 @@ json_t *sort_json(json_t *in)
 	return out;
 }
 
+games_js_entry *games_js_to_array(json_t *games_js)
+{
+	games_js_entry *games_array = new games_js_entry[json_object_size(games_js) + 1];
+	const char *key;
+	json_t *value;
+	size_t i = 0;
+	json_object_foreach(games_js, key, value) {
+		games_array[i].id = key;
+		games_array[i].path = json_string_value(value);
+		i++;
+	}
+	games_array[i].id = nullptr;
+	games_array[i].path = nullptr;
+	return games_array;
+}
+
 json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
@@ -272,7 +287,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	CoInitialize(NULL);
 	do {
 		wchar_t search_path_w[MAX_PATH] = {0};
-		json_t *found = NULL;
+		game_search_result *found = nullptr;
 
 		PIDLIST_ABSOLUTE pidl = SelectFolder(con_hwnd(), initial_path, L"Root path for game search (cancel to search entire system):");
 		if (pidl && SHGetPathFromIDListW(pidl, search_path_w)) {
@@ -288,17 +303,17 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			search_path[0] ? search_path.c_str(): ""
 		);
 		console_print_percent(-1);
-		found = SearchForGames(search_path_w, games);
-		
-		if(json_object_size(found)) {
-			found = sort_json(found);
-			char *games_js_str = NULL;
-			const char *id;
-			json_t *locs;
 
-			json_object_foreach(found, id, locs) {
-				const char *loc = ChooseLocation(id, locs);
-				json_object_set_new(games, id, json_string(loc));
+		games_js_entry *games_array = games_js_to_array(games);
+		found = SearchForGames(search_path_w, games_array);
+		delete[] games_array;
+		
+		if(found && found[0].id) {
+			char *games_js_str = NULL;
+
+			for (size_t i = 0; found[i].id; ) {
+				const game_search_result *loc = ChooseLocation(found, i);
+				json_object_set_new(games, loc->id, json_string(loc->path));
 				printf("\n");
 			}
 
@@ -314,7 +329,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 				games = json_decref_safe(games);
 			}
 			SAFE_FREE(games_js_str);
-		} else if(json_object_size(games)) {
+		} else if(json_object_size(games) > 0) {
 			log_printf("No new game locations found.\n");
 		} else {
 			log_printf("No game locations found.\n");
@@ -330,7 +345,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 				pause();
 			}
 		}
-		json_decref(found);
+		SearchForGames_free(found);
 	} while(repeat);
 	CoUninitialize();
 	CoTaskMemFree(initial_path);

@@ -9,43 +9,41 @@
 
 #include <thcrap.h>
 #include <filesystem>
+#include <set>
+#include <algorithm>
 namespace fs = std::filesystem;
 
 typedef struct alignas(16) {
 	size_t size_min;
 	size_t size_max;
 	json_t *versions;
-	json_t *found;
-	json_t *result;
+	std::vector<game_search_result> found;
+	std::set<std::string> previously_known_games;
 	CRITICAL_SECTION cs_result;
 } search_state_t;
 
-static search_state_t state;
+struct search_thread_param
+{
+	search_state_t *state;
+	const wchar_t *dir;
+};
 
-static int SearchCheckExe(const fs::directory_entry &ent)
+static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 {
 	int ret = 0;
-	json_t *ver = identify_by_size((size_t)ent.file_size(), state.versions);
+	game_version *ver = identify_by_size((size_t)ent.file_size(), state.versions);
 	if(ver) {
-		const char *key;
-		json_t *game_val;
-
-		const std::wstring &exe_fn = ent.path().native();
-		size_t exe_fn_a_len = exe_fn.length()*UTF8_MUL + 1;
-		VLA(char, exe_fn_a, exe_fn_a_len);
-		StringToUTF8(exe_fn_a, exe_fn.c_str(), exe_fn_a_len);
-		str_slash_normalize(exe_fn_a);
-
+		std::string exe_fn = ent.path().generic_u8string();
 		size_t file_size = (size_t)ent.file_size();
-		ver = identify_by_hash(exe_fn_a, &file_size, state.versions);
+		identify_free(ver);
+		ver = identify_by_hash(exe_fn.c_str(), &file_size, state.versions);
 		if(!ver) {
 			return ret;
 		}
 
-		key = json_array_get_string(ver, 0);
-
 		// Check if user already selected a version of this game in a previous search
-		if(json_object_get(state.result, key)) {
+		if(state.previously_known_games.count(ver->id) > 0) {
+			identify_free(ver);
 			return ret;
 		}
 
@@ -53,54 +51,62 @@ static int SearchCheckExe(const fs::directory_entry &ent)
 		// Check if it has a vpatch
 		auto vpatch_fn = ent.path().parent_path() / L"vpatch.exe";
 		bool use_vpatch = false;
-		if (strstr(key, "_custom") == nullptr && fs::is_regular_file(vpatch_fn)) {
+		if (strstr(ver->id, "_custom") == nullptr && fs::is_regular_file(vpatch_fn)) {
 			use_vpatch = true;
 		}
 
-		// Add the game into the result object
-		game_val = json_object_get_create(state.found, key, JSON_OBJECT);
-
 		EnterCriticalSection(&state.cs_result);
 		{
-			const char *build = json_array_get_string(ver, 1);
-			const char *variety = json_array_get_string(ver, 2);
+			std::string description;
+			if (ver->build || ver->variety) {
+				if (ver->build)                 description += ver->build;
+				if (ver->build && ver->variety) description += " ";
+				if (ver->variety)               description += ver->variety;
+			}
 
-			json_t *id_str = json_pack("s++",
-				build ? build : "",
-				build && variety ? " " : "",
-				variety ? variety : ""
-			);
+			game_search_result result = std::move(*ver);
+			result.path = strdup(exe_fn.c_str());
+			result.description = strdup(description.c_str());
+			identify_free(ver);
 
-			json_object_set_new(game_val, exe_fn_a, id_str);
+			state.found.push_back(result);
 
 			if (use_vpatch) {
-				json_object_set_new(
-					game_val,
-					vpatch_fn.generic_u8string().c_str(),
-					json_string("using vpatch")
-				);
+				std::string vpatch_path = vpatch_fn.generic_u8string();
+				if (std::none_of(state.found.begin(), state.found.end(), [vpatch_path](const game_search_result& it) {
+					return vpatch_path == it.path;
+					})) {
+					game_search_result result_vpatch = result.copy();
+					free(result_vpatch.path);
+					free(result_vpatch.description);
+					result_vpatch.path = strdup(vpatch_path.c_str());
+					result_vpatch.description = strdup("using vpatch");
+					state.found.push_back(result_vpatch);
+				}
 			}
 		}
 		LeaveCriticalSection(&state.cs_result);
-		VLA_FREE(exe_fn_a);
 		ret = 1;
 	}
 	return ret;
 }
 
 
-static DWORD WINAPI SearchThread(void *param)
+static DWORD WINAPI SearchThread(void *param_)
 {
-	const wchar_t *dir = (const wchar_t *)param;
+	search_thread_param *param = (search_thread_param*)param_;
+	const wchar_t *dir = param->dir;
+	search_state_t *state = param->state;
+	delete param;
 	try {
 		for (auto &ent : fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied)) {
 			try {
 				if (ent.is_regular_file()
 					&& PathMatchSpecW(ent.path().c_str(), L"*.exe")
-					&& ent.file_size() >= state.size_min
-					&& ent.file_size() <= state.size_max)
+					&& ent.file_size() >= state->size_min
+					&& ent.file_size() <= state->size_max)
 				{
-					SearchCheckExe(ent);
+					SearchCheckExe(*state, ent);
 				}
 			}
 			catch (fs::filesystem_error &) {}
@@ -110,19 +116,62 @@ static DWORD WINAPI SearchThread(void *param)
 	return 0;
 }
 
-static HANDLE LaunchSearchThread(const wchar_t *dir)
+static HANDLE LaunchSearchThread(search_state_t& state, const wchar_t *dir)
 {
+	search_thread_param *param = new search_thread_param{&state, dir};
 	DWORD thread_id;
-	return CreateThread(NULL, 0, SearchThread, (void*)dir, 0, &thread_id);
+	return CreateThread(NULL, 0, SearchThread, param, 0, &thread_id);
 }
 
-json_t* SearchForGames(const wchar_t *dir, json_t *games_in)
+// Used in std::sort. Return true if a < b.
+bool compare_search_results(const game_search_result& a, const game_search_result& b)
 {
-	const char *versions_js_fn = "versions.js";
-	json_t *sizes;
+	int cmp = strcmp(a.id, b.id);
+	if (cmp < 0)
+		return true;
+	if (cmp > 0)
+		return false;
 
-	const char *key;
-	json_t *val;
+	if (a.build && b.build) {
+		// We want the higher version first
+		cmp = strcmp(a.build, b.build);
+		if (cmp > 0)
+			return true;
+		if (cmp < 0)
+			return false;
+	}
+
+	if (a.description && b.description) {
+		bool a_not_recommended = strstr(a.description, "(not recommended)");
+		bool b_not_recommended = strstr(b.description, "(not recommended)");
+		if (!a_not_recommended && b_not_recommended)
+			return true;
+		if (a_not_recommended && !b_not_recommended)
+			return false;
+
+		bool a_is_vpatch = strstr(a.description, "using vpatch");
+		bool b_is_vpatch = strstr(b.description, "using vpatch");
+		if (a_is_vpatch && !b_is_vpatch)
+			return true;
+		if (!a_is_vpatch && b_is_vpatch)
+			return false;
+
+		bool a_is_original = strstr(a.description, "original");
+		bool b_is_original = strstr(b.description, "original");
+		if (a_is_original && !b_is_original)
+			return true;
+		if (!a_is_original && b_is_original)
+			return false;
+	}
+
+	// a == b
+	return false;
+}
+
+game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *games_in)
+{
+	search_state_t state;
+	const char *versions_js_fn = "versions.js";
 
 	state.versions = stack_json_resolve(versions_js_fn, NULL);
 	if(!state.versions) {
@@ -133,16 +182,14 @@ json_t* SearchForGames(const wchar_t *dir, json_t *games_in)
 		);
 		return NULL;
 	}
-	sizes = json_object_get(state.versions, "sizes");
-	// Error...
-
-	state.size_min = -1;
-	state.size_max = 0;
-	state.found = json_object();
-	state.result = games_in ? games_in : json_object();
-	InitializeCriticalSection(&state.cs_result);
 
 	// Get file size limits
+	json_t *sizes = json_object_get(state.versions, "sizes");
+	// Error...
+	state.size_min = -1;
+	state.size_max = 0;
+	const char *key;
+	json_t *val;
 	json_object_foreach(sizes, key, val) {
 		size_t cur_size = atoi(key);
 
@@ -152,12 +199,18 @@ json_t* SearchForGames(const wchar_t *dir, json_t *games_in)
 			state.size_max = cur_size;
 	}
 
+	for (int i = 0; games_in && games_in[i].id; i++) {
+		state.previously_known_games.insert(games_in[i].id);
+	}
+
+	InitializeCriticalSection(&state.cs_result);
+
 	constexpr size_t max_threads = 32;
 	HANDLE threads[max_threads];
 	DWORD count = 0;
 
 	if(dir && dir[0]) {
-		if ((threads[count] = LaunchSearchThread(dir)) != NULL)
+		if ((threads[count] = LaunchSearchThread(state, dir)) != NULL)
 			count++;
 	} else {
 		wchar_t drive_strings[512];
@@ -171,7 +224,7 @@ json_t* SearchForGames(const wchar_t *dir, json_t *games_in)
 				(p[0] != L'A') &&
 				(p[0] != L'a')
 			) {
-				if ((threads[count] = LaunchSearchThread(p)) != NULL)
+				if ((threads[count] = LaunchSearchThread(state, p)) != NULL)
 					count++;
 			}
 			p += wcslen(p) + 1;
@@ -183,5 +236,26 @@ json_t* SearchForGames(const wchar_t *dir, json_t *games_in)
 
 	DeleteCriticalSection(&state.cs_result);
 	json_decref(state.versions);
-	return state.found;
+
+	std::sort(state.found.begin(), state.found.end(), compare_search_results);
+	game_search_result *ret = (game_search_result*)malloc((state.found.size() + 1) * sizeof(game_search_result));
+	size_t i;
+	for (i = 0; i < state.found.size(); i++) {
+		ret[i] = state.found[i];
+	}
+	memset(&ret[i], 0, sizeof(game_search_result));
+	return ret;
+}
+
+void SearchForGames_free(game_search_result *games)
+{
+	if (!games)
+		return;
+	for (size_t i = 0; games[i].id; i++) {
+		free(games[i].path);
+		free(games[i].id);
+		free(games[i].build);
+		free(games[i].description);
+	}
+	free(games);
 }

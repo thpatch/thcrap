@@ -9,8 +9,25 @@
 
 #pragma once
 
-json_t* identify_by_hash(const char *fn, size_t *exe_size, json_t *versions);
-json_t* identify_by_size(size_t exe_size, json_t *versions);
+typedef struct game_version
+{
+	char *id;
+	char *build;
+	char *variety;
+	unsigned int codepage;
+
+#ifdef __cplusplus
+	game_version(json_t *json)
+		: id(     strdup(json_array_get_string(json, 0))),
+		  build(  strdup(json_array_get_string(json, 1))),
+		  variety(strdup(json_array_get_string(json, 2))),
+		  codepage(json_array_get_hex(json, 3))
+	{}
+#endif
+} game_version;
+
+TH_CALLER_CLEANUP(identify_free) game_version* identify_by_hash(const char *fn, size_t *exe_size, json_t *versions);
+TH_CALLER_CLEANUP(identify_free) game_version* identify_by_size(size_t exe_size, json_t *versions);
 
 // Identifies the game, version and variety of [fn] by looking up its hash
 // and file size in versions.js.
@@ -18,6 +35,9 @@ json_t* identify_by_size(size_t exe_size, json_t *versions);
 // Returns a fully merged run configuration on successful identification,
 // NULL on failure or user cancellation.
 json_t* identify(const char *fn);
+
+// Free the result of an identify function
+void identify_free(game_version *ver);
 
 // Applies the detour cache to the module at [hProc].
 void thcrap_detour(HMODULE hProc);
