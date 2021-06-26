@@ -179,6 +179,9 @@ repo_t **RepoLoad(void)
 	while (repo_t* repo = RepoLocalNext(&hFind)) {
 		repo_vector.push_back(repo);
 	}
+	if (repo_vector.empty()) {
+		return nullptr;
+	}
 	std::sort(repo_vector.begin(), repo_vector.end(), [](repo_t *a, repo_t *b) {
 		return strcmp(a->id, b->id) < 0;
 	});
@@ -186,7 +189,7 @@ repo_t **RepoLoad(void)
 	size_t repo_count = repo_vector.size();
 	repo_t **repo_array = (repo_t**)malloc(sizeof(repo_t*) * (repo_count + 1));
 	repo_array[repo_count] = nullptr;
-	memcpy(repo_array, &repo_vector[0], sizeof(repo_t*) * repo_count);
+	memcpy(repo_array, repo_vector.data(), sizeof(repo_t*) * repo_count);
 
 	return repo_array;
 }
