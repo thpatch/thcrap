@@ -1,4 +1,4 @@
-<UserControl x:Class="thcrap_configure_simple.View2"
+<UserControl x:Class="thcrap_configure_simple.DownloadPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -6,7 +6,9 @@
              xmlns:local="clr-namespace:thcrap_configure_simple"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <Grid>
-        <TextBlock FontSize="15" TextAlignment="Center" VerticalAlignment="Center">Please wait...</TextBlock>
-    </Grid>
+    <StackPanel>
+        <TextBlock Text="Please wait..." />
+        <TextBlock Name="Status" />
+        <ProgressBar Name="Progress" Height="17px" IsIndeterminate="True" />
+    </StackPanel>
 </UserControl>

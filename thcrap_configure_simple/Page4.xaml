@@ -1,0 +1,34 @@
+<UserControl x:Class="thcrap_configure_simple.Page4"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:thcrap_configure_simple"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <DockPanel>
+        <TextBlock x:Name="AddGamesNotice" DockPanel.Dock="Top" Margin="0,0,0,7">Now, it's time to add games</TextBlock>
+        <Grid DockPanel.Dock="Bottom">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="auto" />
+                <ColumnDefinition Width="auto" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Button Grid.Column="0" Click="SearchDirectory" Margin="0,0,7,0">Add a game directory</Button>
+            <Button Grid.Column="1" Click="SearchEverywhere" Margin="0,0,7,0">Find every game on your computer (slow)</Button>
+            <ProgressBar Grid.Column="2" x:Name="ProgressBar" IsIndeterminate="True" Visibility="Hidden" />
+        </Grid>
+        <ScrollViewer>
+            <ItemsControl x:Name="GamesControl">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
+                            <TextBlock VerticalAlignment="Center" Text="{Binding Text}" />
+                            <Button Margin="7,0,0,0" Click="RemoveGame">❌</Button>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>
