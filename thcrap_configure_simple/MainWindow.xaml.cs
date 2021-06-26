@@ -26,6 +26,8 @@ namespace thcrap_configure_simple
         public MainWindow()
         {
             InitializeComponent();
+
+            Environment.CurrentDirectory = AppContext.BaseDirectory + "\\..";
         }
 
         Task<List<Repo>> repoDiscovery;

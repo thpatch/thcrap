@@ -60,7 +60,7 @@ namespace thcrap_configure_simple
     }
     public class ThcrapDll
     {
-        public const string THCRAP_DLL_PATH = @"..\..\..\bin\bin\";
+        public const string THCRAP_DLL_PATH = @".\";
 #if DEBUG
         public const string DLL = THCRAP_DLL_PATH + "thcrap_d.dll";
 #else
