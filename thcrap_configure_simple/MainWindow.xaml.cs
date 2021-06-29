@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -113,6 +114,12 @@ namespace thcrap_configure_simple
 
             Page5.CanSelectNextPage = true;
             wizard.CurrentPage = LastPage;
+        }
+
+        private void RunThcrapConfigure(object sender, MouseButtonEventArgs e)
+        {
+            Process.Start("thcrap_configure.exe");
+            this.Close();
         }
     }
 }

@@ -13,8 +13,15 @@
                  CanHelp="False"
                  HelpButtonVisibility="Hidden">
         <xctk:WizardPage x:Name="IntroPage"
-                         Title="Welcome to thcrap"
-                         Description="Clic next to install a patch." />
+                         Title="Welcome to thcrap">
+            <TextBlock>
+                This is a simpler version of thcrap_configure, with less features but easier to use.<LineBreak />
+                If you want to use the full-featured one, click
+                <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="RunThcrapConfigure">here</TextBlock>.<LineBreak />
+                <LineBreak />
+                Click Next to continue.
+            </TextBlock>
+        </xctk:WizardPage>
         <xctk:WizardPage x:Name="Page1" PageType="Interior"
                          Title="Initializing things"
                          CanSelectNextPage="False" CanSelectPreviousPage="False"
