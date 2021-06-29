@@ -2,6 +2,8 @@ using Microsoft.WindowsAPICodePack.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -12,10 +14,12 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using Xceed.Wpf.Toolkit;
 
 namespace thcrap_configure_simple
@@ -25,14 +29,89 @@ namespace thcrap_configure_simple
     /// </summary>
     public partial class Page4 : UserControl
     {
-        class Game
+        class ThXX_js
         {
+            public string title { get; set; }
+        }
+        class Game : INotifyPropertyChanged
+        {
+            private Page4 parentWindow;
             public ThcrapDll.games_js_entry game;
-            public string Text { get => game.id + ": " + game.path; }
-            public Game(ThcrapDll.games_js_entry game)
+
+            public Game(Page4 parentWindow, ThcrapDll.games_js_entry game)
             {
                 this.game = game;
+                this.parentWindow = parentWindow;
+                this.NewVisibility = Visibility.Hidden;
             }
+
+            private string name_ = null;
+            public string Name
+            {
+                get
+                {
+                    if (name_ == null)
+                    {
+                        var stringdefs = parentWindow.GetStringdef();
+                        if (stringdefs != null)
+                        {
+                            string value;
+                            if (stringdefs.TryGetValue(game.id, out value))
+                                name_ = value;
+                            else if (game.id.EndsWith("_custom") && stringdefs.TryGetValue(game.id.Remove(game.id.Length - "_custom".Length), out value))
+                                name_ = value + " (configuration)";
+                        }
+                    }
+
+                    if (name_ == null)
+                    {
+                        var runconfig = ThcrapHelper.stack_json_resolve<ThXX_js>(game.id + ".js");
+                        if (runconfig != null)
+                            name_ = runconfig.title;
+                    }
+
+                    if (name_ == null)
+                        name_ = game.id;
+
+                    return name_;
+                }
+            }
+
+            public ImageSource GameIcon { get; private set; }
+            public async Task LoadGameIcon() => await Task.Run(() =>
+            {
+                string path = game.path;
+                if (path.EndsWith("/vpatch.exe"))
+                {
+                    // Try to find the game, in order to have a nice icon
+                    string gamePath = path.Replace("/vpatch.exe", "/" + game.id + ".exe");
+                    if (File.Exists(gamePath))
+                        path = gamePath;
+                }
+
+                var icon = Icon.ExtractAssociatedIcon(path);
+                if (icon != null)
+                    parentWindow.Dispatcher.Invoke(() => GameIcon = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()));
+            });
+
+            public string Path { get => game.path; }
+
+            public Visibility NewVisibility { get; private set; }
+            public void SetNew(bool isNew)
+            {
+                Visibility newVisibility;
+                if (isNew)
+                    newVisibility = Visibility.Visible;
+                else
+                    newVisibility = Visibility.Hidden;
+                if (newVisibility != NewVisibility)
+                {
+                    NewVisibility = newVisibility;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NewVisibility)));
+                }
+            }
+
+            public event PropertyChangedEventHandler PropertyChanged;
         }
 
         WizardPage wizardPage;
@@ -57,19 +136,28 @@ namespace thcrap_configure_simple
             }
         }
 
-        ObservableCollection<Game> LoadGamesJs()
+        Dictionary<string, string> stringdef_ = null;
+        Dictionary<string, string> GetStringdef()
+        {
+            if (stringdef_ == null)
+                stringdef_ = ThcrapHelper.stack_json_resolve<Dictionary<string, string>>("stringdefs.js");
+            return stringdef_;
+        }
+
+        async Task<ObservableCollection<Game>> LoadGamesJs()
         {
             try
             {
                 var games = new ObservableCollection<Game>();
-                var games_js = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText("config/games.js"));
+                var games_js = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(File.OpenRead("config/games.js"));
                 foreach (var it in games_js)
                 {
-                    var entry = new Game(new ThcrapDll.games_js_entry
+                    var entry = new Game(this, new ThcrapDll.games_js_entry
                     {
                         id = it.Key,
                         path = it.Value
                     });
+                    await entry.LoadGameIcon();
                     games.Add(entry);
                 }
                 return games;
@@ -89,10 +177,10 @@ namespace thcrap_configure_simple
             File.WriteAllText("config/games.js", json);
         }
 
-        public void Enter(WizardPage wizardPage)
+        public async Task Enter(WizardPage wizardPage)
         {
             this.wizardPage = wizardPage;
-            this.games = LoadGamesJs();
+            this.games = await LoadGamesJs();
 
             GamesControl.ItemsSource = games;
             Refresh();
@@ -106,6 +194,10 @@ namespace thcrap_configure_simple
 
         private async void Search(string root)
         {
+            bool gamesListWasEmpty = this.games.Count == 0;
+            foreach (var it in this.games)
+                it.SetNew(false);
+
             ThcrapDll.games_js_entry[] games = new ThcrapDll.games_js_entry[this.games.Count + 1];
             int i = 0;
             foreach (var it in this.games)
@@ -132,14 +224,21 @@ namespace thcrap_configure_simple
                     continue;
                 last = it.id;
 
-                this.games.Add(new Game(new ThcrapDll.games_js_entry()
+                var game = new Game(this, new ThcrapDll.games_js_entry()
                 {
                     id = it.id,
                     path = ThcrapHelper.PtrToStringUTF8(it.path),
-                }));
+                });
+                await game.LoadGameIcon();
+                if (!gamesListWasEmpty)
+                    game.SetNew(true);
+                this.games.Add(game);
             }
 
             ThcrapDll.SearchForGames_free(foundPtr);
+
+            if (!gamesListWasEmpty)
+                GamesScroll.ScrollToBottom();
             Refresh();
         }
 

@@ -37,8 +37,7 @@
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="Page4" PageType="Interior"
                          PreviousPage="{Binding ElementName=Page2}"
-                         Title="Find games"
-                         Enter="Page4_Enter">
+                         Title="Find games">
             <local:Page4 x:Name="Page4Content" />
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="Page5" PageType="Interior"

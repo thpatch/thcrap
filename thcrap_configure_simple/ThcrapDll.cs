@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace thcrap_configure_simple
@@ -56,6 +57,26 @@ namespace thcrap_configure_simple
         {
             Marshal.DestroyStructure<T>(ptr);
             Marshal.FreeHGlobal(ptr);
+        }
+        public static T stack_json_resolve<T>(string fn)
+        {
+            IntPtr janssonObj = ThcrapDll.stack_json_resolve(fn, IntPtr.Zero);
+            if (janssonObj == IntPtr.Zero)
+                return default;
+
+            uint bufferSize = ThcrapJanssonDll.json_dumpb(janssonObj, IntPtr.Zero, 0, 0);
+            IntPtr bufferPtr = Marshal.AllocHGlobal((int)bufferSize);
+            ThcrapJanssonDll.json_dumpb(janssonObj, bufferPtr, bufferSize, 0);
+            ThcrapJanssonDll.json_delete(janssonObj);
+
+            byte[] bufferArray = new byte[bufferSize];
+            Marshal.Copy(bufferPtr, bufferArray, 0, (int)bufferSize);
+            Marshal.FreeHGlobal(bufferPtr);
+
+            string jsonStr = Encoding.UTF8.GetString(bufferArray);
+            T obj = JsonSerializer.Deserialize<T>(jsonStr, new JsonSerializerOptions() { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip });
+
+            return obj;
         }
     }
     public class ThcrapDll
@@ -161,6 +182,9 @@ namespace thcrap_configure_simple
         public static extern void stack_free();
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void stack_foreach(stack_foreach_cb callback, IntPtr userdata);
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern IntPtr /* json_t* */ stack_json_resolve(string fn, IntPtr /* size_t * */ file_size);
+
 
         // search
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
@@ -231,5 +255,19 @@ namespace thcrap_configure_simple
         public static extern int update_filter_global(string fn, IntPtr unused);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern int update_filter_games(string fn, IntPtr games);
+    }
+
+    class ThcrapJanssonDll
+    {
+#if DEBUG
+        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson_d.dll";
+#else
+        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson.dll";
+#endif
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern uint json_dumpb(IntPtr /* json_t * */ json, IntPtr /* char* */ buffer, uint size, uint flags);
+        // Not part of the public jansson API, but json_decref is defined as an inline function
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void json_delete(IntPtr /* json_t * */ json);
     }
 }

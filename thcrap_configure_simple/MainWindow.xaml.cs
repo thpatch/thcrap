@@ -82,11 +82,12 @@ namespace thcrap_configure_simple
                 Page3Content.DownloadCoreFiles();
             });
 
+            // Page4 can take a bit of time to load, so we load it before displaying it
+            await Page4Content.Enter(Page4);
+
             Page3.CanSelectNextPage = true;
             wizard.CurrentPage = Page4;
         }
-
-        private void Page4_Enter(object sender, RoutedEventArgs e) => Page4Content.Enter(Page4);
 
         private async void Page5_Enter(object sender, RoutedEventArgs e)
         {

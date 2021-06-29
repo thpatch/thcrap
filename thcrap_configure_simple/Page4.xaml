@@ -8,7 +8,7 @@
              d:DesignHeight="450" d:DesignWidth="800">
     <DockPanel>
         <TextBlock x:Name="AddGamesNotice" DockPanel.Dock="Top" Margin="0,0,0,7">Now, it's time to add games</TextBlock>
-        <Grid DockPanel.Dock="Bottom">
+        <Grid DockPanel.Dock="Bottom" Margin="0,7,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
@@ -18,13 +18,22 @@
             <Button Grid.Column="1" Click="SearchEverywhere" Margin="0,0,7,0">Find every game on your computer (slow)</Button>
             <ProgressBar Grid.Column="2" x:Name="ProgressBar" IsIndeterminate="True" Visibility="Hidden" />
         </Grid>
-        <ScrollViewer>
+        <ScrollViewer x:Name="GamesScroll">
             <ItemsControl x:Name="GamesControl">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,7">
-                            <TextBlock VerticalAlignment="Center" Text="{Binding Text}" />
-                            <Button Margin="7,0,0,0" Click="RemoveGame">❌</Button>
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Margin="7,0,0,0" Click="RemoveGame" VerticalAlignment="Center" Foreground="#FFC80000">❌</Button>
+                                <Image Margin="7,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
+                                <StackPanel Margin="7,0,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding Name}" />
+                                        <TextBlock Margin="7,0,0,0" FontSize="9" Foreground="Blue" Visibility="{Binding NewVisibility}">New!</TextBlock>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Path}" />
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
