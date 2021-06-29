@@ -50,6 +50,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_tasofro", "thcrap_ta
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_configure_wrapper", "thcrap_wrapper\thcrap_configure_wrapper.vcxproj", "{6E41ED18-B3C4-4AF0-9888-80606B5444DE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_configure_simple_wrapper", "thcrap_wrapper\thcrap_configure_simple_wrapper.vcxproj", "{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_loader_wrapper", "thcrap_wrapper\thcrap_loader_wrapper.vcxproj", "{98C00188-ADF9-4C1B-B325-BE4E52411AF9}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "win32_utf8", "libs\win32_utf8.vcxproj", "{A185D5A7-3E03-4C87-9774-65C014631F5B}"
@@ -118,6 +120,10 @@ Global
 		{6E41ED18-B3C4-4AF0-9888-80606B5444DE}.Debug|Win32.Build.0 = Debug|Win32
 		{6E41ED18-B3C4-4AF0-9888-80606B5444DE}.Release|Win32.ActiveCfg = Release|Win32
 		{6E41ED18-B3C4-4AF0-9888-80606B5444DE}.Release|Win32.Build.0 = Release|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Debug|Win32.Build.0 = Debug|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Release|Win32.ActiveCfg = Release|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Release|Win32.Build.0 = Release|Win32
 		{98C00188-ADF9-4C1B-B325-BE4E52411AF9}.Debug|Win32.ActiveCfg = Debug|Win32
 		{98C00188-ADF9-4C1B-B325-BE4E52411AF9}.Debug|Win32.Build.0 = Debug|Win32
 		{98C00188-ADF9-4C1B-B325-BE4E52411AF9}.Release|Win32.ActiveCfg = Release|Win32
