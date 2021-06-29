@@ -47,6 +47,10 @@ char **strings_array_create_and_fill(size_t nb_elems, ...)
 
 void strings_array_free(char **strings_array)
 {
+    if (!strings_array) {
+        return;
+    }
+
     for (size_t i = 0; strings_array[i]; i++) {
         free(strings_array[i]);
     }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -13,7 +14,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 using Xceed.Wpf.Toolkit;
 
 namespace thcrap_configure_simple
@@ -89,12 +89,27 @@ namespace thcrap_configure_simple
             wizard.CurrentPage = Page4;
         }
 
+        private void CreateShortcuts(List<ThcrapDll.games_js_entry> games)
+        {
+            ThcrapDll.games_js_entry[] gamesArray = new ThcrapDll.games_js_entry[games.Count + 1];
+            int i = 0;
+            foreach (var it in games)
+            {
+                gamesArray[i] = it;
+                i++;
+            }
+            gamesArray[i] = new ThcrapDll.games_js_entry();
+
+            ThcrapDll.CreateShortcuts(this.configName, gamesArray);
+        }
+
         private async void Page5_Enter(object sender, RoutedEventArgs e)
         {
             Page5.CanSelectNextPage = false;
 
             var games = Page4Content.Leave();
             await Task.Run(() => Page5Content.DownloadGameFiles(games));
+            CreateShortcuts(games);
 
             Page5.CanSelectNextPage = true;
             wizard.CurrentPage = LastPage;

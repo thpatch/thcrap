@@ -17,4 +17,4 @@ HRESULT CreateLink(
 );
 
 // Create shortcuts for the given games
-int CreateShortcuts(const char *run_cfg_fn, json_t *games);
+int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games);

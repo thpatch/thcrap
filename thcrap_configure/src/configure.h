@@ -125,3 +125,4 @@ inline std::wstring wstringf(const wchar_t *format, ...)
 }
 
 json_t* ConfigureLocateGames(const char *games_js_path);
+games_js_entry *games_js_to_array(json_t *games_js);

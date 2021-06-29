@@ -47,7 +47,7 @@
             <local:DownloadPage x:Name="Page5Content" />
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="LastPage"
-                         Title="Setup finished"
+                         Title="Configuration finished"
                          Description="To run the games, run the shortcuts from the thcrap directory.&#10;You can move them to your desktop if you want to."
                          CanFinish="True"
                          CanCancel="False"

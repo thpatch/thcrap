@@ -67,7 +67,7 @@ HRESULT CreateLink(
 	return hres;
 }
 
-int CreateShortcuts(const char *run_cfg_fn, json_t *games)
+int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games)
 {
 	constexpr stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
 	int ret = 0;
@@ -82,8 +82,6 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 	// Yay, COM.
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	{
-		const char *key = NULL;
-		json_t *cur_game = NULL;
 		VLA(char, self_path, self_fn_len + loader_exe.length());
 		strcpy(self_path, self_fn);
 
@@ -92,14 +90,13 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 
 		log_printf("Creating shortcuts");
 
-		json_object_foreach(games, key, cur_game) {
-			const char *game_fn = json_string_value(cur_game);
-			const char *link_fn = strings_sprintf(LINK_FN, "%s%s (%s).lnk", self_path, key, run_cfg_fn);
-			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
+		for (size_t i = 0; games[i].id; i++) {
+			const char *link_fn = strings_sprintf(LINK_FN, "%s%s (%s).lnk", self_path, games[i].id, run_cfg_fn);
+			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, games[i].id);
 
 			log_printf(".");
 
-			if (CreateLink(link_fn, self_fn, link_args, self_path, game_fn)) {
+			if (CreateLink(link_fn, self_fn, link_args, self_path, games[i].path)) {
 				log_printf(
 					"\n"
 					"Error writing to %s!\n"

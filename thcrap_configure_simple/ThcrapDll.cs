@@ -192,6 +192,11 @@ namespace thcrap_configure_simple
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void SearchForGames_free(IntPtr /* game_search_result* */ games);
 
+
+        // Shelllink
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int CreateShortcuts(string run_cfg_fn, games_js_entry[] games);
+
     }
     class ThcrapUpdateDll
     {
