@@ -192,6 +192,25 @@ namespace thcrap_configure_simple
             Refresh();
         }
 
+        private void SetSearching(bool state)
+        {
+            if (state)
+            {
+                wizardPage.CanSelectPreviousPage = false;
+                wizardPage.CanSelectNextPage = false;
+                ProgressBar.Visibility = Visibility.Visible;
+                SearchButton1.IsEnabled = false;
+                SearchButton2.IsEnabled = false;
+            }
+            else
+            {
+                wizardPage.CanSelectPreviousPage = true;
+                wizardPage.CanSelectNextPage = true;
+                ProgressBar.Visibility = Visibility.Hidden;
+                SearchButton1.IsEnabled = true;
+                SearchButton2.IsEnabled = true;
+            }
+        }
         private async void Search(string root)
         {
             bool gamesListWasEmpty = this.games.Count == 0;
@@ -207,13 +226,9 @@ namespace thcrap_configure_simple
             }
             games[i] = new ThcrapDll.games_js_entry();
 
-            wizardPage.CanSelectPreviousPage = false;
-            wizardPage.CanSelectNextPage = false;
-            ProgressBar.Visibility = Visibility.Visible;
+            SetSearching(true);
             IntPtr foundPtr = await Task.Run(() => ThcrapDll.SearchForGames(root, games));
-            wizardPage.CanSelectPreviousPage = true;
-            wizardPage.CanSelectNextPage = true;
-            ProgressBar.Visibility = Visibility.Hidden;
+            SetSearching(false);
 
             var found = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr);
 
