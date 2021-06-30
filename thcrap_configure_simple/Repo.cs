@@ -19,7 +19,7 @@ namespace thcrap_configure_simple
         {
             this.Repo = repo;
             this.Id = patch.patch_id;
-            this.Title = patch.title;
+            this.Title = ThcrapHelper.PtrToStringUTF8(patch.title);
         }
         private void LoadDependencies(List<Repo> repoList, HashSet<RepoPatch> knownPatches, IntPtr dependenciesPtr)
         {

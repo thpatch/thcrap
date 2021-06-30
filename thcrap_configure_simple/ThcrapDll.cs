@@ -92,7 +92,7 @@ namespace thcrap_configure_simple
         public struct repo_patch_t
         {
             public string patch_id;
-            public string title;
+            public IntPtr title;
         }
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct repo_t
