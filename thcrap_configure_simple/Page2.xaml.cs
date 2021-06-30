@@ -58,7 +58,7 @@ namespace thcrap_configure_simple
                     }
                 }
             }
-            if (lang_en != null)
+            if (isoCountryCode != "en" && lang_en != null)
                 patches.Add(lang_en);
             if (patches.Count > 0)
                 patches[0].IsChecked = true;
