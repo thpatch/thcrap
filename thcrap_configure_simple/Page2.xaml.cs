@@ -66,6 +66,8 @@ namespace thcrap_configure_simple
             UserLanguagePatches.ItemsSource = patches;
             allLanguages.Sort((RepoPatch a, RepoPatch b) => a.Title.CompareTo(b.Title));
             AllLanguages.ItemsSource = allLanguages;
+            if (allLanguages.Count > 0)
+                AllLanguages.SelectedIndex = 0;
         }
         private string GetIsoCountryCode()
         {
