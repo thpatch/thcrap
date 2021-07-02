@@ -80,7 +80,7 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games)
 	PathAddBackslashU(self_fn);
 
 	// Yay, COM.
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	HRESULT com_init_succeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	{
 		VLA(char, self_path, self_fn_len + loader_exe.length());
 		strcpy(self_path, self_fn);
@@ -111,6 +111,8 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games)
 		VLA_FREE(self_path);
 	}
 	VLA_FREE(self_fn);
-	CoUninitialize();
+	if (com_init_succeded == S_OK) {
+		CoUninitialize();
+	}
 	return ret;
 }
