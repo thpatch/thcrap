@@ -20,88 +20,79 @@ namespace thcrap_configure_simple
     /// </summary>
     public partial class Page2 : UserControl
     {
-        class RadioPatch
+        enum Mode
         {
-            public RadioPatch(RepoPatch patch)
-            {
-                this.patch = patch;
-                this.IsChecked = false;
-            }
-            public RepoPatch patch { get; set; }
-            public bool IsChecked { get; set; }
-        };
-        private List<RadioPatch> patches;
+            Simple,
+            Advanced
+        }
+
+        Mode mode = Mode.Simple;
 
         public Page2()
         {
             InitializeComponent();
         }
+
         public void SetRepoList(List<Repo> repoList)
         {
-            string isoCountryCode = GetIsoCountryCode();
-            patches = new List<RadioPatch>();
-            RadioPatch lang_en = null;
-            var allLanguages = new List<RepoPatch>();
+            Simple.SetRepoList(repoList);
+            Advanced.SetRepoList(repoList);
+        }
 
-            foreach (var repo in repoList)
+        string GetStackName(List<RepoPatch> patches)
+        {
+            string ret = "";
+
+            foreach (var it in patches)
             {
-                if (repo.Id == "thpatch")
-                {
-                    foreach (var patch in repo.Patches)
-                    {
-                        if (patch.Id.StartsWith("lang_" + isoCountryCode))
-                            patches.Add(new RadioPatch(patch));
-                        if (patch.Id.StartsWith("lang_"))
-                            allLanguages.Add(patch);
-                        if (patch.Id == "lang_en")
-                            lang_en = new RadioPatch(patch);
-                    }
-                }
+                if (ret != "")
+                    ret += "-";
+
+                string id = it.Id;
+                if (id.StartsWith("lang_"))
+                    id = id.Substring("lang_".Length);
+
+                ret += id;
             }
-            if (isoCountryCode != "en" && lang_en != null)
-                patches.Add(lang_en);
-            if (patches.Count > 0)
-                patches[0].IsChecked = true;
 
-            UserLanguagePatches.ItemsSource = patches;
-            allLanguages.Sort((RepoPatch a, RepoPatch b) => a.Title.CompareTo(b.Title));
-            AllLanguages.ItemsSource = allLanguages;
-            if (allLanguages.Count > 0)
-                AllLanguages.SelectedIndex = 0;
-        }
-        private string GetIsoCountryCode()
-        {
-            return System.Globalization.CultureInfo.CurrentCulture.TwoLetterISOLanguageName;
+            return ret;
         }
 
-        /*private void Language_Checked(object sender, RoutedEventArgs e)
+        public (List<RepoPatch>, string) GetSelectedRepoPatch()
         {
-            RadioButton rb = sender as RadioButton;
-            if (rb.IsChecked == true)
-                selectedPatch = rb.DataContext as RepoPatch;
+            List<RepoPatch> patches;
+            if (mode == Mode.Simple)
+                patches = Simple.GetSelectedRepoPatch();
+            else
+                patches = Advanced.GetSelectedRepoPatch();
+
+            return (patches, GetStackName(patches));
         }
 
-        private void AllLanguages_Checked(object sender, RoutedEventArgs e)
+        private void GoToAdvanced()
         {
-            RadioButton rb = sender as RadioButton;
-            if (rb.IsChecked == true)
-                selectedPatch = AllLanguages.SelectedItem as RepoPatch;
-
-        }*/
-
-        private void AllLanguages_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            //selectedPatch = AllLanguages.SelectedItem as RepoPatch;
-            AllLanguagesRadio.IsChecked = true;
+            Simple.Visibility = Visibility.Collapsed;
+            SimpleText.Visibility = Visibility.Collapsed;
+            Advanced.Visibility = Visibility.Visible;
+            AdvancedText.Visibility = Visibility.Visible;
+            mode = Mode.Advanced;
         }
 
-        public RepoPatch GetSelectedRepoPatch()
+        private void GoToSimple()
         {
-            //return selectedPatch;
-            var patch = patches.Find((RadioPatch it) => it.IsChecked);
-            if (patch != null)
-                return patch.patch;
-            return AllLanguages.SelectedItem as RepoPatch;
+            Advanced.Visibility = Visibility.Collapsed;
+            AdvancedText.Visibility = Visibility.Collapsed;
+            Simple.Visibility = Visibility.Visible;
+            SimpleText.Visibility = Visibility.Visible;
+            mode = Mode.Simple;
+        }
+
+        private void ChangeMode(object sender, MouseButtonEventArgs e)
+        {
+            if (mode == Mode.Simple)
+                GoToAdvanced();
+            else
+                GoToSimple();
         }
     }
 }

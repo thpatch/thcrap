@@ -55,12 +55,12 @@ namespace thcrap_configure_simple
             wizard.CurrentPage = Page2;
         }
 
-        private void PrepareStack(RepoPatch patch)
+        private void PrepareStack(List<RepoPatch> patches)
         {
             ThcrapDll.stack_free();
-            patch.AddToStack(repoList, new HashSet<RepoPatch>());
-
-            this.configName = patch.Id.Substring("lang_".Length);
+            var knownPatches = new HashSet<RepoPatch>();
+            foreach (var patch in patches)
+                patch.AddToStack(repoList, knownPatches);
 
             var runconfig = new Runconfig();
             ThcrapDll.stack_foreach((IntPtr it, IntPtr userdata) =>
@@ -76,10 +76,11 @@ namespace thcrap_configure_simple
         {
             Page3.CanSelectNextPage = false;
 
-            RepoPatch patch = Page2Content.GetSelectedRepoPatch();
+            (List<RepoPatch> patches, string configName) = Page2Content.GetSelectedRepoPatch();
+            this.configName = configName;
             await Task.Run(() =>
             {
-                PrepareStack(patch);
+                PrepareStack(patches);
                 Page3Content.DownloadCoreFiles();
             });
 
