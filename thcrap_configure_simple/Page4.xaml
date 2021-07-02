@@ -14,18 +14,24 @@
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" x:Name="SearchButton1" Click="SearchDirectory" Margin="0,0,7,0">Add a game directory</Button>
-            <Button Grid.Column="1" x:Name="SearchButton2" Click="SearchEverywhere" Margin="0,0,7,0">Find every game on your computer (slow)</Button>
+            <Button Grid.Column="0" x:Name="SearchButton1" Click="SearchDirectory" Margin="0,0,7,0">
+                <TextBlock Margin="2,1">Add a game directory</TextBlock>
+            </Button>
+            <Button Grid.Column="1" x:Name="SearchButton2" Click="SearchEverywhere" Margin="0,0,7,0">
+                <TextBlock Margin="2,1">Find every game on your computer (slow)</TextBlock>
+            </Button>
             <ProgressBar Grid.Column="2" x:Name="ProgressBar" IsIndeterminate="True" Visibility="Hidden" />
         </Grid>
         <ScrollViewer x:Name="GamesScroll">
-            <ItemsControl x:Name="GamesControl">
+            <ItemsControl x:Name="GamesControl" Margin="0,0,10,1">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <Button Margin="7,0,0,0" Click="RemoveGame" VerticalAlignment="Center" Foreground="#FFC80000">❌</Button>
-                                <Image Margin="7,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
+                        <Border BorderThickness="0.5" Background="#FFF" BorderBrush="#000" Margin="0,7,0,0">
+                            <DockPanel Margin="2,2,2,2">
+                                <Image DockPanel.Dock="Left" Margin="7,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
+                                <Button DockPanel.Dock="Right" Margin="0,0,7,0" Click="RemoveGame" VerticalAlignment="Center">
+                                    <TextBlock Margin="10,1">Remove</TextBlock>
+                                </Button>
                                 <StackPanel Margin="7,0,0,0">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding Name}" />
@@ -33,8 +39,8 @@
                                     </StackPanel>
                                     <TextBlock Text="{Binding Path}" />
                                 </StackPanel>
-                            </StackPanel>
-                        </StackPanel>
+                            </DockPanel>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
