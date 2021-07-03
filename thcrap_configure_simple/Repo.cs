@@ -21,6 +21,28 @@ namespace thcrap_configure_simple
             this.Id = patch.patch_id;
             this.Title = ThcrapHelper.PtrToStringUTF8(patch.title);
         }
+        private RepoPatch FindDependency(List<Repo> repoList, ThcrapDll.patch_desc_t dep)
+        {
+            // If we know the repo name, use it
+            if (dep.repo_id != null)
+                return repoList.Find((Repo it) => it.Id == dep.repo_id)?.Patches.Find((RepoPatch it) => it.Id == dep.patch_id);
+
+            // Try in the current repo
+            RepoPatch patch = this.Repo.Patches.Find((RepoPatch it) => it.Id == dep.patch_id);
+            if (patch != null)
+                return patch;
+
+            // Fall back to looking in every repo
+            foreach (var repo in repoList)
+            {
+                patch = repo.Patches.Find((RepoPatch it) => it.Id == dep.patch_id);
+                if (patch != null)
+                    return patch;
+            }
+
+            // Didn't find anything
+            return null;
+        }
         private void LoadDependencies(List<Repo> repoList, HashSet<RepoPatch> knownPatches, IntPtr dependenciesPtr)
         {
             if (dependenciesPtr == IntPtr.Zero)
@@ -29,17 +51,9 @@ namespace thcrap_configure_simple
             var deps = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.patch_desc_t>(dependenciesPtr, 4);
             foreach (var dep in deps)
             {
-                string repo_id = dep.repo_id;
-                if (repo_id == null)
-                    repo_id = this.Repo.Id;
-
-                Repo repo = repoList.Find((Repo it) => it.Id == repo_id);
-                if (repo == null)
-                    continue;
-                RepoPatch patch = repo.Patches.Find((RepoPatch it) => it.Id == dep.patch_id);
-                if (patch == null)
-                    continue;
-                patch.AddToStack(repoList, knownPatches);
+                RepoPatch patch = FindDependency(repoList, dep);
+                if (patch != null)
+                    patch.AddToStack(repoList, knownPatches);
             }
         }
         public void AddToStack(List<Repo> repoList, HashSet<RepoPatch> knownPatches)
