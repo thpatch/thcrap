@@ -15,7 +15,7 @@
                 <ColumnDefinition />
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" x:Name="SearchButton1" Click="SearchDirectory" Margin="0,0,7,0">
-                <TextBlock Margin="2,1">Add a game directory</TextBlock>
+                <TextBlock Margin="2,1">Find games in a specific folder...</TextBlock>
             </Button>
             <Button Grid.Column="1" x:Name="SearchButton2" Click="SearchEverywhere" Margin="0,0,7,0">
                 <TextBlock Margin="2,1">Find every game on your computer (slow)</TextBlock>
