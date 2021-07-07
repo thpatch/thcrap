@@ -39,7 +39,12 @@ namespace thcrap_configure_simple
         {
             ThcrapDll.log_init(0);
 
-            repoDiscovery = new Task<List<Repo>>(() => Repo.Discovery("https://srv.thpatch.net/"));
+            var startUrl = "https://srv.thpatch.net/";
+            var cmdline = Environment.GetCommandLineArgs();
+            if (cmdline.Length > 1)
+                startUrl = cmdline[1];
+
+            repoDiscovery = new Task<List<Repo>>(() => Repo.Discovery(startUrl));
             repoDiscovery.Start();
         }
 
