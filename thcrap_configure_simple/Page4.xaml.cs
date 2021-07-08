@@ -155,10 +155,12 @@ namespace thcrap_configure_simple
             try
             {
                 var games = new ObservableCollection<Game>();
+                var games_js_file = File.OpenRead("config/games.js");
                 var games_js = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(
-                    File.OpenRead("config/games.js"),
+                    games_js_file,
                     new JsonSerializerOptions() { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip }
                     );
+                games_js_file.Dispose();
                 foreach (var it in games_js)
                 {
                     var entry = new Game(this, new ThcrapDll.games_js_entry
@@ -184,7 +186,11 @@ namespace thcrap_configure_simple
                 dict[it.game.id] = it.game.path;
 
             var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText("config/games.js", json);
+            try {
+                File.WriteAllText("config/games.js", json);
+            } catch(System.IO.IOException e) {
+                System.Windows.MessageBox.Show(String.Format("Failed to write games.js ({0})", e.Message), "Error");
+            }
         }
 
         public async Task Enter(WizardPage wizardPage)
