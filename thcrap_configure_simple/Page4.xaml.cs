@@ -38,11 +38,13 @@ namespace thcrap_configure_simple
             private Page4 parentWindow;
             public ThcrapDll.games_js_entry game;
 
-            public Game(Page4 parentWindow, ThcrapDll.games_js_entry game)
+            public Game(Page4 parentWindow, ThcrapDll.games_js_entry game, bool wasAlreadyPresent)
             {
                 this.game = game;
                 this.parentWindow = parentWindow;
                 this.NewVisibility = Visibility.Hidden;
+                this.IsSelected = true;
+                this.WasAlreadyPresent = wasAlreadyPresent;
             }
 
             private string name_ = null;
@@ -111,6 +113,10 @@ namespace thcrap_configure_simple
                 }
             }
 
+            public bool IsSelected { get; set; }
+            // True if this game was already present in games.js, false otherwise
+            public bool WasAlreadyPresent { get; private set; }
+
             public event PropertyChangedEventHandler PropertyChanged;
         }
 
@@ -149,14 +155,18 @@ namespace thcrap_configure_simple
             try
             {
                 var games = new ObservableCollection<Game>();
-                var games_js = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(File.OpenRead("config/games.js"));
+                var games_js = await JsonSerializer.DeserializeAsync<Dictionary<string, string>>(
+                    File.OpenRead("config/games.js"),
+                    new JsonSerializerOptions() { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip }
+                    );
                 foreach (var it in games_js)
                 {
                     var entry = new Game(this, new ThcrapDll.games_js_entry
                     {
                         id = it.Key,
                         path = it.Value
-                    });
+                    },
+                    true);
                     await entry.LoadGameIcon();
                     games.Add(entry);
                 }
@@ -167,7 +177,7 @@ namespace thcrap_configure_simple
                 return new ObservableCollection<Game>();
             }
         }
-        void SaveGamesJs(ObservableCollection<Game> games)
+        void SaveGamesJs(IEnumerable<Game> games)
         {
             var dict = new SortedDictionary<string, string>();
             foreach (var it in games)
@@ -243,7 +253,8 @@ namespace thcrap_configure_simple
                 {
                     id = it.id,
                     path = ThcrapHelper.PtrToStringUTF8(it.path),
-                });
+                },
+                false);
                 await game.LoadGameIcon();
                 if (!gamesListWasEmpty)
                     game.SetNew(true);
@@ -276,8 +287,8 @@ namespace thcrap_configure_simple
 
         public List<ThcrapDll.games_js_entry> Leave()
         {
-            SaveGamesJs(this.games);
-            return this.games.ToList().ConvertAll((Game game) => game.game);
+            SaveGamesJs(this.games.Where((Game game) => game.IsSelected || game.WasAlreadyPresent));
+            return this.games.Where((Game game) => game.IsSelected).ToList().ConvertAll((Game game) => game.game);
         }
     }
 }

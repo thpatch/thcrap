@@ -27,19 +27,18 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Border BorderThickness="0.5" Background="#FFF" BorderBrush="#000" Margin="0,7,0,0">
-                            <DockPanel Margin="2,2,2,2">
-                                <Image DockPanel.Dock="Left" Margin="7,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
-                                <Button DockPanel.Dock="Right" Margin="0,0,7,0" Click="RemoveGame" VerticalAlignment="Center">
-                                    <TextBlock Margin="10,1">Remove</TextBlock>
-                                </Button>
-                                <StackPanel Margin="7,0,0,0">
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding Name}" />
-                                        <TextBlock Margin="7,0,0,0" FontSize="9" Foreground="Blue" Visibility="{Binding NewVisibility}">New!</TextBlock>
+                            <CheckBox VerticalContentAlignment="Center" Margin="9,2,2,2" IsChecked="{Binding IsSelected}">
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Margin="5,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
+                                    <StackPanel Margin="7,0,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding Name}" />
+                                            <TextBlock Margin="7,0,0,0" FontSize="9" Foreground="Blue" Visibility="{Binding NewVisibility}">New!</TextBlock>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Path}" />
                                     </StackPanel>
-                                    <TextBlock Text="{Binding Path}" />
                                 </StackPanel>
-                            </DockPanel>
+                            </CheckBox>
                         </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
