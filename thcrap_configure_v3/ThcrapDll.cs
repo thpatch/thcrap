@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace thcrap_configure_simple
+namespace thcrap_configure_v3
 {
     class ThcrapHelper
     {

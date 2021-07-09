@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace thcrap_configure_simple.Properties
+namespace thcrap_configure_v3.Properties
 {
 
 

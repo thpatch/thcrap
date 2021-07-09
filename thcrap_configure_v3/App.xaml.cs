@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 
-namespace thcrap_configure_simple
+namespace thcrap_configure_v3
 {
     /// <summary>
     /// Logique d'interaction pour App.xaml

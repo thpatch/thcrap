@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace thcrap_configure_simple
+namespace thcrap_configure_v3
 {
     public class RepoPatch
     {

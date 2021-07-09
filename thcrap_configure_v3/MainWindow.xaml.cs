@@ -17,7 +17,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using Xceed.Wpf.Toolkit;
 
-namespace thcrap_configure_simple
+namespace thcrap_configure_v3
 {
     /// <summary>
     /// Logique d'interaction pour MainWindow.xaml

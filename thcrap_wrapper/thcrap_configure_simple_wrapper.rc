@@ -1,7 +1,0 @@
-1 ICON "..\\gfx\\abstractcactus\\icon_01.ico"
-
-STRINGTABLE
-BEGIN
-	1 L"[self]"
-	2 L"thcrap_configure_simple" DEBUG_OR_RELEASE_W L".exe"
-END

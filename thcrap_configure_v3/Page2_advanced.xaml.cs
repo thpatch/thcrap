@@ -15,7 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace thcrap_configure_simple
+namespace thcrap_configure_v3
 {
     /// <summary>
     /// Interaction logic for Page2_advanced.xaml
@@ -24,9 +24,9 @@ namespace thcrap_configure_simple
     {
         public class RepoPatch : INotifyPropertyChanged
         {
-            public thcrap_configure_simple.RepoPatch SourcePatch { get; set; }
+            public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
             private bool isSelected = false;
-            public RepoPatch(thcrap_configure_simple.RepoPatch patch)
+            public RepoPatch(thcrap_configure_v3.RepoPatch patch)
             {
                 SourcePatch = patch;
             }
@@ -50,13 +50,13 @@ namespace thcrap_configure_simple
 
         public class Repo
         {
-            public thcrap_configure_simple.Repo SourceRepo { get; private set; }
+            public thcrap_configure_v3.Repo SourceRepo { get; private set; }
             public List<RepoPatch> Patches { get; private set; }
 
-            public Repo(thcrap_configure_simple.Repo repo)
+            public Repo(thcrap_configure_v3.Repo repo)
             {
                 SourceRepo = repo;
-                Patches = repo.Patches.ConvertAll((thcrap_configure_simple.RepoPatch patch) => new RepoPatch(patch));
+                Patches = repo.Patches.ConvertAll((thcrap_configure_v3.RepoPatch patch) => new RepoPatch(patch));
             }
         }
 
@@ -67,13 +67,13 @@ namespace thcrap_configure_simple
             InitializeComponent();
         }
 
-        public void SetRepoList(List<thcrap_configure_simple.Repo> repoList)
+        public void SetRepoList(List<thcrap_configure_v3.Repo> repoList)
         {
-            AvailablePatches.ItemsSource = repoList.ConvertAll((thcrap_configure_simple.Repo repo) => new Repo(repo));
+            AvailablePatches.ItemsSource = repoList.ConvertAll((thcrap_configure_v3.Repo repo) => new Repo(repo));
             SelectedPatches.ItemsSource = selectedPatches;
         }
 
-        public List<thcrap_configure_simple.RepoPatch> GetSelectedRepoPatch() => selectedPatches.ToList().ConvertAll((RepoPatch patch) => patch.SourcePatch);
+        public List<thcrap_configure_v3.RepoPatch> GetSelectedRepoPatch() => selectedPatches.ToList().ConvertAll((RepoPatch patch) => patch.SourcePatch);
 
         private void AvailablePatchDoubleClick(object sender, MouseButtonEventArgs e)
         {

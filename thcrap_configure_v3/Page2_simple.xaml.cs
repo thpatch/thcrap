@@ -13,7 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace thcrap_configure_simple
+namespace thcrap_configure_v3
 {
     /// <summary>
     /// Interaction logic for Page2.xaml

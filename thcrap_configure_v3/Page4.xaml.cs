@@ -22,7 +22,7 @@ using System.Windows.Shapes;
 using System.Windows.Threading;
 using Xceed.Wpf.Toolkit;
 
-namespace thcrap_configure_simple
+namespace thcrap_configure_v3
 {
     /// <summary>
     /// Interaction logic for Page4.xaml

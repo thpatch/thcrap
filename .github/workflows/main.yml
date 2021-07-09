@@ -26,7 +26,7 @@ jobs:
 #        vcpkgDirectory: '${{ github.workspace }}/vcpkg'
 #        appendedCacheKey: ${{ hashFiles(env.vcpkgResponseFile) }}
     - name: Download C# dependencies
-      run: dotnet restore thcrap_configure_simple/thcrap_configure_simple.csproj
+      run: dotnet restore thcrap_configure_v3/thcrap_configure_v3.csproj
     - name: Build thcrap
       run: msbuild thcrap.sln /property:Configuration=Release
 #      run: |
