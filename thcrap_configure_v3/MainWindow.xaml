@@ -15,8 +15,8 @@
         <xctk:WizardPage x:Name="IntroPage"
                          Title="Welcome to thcrap">
             <TextBlock>
-                This is a simpler version of thcrap_configure, with less features but easier to use.<LineBreak />
-                If you want to use the full-featured one, click
+                This tool will let you patch your games with thcrap.<LineBreak />
+                If you prefer to use the old version of this tool, click
                 <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="RunThcrapConfigure">here</TextBlock>.<LineBreak />
                 <LineBreak />
                 Click Next to continue.
@@ -48,10 +48,15 @@
             <local:Page4 x:Name="Page4Content" />
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="Page5" PageType="Interior"
+                         Title="Create shortcuts"
+                         Enter="Page5_Enter" Leave="Page5_Leave">
+            <local:Page5 x:Name="Page5Content" />
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page6" PageType="Interior"
                          Title="Downloading game data"
                          CanSelectNextPage="False" CanSelectPreviousPage="False"
-                         Enter="Page5_Enter">
-            <local:DownloadPage x:Name="Page5Content" />
+                         Enter="Page6_Enter">
+            <local:DownloadPage x:Name="Page6Content" />
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="LastPage"
                          Title="Configuration finished"

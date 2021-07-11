@@ -145,6 +145,14 @@ namespace thcrap_configure_v3
             public string description;
         }
 
+        public enum ShortcutsDestination
+        {
+            SHDESTINATION_THCRAP_DIR = 1,
+            SHDESTINATION_DESKTOP = 2,
+            SHDESTINATION_START_MENU = 3,
+            SHDESTINATION_GAMES_DIRECTORY = 4,
+        }
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void log_print_cb(string text);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -195,7 +203,7 @@ namespace thcrap_configure_v3
 
         // Shelllink
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int CreateShortcuts(string run_cfg_fn, games_js_entry[] games);
+        public static extern int CreateShortcuts(string run_cfg_fn, games_js_entry[] games, ShortcutsDestination destination);
 
     }
     class ThcrapUpdateDll

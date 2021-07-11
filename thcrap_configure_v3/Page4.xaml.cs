@@ -291,10 +291,17 @@ namespace thcrap_configure_v3
             Search(null);
         }
 
-        public List<ThcrapDll.games_js_entry> Leave()
+        private IEnumerable<ThcrapDll.games_js_entry> outGames;
+
+        public void Leave()
         {
             SaveGamesJs(this.games.Where((Game game) => game.IsSelected || game.WasAlreadyPresent));
-            return this.games.Where((Game game) => game.IsSelected).ToList().ConvertAll((Game game) => game.game);
+            outGames = this.games.Where((Game game) => game.IsSelected).Select((Game game) => game.game);
+        }
+
+        public IEnumerable<ThcrapDll.games_js_entry> GetGames()
+        {
+            return outGames;
         }
     }
 }

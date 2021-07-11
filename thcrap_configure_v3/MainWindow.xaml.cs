@@ -96,29 +96,25 @@ namespace thcrap_configure_v3
             wizard.CurrentPage = Page4;
         }
 
-        private void CreateShortcuts(List<ThcrapDll.games_js_entry> games)
+        private void Page5_Enter(object sender, RoutedEventArgs e)
         {
-            ThcrapDll.games_js_entry[] gamesArray = new ThcrapDll.games_js_entry[games.Count + 1];
-            int i = 0;
-            foreach (var it in games)
-            {
-                gamesArray[i] = it;
-                i++;
-            }
-            gamesArray[i] = new ThcrapDll.games_js_entry();
-
-            ThcrapDll.CreateShortcuts(this.configName, gamesArray);
+            Page4Content.Leave();
+            Page5Content.Enter();
         }
 
-        private async void Page5_Enter(object sender, RoutedEventArgs e)
+        private void Page5_Leave(object sender, RoutedEventArgs e)
         {
-            Page5.CanSelectNextPage = false;
+            Page5Content.Leave(this.configName, Page4Content.GetGames());
+        }
 
-            var games = Page4Content.Leave();
-            await Task.Run(() => Page5Content.DownloadGameFiles(games));
-            CreateShortcuts(games);
+        private async void Page6_Enter(object sender, RoutedEventArgs e)
+        {
+            Page6.CanSelectNextPage = false;
 
-            Page5.CanSelectNextPage = true;
+            var games = Page4Content.GetGames();
+            await Task.Run(() => Page6Content.DownloadGameFiles(games));
+
+            Page6.CanSelectNextPage = true;
             wizard.CurrentPage = LastPage;
         }
 

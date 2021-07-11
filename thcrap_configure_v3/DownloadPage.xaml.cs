@@ -98,10 +98,10 @@ namespace thcrap_configure_v3
             }
         }
         // Called from another thread. Can block, must use a dispatcher to change the UI.
-        public void DownloadGameFiles(List<ThcrapDll.games_js_entry> games)
+        public void DownloadGameFiles(IEnumerable<ThcrapDll.games_js_entry> games)
         {
             ResetProgress();
-            var gamesArray = games.ConvertAll((ThcrapDll.games_js_entry game) => StringToIntPtr(game.id));
+            var gamesArray = games.Select((ThcrapDll.games_js_entry game) => StringToIntPtr(game.id)).ToList();
             gamesArray.Add(IntPtr.Zero);
             var gamesPtr = GamesArrayToIntPtr(gamesArray);
 

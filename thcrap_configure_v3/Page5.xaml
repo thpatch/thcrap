@@ -1,0 +1,20 @@
+<UserControl x:Class="thcrap_configure_v3.Page5"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:thcrap_configure_v3"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <StackPanel>
+        <TextBlock>Create shortcuts:</TextBlock>
+        <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxDesktop" IsChecked="True">On your desktop</CheckBox>
+        <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxStartMenu" IsChecked="True">In the Start menu</CheckBox>
+        <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxGamesFolder">In the games' folder</CheckBox>
+        <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxThcrapFolder">In the thcrap folder</CheckBox>
+        <StackPanel Margin="0,7,0,0" Orientation="Horizontal" x:Name="warningPanel" Visibility="Hidden">
+            <Image x:Name="warningImage" Margin="0,0,7,0" Height="14" />
+            <TextBlock>You need shortcuts to run the patched games! <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="NoShortcutsMoreDetails">More details...</TextBlock></TextBlock>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

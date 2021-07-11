@@ -13,6 +13,7 @@
 #include <objbase.h>
 #include <objidl.h>
 #include <shlguid.h>
+#include <filesystem>
 
 typedef enum {
 	LINK_FN = 3, // Slots 1 and 2 are used by thcrap_configure, that needs them for run_cfg_fn
@@ -67,7 +68,46 @@ HRESULT CreateLink(
 	return hres;
 }
 
-int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games)
+std::string get_link_dir(ShortcutsDestination destination, const char *self_path)
+{
+	switch (destination)
+	{
+	default:
+		// Default to thcrap dir
+		[[fallthrough]];
+
+	case SHDESTINATION_THCRAP_DIR:
+		return self_path;
+
+	case SHDESTINATION_DESKTOP: {
+		char szPath[MAX_PATH];
+		if (SHGetFolderPathU(NULL, CSIDL_DESKTOPDIRECTORY, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
+			return "";
+		}
+		return szPath;
+	}
+
+	case SHDESTINATION_START_MENU: {
+		char szPath[MAX_PATH];
+		if (SHGetFolderPathU(NULL, CSIDL_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
+			return "";
+		}
+
+		std::filesystem::path path = szPath;
+		path /= "thcrap";
+		if (!std::filesystem::is_directory(path)) {
+			std::filesystem::create_directory(path);
+		}
+		return path.generic_u8string();
+	}
+
+	case SHDESTINATION_GAMES_DIRECTORY:
+		// Will be overwritten later
+		return "";
+	}
+}
+
+int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination)
 {
 	constexpr stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
 	int ret = 0;
@@ -88,10 +128,15 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games)
 		strcat(self_fn, "bin\\");
 		strcat(self_fn, loader_exe.data());
 
+		std::string link_dir = get_link_dir(destination, self_path);
+
 		log_printf("Creating shortcuts");
 
 		for (size_t i = 0; games[i].id; i++) {
-			const char *link_fn = strings_sprintf(LINK_FN, "%s%s (%s).lnk", self_path, games[i].id, run_cfg_fn);
+			if (destination == SHDESTINATION_GAMES_DIRECTORY) {
+				link_dir = std::filesystem::path(games[i].path).remove_filename().generic_u8string();
+			}
+			const char *link_fn = strings_sprintf(LINK_FN, "%s\\%s (%s).lnk", link_dir.c_str(), games[i].id, run_cfg_fn);
 			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, games[i].id);
 
 			log_printf(".");
