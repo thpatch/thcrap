@@ -180,27 +180,10 @@ class RepatchWatcher {
 		const std::lock_guard<std::mutex> no_touchy_my_change_list(this->changed_files_mutex);
 
 		do {
-			AutoString filename_utf8((char*)malloc((p->FileNameLength * (UTF8_MUL / 2)) + 1));
-
-			mbstate_t utf8_state = {0};
-			char* work_str = filename_utf8.get();
-
-			// MSVC absolutely hates this loop,
-			// so it looks a little bit weird.
-			size_t conv_len = 0;
-			const char16_t* utf16_str = (char16_t*)p->FileName - 1;
-			while (1) {
-				work_str += conv_len;
-				conv_len = c16rtomb(work_str, *++utf16_str, &utf8_state);
-				if (!conv_len) continue;
-				if (conv_len == -1) goto NextChange; // Could not convert UTF16, skip to next loop
-				if (*work_str == '\0') break;
-				//if (*work_str == '\\') *work_str = '/';
+			AutoString filename_utf8((char*)malloc(p->FileNameLength * (UTF8_MUL / 2) + 1));
+			if (StringToUTF8(filename_utf8.get(), p->FileName, -1) != -1) {
+				this->changed_files.emplace_back(std::move(filename_utf8));
 			}
-
-			this->changed_files.emplace_back(std::move(filename_utf8));
-
-			NextChange:;
 		} while (p->NextEntryOffset ? (char*&)p += p->NextEntryOffset, true : false);
 	}
 
