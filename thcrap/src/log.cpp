@@ -12,6 +12,20 @@
 #include <fcntl.h>
 #include <ThreadPool.h>
 
+#include <powrprof.h>
+// See remarks of: https://docs.microsoft.com/en-us/windows/win32/power/processor-power-information-str
+typedef struct _PROCESSOR_POWER_INFORMATION {
+	ULONG Number;
+	ULONG MaxMhz;
+	ULONG CurrentMhz;
+	ULONG MhzLimit;
+	ULONG MaxIdleState;
+	ULONG CurrentIdleState;
+} PROCESSOR_POWER_INFORMATION, * PPROCESSOR_POWER_INFORMATION;
+
+
+
+
 // -------
 // Globals
 // -------
@@ -350,6 +364,29 @@ void log_init(int console)
 		log_printf("%s logfile\n", PROJECT_NAME);
 		log_printf("Branch: %s\n", PROJECT_BRANCH);
 		log_printf("Version: %s\n", PROJECT_VERSION_STRING);
+		{
+			const char* months[] = {
+				"Invalid",
+				"Jan",
+				"Feb",
+				"Mar",
+				"Apr",
+				"May",
+				"Jun",
+				"Jul",
+				"Aug",
+				"Sep",
+				"Oct",
+				"Nov",
+				"Dec"
+			};
+			SYSTEMTIME time;
+			GetSystemTime(&time);
+			if (time.wMonth > 12) time.wMonth = 0;
+			log_printf("Current time: %s %d %d %d:%d:%d\n",
+				months[time.wMonth], time.wDay, time.wYear,
+				time.wHour, time.wMinute, time.wSecond);
+		}
 		log_printf("Build time: "  __DATE__ " " __TIME__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
@@ -365,84 +402,90 @@ void log_init(int console)
 		log_printf("Command line: %s\n", GetCommandLineU());
 		log_print("\nSystem Information:\n");
 
-		char cpu_brand[0x40] = {};
-		__cpuidex((int*)cpu_brand, 0x80000002, 0);
-		__cpuidex((int*)cpu_brand + 16, 0x80000003, 0);
-		__cpuidex((int*)cpu_brand + 32, 0x80000004, 0);
-		log_printf("CPU: %s\n", cpu_brand);
-
-		MEMORYSTATUSEX ram_stats = { sizeof(MEMORYSTATUSEX) };
-		GlobalMemoryStatusEx(&ram_stats);
-
-		float ram_total = ram_stats.ullTotalPhys;
-		int div_count_total = 0;
-		for (;;) {
-			int temp = ram_total / 1024;
-			if (temp) {
-				ram_total = ram_total / 1024;
-				div_count_total++;
-			}
-			else {
-				break;
-			}
-		}
-
-		float ram_left = ram_stats.ullAvailPhys;
-		int div_count_left = 0;
-		for (;;) {
-			int temp = ram_left / 1024;
-			if (temp) {
-				ram_left = ram_left / 1024;
-				div_count_left++;
-			}
-			else {
-				break;
-			}
-		}
-
-		const char* size_units[] = {
-			"B",
-			"KiB",
-			"MiB",
-			"GiB",
-			"TiB",
-			"PiB"
-		};
-
-		log_printf("RAM: %.2f%s free out of %.1f%s, %d%% used\n",
-			ram_left, size_units[div_count_left],
-			ram_total, size_units[div_count_total],
-			ram_stats.dwMemoryLoad
-		);
-
-		log_print("Screens:\n");
-
-		DISPLAY_DEVICEA display_device = {};
-		display_device.cb = sizeof(display_device);
-		for (int i = 0;
-			EnumDisplayDevicesA(NULL, i, &display_device, EDD_GET_DEVICE_INTERFACE_NAME);
-			i++
-			)
 		{
-			if ((display_device.StateFlags | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP)) {
-				DEVMODEA d;
-				d.dmSize = sizeof(d);
-				DISPLAY_DEVICEA mon = {};
-				mon.cb = sizeof(mon);
-				if (!EnumDisplayDevicesA(display_device.DeviceName, 0, &mon, EDD_GET_DEVICE_INTERFACE_NAME)) {
-					continue;
+			char cpu_brand[48] = {};
+			__cpuidex((int*)cpu_brand, 0x80000002, 0);
+			__cpuidex((int*)cpu_brand + 4, 0x80000003, 0);
+			__cpuidex((int*)cpu_brand + 8, 0x80000004, 0);
+			log_printf("CPU: %s\n", cpu_brand);
+		}
+
+		{
+			MEMORYSTATUSEX ram_stats = { sizeof(MEMORYSTATUSEX) };
+			GlobalMemoryStatusEx(&ram_stats);
+
+			double ram_total = (double)ram_stats.ullTotalPhys;
+			int div_count_total = 0;
+			for (;;) {
+				int temp = (int)(ram_total / 1024.0f);
+				if (temp) {
+					ram_total = ram_total / 1024.0f;
+					div_count_total++;
 				}
+				else {
+					break;
+				}
+			}
 
-				log_printf("%s on %s: ", mon.DeviceString, display_device.DeviceString);
+			double ram_left = (double)ram_stats.ullAvailPhys;
+			int div_count_left = 0;
+			for (;;) {
+				int temp = (int)(ram_left / 1024.0f);
+				if (temp) {
+					ram_left = ram_left / 1024.0f;
+					div_count_left++;
+				}
+				else {
+					break;
+				}
+			}
 
-				EnumDisplaySettingsA(display_device.DeviceName, ENUM_CURRENT_SETTINGS, &d);
-				if ((d.dmFields & DM_PELSHEIGHT) && !(d.dmFields & DM_PAPERSIZE)) {
-					log_printf("%dx%d@%d %dHz\n", d.dmPelsWidth, d.dmPelsHeight, d.dmBitsPerPel, d.dmDisplayFrequency);
+			const char* size_units[] = {
+				"B",
+				"KiB",
+				"MiB",
+				"GiB",
+				"TiB",
+				"PiB"
+			};
+
+			log_printf("RAM: %.2f%s free out of %.1f%s, %d%% used\n",
+				ram_left, size_units[div_count_left],
+				ram_total, size_units[div_count_total],
+				ram_stats.dwMemoryLoad
+			);
+		}
+
+		log_printf("OS/Runtime: %s\n", windows_version());
+
+		log_print("\nScreens:\n");
+
+		{
+			DISPLAY_DEVICEA display_device = {};
+			display_device.cb = sizeof(display_device);
+			for (int i = 0;
+				EnumDisplayDevicesA(NULL, i, &display_device, EDD_GET_DEVICE_INTERFACE_NAME);
+				i++
+				)
+			{
+				if ((display_device.StateFlags | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP)) {
+					DEVMODEA d;
+					d.dmSize = sizeof(d);
+					DISPLAY_DEVICEA mon = {};
+					mon.cb = sizeof(mon);
+					if (!EnumDisplayDevicesA(display_device.DeviceName, 0, &mon, EDD_GET_DEVICE_INTERFACE_NAME)) {
+						continue;
+					}
+
+					log_printf("%s on %s: ", mon.DeviceString, display_device.DeviceString);
+
+					EnumDisplaySettingsA(display_device.DeviceName, ENUM_CURRENT_SETTINGS, &d);
+					if ((d.dmFields & DM_PELSHEIGHT) && !(d.dmFields & DM_PAPERSIZE)) {
+						log_printf("%dx%d@%d %dHz\n", d.dmPelsWidth, d.dmPelsHeight, d.dmBitsPerPel, d.dmDisplayFrequency);
+					}
 				}
 			}
 		}
-
-		log_printf("Windows version: %s\n", windows_version());
 
 		log_printf("%s\n\n", line);		
 		
