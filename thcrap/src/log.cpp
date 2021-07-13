@@ -10,12 +10,28 @@
 #include "thcrap.h"
 #include <io.h>
 #include <fcntl.h>
+#include <ThreadPool.h>
+
+#include <powrprof.h>
+// See remarks of: https://docs.microsoft.com/en-us/windows/win32/power/processor-power-information-str
+typedef struct _PROCESSOR_POWER_INFORMATION {
+	ULONG Number;
+	ULONG MaxMhz;
+	ULONG CurrentMhz;
+	ULONG MhzLimit;
+	ULONG MaxIdleState;
+	ULONG CurrentIdleState;
+} PROCESSOR_POWER_INFORMATION, * PPROCESSOR_POWER_INFORMATION;
+
+
+
 
 // -------
 // Globals
 // -------
-static FILE *log_file = NULL;
+static HANDLE log_file = INVALID_HANDLE_VALUE;
 static bool console_open = false;
+static ThreadPool *log_queue = NULL;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
@@ -92,39 +108,57 @@ void log_rotate(void)
 
 void log_print(const char *str)
 {
-	if(console_open) {
-		fprintf(stdout, "%s", str);
+	if (log_queue) {
+		log_queue->enqueue([str = strdup(str)]() {
+			DWORD byteRet;
+			if (console_open) {
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, strlen(str), &byteRet, NULL);
+			}
+			if (log_file) {
+				WriteFile(log_file, str, strlen(str), &byteRet, NULL);
+			}
+			if (log_print_hook) {
+				log_print_hook(str);
+			}
+			free(str);
+		});
 	}
-	if(log_file) {
-		fprintf(log_file, "%s", str);
-	}
-	if(log_print_hook) {
-		log_print_hook(str);
+}
+
+void log_print_fast(const char* str, size_t n) {
+	if (log_queue) {
+		log_queue->enqueue([str = strndup(str, n), n]() {
+			DWORD byteRet;
+			if (console_open) {
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
+			}
+			if (log_file != INVALID_HANDLE_VALUE) {
+				WriteFile(log_file, str, n, &byteRet, NULL);
+			}
+			if (log_print_hook) {
+				log_print_hook(str);
+			}
+			free(str);
+		});
 	}
 }
 
 void log_nprint(const char *str, size_t n)
 {
-	if(console_open) {
-		fprintf(stdout, "%.*s", n, str);
-	}
-	if(log_file) {
-		fprintf(log_file, "%.*s", n, str);
-	}
-	if (log_nprint_hook) {
-		log_nprint_hook(str, n);
-	}
-}
-
-void log_print_fast(const char* str, size_t n) {
-	if (console_open) {
-		fwrite(str, n, 1, stdout);
-	}
-	if (log_file) {
-		fwrite(str, n, 1, log_file);
-	}
-	if (log_print_hook) {
-		log_print_hook(str);
+	if (log_queue) {
+		log_queue->enqueue([str = strndup(str, n), n]() {
+			DWORD byteRet;
+			if (console_open) {
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
+			}
+			if (log_file != INVALID_HANDLE_VALUE) {
+				WriteFile(log_file, str, n, &byteRet, NULL);
+			}
+			if (log_nprint_hook) {
+				log_nprint_hook(str, n);
+			}
+			free(str);
+		});
 	}
 }
 
@@ -309,18 +343,11 @@ void log_init(int console)
 	log_rotate();
 
 	// Using CreateFile, _open_osfhandle and _fdopen instead of plain fopen because we need the flag FILE_SHARE_DELETE for log rotation
-	HANDLE log_handle = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-	if (log_handle != INVALID_HANDLE_VALUE) {
-		int fd = _open_osfhandle((intptr_t)log_handle, _O_TEXT);
-		log_file = _fdopen(fd, "wt");
-		setvbuf(log_file, NULL, _IONBF, 0);
-	}
+	log_file = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	log_queue = new ThreadPool(1);
 #ifdef _DEBUG
 	OpenConsole();
 #else
-	if(console) {
-		OpenConsole();
-	}
 	if(log_file) {
 
 		constexpr std::string_view DashUChar = u8"―";
@@ -333,26 +360,140 @@ void log_init(int console)
 			memcpy(&line[i], DashUChar.data(), DashUChar.length());
 		}
 
-		fprintf(log_file, "%s\n", line);
-		fprintf(log_file, "%s logfile\n", PROJECT_NAME);
-		fprintf(log_file, "Branch: %s\n", PROJECT_BRANCH);
-		fprintf(log_file, "Version: %s\n", PROJECT_VERSION_STRING);
-		fprintf(log_file, "Build time: "  __DATE__ " " __TIME__ "\n");
+		log_printf("%s\n", line);
+		log_printf("%s logfile\n", PROJECT_NAME);
+		log_printf("Branch: %s\n", PROJECT_BRANCH);
+		log_printf("Version: %s\n", PROJECT_VERSION_STRING);
+		{
+			const char* months[] = {
+				"Invalid",
+				"Jan",
+				"Feb",
+				"Mar",
+				"Apr",
+				"May",
+				"Jun",
+				"Jul",
+				"Aug",
+				"Sep",
+				"Oct",
+				"Nov",
+				"Dec"
+			};
+			SYSTEMTIME time;
+			GetSystemTime(&time);
+			if (time.wMonth > 12) time.wMonth = 0;
+			log_printf("Current time: %s %d %d %d:%d:%d\n",
+				months[time.wMonth], time.wDay, time.wYear,
+				time.wHour, time.wMinute, time.wSecond);
+		}
+		log_printf("Build time: "  __DATE__ " " __TIME__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
 			const wchar_t *builder = BUILDER_NAME_W;
 			UTF8_DEC(builder);
 			UTF8_CONV(builder);
-			fprintf(log_file, "Built by: %s\n", builder_utf8);
+			log_printf("Built by: %s\n", builder_utf8);
 			UTF8_FREE(builder);
 		}
 #elif defined(BUILDER_NAME)
-		fprintf(log_file, "Built by: %s\n", BUILDER_NAME);
+		log_printf("Built by: %s\n", BUILDER_NAME);
 #endif
-		fprintf(log_file, "Command line: %s\n", GetCommandLineU());
-		fprintf(log_file, "%s\n\n", line);
-		fflush(log_file);
+		log_printf("Command line: %s\n", GetCommandLineU());
+		log_print("\nSystem Information:\n");
+
+		{
+			char cpu_brand[48] = {};
+			__cpuidex((int*)cpu_brand, 0x80000002, 0);
+			__cpuidex((int*)cpu_brand + 4, 0x80000003, 0);
+			__cpuidex((int*)cpu_brand + 8, 0x80000004, 0);
+			log_printf("CPU: %s\n", cpu_brand);
+		}
+
+		{
+			MEMORYSTATUSEX ram_stats = { sizeof(MEMORYSTATUSEX) };
+			GlobalMemoryStatusEx(&ram_stats);
+
+			double ram_total = (double)ram_stats.ullTotalPhys;
+			int div_count_total = 0;
+			for (;;) {
+				int temp = (int)(ram_total / 1024.0f);
+				if (temp) {
+					ram_total = ram_total / 1024.0f;
+					div_count_total++;
+				}
+				else {
+					break;
+				}
+			}
+
+			double ram_left = (double)ram_stats.ullAvailPhys;
+			int div_count_left = 0;
+			for (;;) {
+				int temp = (int)(ram_left / 1024.0f);
+				if (temp) {
+					ram_left = ram_left / 1024.0f;
+					div_count_left++;
+				}
+				else {
+					break;
+				}
+			}
+
+			const char* size_units[] = {
+				"B",
+				"KiB",
+				"MiB",
+				"GiB",
+				"TiB",
+				"PiB"
+			};
+
+			log_printf("RAM: %.2f%s free out of %.1f%s, %d%% used\n",
+				ram_left, size_units[div_count_left],
+				ram_total, size_units[div_count_total],
+				ram_stats.dwMemoryLoad
+			);
+		}
+
+		log_printf("OS/Runtime: %s\n", windows_version());
+
+		log_print("\nScreens:\n");
+
+		{
+			DISPLAY_DEVICEA display_device = {};
+			display_device.cb = sizeof(display_device);
+			for (int i = 0;
+				EnumDisplayDevicesA(NULL, i, &display_device, EDD_GET_DEVICE_INTERFACE_NAME);
+				i++
+				)
+			{
+				if ((display_device.StateFlags | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP)) {
+					DEVMODEA d;
+					d.dmSize = sizeof(d);
+					DISPLAY_DEVICEA mon = {};
+					mon.cb = sizeof(mon);
+					if (!EnumDisplayDevicesA(display_device.DeviceName, 0, &mon, EDD_GET_DEVICE_INTERFACE_NAME)) {
+						continue;
+					}
+
+					log_printf("%s on %s: ", mon.DeviceString, display_device.DeviceString);
+
+					EnumDisplaySettingsA(display_device.DeviceName, ENUM_CURRENT_SETTINGS, &d);
+					if ((d.dmFields & DM_PELSHEIGHT) && !(d.dmFields & DM_PAPERSIZE)) {
+						log_printf("%dx%d@%d %dHz\n", d.dmPelsWidth, d.dmPelsHeight, d.dmBitsPerPel, d.dmDisplayFrequency);
+					}
+				}
+			}
+		}
+
+		log_printf("%s\n\n", line);		
+		
+		FlushFileBuffers(log_file);
 		VLA_FREE(line);
+	}
+	if (console) {
+		OpenConsole();
 	}
 #endif
 	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
@@ -368,7 +509,7 @@ void log_init(int console)
 	log_filemapping = CreateFileMappingU(
 		INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 1, full_fn
 	);
-	if(!log_file && GetLastError() != ERROR_ALREADY_EXISTS) {
+	if(log_file == INVALID_HANDLE_VALUE && GetLastError() != ERROR_ALREADY_EXISTS) {
 		auto ret = log_mboxf(nullptr, MB_OKCANCEL | MB_ICONHAND,
 			"Error creating %s: %s\n"
 			"\n"
@@ -390,12 +531,14 @@ void log_init(int console)
 
 void log_exit(void)
 {
-	if(console_open) {
+	// Run the destructor to ensure all remaining log messages were printed
+	delete log_queue;
+
+	if(console_open)
 		FreeConsole();
-	}
 	if(log_file) {
 		CloseHandle(log_filemapping);
-		fclose(log_file);
-		log_file = NULL;
+		CloseHandle(log_file);
+		log_file = INVALID_HANDLE_VALUE;
 	}
 }
