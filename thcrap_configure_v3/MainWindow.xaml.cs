@@ -53,8 +53,12 @@ namespace thcrap_configure_v3
         {
             Page1.CanSelectNextPage = false;
 
-            repoList = await repoDiscovery;
-            Page2Content.SetRepoList(repoList);
+            if (repoDiscovery != null)
+            {
+                repoList = await repoDiscovery;
+                Page2Content.SetRepoList(repoList);
+            }
+            repoDiscovery = null;
 
             Page1.CanSelectNextPage = true;
             wizard.CurrentPage = Page2;
