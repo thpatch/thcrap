@@ -83,10 +83,11 @@ namespace thcrap_configure_v3
     {
         public const string THCRAP_DLL_PATH = @".\";
 #if DEBUG
-        public const string DLL = THCRAP_DLL_PATH + "thcrap_d.dll";
+        public const string DEBUG_OR_RELEASE = "_d";
 #else
-        public const string DLL = THCRAP_DLL_PATH + "thcrap.dll";
+        public const string DEBUG_OR_RELEASE = "";
 #endif
+        public const string DLL = THCRAP_DLL_PATH + "thcrap" + DEBUG_OR_RELEASE + ".dll";
 
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct repo_patch_t
@@ -206,13 +207,10 @@ namespace thcrap_configure_v3
         public static extern int CreateShortcuts(string run_cfg_fn, games_js_entry[] games, ShortcutsDestination destination);
 
     }
+
     class ThcrapUpdateDll
     {
-#if DEBUG
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "thcrap_update_d.dll";
-#else
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "thcrap_update.dll";
-#endif
+        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "thcrap_update" + ThcrapDll.DEBUG_OR_RELEASE + ".dll";
         public enum get_status_t
         {
             GET_DOWNLOADING,
@@ -272,11 +270,7 @@ namespace thcrap_configure_v3
 
     class ThcrapJanssonDll
     {
-#if DEBUG
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson_d.dll";
-#else
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson.dll";
-#endif
+        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson" + ThcrapDll.DEBUG_OR_RELEASE + ".dll";
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern uint json_dumpb(IntPtr /* json_t * */ json, IntPtr /* char* */ buffer, uint size, uint flags);
         // Not part of the public jansson API, but json_decref is defined as an inline function

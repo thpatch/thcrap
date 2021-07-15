@@ -124,7 +124,7 @@ namespace thcrap_configure_v3
 
         private void RunThcrapConfigure(object sender, MouseButtonEventArgs e)
         {
-            Process.Start("thcrap_configure.exe");
+            Process.Start("bin\\thcrap_configure" + ThcrapDll.DEBUG_OR_RELEASE + ".exe");
             this.Close();
         }
     }
