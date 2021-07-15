@@ -10,6 +10,31 @@ namespace thcrap_configure_v3
 {
     class ThcrapHelper
     {
+        public class UTF8StringMarshaler : ICustomMarshaler
+        {
+            public object MarshalNativeToManaged(IntPtr pNativeData)
+            {
+                return ThcrapHelper.PtrToStringUTF8(pNativeData);
+            }
+
+            public void CleanUpManagedData(object ManagedObj)
+            { }
+
+            public IntPtr MarshalManagedToNative(object ManagedObj)
+            {
+                return StringUTF8ToPtr(ManagedObj as string);
+            }
+
+            public void CleanUpNativeData(IntPtr pNativeData)
+            {
+                Marshal.FreeHGlobal(pNativeData);
+            }
+
+            public int GetNativeDataSize() => -1;
+
+            public static ICustomMarshaler GetInstance(string pstrCookie) => new UTF8StringMarshaler();
+        }
+
         private static bool LoadElem<T>(IntPtr ptr, int nullOffset, out T elem)
         {
             // Read field
@@ -38,6 +63,9 @@ namespace thcrap_configure_v3
         }
         public static string PtrToStringUTF8(IntPtr str_in)
         {
+            if (str_in == IntPtr.Zero)
+                return null;
+
             int len = 0;
             while (Marshal.ReadByte(str_in, len) != 0)
                 len++;
@@ -46,6 +74,18 @@ namespace thcrap_configure_v3
             Marshal.Copy(str_in, buffer, 0, buffer.Length);
 
             return Encoding.UTF8.GetString(buffer);
+        }
+        public static IntPtr StringUTF8ToPtr(string str_in)
+        {
+            if (str_in == null)
+                return IntPtr.Zero;
+
+            byte[] bytes = Encoding.UTF8.GetBytes(str_in + '\0');
+
+            IntPtr ptr = Marshal.AllocHGlobal(bytes.Length);
+            Marshal.Copy(bytes, 0, ptr, bytes.Length);
+
+            return ptr;
         }
         public static IntPtr AllocStructure<T>(T inObj)
         {
@@ -83,15 +123,16 @@ namespace thcrap_configure_v3
     {
         public const string THCRAP_DLL_PATH = @".\";
 #if DEBUG
-        public const string DLL = THCRAP_DLL_PATH + "thcrap_d.dll";
+        public const string DEBUG_OR_RELEASE = "_d";
 #else
-        public const string DLL = THCRAP_DLL_PATH + "thcrap.dll";
+        public const string DEBUG_OR_RELEASE = "";
 #endif
+        public const string DLL = THCRAP_DLL_PATH + "thcrap" + DEBUG_OR_RELEASE + ".dll";
 
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct repo_patch_t
         {
-            public string patch_id;
+            public IntPtr patch_id;
             public IntPtr title;
         }
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
@@ -107,8 +148,8 @@ namespace thcrap_configure_v3
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct patch_desc_t
         {
-            public string repo_id;
-            public string patch_id;
+            public IntPtr repo_id;
+            public IntPtr patch_id;
         };
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct patch_t
@@ -154,7 +195,7 @@ namespace thcrap_configure_v3
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void log_print_cb(string text);
+        public delegate void log_print_cb([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string text);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void log_nprint_cb(
             [MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U1, SizeParamIndex = 1)]
@@ -173,7 +214,7 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void log_set_hook(log_print_cb hookproc, log_nprint_cb hookproc2);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void log_print(string log);
+        public static extern void log_print([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string log);
 
         // repo
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
@@ -181,7 +222,9 @@ namespace thcrap_configure_v3
 
         // patch
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern patch_t patch_init(string patch_path, IntPtr /* json_t* */ patch_info, UInt32 level);
+        public static extern patch_t patch_init(
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string patch_path,
+            IntPtr /* json_t* */ patch_info, UInt32 level);
 
         // stack
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
@@ -191,28 +234,30 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void stack_foreach(stack_foreach_cb callback, IntPtr userdata);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr /* json_t* */ stack_json_resolve(string fn, IntPtr /* size_t * */ file_size);
+        public static extern IntPtr /* json_t* */ stack_json_resolve(
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
+            IntPtr /* size_t * */ file_size);
 
 
         // search
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
-        public static extern IntPtr /* game_search_result* */ SearchForGames(string dir, games_js_entry[] games_in);
+        public static extern IntPtr /* game_search_result* */ SearchForGames(
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string dir,
+            games_js_entry[] games_in);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void SearchForGames_free(IntPtr /* game_search_result* */ games);
 
 
         // Shelllink
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int CreateShortcuts(string run_cfg_fn, games_js_entry[] games, ShortcutsDestination destination);
-
+        public static extern int CreateShortcuts(
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string run_cfg_fn,
+            games_js_entry[] games, ShortcutsDestination destination);
     }
+
     class ThcrapUpdateDll
     {
-#if DEBUG
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "thcrap_update_d.dll";
-#else
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "thcrap_update.dll";
-#endif
+        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "thcrap_update" + ThcrapDll.DEBUG_OR_RELEASE + ".dll";
         public enum get_status_t
         {
             GET_DOWNLOADING,
@@ -229,7 +274,7 @@ namespace thcrap_configure_v3
             // Patch containing the file in download
             public IntPtr /* patch_t* */ patch;
             // File name
-            public string fn;
+            public IntPtr /* char* */ fn;
             // Download URL
             public string url;
             // File download status or result
@@ -253,7 +298,9 @@ namespace thcrap_configure_v3
 
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate int update_filter_func_t(string fn, IntPtr filter_data);
+        public delegate int update_filter_func_t(
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
+            IntPtr filter_data);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate bool progress_callback_t(IntPtr /* progress_callback_status_t* */ status, IntPtr param);
 
@@ -265,18 +312,18 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void stack_update(update_filter_func_t filter_func, IntPtr filter_data, progress_callback_t progress_callback, IntPtr progress_param);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int update_filter_global(string fn, IntPtr unused);
+        public static extern int update_filter_global(
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
+            IntPtr unused);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int update_filter_games(string fn, IntPtr games);
+        public static extern int update_filter_games(
+            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
+            IntPtr games);
     }
 
     class ThcrapJanssonDll
     {
-#if DEBUG
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson_d.dll";
-#else
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson.dll";
-#endif
+        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson" + ThcrapDll.DEBUG_OR_RELEASE + ".dll";
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern uint json_dumpb(IntPtr /* json_t * */ json, IntPtr /* char* */ buffer, uint size, uint flags);
         // Not part of the public jansson API, but json_decref is defined as an inline function

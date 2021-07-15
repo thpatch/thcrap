@@ -35,6 +35,41 @@ int CurlHandle::progressCallbackStatic(void *userdata, curl_off_t dltotal, curl_
     }
 };
 
+static char digit_to_hex(unsigned int digit)
+{
+    if (digit <= 9) {
+        return '0' + digit;
+    }
+    else if (digit <= 'F') {
+        return 'A' + (digit - 10);
+    }
+    else {
+        return '?';
+    }
+}
+
+static std::string encode_UTF8_char(uint8_t c)
+{
+    if (c & 0x80) {
+        std::string ret = "%";
+        ret += digit_to_hex(c >> 4);
+        ret += digit_to_hex(c & 0x0F);
+        return ret;
+    }
+    else {
+        return std::string() + (char)c;
+    }
+}
+
+static std::string encode_UTF8_url(std::string in)
+{
+    std::string out;
+    for (auto c : in) {
+        out += encode_UTF8_char((uint8_t)c);
+    }
+    return out;
+}
+
 HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
 	curl_easy_setopt(this->curl, CURLOPT_CAINFO, "bin/cacert.pem");
@@ -54,7 +89,9 @@ HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(con
     char errbuf[CURL_ERROR_SIZE];
     curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, errbuf);
     errbuf[0] = 0;
-    curl_easy_setopt(this->curl, CURLOPT_URL, url.c_str());
+
+    std::string url_encoded = encode_UTF8_url(url);
+    curl_easy_setopt(this->curl, CURLOPT_URL, url_encoded.c_str());
 
     CURLcode res = curl_easy_perform(this->curl);
 

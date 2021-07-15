@@ -53,8 +53,12 @@ namespace thcrap_configure_v3
         {
             Page1.CanSelectNextPage = false;
 
-            repoList = await repoDiscovery;
-            Page2Content.SetRepoList(repoList);
+            if (repoDiscovery != null)
+            {
+                repoList = await repoDiscovery;
+                Page2Content.SetRepoList(repoList);
+            }
+            repoDiscovery = null;
 
             Page1.CanSelectNextPage = true;
             wizard.CurrentPage = Page2;
@@ -71,7 +75,7 @@ namespace thcrap_configure_v3
             ThcrapDll.stack_foreach((IntPtr it, IntPtr userdata) =>
             {
                 var cur_patch = Marshal.PtrToStructure<ThcrapDll.patch_t>(it);
-                var archive = Marshal.PtrToStringAnsi(cur_patch.archive);
+                var archive = ThcrapHelper.PtrToStringUTF8(cur_patch.archive);
                 runconfig.patches.Add(new RunconfigPatch(archive));
             }, IntPtr.Zero);
             runconfig.Save(this.configName);
@@ -120,7 +124,7 @@ namespace thcrap_configure_v3
 
         private void RunThcrapConfigure(object sender, MouseButtonEventArgs e)
         {
-            Process.Start("thcrap_configure.exe");
+            Process.Start("bin\\thcrap_configure" + ThcrapDll.DEBUG_OR_RELEASE + ".exe");
             this.Close();
         }
     }
