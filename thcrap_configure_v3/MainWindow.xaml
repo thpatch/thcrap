@@ -60,7 +60,7 @@
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="LastPage"
                          Title="Configuration finished"
-                         Description="To run the games, run the shortcuts from the thcrap directory.&#10;You can move them to your desktop if you want to."
+                         Description="You can run the patched games by using the shortcuts."
                          CanFinish="True"
                          CanCancel="False"
                          CanSelectPreviousPage="False" />
