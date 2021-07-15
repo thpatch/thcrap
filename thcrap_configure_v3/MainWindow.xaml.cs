@@ -75,7 +75,7 @@ namespace thcrap_configure_v3
             ThcrapDll.stack_foreach((IntPtr it, IntPtr userdata) =>
             {
                 var cur_patch = Marshal.PtrToStructure<ThcrapDll.patch_t>(it);
-                var archive = Marshal.PtrToStringAnsi(cur_patch.archive);
+                var archive = ThcrapHelper.PtrToStringUTF8(cur_patch.archive);
                 runconfig.patches.Add(new RunconfigPatch(archive));
             }, IntPtr.Zero);
             runconfig.Save(this.configName);

@@ -18,24 +18,27 @@ namespace thcrap_configure_v3
         public RepoPatch(Repo repo, ThcrapDll.repo_patch_t patch)
         {
             this.Repo = repo;
-            this.Id = patch.patch_id;
+            this.Id = ThcrapHelper.PtrToStringUTF8(patch.patch_id);
             this.Title = ThcrapHelper.PtrToStringUTF8(patch.title);
         }
         private RepoPatch FindDependency(List<Repo> repoList, ThcrapDll.patch_desc_t dep)
         {
+            string repo_id = ThcrapHelper.PtrToStringUTF8(dep.repo_id);
+            string patch_id = ThcrapHelper.PtrToStringUTF8(dep.patch_id);
+
             // If we know the repo name, use it
             if (dep.repo_id != null)
-                return repoList.Find((Repo it) => it.Id == dep.repo_id)?.Patches.Find((RepoPatch it) => it.Id == dep.patch_id);
+                return repoList.Find((Repo it) => it.Id == repo_id)?.Patches.Find((RepoPatch it) => it.Id == patch_id);
 
             // Try in the current repo
-            RepoPatch patch = this.Repo.Patches.Find((RepoPatch it) => it.Id == dep.patch_id);
+            RepoPatch patch = this.Repo.Patches.Find((RepoPatch it) => it.Id == patch_id);
             if (patch != null)
                 return patch;
 
             // Fall back to looking in every repo
             foreach (var repo in repoList)
             {
-                patch = repo.Patches.Find((RepoPatch it) => it.Id == dep.patch_id);
+                patch = repo.Patches.Find((RepoPatch it) => it.Id == patch_id);
                 if (patch != null)
                     return patch;
             }
@@ -63,13 +66,13 @@ namespace thcrap_configure_v3
             knownPatches.Add(this);
 
             ThcrapDll.patch_desc_t patch_desc;
-            patch_desc.repo_id = this.Repo.Id;
-            patch_desc.patch_id = this.Id;
+            patch_desc.repo_id = ThcrapHelper.StringUTF8ToPtr(this.Repo.Id);
+            patch_desc.patch_id = ThcrapHelper.StringUTF8ToPtr(this.Id);
 
             IntPtr patch_desc_ptr = ThcrapHelper.AllocStructure(patch_desc);
             ThcrapDll.patch_t patch_info = ThcrapUpdateDll.patch_bootstrap(patch_desc_ptr, this.Repo.repo_ptr);
 
-            this.Archive = Marshal.PtrToStringAnsi(patch_info.archive);
+            this.Archive = ThcrapHelper.PtrToStringUTF8(patch_info.archive);
             ThcrapDll.patch_t patch_full = ThcrapDll.patch_init(this.Archive, IntPtr.Zero, 0);
 
             this.LoadDependencies(repoList, knownPatches, patch_full.dependencies);
@@ -77,6 +80,8 @@ namespace thcrap_configure_v3
             IntPtr patch_full_ptr = ThcrapHelper.AllocStructure(patch_full);
             ThcrapDll.stack_add_patch(patch_full_ptr);
 
+            Marshal.FreeHGlobal(patch_desc.patch_id);
+            Marshal.FreeHGlobal(patch_desc.repo_id);
             ThcrapHelper.FreeStructure<ThcrapDll.patch_desc_t>(patch_desc_ptr);
             ThcrapHelper.FreeStructure<ThcrapDll.patch_t>(patch_full_ptr);
         }

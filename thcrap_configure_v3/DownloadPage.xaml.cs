@@ -41,13 +41,13 @@ namespace thcrap_configure_v3
             if (status.status == ThcrapUpdateDll.get_status_t.GET_OK)
             {
                 var cur_patch = Marshal.PtrToStructure<ThcrapDll.patch_t>(status.patch);
-                string cur_patch_id = Marshal.PtrToStringAnsi(cur_patch.id);
+                string cur_patch_id = ThcrapHelper.PtrToStringUTF8(cur_patch.id);
                 this.Dispatcher.Invoke(() =>
                 {
                     if (status.nb_files_total != 0)
                     {
                         this.Status.Text = String.Format("[{0}/{1}] {2}/{3}",
-                            status.nb_files_downloaded, status.nb_files_total, cur_patch_id, status.fn);
+                            status.nb_files_downloaded, status.nb_files_total, cur_patch_id, ThcrapHelper.PtrToStringUTF8(status.fn));
                         if (this.Progress.IsIndeterminate)
                         {
                             this.Progress.IsIndeterminate = false;
@@ -60,7 +60,7 @@ namespace thcrap_configure_v3
                     }
                     else
                     {
-                        this.Status.Text = String.Format("{0}/{1}", cur_patch_id, status.fn);
+                        this.Status.Text = String.Format("{0}/{1}", cur_patch_id, ThcrapHelper.PtrToStringUTF8(status.fn));
                     }
                 });
             }
