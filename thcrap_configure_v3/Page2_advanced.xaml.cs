@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -22,6 +23,25 @@ namespace thcrap_configure_v3
     /// </summary>
     public partial class Page2_advanced : UserControl
     {
+        private int isUnedited = 1;
+        public int configMaxLength = 0;
+
+        private void AddToConfigName(string patchName)
+        {
+            if (isUnedited > 0)
+            {
+                isUnedited++;
+                if (ConfigName.Text == "")
+                {
+                    ConfigName.Text = patchName;
+                }
+                else
+                {
+                    ConfigName.Text += "-" + patchName;
+                }
+            }
+        }
+
         public class RepoPatch : INotifyPropertyChanged
         {
             public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
@@ -83,6 +103,7 @@ namespace thcrap_configure_v3
             if (!(clickedItem.DataContext is RepoPatch patch))
                 return;
 
+            AddToConfigName(patch.SourcePatch.Id);
             patch.Select(true);
             selectedPatches.Add(patch);
         }
@@ -95,6 +116,7 @@ namespace thcrap_configure_v3
             if (patch.IsSelected())
                 return;
 
+            AddToConfigName(patch.SourcePatch.Id);
             patch.Select(true);
             selectedPatches.Add(patch);
         }
@@ -142,6 +164,18 @@ namespace thcrap_configure_v3
                 return;
 
             selectedPatches.Move(idx, idx + 1);
+        }
+
+        public void ConfigNameChange(object sender, TextChangedEventArgs e)
+        {
+            if (isUnedited > 0)
+            {
+                isUnedited--;
+            }
+            if(ConfigName.Text.Length > configMaxLength)
+            {
+                ConfigName.Text = ConfigName.Text.Substring(0, configMaxLength);
+            }
         }
     }
 }

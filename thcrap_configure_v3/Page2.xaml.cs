@@ -39,38 +39,30 @@ namespace thcrap_configure_v3
             Advanced.SetRepoList(repoList);
         }
 
-        string GetStackName(List<RepoPatch> patches)
+        private List<RepoPatch> patches;
+
+        public List<RepoPatch> GetSelectedRepoPatch()
         {
-            string ret = "";
-
-            foreach (var it in patches)
-            {
-                if (ret != "")
-                    ret += "-";
-
-                string id = it.Id;
-                if (id.StartsWith("lang_"))
-                    id = id.Substring("lang_".Length);
-
-                ret += id;
-            }
-
-            return ret;
-        }
-
-        public (List<RepoPatch>, string) GetSelectedRepoPatch()
-        {
-            List<RepoPatch> patches;
             if (mode == Mode.Simple)
                 patches = Simple.GetSelectedRepoPatch();
             else
                 patches = Advanced.GetSelectedRepoPatch();
 
-            return (patches, GetStackName(patches));
+            return patches;
+        }
+
+        public string GetConfigName()
+        {
+            if(mode == Mode.Advanced)
+                return Advanced.ConfigName.Text;
+            else
+                return patches[0].Id.Substring("lang_".Length);
         }
 
         private void GoToAdvanced()
         {
+            Advanced.configMaxLength = 248 - (Environment.CurrentDirectory.Length + "\\config\\.js".Length);
+
             Simple.Visibility = Visibility.Collapsed;
             SimpleText.Visibility = Visibility.Collapsed;
             Advanced.Visibility = Visibility.Visible;

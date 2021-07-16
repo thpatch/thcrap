@@ -50,7 +50,8 @@
             <Button Margin="0,0,0,12" Click="AvailablePatchesMoveRight">🡆</Button>
             <Button Click="SelectedPatchesMoveLeft">🡄</Button>
         </StackPanel>
-        <ListBox Grid.Column="2" x:Name="SelectedPatches">
+        <TextBox TextWrapping="Wrap" x:Name="ConfigName" TextBoxBase.TextChanged="ConfigNameChange" Grid.Column="2" VerticalAlignment="Bottom" Height="30"/>
+        <ListBox Grid.Column="2" x:Name="SelectedPatches" Margin="0,0,0,35">
             <ListBox.ItemContainerStyle>
                 <Style TargetType="ListBoxItem">
                     <EventSetter Event="MouseDoubleClick" Handler="SelectedPatchesDoubleClick" />

@@ -85,8 +85,9 @@ namespace thcrap_configure_v3
         {
             Page3.CanSelectNextPage = false;
 
-            (List<RepoPatch> patches, string configName) = Page2Content.GetSelectedRepoPatch();
-            this.configName = configName;
+            List<RepoPatch> patches = Page2Content.GetSelectedRepoPatch();
+            this.configName = Page2Content.GetConfigName();
+
             await Task.Run(() =>
             {
                 PrepareStack(patches);
