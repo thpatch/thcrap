@@ -241,9 +241,7 @@ namespace thcrap_configure_v3
 
         // search
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
-        public static extern IntPtr /* game_search_result* */ SearchForGames(
-            [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string dir,
-            games_js_entry[] games_in);
+        public static extern IntPtr /* game_search_result* */ SearchForGames(string dir, games_js_entry[] games_in);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void SearchForGames_free(IntPtr /* game_search_result* */ games);
 
