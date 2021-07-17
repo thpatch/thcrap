@@ -104,7 +104,7 @@ static InstallStatus_t CheckDotNETStatus() {
 		else
 			NETStatus = IsCurrent;
 	}
-
+	RegCloseKey(key);
 	return NETStatus;
 }
 
@@ -199,7 +199,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 	shellex.hwnd = hwnd;
 	shellex.lpVerb = L"runas";
 	shellex.lpFile = NETInstaller;
-	shellex.lpParameters = L"/q";
+	shellex.lpParameters = L"/passive /promptrestart";
 	shellex.nShow = SW_SHOW;
 
 	BOOL ret = ShellExecuteExW(&shellex);
