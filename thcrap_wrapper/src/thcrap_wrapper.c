@@ -71,6 +71,11 @@ int main()
 
 	installCrt(ApplicationPath);
 
+    if (my_wcscmp(rcApplicationName, L"thcrap_configure_v3" DEBUG_OR_RELEASE L".exe") == 0) {
+        if (installDotNET(ApplicationPath))
+            ExitProcess(0);
+    }
+
 	PathAppendW(ApplicationPath, rcApplicationName);
 
 	if (rcCommandLine && my_wcscmp(rcCommandLine, L"[self]") == 0) {

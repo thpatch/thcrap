@@ -4,6 +4,7 @@
 #include <shlwapi.h>
 
 void installCrt(LPWSTR ApplicationPath);
+int installDotNET(LPWSTR ApplicationPath);
 
 HWND createInstallPopup(LPWSTR install_message);
 
@@ -16,3 +17,9 @@ void *my_memcpy(void *dst, const void *src, size_t n);
 void *my_memset(void *dst, int ch, size_t n);
 void *my_alloc(size_t num, size_t size);
 void my_free(void *ptr);
+
+#ifdef _DEBUG
+# define DEBUG_OR_RELEASE L"_d"
+#else
+# define DEBUG_OR_RELEASE
+#endif
