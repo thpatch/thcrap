@@ -15,6 +15,7 @@
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\Base.props" />
+    <Import Condition="'$(Configuration)'=='DEBUG'" Project="$(SolutionDir)\Debug.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>

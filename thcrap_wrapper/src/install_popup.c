@@ -56,8 +56,8 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 static void registerClass()
 {
 	WNDCLASSEX wc;
+	my_memset(&wc, 0, sizeof(wc));
 
-	ZeroMemory(&wc, sizeof(wc));
 	wc.cbSize = sizeof(wc);
 	wc.style = CS_NOCLOSE;
 	wc.lpfnWndProc = wndProc;

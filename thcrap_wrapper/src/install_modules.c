@@ -165,7 +165,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 		winver.dwOSVersionInfoSize = sizeof(winver);
 		RtlGetVersion(&winver);
 		if (winver.dwMajorVersion < 6) {
-			MessageBoxW(NULL, L"Yout Windows version is too old for .NET 4.6.1", L".NET Error", MB_ICONERROR | MB_OK);
+			MessageBoxW(NULL, L"Your Windows version is too old for .NET 4.6.1", L".NET Error", MB_ICONERROR | MB_OK);
 			return 1;
 		}
 	}
