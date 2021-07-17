@@ -153,6 +153,26 @@ int installDotNET(LPWSTR ApplicationPath) {
 		MessageBoxW(NULL, L"It seems you are using Wine. If that is the case,\nplease run the bundled script to install .NET Framework 4.6.1", L"Wine detected", MB_ICONWARNING | MB_OK);
 		return 1;
 	}
+
+	typedef NTSTATUS NTAPI RtlGetVersion_t(
+		PRTL_OSVERSIONINFOW lpVersionInformation
+	);
+	RtlGetVersion_t* RtlGetVersion = (RtlGetVersion_t*)GetProcAddress(hNTDLL, "RtlGetVersion");
+
+	if (RtlGetVersion) {
+		RTL_OSVERSIONINFOW winver;
+		my_memset(&winver, 0, sizeof(winver));
+		winver.dwOSVersionInfoSize = sizeof(winver);
+		RtlGetVersion(&winver);
+		if (winver.dwMajorVersion < 6) {
+			MessageBoxW(NULL, L"Yout Windows version is too old for .NET 4.6.1", L".NET Error", MB_ICONERROR | MB_OK);
+			return 1;
+		}
+	}
+	else {
+		if (MessageBoxW(NULL, L"Couldn't determine Windows version. Proceed anyways?", L".NET Warning", MB_ICONWARNING | MB_YESNO) != IDYES)
+			return 1;
+	}
 	
 	HANDLE hThread = CreateThread(NULL, 0, NETDownloadThread, ApplicationPath, 0, NULL);
 	HWND hwnd = createInstallPopup(L"Downloading some required files");
