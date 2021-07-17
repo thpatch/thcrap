@@ -5,6 +5,8 @@
 
 void installCrt(LPWSTR ApplicationPath);
 
+HWND createInstallPopup(LPWSTR install_message);
+
 size_t my_wcslen(const wchar_t *str);
 int my_wcscmp(const wchar_t *s1, const wchar_t *s2);
 // Returns the pointer to the end of dst, so that you can chain the call to append
