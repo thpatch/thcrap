@@ -9,7 +9,7 @@ size_t my_wcslen(const wchar_t *str)
 	return str_read - str;
 }
 
-__declspec(noinline) int my_wcscmp(const wchar_t *s1, const wchar_t *s2)
+int my_wcscmp(const wchar_t *s1, const wchar_t *s2)
 {
 	int d = *s1 - *s2;
 	if (d) return d;
