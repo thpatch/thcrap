@@ -9,7 +9,8 @@
 typedef enum {
 	NotInstalled,
 	NeedsUpdate,
-	IsCurrent
+	IsCurrent,
+	IsNotInstallable
 } InstallStatus_t;
 
 static InstallStatus_t CheckCRTStatus()
@@ -77,11 +78,74 @@ static InstallStatus_t CheckCRTStatus()
 	return CrtStatus;
 }
 
-static InstallStatus_t CheckDotNETStatus() {
+typedef enum {
+	n_NotInstalled,
+	n_MonoInstalled,
+	n_OutOfDate
+} WineNetError_t;
+
+static void NETShowWineError(WineNetError_t reason) {
+	LPCWSTR wineMessage = L"";
+
+	switch (reason) {
+	case n_MonoInstalled:
+		wineMessage =
+			L"It seems you are using Wine and Wine Mono is installed\n"
+			L"Unfortunately, Wine Mono does not work with thcrap\n"
+			L"Please use the bundled script to install .NET Framework 4.6.1\n"
+			L"(the script is located in the \"bin\" folder and called \"instal_dotnet461.sh\")";
+		break;
+	case n_NotInstalled:
+		wineMessage =
+			L"It seems you are using Wine and .NET Framework 4.6.1 is not installed\n"
+			L".NET Framework 4.6.1 or higher is required to setup thcrap\n"
+			L"Please use the bundled script to install .NET Framework 4.6.1\n"
+			L"(the script is located in the \"bin\" folder and called \"instal_dotnet461.sh\")";
+		break;
+	case n_OutOfDate:
+		wineMessage =
+			L"It seems you are using Wine and .NET Framework is installed\n"
+			L"Unfortunately, the installed version is older than 4.6.1\n"
+			L"Please create a new wineprefix and use the bundled script\n"
+			L"to install .NET Framework 4.6.1\n"
+			L"(the script is located in the \"bin\" folder and called \"instal_dotnet461.sh\")";
+		break;
+	}
+
+	MessageBoxW(NULL, wineMessage, L"Wine detected", MB_ICONERROR | MB_OK);
+}
+
+static InstallStatus_t CheckDotNETStatus(DWORD isWine) {
 	HKEY key;
-	LSTATUS status = RegOpenKeyW(
-		HKEY_LOCAL_MACHINE,
+	LSTATUS status;
+
+	if (isWine) { // Check for Wine Mono
+		// Registry functions are easier for this than SetupAPI functions
+		status = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+			L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{7E8D2753-698F-5E0D-98AF-5AAD5D228984}",
+			0, KEY_QUERY_VALUE | KEY_WOW64_64KEY,
+			&key);
+		if (status == ERROR_SUCCESS) {
+			NETShowWineError(n_MonoInstalled);
+			RegCloseKey(key);
+			return IsNotInstallable;
+		}
+		status = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+			L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{EF53CA78-D197-5C46-8003-A0002819B1D7}",
+			0, KEY_QUERY_VALUE | KEY_WOW64_64KEY,
+			&key);
+		if (status == ERROR_SUCCESS) {
+			NETShowWineError(n_MonoInstalled);
+			RegCloseKey(key);
+			return IsNotInstallable;
+		}
+	}
+
+	status = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+		// NOTE(32th): key "v4" has 2 subkeys: "Client" and "Full" that seem identical.
+		//             What are the differences? Which should be used?
 		L"SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v4\\Client",
+		0, KEY_QUERY_VALUE | KEY_WOW64_64KEY,
 		&key
 	);
 
@@ -137,20 +201,26 @@ DWORD WINAPI NETDownloadThread(LPVOID lpParam) {
 
 int installDotNET(LPWSTR ApplicationPath) {
 	LPWSTR net_install_message = L"";
-	switch (CheckDotNETStatus()) {
+
+	HMODULE hNTDLL = GetModuleHandleW(L"ntdll.dll");
+	DWORD isWine = (DWORD)GetProcAddress(hNTDLL, "wine_get_version");
+
+	switch (CheckDotNETStatus(isWine)) {
 	case IsCurrent:
 		return 0;
 	case NotInstalled:
+		if (isWine) {
+			NETShowWineError(n_NotInstalled);
+			return 1;
+		}
 		net_install_message = L"Installing some required files, please wait...";
 	case NeedsUpdate:
+		if (isWine) {
+			NETShowWineError(n_OutOfDate);
+			return 1;
+		}
 		net_install_message = L"Updating some required files, please wait...";
-	}
-
-	HMODULE hNTDLL = GetModuleHandleW(L"ntdll.dll");
-
-	FARPROC wine_get_version = GetProcAddress(hNTDLL, "wine_get_version");
-	if (wine_get_version) {
-		MessageBoxW(NULL, L"It seems you are using Wine. If that is the case,\nplease run the bundled script to install .NET Framework 4.6.1", L"Wine detected", MB_ICONWARNING | MB_OK);
+	case IsNotInstallable:
 		return 1;
 	}
 
