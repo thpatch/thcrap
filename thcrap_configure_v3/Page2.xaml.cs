@@ -62,6 +62,7 @@ namespace thcrap_configure_v3
         private void GoToAdvanced()
         {
             Advanced.configMaxLength = 248 - (Environment.CurrentDirectory.Length + "\\config\\.js".Length);
+            Advanced.SetInitialPatch(Simple.GetSelectedRepoPatch()[0]);
 
             Simple.Visibility = Visibility.Collapsed;
             SimpleText.Visibility = Visibility.Collapsed;

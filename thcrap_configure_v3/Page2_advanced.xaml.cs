@@ -26,6 +26,11 @@ namespace thcrap_configure_v3
         private int isUnedited = 1;
         public int configMaxLength = 0;
 
+        private void ResetConfigName()
+        {
+            ConfigName.Text = "";
+            isUnedited = 1;
+        }
         private void AddToConfigName(string patchName)
         {
             if (isUnedited > 0)
@@ -121,6 +126,23 @@ namespace thcrap_configure_v3
             selectedPatches.Add(patch);
         }
 
+        public void SetInitialPatch(thcrap_configure_v3.RepoPatch patchDescription)
+        {
+            if (SelectedPatches.Items.Count > 0)
+                return;
+
+            RepoPatch patchToSelect = (AvailablePatches.ItemsSource as IEnumerable<Repo>)
+                ?.FirstOrDefault((Repo it) => it.SourceRepo.Id == patchDescription.Repo.Id)
+                ?.Patches?.FirstOrDefault((RepoPatch it) => it.SourcePatch.Id == patchDescription.Id);
+            if (patchToSelect == null)
+                return;
+
+            ResetConfigName();
+            AddToConfigName(patchToSelect.SourcePatch.Id);
+            patchToSelect.Select(true);
+            selectedPatches.Add(patchToSelect);
+        }
+
         private void SelectedPatchesDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (!(e.OriginalSource is FrameworkElement clickedItem))
@@ -172,7 +194,7 @@ namespace thcrap_configure_v3
             {
                 isUnedited--;
             }
-            if(ConfigName.Text.Length > configMaxLength)
+            if (ConfigName.Text.Length > configMaxLength)
             {
                 ConfigName.Text = ConfigName.Text.Substring(0, configMaxLength);
             }
