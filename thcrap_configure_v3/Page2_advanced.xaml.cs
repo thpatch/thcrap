@@ -46,6 +46,25 @@ namespace thcrap_configure_v3
                 }
             }
         }
+        private void RemoveFromConfigName(string patchName)
+        {
+            if (isUnedited <= 0)
+                return;
+
+            string configName = ConfigName.Text;
+            int idx = configName.IndexOf(patchName);
+            if (idx == -1)
+                return;
+
+            configName = configName.Remove(idx, patchName.Length);
+            if (idx < configName.Length && configName[idx] == '-')
+                configName = configName.Remove(idx, 1);
+            else if (idx > 0 && configName[idx - 1] == '-')
+                configName = configName.Remove(idx - 1, 1);
+
+            isUnedited++;
+            ConfigName.Text = configName;
+        }
 
         public class RepoPatch : INotifyPropertyChanged
         {
@@ -100,6 +119,13 @@ namespace thcrap_configure_v3
 
         public List<thcrap_configure_v3.RepoPatch> GetSelectedRepoPatch() => selectedPatches.ToList().ConvertAll((RepoPatch patch) => patch.SourcePatch);
 
+        private void SelectPatch(RepoPatch patch)
+        {
+            AddToConfigName(patch.SourcePatch.Id);
+            patch.Select(true);
+            selectedPatches.Add(patch);
+        }
+
         private void AvailablePatchDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (!(e.OriginalSource is FrameworkElement clickedItem))
@@ -108,9 +134,7 @@ namespace thcrap_configure_v3
             if (!(clickedItem.DataContext is RepoPatch patch))
                 return;
 
-            AddToConfigName(patch.SourcePatch.Id);
-            patch.Select(true);
-            selectedPatches.Add(patch);
+            SelectPatch(patch);
         }
 
         private void AvailablePatchesMoveRight(object sender, RoutedEventArgs e)
@@ -118,12 +142,8 @@ namespace thcrap_configure_v3
             if (!(AvailablePatches.SelectedItem is RepoPatch patch))
                 return;
 
-            if (patch.IsSelected())
-                return;
-
-            AddToConfigName(patch.SourcePatch.Id);
-            patch.Select(true);
-            selectedPatches.Add(patch);
+            if (!patch.IsSelected())
+                SelectPatch(patch);
         }
 
         public void SetInitialPatch(thcrap_configure_v3.RepoPatch patchDescription)
@@ -138,9 +158,14 @@ namespace thcrap_configure_v3
                 return;
 
             ResetConfigName();
-            AddToConfigName(patchToSelect.SourcePatch.Id);
-            patchToSelect.Select(true);
-            selectedPatches.Add(patchToSelect);
+            SelectPatch(patchToSelect);
+        }
+
+        private void UnselectPatch(RepoPatch patch)
+        {
+            selectedPatches.Remove(patch);
+            patch.Select(false);
+            RemoveFromConfigName(patch.SourcePatch.Id);
         }
 
         private void SelectedPatchesDoubleClick(object sender, MouseButtonEventArgs e)
@@ -151,8 +176,7 @@ namespace thcrap_configure_v3
             if (!(clickedItem.DataContext is RepoPatch patch))
                 return;
 
-            selectedPatches.Remove(patch);
-            patch.Select(false);
+            UnselectPatch(patch);
         }
 
         private void SelectedPatchesMoveLeft(object sender, RoutedEventArgs e)
@@ -160,8 +184,7 @@ namespace thcrap_configure_v3
             if (!(SelectedPatches.SelectedItem is RepoPatch patch))
                 return;
 
-            selectedPatches.Remove(patch);
-            patch.Select(false);
+            UnselectPatch(patch);
         }
 
         private void SelectedPatch_MoveUp(object sender, RoutedEventArgs e)
