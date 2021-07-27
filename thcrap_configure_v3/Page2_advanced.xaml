@@ -58,7 +58,8 @@
             <ListBox x:Name="SelectedPatches" Margin="0,0,0,7">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
-                        <EventSetter Event="MouseDoubleClick" Handler="SelectedPatchesDoubleClick" />
+                        <EventSetter Event="MouseDoubleClick" Handler="SelectedPatch_DoubleClick" />
+                        <EventSetter Event="KeyUp" Handler="SelectedPatch_KeyUp" />
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>

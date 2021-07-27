@@ -168,12 +168,26 @@ namespace thcrap_configure_v3
             RemoveFromConfigName(patch.SourcePatch.Id);
         }
 
-        private void SelectedPatchesDoubleClick(object sender, MouseButtonEventArgs e)
+        private void SelectedPatch_DoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (!(e.OriginalSource is FrameworkElement clickedItem))
                 return;
 
             if (!(clickedItem.DataContext is RepoPatch patch))
+                return;
+
+            UnselectPatch(patch);
+        }
+
+        private void SelectedPatch_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Back && e.Key != Key.Delete)
+                return;
+
+            if (!(e.OriginalSource is FrameworkElement sourceItem))
+                return;
+
+            if (!(sourceItem.DataContext is RepoPatch patch))
                 return;
 
             UnselectPatch(patch);
