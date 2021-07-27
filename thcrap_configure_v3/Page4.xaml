@@ -13,6 +13,7 @@
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition />
+                <ColumnDefinition Width="auto" />
             </Grid.ColumnDefinitions>
             <Button Grid.Column="0" x:Name="SearchButton1" Click="SearchDirectory" Margin="0,0,7,0">
                 <TextBlock Margin="2,1">Find games in a specific folder...</TextBlock>
@@ -20,7 +21,10 @@
             <Button Grid.Column="1" x:Name="SearchButton2" Click="SearchEverywhere" Margin="0,0,7,0">
                 <TextBlock Margin="2,1">Find every game on your computer (slow)</TextBlock>
             </Button>
-            <ProgressBar Grid.Column="2" x:Name="ProgressBar" IsIndeterminate="True" Visibility="Hidden" />
+            <ProgressBar Grid.Column="2" x:Name="ProgressBar" IsIndeterminate="True" Margin="0,0,7,0" Visibility="Hidden" />
+            <Button Grid.Column="3" x:Name="SearchButtonCancel" Click="SearchCancel" Visibility="Hidden">
+                <TextBlock Margin="2,1">Cancel search</TextBlock>
+            </Button>
         </Grid>
         <ScrollViewer x:Name="GamesScroll">
             <ItemsControl x:Name="GamesControl" Margin="0,0,10,1">

@@ -53,5 +53,10 @@ typedef struct game_search_result
 // [games_in] contains the list of games already known before the search.
 game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *games_in);
 
+// Cancel a running search.
+// Is always called from another thread, because the search thread
+// is busy with the search.
+void SearchForGames_cancel();
+
 // Free the return of SearchForGames
 void SearchForGames_free(game_search_result *games);

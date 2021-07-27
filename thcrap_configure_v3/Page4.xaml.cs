@@ -215,6 +215,7 @@ namespace thcrap_configure_v3
                 wizardPage.CanSelectPreviousPage = false;
                 wizardPage.CanSelectNextPage = false;
                 ProgressBar.Visibility = Visibility.Visible;
+                SearchButtonCancel.Visibility = Visibility.Visible;
                 SearchButton1.IsEnabled = false;
                 SearchButton2.IsEnabled = false;
             }
@@ -223,6 +224,7 @@ namespace thcrap_configure_v3
                 wizardPage.CanSelectPreviousPage = true;
                 wizardPage.CanSelectNextPage = true;
                 ProgressBar.Visibility = Visibility.Hidden;
+                SearchButtonCancel.Visibility = Visibility.Hidden;
                 SearchButton1.IsEnabled = true;
                 SearchButton2.IsEnabled = true;
             }
@@ -289,6 +291,11 @@ namespace thcrap_configure_v3
         private void SearchEverywhere(object sender, RoutedEventArgs e)
         {
             Search(null);
+        }
+
+        private void SearchCancel(object sender, RoutedEventArgs e)
+        {
+            ThcrapDll.SearchForGames_cancel();
         }
 
         private IEnumerable<ThcrapDll.games_js_entry> outGames;

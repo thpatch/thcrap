@@ -28,6 +28,8 @@ struct search_thread_param
 	const wchar_t *dir;
 };
 
+static bool searchCancelled = false;
+
 static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 {
 	int ret = 0;
@@ -100,6 +102,8 @@ static DWORD WINAPI SearchThread(void *param_)
 	delete param;
 	try {
 		for (auto &ent : fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied)) {
+			if (searchCancelled)
+				return 0;
 			try {
 				if (ent.is_regular_file()
 					&& PathMatchSpecW(ent.path().c_str(), L"*.exe")
@@ -203,6 +207,7 @@ game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *gam
 		state.previously_known_games.insert(games_in[i].id);
 	}
 
+	searchCancelled = false;
 	InitializeCriticalSection(&state.cs_result);
 
 	constexpr size_t max_threads = 32;
@@ -235,6 +240,7 @@ game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *gam
 		CloseHandle(threads[--count]);
 
 	DeleteCriticalSection(&state.cs_result);
+	searchCancelled = false;
 	json_decref(state.versions);
 
 	std::sort(state.found.begin(), state.found.end(), compare_search_results);
@@ -245,6 +251,11 @@ game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *gam
 	}
 	memset(&ret[i], 0, sizeof(game_search_result));
 	return ret;
+}
+
+void SearchForGames_cancel()
+{
+	searchCancelled = true;
 }
 
 void SearchForGames_free(game_search_result *games)
