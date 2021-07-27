@@ -27,7 +27,7 @@ namespace thcrap_configure_v3
             string patch_id = ThcrapHelper.PtrToStringUTF8(dep.patch_id);
 
             // If we know the repo name, use it
-            if (dep.repo_id != null)
+            if (repo_id != null)
                 return repoList.Find((Repo it) => it.Id == repo_id)?.Patches.Find((RepoPatch it) => it.Id == patch_id);
 
             // Try in the current repo
