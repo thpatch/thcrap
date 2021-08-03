@@ -107,6 +107,27 @@ std::string get_link_dir(ShortcutsDestination destination, const char *self_path
 	}
 }
 
+std::string GetIconPath(const char *icon_path_, const char *game_id)
+{
+	auto icon_path = std::filesystem::u8path(icon_path_);
+
+	if (icon_path.filename() != "vpatch.exe")
+		return icon_path_;
+
+	icon_path.replace_filename(std::string(game_id) + ".exe");
+	if (std::filesystem::is_regular_file(icon_path))
+		return icon_path.u8string();
+
+	// Special case - EoSD
+	if (strcmp(game_id, "th06") == 0) {
+		icon_path.replace_filename(L"東方紅魔郷.exe");
+		if (std::filesystem::is_regular_file(icon_path))
+			return icon_path.u8string();
+	}
+
+	return icon_path_;
+}
+
 int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination)
 {
 	constexpr stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
@@ -141,7 +162,8 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 
 			log_printf(".");
 
-			if (CreateLink(link_fn, self_fn, link_args, self_path, games[i].path)) {
+			std::string icon_path = GetIconPath(games[i].path, games[i].id);
+			if (CreateLink(link_fn, self_fn, link_args, self_path, icon_path.c_str())) {
 				log_printf(
 					"\n"
 					"Error writing to %s!\n"
