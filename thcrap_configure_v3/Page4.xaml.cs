@@ -89,6 +89,13 @@ namespace thcrap_configure_v3
                     string gamePath = path.Replace("/vpatch.exe", "/" + game.id + ".exe");
                     if (File.Exists(gamePath))
                         path = gamePath;
+                    else if (game.id == "th06")
+                    {
+                        // Special case - EoSD
+                        gamePath = path.Replace("/vpatch.exe", "/東方紅魔郷.exe");
+                        if (File.Exists(gamePath))
+                            path = gamePath;
+                    }
                 }
 
                 var icon = Icon.ExtractAssociatedIcon(path);
