@@ -1,7 +1,48 @@
 #!/bin/bash
 
 # Have to be in the same order as the output of `ls *.exe bin/*.exe bin/*.dll bin/*.json`
-FILES_LIST="bin/act_nut_lib.dll bin/bmpfont_create_gdi.dll bin/bmpfont_create_gdiplus.dll bin/cacert.pem bin/jansson.dll bin/libcrypto-1_1.dll bin/libcurl.dll bin/libpng16.dll bin/libssl-1_1.dll bin/steam_api.dll bin/thcrap_configure.exe bin/thcrap.dll bin/thcrap_i18n.dll bin/thcrap_loader.exe bin/thcrap_tasofro.dll bin/thcrap_test.exe bin/thcrap_tsa.dll bin/thcrap_update.dll bin/update.json bin/vc_redist.x86.exe bin/win32_utf8.dll bin/zlib-ng.dll thcrap_configure.exe thcrap_loader.exe"
+FILES_LIST="bin/act_nut_lib.dll \
+    bin/bmpfont_create_gdi.dll \
+    bin/bmpfont_create_gdiplus.dll \
+    bin/cacert.pem bin/jansson.dll \
+    bin/libcrypto-1_1.dll \
+    bin/libcurl.dll \
+    bin/libpng16.dll \
+    bin/libssl-1_1.dll \
+    bin/Microsoft.Bcl.AsyncInterfaces.dll \
+    bin/Microsoft.WindowsAPICodePack.dll \
+    bin/Microsoft.WindowsAPICodePack.Shell.dll \
+    bin/Microsoft.WindowsAPICodePack.ShellExtensions.dll \
+    bin/steam_api.dll \
+    bin/System.Buffers.dll \
+    bin/System.Memory.dll \
+    bin/System.Numerics.Vectors.dll \
+    bin/System.Runtime.CompilerServices.Unsafe.dll \
+    bin/System.Text.Encodings.Web.dll \
+    bin/System.Text.Json.dll \
+    bin/System.Threading.Tasks.Extensions.dll \
+    bin/System.ValueTuple.dll \
+    bin/thcrap_configure.exe \
+    bin/thcrap_configure_v3.exe \
+    bin/thcrap.dll \
+    bin/thcrap_i18n.dll \
+    bin/thcrap_loader.exe \
+    bin/thcrap_tasofro.dll \
+    bin/thcrap_test.exe \
+    bin/thcrap_tsa.dll \
+    bin/thcrap_update.dll \
+    bin/update.json \
+    bin/vc_redist.x86.exe \
+    bin/win32_utf8.dll \
+    bin/Xceed.Wpf.AvalonDock.dll \
+    bin/Xceed.Wpf.AvalonDock.Themes.Aero.dll \
+    bin/Xceed.Wpf.AvalonDock.Themes.Metro.dll \
+    bin/Xceed.Wpf.AvalonDock.Themes.VS2010.dll \
+    bin/Xceed.Wpf.Toolkit.dll \
+    bin/zlib-ng.dll \
+    thcrap.exe \
+    thcrap_loader.exe"
+FILES_LIST=$(echo "$FILES_LIST" | tr -s ' ')
 
 # Arguments. Every argument without a default value is mandatory.
 DATE="$(date)"
@@ -86,6 +127,7 @@ cd ..
 
 # build
 cd git_thcrap
+"$MSBUILD_PATH" -t:restore /verbosity:minimal
 "$MSBUILD_PATH" /target:Rebuild /property:USERNAME=$MSBUILD_USER /property:Configuration=Release /verbosity:minimal \
     /property:ThcrapVersionY=$(date -d "$DATE" +%Y) /property:ThcrapVersionM=$(date -d "$DATE" +%m) /property:ThcrapVersionD=$(date -d "$DATE" +%d) \
     | grep -e warning -e error \
@@ -103,11 +145,13 @@ rm -rf "tmp_$DATE"
 test $UNITTEST_STATUS -eq 0 || confirm 'Unit tests failed! Continue anyway?'
 
 # Prepare the release directory
-if [ "$(cd git_thcrap/bin && echo $(ls *.exe bin/cacert.pem bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))" != "$FILES_LIST" ]; then
+BUILD_FILES_LIST=$(cd git_thcrap/bin && echo $(ls *.exe bin/cacert.pem bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))
+if [ "$BUILD_FILES_LIST" != "$FILES_LIST" ]; then
     echo "The list of files to copy doesn't match. Files list:"
-    cd git_thcrap/bin
-    ls *.exe bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'
-    cd - > /dev/null
+    echo "$FILES_LIST" | tr ' ' '\n' > 1
+    echo "$BUILD_FILES_LIST" | tr ' ' '\n' > 2
+    diff --color 1 2
+    rm 1 2
     confirm "Continue anyway?"
 fi
 rm -rf thcrap # Using -f for readonly files
