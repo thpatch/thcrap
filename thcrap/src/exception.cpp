@@ -86,6 +86,9 @@ static const char *get_cxx_eh_typename(LPEXCEPTION_RECORD lpER)
 	}
 
 	DWORD *throwInfo = (DWORD*)(base + lpER->ExceptionInformation[2]);
+	if (throwInfo == nullptr) {
+		return nullptr;
+	}
 	DWORD *catchableTypeArray = (DWORD*)(base + throwInfo[3]);
 	if (catchableTypeArray[0] < 1) { // array size
 		return nullptr;
