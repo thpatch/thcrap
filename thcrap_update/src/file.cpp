@@ -97,13 +97,18 @@ void File::download()
 }
 
 int download_single_file(const char* url, const char* fn) {
-    auto res = ServerCache::get().downloadFile(url);
-    if (res.second == HttpStatus::makeOk()) {
-        auto file = res.first;
-        file_write(fn, file.data(), file.size());
-        return 0;
+    try {
+        auto res = ServerCache::get().downloadFile(url);
+        if (res.second == HttpStatus::makeOk()) {
+            auto file = res.first;
+            file_write(fn, file.data(), file.size());
+            return 0;
+        }
+        else {
+            return res.second.get();
+        }
     }
-    else {
-        return res.second.get();
+    catch (std::bad_alloc e) {
+        return HttpStatus::SystemError;
     }
 }

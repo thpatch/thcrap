@@ -172,6 +172,25 @@ static InstallStatus_t CheckDotNETStatus(DWORD isWine) {
 	return NETStatus;
 }
 
+// From thcrap_update/src/http_status.h
+// Slightly modified since this is C
+typedef enum HttpStatus {
+	// 200 - success
+	HttpOk,
+	// Download cancelled by the progress callback, or another client
+	// declared the server as dead
+	HttpCancelled,
+	// 3XX and 4XX - file not found, not accessible, moved, etc.
+	HttpClientError,
+	// 5XX errors - server errors, further requests are likely to fail.
+	// Also covers weird error codes like 1XX and 2XX which we shouldn't see.
+	HttpServerError,
+	// Error returned by the download library or by the write callback
+	HttpSystemError,
+	// Error encountered before loading thcrap_update.dll
+	HttpLibLoadError
+} HttpStatus;
+
 DWORD WINAPI NETDownloadThread(LPVOID lpParam) {
 	LPCWSTR ApplicationPath = lpParam;
 
@@ -180,23 +199,54 @@ DWORD WINAPI NETDownloadThread(LPVOID lpParam) {
 	SetCurrentDirectoryW(ApplicationPath);
 	HMODULE hUpdate = LoadLibraryW(L"thcrap_update" DEBUG_OR_RELEASE L".dll");
 	SetCurrentDirectoryW(current_dir);
-	if (!hUpdate) {
-		MessageBoxW(NULL, L"Failed to download .NET Framework: couldn't load thcrap_update.dll", L".NET Error", MB_ICONERROR | MB_OK);
-		return 1;
-	}
+	if (!hUpdate)
+		ExitThread(HttpLibLoadError);
 
-	typedef int download_single_file_t(const char* url, const char* fn);
+	typedef HttpStatus download_single_file_t(const char* url, const char* fn);
 	download_single_file_t* download_single_file = (download_single_file_t*)GetProcAddress(hUpdate, "download_single_file");
-	if (!download_single_file) {
-		MessageBoxW(NULL, L"Failed to download .NET Framework: corrupt or outdated thcrap_update.dll", L".NET Error", MB_ICONERROR | MB_OK);
-		return 1;
-	}
+	if (!download_single_file)
+		ExitThread(HttpLibLoadError);
 
-	download_single_file("https://download.microsoft.com/download/E/4/1/E4173890-A24A-4936-9FC9-AF930FE3FA40/NDP461-KB3102436-x86-x64-AllOS-ENU.exe", "NDP461-Installer.exe");
+	HttpStatus res = download_single_file("https://download.microsoft.com/download/E/4/1/E4173890-A24A-4936-9FC9-AF930FE3FA40/NDP461-KB3102436-x86-x64-AllOS-ENU.exe", "NDP461-Installer.exe");
 
 	FreeLibrary(hUpdate);
 
-	return 0;
+	ExitThread(res);
+}
+
+int NETDownloadCheckError(HttpStatus reason) {
+	wchar_t* errorMessage = L"";
+	switch (reason) {
+	case HttpOk:
+		return 0;
+	case HttpLibLoadError:
+		errorMessage =
+			L"Failed to download .NET Framework 4.6.1\n"
+			L"Corrupt or outdated thcrap installation";
+		break;
+	case HttpCancelled:
+		errorMessage =
+			L"Failed to download .NET Framework 4.6.1\n"
+			L"An error occurred with the download process";
+		break;
+	case HttpClientError:
+		errorMessage =
+			L"Failed to download .NET Framework 4.6.1\n"
+			L"The file wasn't found on Microsoft's server";
+		break;
+	case HttpServerError:
+		errorMessage =
+			L"Failed to download .NET Framework 4.6.1\n"
+			L"An unknown error ocurred with Microsoft's server";
+		break;
+	case HttpSystemError:
+		errorMessage =
+			L"Failed to download .NET Framework 4.6.1\n"
+			L"No internet or not enough system memory";
+		break;
+	}
+	MessageBoxW(NULL, errorMessage, L".NET Download Error", MB_ICONERROR | MB_OK);
+	return 1;
 }
 
 int installDotNET(LPWSTR ApplicationPath) {
@@ -264,7 +314,10 @@ int installDotNET(LPWSTR ApplicationPath) {
 		waitStatus = MsgWaitForMultipleObjects(1, &hThread, FALSE, INFINITE, QS_ALLEVENTS);
 		if (waitStatus == WAIT_OBJECT_0 + 0) { // Thread finished
 			DestroyWindow(hwnd);
-			if (!GetExitCodeThread(hThread, &threadExitCode) || threadExitCode) {
+			BOOL ret = GetExitCodeThread(hThread, &threadExitCode);
+			DWORD error = GetLastError();
+			CloseHandle(hThread);
+			if (NETDownloadCheckError(threadExitCode)) {
 				return 1;
 			}
 			break;
