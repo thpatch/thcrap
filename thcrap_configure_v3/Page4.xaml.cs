@@ -98,9 +98,14 @@ namespace thcrap_configure_v3
                     }
                 }
 
-                var icon = Icon.ExtractAssociatedIcon(path);
-                if (icon != null)
-                    parentWindow.Dispatcher.Invoke(() => GameIcon = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()));
+                try
+                {
+                    var icon = Icon.ExtractAssociatedIcon(path);
+                    if (icon != null)
+                        parentWindow.Dispatcher.Invoke(() => GameIcon = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()));
+                }
+                catch
+                { }
             });
 
             public string Path { get => game.path; }
