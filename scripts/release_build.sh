@@ -24,6 +24,7 @@ FILES_LIST="bin/act_nut_lib.dll \
     bin/System.ValueTuple.dll \
     bin/thcrap_configure.exe \
     bin/thcrap_configure_v3.exe \
+    bin/thcrap_configure_v3.exe.config \
     bin/thcrap.dll \
     bin/thcrap_i18n.dll \
     bin/thcrap_loader.exe \
@@ -51,6 +52,7 @@ MSBUILD_USER="$USER"
 GITHUB_LOGIN=
 # Authentication with Github tokens: https://developer.github.com/v3/auth/#basic-authentication
 GITHUB_TOKEN=
+BETA=0
 
 function parse_input
 {
@@ -67,6 +69,7 @@ function parse_input
                 echo '  --github-login:  Username for Github'
                 echo '  --github-token:  Token for Github'
                 echo '                   To get a token, see https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line'
+                echo '  --beta:          Publish the build as a beta build'
                 exit 0
                 ;;
             --date )
@@ -88,6 +91,10 @@ function parse_input
             --github-token )
                 GITHUB_TOKEN=$2
                 shift 2
+                ;;
+            --beta )
+                BETA=1
+                shift 1
                 ;;
             * )
                 echo "Unknown argument $1"
@@ -145,7 +152,7 @@ rm -rf "tmp_$DATE"
 test $UNITTEST_STATUS -eq 0 || confirm 'Unit tests failed! Continue anyway?'
 
 # Prepare the release directory
-BUILD_FILES_LIST=$(cd git_thcrap/bin && echo $(ls *.exe bin/cacert.pem bin/*.exe bin/*.dll bin/*.json | grep -vF '_d.dll'))
+BUILD_FILES_LIST=$(cd git_thcrap/bin && echo $(ls *.exe bin/cacert.pem bin/*.exe bin/*.exe.config bin/*.dll bin/*.json | grep -vF '_d.dll'))
 if [ "$BUILD_FILES_LIST" != "$FILES_LIST" ]; then
     echo "The list of files to copy doesn't match. Files list:"
     echo "$FILES_LIST" | tr ' ' '\n' > 1
@@ -224,9 +231,20 @@ notepad.exe commit_github.txt &
 confirm "Did you remove non-visible commits and include non-thcrap commits?"
 
 echo "Uploading the release on github..."
-upload_url=$(jq -n --arg msg "$(cat commit_github.txt)" --arg date "$(date -d "$DATE" +%Y-%m-%d)" '{ "tag_name": $date, "name": $date, "body": $msg }' | \
-curl -s 'https://api.github.com/repos/thpatch/thcrap/releases' -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/json' -d@- | \
-jq -r .upload_url | sed -e 's/{.*}//')
+if [ "$BETA" == 1 ]; then
+    GITHUB_PRERELEASE=true
+else
+    GITHUB_PRERELEASE=false
+fi
+upload_url=$(\
+    jq -n \
+        --arg msg "$(cat commit_github.txt)" \
+        --arg date "$(date -d "$DATE" +%Y-%m-%d)" \
+        --argjson prerelease $GITHUB_PRERELEASE \
+        '{ "tag_name": $date, "name": $date, "body": $msg, "prerelease": $prerelease }' | \
+    curl -s 'https://api.github.com/repos/thpatch/thcrap/releases' \
+        -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/json' -d@- | \
+    jq -r .upload_url | sed -e 's/{.*}//')
 if [ "$upload_url" == "null" ]; then echo "Releasing on GitHub failed."; fi
 
 ret=$(curl -s "$upload_url?name=thcrap.zip" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/zip' --data-binary @thcrap.zip | jq -r '.state')
@@ -236,10 +254,12 @@ if [ "$ret" != "uploaded" ]; then echo "thcrap.zip.sig upload on GitHub failed."
 ret=$(curl -s "$upload_url?name=thcrap_symbols.zip" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/zip' --data-binary @thcrap_symbols.zip | jq -r '.state')
 if [ "$ret" != "uploaded" ]; then echo "thcrap_symbols.zip upload on GitHub failed."; fi
 
-# Push update
-scp root@kosuzu.thpatch.net:/var/www/thcrap_update.js .
-jq --arg version "0x$(date -d "$DATE" +%Y%m%d)" --arg zip_fn "stable/thcrap.zip" '.stable.version = $version | .stable.latest = $zip_fn' thcrap_update.js > tmp.js
-mv tmp.js thcrap_update.js
-scp thcrap_update.js root@kosuzu.thpatch.net:/var/www/thcrap_update.js
+if [ "$BETA" != 1 ]; then
+    # Push update
+    scp root@kosuzu.thpatch.net:/var/www/thcrap_update.js .
+    jq --arg version "0x$(date -d "$DATE" +%Y%m%d)" --arg zip_fn "stable/thcrap.zip" '.stable.version = $version | .stable.latest = $zip_fn' thcrap_update.js > tmp.js
+    mv tmp.js thcrap_update.js
+    scp thcrap_update.js root@kosuzu.thpatch.net:/var/www/thcrap_update.js
+fi
 
 echo "Releasing finished!"
