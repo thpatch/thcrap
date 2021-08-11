@@ -13,3 +13,6 @@
 [submodule "libs/json5pp"]
 	path = libs/json5pp
 	url = https://github.com/thpatch/json5pp.git
+[submodule "thconsole/imgui"]
+	path = thconsole/imgui
+	url = https://github.com/ocornut/imgui
