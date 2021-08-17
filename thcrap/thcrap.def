@@ -285,6 +285,8 @@ EXPORTS
 	; Search on disk
 	; --------------
 	SearchForGames
+	SearchForGames_cancel
+	SearchForGames_free
 
 	; Shortcuts
 	; ---------

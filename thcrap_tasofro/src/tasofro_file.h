@@ -66,7 +66,7 @@ private:
 	bool need_orig_file();
 
 	void replace_ReadFile_init(ReadFileStack *stack,
-		std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)> decrypt,
-		std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)> crypt);
+		std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)>& decrypt,
+		std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)>& crypt);
 	int replace_ReadFile_write(x86_reg_t *regs, ReadFileStack *stack);
 };

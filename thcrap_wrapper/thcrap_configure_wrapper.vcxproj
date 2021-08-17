@@ -12,8 +12,8 @@
       We need to have a unique RootNamespace, but we want to have the same TargetName
       as the exe we wrap, so we overwrite it here.
     -->
-    <TargetName Condition="'$(Configuration)'=='Debug'">thcrap_configure_d</TargetName>
-    <TargetName Condition="'$(Configuration)'!='Debug'">thcrap_configure</TargetName>
+    <TargetName Condition="'$(Configuration)'=='Debug'">thcrap_d</TargetName>
+    <TargetName Condition="'$(Configuration)'!='Debug'">thcrap</TargetName>
 	<TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
   </PropertyGroup>
   <ItemGroup>

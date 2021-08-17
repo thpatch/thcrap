@@ -95,3 +95,20 @@ void File::download()
         this->download(*handle, url);
     } while (this->status != Status::Done && this->urls.size() > 0);
 }
+
+int download_single_file(const char* url, const char* fn) {
+    try {
+        auto res = ServerCache::get().downloadFile(url);
+        if (res.second == HttpStatus::makeOk()) {
+            auto file = res.first;
+            file_write(fn, file.data(), file.size());
+            return 0;
+        }
+        else {
+            return res.second.get();
+        }
+    }
+    catch (std::bad_alloc e) {
+        return HttpStatus::SystemError;
+    }
+}

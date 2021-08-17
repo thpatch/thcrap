@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2026
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30621.155
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_loader", "thcrap_loader\thcrap_loader.vcxproj", "{2DB35726-8702-4CC8-9394-3D4FFF47F7DD}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -78,6 +78,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_i18n", "thcrap_i18n\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "external_deps", "libs\external_deps.vcxproj", "{8B0918FE-10DA-4DDB-81F8-0137C7C52747}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "thcrap_configure_v3", "thcrap_configure_v3\thcrap_configure_v3.csproj", "{9CCF40A9-5B3A-4075-BC78-2F1BA211A0A1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -116,6 +118,10 @@ Global
 		{6E41ED18-B3C4-4AF0-9888-80606B5444DE}.Debug|Win32.Build.0 = Debug|Win32
 		{6E41ED18-B3C4-4AF0-9888-80606B5444DE}.Release|Win32.ActiveCfg = Release|Win32
 		{6E41ED18-B3C4-4AF0-9888-80606B5444DE}.Release|Win32.Build.0 = Release|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Debug|Win32.Build.0 = Debug|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Release|Win32.ActiveCfg = Release|Win32
+		{27163BEF-8378-4C0B-BCCD-AF34E9D137FD}.Release|Win32.Build.0 = Release|Win32
 		{98C00188-ADF9-4C1B-B325-BE4E52411AF9}.Debug|Win32.ActiveCfg = Debug|Win32
 		{98C00188-ADF9-4C1B-B325-BE4E52411AF9}.Debug|Win32.Build.0 = Debug|Win32
 		{98C00188-ADF9-4C1B-B325-BE4E52411AF9}.Release|Win32.ActiveCfg = Release|Win32
@@ -152,6 +158,10 @@ Global
 		{8B0918FE-10DA-4DDB-81F8-0137C7C52747}.Debug|Win32.Build.0 = Debug|Win32
 		{8B0918FE-10DA-4DDB-81F8-0137C7C52747}.Release|Win32.ActiveCfg = Release|Win32
 		{8B0918FE-10DA-4DDB-81F8-0137C7C52747}.Release|Win32.Build.0 = Release|Win32
+		{9CCF40A9-5B3A-4075-BC78-2F1BA211A0A1}.Debug|Win32.ActiveCfg = Debug|Any CPU
+		{9CCF40A9-5B3A-4075-BC78-2F1BA211A0A1}.Debug|Win32.Build.0 = Debug|Any CPU
+		{9CCF40A9-5B3A-4075-BC78-2F1BA211A0A1}.Release|Win32.ActiveCfg = Release|Any CPU
+		{9CCF40A9-5B3A-4075-BC78-2F1BA211A0A1}.Release|Win32.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

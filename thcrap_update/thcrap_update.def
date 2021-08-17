@@ -12,3 +12,5 @@ EXPORTS
 	RepoDiscover
 
 	loader_update_with_UI
+
+	download_single_file

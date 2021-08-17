@@ -13,21 +13,17 @@ json_t* global_cfg = NULL;
 
 #define QUOTE2(x) #x
 #define QUOTE(x) QUOTE2(x)
-constexpr uint32_t IntToVersion(uint32_t n)
-{
-	if (n < 10)
-		return n;
-	return IntToVersion(n / 10) * 16 + n % 10;
-}
 constexpr uint32_t DateToVersion(uint32_t y, uint32_t m, uint32_t d)
 {
-	return IntToVersion(y) * 0x10000 + IntToVersion(m) * 0x100 + IntToVersion(d);
+	return y * 0x10000 + m * 0x100 + d;
 }
+
+#define TO_HEX(a) (0x ## a)
 
 const char PROJECT_NAME[] = "Touhou Community Reliant Automatic Patcher";
 const char PROJECT_NAME_SHORT[] = "thcrap";
 const char PROJECT_URL[] = "https://www.thpatch.net/wiki/Touhou_Patch_Center:Download";
-constexpr uint32_t PROJECT_VERSION = DateToVersion(PROJECT_VERSION_Y, PROJECT_VERSION_M, PROJECT_VERSION_D);
+constexpr uint32_t PROJECT_VERSION = DateToVersion(TO_HEX(PROJECT_VERSION_Y), TO_HEX(PROJECT_VERSION_M), TO_HEX(PROJECT_VERSION_D));
 const char PROJECT_VERSION_STRING[] = QUOTE(PROJECT_VERSION_Y) "-" QUOTE(PROJECT_VERSION_M) "-" QUOTE(PROJECT_VERSION_D);
 const char PROJECT_BRANCH[] = "stable";
 

@@ -11,12 +11,10 @@ size_t my_wcslen(const wchar_t *str)
 
 int my_wcscmp(const wchar_t *s1, const wchar_t *s2)
 {
-	int w, ret;
-	while (
-		(ret = (w = *s1++) - *s2++) // Compute whether *s1 and *s2 match
-		&& w // Check that neither *s1 nor *s2 is the null terminator
-	);
-	return ret;
+	int d = *s1 - *s2;
+	if (d) return d;
+	while (*s1 && *s2 && *++s1 == *++s2);
+	return *s1 - *s2;
 }
 
 // Returns the pointer to the end of dst, so that you can chain the call to append

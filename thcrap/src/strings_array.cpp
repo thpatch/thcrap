@@ -6,29 +6,26 @@
 
 char **strings_array_create()
 {
-    char **array = new char*[1];
-    array[0] = nullptr;
+    char **array = (char**)malloc(sizeof(char*));
+    array[0] = NULL;
     return array;
 }
 
-char **strings_array_add(char **old_array, const char *str)
+char **strings_array_add(char **array, const char *str)
 {
-    size_t size = strings_array_size(old_array);
-    char **new_array = new char*[size + 2];
-
-    memcpy(new_array, old_array, size * sizeof(char*));
-    new_array[size] = strdup(str);
-    new_array[size + 1] = nullptr;
-
-    delete[] old_array;
-    return new_array;
+    size_t size = strings_array_size(array);
+    if (void* temp = realloc(array, (size + 2) * sizeof(char*))) {
+        array = (char**)temp;
+        array[size] = strdup(str);
+        array[size + 1] = NULL;
+    }
+    return array;
 }
 
 size_t strings_array_size(char **strings_array)
 {
-    size_t i;
-    for (i = 0; strings_array[i]; i++) {
-    }
+    size_t i = 0;
+    while (strings_array[i]) ++i;
     return i;
 }
 
@@ -37,11 +34,12 @@ char **strings_array_create_and_fill(size_t nb_elems, ...)
     va_list args;
     va_start(args, nb_elems);
 
-    char **array = new char*[nb_elems + 1];
+    char** array = (char**)malloc((nb_elems + 1) * sizeof(char*));
+    array[nb_elems] = NULL;
     for (size_t i = 0; i < nb_elems; i++) {
-        array[i] = strdup(va_arg(args, const char*));
+        char* str = va_arg(args, char*);
+        array[i] = str ? strdup(str) : str;
     }
-    array[nb_elems] = nullptr;
 
     va_end(args);
     return array;
@@ -49,8 +47,12 @@ char **strings_array_create_and_fill(size_t nb_elems, ...)
 
 void strings_array_free(char **strings_array)
 {
+    if (!strings_array) {
+        return;
+    }
+
     for (size_t i = 0; strings_array[i]; i++) {
         free(strings_array[i]);
     }
-    delete[] strings_array;
+    free(strings_array);
 }

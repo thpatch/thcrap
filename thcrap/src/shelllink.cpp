@@ -13,6 +13,7 @@
 #include <objbase.h>
 #include <objidl.h>
 #include <shlguid.h>
+#include <filesystem>
 
 typedef enum {
 	LINK_FN = 3, // Slots 1 and 2 are used by thcrap_configure, that needs them for run_cfg_fn
@@ -67,7 +68,67 @@ HRESULT CreateLink(
 	return hres;
 }
 
-int CreateShortcuts(const char *run_cfg_fn, json_t *games)
+std::string get_link_dir(ShortcutsDestination destination, const char *self_path)
+{
+	switch (destination)
+	{
+	default:
+		// Default to thcrap dir
+		[[fallthrough]];
+
+	case SHDESTINATION_THCRAP_DIR:
+		return self_path;
+
+	case SHDESTINATION_DESKTOP: {
+		char szPath[MAX_PATH];
+		if (SHGetFolderPathU(NULL, CSIDL_DESKTOPDIRECTORY, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
+			return "";
+		}
+		return szPath;
+	}
+
+	case SHDESTINATION_START_MENU: {
+		char szPath[MAX_PATH];
+		if (SHGetFolderPathU(NULL, CSIDL_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
+			return "";
+		}
+
+		std::filesystem::path path = szPath;
+		path /= "thcrap";
+		if (!std::filesystem::is_directory(path)) {
+			std::filesystem::create_directory(path);
+		}
+		return path.generic_u8string();
+	}
+
+	case SHDESTINATION_GAMES_DIRECTORY:
+		// Will be overwritten later
+		return "";
+	}
+}
+
+std::string GetIconPath(const char *icon_path_, const char *game_id)
+{
+	auto icon_path = std::filesystem::u8path(icon_path_);
+
+	if (icon_path.filename() != "vpatch.exe")
+		return icon_path_;
+
+	icon_path.replace_filename(std::string(game_id) + ".exe");
+	if (std::filesystem::is_regular_file(icon_path))
+		return icon_path.u8string();
+
+	// Special case - EoSD
+	if (strcmp(game_id, "th06") == 0) {
+		icon_path.replace_filename(L"東方紅魔郷.exe");
+		if (std::filesystem::is_regular_file(icon_path))
+			return icon_path.u8string();
+	}
+
+	return icon_path_;
+}
+
+int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination)
 {
 	constexpr stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
 	int ret = 0;
@@ -80,26 +141,29 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 	PathAddBackslashU(self_fn);
 
 	// Yay, COM.
-	CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	HRESULT com_init_succeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	{
-		const char *key = NULL;
-		json_t *cur_game = NULL;
 		VLA(char, self_path, self_fn_len + loader_exe.length());
 		strcpy(self_path, self_fn);
 
 		strcat(self_fn, "bin\\");
 		strcat(self_fn, loader_exe.data());
 
+		std::string link_dir = get_link_dir(destination, self_path);
+
 		log_printf("Creating shortcuts");
 
-		json_object_foreach(games, key, cur_game) {
-			const char *game_fn = json_string_value(cur_game);
-			const char *link_fn = strings_sprintf(LINK_FN, "%s%s (%s).lnk", self_path, key, run_cfg_fn);
-			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, key);
+		for (size_t i = 0; games[i].id; i++) {
+			if (destination == SHDESTINATION_GAMES_DIRECTORY) {
+				link_dir = std::filesystem::path(games[i].path).remove_filename().generic_u8string();
+			}
+			const char *link_fn = strings_sprintf(LINK_FN, "%s\\%s (%s).lnk", link_dir.c_str(), games[i].id, run_cfg_fn);
+			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, games[i].id);
 
 			log_printf(".");
 
-			if (CreateLink(link_fn, self_fn, link_args, self_path, game_fn)) {
+			std::string icon_path = GetIconPath(games[i].path, games[i].id);
+			if (CreateLink(link_fn, self_fn, link_args, self_path, icon_path.c_str())) {
 				log_printf(
 					"\n"
 					"Error writing to %s!\n"
@@ -114,6 +178,8 @@ int CreateShortcuts(const char *run_cfg_fn, json_t *games)
 		VLA_FREE(self_path);
 	}
 	VLA_FREE(self_fn);
-	CoUninitialize();
+	if (com_init_succeded == S_OK) {
+		CoUninitialize();
+	}
 	return ret;
 }

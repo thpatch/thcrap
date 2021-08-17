@@ -13,8 +13,8 @@
 extern "C" {
 #endif
 
-int repatch_mod_init(void);
-void repatch_mod_exit(void);
+void repatch_mod_init(void*);
+void repatch_mod_exit(void*);
 
 #ifdef __cplusplus
 }

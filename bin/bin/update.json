@@ -129,5 +129,11 @@
 			"cfg_files": "config/*.js",
 			"broken_prefix": "repos/"
 		}
-	}
+	},
+	{
+		"detect": {
+			"exist": "thcrap_configure.exe"
+		},
+		"delete": "thcrap_configure.exe"
+    }
 ]

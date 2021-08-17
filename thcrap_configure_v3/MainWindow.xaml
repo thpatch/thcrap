@@ -1,0 +1,68 @@
+<Window x:Class="thcrap_configure_v3.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        xmlns:local="clr-namespace:thcrap_configure_v3"
+        mc:Ignorable="d"
+        Title="Thcrap configuration tool" Height="450" Width="800"
+        Loaded="Window_Loaded">
+    <xctk:Wizard Name="wizard"
+                 FinishButtonClosesWindow="True"
+                 CanHelp="False"
+                 HelpButtonVisibility="Hidden">
+        <xctk:WizardPage x:Name="IntroPage"
+                         Title="Welcome to thcrap">
+            <TextBlock>
+                This tool will let you patch your games with thcrap.<LineBreak />
+                If you prefer to use the old version of this tool, click
+                <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="RunThcrapConfigure">here</TextBlock>.<LineBreak />
+                <LineBreak />
+                Click Next to continue.
+            </TextBlock>
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page1" PageType="Interior"
+                         Title="Initializing things"
+                         CanSelectNextPage="False" CanSelectPreviousPage="False"
+                         Enter="Page1_Enter">
+            <StackPanel>
+                <TextBlock Text="Please wait..." />
+                <ProgressBar Height="17px" IsIndeterminate="True" />
+            </StackPanel>
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page2" PageType="Interior"
+                         PreviousPage="{Binding ElementName=IntroPage}"
+                         Title="Choose the patch you want">
+            <local:Page2 x:Name="Page2Content" />
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page3" PageType="Interior"
+                         Title="Downloading core data"
+                         CanSelectNextPage="False" CanSelectPreviousPage="False"
+                         Enter="Page3_Enter">
+            <local:DownloadPage x:Name="Page3Content" />
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page4" PageType="Interior"
+                         PreviousPage="{Binding ElementName=Page2}"
+                         Title="Find games">
+            <local:Page4 x:Name="Page4Content" />
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page5" PageType="Interior"
+                         Title="Create shortcuts"
+                         Enter="Page5_Enter" Leave="Page5_Leave">
+            <local:Page5 x:Name="Page5Content" />
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="Page6" PageType="Interior"
+                         Title="Downloading game data"
+                         CanSelectNextPage="False" CanSelectPreviousPage="False"
+                         Enter="Page6_Enter">
+            <local:DownloadPage x:Name="Page6Content" />
+        </xctk:WizardPage>
+        <xctk:WizardPage x:Name="LastPage"
+                         Title="Configuration finished"
+                         Description="You can run the patched games by using the shortcuts."
+                         CanFinish="True"
+                         CanCancel="False"
+                         CanSelectPreviousPage="False" />
+    </xctk:Wizard>
+</Window>

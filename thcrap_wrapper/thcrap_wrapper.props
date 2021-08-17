@@ -15,6 +15,7 @@
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\Base.props" />
+    <Import Condition="'$(Configuration)'=='DEBUG'" Project="$(SolutionDir)\Debug.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -31,7 +32,8 @@
     <ClCompile Include="src\thcrap_wrapper.c">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="src\install_crt.c" />
+    <ClCompile Include="src\install_modules.c" />
+    <ClCompile Include="src\install_popup.c" />
     <ClCompile Include="src\utils.c" />
     <ClInclude Include="src\thcrap_wrapper.h" />
   </ItemGroup>

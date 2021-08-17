@@ -106,9 +106,8 @@ void oldbuild_show()
 }
 /// -------------------
 
-json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
+game_version* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 {
-	json_t* ret = NULL;
 	if (json_t* json_hashes = json_object_get(versions, "hashes")) {
 		if (unsigned char* file_buffer = (unsigned char*)file_read(fn, file_size)) {
 
@@ -119,15 +118,28 @@ json_t* identify_by_hash(const char *fn, size_t *file_size, json_t *versions)
 			for (size_t i = 0; i < 8; i++) {
 				sprintf(hash_str + (i * 8), "%08x", _byteswap_ulong(hash.dwords[i]));
 			}
-			ret = json_object_get(json_hashes, hash_str);
+			json_t *id = json_object_get(json_hashes, hash_str);
+			return id ? new game_version(id) : nullptr;
 		}
 	}
-	return ret;
+	return nullptr;
 }
 
-json_t* identify_by_size(size_t file_size, json_t *versions)
+game_version* identify_by_size(size_t file_size, json_t *versions)
 {
-	return json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
+	json_t *id = json_object_numkey_get(json_object_get(versions, "sizes"), file_size);
+	return id ? new game_version(id) : nullptr;
+}
+
+void identify_free(game_version *ver)
+{
+	if (!ver)
+		return;
+
+	free(ver->id);
+	free(ver->build);
+	free(ver->variety);
+	delete ver;
 }
 
 json_t* stack_cfg_resolve(const char *fn, size_t *file_size)
@@ -164,17 +176,9 @@ json_t* identify(const char *exe_fn)
 	size_t exe_size;
 	json_t *run_ver = NULL;
 	json_t *versions_js = stack_json_resolve("versions.js", NULL);
-	json_t *game_obj = NULL;
-	json_t *build_obj = NULL;
-	json_t *variety_obj = NULL;
-	json_t *codepage_obj = NULL;
-	const char *game = NULL;
-	const char *build = NULL;
-	const char *variety = NULL;
-	UINT codepage;
 
 	// Result of the EXE identification
-	json_t *id_array = NULL;
+	game_version *id = NULL;
 	bool size_cmp = false;
 
 	if(!versions_js) {
@@ -182,54 +186,42 @@ json_t* identify(const char *exe_fn)
 	}
 	log_print("Hashing executable... ");
 
-	id_array = identify_by_hash(exe_fn, &exe_size, versions_js);
-	if(!id_array) {
+	id = identify_by_hash(exe_fn, &exe_size, versions_js);
+	if(!id) {
 		size_cmp = true;
 		log_print(
 			"failed!\n"
 			"File size lookup... "
 		);
-		id_array = identify_by_size(exe_size, versions_js);
+		id = identify_by_size(exe_size, versions_js);
 
-		if(!id_array) {
+		if(!id) {
 			log_print("failed!\n");
 			goto end;
 		}
 	}
 
-	game_obj = json_array_get(id_array, 0);
-	build_obj = json_array_get(id_array, 1);
-	variety_obj = json_array_get(id_array, 2);
-	codepage_obj = json_array_get(id_array, 3);
-	game = json_string_value(game_obj);
-	build = json_string_value(build_obj);
-	variety = json_string_value(variety_obj);
-	codepage = json_hex_value(codepage_obj);
-
-	if(!game || !build) {
+	if(!id->id || !id->build) {
 		log_print("Invalid version format!");
 		goto end;
 	}
 
-	if(codepage) {
-		w32u8_set_fallback_codepage(codepage);
+	if(id->codepage) {
+		w32u8_set_fallback_codepage(id->codepage);
 	}
 
 	// Store build in the runconfig to be recalled later for version-
 	// dependent patch file resolving. Needs to be directly written to
 	// run_cfg because we already require it down below to resolve ver_fn.
-	runconfig_build_set(build);
+	runconfig_build_set(id->build);
 
-	log_printf("→ %s %s %s (codepage %d)\n", game, build, variety, codepage);
+	log_printf("→ %s %s %s (codepage %d)\n", id->id, id->build, id->variety, id->codepage);
 
-	if(stricmp(PathFindExtensionA(game), ".js")) {
-		size_t ver_fn_len = json_string_length(game_obj) + 1 + strlen(".js") + 1;
-		VLA(char, ver_fn, ver_fn_len);
-		sprintf(ver_fn, "%s.js", game);
-		run_ver = stack_cfg_resolve(ver_fn, NULL);
-		VLA_FREE(ver_fn);
+	if(stricmp(PathFindExtensionA(id->id), ".js") != 0) {
+		std::string ver_fn = std::string(id->id) + ".js";
+		run_ver = stack_cfg_resolve(ver_fn.c_str(), NULL);
 	} else {
-		run_ver = stack_cfg_resolve(game, NULL);
+		run_ver = stack_cfg_resolve(id->id, NULL);
 	}
 
 	// Ensure that we have a configuration with a "game" key
@@ -237,14 +229,14 @@ json_t* identify(const char *exe_fn)
 		run_ver = json_object();
 	}
 	if(!json_object_get_string(run_ver, "game")) {
-		json_object_set(run_ver, "game", game_obj);
+		json_object_set_new(run_ver, "game", json_string(id->id));
 	}
 
 	if(size_cmp) {
 		const char *game_title = json_object_get_string(run_ver, "title");
 		int ret;
-		if(game_title) {
-			game = game_title;
+		if(!game_title) {
+			game_title = id->id;
 		}
 		ret = log_mboxf("Unrecognized version detected", MB_YESNO | MB_ICONQUESTION,
 			"You have attached %s to an unrecognized game version.\n"
@@ -263,7 +255,7 @@ json_t* identify(const char *exe_fn)
 			"We will take a look at it, and add support if possible.\n"
 			"\n"
 			"Apply patches for the identified game version regardless (on your own risk)?",
-			PROJECT_NAME_SHORT, game, build, variety, exe_fn
+			PROJECT_NAME_SHORT, id->id, id->build, id->variety, exe_fn
 		);
 		if(ret == IDNO) {
 			run_ver = json_decref_safe(run_ver);
@@ -271,6 +263,7 @@ json_t* identify(const char *exe_fn)
 	}
 end:
 	json_decref(versions_js);
+	identify_free(id);
 	return run_ver;
 }
 

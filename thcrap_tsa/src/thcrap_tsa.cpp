@@ -109,41 +109,6 @@ int game_is_trial(void)
 	return trial;
 }
 
-extern "C" TH_EXPORT const char* steam_appid(void)
-{
-	int trial = game_is_trial();
-	switch(game_id) {
-	case TH10:
-		return "1100140";
-	case TH11:
-		return "1100150";
-	case TH12:
-		return "1100160";
-	case TH125:
-		return "1100170";
-	case TH128:
-		return "1100180";
-	case TH13:
-		return "1043230";
-	case TH14:
-		return "1043240";
-	case TH143:
-		return "937570";
-	case TH15:
-		return "937580";
-	case TH16:
-		return trial ? "752490" : "745880";
-	case TH165:
-		return "924650";
-	case TH17:
-		return trial ? "1079170" : "1079160";
-	case TH18:
-		return trial ? "1566420" : "1566410";
-	default: // -Wswitch...
-		return NULL;
-	}
-}
-
 size_t tlnote_remove_size_hook(const char *fn, json_t *patch, size_t patch_size)
 {
 	// We want these gone as early as possible

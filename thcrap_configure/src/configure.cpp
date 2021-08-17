@@ -197,7 +197,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	std::string run_cfg_fn_js;
 	char *run_cfg_str = NULL;
 
-    progress_state_t state;
+	progress_state_t state;
 
 	strings_mod_init();
 	log_init(0);
@@ -264,7 +264,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	pause();
 
 	CreateDirectoryU("repos", NULL);
-    repo_list = RepoDiscover_wrapper(start_repo);
+	repo_list = RepoDiscover_wrapper(start_repo);
 	if (!repo_list || !repo_list[0]) {
 		log_printf(_A("No patch repositories available...\n"));
 		pause();
@@ -274,14 +274,14 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	if (!sel_stack.empty()) {
 		log_printf(_A("Downloading game-independent data...\n"));
 		stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, &state);
-        state.files.clear();
+		state.files.clear();
 
 		/// Build the new run configuration
 		json_t *new_cfg_patches = json_object_get(new_cfg, "patches");
 		for (patch_desc_t& sel : sel_stack) {
 			patch_t patch = patch_build(&sel);
 			json_array_append_new(new_cfg_patches, patch_to_runconfig_json(&patch));
-            patch_free(&patch);
+			patch_free(&patch);
 		}
 	}
 
@@ -309,32 +309,43 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	// Step 2: Locate games
 	games = ConfigureLocateGames(cur_dir);
-
-	if (json_object_size(games) > 0 && (console_ask_yn(_A("Create shortcuts? (required for first run)")) == 'n' || !CreateShortcuts(run_cfg_fn.c_str(), games))) {
-        char **filter = games_json_to_array(games);
-		log_printf(_A("\nDownloading data specific to the located games...\n"));
-		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, &state);
-        state.files.clear();
-        strings_array_free(filter);
-		log_printf(_A(
-			"\n"
-			"\n"
-			"Done.\n"
-			"\n"
-			"You can now start the respective games with your selected configuration\n"
-			"through the shortcuts created in the current directory\n"
-			"(%s).\n"
-			"\n"
-			"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
-			"Alternatively, if you find yourself drowned in shortcuts, you should try this tool:\n"
-			"https://github.com/thpatch/Universal-THCRAP-Launcher/releases\n"
-			"\n"), cur_dir
-		);
-		con_can_close = true;
-		pause();
+	if (json_object_size(games) <= 0) {
+		goto end;
 	}
+
+	games_js_entry *gamesArray = nullptr;
+	if (console_ask_yn(_A("Create shortcuts? (required for first run)")) != 'n') {
+		gamesArray = games_js_to_array(games);
+		if (CreateShortcuts(run_cfg_fn.c_str(), gamesArray, SHDESTINATION_THCRAP_DIR) != 0) {
+			goto end;
+		}
+	}
+
+	char **filter = games_json_to_array(games);
+	log_printf(_A("\nDownloading data specific to the located games...\n"));
+	stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, &state);
+	state.files.clear();
+	strings_array_free(filter);
+	log_printf(_A(
+		"\n"
+		"\n"
+		"Done.\n"
+		"\n"
+		"You can now start the respective games with your selected configuration\n"
+		"through the shortcuts created in the current directory\n"
+		"(%s).\n"
+		"\n"
+		"These shortcuts work from anywhere, so feel free to move them wherever you like.\n"
+		"Alternatively, if you find yourself drowned in shortcuts, you should try this tool:\n"
+		"https://github.com/thpatch/Universal-THCRAP-Launcher/releases\n"
+		"\n"), cur_dir
+	);
+	con_can_close = true;
+	pause();
+
 end:
 	con_can_close = true;
+	delete[] gamesArray;
 	SAFE_FREE(run_cfg_str);
 	json_decref(new_cfg);
 	json_decref(games);
