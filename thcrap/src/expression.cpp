@@ -48,8 +48,10 @@ struct CPUID_Data_t {
 		bool HasF16C = false;
 		bool HasBMI1 = false;
 		bool HasAVX2 = false;
+		bool FDP_EXCPTN_ONLY = false;
 		bool HasBMI2 = false;
 		bool HasERMS = false;
+		bool FCS_FDS_DEP = false;
 		bool HasAVX512F = false;
 		bool HasAVX512DQ = false;
 		bool HasADX = false;
@@ -106,7 +108,9 @@ struct CPUID_Data_t {
 				__cpuidex(data, 7, 0);
 				HasBMI1				= _bittest(data1, 3);
 				HasAVX2				= _bittest(data1, 4);
+				FDP_EXCPTN_ONLY		= _bittest(data1, 6);
 				HasERMS				= _bittest(data1, 9);
+				FCS_FDS_DEP			= _bittest(data1, 13);
 				HasAVX512F			= _bittest(data1, 16);
 				HasAVX512DQ			= _bittest(data1, 17);
 				HasADX				= _bittest(data1, 19);
@@ -174,6 +178,14 @@ static const CPUID_Data_t CPUID_Data;
 
 bool CPU_Supports_SHA(void) {
 	return CPUID_Data.HasSHA;
+}
+
+bool CPU_FDP_ErrorOnly(void) {
+	return CPUID_Data.FDP_EXCPTN_ONLY;
+}
+
+bool CPU_FCS_FDS_Deprecated(void) {
+	return CPUID_Data.FCS_FDS_DEP;
 }
 
 #define WarnOnce(warning) do {\

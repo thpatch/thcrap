@@ -245,7 +245,7 @@ void patch_msg_state_t::replace_line(th06_msg_t &cmd_out, replacer_t replacer, c
 	assert(pl.valid());
 	if(pl.tli) {
 		auto pl_full_len = pl.line.length() + pl.tli.len();
-		assert(pl_full_len <= 0xFE - replacer.extra_param_len);
+		assert(pl_full_len <= 0xFEu - replacer.extra_param_len);
 		VLA(char, pl_full, pl_full_len + 1);
 
 		auto *p = stringref_copy_advance_dst(pl_full, pl.line);

@@ -15,6 +15,9 @@ struct stage_t
 	std::vector<binhack_t> binhacks;
 	std::vector<codecave_t> codecaves;
 	std::vector<breakpoint_t> breakpoints;
+	HackpointMemoryPage binhack_page = { NULL, 0 };
+	HackpointMemoryPage codecave_pages[5] = { { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 } };
+	HackpointMemoryPage breakpoint_pages[2] = { { NULL, 0 }, { NULL, 0 } };
 };
 
 struct runconfig_t
@@ -47,6 +50,44 @@ struct runconfig_t
 };
 
 static runconfig_t run_cfg;
+
+#pragma optimize("y", off)
+HackpointMemoryName locate_address_in_stage_pages(void* FindAddress) {
+	uint8_t* address = (uint8_t*)FindAddress;
+	const size_t stage_count = run_cfg.stages.size();
+
+#define PageIsValidAndContainsAddress(page, addr) \
+	((page).address && ((addr) >= (page).address) & ((addr) <= (page).address + (page).size))
+
+	for (size_t i = 0; i < stage_count; ++i) {
+		stage_t& stage = run_cfg.stages[i];
+		if (PageIsValidAndContainsAddress(stage.binhack_page, address)) {
+			return { "Binhack Sourcecave", (size_t)(address - stage.binhack_page.address), i };
+		}
+		for (size_t j = 0; j < elementsof(stage.codecave_pages); ++j) {
+			if (PageIsValidAndContainsAddress(stage.codecave_pages[j], address)) {
+				codecave_t* found_cave;
+				uint8_t* found_cave_addr = NULL;
+				for (codecave_t& codecave : stage.codecaves) {
+					if (codecave.virtual_address && (codecave.virtual_address < address) && (codecave.virtual_address > found_cave_addr)) {
+						found_cave_addr = codecave.virtual_address;
+						found_cave = &codecave;
+					}
+				}
+				return { found_cave->name, (size_t)(address - found_cave->virtual_address), i };
+			}
+		}
+		if (PageIsValidAndContainsAddress(stage.breakpoint_pages[0], address)) {
+			return { "Breakpoint Sourcecave", (size_t)(address - stage.breakpoint_pages[0].address), i };
+		}
+		if (PageIsValidAndContainsAddress(stage.breakpoint_pages[1], address)) {
+			return { "Breakpoint Callcave", (size_t)(address - stage.breakpoint_pages[1].address), i };
+		}
+	}
+	return { NULL, 0, 0 };
+#undef PageIsValidAndContainsAddress
+}
+#pragma optimize("", on)
 
 static void runconfig_stage_load(json_t *stage_json)
 {
@@ -143,6 +184,12 @@ void runconfig_load(json_t *file, int flags)
 		else {
 			run_cfg.dat_dump = "";
 		}
+	}
+
+	if (can_overwrite) {
+		size_t exception_detail = json_object_get_eval_int_default(file, "exception_detail", 1, JEVAL_STRICT);
+		if (exception_detail > UINT8_MAX) exception_detail = UINT8_MAX;
+		set_exception_detail((uint8_t)exception_detail);
 	}
 
 	value = json_object_get(file, "latest");
@@ -272,9 +319,6 @@ void runconfig_free()
 				if (binhack.addr[i].str) {
 					free((void*)binhack.addr[i].str);
 				}
-				if (binhack.addr[i].binhack_source) {
-					free(binhack.addr[i].binhack_source);
-				}
 			}
 			free(binhack.addr);
 		}
@@ -286,6 +330,7 @@ void runconfig_free()
 		stage.codecaves.clear();
 		for (auto& breakpoint : stage.breakpoints) {
 			free((void*)breakpoint.name);
+			free((void*)breakpoint.expected);
 			for (size_t i = 0; breakpoint.addr[i].type != END_ADDR; ++i) {
 				if (breakpoint.addr[i].str) {
 					free((void*)breakpoint.addr[i].str);
@@ -295,6 +340,19 @@ void runconfig_free()
 			json_decref(breakpoint.json_obj);
 		}
 		stage.breakpoints.clear();
+		if (stage.binhack_page.address) {
+			VirtualFree(stage.binhack_page.address, 0, MEM_RELEASE);
+		}
+		for (size_t i = 0; i < elementsof(stage.codecave_pages); ++i) {
+			if (stage.codecave_pages[i].address) {
+				VirtualFree(stage.codecave_pages[i].address, 0, MEM_RELEASE);
+			}
+		}
+		for (size_t i = 0; i < elementsof(stage.breakpoint_pages); ++i) {
+			if (stage.breakpoint_pages[i].address) {
+				VirtualFree(stage.breakpoint_pages[i].address, 0, MEM_RELEASE);
+			}
+		}
 	}
 	run_cfg.stages.clear();
 }
@@ -445,8 +503,8 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 		module = stage.module;
 	}
 
-	failed += codecaves_apply(stage.codecaves.data(), stage.codecaves.size());
-	failed += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), module);
+	failed += codecaves_apply(stage.codecaves.data(), stage.codecaves.size(), stage.codecave_pages);
+	failed += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), module, &stage.binhack_page);
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
 		const size_t breakpoint_count = stage.breakpoints.size();
 		if (stage_num == 0 && run_cfg.stages.size() > 1) {
@@ -460,7 +518,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 				return false;
 			}
 		}
-		failed += breakpoints_apply(stage.breakpoints.data(), breakpoint_count, module);
+		failed += breakpoints_apply(stage.breakpoints.data(), breakpoint_count, module, stage.breakpoint_pages);
 	}
 
 	return failed == 0;

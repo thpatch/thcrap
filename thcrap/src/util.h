@@ -60,6 +60,74 @@ inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 /// Strings
 /// -------
 
+#ifdef __cplusplus
+extern "C++" {
+
+struct UniqueFree {
+	inline void operator()(void* mem_to_free) {
+		free(mem_to_free);
+	}
+};
+
+template <typename T>
+class unique_alloc : public std::unique_ptr<T, UniqueFree> {
+public:
+	typedef std::unique_ptr<T, UniqueFree> unique_ptr_base;
+	using unique_ptr_base::unique_ptr_base;
+
+	inline bool alloc_size(size_t size) noexcept {
+		T* temp = (T*)malloc(size);
+		bool success = (temp != NULL);
+		this->reset(temp);
+		return temp;
+	}
+
+	inline bool alloc_array(size_t count) noexcept {
+		T* temp = (T*)malloc(count * sizeof(T));
+		bool success = (temp != NULL);
+		this->reset(temp);
+		return temp;
+	}
+
+	inline bool resize(size_t size) noexcept {
+		T* temp = (T*)realloc((void*)this->get(), size);
+		bool success = (temp != NULL);
+		if (success) {
+			(void)this->release();
+			this->reset(temp);
+		}
+		return success;
+	}
+};
+
+template <typename T, std::enable_if_t<!std::is_array_v<T>, int> = 0>
+inline unique_alloc<T> make_unique_alloc(size_t size) {
+	return unique_alloc<T>((T*)malloc(size));
+}
+
+template <typename T, std::enable_if_t<std::is_array_v<T>&& std::extent_v<T> == 0, int> = 0>
+inline unique_alloc<std::remove_extent_t<T>> make_unique_alloc(void) {
+	return unique_alloc<std::remove_extent_t<T>>((std::decay_t<T>)malloc(sizeof(std::remove_extent_t<T>)));
+}
+
+template <typename T, std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0, int> = 0>
+inline unique_alloc<std::remove_extent_t<T>> make_unique_alloc(size_t count) {
+	return unique_alloc<std::remove_extent_t<T>>((std::decay_t<T>)malloc(count * sizeof(std::remove_extent_t<T>)));
+}
+
+template <typename T, std::enable_if_t<std::is_array_v<T>&& std::extent_v<T> != 0, int> = 0>
+inline unique_alloc<std::remove_extent_t<T>> make_unique_alloc(void) {
+	return unique_alloc<std::remove_extent_t<T>>((std::decay_t<T>)malloc(std::extent_v<T> * sizeof(std::remove_extent_t<T>)));
+}
+
+template <typename T, std::enable_if_t<std::is_array_v<T>&& std::extent_v<T> != 0, int> = 0>
+inline unique_alloc<std::remove_extent_t<T>> make_unique_alloc(size_t count) {
+	return unique_alloc<std::remove_extent_t<T>>((std::decay_t<T>)malloc(std::extent_v<T> * count * sizeof(std::remove_extent_t<T>)));
+}
+
+}
+#endif
+
 // String to size_t
 size_t TH_FORCEINLINE strtouz(const char* str, char** str_end, int base) {
 #ifdef TH_X64
@@ -68,6 +136,9 @@ size_t TH_FORCEINLINE strtouz(const char* str, char** str_end, int base) {
 	return strtoul(str, str_end, base);
 #endif
 }
+
+int _vasprintf(char** buffer_ret, const char* format, va_list va);
+int _asprintf(char** buffer_ret, const char* format, ...);
 
 #define PtrDiffStrlen(end_ptr, start_ptr) ((size_t)((end_ptr) - (start_ptr)))
 
@@ -211,10 +282,10 @@ typedef struct {
   *	- "0x": Hexadecimal, as expected.
   *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
   *	        If hMod is NULL, the main module of the current process is used.
+  * - "0b": Binary value
+  * - "Rb": Binary version of "Rx".
   * - "0": Decimal, since accidental octal bugs are evil.
   * - "R": Decimal version of "Rx".
-  *	- Everything else is parsed as a hexadecimal or decimal number depending on
-  *   whether hexadecimal digits are present.
   *
   * [ret] can be a nullptr if a potential parse error and/or a pointer to the
   * end of the parsed address are not needed.

@@ -215,8 +215,8 @@ enum {
 	JEVAL_INT_TRUNCATE	= 0b00000,
 
 	// Json evaluation will return an error code
-	// when instead of of truncating large values
-	// when returning a 32-bit integer.
+	// instead of truncating large values when
+	// returning a 32-bit integer.
 	JEVAL_INT_RANGE_ERR	= 0b10000
 };
 typedef uint8_t jeval_flags_t;

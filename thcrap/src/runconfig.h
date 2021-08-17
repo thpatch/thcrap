@@ -85,6 +85,19 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module);
   * Internal functions
   */
 
+typedef struct {
+	uint8_t* address;
+	size_t size;
+} HackpointMemoryPage;
+
+typedef struct {
+	const char* name;
+	size_t offset;
+	size_t stage_num;
+} HackpointMemoryName;
+
+HackpointMemoryName locate_address_in_stage_pages(void* FindAddress);
+
 #define RUNCONFIG_NO_OVERWRITE 1
 #define RUNCONFIG_NO_BINHACKS 2
 

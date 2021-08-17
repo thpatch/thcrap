@@ -634,8 +634,23 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 
 	out->name = strdup(name);
 	out->title = json_object_get_string_copy(in, "title");
+
 	out->code = strdup(code);
-	out->expected = json_object_get_string_copy(in, "expected");
+
+	size_t code_size = code_string_calc_size(code);
+	out->code_size = code_size;
+
+	out->expected = NULL;
+	if (const char* expected = json_object_get_string(in, "expected")) {
+		size_t expected_size = code_string_calc_size(expected);
+		if (expected_size == code_size) {
+			out->expected = strdup(expected);
+		}
+		else {
+			log_printf("binhack %s: different sizes for expected and code (%zu != %zu), verification will be skipped\n", name, expected_size, code_size);
+		}
+	}
+
 	out->addr = addrs;
 
 	return true;
@@ -653,77 +668,53 @@ static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_co
 	return ret;
 }
 
-size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod)
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage* page_array)
 {
 	if (!binhacks_count) {
 		log_print("No binary hacks to apply.\n");
 		return 0;
 	}
 
+	size_t sourcecaves_total_size = 0;
 	size_t failed = binhacks_total_count(binhacks, binhacks_count);
+	size_t total_valid_addrs = 0;
+	size_t largest_cavesize = 0;
+
+	VLA(bool, binhack_is_valid, binhacks_count);
 
 	log_print(
 		"------------------------\n"
-		"Applying binary hacks...\n"
+		"Setting up binary hacks...\n"
 		"------------------------"
 	);
 
-	size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
-	uint8_t* asm_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
-	size_t current_exp_buf_size = BINHACK_BUFSIZE_MIN;
-	uint8_t* exp_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	for (size_t i = 0; i < binhacks_count; ++i) {
+		const binhack_t& cur = binhacks[i];
 
-	for(size_t i = 0; i < binhacks_count; i++) {
-		const binhack_t *const cur = &binhacks[i];
+		binhack_is_valid[i] = false;
 
-		if (cur->title) {
-			log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_count, cur->title, cur->name);
-		} else {
-			log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_count, cur->name);
+		log_printf(
+			cur.title ? "\n(%2zu/%2zu) %s (%s)..." : "\n(%2zu/%2zu) %s..."
+			, i + 1, binhacks_count, cur.name, cur.title
+		);
+
+		size_t cavesize = cur.code_size;
+
+		assert(cavesize == code_string_calc_size(cur.code));
+
+		if (cur.expected) {
+			assert(cavesize == code_string_calc_size(cur.expected));
 		}
-		
-		// calculated byte size of the hack
-		const size_t asm_size = code_string_calc_size(cur->code);
-		if(!asm_size) {
+
+		if (!cavesize) {
 			log_print("invalid code string size, skipping...\n");
 			continue;
 		}
-		if (asm_size > current_asm_buf_size) {
-			if (void* temp = realloc(asm_buf, asm_size)) {
-				asm_buf = (uint8_t*)temp;
-				current_asm_buf_size = asm_size;
-			}
-			else {
-				log_printf("buffer reallocation failure (%zu bytes), skipping...\n", asm_size);
-				continue;
-			}
-		}
 
-		bool use_expected;
-		if (const size_t exp_size = code_string_calc_size(cur->expected);
-			!exp_size) {
-			use_expected = false;
-		}
-		else if (exp_size != asm_size) {
-			log_printf("different sizes for expected and new code (%zu != %zu), skipping verification... ", exp_size, asm_size);
-			use_expected = false;
-		}
-		else {
-			if (exp_size > current_exp_buf_size) {
-				if (void* temp = realloc(exp_buf, exp_size)) {
-					exp_buf = (uint8_t*)temp;
-					current_exp_buf_size = exp_size;
-				}
-				else {
-					log_printf("buffer reallocation failure (%zu bytes), skipping...\n", exp_size);
-					continue;
-				}
-			}
-			use_expected = true;
-		}
-		
+		size_t cur_valid_addrs = 0;
+
 		uintptr_t addr;
-		for (hackpoint_addr_t* cur_addr = cur->addr;
+		for (hackpoint_addr_t* cur_addr = cur.addr;
 			 eval_hackpoint_addr(cur_addr, &addr, hMod);
 			 ++cur_addr) {
 
@@ -734,26 +725,189 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 
 			log_printf("\nat 0x%p... ", addr);
 
-			if(code_string_render(asm_buf, addr, cur->code)) {
-				log_print("invalid code string, skipping...");
+			if (!VirtualCheckRegion((const void*)addr, cavesize)) {
+				cur_addr->type = INVALID_ADDR;
+				log_print("not enough source bytes, skipping...");
 				continue;
 			}
-			if (use_expected && code_string_render(exp_buf, addr, cur->expected)) {
-				log_print("invalid expected string, skipping verification... ");
-				use_expected = false;
-			}
-			if(!(cur_addr->binhack_source = (uint8_t*)PatchRegionCopySrc((void*)addr, use_expected ? exp_buf : NULL, asm_buf, NULL, asm_size))) {
-				log_print("expected bytes not matched, skipping... ");
-				continue;
-			}
+			++cur_valid_addrs;
 			log_print("OK");
+			sourcecaves_total_size += cavesize;
+		}
+
+		if (cur_valid_addrs) {
+			binhack_is_valid[i] = true;
+			if (cavesize > largest_cavesize) largest_cavesize = cavesize;
+			total_valid_addrs += cur_valid_addrs;
 			--failed;
+		}
+	}
+
+	if (!total_valid_addrs) {
+		log_print("No valid binary hacks to render.\n");
+		return failed;
+	}
+
+	uint8_t* const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	page_array->address = cave_source;
+	page_array->size = sourcecaves_total_size;
+
+	log_printf(
+		"\n"
+		"-------------------------\n"
+		"Rendering binary hacks... (source cave at 0x%p)\n"
+		"-------------------------\n",
+		cave_source
+	);
+
+	uint8_t* sourcecave_p = cave_source;
+	uint8_t* sourcecave_end = sourcecave_p + sourcecaves_total_size;
+
+	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize);
+	uint8_t* exp_buf = (uint8_t*)malloc(largest_cavesize);
+
+	for (size_t i = 0; i < binhacks_count; ++i) {
+		if (binhack_is_valid[i]) {
+			const binhack_t& cur = binhacks[i];
+
+			size_t cavesize = cur.code_size;
+
+			bool use_expected = (cur.expected != NULL);
+
+			uintptr_t addr;
+			for (hackpoint_addr_t* cur_addr = cur.addr;
+				 eval_hackpoint_addr(cur_addr, &addr, hMod);
+				 ++cur_addr) {
+
+				if (!addr) {
+					// NULL_ADDR
+					continue;
+				}
+
+				log_printf("\nat 0x%p... ", addr);
+
+				if (code_string_render(asm_buf, addr, cur.code)) {
+					log_print("invalid code string, skipping...");
+					continue;
+				}
+				if (use_expected && code_string_render(exp_buf, addr, cur.expected)) {
+					log_print("invalid expected string, skipping verification... ");
+					use_expected = false;
+				}
+				if ((cur_addr->binhack_source = (uint8_t*)PatchRegionCopySrc((void*)addr, (use_expected ? exp_buf : NULL), asm_buf, sourcecave_p, cavesize))) {
+					sourcecave_p += cavesize;
+					assert(sourcecave_p <= sourcecave_end);
+					log_print("OK");
+				}
+				else {
+					log_print("expected bytes not matched, skipping...");
+					++failed;
+				}
+			}
 		}
 	}
 	free(asm_buf);
 	free(exp_buf);
+	VLA_FREE(binhack_is_valid);
 	log_print("\n");
+
+	DWORD idgaf;
+	VirtualProtect(cave_source, sourcecaves_total_size, PAGE_READONLY, &idgaf);
+
 	return failed;
+
+	//log_print(
+	//	"------------------------\n"
+	//	"Applying binary hacks...\n"
+	//	"------------------------"
+	//);
+	//
+	//size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
+	//uint8_t* asm_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	//size_t current_exp_buf_size = BINHACK_BUFSIZE_MIN;
+	//uint8_t* exp_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	//
+	//for(size_t i = 0; i < binhacks_count; i++) {
+	//	const binhack_t *const cur = &binhacks[i];
+	//
+	//	if (cur->title) {
+	//		log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_count, cur->title, cur->name);
+	//	} else {
+	//		log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_count, cur->name);
+	//	}
+	//	
+	//	// calculated byte size of the hack
+	//	const size_t asm_size = code_string_calc_size(cur->code);
+	//	if(!asm_size) {
+	//		log_print("invalid code string size, skipping...\n");
+	//		continue;
+	//	}
+	//	if (asm_size > current_asm_buf_size) {
+	//		if (void* temp = realloc(asm_buf, asm_size)) {
+	//			asm_buf = (uint8_t*)temp;
+	//			current_asm_buf_size = asm_size;
+	//		}
+	//		else {
+	//			log_printf("buffer reallocation failure (%zu bytes), skipping...\n", asm_size);
+	//			continue;
+	//		}
+	//	}
+	//
+	//	bool use_expected;
+	//	if (const size_t exp_size = code_string_calc_size(cur->expected);
+	//		!exp_size) {
+	//		use_expected = false;
+	//	}
+	//	else if (exp_size != asm_size) {
+	//		log_printf("different sizes for expected and new code (%zu != %zu), skipping verification... ", exp_size, asm_size);
+	//		use_expected = false;
+	//	}
+	//	else {
+	//		if (exp_size > current_exp_buf_size) {
+	//			if (void* temp = realloc(exp_buf, exp_size)) {
+	//				exp_buf = (uint8_t*)temp;
+	//				current_exp_buf_size = exp_size;
+	//			}
+	//			else {
+	//				log_printf("buffer reallocation failure (%zu bytes), skipping...\n", exp_size);
+	//				continue;
+	//			}
+	//		}
+	//		use_expected = true;
+	//	}
+	//	
+	//	uintptr_t addr;
+	//	for (hackpoint_addr_t* cur_addr = cur->addr;
+	//		 eval_hackpoint_addr(cur_addr, &addr, hMod);
+	//		 ++cur_addr) {
+	//
+	//		if (!addr) {
+	//			// NULL_ADDR
+	//			continue;
+	//		}
+	//
+	//		log_printf("\nat 0x%p... ", addr);
+	//
+	//		if(code_string_render(asm_buf, addr, cur->code)) {
+	//			log_print("invalid code string, skipping...");
+	//			continue;
+	//		}
+	//		if (use_expected && code_string_render(exp_buf, addr, cur->expected)) {
+	//			log_print("invalid expected string, skipping verification... ");
+	//			use_expected = false;
+	//		}
+	//		if(!(cur_addr->binhack_source = (uint8_t*)PatchRegionCopySrc((void*)addr, use_expected ? exp_buf : NULL, asm_buf, NULL, asm_size))) {
+	//			log_print("expected bytes not matched, skipping... ");
+	//			continue;
+	//		}
+	//		log_print("OK");
+	//		--failed;
+	//	}
+	//}
+	//free(asm_buf);
+	//free(exp_buf);
+	//log_print("\n");
+	//return failed;
 }
 
 bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
@@ -902,11 +1056,12 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	out->size = size_val;
 	out->fill = (uint8_t)fill_val;
 	out->export_codecave = export_val;
+	out->virtual_address = NULL;
 
 	return true;
 }
 
-size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
+size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HackpointMemoryPage page_array[5]) {
 	if (codecaves_count == 0) {
 		return 0;
 	}
@@ -924,7 +1079,7 @@ size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	size_t codecave_export_count = 0;
 
-	VLA(size_t, codecaves_full_size, codecaves_count * sizeof(size_t));
+	VLA(size_t, codecaves_full_size, codecaves_count);
 
 	// First pass: calc the complete codecave size
 	for (size_t i = 0; i < codecaves_count; ++i) {
@@ -936,11 +1091,13 @@ size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		codecaves_alloc_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
 
-	uint8_t* codecave_buf[5] = { NULL, NULL, NULL, NULL, NULL };
 	for (int i = 0; i < 5; ++i) {
-		if (codecaves_alloc_size[i] > 0) {
-			codecave_buf[i] = (uint8_t*)VirtualAlloc(NULL, codecaves_alloc_size[i], MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-			if (codecave_buf[i]) {
+		uint8_t* codecave_buf = NULL;
+		size_t codecave_size = codecaves_alloc_size[i];
+		page_array[i].size = codecave_size;
+		if (codecave_size > 0) {
+			codecave_buf = (uint8_t*)VirtualAlloc(NULL, codecave_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			if (codecave_buf) {
 				/*
 				*  TODO: Profile whether it's faster to memset the whole block
 				*  here or just the extra padding required after each codecave.
@@ -952,12 +1109,13 @@ size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 				//Should probably put an abort error here
 			}
 		}
+		page_array[i].address = codecave_buf;
 	}
 
 	// Second pass: Gather the addresses, so that codecaves can refer to each other.
 	uint8_t* current_cave[5];
 	for (int i = 0; i < 5; ++i) {
-		current_cave[i] = codecave_buf[i];
+		current_cave[i] = page_array[i].address;
 	}
 
 	exported_func_t* codecaves_export_table;
@@ -971,7 +1129,7 @@ size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	for (size_t i = 0; i < codecaves_count; ++i) {
 		const CodecaveAccessType access = codecaves[i].access_type;
 
-		log_printf("Recording codecave: \"%s\" at %p\n", codecaves[i].name, (uintptr_t)current_cave[access]);
+		log_printf("Recording codecave: \"%s\" at 0x%p\n", codecaves[i].name, (uintptr_t)current_cave[access]);
 		func_add(codecaves[i].name, (uintptr_t)current_cave[access]);
 
 		if (codecaves[i].export_codecave) {
@@ -985,7 +1143,7 @@ size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 
 	// Third pass: Write all of the code
 	for (int i = 0; i < 5; ++i) {
-		current_cave[i] = codecave_buf[i];
+		current_cave[i] = page_array[i].address;
 	}
 
 	for (size_t i = 0; i < codecaves_count; ++i) {
@@ -998,6 +1156,7 @@ size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 		if (code) {
 			code_string_render(current_cave[access], (uintptr_t)current_cave[access], code);
 		}
+		codecaves[i].virtual_address = current_cave[access];
 
 		current_cave[access] += codecaves[i].size;
 		for (size_t j = codecaves[i].size; j < codecaves_full_size[i]; ++j) {
@@ -1015,8 +1174,8 @@ size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count) {
 	DWORD idgaf;
 
 	for (int i = 0; i < 5; ++i) {
-		if (codecave_buf[i]) {
-			VirtualProtect(codecave_buf[i], codecaves_alloc_size[i], page_access_type_array[i], &idgaf);
+		if (page_array[i].address) {
+			VirtualProtect(page_array[i].address, page_array[i].size, page_access_type_array[i], &idgaf);
 		}
 	}
 	return 0;

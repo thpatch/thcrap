@@ -167,6 +167,18 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 
 	out->name = strdup(name);
 	out->cavesize = cavesize;
+
+	out->expected = NULL;
+	if (const char* expected = json_object_get_string(in, "expected")) {
+		size_t expected_size = code_string_calc_size(expected);
+		if (expected_size == cavesize) {
+			out->expected = strdup(expected);
+		}
+		else {
+			log_printf("breakpoint %s: different sizes for expected and cavesize (%zu != %zu), verification will be skipped\n", name, expected_size, cavesize);
+		}
+	}
+
 	out->json_obj = json_incref(in);
 	out->func = nullptr;
 	out->addr = addrs;
@@ -229,7 +241,7 @@ static const size_t bp_entry_index = &bp_entry_indexptr + 1 - (uint8_t*)&bp_entr
 static const size_t bp_entry_local = &bp_entry_localptr + 1 - (uint8_t*)&bp_entry;
 static const size_t bp_entry_call  = &bp_entry_callptr  + 1 - (uint8_t*)&bp_entry;
 
-size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod)
+size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod, HackpointMemoryPage page_array[2])
 {
 	if(!breakpoints || !bp_count) {
 		log_print("No breakpoints to set up.\n");
@@ -239,6 +251,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 	size_t sourcecaves_total_size = 0;
 	size_t failed = bp_count;
 	size_t total_valid_addrs = 0;
+	size_t largest_cavesize = 0;
 
 	VLA(size_t, breakpoint_total_size, bp_count);
 
@@ -254,7 +267,10 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 		breakpoint_total_size[i] = 0;
 
-		log_printf("\n(%2d/%2d) %s... ", i + 1, bp_count, cur.name);
+		log_printf(
+			"\n(%2zu/%2zu) %s..."
+			, i + 1, bp_count, cur.name
+		);
 
 		if (!breakpoint_local_init(cur)) {
 			// Not found message inside function
@@ -262,6 +278,11 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		}
 
 		size_t cavesize = cur.cavesize;
+
+		if (cur.expected) {
+			assert(cavesize == code_string_calc_size(cur.expected));
+		}
+
 		size_t total_cavesize = AlignUpToMultipleOf2(cavesize + CALL_LEN, 16);
 
 		size_t cur_valid_addrs = 0;
@@ -278,9 +299,9 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 			log_printf("\nat 0x%p... ", addr);
 
-			if (!VirtualCheckRegion((const void*)addr, cur.cavesize)) {
+			if (!VirtualCheckRegion((const void*)addr, cavesize)) {
 				cur_addr->type = INVALID_ADDR;
-				log_printf("not enough source bytes, skipping... ", addr);
+				log_print("not enough source bytes, skipping...");
 				continue;
 			}
 			++cur_valid_addrs;
@@ -290,6 +311,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 		if (cur_valid_addrs) {
 			breakpoint_total_size[i] = total_cavesize;
+			if (cavesize > largest_cavesize) largest_cavesize = cavesize;
 			total_valid_addrs += cur_valid_addrs;
 			--failed;
 		}
@@ -301,10 +323,14 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 	}
 
 	uint8_t *const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	page_array[0].address = cave_source;
+	page_array[0].size = sourcecaves_total_size;
 	memset(cave_source, x86_INT3, sourcecaves_total_size);
 
 	const size_t callcaves_total_size = total_valid_addrs * bp_entry_size;
 	uint8_t *const cave_call = (uint8_t*)VirtualAlloc(0, callcaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	page_array[1].address = cave_call;
+	page_array[1].size = callcaves_total_size;
 
 	for (uint8_t *callcave_fill = cave_call, *const callcave_fill_end = cave_call + callcaves_total_size;
 		 callcave_fill < callcave_fill_end;
@@ -316,19 +342,19 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		"\n"
 		"-------------------------\n"
 		"Rendering breakpoints... (source cave at 0x%p, call cave at 0x%p)\n"
-		"-------------------------\n",
-		cave_source, cave_call
+		"-------------------------\n"
+		, cave_source, cave_call
 	);
 
 	uint8_t* sourcecave_p = cave_source;
 	uint8_t* callcave_p = cave_call;
 
-	size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
-	uint8_t* asm_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize);
+	uint8_t* exp_buf = (uint8_t*)malloc(largest_cavesize);
 	// CALL bp_entry
 	asm_buf[0] = x86_CALL_NEAR_REL32;
-	if constexpr (BINHACK_BUFSIZE_MIN > CALL_LEN) {
-		memset(asm_buf + CALL_LEN, x86_NOP, BINHACK_BUFSIZE_MIN - CALL_LEN);
+	if (largest_cavesize > CALL_LEN) {
+		memset(asm_buf + CALL_LEN, x86_NOP, largest_cavesize - CALL_LEN);
 	}
 
 #define PatchBPEntryInst(bp_entry_instance, bp_entry_offset, type, value) \
@@ -343,16 +369,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 			const size_t cavesize = cur->cavesize;
 
-			if (cavesize > current_asm_buf_size) {
-				if (void* temp = realloc(asm_buf, cavesize)) {
-					asm_buf = (uint8_t*)temp;
-					memset(asm_buf + current_asm_buf_size, x86_NOP, current_asm_buf_size - cavesize);
-					current_asm_buf_size = cavesize;
-				}
-				else {
-					continue;
-				}
-			}
+			bool use_expected = (cur->expected != NULL);
 
 			size_t cur_valid_addrs = 0;
 			uintptr_t addr;
@@ -378,7 +395,11 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 				/// Cave assembly
 				// Copy old code to cave
-				if (cur_addr->breakpoint_source = (uint8_t*)PatchRegionCopySrc((void*)addr, NULL, asm_buf, sourcecave_p, cavesize)) {
+				if (use_expected && code_string_render(exp_buf, addr, cur->expected)) {
+					log_print("invalid expected string, skipping verification... ");
+					use_expected = false;
+				}
+				if (cur_addr->breakpoint_source = (uint8_t*)PatchRegionCopySrc((void*)addr, (use_expected ? exp_buf : NULL), asm_buf, sourcecave_p, cavesize)) {
 					cave_fix(sourcecave_p, (uint8_t*)addr);
 
 					// JMP addr
@@ -388,11 +409,15 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 					sourcecave_p += breakpoint_total_size[i];
 				}
-				
+				else {
+					log_print("expected bytes not matched, skipping...");
+					++failed;
+				}
 			}
 		}
 	}
 	free(asm_buf);
+	free(exp_buf);
 	VLA_FREE(breakpoint_total_size);
 
 	DWORD idgaf;

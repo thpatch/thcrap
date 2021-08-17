@@ -85,6 +85,8 @@ typedef struct {
 	const char *title;
 	// Binhack code
 	const char *code;
+	// Binhack length
+	size_t code_size;
 	// Expected code at the binhack address
 	const char *expected;
 	// Binhack addresses (NULL-terminated array)
@@ -114,6 +116,8 @@ typedef struct {
 	bool export_codecave;
 	// Read, write, execute flags
 	CodecaveAccessType access_type;
+
+	uint8_t* virtual_address;
 } codecave_t;
 
 // Shared error message for nonexistent functions.
@@ -134,7 +138,7 @@ bool binhack_from_json(const char* name, json_t* in, binhack_t* out);
 // If HMODULE is not null, relative addresses are relative to this module.
 // Else, they are relative to the main module of the current process.
 // Returns the number of binary hacks that could not be applied.
-size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod);
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage* page_array);
 
 // Adds every codecave in [codecaves] on the current process.
 // The codecaves can then be called from binhacks similar to plugin functions. For example:
@@ -147,7 +151,7 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 //		"test_cave": "somecode"
 //		}
 // }
-size_t codecaves_apply(const codecave_t *codecaves, size_t codecaves_count);
+size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HackpointMemoryPage page_array[5]);
 
 // Parses a json codecave entry and returns a codecave object
 bool codecave_from_json(const char *name, json_t *in, codecave_t *out);

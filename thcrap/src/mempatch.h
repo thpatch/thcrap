@@ -21,14 +21,9 @@ BOOL VirtualCheckCode(const void *ptr);
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len);
 int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New, size_t len);
 
-// If the current value in [ptr] equals [Prev], copies [len] bytes from [ptr] to a buffer
-// based on [CpyBuf] and then writes [len] bytes from [New] to [ptr]. If [CpyBuf] is NULL,
-// a buffer of [len] bytes is allocated and returned, else [CpyBuf] is used as a pointer to an
-// already allocated buffer. Returns NULL on failure.
-// 
-// TODO: The jank about allocating a buffer when [CpyBuf] is NULL only exists to provide
-// basic support for binhacks saving what they overwrite. That behavior should be replaced
-// once binhacks are able to allocate a unified sourcecave buffer before being rendered.
+// If the current value in [ptr] equals [Prev], copies [len] bytes from [ptr] to [CpyBuf]
+// and then writes [len] bytes from [New] to [ptr].
+// Returns true on success, false on failure.
 void* PatchRegionCopySrc(void *ptr, const void *Prev, const void *New, void *CpyBuf, size_t len);
 
 /// Import Address Table patching

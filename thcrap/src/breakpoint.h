@@ -44,6 +44,9 @@ typedef struct {
 	// Size of the original code sliced out at [addr].
 	size_t cavesize;
 
+	// Expected code at the breakpoint address
+	const char *expected;
+
 	// Json variables associated with the breakpoint. Usually comes from
 	// global.js, game_id.js and game_id.build_id.js.
 	// This object is never accessed directly by the breakpoints engine,
@@ -108,7 +111,7 @@ int breakpoint_cave_exec_flag(json_t *bp_info);
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.
-size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod);
+size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod, HackpointMemoryPage page_array[2]);
 
 // Removes all breakpoints in the given set.
 // TODO: Implement!

@@ -73,9 +73,11 @@ size_t str_address_value(const char *str, HMODULE CustomModuleBase, str_address_
 			[[fallthrough]];
 		case '0':
 		{
-			const bool is_hex = (*++str | 0x20) == 'x';
-			str += is_hex;
-			base = is_hex ? 16 : 10;
+			char c = (*++str | 0x20);
+			const bool is_binary = (c == 'b');
+			const bool is_hex = (c == 'x');
+			str += (is_hex | is_binary);
+			base = is_hex ? 16 : is_binary ? 2 : 10;
 		}
 	}
 
@@ -106,4 +108,35 @@ int8_t hex_value(char c) {
 	c -= 49;
 	if ((uint8_t)c < 6) return c + 10;
 	return -1;
+}
+
+int _vasprintf(char** buffer_ret, const char* format, va_list va) {
+	va_list va2;
+
+	va_copy(va2, va);
+	int length = vsnprintf(NULL, 0, format, va2);
+	va_end(va2);
+
+	char* buffer = (char*)malloc(length + 1);
+
+	va_copy(va2, va);
+	int ret = vsprintf(buffer, format, va2);
+	va_end(va2);
+
+	if (ret != -1) {
+		*buffer_ret = buffer;
+	} else {
+		free(buffer);
+		*buffer_ret = NULL;
+	}
+
+	return ret;
+}
+
+int _asprintf(char** buffer_ret, const char* format, ...) {
+	va_list va;
+	va_start(va, format);
+	int ret = _vasprintf(buffer_ret, format, va);
+	va_end(va);
+	return ret;
 }

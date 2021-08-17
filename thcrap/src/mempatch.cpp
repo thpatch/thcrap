@@ -43,18 +43,17 @@ BOOL VirtualCheckCode(const void *ptr)
 
 int PatchRegion(void *ptr, const void *Prev, const void *New, size_t len)
 {
-	DWORD oldProt;
 	int ret = 0;
 
-	if(!VirtualCheckRegion(ptr, len)) {
-		return ret;
+	if(VirtualCheckRegion(ptr, len)) {
+		DWORD oldProt;
+		VirtualProtect(ptr, len, PAGE_READWRITE, &oldProt);
+		if (!Prev || memcmp(ptr, Prev, len) == 0) {
+			memcpy(ptr, New, len);
+			ret = 1;
+		}
+		VirtualProtect(ptr, len, oldProt, &oldProt);
 	}
-	VirtualProtect(ptr, len, PAGE_READWRITE, &oldProt);
-	if(Prev ? !memcmp(ptr, Prev, len) : 1) {
-		memcpy(ptr, New, len);
-		ret = 1;
-	}
-	VirtualProtect(ptr, len, oldProt, &oldProt);
 	return ret;
 }
 
@@ -78,15 +77,12 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 
 void* PatchRegionCopySrc(void *ptr, const void *Prev, const void *New, void *CpyBuf, size_t len)
 {
-	DWORD oldProt;
 	void* ret = NULL;
 
 	if(VirtualCheckRegion(ptr, len)) {
+		DWORD oldProt;
 		VirtualProtect(ptr, len, PAGE_READWRITE, &oldProt);
 		if (!Prev || memcmp(ptr, Prev, len) == 0) {
-			if (!CpyBuf) {
-				CpyBuf = malloc(len);
-			}
 			memcpy(CpyBuf, ptr, len);
 			memcpy(ptr, New, len);
 			ret = CpyBuf;

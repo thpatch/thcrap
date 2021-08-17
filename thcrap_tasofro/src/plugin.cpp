@@ -30,7 +30,7 @@ extern "C" int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
 		json_object_foreach(binhacks, key, value) {
 			binhack_t binhack;
 			if (binhack_from_json(key, value, &binhack)) {
-				binhacks_apply(&binhack, 1, *plugin);
+				binhacks_apply(&binhack, 1, *plugin, NULL);
 			}
 		}
 		json_decref(cur_patch);

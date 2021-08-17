@@ -16,4 +16,6 @@ TH_STATIC_ASSERT(sizeof(void*) <= 4, \
 "to be looked into."
 );
 
+void set_exception_detail(uint8_t detail_level);
+
 void exception_init(void);

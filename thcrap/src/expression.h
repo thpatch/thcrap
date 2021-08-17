@@ -239,6 +239,8 @@ typedef union {
 const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, uintptr_t rel_source);
 
 bool CPU_Supports_SHA(void);
+bool CPU_FDP_ErrorOnly(void);
+bool CPU_FCS_FDS_Deprecated(void);
 
 void DisableCodecaveNotFoundWarning(bool state);
 
