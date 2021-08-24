@@ -1,4 +1,5 @@
 using Microsoft.WindowsAPICodePack.Dialogs;
+using Microsoft.Xaml.Behaviors;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -11,6 +12,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -35,13 +37,38 @@ namespace thcrap_configure_v3
         }
         class Game : INotifyPropertyChanged
         {
-            private Page4 parentWindow;
-            public ThcrapDll.games_js_entry game;
+            private readonly Page4 parentWindow;
+            public readonly string game_id;
+            public List<string> Paths { get; private set; }
+            public string SelectedPath { get; private set; }
+            private List<Control> _contextMenu;
+            public List<Control> ContextMenu { get {
+                    if (_contextMenu == null)
+                    {
+                        _contextMenu = new List<Control>();
+                        _contextMenu.AddRange(Paths.Select(path => new MenuItem()
+                        {
+                            Header = path,
+                            IsCheckable = true,
+                            IsChecked = (path == SelectedPath),
+                            // TODO add event handler
+                        }));
+                        _contextMenu.Add(new Separator());
+                        _contextMenu.Add(new MenuItem()
+                        {
+                            Header = "Remove from this list",
+                            // TODO add event handler
+                        });
+                    }
+                    return _contextMenu;
+                } }
 
-            public Game(Page4 parentWindow, ThcrapDll.games_js_entry game, bool wasAlreadyPresent)
+            public Game(Page4 parentWindow, string game_id, string path, bool wasAlreadyPresent)
             {
-                this.game = game;
                 this.parentWindow = parentWindow;
+                this.game_id = game_id;
+                this.Paths = new List<string>() { path };
+                this.SelectedPath = path;
                 this.NewVisibility = Visibility.Hidden;
                 this.IsSelected = true;
                 this.WasAlreadyPresent = wasAlreadyPresent;
@@ -58,22 +85,22 @@ namespace thcrap_configure_v3
                         if (stringdefs != null)
                         {
                             string value;
-                            if (stringdefs.TryGetValue(game.id, out value))
+                            if (stringdefs.TryGetValue(game_id, out value))
                                 name_ = value;
-                            else if (game.id.EndsWith("_custom") && stringdefs.TryGetValue(game.id.Remove(game.id.Length - "_custom".Length), out value))
+                            else if (game_id.EndsWith("_custom") && stringdefs.TryGetValue(game_id.Remove(game_id.Length - "_custom".Length), out value))
                                 name_ = value + " (configuration)";
                         }
                     }
 
                     if (name_ == null)
                     {
-                        var runconfig = ThcrapHelper.stack_json_resolve<ThXX_js>(game.id + ".js");
+                        var runconfig = ThcrapHelper.stack_json_resolve<ThXX_js>(game_id + ".js");
                         if (runconfig != null)
                             name_ = runconfig.title;
                     }
 
                     if (name_ == null)
-                        name_ = game.id;
+                        name_ = game_id;
 
                     return name_;
                 }
@@ -82,14 +109,14 @@ namespace thcrap_configure_v3
             public ImageSource GameIcon { get; private set; }
             public async Task LoadGameIcon() => await Task.Run(() =>
             {
-                string path = game.path;
+                string path = SelectedPath;
                 if (path.EndsWith("/vpatch.exe"))
                 {
                     // Try to find the game, in order to have a nice icon
-                    string gamePath = path.Replace("/vpatch.exe", "/" + game.id + ".exe");
+                    string gamePath = path.Replace("/vpatch.exe", "/" + game_id + ".exe");
                     if (File.Exists(gamePath))
                         path = gamePath;
-                    else if (game.id == "th06")
+                    else if (game_id == "th06")
                     {
                         // Special case - EoSD
                         gamePath = path.Replace("/vpatch.exe", "/東方紅魔郷.exe");
@@ -108,7 +135,17 @@ namespace thcrap_configure_v3
                 { }
             });
 
-            public string Path { get => game.path; }
+            public void AddPath(string path)
+            {
+                if (Paths.Contains(path))
+                    return;
+
+                Paths.Add(path);
+                _contextMenu = null;
+                SetNew(true);
+            }
+
+            public string Path { get => SelectedPath; }
 
             public Visibility NewVisibility { get; private set; }
             public void SetNew(bool isNew)
@@ -175,12 +212,7 @@ namespace thcrap_configure_v3
                 games_js_file.Dispose();
                 foreach (var it in games_js)
                 {
-                    var entry = new Game(this, new ThcrapDll.games_js_entry
-                    {
-                        id = it.Key,
-                        path = it.Value
-                    },
-                    true);
+                    var entry = new Game(this, it.Key, it.Value, true);
                     await entry.LoadGameIcon();
                     games.Add(entry);
                 }
@@ -195,7 +227,7 @@ namespace thcrap_configure_v3
         {
             var dict = new SortedDictionary<string, string>();
             foreach (var it in games)
-                dict[it.game.id] = it.game.path;
+                dict[it.game_id] = it.SelectedPath;
 
             var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
             try {
@@ -247,38 +279,29 @@ namespace thcrap_configure_v3
             foreach (var it in this.games)
                 it.SetNew(false);
 
-            ThcrapDll.games_js_entry[] games = new ThcrapDll.games_js_entry[this.games.Count + 1];
-            int i = 0;
-            foreach (var it in this.games)
-            {
-                games[i] = it.game;
-                i++;
-            }
-            games[i] = new ThcrapDll.games_js_entry();
-
             SetSearching(true);
-            IntPtr foundPtr = await Task.Run(() => ThcrapDll.SearchForGames(root, games));
+            IntPtr foundPtr = await Task.Run(() => ThcrapDll.SearchForGames(root, null));
             SetSearching(false);
 
             var found = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr);
 
-            string last = "";
             foreach (var it in found)
             {
-                if (it.id == last)
-                    continue;
-                last = it.id;
-
-                var game = new Game(this, new ThcrapDll.games_js_entry()
+                var game = this.games.FirstOrDefault(x => x.game_id == it.id);
+                if (game == null)
                 {
-                    id = it.id,
-                    path = ThcrapHelper.PtrToStringUTF8(it.path),
-                },
-                false);
-                await game.LoadGameIcon();
-                if (!gamesListWasEmpty)
-                    game.SetNew(true);
-                this.games.Add(game);
+                    // new game
+                    game = new Game(this, it.id, ThcrapHelper.PtrToStringUTF8(it.path), false);
+                    await game.LoadGameIcon();
+                    if (!gamesListWasEmpty)
+                        game.SetNew(true);
+                    this.games.Add(game);
+                }
+                else
+                {
+                    // game already exists
+                    game.AddPath(ThcrapHelper.PtrToStringUTF8(it.path));
+                }
             }
 
             ThcrapDll.SearchForGames_free(foundPtr);
@@ -315,12 +338,61 @@ namespace thcrap_configure_v3
         public void Leave()
         {
             SaveGamesJs(this.games.Where((Game game) => game.IsSelected || game.WasAlreadyPresent));
-            outGames = this.games.Where((Game game) => game.IsSelected).Select((Game game) => game.game);
+            outGames = this.games.Where((Game game) => game.IsSelected).Select((Game game) => new ThcrapDll.games_js_entry
+            {
+                id = game.game_id,
+                path = game.SelectedPath,
+            });
         }
 
         public IEnumerable<ThcrapDll.games_js_entry> GetGames()
         {
             return outGames;
+        }
+    }
+
+    public class Page4DropDownButtonBehavior : Behavior<Button>
+    {
+        private bool isContextMenuOpen;
+
+        protected override void OnAttached()
+        {
+            base.OnAttached();
+            AssociatedObject.AddHandler(Button.ClickEvent, new RoutedEventHandler(AssociatedObject_Click), true);
+        }
+
+        void AssociatedObject_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            Button source = sender as Button;
+            if (source != null && source.ContextMenu != null)
+            {
+                if (!isContextMenuOpen)
+                {
+                    // Add handler to detect when the ContextMenu closes
+                    source.ContextMenu.AddHandler(ContextMenu.ClosedEvent, new RoutedEventHandler(ContextMenu_Closed), true);
+                    // If there is a drop-down assigned to this button, then position and display it
+                    source.ContextMenu.PlacementTarget = source;
+                    source.ContextMenu.Placement = PlacementMode.Bottom;
+                    source.ContextMenu.IsOpen = true;
+                    isContextMenuOpen = true;
+                }
+            }
+        }
+
+        protected override void OnDetaching()
+        {
+            base.OnDetaching();
+            AssociatedObject.RemoveHandler(Button.ClickEvent, new RoutedEventHandler(AssociatedObject_Click));
+        }
+
+        void ContextMenu_Closed(object sender, RoutedEventArgs e)
+        {
+            isContextMenuOpen = false;
+            var contextMenu = sender as ContextMenu;
+            if (contextMenu != null)
+            {
+                contextMenu.RemoveHandler(ContextMenu.ClosedEvent, new RoutedEventHandler(ContextMenu_Closed));
+            }
         }
     }
 }
