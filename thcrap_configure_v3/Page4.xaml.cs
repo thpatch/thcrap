@@ -46,22 +46,48 @@ namespace thcrap_configure_v3
                     if (_contextMenu == null)
                     {
                         _contextMenu = new List<Control>();
-                        _contextMenu.AddRange(Paths.Select(path => new MenuItem()
+                        _contextMenu.AddRange(Paths.Select(path =>
                         {
-                            Header = path,
-                            IsCheckable = true,
-                            IsChecked = (path == SelectedPath),
-                            // TODO add event handler
+                            var itemPath = new MenuItem()
+                            {
+                                Header = path,
+                                IsCheckable = true,
+                                IsChecked = (path == SelectedPath),
+                            };
+                            itemPath.Click += SelectPath;
+                            return itemPath;
                         }));
+
                         _contextMenu.Add(new Separator());
-                        _contextMenu.Add(new MenuItem()
+
+                        var itemRemove = new MenuItem()
                         {
                             Header = "Remove from this list",
-                            // TODO add event handler
-                        });
+                        };
+                        itemRemove.Click += RemoveFromList;
+                        _contextMenu.Add(itemRemove);
                     }
                     return _contextMenu;
                 } }
+
+            private void SelectPath(object sender, RoutedEventArgs e)
+            {
+                var newMenu = sender as MenuItem;
+
+                foreach (var control in _contextMenu)
+                {
+                    if (control is MenuItem menu && menu.IsCheckable && menu != newMenu)
+                        menu.IsChecked = false;
+                }
+                newMenu.IsChecked = true;
+
+                SelectedPath = newMenu.Header.ToString();
+            }
+
+            private void RemoveFromList(object sender, RoutedEventArgs e)
+            {
+                parentWindow.games.Remove(this);
+            }
 
             public Game(Page4 parentWindow, string game_id, string path, bool wasAlreadyPresent)
             {
@@ -351,6 +377,7 @@ namespace thcrap_configure_v3
         }
     }
 
+    // From https://stackoverflow.com/questions/8958946/how-to-open-a-popup-menu-when-a-button-is-clicked/20710436
     public class Page4DropDownButtonBehavior : Behavior<Button>
     {
         private bool isContextMenuOpen;
