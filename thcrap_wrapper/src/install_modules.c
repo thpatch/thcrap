@@ -245,7 +245,7 @@ int NETDownloadCheckError(HttpStatus reason) {
 			L"No internet or not enough system memory";
 		break;
 	}
-	MessageBoxW(NULL, errorMessage, L"Touhou Community Reliant Automatic Patcher, MB_ICONERROR | MB_OK);
+	MessageBoxW(NULL, errorMessage, L"Touhou Community Reliant Automatic Patcher", MB_ICONERROR | MB_OK);
 	return 1;
 }
 
