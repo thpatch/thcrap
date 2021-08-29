@@ -120,3 +120,22 @@ HWND createInstallPopup(LPWSTR install_message)
 
 	return hwnd;
 }
+
+void errorCodeMsg(const wchar_t* msg, HWND hParent) {
+	DWORD error = GetLastError(); // Very important to do this first
+	wchar_t code_str[16];
+	ZeroMemory(code_str, 16 * sizeof(wchar_t));
+	int i = 14;
+	for (int j = 1; error; j++, i--) {
+		code_str[i] = error % 10 + 0x30;
+		error /= 10;
+	}
+	wchar_t* full_msg = my_alloc(16 + my_wcslen(msg) + my_wcslen(L"Error code: "), sizeof(wchar_t));
+
+	wchar_t* p = full_msg;
+	p = my_strcpy(p, msg);
+	p = my_strcpy(p, L"Error code: ");
+	p = my_strcpy(p, code_str);
+
+	MessageBoxW(hParent, full_msg, L"Error", MB_ICONERROR | MB_OK);
+}

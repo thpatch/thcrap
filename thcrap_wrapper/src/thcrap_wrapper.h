@@ -7,6 +7,7 @@ void installCrt(LPWSTR ApplicationPath);
 int installDotNET(LPWSTR ApplicationPath);
 
 HWND createInstallPopup(LPWSTR install_message);
+void errorCodeMsg(const wchar_t* msg, HWND hParent);
 
 size_t my_wcslen(const wchar_t *str);
 int my_wcscmp(const wchar_t *s1, const wchar_t *s2);
