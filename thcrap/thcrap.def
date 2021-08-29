@@ -232,6 +232,9 @@ EXPORTS
 	patch_rel_to_abs
 	patch_dep_to_desc
 
+	patch_opt_get
+	patch_opt_get_len
+
 	; Hooks
 	; -----
 	patchhook_register
