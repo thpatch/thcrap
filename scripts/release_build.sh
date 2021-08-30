@@ -13,6 +13,7 @@ FILES_LIST="bin/act_nut_lib.dll \
     bin/Microsoft.WindowsAPICodePack.dll \
     bin/Microsoft.WindowsAPICodePack.Shell.dll \
     bin/Microsoft.WindowsAPICodePack.ShellExtensions.dll \
+    bin/Microsoft.Xaml.Behaviors.dll \
     bin/scripts/install_dotnet461.sh \
     bin/steam_api.dll \
     bin/System.Buffers.dll \
