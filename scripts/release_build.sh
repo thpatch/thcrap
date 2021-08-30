@@ -13,6 +13,7 @@ FILES_LIST="bin/act_nut_lib.dll \
     bin/Microsoft.WindowsAPICodePack.dll \
     bin/Microsoft.WindowsAPICodePack.Shell.dll \
     bin/Microsoft.WindowsAPICodePack.ShellExtensions.dll \
+    bin/scripts/install_dotnet461.sh \
     bin/steam_api.dll \
     bin/System.Buffers.dll \
     bin/System.Memory.dll \
@@ -152,7 +153,15 @@ rm -rf "tmp_$DATE"
 test $UNITTEST_STATUS -eq 0 || confirm 'Unit tests failed! Continue anyway?'
 
 # Prepare the release directory
-BUILD_FILES_LIST=$(cd git_thcrap/bin && echo $(ls *.exe bin/cacert.pem bin/*.exe bin/*.exe.config bin/*.dll bin/*.json | grep -vF '_d.dll'))
+BUILD_FILES_LIST=$(cd git_thcrap/bin && echo $(ls \
+    *.exe \
+    bin/cacert.pem \
+    bin/*.exe \
+    bin/*.exe.config \
+    bin/*.dll \
+    bin/*.json \
+    bin/scripts/* \
+    | grep -vF '_d.dll'))
 if [ "$BUILD_FILES_LIST" != "$FILES_LIST" ]; then
     echo "The list of files to copy doesn't match. Files list:"
     echo "$FILES_LIST" | tr ' ' '\n' > 1
@@ -165,7 +174,11 @@ rm -rf thcrap # Using -f for readonly files
 mkdir thcrap
 mkdir thcrap/bin
 # Copy all the build files
-for f in $FILES_LIST; do cp git_thcrap/bin/$f thcrap/$f; done
+for f in $FILES_LIST; do
+    DESTDIR=$(dirname thcrap/$f)
+    test -d "$DESTDIR" || mkdir -p "$DESTDIR"
+    cp git_thcrap/bin/$f thcrap/$f
+done
 cp -r git_thcrap/scripts/ thcrap/bin/
 rm -rf thcrap/bin/scripts/__pycache__/
 # Add an initial repo.js, used by configure as a server list
