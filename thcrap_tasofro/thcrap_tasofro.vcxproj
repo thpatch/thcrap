@@ -52,6 +52,7 @@
     <ClCompile Include="src\th135.cpp" />
     <ClCompile Include="src\th155_bmp_font.cpp" />
     <ClCompile Include="src\th175.cpp" />
+    <ClCompile Include="src\th175_pl.cpp" />
     <ClCompile Include="src\thcrap_tasofro.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

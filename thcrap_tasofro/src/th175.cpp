@@ -14,6 +14,7 @@
 
 int th175_init()
 {
+	patchhook_register("*.pl", patch_th175_pl, nullptr);
 	patchhook_register("*.nut", patch_nut, nullptr);
 
 	return 0;
