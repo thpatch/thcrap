@@ -443,6 +443,7 @@ void log_init(int console)
 		}
 
 		log_printf("OS/Runtime: %s\n", windows_version());
+		log_printf("Code pages: ANSI=%u, OEM=%u\n", GetACP(), GetOEMCP());
 
 		log_print("\nScreens:\n");
 
