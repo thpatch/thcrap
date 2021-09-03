@@ -367,7 +367,7 @@ namespace thcrap_configure_v3
             outGames = this.games.Where((Game game) => game.IsSelected).Select((Game game) => new ThcrapDll.games_js_entry
             {
                 id = game.game_id,
-                path = game.SelectedPath,
+                path = ThcrapHelper.StringUTF8ToPtr(game.SelectedPath),
             });
         }
 
