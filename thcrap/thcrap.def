@@ -5,6 +5,7 @@ EXPORTS
 	hex_value
 	binhack_from_json
 	binhacks_apply
+	code_to_str
 
 	code_string_calc_size
 	code_string_render
