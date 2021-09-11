@@ -2057,3 +2057,28 @@ patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t V
 		return bad_ret;
 	}
 }
+
+const char* code_to_str(json_t* code, const char *name) {
+	if (json_is_array(code)) {
+		uint32_t i;
+		json_t* cur_code;
+		std::string code_str{};
+		json_array_foreach(code, i, cur_code) {
+			if (json_typeof(cur_code) != JSON_STRING) {
+				if (name)
+					log_printf("Syntax error: element in \"code\" array of %s not a string\n", name);
+				return NULL;
+			}
+			code_str.append(json_string_value(cur_code));
+		}
+		return strdup(code_str.c_str());
+	}
+	else if (json_is_string(code)) {
+		return strdup(json_string_value(code));
+	}
+	else {
+		if(name)
+			log_printf("Syntax error: codestring of %s must be a string or array of strings\n", name);
+		return NULL;
+	}
+}

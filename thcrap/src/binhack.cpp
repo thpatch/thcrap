@@ -619,10 +619,9 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	const char *code = json_object_get_string(in, "code");
-	if (!code) {
-		// Ignore binhacks with missing fields
-		// It usually means the binhack doesn't apply for this game or game version.
+	json_t* code = json_object_get(in, "code");
+	
+	if (!(out->code = code_to_str(json_object_get(in, "code"), name))) {
 		return false;
 	}
 
@@ -634,7 +633,6 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 
 	out->name = strdup(name);
 	out->title = json_object_get_string_copy(in, "title");
-	out->code = strdup(code);
 	out->expected = json_object_get_string_copy(in, "expected");
 	out->addr = addrs;
 
@@ -800,7 +798,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				break;
 		}
 
-		code = json_object_get_string(in, "code");
+		code = code_to_str(json_object_get(in, "code"), name);
 
 		(void)json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
 
@@ -858,9 +856,9 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		}
 		
 	}
-	else if (json_is_string(in)) {
+	else if (json_is_string(in) || json_is_array(in)) {
 		// size_val = 0;
-		code = json_string_value(in);
+		code = code_to_str(in, name);
 		// export_val = false;
 		// access_val = EXECUTE_READWRITE;
 		// fill_val = 0;

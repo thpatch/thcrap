@@ -255,3 +255,7 @@ const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_r
 void patch_val_set_op(const char* op_str, patch_val_t* Val);
 
 patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2);
+
+// Converts a JSON value to a code string
+// String returned by this function is guaranteed to persist
+const char* code_to_str(json_t* code, const char* name);

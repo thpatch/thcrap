@@ -458,7 +458,7 @@ textimage_t* textimage_t::create(
 	auto script_j = json_object_get(desc, "script");
 	unsigned char *script_buf = nullptr;
 	if(script_j) {
-		auto script_str = json_string_value(script_j);
+		auto script_str = code_to_str(script_j, fn);
 		if(!script_str) {
 			return textimage_log.errorf("%s: \"script\" should be a binary hack", fn);
 		}
