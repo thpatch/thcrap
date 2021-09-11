@@ -618,8 +618,6 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
-
-	json_t* code = json_object_get(in, "code");
 	
 	if (!(out->code = code_to_str(json_object_get(in, "code"), name))) {
 		return false;
