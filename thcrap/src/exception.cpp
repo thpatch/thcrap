@@ -17,7 +17,10 @@ enum ThExceptionDetailLevel : uint8_t {
 	Segments	= 0b00001000, // Segment registers
 	Debug		= 0b00010000, // Debug registers
 
-	Extra		= 0b10000000, // 
+	ManualTrace	= 0b00100000, // FALSE = CaptureStackBackTrace, TRUE = Manual stack walk
+	TraceDump	= 0b01000000, // Include byte dumps in manual trace
+
+	Extra		= 0b10000000, // Segment data, x87 CS/DS
 
 	Full		= 0b01111111, // All reasonable information
 	Extreme		= 0b11111111  // All possible information
@@ -64,22 +67,6 @@ static void log_print_context(CONTEXT* ctx)
 		}
 		if (exception_detail_level & ThExceptionDetailLevel::Segments) {
 			static constexpr const char* segment_types[] = {
-				"Read Only",
-				"Read Only (Accessed)",
-				"Read/Write",
-				"Read/Write (Accessed)",
-				"Read Only (Expand Down)",
-				"Read Only (Expand Down) (Accessed)",
-				"Read/Write (Expand Down)",
-				"Read/Write (Expand Down) (Accessed)",
-				"Execute Only",
-				"Execute Only (Accessed)",
-				"Execute/Read",
-				"Execute Read (Accessed)",
-				"Execute Only (Conforming)",
-				"Execute Only (Conforming) (Accessed)",
-				"Execute/Read (Conforming)",
-				"Execute/Read (Conforming) (Accessed)",
 #ifdef TH_X64
 				"Reserved", "Reserved",
 				"LDT",
@@ -109,80 +96,73 @@ static void log_print_context(CONTEXT* ctx)
 				"32-bit Interrupt Gate",
 				"32-bit Trap Gate"
 #endif
+				"Read Only",
+				"Read Only (Accessed)",
+				"Read/Write",
+				"Read/Write (Accessed)",
+				"Read Only (Expand Down)",
+				"Read Only (Expand Down) (Accessed)",
+				"Read/Write (Expand Down)",
+				"Read/Write (Expand Down) (Accessed)",
+				"Execute Only",
+				"Execute Only (Accessed)",
+				"Execute/Read",
+				"Execute Read (Accessed)",
+				"Execute Only (Conforming)",
+				"Execute Only (Conforming) (Accessed)",
+				"Execute/Read (Conforming)",
+				"Execute/Read (Conforming) (Accessed)",
 			};
-			if (exception_detail_level & ThExceptionDetailLevel::Extra) {
-#pragma pack(push)
-#pragma pack(1)
-				union SegmentDescriptorData {
-					uint32_t data_in;
-					struct {
-						uint32_t dummy_base_A : 8;
-						uint32_t segment_type : 5;
-						uint32_t protection_level : 2;
-						uint32_t present : 1;
-						uint32_t dummy_limit : 4;
-						uint32_t unused_trash_bit : 1;
-						uint32_t long_flag : 1;
-						uint32_t data_size : 1;
-						uint32_t granularity : 1;
-						uint32_t dummy_base_B : 8;
-					};
-				};
-#pragma pack(pop)
-				SegmentDescriptorData CSData;
-				SegmentDescriptorData SSData;
-				SegmentDescriptorData DSData;
-				SegmentDescriptorData ESData;
-				SegmentDescriptorData FSData;
-				SegmentDescriptorData GSData;
-#pragma warning(push)
-#pragma warning(disable : 4537)
-				__asm {
-					LAR EAX, [ctx].SegCs
-					MOV [CSData], EAX
-					LAR EAX, [ctx].SegSs
-					MOV [SSData], EAX
-					LAR EAX, [ctx].SegDs
-					MOV [DSData], EAX
-					LAR EAX, [ctx].SegEs
-					MOV [ESData], EAX
-					LAR EAX, [ctx].SegFs
-					MOV [FSData], EAX
-					LAR EAX, [ctx].SegGs
-					MOV [GSData], EAX
+			HANDLE current_thread_handle = GetCurrentThread();
+			auto get_segment_data = [&](DWORD segment, LDT_ENTRY& entry, uintptr_t& base_out, size_t& limit_out) {
+				GetThreadSelectorEntry(current_thread_handle, segment, &entry);
+				base_out = entry.BaseLow | entry.HighWord.Bytes.BaseMid << 16 | entry.HighWord.Bytes.BaseHi << 24;
+				limit_out = entry.LimitLow | entry.HighWord.Bits.LimitHi << 16;
+				if (entry.HighWord.Bits.Granularity) {
+					limit_out = limit_out << 12 | 0xFFF;
 				}
-#pragma warning(pop)
+			};
+			LDT_ENTRY cs_seg_data, ss_seg_data, ds_seg_data, es_seg_data, fs_seg_data, gs_seg_data;
+			uintptr_t cs_base, ss_base, ds_base, es_base, fs_base, gs_base;
+			size_t cs_limit, ss_limit, ds_limit, es_limit, fs_limit, gs_limit;
+			get_segment_data(ctx->SegCs, cs_seg_data, cs_base, cs_limit);
+			get_segment_data(ctx->SegSs, ss_seg_data, ss_base, ss_limit);
+			get_segment_data(ctx->SegDs, ds_seg_data, ds_base, ds_limit);
+			get_segment_data(ctx->SegEs, es_seg_data, es_base, es_limit);
+			get_segment_data(ctx->SegFs, fs_seg_data, fs_base, fs_limit);
+			get_segment_data(ctx->SegGs, gs_seg_data, gs_base, gs_limit);
+			if (exception_detail_level & ThExceptionDetailLevel::Extra) {
 				log_printf(
 					"\n"
-					"CS: 0x%04hX (Limit: %8X (%s), Data: %s, Priv: %hhu, Type: %s%s)\n"
-					"SS: 0x%04hX (Limit: %8X (%s), Data: %s, Priv: %hhu, Type: %s%s)\n"
-					"DS: 0x%04hX (Limit: %8X (%s), Data: %s, Priv: %hhu, Type: %s%s)\n"
-					"ES: 0x%04hX (Limit: %8X (%s), Data: %s, Priv: %hhu, Type: %s%s)\n"
-					"FS: 0x%04hX (Limit: %8X (%s), Data: %s, Priv: %hhu, Type: %s%s)\n"
-					"GS: 0x%04hX (Limit: %8X (%s), Data: %s, Priv: %hhu, Type: %s%s)\n"
-					, ctx->SegCs, __segmentlimit(ctx->SegCs), CSData.granularity ? "Pages" : "Bytes", CSData.data_size ? "32-bit" : CSData.long_flag ? "64-bit" : "16-bit", CSData.protection_level, segment_types[CSData.segment_type], CSData.present ? "" : " (Not Present)"
-					, ctx->SegSs, __segmentlimit(ctx->SegSs), SSData.granularity ? "Pages" : "Bytes", SSData.data_size ? "32-bit" : SSData.long_flag ? "64-bit" : "16-bit", SSData.protection_level, segment_types[SSData.segment_type], SSData.present ? "" : " (Not Present)"
-					, ctx->SegDs, __segmentlimit(ctx->SegDs), DSData.granularity ? "Pages" : "Bytes", DSData.data_size ? "32-bit" : DSData.long_flag ? "64-bit" : "16-bit", DSData.protection_level, segment_types[DSData.segment_type], DSData.present ? "" : " (Not Present)"
-					, ctx->SegEs, __segmentlimit(ctx->SegEs), ESData.granularity ? "Pages" : "Bytes", ESData.data_size ? "32-bit" : ESData.long_flag ? "64-bit" : "16-bit", ESData.protection_level, segment_types[ESData.segment_type], ESData.present ? "" : " (Not Present)"
-					, ctx->SegFs, __segmentlimit(ctx->SegFs), FSData.granularity ? "Pages" : "Bytes", FSData.data_size ? "32-bit" : FSData.long_flag ? "64-bit" : "16-bit", FSData.protection_level, segment_types[FSData.segment_type], FSData.present ? "" : " (Not Present)"
-					, ctx->SegGs, __segmentlimit(ctx->SegGs), GSData.granularity ? "Pages" : "Bytes", GSData.data_size ? "32-bit" : GSData.long_flag ? "64-bit" : "16-bit", GSData.protection_level, segment_types[GSData.segment_type], GSData.present ? "" : " (Not Present)"
+					"CS: 0x%04hX (Base: %8X, Limit: %8X, Data: %s, Priv: %hhu, Type: %s%s)\n"
+					"SS: 0x%04hX (Base: %8X, Limit: %8X, Data: %s, Priv: %hhu, Type: %s%s)\n"
+					"DS: 0x%04hX (Base: %8X, Limit: %8X, Data: %s, Priv: %hhu, Type: %s%s)\n"
+					"ES: 0x%04hX (Base: %8X, Limit: %8X, Data: %s, Priv: %hhu, Type: %s%s)\n"
+					"FS: 0x%04hX (Base: %8X, Limit: %8X, Data: %s, Priv: %hhu, Type: %s%s)\n"
+					"GS: 0x%04hX (Base: %8X, Limit: %8X, Data: %s, Priv: %hhu, Type: %s%s)\n"
+					, ctx->SegCs, cs_base, cs_limit, (cs_seg_data.HighWord.Bits.Default_Big ? "32-bit" : (cs_seg_data.HighWord.Bits.Reserved_0 ? "64-bit" : "16-bit")), cs_seg_data.HighWord.Bits.Dpl, segment_types[cs_seg_data.HighWord.Bits.Type], (cs_seg_data.HighWord.Bits.Pres ? "" : " (Not Present)")
+					, ctx->SegSs, ss_base, ss_limit, (ss_seg_data.HighWord.Bits.Default_Big ? "32-bit" : (ss_seg_data.HighWord.Bits.Reserved_0 ? "64-bit" : "16-bit")), ss_seg_data.HighWord.Bits.Dpl, segment_types[ss_seg_data.HighWord.Bits.Type], (ss_seg_data.HighWord.Bits.Pres ? "" : " (Not Present)")
+					, ctx->SegDs, ds_base, ds_limit, (ds_seg_data.HighWord.Bits.Default_Big ? "32-bit" : (ds_seg_data.HighWord.Bits.Reserved_0 ? "64-bit" : "16-bit")), ds_seg_data.HighWord.Bits.Dpl, segment_types[ds_seg_data.HighWord.Bits.Type], (ds_seg_data.HighWord.Bits.Pres ? "" : " (Not Present)")
+					, ctx->SegEs, es_base, es_limit, (es_seg_data.HighWord.Bits.Default_Big ? "32-bit" : (es_seg_data.HighWord.Bits.Reserved_0 ? "64-bit" : "16-bit")), es_seg_data.HighWord.Bits.Dpl, segment_types[es_seg_data.HighWord.Bits.Type], (es_seg_data.HighWord.Bits.Pres ? "" : " (Not Present)")
+					, ctx->SegFs, fs_base, fs_limit, (fs_seg_data.HighWord.Bits.Default_Big ? "32-bit" : (fs_seg_data.HighWord.Bits.Reserved_0 ? "64-bit" : "16-bit")), fs_seg_data.HighWord.Bits.Dpl, segment_types[fs_seg_data.HighWord.Bits.Type], (fs_seg_data.HighWord.Bits.Pres ? "" : " (Not Present)")
+					, ctx->SegGs, gs_base, gs_limit, (gs_seg_data.HighWord.Bits.Default_Big ? "32-bit" : (gs_seg_data.HighWord.Bits.Reserved_0 ? "64-bit" : "16-bit")), gs_seg_data.HighWord.Bits.Dpl, segment_types[gs_seg_data.HighWord.Bits.Type], (gs_seg_data.HighWord.Bits.Pres ? "" : " (Not Present)")
 				);
 			}
 			else {
 				log_printf(
 					"\n"
-					"CS: 0x%04hX (%X)\n"
-					"SS: 0x%04hX (%X)\n"
-					"DS: 0x%04hX (%X)\n"
-					"ES: 0x%04hX (%X)\n"
-					"FS: 0x%04hX (%X)\n"
-					"GS: 0x%04hX (%X)\n"
-					, ctx->SegCs, __segmentlimit(ctx->SegCs)
-					, ctx->SegSs, __segmentlimit(ctx->SegSs)
-					, ctx->SegDs, __segmentlimit(ctx->SegDs)
-					, ctx->SegEs, __segmentlimit(ctx->SegEs)
-					, ctx->SegFs, __segmentlimit(ctx->SegFs)
-					, ctx->SegGs, __segmentlimit(ctx->SegGs)
+					"CS: 0x%04hX %X (%X)\n"
+					"SS: 0x%04hX %X (%X)\n"
+					"DS: 0x%04hX %X (%X)\n"
+					"ES: 0x%04hX %X (%X)\n"
+					"FS: 0x%04hX %X (%X)\n"
+					"GS: 0x%04hX %X (%X)\n"
+					, ctx->SegCs, cs_base, cs_limit
+					, ctx->SegSs, ss_base, ss_limit
+					, ctx->SegDs, ds_base, ds_limit
+					, ctx->SegEs, es_base, es_limit
+					, ctx->SegFs, fs_base, fs_limit
+					, ctx->SegGs, gs_base, gs_limit
 				);
 			}
 		}
@@ -241,7 +221,6 @@ static void log_print_context(CONTEXT* ctx)
 				}
 			}
 
-			uint8_t fpu_stack_top = (ctx->FloatSave.StatusWord >> 11) & 0b111;
 			log_printf(
 				"\n"
 				"FCW: %04hX (%s, %s)\n"
@@ -449,7 +428,489 @@ static void log_print_error_source(HMODULE crash_mod, void* address) {
 			log_printf(" (\"%s\" + 0x%zu Stage %zu)", hackpoint_location.name, hackpoint_location.offset, hackpoint_location.stage_num);
 		}
 	}
-	log_print("\n");
+}
+
+void manual_stack_walk(uintptr_t current_esp) {
+#ifdef TH_X64
+	NT_TIB* tib = (NT_TIB*)__readgsqword(offsetof(NT_TIB, Self));
+#else
+	NT_TIB* tib = (NT_TIB*)__readfsdword(offsetof(NT_TIB, Self));
+#endif
+
+	uintptr_t* stack_top = (uintptr_t*)tib->StackBase;
+	uintptr_t* stack_bottom = (uintptr_t*)tib->StackLimit;
+
+	log_printf(
+		"\n"
+		"Stack walk: (0x%p->0x%p)\n"
+		, current_esp, stack_top
+	);
+
+#ifndef TH_X64
+	if ((uintptr_t)current_esp % alignof(uintptr_t)) {
+		log_print(
+			"WARNING: Stack is not aligned, data may be unreliable.\n"
+		);
+	}
+#endif
+	MEMORY_BASIC_INFORMATION mbi;
+	enum PtrState_TypeVals : uint8_t {
+		RawValue = 0,
+		PossiblePointer = 1,
+		ReturnAddrIndirect2 = 2,
+		ReturnAddrIndirect3 = 3,
+		ReturnAddrIndirect4 = 4,
+		ReturnAddr = 5,
+		ReturnAddrIndirect6 = 6,
+		ReturnAddrIndirect7 = 7,
+		FarReturnAddrIndirect2 = 10,
+		FarReturnAddrIndirect3 = 11,
+		FarReturnAddrIndirect4 = 12,
+		FarReturnAddr = 13, // Not valid in x64
+		FarReturnAddrIndirect6 = 14,
+		FarReturnAddrIndirect7 = 15
+	};
+	enum PtrState_AccessVals : uint8_t {
+		None = 0,
+		ReadOnly = 1,
+		WriteCopy = 2,
+		ReadWrite = 3,
+		Execute = 4,
+		ExecuteRead = 5,
+		ExecuteWriteCopy = 6,
+		ExecuteReadWrite = 7,
+	};
+	static constexpr const char* AccessStrings[] = {
+		"(No Access)",
+		"(Read Only)",
+		"(Write-Copy)",
+		"(Read Write)",
+		"(Execute Only)",
+		"(Execute Read)",
+		"(Execute Write-Copy)",
+		"(Execute Read Write)"
+	};
+	uint8_t stack_offset_length = snprintf(NULL, 0, "%X", (uintptr_t)stack_top - current_esp);
+	for (
+		uintptr_t* stack_addr = (uintptr_t*)current_esp;
+		stack_addr < stack_top - sizeof(uintptr_t); // These don't necessarily align cleanly, so array indexing would be tricky to use here
+		++stack_addr
+	) {
+		uintptr_t stack_value = *stack_addr;
+		
+		uint8_t ptr_value_type = RawValue;
+		uint8_t ptr_access_type = None;
+		bool ptr_on_stack = false;
+		bool has_segment_override = false;
+#ifdef TH_X64
+		bool has_rex_byte = false;
+#endif
+		if (stack_value < 65536) { // Thin out values that can't ever be a valid pointer
+			ptr_value_type = RawValue;
+		} else {
+			// Is this a pointer to other stack data?
+			if (stack_value < (uintptr_t)stack_top && stack_value >= (uintptr_t)current_esp) {
+				ptr_on_stack = true;
+			}
+			// Is this a pointer to meaningful memory?
+			if (VirtualQuery((void*)stack_value, &mbi, sizeof(MEMORY_BASIC_INFORMATION))) {
+				switch (mbi.Protect & 0xFF) {
+					default: case PAGE_NOACCESS: // ???
+						ptr_access_type = None;
+						break;
+					case PAGE_READONLY: // Probably a pointer to a constant
+						ptr_access_type = ReadOnly;
+						break;
+					case PAGE_WRITECOPY:
+						if (VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READONLY, &mbi.Protect)) {
+							ptr_access_type = WriteCopy;
+						} else {
+							ptr_access_type = None;
+						}
+						break;
+					case PAGE_READWRITE: // Probably a pointer to data
+						ptr_access_type = ReadWrite;
+						break;
+					case PAGE_EXECUTE:
+						if (VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READONLY, &mbi.Protect)) {
+							ptr_access_type = Execute;
+						} else {
+							ptr_access_type = None;
+						}
+						break;
+					case PAGE_EXECUTE_READ: // Probably a return address
+						ptr_access_type = ExecuteRead;
+						break;
+					case PAGE_EXECUTE_WRITECOPY: // Probably a return address, but we can't read it
+						if (VirtualProtect(mbi.BaseAddress, mbi.RegionSize, PAGE_READONLY, &mbi.Protect)) {
+							ptr_access_type = ExecuteWriteCopy;
+						} else {
+							ptr_access_type = None;
+						}
+						break;
+					case PAGE_EXECUTE_READWRITE: // Probably a codecave
+						ptr_access_type = ExecuteReadWrite;
+						break;
+				}
+			}
+			switch (ptr_access_type) {
+				default:
+					TH_UNREACHABLE;
+				// I draw the line at repeated prefixes, 16-bit calls, and 16-bit addressing. Screw that.
+				case Execute: case ExecuteRead: case ExecuteWriteCopy: case ExecuteReadWrite:
+					switch (stack_value - (uintptr_t)mbi.BaseAddress) {
+						default:
+#ifdef TH_X64
+							switch (*(uint8_t*)(stack_value - 9)) {
+								case 0x26: case 0x2E: case 0x36: case 0x3E: case 0x64: case 0x65: // ES, CS, SS, DS, FS, GS
+									has_segment_override = true;
+									break;
+							}
+							TH_FALLTHROUGH;
+						case 8:
+#endif
+							switch (*(uint8_t*)(stack_value - 8)) {
+#ifdef TH_X64
+								case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+									has_rex_byte = true;
+									break;
+#endif
+								case 0x26: case 0x2E: case 0x36: case 0x3E: case 0x64: case 0x65: // ES, CS, SS, DS, FS, GS
+									has_segment_override = true;
+									break;
+							}
+							TH_FALLTHROUGH;
+						case 7:
+							switch (*(uint8_t*)(stack_value - 7)) {
+								case 0xFF: { // CALL Absolute Indirect
+									uint8_t mod_byte = *(uint8_t*)(stack_value - 6);
+									bool ptr_is_far = mod_byte != (mod_byte & 0xF7);
+									mod_byte &= 0xF7;
+									// Only ModRM 14 and 94 can be encoded as 7 bytes long
+									switch (mod_byte) {
+										case 0x14: // [disp32] (SIB)
+											// ModRM 14 can only be 7 bytes long with SIB base == 5
+											if ((*(uint8_t*)(stack_value - 5) & 0x7) != 5) break;
+											TH_FALLTHROUGH;
+										case 0x94: // [reg+disp32] (SIB)
+											ptr_value_type = !ptr_is_far ? ReturnAddrIndirect7 : FarReturnAddrIndirect7;
+											goto IdentifiedValueType;
+									}
+								}
+									TH_FALLTHROUGH;
+								default:
+									has_segment_override = false;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+#ifdef TH_X64
+								case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+									has_rex_byte = true;
+									break;
+#else
+								case 0x9A: // FAR CALL Absolute Direct
+									ptr_value_type = FarReturnAddr;
+									goto IdentifiedValueType;
+#endif
+								case 0x26: case 0x2E: case 0x36: case 0x3E: case 0x64: case 0x65: // ES, CS, SS, DS, FS, GS
+									has_segment_override = true;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+							}
+							TH_FALLTHROUGH;
+						case 6:
+							switch (*(uint8_t*)(stack_value - 6)) { // CALL Absolute Indirect
+								case 0xFF: {
+									uint8_t mod_byte = *(uint8_t*)(stack_value - 5);
+									bool ptr_is_far = mod_byte != (mod_byte & 0xF7);
+									mod_byte &= 0xF7;
+									// Only 15, 90-93, and 95-97 can be encoded as 6 bytes long
+									if (mod_byte == 0x15 || // [disp32] (No SIB)
+										(mod_byte & 0xF8) == 0x90 && (mod_byte & 0x7) != 4 // [reg+disp32] (No SIB)
+									) {
+										ptr_value_type = !ptr_is_far ? ReturnAddrIndirect6 : FarReturnAddrIndirect6;
+										goto IdentifiedValueType;
+									}
+								}
+									TH_FALLTHROUGH;
+								default:
+									has_segment_override = false;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+#ifdef TH_X64
+								case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+									has_rex_byte = true;
+									break;
+#endif
+								case 0x26: case 0x2E: case 0x36: case 0x3E: case 0x64: case 0x65: // ES, CS, SS, DS, FS, GS
+									has_segment_override = true;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+							}
+							TH_FALLTHROUGH;
+						case 5:
+							switch (*(uint8_t*)(stack_value - 5)) { // CALL Relative Displacement
+								case 0xE8:
+									ptr_value_type = ReturnAddr;
+									goto IdentifiedValueType;
+								default:
+									has_segment_override = false;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+#ifdef TH_X64
+								case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+									has_rex_byte = true;
+									break;
+#endif
+								case 0x26: case 0x2E: case 0x36: case 0x3E: case 0x64: case 0x65: // ES, CS, SS, DS, FS, GS
+									has_segment_override = true;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+							}
+							TH_FALLTHROUGH;
+						case 4:
+							switch (*(uint8_t*)(stack_value - 4)) { // CALL Absolute Indirect
+								case 0xFF: {
+									uint8_t mod_byte = *(uint8_t*)(stack_value - 3);
+									bool ptr_is_far = mod_byte != (mod_byte & 0xF7);
+									mod_byte &= 0xF7;
+									// Only 54 can be encoded as 4 bytes long
+									if (mod_byte == 0x54) { // [ESP+disp8] (SIB)
+										ptr_value_type = !ptr_is_far ? ReturnAddrIndirect4 : FarReturnAddrIndirect4;
+										goto IdentifiedValueType;
+									}
+								}
+									TH_FALLTHROUGH;
+								default:
+									has_segment_override = false;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+#ifdef TH_X64
+								case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+									has_rex_byte = true;
+									break;
+#endif
+								case 0x26: case 0x2E: case 0x36: case 0x3E: case 0x64: case 0x65: // ES, CS, SS, DS, FS, GS
+									has_segment_override = true;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+							}
+							TH_FALLTHROUGH;
+						case 3:
+							switch (*(uint8_t*)(stack_value - 3)) { // CALL Absolute Indirect
+								case 0xFF: {
+									uint8_t mod_byte = *(uint8_t*)(stack_value - 2);
+									bool ptr_is_far = mod_byte != (mod_byte & 0xF7);
+									mod_byte &= 0xF7;
+									// Only 14, 50-53, and 55-57 can be encoded as 3 bytes long
+									switch (mod_byte) {
+										case 0x14: // [reg] (SIB)
+											// ModRM 14 can only be 3 bytes long with SIB base != 5
+											if ((*(uint8_t*)(stack_value - 1) & 0x7) == 5) break;
+											TH_FALLTHROUGH;
+										case 0x50: case 0x51: case 0x52: case 0x53: case 0x55: case 0x56: case 0x57: // [reg+disp8] (No SIB)
+											ptr_value_type = !ptr_is_far ? ReturnAddrIndirect3 : FarReturnAddrIndirect3;
+											goto IdentifiedValueType;
+									}
+								}
+									TH_FALLTHROUGH;
+								default:
+									has_segment_override = false;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+#ifdef TH_X64
+								case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+									has_rex_byte = true;
+									break;
+#endif
+								case 0x26: case 0x2E: case 0x36: case 0x3E: case 0x64: case 0x65: // ES, CS, SS, DS, FS, GS
+									has_segment_override = true;
+#ifdef TH_X64
+									has_rex_byte = false;
+#endif
+									break;
+							}
+							TH_FALLTHROUGH;
+						case 2:
+							if (*(uint8_t*)(stack_value - 2) == 0xFF) { // CALL Absolute Indirect
+								uint8_t mod_byte = *(uint8_t*)(stack_value - 1);
+								bool ptr_is_far = mod_byte != (mod_byte & 0xF7);
+								mod_byte &= 0xF7;
+								// Only 10-13, 16, 17, and D0-D7 can be encoded as 2 bytes long
+								switch (mod_byte & 0xF8) {
+									case 0x10: // [reg] (No SIB)
+										if ((mod_byte & 0x6) == 0x4) break; // Filter out [reg] (SIB) and [disp32]
+										TH_FALLTHROUGH;
+									case 0xD0: // reg
+										ptr_value_type = !ptr_is_far ? ReturnAddrIndirect2 : FarReturnAddrIndirect2;
+										goto IdentifiedValueType;
+								}
+							}
+							TH_FALLTHROUGH;
+						case 1: case 0:
+							break;
+					}
+					TH_FALLTHROUGH;
+				case ReadOnly: case WriteCopy: case ReadWrite:
+					if (VirtualCheckRegion((void*)stack_value, 16)) {
+						ptr_value_type = PossiblePointer;
+						break;
+					}
+					TH_FALLTHROUGH;
+				case None:
+					ptr_value_type = RawValue;
+					break;
+			}
+		}
+	IdentifiedValueType:
+		switch (ptr_value_type) {
+#ifdef TH_X64
+#define StkPtrReg "RSP"
+#define InsPtrReg "RIP"
+#else
+#define StkPtrReg "ESP"
+#define InsPtrReg "EIP"
+#endif
+			default:
+				TH_UNREACHABLE;
+			case RawValue:
+				log_printf(
+					"[" StkPtrReg "+%*X]\t%p"
+					, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
+				);
+				break;
+			case PossiblePointer: {
+				log_printf(
+					"[" StkPtrReg "+%*X]\t%p\t"
+					, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
+				);
+				if (exception_detail_level & ThExceptionDetailLevel::TraceDump) {
+					log_printf(
+						"DUMP %08X %08X %08X %08X "
+						, _byteswap_ulong(((uint32_t*)stack_value)[0])
+						, _byteswap_ulong(((uint32_t*)stack_value)[1])
+						, _byteswap_ulong(((uint32_t*)stack_value)[2])
+						, _byteswap_ulong(((uint32_t*)stack_value)[3])
+					);
+				}
+				log_printf(
+					"%s"
+					, ptr_on_stack ? "(Stack)" : AccessStrings[ptr_access_type]
+				);
+				if (!ptr_on_stack) {
+					log_print_error_source(GetModuleContaining((void*)stack_value), (void*)stack_value);
+				}
+				break;
+			}
+			case ReturnAddr: {
+				uintptr_t call_dest_addr = (intptr_t)stack_value + *(int32_t*)(stack_value - 4);
+				if (stack_value != call_dest_addr) {
+					log_printf(
+						"[" StkPtrReg "+%*X]\t%p\tRETURN to %p"
+						, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
+						, stack_value
+					);
+					log_print_error_source(GetModuleContaining((void*)stack_value), (void*)stack_value);
+					log_printf(
+						" from func %p"
+						, call_dest_addr
+					);
+					log_print_error_source(GetModuleContaining((void*)call_dest_addr), (void*)call_dest_addr);
+				} else {
+#ifdef TH_X64
+					uintptr_t call_addr = stack_value - (5 + has_segment_override + has_rex_byte);
+#else
+					uintptr_t call_addr = stack_value - (5 + has_segment_override);
+#endif
+					log_printf(
+						"[" StkPtrReg "+%*X]\t%p\t" InsPtrReg " pushed by CALL 0 at %p"
+						, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
+						, call_addr
+					);
+					log_print_error_source(GetModuleContaining((void*)call_addr), (void*)call_addr);
+				}
+				break;
+			}
+			case ReturnAddrIndirect2: case ReturnAddrIndirect3: case ReturnAddrIndirect4: case ReturnAddrIndirect6: case ReturnAddrIndirect7: {
+				log_printf(
+					"[" StkPtrReg "+%*X]\t%p\tRETURN to %p"
+					, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
+					, stack_value
+				);
+				log_print_error_source(GetModuleContaining((void*)stack_value), (void*)stack_value);
+#ifdef TH_X64
+				uintptr_t call_addr = stack_value - (ptr_value_type + has_segment_override + has_rex_byte);
+#else
+				uintptr_t call_addr = stack_value - (ptr_value_type + has_segment_override);
+#endif
+				log_printf(
+					" (Indirect call from %p"
+					, call_addr
+				);
+				log_print_error_source(GetModuleContaining((void*)call_addr), (void*)call_addr);
+				log_print(")");
+				break;
+			}
+#ifndef TH_X64
+			case FarReturnAddr: {
+				log_printf(
+					"[" StkPtrReg "+%*X]\t%p\tFAR RETURN to %04hX:%p"
+					, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
+					, *(uint16_t*)(stack_addr + 1), stack_value
+				);
+				log_print_error_source(GetModuleContaining((void*)stack_value), (void*)stack_value);
+				uintptr_t call_dest_addr = *(uintptr_t*)(stack_value - 6);
+				log_printf(
+					" from func %04hX:%p"
+					, *(uint16_t*)(stack_value - 2), call_dest_addr
+				);
+				log_print_error_source(GetModuleContaining((void*)call_dest_addr), (void*)call_dest_addr);
+				break;
+			}
+#endif
+			case FarReturnAddrIndirect2: case FarReturnAddrIndirect3: case FarReturnAddrIndirect4: case FarReturnAddrIndirect6: case FarReturnAddrIndirect7: {
+				log_printf(
+					"[" StkPtrReg "+%*X]\t%p\tFAR RETURN to %04hX:%p"
+					, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
+					, *(uint16_t*)(stack_addr + 1), stack_value
+				);
+				log_print_error_source(GetModuleContaining((void*)stack_value), (void*)stack_value);
+#ifdef TH_X64
+				uintptr_t call_addr = stack_value - ((ptr_value_type - 8) + has_segment_override + has_rex_byte);
+#else
+				uintptr_t call_addr = stack_value - ((ptr_value_type - 8) + has_segment_override);
+#endif
+				log_printf(
+					" (Indirect call from %p"
+					, call_addr
+				);
+				log_print_error_source(GetModuleContaining((void*)call_addr), (void*)call_addr);
+				log_print(")");
+			}
+		}
+		log_print("\n");
+		switch (ptr_access_type) {
+			case WriteCopy: case Execute: case ExecuteWriteCopy:
+				VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
+		}
+	}
 }
 
 #define STATUS_NOT_IMPLEMENTED				((DWORD)0xC0000002L)
@@ -527,6 +988,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 
 	log_print(
 		"\n"
+		"\n"
 		"Description:\n"
 	);
 
@@ -540,42 +1002,51 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 
 	log_print_context(lpEI->ContextRecord);
 
-	// "Windows Server 2003 and Windows XP: The sum of the FramesToSkip
-	// and FramesToCapture parameters must be less than 63."
-	// https://msdn.microsoft.com/en-us/library/windows/desktop/bb204633(v=vs.85).aspx
-	const DWORD frames_to_skip = 1;
-	void *trace[62 - frames_to_skip];
+	if (exception_detail_level & ThExceptionDetailLevel::ManualTrace) {
+#ifdef TH_X64
+		manual_stack_walk(lpEI->ContextRecord->Rsp);
+#else
+		manual_stack_walk(lpEI->ContextRecord->Esp);
+#endif
+	} else {
+		// "Windows Server 2003 and Windows XP: The sum of the FramesToSkip
+		// and FramesToCapture parameters must be less than 63."
+		// https://msdn.microsoft.com/en-us/library/windows/desktop/bb204633(v=vs.85).aspx
+		const DWORD frames_to_skip = 1;
+		void *trace[62 - frames_to_skip];
 
-	USHORT captured = CaptureStackBackTrace(
-		frames_to_skip, elementsof(trace), trace, nullptr
-	);
-	if(captured) {
-		
-		log_print("\nStack trace:\n");
+		USHORT captured = CaptureStackBackTrace(
+			frames_to_skip, elementsof(trace), trace, nullptr
+		);
+		if (captured) {
 
-		USHORT skip = 0;
-		if(crash_mod) {
-			while(
-				GetModuleContaining(trace[skip]) != crash_mod
-				&& skip < captured
-			) {
-				skip++;
+			log_print("\nStack trace:\n");
+
+			USHORT skip = 0;
+			if (crash_mod) {
+				while (
+					GetModuleContaining(trace[skip]) != crash_mod
+					&& skip < captured
+					) {
+					skip++;
+				}
 			}
-		}
-		if(skip == captured) {
-			skip = 0;
-		}
-		uintptr_t stop_at = (uintptr_t)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "KiUserExceptionDispatcher");
-		for (USHORT i = skip; i < captured; i++) {
-			if (((uintptr_t)trace[i] - stop_at) <= 16) {
-				skip = i + 1;
-				break;
+			if (skip == captured) {
+				skip = 0;
 			}
-		}
-		for(USHORT i = skip; i < captured; i++) {
-			HMODULE mod = GetModuleContaining(trace[i]);
-			log_printf("[%02u] 0x%p", captured - i, trace[i]);
-			log_print_error_source(mod, trace[i]);
+			uintptr_t stop_at = (uintptr_t)GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "KiUserExceptionDispatcher");
+			for (USHORT i = skip; i < captured; i++) {
+				if (((uintptr_t)trace[i] - stop_at) <= 16) {
+					skip = i + 1;
+					break;
+				}
+			}
+			for (USHORT i = skip; i < captured; i++) {
+				HMODULE mod = GetModuleContaining(trace[i]);
+				log_printf("[%02u] 0x%p", captured - i, trace[i]);
+				log_print_error_source(mod, trace[i]);
+				log_print("\n");
+			}
 		}
 	}
 	log_print(

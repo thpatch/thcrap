@@ -66,15 +66,20 @@ HackpointMemoryName locate_address_in_stage_pages(void* FindAddress) {
 		}
 		for (size_t j = 0; j < elementsof(stage.codecave_pages); ++j) {
 			if (PageIsValidAndContainsAddress(stage.codecave_pages[j], address)) {
-				codecave_t* found_cave;
+				codecave_t* found_cave = NULL;
 				uint8_t* found_cave_addr = NULL;
 				for (codecave_t& codecave : stage.codecaves) {
-					if (codecave.virtual_address && (codecave.virtual_address < address) && (codecave.virtual_address > found_cave_addr)) {
+					if (codecave.virtual_address &&
+						(codecave.virtual_address <= address) &&
+						(codecave.virtual_address > found_cave_addr)
+					) {
 						found_cave_addr = codecave.virtual_address;
 						found_cave = &codecave;
 					}
 				}
-				return { found_cave->name, (size_t)(address - found_cave->virtual_address), i };
+				if (found_cave) {
+					return { found_cave->name, (size_t)(address - found_cave->virtual_address), i };
+				}
 			}
 		}
 		if (PageIsValidAndContainsAddress(stage.breakpoint_pages[0], address)) {
