@@ -174,7 +174,7 @@ namespace thcrap_configure_v3
         public struct games_js_entry
         {
             public string id;
-            public string path;
+            public IntPtr path;
         };
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct game_search_result

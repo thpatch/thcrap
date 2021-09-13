@@ -647,11 +647,8 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
-
-	const char *code = json_object_get_string(in, "code");
-	if (!code) {
-		// Ignore binhacks with missing fields
-		// It usually means the binhack doesn't apply for this game or game version.
+	
+	if (!(out->code = code_to_str(json_object_get(in, "code"), name))) {
 		return false;
 	}
 
@@ -844,99 +841,6 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 	VirtualProtect(cave_source, sourcecaves_total_size, PAGE_READONLY, &idgaf);
 
 	return failed;
-
-	//log_print(
-	//	"------------------------\n"
-	//	"Applying binary hacks...\n"
-	//	"------------------------"
-	//);
-	//
-	//size_t current_asm_buf_size = BINHACK_BUFSIZE_MIN;
-	//uint8_t* asm_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
-	//size_t current_exp_buf_size = BINHACK_BUFSIZE_MIN;
-	//uint8_t* exp_buf = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
-	//
-	//for(size_t i = 0; i < binhacks_count; i++) {
-	//	const binhack_t *const cur = &binhacks[i];
-	//
-	//	if (cur->title) {
-	//		log_printf("\n(%2d/%2d) %s (%s)... ", i + 1, binhacks_count, cur->title, cur->name);
-	//	} else {
-	//		log_printf("\n(%2d/%2d) %s... ", i + 1, binhacks_count, cur->name);
-	//	}
-	//	
-	//	// calculated byte size of the hack
-	//	const size_t asm_size = code_string_calc_size(cur->code);
-	//	if(!asm_size) {
-	//		log_print("invalid code string size, skipping...\n");
-	//		continue;
-	//	}
-	//	if (asm_size > current_asm_buf_size) {
-	//		if (void* temp = realloc(asm_buf, asm_size)) {
-	//			asm_buf = (uint8_t*)temp;
-	//			current_asm_buf_size = asm_size;
-	//		}
-	//		else {
-	//			log_printf("buffer reallocation failure (%zu bytes), skipping...\n", asm_size);
-	//			continue;
-	//		}
-	//	}
-	//
-	//	bool use_expected;
-	//	if (const size_t exp_size = code_string_calc_size(cur->expected);
-	//		!exp_size) {
-	//		use_expected = false;
-	//	}
-	//	else if (exp_size != asm_size) {
-	//		log_printf("different sizes for expected and new code (%zu != %zu), skipping verification... ", exp_size, asm_size);
-	//		use_expected = false;
-	//	}
-	//	else {
-	//		if (exp_size > current_exp_buf_size) {
-	//			if (void* temp = realloc(exp_buf, exp_size)) {
-	//				exp_buf = (uint8_t*)temp;
-	//				current_exp_buf_size = exp_size;
-	//			}
-	//			else {
-	//				log_printf("buffer reallocation failure (%zu bytes), skipping...\n", exp_size);
-	//				continue;
-	//			}
-	//		}
-	//		use_expected = true;
-	//	}
-	//	
-	//	uintptr_t addr;
-	//	for (hackpoint_addr_t* cur_addr = cur->addr;
-	//		 eval_hackpoint_addr(cur_addr, &addr, hMod);
-	//		 ++cur_addr) {
-	//
-	//		if (!addr) {
-	//			// NULL_ADDR
-	//			continue;
-	//		}
-	//
-	//		log_printf("\nat 0x%p... ", addr);
-	//
-	//		if(code_string_render(asm_buf, addr, cur->code)) {
-	//			log_print("invalid code string, skipping...");
-	//			continue;
-	//		}
-	//		if (use_expected && code_string_render(exp_buf, addr, cur->expected)) {
-	//			log_print("invalid expected string, skipping verification... ");
-	//			use_expected = false;
-	//		}
-	//		if(!(cur_addr->binhack_source = (uint8_t*)PatchRegionCopySrc((void*)addr, use_expected ? exp_buf : NULL, asm_buf, NULL, asm_size))) {
-	//			log_print("expected bytes not matched, skipping... ");
-	//			continue;
-	//		}
-	//		log_print("OK");
-	//		--failed;
-	//	}
-	//}
-	//free(asm_buf);
-	//free(exp_buf);
-	//log_print("\n");
-	//return failed;
 }
 
 bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
@@ -983,7 +887,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				break;
 		}
 
-		code = json_object_get_string(in, "code");
+		code = code_to_str(json_object_get(in, "code"), name);
 
 		(void)json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
 
@@ -1041,9 +945,9 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		}
 		
 	}
-	else if (json_is_string(in)) {
+	else if (json_is_string(in) || json_is_array(in)) {
 		// size_val = 0;
-		code = json_string_value(in);
+		code = code_to_str(in, name);
 		// export_val = false;
 		// access_val = EXECUTE_READWRITE;
 		// fill_val = 0;

@@ -112,7 +112,7 @@ static void NETShowWineError(WineNetError_t reason) {
 		break;
 	}
 
-	MessageBoxW(NULL, wineMessage, L"Wine detected", MB_ICONERROR | MB_OK);
+	MessageBoxW(NULL, wineMessage, L"Touhou Community Reliant Automatic Patcher", MB_ICONERROR | MB_OK);
 }
 
 static InstallStatus_t CheckDotNETStatus(DWORD isWine) {
@@ -245,7 +245,7 @@ int NETDownloadCheckError(HttpStatus reason) {
 			L"No internet or not enough system memory";
 		break;
 	}
-	MessageBoxW(NULL, errorMessage, L".NET Download Error", MB_ICONERROR | MB_OK);
+	MessageBoxW(NULL, errorMessage, L"Touhou Community Reliant Automatic Patcher", MB_ICONERROR | MB_OK);
 	return 1;
 }
 
@@ -285,15 +285,25 @@ int installDotNET(LPWSTR ApplicationPath) {
 		winver.dwOSVersionInfoSize = sizeof(winver);
 		RtlGetVersion(&winver);
 		if (winver.dwMajorVersion < 6) {
-			MessageBoxW(NULL, L"Your Windows version is too old for .NET 4.6.1", L".NET Error", MB_ICONERROR | MB_OK);
+			MessageBoxW(NULL, L"Your Windows version is too old for .NET 4.6.1", L".Touhou Community Reliant Automatic Patcher", MB_ICONERROR | MB_OK);
 			return 1;
 		}
 	}
 	else {
-		if (MessageBoxW(NULL, L"Couldn't determine Windows version. Proceed anyways?", L".NET Warning", MB_ICONWARNING | MB_YESNO) != IDYES)
+		if (MessageBoxW(NULL, L"Couldn't determine Windows version. Proceed anyways?", L"Touhou Community Reliant Automatic Patcher", MB_ICONWARNING | MB_YESNO) != IDYES)
 			return 1;
 	}
-	
+
+	MessageBoxW(NULL,
+		L"We will now download some required files\n"
+		L"Should your internet go out, the download\n"
+		L"will pause and resume once you have internet.\n\n"
+
+		L"If your internet goes out and you are certain,\n"
+		L"you won't reconnect for a long period of time, you\n"
+		L"can use Task Manager to force close this process",
+	L"Touhou Community Reliant Automatic Patcher", MB_ICONINFORMATION | MB_OK); 
+
 	HANDLE hThread = CreateThread(NULL, 0, NETDownloadThread, ApplicationPath, 0, NULL);
 	HWND hwnd = createInstallPopup(L"Downloading some required files");
 
@@ -315,7 +325,9 @@ int installDotNET(LPWSTR ApplicationPath) {
 		if (waitStatus == WAIT_OBJECT_0 + 0) { // Thread finished
 			DestroyWindow(hwnd);
 			BOOL ret = GetExitCodeThread(hThread, &threadExitCode);
-			DWORD error = GetLastError();
+			if (!ret) {
+				errorCodeMsg(L"An unknown error with the download thread occurred\n", NULL);
+			}
 			CloseHandle(hThread);
 			if (NETDownloadCheckError(threadExitCode)) {
 				return 1;
@@ -350,6 +362,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 	my_free(NETInstaller);
 
 	if (!ret) {
+		DestroyWindow(hwnd);
 		return 1;
 	}
 

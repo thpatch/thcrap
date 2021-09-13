@@ -155,7 +155,7 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 
 		for (size_t i = 0; games[i].id; i++) {
 			if (destination == SHDESTINATION_GAMES_DIRECTORY) {
-				link_dir = std::filesystem::path(games[i].path).remove_filename().generic_u8string();
+				link_dir = std::filesystem::u8path(games[i].path).remove_filename().generic_u8string();
 			}
 			const char *link_fn = strings_sprintf(LINK_FN, "%s\\%s (%s).lnk", link_dir.c_str(), games[i].id, run_cfg_fn);
 			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, games[i].id);
