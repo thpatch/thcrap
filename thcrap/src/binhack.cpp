@@ -269,8 +269,22 @@ size_t code_string_calc_size(const char* code_str) {
 	while (1) {
 		// Parse characters
 		switch (uint8_t cur_char = code_str[0]) {
-			case '\0': // End of string
+			EndOfString: case '\0': // End of string
 				return size;
+			case '/': // Comments
+				if (uint8_t prev_char = *++code_str; prev_char == '*') {
+					while (1) {
+						cur_char = *++code_str;
+						if (cur_char == '\0') { // Unterminated comment
+							goto EndOfString;
+						} else if (cur_char == '/' && prev_char == '*') {
+							break;
+						}
+						prev_char = cur_char;
+					}
+					++code_str;
+				}
+				continue;
 			case '(': case '{': case '[':
 				++code_str;
 				if (cur_char == '[') { // Relative patch value
@@ -384,8 +398,23 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 	while (1) {
 		// Parse characters
 		switch (uint8_t cur_char = code_str[0]) {
-			case '\0': // End of string
+			EndOfString: case '\0': // End of string
 				return CodeStringSuccessRet;
+			case '/': // Comments
+				if (uint8_t prev_char = *++code_str; prev_char == '*') {
+					while (1) {
+						cur_char = *++code_str;
+						if (cur_char == '\0') { // Unterminated comment
+							goto EndOfString;
+						}
+						else if (cur_char == '/' && prev_char == '*') {
+							break;
+						}
+						prev_char = cur_char;
+					}
+					++code_str;
+				}
+				continue;
 			case '(': case '{': // Expression
 				code_str = check_for_code_string_cast(++code_str, &val);
 				if (cur_char == '(') { // Raw value

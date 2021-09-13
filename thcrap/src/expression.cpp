@@ -27,6 +27,7 @@ enum ManufacturerID : int8_t {
 };
 
 struct CPUID_Data_t {
+	BOOL OSIsX64 = false;
 	ManufacturerID Manufacturer = Unknown;
 	struct {
 		bool HasCMPXCHG8 = false;
@@ -84,6 +85,14 @@ struct CPUID_Data_t {
 		bool HasTBM = false;
 	};
 	CPUID_Data_t(void) {
+		// GetProcAddress is used to be compatible with XP SP1.
+		// https://docs.microsoft.com/en-us/windows/win32/api/wow64apiset/nf-wow64apiset-iswow64process
+		if (auto IsWow64ProcessVar = (decltype(&IsWow64Process))GetProcAddress(GetModuleHandleA("Kernel32.dll"), "IsWow64Process")) {
+			BOOL IsX64;
+			if (IsWow64ProcessVar(GetCurrentProcess(), &IsX64)) {
+				this->OSIsX64 = IsX64;
+			}
+		}
 		int data[4];
 		__cpuid(data, 0);
 		if (data[1] == TextInt('G', 'e', 'n', 'u') &&
@@ -943,6 +952,7 @@ static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) 
 			else if (strnicmp(name, "sse4a", name_length) == 0) ret = CPUID_Data.HasSSE4A;
 			else if (strnicmp(name, "movbe", name_length) == 0) ret = CPUID_Data.HasMOVBE;
 			else if (strnicmp(name, "3dnow", name_length) == 0) ret = CPUID_Data.Has3DNOW;
+			else if (strnicmp(name, "win64", name_length) == 0) ret = CPUID_Data.OSIsX64;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 4:
@@ -1010,7 +1020,7 @@ static uintptr_t GetCodecaveAddress(const char *const name, const size_t name_le
 			}
 		}
 		if (is_relative) {
-			cave_addr -= data_refs->rel_source + sizeof(void*);
+			cave_addr -= data_refs->rel_source + 4; // 
 		}
 	}
 	return cave_addr;
@@ -1029,7 +1039,7 @@ static uintptr_t GetBPFuncOrRawAddress(const char *const name, const size_t name
 		}
 		default:
 			if (is_relative) {
-				addr -= data_refs->rel_source + sizeof(void*);
+				addr -= data_refs->rel_source + 4;
 			}
 	}
 	return addr;
@@ -1101,6 +1111,17 @@ static patch_val_t GetMultibyteNOP(const char *const name, char end_char, const 
 	return nop_str;
 }
 
+static patch_val_t GetMultibyteInt3(const char *const name, char end_char, const StackSaver *const data_refs) {
+	patch_val_t int3_str;
+	int3_str.type = PVT_CODE;
+	int3_str.code.len = 0;
+	(void)eval_expr_impl(name, end_char, &int3_str.code.len, StartNoOp, 0, data_refs);
+	bool valid_int3_length = (int3_str.code.len != 0);
+	int3_str.code.count = 1;
+	int3_str.code.ptr = "CC";
+	return int3_str;
+}
+
 static inline const char* find_matching_end(const char* str, uint16_t delims_in) {
 	union {
 		uint16_t in;
@@ -1152,9 +1173,13 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 		out->type = PVT_BOOL;
 		out->b = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
 	}
-	else if (strnicmp(expr, "nop:", 3) == 0) {
+	else if (strnicmp(expr, "nop:", 4) == 0) {
 		expr += 4;
 		*out = GetMultibyteNOP(expr, is_relative ? ']' : '>', data_refs);
+	}
+	else if (strnicmp(expr, "int3:", 5) == 0) {
+		expr += 5;
+		*out = GetMultibyteInt3(expr, is_relative ? ']' : '>', data_refs);
 	}
 	else {
 		out->type = PVT_POINTER;
