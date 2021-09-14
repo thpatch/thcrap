@@ -169,13 +169,14 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 	out->cavesize = cavesize;
 
 	out->expected = NULL;
-	if (const char* expected = json_object_get_string(in, "expected")) {
+	if (const char* expected = json_object_get_concat_string_array(in, "expected")) { // Allocates a string that must be freed if non-null
 		size_t expected_size = code_string_calc_size(expected);
 		if (expected_size == cavesize) {
-			out->expected = strdup(expected);
+			out->expected = expected;
 		}
 		else {
 			log_printf("breakpoint %s: different sizes for expected and cavesize (%zu != %zu), verification will be skipped\n", name, expected_size, cavesize);
+			free((void*)expected); // Expected won't be used, so it can be freed
 		}
 	}
 

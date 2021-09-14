@@ -39,6 +39,60 @@ TH_CALLER_FREE char* json_string_copy(const json_t* object) {
 	return str;
 }
 
+TH_CALLER_FREE char* json_concat_string_array(json_t* str_arr, const char *name) {
+	if (str_arr != NULL) {
+		switch (json_typeof(str_arr)) {
+			case JSON_ARRAY: {
+				json_t* cur_str;
+				size_t string_size = 0;
+				bool array_has_strings = false;;
+				json_array_foreach_scoped(size_t, i, str_arr, cur_str) {
+					if (json_typeof(cur_str) == JSON_STRING) {
+						string_size += json_string_length(cur_str);
+						array_has_strings = true;
+					} else { // Skip non-string elements
+						log_printf(
+							"string array %s: element %zu is not a string\n"
+							, name, i
+						);
+					}
+				}
+				if (!array_has_strings) {
+					break; // Return NULL for arrays that are empty or have no strings
+				}
+				char* ret = (char*)malloc(string_size + 1);
+				ret[string_size] = '\0';
+				char* ret_write = ret;
+				json_array_foreach_scoped(size_t, i, str_arr, cur_str) {
+					if (json_typeof(cur_str) == JSON_STRING) {
+						size_t length = json_string_length(cur_str);
+						ret_write = (char*)memcpy(ret_write, json_string_value(cur_str), length) + length;
+					}
+				}
+				return ret;
+			}
+			case JSON_STRING:
+				return json_string_copy(str_arr);
+			default:
+				log_printf(
+					"string array %s: not a string or array of strings\n"
+					, name
+				);
+				break;
+		}
+	}
+	return NULL;
+}
+
+TH_CALLER_FREE char* json_object_get_concat_string_array(const json_t* object, const char *key) {
+	if (json_t* json = json_object_get(object, key)) {
+		return json_concat_string_array(json, key);
+	}
+	else {
+		return NULL;
+	}
+}
+
 int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 {
 	size_t arr_size = json_array_size(arr);

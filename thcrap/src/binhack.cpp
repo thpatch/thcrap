@@ -647,33 +647,40 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
-	
-	if (!(out->code = code_to_str(json_object_get(in, "code"), name))) {
+
+	const char *code = json_object_get_concat_string_array(in, "code"); // Allocates a string that must be freed if non-null
+	if (!code) {
+		// Ignore binhacks with missing fields
+		// It usually means the binhack doesn't apply for this game or game version.
 		return false;
 	}
 
 	hackpoint_addr_t *addrs = hackpoint_addrs_from_json(json_object_get(in, "addr"));
 	if (!addrs) {
 		// Ignore binhacks with no valid addresses
+		free((void*)code); // free the code string since it's not needed
 		return false;
 	}
+
+	// The binhack is definitely valid now, so start writing the fields
 
 	out->name = strdup(name);
 	out->title = json_object_get_string_copy(in, "title");
 
-	out->code = strdup(code);
+	out->code = code;
 
 	size_t code_size = code_string_calc_size(code);
 	out->code_size = code_size;
 
 	out->expected = NULL;
-	if (const char* expected = json_object_get_string(in, "expected")) {
+	if (const char* expected = json_object_get_concat_string_array(in, "expected")) { // Allocates a string that must be freed if non-null
 		size_t expected_size = code_string_calc_size(expected);
 		if (expected_size == code_size) {
-			out->expected = strdup(expected);
+			out->expected = expected;
 		}
 		else {
 			log_printf("binhack %s: different sizes for expected and code (%zu != %zu), verification will be skipped\n", name, expected_size, code_size);
+			free((void*)expected); // Expected won't be used, so it can be freed
 		}
 	}
 
@@ -887,9 +894,18 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				break;
 		}
 
-		code = code_to_str(json_object_get(in, "code"), name);
-
 		(void)json_object_get_eval_bool(in, "export", &export_val, JEVAL_DEFAULT);
+
+		switch (json_object_get_eval_int(in, "fill", &fill_val, JEVAL_STRICT)) {
+			default:
+				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be 32-bit integer or string\n", name);
+				return false;
+			case JEVAL_SUCCESS:
+			case JEVAL_NULL_PTR:
+				break;
+		}
+
+		code = json_object_get_concat_string_array(in, "code"); // Potentially allocates a string that must be freed
 
 		if (const char* access = json_object_get_string(in, "access")) {
 			uint8_t temp = 0;
@@ -901,6 +917,9 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			switch (temp) {
 				case 0: /*NOACCESS*/
 					log_printf("codecave %s: why would you set a codecave to no access? skipping instead...\n", name);
+					if (code) {
+						free((void*)code); // free the code string since it's not needed
+					}
 					return false;
 				case 1: /*READONLY*/
 					access_val = (CodecaveAccessType)(temp - 1);
@@ -934,20 +953,10 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			//    access_val = EXECUTE_READWRITE;
 			//}
 		}
-
-		switch (json_object_get_eval_int(in, "fill", &fill_val, JEVAL_STRICT)) {
-			default:
-				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be 32-bit integer or string\n", name);
-				return false;
-			case JEVAL_SUCCESS:
-			case JEVAL_NULL_PTR:
-				break;
-		}
-		
 	}
 	else if (json_is_string(in) || json_is_array(in)) {
 		// size_val = 0;
-		code = code_to_str(in, name);
+		code = json_concat_string_array(in, name); // Allocates a string that must be freed
 		// export_val = false;
 		// access_val = EXECUTE_READWRITE;
 		// fill_val = 0;
@@ -971,16 +980,16 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		DisableCodecaveNotFoundWarning(false);
 		if (!code_size && !size_val) {
 			log_printf("codecave %s with size 0 ignored\n", name);
+			free((void*)code); // free the code string since it's not needed
 			return false;
 		}
 		if (code_size > size_val) {
 			size_val = code_size;
 		}
-		code = strdup(code);
 	}
 	else if (!size_val) {
 		log_printf("codecave %s without \"code\" or \"size\" ignored\n", name);
-		return false;
+		return false; // No need to free the code string since the pointer must have been NULL to get here
 	}
 
 	out->code = code;

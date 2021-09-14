@@ -685,24 +685,25 @@ void patch_opts_from_json(json_t *opts) {
 					continue;
 				}
 				break;
-			/*case 'c':
-				if (json_is_string(j_val_val)) {
-					const char* opt_code_str = json_string_value(j_val_val);
-					entry.type = PVT_CODE;
-					entry.code.ptr = strdup(opt_code_str);
+			case 'c':
+				if (json_is_string(j_val_val) || json_is_array(j_val_val)) {
+					if (const char* opt_code_str = json_concat_string_array(j_val_val, key)) {
+						entry.type = PVT_CODE;
+						entry.code.ptr = opt_code_str;
 
-					// Don't warn about codecave references.
-					DisableCodecaveNotFoundWarning(true);
-					entry.code.len = binhack_calc_size(opt_code_str);
-					DisableCodecaveNotFoundWarning(false);
+						// Don't warn about codecave references.
+						DisableCodecaveNotFoundWarning(true);
+						entry.code.len = code_string_calc_size(opt_code_str);
+						DisableCodecaveNotFoundWarning(false);
 
-					entry.code.count = 1;
+						entry.code.count = 1;
+					}
 				}
 				else {
 					log_printf("ERROR: invalid json type for code option %s\n", key);
 					continue;
 				}
-				break;*/
+				break;
 			case 'i': {
 				json_int_t value;
 				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);

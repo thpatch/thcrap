@@ -458,16 +458,17 @@ textimage_t* textimage_t::create(
 	auto script_j = json_object_get(desc, "script");
 	unsigned char *script_buf = nullptr;
 	if(script_j) {
-		auto script_str = code_to_str(script_j, fn);
+		const char* script_str = json_concat_string_array(script_j, "script"); // Allocates a string that must be freed
 		if(!script_str) {
-			return textimage_log.errorf("%s: \"script\" should be a binary hack", fn);
+			return textimage_log.errorf("%s: \"script\" should be a code string", fn);
 		}
-		auto script_len = binhack_calc_size(script_str);
+		size_t script_len = code_string_calc_size(script_str);
 		if(script_len == 0) {
+			free((void*)script_str); // free the string since it's not needed
 			return textimage_log.errorf("%s: Error rendering \"script\" into binary", fn);
 		}
 		script_buf = new unsigned char[script_len];
-		binhack_render(script_buf, 0, script_str);
+		code_string_render(script_buf, 0, script_str);
 	}
 	auto ret = new textimage_t;
 	ret->fn = fn;

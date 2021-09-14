@@ -45,6 +45,10 @@ int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value);
 // automatically converting the JSON value to an integer if necessary.
 size_t json_array_get_hex(json_t *arr, const size_t ind);
 
+// Converts a JSON value to a code string
+// String returned by this function is guaranteed to persist
+TH_CALLER_FREE char* json_concat_string_array(const json_t* str_arr, const char *name);
+
 TH_CALLER_FREE char** json_string_array_copy(const json_t *arr);
 
 // Convenience function for json_string_value(json_array_get(object, ind));
@@ -103,6 +107,9 @@ const char* json_object_get_string(const json_t *object, const char *key);
 
 // Convenience function for json_string_copy(json_object_get(object, key));
 TH_CALLER_FREE char* json_object_get_string_copy(const json_t *object, const char *key);
+
+
+TH_CALLER_FREE char* json_object_get_concat_string_array(const json_t *object, const char *key);
 
 // Merge [new_obj] recursively into [old_obj].
 // [new_obj] has priority; any element of [old_obj] that is present

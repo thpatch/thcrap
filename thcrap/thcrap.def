@@ -5,7 +5,6 @@ EXPORTS
 	hex_value
 	binhack_from_json
 	binhacks_apply
-	code_to_str
 
 	code_string_calc_size
 	code_string_render
@@ -118,6 +117,7 @@ EXPORTS
 	; ---------------
 	json_decref_safe
 	json_hex_value
+	json_concat_string_array
 	json_array_set_expand
 	json_array_set_new_expand
 	json_array_get_hex
@@ -132,6 +132,7 @@ EXPORTS
 	json_object_get_hex
 	json_object_merge
 	json_object_get_keys_sorted
+	json_object_get_concat_string_array
 	json5_loadb
 	json_load_file_report
 	json_dump_log
