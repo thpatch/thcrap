@@ -655,6 +655,12 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
+	size_t code_size = code_string_calc_size(code);
+	if (!code_size) {
+		free((void*)code); // free the code string since it's not needed
+		return false;
+	}
+
 	hackpoint_addr_t *addrs = hackpoint_addrs_from_json(json_object_get(in, "addr"));
 	if (!addrs) {
 		// Ignore binhacks with no valid addresses
@@ -668,8 +674,6 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 	out->title = json_object_get_string_copy(in, "title");
 
 	out->code = code;
-
-	size_t code_size = code_string_calc_size(code);
 	out->code_size = code_size;
 
 	out->expected = NULL;

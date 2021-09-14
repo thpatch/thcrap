@@ -40,28 +40,29 @@ TH_CALLER_FREE char* json_string_copy(const json_t* object) {
 }
 
 TH_CALLER_FREE char* json_concat_string_array(const json_t* str_arr, const char *name) {
-	if (str_arr != NULL) {
-		switch (json_typeof(str_arr)) {
-			case JSON_ARRAY: {
-				json_t* cur_str;
-				size_t string_size = 0;
-				bool array_has_strings = false;;
-				json_array_foreach_scoped(size_t, i, str_arr, cur_str) {
-					if (json_typeof(cur_str) == JSON_STRING) {
-						string_size += json_string_length(cur_str);
-						array_has_strings = true;
-					} else { // Skip non-string elements
-						log_printf(
-							"string array %s: element %zu is not a string\n"
-							, name, i
-						);
-					}
+	if unexpected(!str_arr) {
+		return NULL;
+	}
+	switch (json_typeof(str_arr)) {
+		case JSON_STRING:
+			return json_string_copy(str_arr);
+		case JSON_ARRAY: {
+			json_t* cur_str;
+			size_t string_size = 0;
+			json_array_foreach_scoped(size_t, i, str_arr, cur_str) {
+				if (json_typeof(cur_str) == JSON_STRING) {
+					string_size += json_string_length(cur_str);
 				}
-				if (!array_has_strings) {
-					break; // Return NULL for arrays that are empty or have no strings
+				else { // Skip non-string elements
+					log_printf(
+						"string array %s: element %zu is not a string\n"
+						, name, i
+					);
 				}
-				char* ret = (char*)malloc(string_size + 1);
-				ret[string_size] = '\0';
+			}
+			char* ret = (char*)malloc(string_size + 1);
+			ret[string_size] = '\0';
+			if (string_size != 0) {
 				char* ret_write = ret;
 				json_array_foreach_scoped(size_t, i, str_arr, cur_str) {
 					if (json_typeof(cur_str) == JSON_STRING) {
@@ -69,17 +70,15 @@ TH_CALLER_FREE char* json_concat_string_array(const json_t* str_arr, const char 
 						ret_write = (char*)memcpy(ret_write, json_string_value(cur_str), length) + length;
 					}
 				}
-				return ret;
 			}
-			case JSON_STRING:
-				return json_string_copy(str_arr);
-			default:
-				log_printf(
-					"string array %s: not a string or array of strings\n"
-					, name
-				);
-				break;
+			return ret;
 		}
+		default:
+			log_printf(
+				"string array %s: not a string or array of strings\n"
+				, name
+			);
+			break;
 	}
 	return NULL;
 }
