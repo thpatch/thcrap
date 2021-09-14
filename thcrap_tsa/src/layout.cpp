@@ -721,7 +721,7 @@ WIDEST_STRING(widest_string_f, float);
 
 int layout_mod_init(HMODULE hMod)
 {
-	json_object_get_eval_bool((json_t*)runconfig_json_get(), "ruby_shift_debug", &ruby_shift_debug, 0);
+	json_object_get_eval_bool(runconfig_json_get(), "ruby_shift_debug", &ruby_shift_debug, 0);
 	Layout_Tabs = json_array();
 	return 0;
 }

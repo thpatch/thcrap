@@ -174,7 +174,7 @@ void json_dump_log(const json_t *json, size_t flags);
 /// Evaluation
 /// -------
 
-size_t json_string_expression_value(json_t* json);
+size_t json_string_expression_value(const json_t* json);
 
 typedef enum {
 	JEVAL_SUCCESS = 0,
@@ -232,31 +232,31 @@ typedef uint8_t jeval_flags_t;
 // store the result in [out], returning a json_eval_error_t
 // indicating whether the operation was successful. [out] is not
 // modified for any return value except JEVAL_SUCCESS.
-TH_CHECK_RET jeval_error_t json_eval_bool(json_t* val, bool* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_eval_int(json_t* val, size_t* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_eval_int64(json_t* val, json_int_t* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_eval_real(json_t* val, double* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_eval_number(json_t* val, double* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_eval_bool(const json_t* val, bool* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_eval_int(const json_t* val, size_t* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_eval_int64(const json_t* val, json_int_t* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_eval_real(const json_t* val, double* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_eval_number(const json_t* val, double* out, jeval_flags_t flags);
 
 // Convenience functions for json_eval_type(json_object_get(object, key), out, flags);
-TH_CHECK_RET jeval_error_t json_object_get_eval_bool(json_t* object, const char* key, bool* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_object_get_eval_int(json_t* object, const char* key, size_t* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_object_get_eval_int64(json_t* object, const char* key, json_int_t* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_object_get_eval_real(json_t* object, const char* key, double* out, jeval_flags_t flags);
-TH_CHECK_RET jeval_error_t json_object_get_eval_number(json_t* object, const char* key, double* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_object_get_eval_bool(const json_t* object, const char* key, bool* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_object_get_eval_int(const json_t* object, const char* key, size_t* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_object_get_eval_int64(const json_t* object, const char* key, json_int_t* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_object_get_eval_real(const json_t* object, const char* key, double* out, jeval_flags_t flags);
+TH_CHECK_RET jeval_error_t json_object_get_eval_number(const json_t* object, const char* key, double* out, jeval_flags_t flags);
 
 // Evaluate the JSON [val] according to the supplied [flags] and
 // returning either the result or [default_ret] if the operation
 // could not be performed.
-bool json_eval_bool_default(json_t* val, bool default_ret, jeval_flags_t flags);
-size_t json_eval_int_default(json_t* val, size_t default_ret, jeval_flags_t flags);
-json_int_t json_eval_int64_default(json_t* val, json_int_t default_ret, jeval_flags_t flags);
-double json_eval_real_default(json_t* val, double default_ret, jeval_flags_t flags);
-double json_eval_number_default(json_t* val, double default_ret, jeval_flags_t flags);
+bool json_eval_bool_default(const json_t* val, bool default_ret, jeval_flags_t flags);
+size_t json_eval_int_default(const json_t* val, size_t default_ret, jeval_flags_t flags);
+json_int_t json_eval_int64_default(const json_t* val, json_int_t default_ret, jeval_flags_t flags);
+double json_eval_real_default(const json_t* val, double default_ret, jeval_flags_t flags);
+double json_eval_number_default(const json_t* val, double default_ret, jeval_flags_t flags);
 
 // Convenience functions for json_eval_type_default(json_object_get(object, key), default_ret, flags);
-bool json_object_get_eval_bool_default(json_t* object, const char* key, bool default_ret, jeval_flags_t flags);
-size_t json_object_get_eval_int_default(json_t* object, const char* key, size_t default_ret, jeval_flags_t flags);
-json_int_t json_object_get_eval_int64_default(json_t* object, const char* key, json_int_t default_ret, jeval_flags_t flags);
-double json_object_get_eval_real_default(json_t* object, const char* key, double default_ret, jeval_flags_t flags);
-double json_object_get_eval_number_default(json_t* object, const char* key, double default_ret, jeval_flags_t flags);
+bool json_object_get_eval_bool_default(const json_t* object, const char* key, bool default_ret, jeval_flags_t flags);
+size_t json_object_get_eval_int_default(const json_t* object, const char* key, size_t default_ret, jeval_flags_t flags);
+json_int_t json_object_get_eval_int64_default(const json_t* object, const char* key, json_int_t default_ret, jeval_flags_t flags);
+double json_object_get_eval_real_default(const json_t* object, const char* key, double default_ret, jeval_flags_t flags);
+double json_object_get_eval_number_default(const json_t* object, const char* key, double default_ret, jeval_flags_t flags);
