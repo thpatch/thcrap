@@ -364,6 +364,10 @@ static TH_CALLER_FREE char* get_windows_error_message(DWORD ExceptionCode) {
 	HGLOBAL resource_handle = LoadResource(ntdll_handle, resource_info_handle);
 
 	MESSAGE_RESOURCE_DATA* resource_pointer = (MESSAGE_RESOURCE_DATA*)LockResource(resource_handle);
+	if unexpected(resource_pointer == NULL) {
+		// TODO Figure out why Wine isn't finding the message table resource in ntdll
+		return NULL;
+	}
 	const size_t message_count = resource_pointer->NumberOfBlocks;
 
 	MESSAGE_RESOURCE_ENTRY* message_entry = NULL;
@@ -396,26 +400,30 @@ static TH_CALLER_FREE char* get_windows_error_message(DWORD ExceptionCode) {
 }
 
 static void log_print_windows_error_message(LPEXCEPTION_RECORD lpER) {
-	char* error_message = get_windows_error_message(lpER->ExceptionCode);
-	str_ascii_replace(error_message, '\r', ' ');
-	str_ascii_replace(error_message, '\n', ' ');
-	switch (lpER->ExceptionCode) {
-		case EXCEPTION_IN_PAGE_ERROR:
-		case STATUS_ACCESS_VIOLATION: {
-			static constexpr char* access_types[] = {
-				/*EXCEPTION_READ_FAULT*/	"read",
-				/*EXCEPTION_WRITE_FAULT*/	"written",
-				NULL, NULL, NULL, NULL, NULL, NULL,
-				/*EXCEPTION_EXECUTE_FAULT*/	"executed"
-			};
-			log_printf(error_message, lpER->ExceptionAddress, lpER->ExceptionInformation[1], access_types[lpER->ExceptionInformation[0]], lpER->ExceptionInformation[2]);
-			break;
+	if (char* error_message = get_windows_error_message(lpER->ExceptionCode)) {
+		str_ascii_replace(error_message, '\r', ' ');
+		str_ascii_replace(error_message, '\n', ' ');
+		switch (lpER->ExceptionCode) {
+			case EXCEPTION_IN_PAGE_ERROR:
+			case STATUS_ACCESS_VIOLATION: {
+				static constexpr char* access_types[] = {
+					/*EXCEPTION_READ_FAULT*/	"read",
+					/*EXCEPTION_WRITE_FAULT*/	"written",
+					NULL, NULL, NULL, NULL, NULL, NULL,
+					/*EXCEPTION_EXECUTE_FAULT*/	"executed"
+				};
+				log_printf(error_message, lpER->ExceptionAddress, lpER->ExceptionInformation[1], access_types[lpER->ExceptionInformation[0]], lpER->ExceptionInformation[2]);
+				break;
+			}
+			default:
+				log_print(error_message);
+				break;
 		}
-		default:
-			log_print(error_message);
-			break;
+		free(error_message);
 	}
-	free(error_message);
+	else {
+		log_print("No error description available.");
+	}
 }
 
 static void log_print_error_source(HMODULE crash_mod, void* address) {
