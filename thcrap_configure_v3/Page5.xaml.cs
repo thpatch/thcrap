@@ -57,7 +57,8 @@ namespace thcrap_configure_v3
         private void NoShortcutsMoreDetails(object sender, MouseButtonEventArgs e)
         {
             MessageBox.Show("With the way thcrap works, your game files are never modified, and running the games after setup program will still run the original, unpatched games.\n\n" +
-                            "If you want something more like traditional patches with a patched exe aside the original one in the game folder, choose to create the shortcuts \"in the games' folder\".");
+                            "If you want something more like traditional patches with a patched exe aside the original one in the game folder, choose to create the shortcuts \"in the games' folder\".\n\n" + 
+                            "Alternatively, you may try a third-party launcher software, or if you're tech-savvy run thcrap_loader.exe to learn how to run it from the command line.");
         }
 
         private void CreateShortcuts(string configName, IEnumerable<ThcrapDll.games_js_entry> games, ThcrapDll.ShortcutsDestination destination)
