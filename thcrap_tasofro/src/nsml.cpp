@@ -216,7 +216,7 @@ extern "C" int BP_nsml_CPackageFileReader_openFile(x86_reg_t *regs, json_t * bp_
 	}
 
 	file_name = EnsureUTF8(file_name, strlen(file_name));
-	CharLowerA(file_name);
+	CharLowerU(file_name);
 
 	TasofroFile *fr = new TasofroFile();
 	fr->init(file_name);
