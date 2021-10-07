@@ -205,6 +205,13 @@ int patch_file_store(const patch_t *patch_info, const char *fn, const void *file
 
 json_t* patch_json_load(const patch_t *patch_info, const char *fn, size_t *file_size)
 {
+	if (patch_file_blacklisted(patch_info, fn)) {
+		if (file_size) {
+			*file_size = 0;
+		}
+		return nullptr;
+	}
+
 	char *_fn = fn_for_patch(patch_info, fn);
 	json_t *file_json = json_load_file_report(_fn);
 

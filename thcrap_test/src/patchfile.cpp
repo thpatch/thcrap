@@ -154,8 +154,8 @@ protected:
         );
         json_dump_file(*patch_js, "testdir/patch.js", 0);
 
-        ScopedJson runconfig_js = json_pack("{s:[s,s],s:b}",
-            "ignore", "*.bmp", "*.jpg",
+        ScopedJson runconfig_js = json_pack("{s:[s,s,s],s:b}",
+            "ignore", "*.bmp", "*.jpg", "*.end.jdiff",
             "update", false
         );
         this->patch = patch_init("testdir", *runconfig_js, 0);
@@ -198,7 +198,8 @@ TEST_F(PatchFileTest, PatchInit)
     ASSERT_NE(patch.ignore, nullptr);
     EXPECT_STREQ(patch.ignore[0], "*.bmp");
     EXPECT_STREQ(patch.ignore[1], "*.jpg");
-    EXPECT_EQ(patch.ignore[2], nullptr);
+    EXPECT_STREQ(patch.ignore[2], "*.end.jdiff");
+    EXPECT_EQ(patch.ignore[3], nullptr);
 
     EXPECT_EQ(patch.update, false);
 
@@ -234,7 +235,8 @@ TEST_F(PatchFileTest, PatchFileBlacklisted)
 {
     EXPECT_TRUE (patch_file_blacklisted(&patch, "file.bmp"));
     EXPECT_TRUE (patch_file_blacklisted(&patch, "file.jpg"));
-    EXPECT_FALSE(patch_file_blacklisted(&patch, "file.png"));
+    EXPECT_TRUE (patch_file_blacklisted(&patch, "file.end.jdiff"));
+    EXPECT_FALSE(patch_file_blacklisted(&patch, "file.msg.jdiff"));
     EXPECT_FALSE(patch_file_blacklisted(&patch, "file_without_extension"));
     EXPECT_TRUE (patch_file_blacklisted(&patch, "dir/file.bmp"));
     EXPECT_TRUE (patch_file_blacklisted(&patch, "dir/file.jpg"));
@@ -278,6 +280,49 @@ TEST_F(PatchFileTest, PatchFileLoad)
     buffer = (char*)patch_file_load(&patch, "test_exist.txt", nullptr);
     EXPECT_STREQ(buffer, "abcde");
     free(buffer);
+}
+
+TEST_F(PatchFileTest, PatchJsonLoad)
+{
+    const char *jsonstr = "{ abc: 5, /* comment */ }";
+    const size_t jsonlen = strlen(jsonstr);
+    std::ofstream file;
+    json_t *json;
+    size_t file_size;
+
+    file.open("testdir/test_exist.js");
+    file.write(jsonstr, jsonlen);
+    file.close();
+    json = patch_json_load(&patch, "test_exist.js", &file_size);
+    EXPECT_NE(json, nullptr);
+    EXPECT_EQ(json_integer_value(json_object_get(json, "abc")), 5);
+    EXPECT_EQ(file_size, jsonlen);
+    json_decref(json);
+
+    EXPECT_EQ(patch_json_load(&patch, "test_missing.js", &file_size), nullptr);
+    EXPECT_EQ(file_size, 0u);
+
+    std::filesystem::create_directory("testdir/subdir");
+    file.open("testdir/subdir/test_exist.js");
+    file.write(jsonstr, jsonlen);
+    file.close();
+    json = patch_json_load(&patch, "subdir/test_exist.js", &file_size);
+    EXPECT_NE(json, nullptr);
+    EXPECT_EQ(json_integer_value(json_object_get(json, "abc")), 5);
+    EXPECT_EQ(file_size, jsonlen);
+    json_decref(json);
+
+    // Test blacklist
+    file.open("testdir/test_blacklist.end.jdiff");
+    file.write(jsonstr, jsonlen);
+    file.close();
+    EXPECT_EQ(patch_json_load(&patch, "test_blacklist.end.jdiff", &file_size), nullptr);
+    EXPECT_EQ(file_size, 0u);
+
+    // Test without size
+    json = patch_json_load(&patch, "test_exist.js", nullptr);
+    EXPECT_EQ(json_integer_value(json_object_get(json, "abc")), 5);
+    json_decref(json);
 }
 
 // TODO: patch_json_load, patch_json_merge, patch_file_store, patch_json_store, patch_file_delete
