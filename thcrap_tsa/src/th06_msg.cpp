@@ -773,7 +773,13 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			}
 		}
 		else {
-			char *orig_advanced = (char*)memchr((void*)orig_file, '\n', size_in - advanced_bytes) + 1;
+			char *orig_advanced = (char*)memchr((void*)orig_file, '\n', size_in - advanced_bytes);
+			if (orig_advanced != nullptr) {
+				orig_advanced++;
+			}
+			else {
+				orig_advanced = orig_file + (size_in - advanced_bytes);
+			}
 			memcpy(new_end, orig_file, orig_advanced - orig_file);
 			new_end += orig_advanced - orig_file;
 			orig_file = orig_advanced;
