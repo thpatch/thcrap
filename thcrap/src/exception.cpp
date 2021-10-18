@@ -444,9 +444,26 @@ void manual_stack_walk(uintptr_t current_esp) {
 #else
 	NT_TIB* tib = (NT_TIB*)__readfsdword(offsetof(NT_TIB, Self));
 #endif
+	
+#ifdef TH_X64
+#define StkPtrReg "RSP"
+#define InsPtrReg "RIP"
+#else
+#define StkPtrReg "ESP"
+#define InsPtrReg "EIP"
+#endif
 
 	uintptr_t* stack_top = (uintptr_t*)tib->StackBase;
 	uintptr_t* stack_bottom = (uintptr_t*)tib->StackLimit;
+	
+	if (!(current_esp < (uintptr_t)stack_top && current_esp >= (uintptr_t)stack_bottom)) {
+		log_printf(
+			"\n"
+			"Stack walk ERROR: " StkPtrReg " is not within the stack bounds specified by the TEB! (0x%p->0x%p)\n"
+			, stack_bottom, stack_top
+		);
+		return;
+	}
 
 	log_printf(
 		"\n"
@@ -454,13 +471,15 @@ void manual_stack_walk(uintptr_t current_esp) {
 		, current_esp, stack_top
 	);
 
-#ifndef TH_X64
-	if ((uintptr_t)current_esp % alignof(uintptr_t)) {
+#ifdef TH_X64
+	if (current_esp % 16) {
+#else
+	if (((uintptr_t)stack_top - current_esp) % sizeof(uintptr_t)) {
+#endif
 		log_print(
 			"WARNING: Stack is not aligned, data may be unreliable.\n"
 		);
 	}
-#endif
 	MEMORY_BASIC_INFORMATION mbi;
 	enum PtrState_TypeVals : uint8_t {
 		RawValue = 0,
@@ -498,10 +517,10 @@ void manual_stack_walk(uintptr_t current_esp) {
 		"(Execute Write-Copy)",
 		"(Execute Read Write)"
 	};
-	uint8_t stack_offset_length = snprintf(NULL, 0, "%X", (uintptr_t)stack_top - current_esp);
+	uint8_t stack_offset_length = snprintf(NULL, 0, "%X", (uintptr_t)(stack_top - 1) - current_esp);
 	for (
 		uintptr_t* stack_addr = (uintptr_t*)current_esp;
-		stack_addr < stack_top - sizeof(uintptr_t); // These don't necessarily align cleanly, so array indexing would be tricky to use here
+		stack_addr < stack_top - 1; // These don't necessarily align cleanly, so array indexing would be tricky to use here
 		++stack_addr
 	) {
 		uintptr_t stack_value = *stack_addr;
@@ -514,6 +533,10 @@ void manual_stack_walk(uintptr_t current_esp) {
 		bool has_rex_byte = false;
 #endif
 		if (stack_value < 65536) { // Thin out values that can't ever be a valid pointer
+			if (!(exception_detail_level & ThExceptionDetailLevel::TraceDump)) {
+				// Memory protection hasn't been modified, so just continue the loop
+				continue;	
+			}
 			ptr_value_type = RawValue;
 		} else {
 			// Is this a pointer to other stack data?
@@ -779,23 +802,21 @@ void manual_stack_walk(uintptr_t current_esp) {
 				case ReadOnly: case WriteCopy: case ReadWrite:
 					if (VirtualCheckRegion((void*)stack_value, 16)) {
 						ptr_value_type = PossiblePointer;
-						break;
 					}
-					TH_FALLTHROUGH;
+					else {
+						TH_FALLTHROUGH;
 				case None:
-					ptr_value_type = RawValue;
+						ptr_value_type = RawValue;
+					}
+					if (!(exception_detail_level & ThExceptionDetailLevel::TraceDump)) {
+						// Memory protection might have been modified, so jump to the end where it's set back
+						goto SkipPrint;
+					}
 					break;
 			}
 		}
 	IdentifiedValueType:
 		switch (ptr_value_type) {
-#ifdef TH_X64
-#define StkPtrReg "RSP"
-#define InsPtrReg "RIP"
-#else
-#define StkPtrReg "ESP"
-#define InsPtrReg "EIP"
-#endif
 			default:
 				TH_UNREACHABLE;
 			case RawValue:
@@ -809,7 +830,7 @@ void manual_stack_walk(uintptr_t current_esp) {
 					"[" StkPtrReg "+%*X]\t%p\t"
 					, stack_offset_length, (uintptr_t)stack_addr - current_esp, stack_value
 				);
-				if (exception_detail_level & ThExceptionDetailLevel::TraceDump) {
+				if (exception_detail_level & ThExceptionDetailLevel::ManualTrace) {
 					log_printf(
 						"DUMP %08X %08X %08X %08X "
 						, _byteswap_ulong(((uint32_t*)stack_value)[0])
@@ -914,6 +935,7 @@ void manual_stack_walk(uintptr_t current_esp) {
 			}
 		}
 		log_print("\n");
+	SkipPrint:
 		switch (ptr_access_type) {
 			case WriteCopy: case Execute: case ExecuteWriteCopy:
 				VirtualProtect(mbi.BaseAddress, mbi.RegionSize, mbi.Protect, &mbi.Protect);
@@ -1010,7 +1032,7 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 
 	log_print_context(lpEI->ContextRecord);
 
-	if (exception_detail_level & ThExceptionDetailLevel::ManualTrace) {
+	if (exception_detail_level & (ThExceptionDetailLevel::ManualTrace | ThExceptionDetailLevel::TraceDump)) {
 #ifdef TH_X64
 		manual_stack_walk(lpEI->ContextRecord->Rsp);
 #else
