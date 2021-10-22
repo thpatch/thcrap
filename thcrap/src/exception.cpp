@@ -360,7 +360,7 @@ static const char *get_cxx_eh_typename(LPEXCEPTION_RECORD lpER)
 
 static TH_CALLER_FREE char* get_windows_error_message(DWORD ExceptionCode) {
 	HMODULE ntdll_handle = GetModuleHandleW(L"ntdll.dll");
-	HRSRC resource_info_handle = FindResource(ntdll_handle, MAKEINTRESOURCE(1), RT_MESSAGETABLE);
+	HRSRC resource_info_handle = FindResourceEx(ntdll_handle, RT_MESSAGETABLE, MAKEINTRESOURCE(1), MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US));
 	HGLOBAL resource_handle = LoadResource(ntdll_handle, resource_info_handle);
 
 	MESSAGE_RESOURCE_DATA* resource_pointer = (MESSAGE_RESOURCE_DATA*)LockResource(resource_handle);
