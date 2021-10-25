@@ -9,10 +9,10 @@
 
 #include "thcrap.h"
 
-typedef struct {
+struct detour_func_map_t {
 	std::unordered_map<std::string_view, UINT_PTR> funcs;
 	bool disable = false;
-} detour_func_map_t;
+};
 
 static std::unordered_map<std::string_view, detour_func_map_t> detours;
 

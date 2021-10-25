@@ -597,7 +597,7 @@ BOOL WINAPI layout_TextOutU(
 		static auto pen = CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
 		auto hPrevObject = SelectObject(hdc, pen);
 
-		auto draw_at_x = [&](json_int_t x) {
+		auto draw_at_x = [&](LONG x) {
 			auto point = x;
 			POINT points[2] = { {point, 0}, {point, 32} };
 			Polyline(hdc, points, sizeof(points) / sizeof(points[0]));
@@ -605,7 +605,7 @@ BOOL WINAPI layout_TextOutU(
 		draw_at_x(0);
 		draw_at_x(orig_x);
 		json_array_foreach(Layout_Tabs, i, val) {
-			draw_at_x(json_integer_value(val));
+			draw_at_x((LONG)json_integer_value(val));
 		}
 		SelectObject(hdc, hPrevObject);
 	}
@@ -721,9 +721,17 @@ WIDEST_STRING(widest_string_f, float);
 
 int layout_mod_init(HMODULE hMod)
 {
-	json_object_get_eval_bool(runconfig_json_get(), "ruby_shift_debug", &ruby_shift_debug, 0);
+	jeval_error_t ret;
+	if (
+		(ret = json_object_get_eval_bool(
+			runconfig_json_get(),
+			"ruby_shift_debug",
+			&ruby_shift_debug, 0)) != JEVAL_SUCCESS
+		) {
+		return ret;
+	}
 	Layout_Tabs = json_array();
-	return 0;
+	return ret;
 }
 
 void layout_mod_detour(void)
