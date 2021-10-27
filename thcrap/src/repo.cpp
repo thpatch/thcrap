@@ -97,7 +97,13 @@ bool RepoWrite(const repo_t *repo)
 	repo_dir.remove_filename();
 	free(repo_fn_local);
 
-	std::filesystem::create_directories(repo_dir);
+	try {
+		std::filesystem::create_directories(repo_dir);
+	}
+	catch (std::filesystem::filesystem_error e) {
+		log_printf("Failed to create repo folder %s.\nError %d: %s\n", repo_dir.u8string(), e.code().value(), e.what());
+		return false;
+	}
 	int ret = json_dump_file(repo_js, repo_path.u8string().c_str(), JSON_INDENT(4)) == 0;
 	json_decref(repo_js);
 	return ret;
