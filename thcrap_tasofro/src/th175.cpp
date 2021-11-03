@@ -144,14 +144,14 @@ extern "C" int BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 			if (fr->pre_json_size > size) {
 				return;
 			}
-			th175_crypt_file(buffer, fr->pre_json_size, it->first->file_offset + it->first->file_segment_offset);
+			th175_crypt_file(buffer, fr->pre_json_size, it->second.offset);
 		},
 		[&it](TasofroFile *fr, BYTE *buffer, DWORD size) {
 			// Make sure we use the game reader's size, which will be used when the game decrypts its file
 			if (it->first->file_size > size) {
 				return;
 			}
-			th175_crypt_file(buffer, static_cast<size_t>(it->first->file_size), it->first->file_offset + it->first->file_segment_offset);
+			th175_crypt_file(buffer, static_cast<size_t>(it->first->file_size), it->first->file_offset);
 		}
 	);
 }
