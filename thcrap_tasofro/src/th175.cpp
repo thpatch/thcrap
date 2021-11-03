@@ -100,6 +100,7 @@ uint32_t do_decrypt_step(uint32_t key)
 
 void th175_crypt_file(uint8_t* buffer, size_t size, size_t offset_in_file)
 {
+	size_t bytes_processed = 0;
 	// File key, derived from the file's size and its offset in the archive file.
 	uint32_t file_key = size ^ offset_in_file;
 
@@ -111,14 +112,18 @@ void th175_crypt_file(uint8_t* buffer, size_t size, size_t offset_in_file)
 			xor = (xor << 8) | (tmp_key & 0xFF);
 		}
 
-		if (pos + 4 < size) {
+		if (pos + 4 <= size) {
 			*(uint32_t*)(buffer + pos) ^= xor;
+			bytes_processed += 4;
 		}
 		else {
 			do_partial_xor(buffer + pos, (uint8_t*)&xor, size - pos);
+			bytes_processed += size - pos;
 		}
 		file_key++;
 	}
+
+	assert(bytes_processed == size);
 }
 
 extern "C" int BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
