@@ -1114,10 +1114,10 @@ static patch_val_t GetMultibyteNOP(const char *const name, char end_char, const 
 static patch_val_t GetMultibyteInt3(const char *const name, char end_char, const StackSaver *const data_refs) {
 	patch_val_t int3_str;
 	int3_str.type = PVT_CODE;
-	int3_str.code.len = 0;
-	(void)eval_expr_impl(name, end_char, &int3_str.code.len, StartNoOp, 0, data_refs);
+	int3_str.code.count = 0;
+	(void)eval_expr_impl(name, end_char, &int3_str.code.count, StartNoOp, 0, data_refs);
 	bool valid_int3_length = (int3_str.code.len != 0);
-	int3_str.code.count = 1;
+	int3_str.code.len = valid_int3_length;
 	int3_str.code.ptr = "CC";
 	return int3_str;
 }
