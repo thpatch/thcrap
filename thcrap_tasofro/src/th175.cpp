@@ -38,7 +38,7 @@ struct AVPackageReader
 {
 	void* vtable;
 	DWORD refcount; // from IUnknown
-	uint32_t unk_08;
+	uint32_t file_hash;
 	uint32_t unk_0C;
 	uint32_t file_offset;
 	uint32_t unk_14;
@@ -50,10 +50,13 @@ struct AVPackageReader
 	uint32_t unk_28;
 
 	AVFileIO_DefaultReader* file_reader;
+
+	void *unk_30;
 };
 
 static std::map<AVPackageReader*, TasofroFile> open_files;
 std::mutex open_files_mutex;
+thread_local AVPackageReader *current_reader = nullptr;
 
 extern "C" int BP_th175_open_file(x86_reg_t *regs, json_t *bp_info)
 {
@@ -126,14 +129,22 @@ void th175_crypt_file(uint8_t* buffer, size_t size, size_t offset_in_file)
 	assert(bytes_processed == size);
 }
 
+extern "C" int BP_th175_prepareReadFile(x86_reg_t *regs, json_t *bp_info)
+{
+	current_reader = (AVPackageReader*)json_object_get_immediate(bp_info, regs, "package_reader");
+	return 1;
+}
+
 extern "C" int BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 {
-	AVfile_handle *handle = (AVfile_handle*)json_object_get_immediate(bp_info, regs, "file_handle");
+	if (current_reader == nullptr) {
+		return 1;
+	}
+	AVPackageReader *reader = current_reader;
+	current_reader = nullptr;
 
 	std::scoped_lock<std::mutex> lock(open_files_mutex);
-	auto it = std::find_if(open_files.begin(), open_files.end(), [handle](const std::pair<AVPackageReader* const, TasofroFile>& it) {
-		return &it.first->file_reader->handle == handle;
-	});
+	auto it = open_files.find(reader);
 	if (it == open_files.end()) {
 		return 1;
 	}
