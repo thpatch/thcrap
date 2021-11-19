@@ -95,36 +95,34 @@ void log_rotate(void)
 void log_print(const char *str)
 {
 	if (log_queue) {
-		log_queue->enqueue([str = strdup(str)]() {
+		log_queue->enqueue([str = std::string(str)]() {
 			DWORD byteRet;
 			if (console_open) {
-				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, strlen(str), &byteRet, NULL);
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str.c_str(), str.length(), &byteRet, NULL);
 			}
 			if (log_file) {
-				WriteFile(log_file, str, strlen(str), &byteRet, NULL);
+				WriteFile(log_file, str.c_str(), str.length(), &byteRet, NULL);
 			}
 			if (log_print_hook) {
-				log_print_hook(str);
+				log_print_hook(str.c_str());
 			}
-			free(str);
 		});
 	}
 }
 
 void log_print_fast(const char* str, size_t n) {
 	if (log_queue) {
-		log_queue->enqueue([str = strndup(str, n), n]() {
+		log_queue->enqueue([str = std::string(str, n), n]() {
 			DWORD byteRet;
 			if (console_open) {
-				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str.c_str(), n, &byteRet, NULL);
 			}
 			if (log_file != INVALID_HANDLE_VALUE) {
-				WriteFile(log_file, str, n, &byteRet, NULL);
+				WriteFile(log_file, str.c_str(), n, &byteRet, NULL);
 			}
 			if (log_print_hook) {
-				log_print_hook(str);
+				log_print_hook(str.c_str());
 			}
-			free(str);
 		});
 	}
 }
@@ -132,18 +130,17 @@ void log_print_fast(const char* str, size_t n) {
 void log_nprint(const char *str, size_t n)
 {
 	if (log_queue) {
-		log_queue->enqueue([str = strndup(str, n), n]() {
+		log_queue->enqueue([str = std::string(str, n), n]() {
 			DWORD byteRet;
 			if (console_open) {
-				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
+				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str.c_str(), n, &byteRet, NULL);
 			}
 			if (log_file != INVALID_HANDLE_VALUE) {
-				WriteFile(log_file, str, n, &byteRet, NULL);
+				WriteFile(log_file, str.c_str(), n, &byteRet, NULL);
 			}
 			if (log_nprint_hook) {
-				log_nprint_hook(str, n);
+				log_nprint_hook(str.c_str(), n);
 			}
-			free(str);
 		});
 	}
 }
@@ -168,6 +165,14 @@ void log_printf(const char *format, ...)
 	va_start(va, format);
 	log_vprintf(format, va);
 	va_end(va);
+}
+
+void log_flush()
+{
+	while (!log_queue->empty()) {
+		Sleep(0);
+	}
+	FlushFileBuffers(log_file);
 }
 
 /**

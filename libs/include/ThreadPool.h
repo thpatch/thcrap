@@ -19,6 +19,7 @@ public:
     auto enqueue(F&& f, Args&&... args) 
         -> std::future<std::invoke_result_t<F, Args...>>;
     ~ThreadPool();
+    bool empty() { return this->tasks.empty(); }
 private:
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;

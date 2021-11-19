@@ -45,6 +45,9 @@ void log_printf(const char *format, ...);
 # define log_func_printf(format, ...) \
 	log_printf("[%s]: " format, __func__, ##__VA_ARGS__)
 #endif
+
+// Flush the log file
+void log_flush();
 /// ---------------
 
 /// -------------

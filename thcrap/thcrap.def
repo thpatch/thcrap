@@ -182,6 +182,7 @@ EXPORTS
 	log_nprint
 	log_vprintf
 	log_printf
+	log_flush
 	log_mbox
 	log_vmboxf
 	log_mboxf
