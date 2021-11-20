@@ -786,8 +786,10 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 	}
 
 	uint8_t* const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	page_array->address = cave_source;
-	page_array->size = sourcecaves_total_size;
+	if (page_array) {
+		page_array->address = cave_source;
+		page_array->size = sourcecaves_total_size;
+	}
 
 	log_printf(
 		"\n"
