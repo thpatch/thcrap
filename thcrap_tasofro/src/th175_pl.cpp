@@ -35,8 +35,12 @@ static void patch_text_line(const char*& file_in, const char *file_in_end, char*
 
 	*file_out = '"'; file_out++;
 
-	// TODO: escape quotes
-	file_out = std::copy(rep.begin(), rep.end(), file_out);
+	for (char c : rep) {
+		if (c == '"') {
+			*file_out = '"'; file_out++;
+		}
+		*file_out = c; file_out++;
+	}
 
 	memcpy(file_out, "@\"", 2); file_out += 2;
 	copy_line(file_in, file_in_end, file_out);
