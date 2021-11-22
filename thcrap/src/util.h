@@ -43,8 +43,15 @@ confusing, so this macro exists to better document the intent.
 #define dword_align(val) (size_t)AlignUpToMultipleOf2((size_t)(val), 4)
 #define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))
 
+#if defined(_MSC_VER)
+#ifdef TH_X64
+#define CurrentImageBase (*(uintptr_t*)(__readgsqword(0x60) + 0x10))
+#else
+#define CurrentImageBase (*(uintptr_t*)(__readfsdword(0x30) + 0x8))
+#endif
+#else
 #define CurrentImageBase ((uintptr_t)GetModuleHandle(NULL))
-//#define CurrentImageBaseFast (*(uintptr_t*)(__readfsdword(0x30) + 0x8))
+#endif
 
 // Advances [src] by [num] and returns [num].
 size_t ptr_advance(const unsigned char **src, size_t num);

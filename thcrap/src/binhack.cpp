@@ -106,7 +106,7 @@ inline bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, uintptr_t* out
 		uintptr_t addr = 0;
 		switch (int8_t addr_type = hackpoint_addr->type) {
 			case STR_ADDR:
-				eval_expr(hackpoint_addr->str, '\0', &addr, NULL, (uintptr_t)hMod);
+				eval_expr(hackpoint_addr->str, '\0', &addr, NULL, NULL, hMod);
 				hackpoint_addr->raw = addr;
 				[[fallthrough]];
 			case RAW_ADDR:
@@ -296,7 +296,7 @@ size_t code_string_calc_size(const char* code_str) {
 				code_str = parse_brackets(code_str, cur_char);
 				break;
 			case '<': // Absolute patch value
-				code_str = get_patch_value(code_str, &val, NULL, 0);
+				code_str = get_patch_value(code_str, &val, NULL, NULL, NULL);
 				break;
 			case '?': // Wildcard byte
 				++code_str;
@@ -381,7 +381,7 @@ size_t code_string_calc_size(const char* code_str) {
 	}
 }
 
-int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str) {
+int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str, HMODULE hMod) {
 
 // Dang compatibility things
 #define CodeStringErrorRet		1
@@ -418,7 +418,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 			case '(': case '{': // Expression
 				code_str = check_for_code_string_cast(++code_str, &val);
 				if (cur_char == '(') { // Raw value
-					code_str = eval_expr(code_str, ')', &val.z, NULL, target_addr);
+					code_str = eval_expr(code_str, ')', &val.z, NULL, target_addr, hMod);
 					if unexpected(!code_str) {
 						break; // Error
 					}
@@ -436,7 +436,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 					break;
 				}
 				else { // Dereference
-					code_str = eval_expr(code_str, '}', &val.z, NULL, target_addr);
+					code_str = eval_expr(code_str, '}', &val.z, NULL, target_addr, hMod);
 					if unexpected(!code_str) {
 						break; // Error
 					}
@@ -461,7 +461,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 					break;
 				}
 			case '[': case '<': // Patch value
-				code_str = get_patch_value(code_str, &val, NULL, target_addr);
+				code_str = get_patch_value(code_str, &val, NULL, target_addr, hMod);
 				break;
 			case '?': // Wildcard byte
 				++code_str;
@@ -619,7 +619,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 				break;
 			case PVT_CODE: {
 				while (val.code.count--) {
-					if unexpected(code_string_render(output_buffer, target_addr, val.code.ptr)) {
+					if unexpected(code_string_render(output_buffer, target_addr, val.code.ptr, hMod)) {
 						return CodeStringErrorRet;
 					}
 					output_buffer += val.code.len;
@@ -825,11 +825,11 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 
 				log_printf("\nat 0x%p... ", addr);
 
-				if (code_string_render(asm_buf, addr, cur.code)) {
+				if (code_string_render(asm_buf, addr, cur.code, hMod)) {
 					log_print("invalid code string, skipping...");
 					continue;
 				}
-				if (use_expected && code_string_render(exp_buf, addr, cur.expected)) {
+				if (use_expected && code_string_render(exp_buf, addr, cur.expected, hMod)) {
 					log_print("invalid expected string, skipping verification... ");
 					use_expected = false;
 				}
@@ -1009,7 +1009,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	return true;
 }
 
-size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HackpointMemoryPage page_array[5]) {
+size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[5]) {
 	if (codecaves_count == 0) {
 		return 0;
 	}
@@ -1102,7 +1102,7 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HackpointM
 			memset(current_cave[access], codecaves[i].fill, codecaves[i].size);
 		}
 		if (code) {
-			code_string_render(current_cave[access], (uintptr_t)current_cave[access], code);
+			code_string_render(current_cave[access], (uintptr_t)current_cave[access], code, hMod);
 		}
 		codecaves[i].virtual_address = current_cave[access];
 

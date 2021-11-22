@@ -57,7 +57,7 @@ void stringlocs_reparse(void)
 			continue;
 		}
 		uintptr_t addr;
-		if (const char* key_end = eval_expr(key, '\0', &addr, NULL, NULL)) {
+		if (const char* key_end = eval_expr(key, '\0', &addr, NULL, NULL, NULL)) {
 			if (key_end[0] == '\0') {
 				stringlocs[addr] = json_string_value(val);
 			}

@@ -129,7 +129,7 @@ size_t code_string_calc_size(const char* code_str);
 // Renders [code_str], the string representation of a binary hack,
 // into the byte array [output_buffer]. [target_addr] is used as
 // the basis to resolve relative patch values and wildcard bytes.
-int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str);
+int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str, HMODULE hMod);
 
 // Parses a json binhack entry and returns a binhack object
 bool binhack_from_json(const char* name, json_t* in, binhack_t* out);
@@ -151,7 +151,7 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 //		"test_cave": "somecode"
 //		}
 // }
-size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HackpointMemoryPage page_array[5]);
+size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[5]);
 
 // Parses a json codecave entry and returns a codecave object
 bool codecave_from_json(const char *name, json_t *in, codecave_t *out);
@@ -160,4 +160,4 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out);
 // These are merely code_string_calc_size and
 // code_string_render exported under different names.
 TH_IMPORT size_t binhack_calc_size(const char* code_str);
-TH_IMPORT int binhack_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str);
+TH_IMPORT int binhack_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str, HMODULE hMod);

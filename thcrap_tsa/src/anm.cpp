@@ -565,7 +565,7 @@ void script_mods_t::apply_orig()
 		VLA(uint8_t, code, pc.code_size);
 
 		// Should have failed in the size calculation already.
-		assert(binhack_render(code, 0, pc.code) == 0);
+		assert(code_string_render(code, 0, pc.code, 0) == 0);
 
 		LOG(
 			"Changing parameter data at offset %u on line %u",

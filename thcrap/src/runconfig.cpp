@@ -107,15 +107,6 @@ static void runconfig_stage_load(json_t *stage_json)
 		patch_opts_from_json(options);
 	}
 
-	json_t *binhacks = json_object_get(stage_json, "binhacks");
-	json_object_foreach(binhacks, key, value) {
-		binhack_t binhack;
-		if (!binhack_from_json(key, value, &binhack)) {
-			continue;
-		}
-		stage.binhacks.push_back(binhack);
-	}
-
 	json_t *codecaves = json_object_get(stage_json, "codecaves");
 	json_object_foreach(codecaves, key, value) {
 		if (strcmp(key, "protection") == 0) {
@@ -132,6 +123,15 @@ static void runconfig_stage_load(json_t *stage_json)
 			continue;
 		}
 		stage.codecaves.push_back(codecave);
+	}
+
+	json_t *binhacks = json_object_get(stage_json, "binhacks");
+	json_object_foreach(binhacks, key, value) {
+		binhack_t binhack;
+		if (!binhack_from_json(key, value, &binhack)) {
+			continue;
+		}
+		stage.binhacks.push_back(binhack);
 	}
 
 	json_t *breakpoints = json_object_get(stage_json, "breakpoints");
@@ -508,7 +508,7 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 		module = stage.module;
 	}
 
-	failed += codecaves_apply(stage.codecaves.data(), stage.codecaves.size(), stage.codecave_pages);
+	failed += codecaves_apply(stage.codecaves.data(), stage.codecaves.size(), module, stage.codecave_pages);
 	failed += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), module, &stage.binhack_page);
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
 		const size_t breakpoint_count = stage.breakpoints.size();

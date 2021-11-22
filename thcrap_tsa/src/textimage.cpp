@@ -468,7 +468,7 @@ textimage_t* textimage_t::create(
 			return textimage_log.errorf("%s: Error rendering \"script\" into binary", fn);
 		}
 		script_buf = new unsigned char[script_len];
-		code_string_render(script_buf, 0, script_str);
+		code_string_render(script_buf, 0, script_str, 0);
 	}
 	auto ret = new textimage_t;
 	ret->fn = fn;

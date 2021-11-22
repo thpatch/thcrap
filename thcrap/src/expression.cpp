@@ -275,6 +275,7 @@ typedef uint8_t op_t;
 typedef struct {
 	const x86_reg_t *const regs;
 	const uintptr_t rel_source;
+	const HMODULE current_module;
 } StackSaver;
 
 static const char* eval_expr_impl(const char* expr, const char end, size_t *const out, const op_t start_op, const size_t start_value, const StackSaver *const data_refs);
@@ -1188,10 +1189,10 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 	return patch_val_end + 1;
 };
 
-const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, uintptr_t rel_source) {
+const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, uintptr_t rel_source, HMODULE hMod) {
 	ExpressionLogging("START PATCH VALUE \"%s\"\n", expr);
 
-	const StackSaver data_refs = { regs, rel_source };
+	const StackSaver data_refs = { regs, rel_source, hMod };
 
 	const char *const expr_next = get_patch_value_impl(expr, out, &data_refs);
 	if (expr_next) {
@@ -1461,7 +1462,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 				{
 				RawValue:
-					size_t current = str_address_value(expr, (HMODULE)data_refs->rel_source, &cur_value.addr_ret);
+					size_t current = str_address_value(expr, data_refs->current_module, &cur_value.addr_ret);
 					expr_next = cur_value.addr_ret.endptr;
 					if (expr == expr_next || (cur_value.addr_ret.error & STR_ADDRESS_ERROR_OVERFLOW)) {
 						/*if (expr[0] == end) {
@@ -1877,11 +1878,11 @@ InvalidExpressionError:
 	return NULL;
 }
 
-const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, uintptr_t rel_source) {
+const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_reg_t* regs, uintptr_t rel_source, HMODULE hMod) {
 	expr_index = 0;
 	ExpressionLogging("START EXPRESSION \"%s\" with end \"%hhX\"\n", expr, end);
 
-	const StackSaver data_refs = { regs, rel_source };
+	const StackSaver data_refs = { regs, rel_source, hMod };
 
 	const char *const expr_next = eval_expr_impl(expr, end, out, StartNoOp, 0, &data_refs);
 	if (expr_next) {

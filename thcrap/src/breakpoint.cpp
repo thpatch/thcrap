@@ -38,7 +38,7 @@ size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 		}
 		else if (jtype == JSON_STRING) {
 			size_t ret = 0;
-			eval_expr(json_string_value(val), '\0', &ret, regs, NULL);
+			eval_expr(json_string_value(val), '\0', &ret, regs, NULL, NULL);
 			return ret;
 		}
 		else if (jtype != JSON_NULL) {
@@ -67,7 +67,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 		return ptr;
 	}
 	else if (expr[0] == '[') {
-		expr_end = eval_expr(expr + 1, ']', (size_t*)&ptr, regs, NULL);
+		expr_end = eval_expr(expr + 1, ']', (size_t*)&ptr, regs, NULL, NULL);
 		if (expr_end && expr_end[0] != ']') {
 			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr_end);
 		}
@@ -396,7 +396,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 				/// Cave assembly
 				// Copy old code to cave
-				if (use_expected && code_string_render(exp_buf, addr, cur->expected)) {
+				if (use_expected && code_string_render(exp_buf, addr, cur->expected, hMod)) {
 					log_print("invalid expected string, skipping verification... ");
 					use_expected = false;
 				}

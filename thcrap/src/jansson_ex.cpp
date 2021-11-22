@@ -460,7 +460,7 @@ void json_dump_log(const json_t *json, size_t flags)
 size_t json_string_expression_value(const json_t* json) {
 	size_t ret = 0;
 	if (json_is_string(json)) {
-		(void)eval_expr(json_string_value(json), '\0', &ret, NULL, NULL);
+		(void)eval_expr(json_string_value(json), '\0', &ret, NULL, NULL, NULL);
 	}
 	return ret;
 }
