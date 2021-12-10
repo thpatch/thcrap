@@ -26,8 +26,52 @@ enum ManufacturerID : int8_t {
 	Intel = 1
 };
 
+union FamilyData_t {
+	uint32_t raw;
+	struct {
+		uint32_t stepping : 4;
+		uint32_t model : 8;
+		uint32_t family : 8;
+		uint32_t zero : 12;
+	};
+};
+
+union WinVersion_t {
+	uint32_t raw;
+	struct {
+		uint8_t service_pack_minor;
+		uint8_t service_pack_major;
+		uint8_t version_minor;
+		uint8_t version_major;
+	};
+};
+
+struct PEB {
+#ifdef TH_X64
+	unsigned char dummy[0x118];
+#else
+	unsigned char dummy[0xA4];
+#endif
+	uint32_t version_major;
+	uint32_t version_minor;
+	uint16_t build_version;
+	uint8_t service_pack_major;
+	uint8_t service_pack_minor;
+};
+struct TEB {
+#ifdef TH_X64
+	unsigned char dummy[0x60];
+#else
+	unsigned char dummy[0x30];
+#endif
+	PEB* peb;
+};
+
+static const char* wine_version = NULL;
 struct CPUID_Data_t {
 	BOOL OSIsX64 = false;
+	WinVersion_t WindowsVersion = { 0 };
+	FamilyData_t FamilyData = { 0 };
 	ManufacturerID Manufacturer = Unknown;
 	struct {
 		bool HasCMPXCHG8 = false;
@@ -73,7 +117,12 @@ struct CPUID_Data_t {
 		bool HasAVX5124VNNIW = false;
 		bool HasAVX5124FMAPS = false;
 		bool HasFSRM = false;
+		bool HasUINTR = false;
 		bool HasAVX512VP2I = false;
+		bool HasAMXBF16 = false;
+		bool HasAVX512FP16 = false;
+		bool HasAMXTILE = false;
+		bool HasAMXINT8 = false;
 		bool HasAVX512BF16 = false;
 		bool HasMMXEXT = false;
 		bool Has3DNOWEXT = false;
@@ -93,7 +142,24 @@ struct CPUID_Data_t {
 				this->OSIsX64 = IsX64;
 			}
 		}
+
+		if (const char* (TH_CDECL * pwine_get_version)(void) = (decltype(pwine_get_version))GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version")) {
+			wine_version = pwine_get_version();
+		}
+
+		PEB* peb = ((TEB*)NtCurrentTeb())->peb;
+		WinVersion_t windows_version;
+		windows_version.version_major = peb->version_major;
+		windows_version.version_minor = peb->version_minor;
+		windows_version.service_pack_major = peb->service_pack_major;
+		windows_version.service_pack_minor = peb->service_pack_minor;
+		this->WindowsVersion = windows_version;
+
 		int data[4];
+		// data[0]	EAX
+		// data[1]	EBX
+		// data[2]	ECX
+		// data[3]	EDX
 		__cpuid(data, 0);
 		if (data[1] == TextInt('G', 'e', 'n', 'u') &&
 			data[3] == TextInt('i', 'n', 'e', 'I') &&
@@ -140,7 +206,12 @@ struct CPUID_Data_t {
 				HasAVX5124VNNIW		= _bittest(data3, 2);
 				HasAVX5124FMAPS		= _bittest(data3, 3);
 				HasFSRM				= _bittest(data3, 4);
+				HasUINTR            = _bittest(data3, 5);
 				HasAVX512VP2I		= _bittest(data3, 8);
+				HasAMXBF16          = _bittest(data3, 22);
+				HasAVX512FP16       = _bittest(data3, 23);
+				HasAMXTILE          = _bittest(data3, 24);
+				HasAMXINT8          = _bittest(data3, 25);
 				switch (data[0]) {
 					default: //case 1:
 						__cpuidex(data, 7, 1);
@@ -178,6 +249,38 @@ struct CPUID_Data_t {
 				HasPOPCNT			= _bittest(data2, 23);
 				HasAVX				= _bittest(data2, 28);
 				HasF16C				= _bittest(data2, 29);
+				{
+					union FamilyDataIn_t {
+						uint32_t raw;
+						struct {
+							uint32_t stepping : 4;
+							uint32_t model_id : 4;
+							uint32_t family_id : 4;
+							uint32_t processor_type : 2;
+							uint32_t : 2;
+							uint32_t extended_model_id : 4;
+							uint32_t extended_family_id : 8;
+							uint32_t : 4;
+						};
+					};
+					FamilyDataIn_t family_data_in = *(FamilyDataIn_t*)data0;
+					uint32_t temp = (uint32_t)-1;
+					FamilyData_t family_data_out;
+					family_data_out.stepping = family_data_in.stepping;
+					family_data_out.model = family_data_in.model_id;
+					family_data_out.family = family_data_in.family_id;
+					switch (uint32_t temp = family_data_in.extended_family_id; family_data_in.family_id) {
+						case 6:
+							if (this->Manufacturer == Intel) {
+								temp = 0;
+						case 15:
+								family_data_out.model |= family_data_in.extended_model_id << 4;
+								family_data_out.family += temp;
+							}
+					}
+					family_data_out.zero = 0;
+					FamilyData = family_data_out;
+				}
 			case 0:;
 		}
 	}
@@ -195,6 +298,10 @@ bool CPU_FDP_ErrorOnly(void) {
 
 bool CPU_FCS_FDS_Deprecated(void) {
 	return CPUID_Data.FCS_FDS_DEP;
+}
+
+THCRAP_API bool OS_is_wine(void) {
+	return wine_version != NULL;
 }
 
 #define WarnOnce(warning) do {\
@@ -917,11 +1024,13 @@ static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) 
 			else if (strnicmp(name, "avx512ifma", name_length) == 0) ret = CPUID_Data.HasAVX512IFMA;
 			else if (strnicmp(name, "avx512vnni", name_length) == 0) ret = CPUID_Data.HasAVX512VNNI;
 			else if (strnicmp(name, "avx512vp2i", name_length) == 0) ret = CPUID_Data.HasAVX512VP2I;
+			else if (strnicmp(name, "avx512fp16", name_length) == 0) ret = CPUID_Data.HasAVX512FP16;
 			else if (strnicmp(name, "avx512bf16", name_length) == 0) ret = CPUID_Data.HasAVX512BF16;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 9:
-			if		(strnicmp(name, "pclmulqdq", name_length) == 0) ret = CPUID_Data.HasPCLMULQDQ;
+			if      (strnicmp(name, "thcrapver", name_length) == 0) ret = PROJECT_VERSION;
+			else if (strnicmp(name, "pclmulqdq", name_length) == 0) ret = CPUID_Data.HasPCLMULQDQ;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 8:
@@ -937,16 +1046,21 @@ static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) 
 			break;
 		case 7:
 			if		(strnicmp(name, "avx512f", name_length) == 0) ret = CPUID_Data.HasAVX512F;
+			else if (strnicmp(name, "amxfp16", name_length) == 0) ret = CPUID_Data.HasAMXBF16;
+			else if (strnicmp(name, "amxtile", name_length) == 0) ret = CPUID_Data.HasAMXTILE;
+			else if (strnicmp(name, "amxint8", name_length) == 0) ret = CPUID_Data.HasAMXINT8;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 6:
-			if		(strnicmp(name, "popcnt", name_length) == 0) ret = CPUID_Data.HasPOPCNT;
+			if      (strnicmp(name, "winver", name_length) == 0) ret = CPUID_Data.WindowsVersion.raw;
+			else if (strnicmp(name, "popcnt", name_length) == 0) ret = CPUID_Data.HasPOPCNT;
 			else if (strnicmp(name, "fxsave", name_length) == 0) ret = CPUID_Data.HasFXSAVE;
 			else if (strnicmp(name, "mmxext", name_length) == 0) ret = CPUID_Data.HasMMXEXT;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 5:
-			if		(strnicmp(name, "intel", name_length) == 0) ret = CPUID_Data.Manufacturer == Intel;
+			if      (strnicmp(name, "model", name_length) == 0) ret = CPUID_Data.FamilyData.raw;
+			else if (strnicmp(name, "intel", name_length) == 0) ret = CPUID_Data.Manufacturer == Intel;
 			else if (strnicmp(name, "ssse3", name_length) == 0) ret = CPUID_Data.HasSSSE3;
 			else if (strnicmp(name, "sse41", name_length) == 0) ret = CPUID_Data.HasSSE41;
 			else if (strnicmp(name, "sse42", name_length) == 0) ret = CPUID_Data.HasSSE42;
@@ -954,6 +1068,7 @@ static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) 
 			else if (strnicmp(name, "movbe", name_length) == 0) ret = CPUID_Data.HasMOVBE;
 			else if (strnicmp(name, "3dnow", name_length) == 0) ret = CPUID_Data.Has3DNOW;
 			else if (strnicmp(name, "win64", name_length) == 0) ret = CPUID_Data.OSIsX64;
+			else if (strnicmp(name, "uintr", name_length) == 0) ret = CPUID_Data.HasUINTR;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 4:
@@ -968,6 +1083,7 @@ static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) 
 			else if (strnicmp(name, "f16c", name_length) == 0) ret = CPUID_Data.HasF16C;
 			else if (strnicmp(name, "gfni", name_length) == 0) ret = CPUID_Data.HasGFNI;
 			else if (strnicmp(name, "fma4", name_length) == 0) ret = CPUID_Data.HasFMA4;
+			else if (strnicmp(name, "wine", name_length) == 0) ret = wine_version != NULL;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 3:
