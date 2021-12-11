@@ -143,16 +143,24 @@ struct CPUID_Data_t {
 			}
 		}
 
-		if (const char* (TH_CDECL * pwine_get_version)(void) = (decltype(pwine_get_version))GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version")) {
+		HMODULE hNTDLL = GetModuleHandleA("ntdll.dll");
+
+		if (const char* (TH_CDECL * pwine_get_version)(void) = (decltype(pwine_get_version))GetProcAddress(hNTDLL, "wine_get_version")) {
 			wine_version = pwine_get_version();
 		}
 
-		PEB* peb = ((TEB*)NtCurrentTeb())->peb;
+		RTL_OSVERSIONINFOEXW ver;
+		ver.dwOSVersionInfoSize = sizeof(ver);
+
+		typedef BOOL WINAPI RtlGetVersion_t(PRTL_OSVERSIONINFOEXW);
+		RtlGetVersion_t* RtlGetVersion = (RtlGetVersion_t*)GetProcAddress(hNTDLL, "RtlGetVersion");
+		RtlGetVersion(&ver);
+
 		WinVersion_t windows_version;
-		windows_version.version_major = peb->version_major;
-		windows_version.version_minor = peb->version_minor;
-		windows_version.service_pack_major = peb->service_pack_major;
-		windows_version.service_pack_minor = peb->service_pack_minor;
+		windows_version.version_major = ver.dwMajorVersion;
+		windows_version.version_minor = ver.dwMinorVersion;
+		windows_version.service_pack_major = ver.wServicePackMajor;
+		windows_version.service_pack_minor = ver.wServicePackMinor;
 		this->WindowsVersion = windows_version;
 
 		int data[4];
