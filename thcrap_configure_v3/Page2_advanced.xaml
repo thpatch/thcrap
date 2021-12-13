@@ -14,38 +14,44 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="auto" />
         </Grid.ColumnDefinitions>
-        <TreeView Grid.Column="0" x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick">
-            <TreeView.Resources>
-                <Style TargetType="TreeViewItem">
-                    <Setter Property="IsExpanded" Value="True" />
-                </Style>
-                <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}" ItemsSource="{Binding Patches}">
-                    <HierarchicalDataTemplate.ItemContainerStyle>
-                        <Style TargetType="TreeViewItem">
-                            <Setter Property="Visibility" Value="{Binding VisibilityInTree}" />
-                        </Style>
-                    </HierarchicalDataTemplate.ItemContainerStyle>
-                    <TextBlock>
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} ({1})">
-                                <Binding Path="SourceRepo.Title" />
-                                <Binding Path="SourceRepo.Id" />
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
-                </HierarchicalDataTemplate>
-                <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+RepoPatch}">
-                    <TextBlock>
-                        <TextBlock.Text>
-                            <MultiBinding StringFormat="{}{0} ({1})">
-                                <Binding Path="SourcePatch.Title" />
-                                <Binding Path="SourcePatch.Id" />
-                            </MultiBinding>
-                        </TextBlock.Text>
-                    </TextBlock>
-                </HierarchicalDataTemplate>
-            </TreeView.Resources>
-        </TreeView>
+        <DockPanel Grid.Column="0">
+            <DockPanel DockPanel.Dock="Top">
+                <TextBlock Text="Quick filter: " />
+                <TextBox TextChanged="QuickFilterChanged"/>
+            </DockPanel>
+            <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,0,0">
+                <TreeView.Resources>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="True" />
+                    </Style>
+                    <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}" ItemsSource="{Binding Patches}">
+                        <HierarchicalDataTemplate.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem">
+                                <Setter Property="Visibility" Value="{Binding VisibilityInTree}" />
+                            </Style>
+                        </HierarchicalDataTemplate.ItemContainerStyle>
+                        <TextBlock>
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} ({1})">
+                                    <Binding Path="SourceRepo.Title" />
+                                    <Binding Path="SourceRepo.Id" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </HierarchicalDataTemplate>
+                    <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+RepoPatch}">
+                        <TextBlock>
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} ({1})">
+                                    <Binding Path="SourcePatch.Title" />
+                                    <Binding Path="SourcePatch.Id" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </HierarchicalDataTemplate>
+                </TreeView.Resources>
+            </TreeView>
+        </DockPanel>
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0">
             <Button Margin="0,0,0,12" Click="AvailablePatchesMoveRight">
                 <Image Source="/img/arrow_right.png" Margin="4" Height="10"/>
@@ -57,7 +63,7 @@
         <DockPanel Grid.Column="2">
             <DockPanel DockPanel.Dock="Bottom">
                 <TextBlock Text="Config name: " />
-                <TextBox x:Name="ConfigName" TextChanged="ConfigNameChange"/>
+                <TextBox x:Name="ConfigName" TextChanged="ConfigNameChanged"/>
             </DockPanel>
             <ListBox x:Name="SelectedPatches" Margin="0,0,0,7">
                 <ListBox.ItemContainerStyle>

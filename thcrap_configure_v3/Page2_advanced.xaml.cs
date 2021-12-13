@@ -70,6 +70,7 @@ namespace thcrap_configure_v3
         {
             public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
             private bool isSelected = false;
+            private bool isVisibleWithSearch = true;
             public RepoPatch(thcrap_configure_v3.RepoPatch patch)
             {
                 SourcePatch = patch;
@@ -79,13 +80,29 @@ namespace thcrap_configure_v3
             {
                 get
                 {
-                    return isSelected ? Visibility.Collapsed : Visibility.Visible;
+                    return isVisibleWithSearch && !isSelected ? Visibility.Visible : Visibility.Collapsed;
                 }
             }
             public bool IsSelected() => isSelected;
             public void Select(bool newState)
             {
                 isSelected = newState;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
+            }
+            public void UpdateVisibilityWithSearch(string filter)
+            {
+                bool newIsVisible;
+
+                newIsVisible = SourcePatch.Id.ToLower().Contains(filter);
+                if (newIsVisible != isVisibleWithSearch)
+                {
+                    isVisibleWithSearch = newIsVisible;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
+                }
+            }
+            public void SetVisibilityWithSearch()
+            {
+                isVisibleWithSearch = true;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
             }
 
@@ -101,6 +118,17 @@ namespace thcrap_configure_v3
             {
                 SourceRepo = repo;
                 Patches = repo.Patches.ConvertAll((thcrap_configure_v3.RepoPatch patch) => new RepoPatch(patch));
+            }
+            public void UpdateFilter(string filter)
+            {
+                bool selfMatch = SourceRepo.Id.ToLower().Contains(filter);
+                foreach (RepoPatch patch in Patches)
+                {
+                    if (selfMatch)
+                        patch.SetVisibilityWithSearch();
+                    else
+                        patch.UpdateVisibilityWithSearch(filter);
+                }
             }
         }
 
@@ -225,7 +253,7 @@ namespace thcrap_configure_v3
             selectedPatches.Move(idx, idx + 1);
         }
 
-        public void ConfigNameChange(object sender, TextChangedEventArgs e)
+        public void ConfigNameChanged(object sender, TextChangedEventArgs e)
         {
             if (isUnedited > 0)
             {
@@ -235,6 +263,15 @@ namespace thcrap_configure_v3
             {
                 ConfigName.Text = ConfigName.Text.Substring(0, configMaxLength);
             }
+        }
+
+        private void QuickFilterChanged(object sender, TextChangedEventArgs e)
+        {
+            var textbox = sender as TextBox;
+            var filter = textbox.Text.ToLower();
+
+            foreach (Repo repo in (AvailablePatches.ItemsSource as IEnumerable<Repo>))
+                repo.UpdateFilter(filter);
         }
     }
 }
