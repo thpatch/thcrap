@@ -14,7 +14,8 @@
 
 int th175_init()
 {
-	patchhook_register("*.pl", patch_th175_pl, nullptr);
+	patchhook_register("data/event/script/*.pl", patch_th175_pl, nullptr);
+	patchhook_register("data/event/script/ending/*.pl", patch_th175_pl_ed, nullptr);
 	patchhook_register("*.nut", patch_nut, nullptr);
 
 	return 0;

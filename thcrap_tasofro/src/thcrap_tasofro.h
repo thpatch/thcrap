@@ -64,6 +64,7 @@ int th175_init();
 
 int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const char*, json_t *patch);
 int patch_th175_pl(void *file_inout, size_t size_out, size_t size_in, const char *, json_t *patch);
+int patch_th175_pl_ed(void *file_inout, size_t size_out, size_t size_in, const char *, json_t *patch);
 
 #ifdef __cplusplus
 }

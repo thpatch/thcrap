@@ -23,13 +23,13 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(GoogleTestDir);$(GoogleTestDir)Include\;$(SolutionDir)thcrap_update\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(GoogleTestDir);$(GoogleTestDir)Include\;$(SolutionDir)thcrap_update\src\;$(SolutionDir)thcrap_tasofro\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;thcrap_update_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;thcrap_update.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;thcrap_update_d.lib;thcrap_tasofro_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;thcrap_update.lib;thcrap_tasofro.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -48,6 +48,7 @@
     <ClCompile Include="src\patchfile.cpp" />
     <ClCompile Include="src\plugin.cpp" />
     <ClCompile Include="src\search_for_games.cpp" />
+    <ClCompile Include="src\thcrap_tasofro_pl_ed.cpp" />
     <ClCompile Include="src\win32_utf8.cpp" />
   </ItemGroup>
 </Project>
