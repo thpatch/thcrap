@@ -34,6 +34,8 @@ struct runconfig_t
 	std::string game;
 	// Game build, for example "v1.00a" (from game_id.js)
 	std::string build;
+	// Command line parameters passed to the exe
+	std::string cmdline;
 	// Original game title, for example "東方紅魔郷　～ the Embodiment of Scarlet Devil" (from game_id.js)
 	std::string title;
 	// URL to download the last game update (from game_id.js)
@@ -172,6 +174,7 @@ void runconfig_load(json_t *file, int flags)
 
 	set_string_if_exist("game",  run_cfg.game);
 	set_string_if_exist("build", run_cfg.build);
+	set_string_if_exist("cmdline", run_cfg.cmdline);
 	set_string_if_exist("title", run_cfg.title);
 	set_string_if_exist("url_update", run_cfg.update_url);
 
@@ -410,6 +413,11 @@ const char *runconfig_game_get()
 const char *runconfig_build_get()
 {
 	return run_cfg.build.empty() == false ? run_cfg.build.c_str() : nullptr;
+}
+
+const char *runconfig_cmdline_get()
+{
+	return run_cfg.cmdline.empty() == false ? run_cfg.cmdline.c_str() : nullptr;
 }
 
 std::string_view runconfig_game_get_view()

@@ -291,22 +291,42 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HANDLE *hThread)
 {
 	int ret = 0;
-	char* exe_fn_local = strdup(exe_fn);
+	
+	size_t exe_fn_len = strlen(exe_fn);
+	char* exe_fn_local = strdup_size(exe_fn, exe_fn_len);
 	str_slash_normalize_win(exe_fn_local);
 	char* exe_dir = strdup_size(exe_fn_local, PtrDiffStrlen(strrchr(exe_fn_local, '\\') + 1, exe_fn_local));
 	STARTUPINFOA si = {};
 	PROCESS_INFORMATION pi = {};
+	
+	if (args) {
+		size_t args_len = strlen(args);
+		VLA(char, cmd, exe_fn_len + args_len + 4);
+		cmd[0] = '\"';
+		memcpy(cmd + 1, exe_fn_local, exe_fn_len);
+		cmd[exe_fn_len + 1] = '\"';
+		cmd[exe_fn_len + 2] = ' ';
+		memcpy(cmd + exe_fn_len + 3, args, args_len);
+		cmd[exe_fn_len + args_len + 3] = 0;
+
+		ret = W32_ERR_WRAP(inject_CreateProcessU(
+			NULL, cmd, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
+		));
+		VLA_FREE(cmd);
+	} else {
+		ret = W32_ERR_WRAP(inject_CreateProcessU(
+			exe_fn_local, NULL, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
+		));
+	}
 
 	/**
-	  * Sure, the alternative would be to set up the entire engine
-	  * with all plug-ins and modules to correctly run any additional
-	  * detours. While it would indeed be nice to allow those to control
-	  * initial startup, it really shouldn't be necessary for now - and
-	  * it really does run way too much unnecessary code for my taste.
-	  */
-	ret = W32_ERR_WRAP(inject_CreateProcessU(
-		exe_fn_local, args, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
-	));
+     * Sure, the alternative would be to set up the entire engine
+     * with all plug-ins and modules to correctly run any additional
+     * detours. While it would indeed be nice to allow those to control
+     * initial startup, it really shouldn't be necessary for now - and
+     * it really does run way too much unnecessary code for my taste.
+     */
+
 	if(ret) {
 		char *msg_str = NULL;
 

@@ -69,6 +69,7 @@ EXPORTS
 	runconfig_game_get
 	runconfig_build_get
 	runconfig_build_set
+	runconfig_cmdline_get
 	runconfig_title_get
 	runconfig_update_url_get
 	runconfig_dat_dump_get

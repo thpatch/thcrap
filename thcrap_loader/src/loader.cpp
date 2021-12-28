@@ -249,8 +249,13 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	runconfig_load(run_cfg, RUNCONFIG_NO_BINHACKS);
 	runconfig_runcfg_fn_set(run_cfg_fn.c_str());
 
+	char *cmdline = NULL;
+	if (const char *temp_cmdline = runconfig_cmdline_get()) {
+		cmdline = strdup(temp_cmdline);
+	}
+
 	log_print("Command-line parsing finished\n");
-	ret = loader_update_with_UI_wrapper(final_exe_fn, NULL, game_id);
+	ret = loader_update_with_UI_wrapper(final_exe_fn, cmdline, game_id);
 end:
 	json_decref(games_js);
 	json_decref(run_cfg);

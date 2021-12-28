@@ -30,6 +30,9 @@ const char *runconfig_game_get();
 // Returns the game build, for example "v1.00a"
 const char *runconfig_build_get();
 
+// Returns the command line parameters passed to the exe
+const char *runconfig_cmdline_get();
+
 #ifdef __cplusplus
 extern "C++" {
 	// Returns the game id, for example "th06"
