@@ -122,7 +122,8 @@ static std::string escape(const char *str)
 bool is_msg_empty(const std::vector<std::string>& msg)
 {
 	for (auto& it : msg) {
-		if (it.find_first_not_of(" \t\r\n\"", strlen(",ED_MSG,")) != std::string::npos) {
+		auto line_split = split(it, ',');
+		if (line_split.size() >= 3 && line_split[2].find_first_not_of(" \t\r\n\"") != std::string::npos) {
 			return false;
 		}
 	}

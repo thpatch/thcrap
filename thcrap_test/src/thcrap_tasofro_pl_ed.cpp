@@ -108,3 +108,34 @@ TEST_F(ThcrapTasofroPlEdTest, PatchFile) {
 		",Sleep,300",
 	});
 }
+
+TEST_F(ThcrapTasofroPlEdTest, SkipEmptyLinesInInput) {
+	this->RunTest({
+		// Empty
+		",ED_MSG,\" \"",
+		",Sleep,300",
+
+		// Empty with a font color - present only once, in Yorigami ending
+		",ED_MSG,\" \",K",
+		",Sleep,300",
+
+		// Make sure this one isn't skipped and has an offset of 1
+		",ED_MSG,\"line\",R",
+		",Sleep,300",
+		},
+	json_pack("{ s: { s: [ s ] } }",
+		"1", "lines", "line - patched"
+	), {
+		// Empty
+		",ED_MSG,\" \"",
+		",Sleep,300",
+
+		// Empty with a font color - present only once, in Yorigami ending
+		",ED_MSG,\" \",K",
+		",Sleep,300",
+
+		// Make sure this one isn't skipped and has an offset of 1
+		",ED_MSG,\"line - patched\",R",
+		",Sleep,300",
+	});
+}
