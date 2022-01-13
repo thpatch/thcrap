@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include <vfs.h>
 #include "thcrap_tasofro.h"
 #include "files_list.h"
 #include "act-nut.h"
@@ -17,6 +18,13 @@ int th175_init()
 	patchhook_register("data/event/script/*.pl", patch_th175_pl, nullptr);
 	patchhook_register("data/event/script/ending/*.pl", patch_th175_pl_ed, nullptr);
 	patchhook_register("*.nut", patch_nut, nullptr);
+
+	char *musicroom_pattern_fn = fn_for_game("data/script/scene/musicroom.nut.jdiff");
+	char *pause_pattern_fn     = fn_for_game("data/script/scene/pause.nut.jdiff");
+	jsonvfs_add_map(musicroom_pattern_fn, { "themes.js" });
+	jsonvfs_add_map(pause_pattern_fn,     { "themes.js" });
+	SAFE_FREE(musicroom_pattern_fn);
+	SAFE_FREE(pause_pattern_fn);
 
 	return 0;
 }
