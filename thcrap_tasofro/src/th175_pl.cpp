@@ -29,9 +29,18 @@ static void copy_text_line(const char*& file_in, const char *file_in_end, char*&
 
 static void patch_text_line(const char*& file_in, const char *file_in_end, char*& file_out, const std::string& rep)
 {
+	bool ends_with_pause = false;
 	// Skip original text in input
 	file_in = std::find(file_in + 1, file_in_end, '"');
-	if (file_in != file_in_end) file_in++;
+
+	// If the text ends with an @, add it at the end of our replacement text
+	if (*(file_in - 1) == '@') {
+		ends_with_pause = true;
+	}
+	if (file_in != file_in_end) {
+		// Skip the " at the end
+		file_in++;
+	}
 
 	*file_out = '"'; file_out++;
 
@@ -42,7 +51,10 @@ static void patch_text_line(const char*& file_in, const char *file_in_end, char*
 		*file_out = c; file_out++;
 	}
 
-	memcpy(file_out, "@\"", 2); file_out += 2;
+	if (ends_with_pause) {
+		*file_out = '@'; file_out++;
+	}
+	*file_out = '"'; file_out++;
 	copy_line(file_in, file_in_end, file_out);
 }
 
