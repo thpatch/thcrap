@@ -8,16 +8,16 @@
   */
 
 #include "thcrap.h"
-#include <io.h>
-#include <fcntl.h>
-#include <ThreadPool.h>
+#include <queue>
 
 // -------
 // Globals
 // -------
 static HANDLE log_file = INVALID_HANDLE_VALUE;
 static bool console_open = false;
-static ThreadPool *log_queue = NULL;
+static std::queue<std::string> log_queue;
+static CRITICAL_SECTION queue_cs = {};
+static HANDLE log_semaphore = INVALID_HANDLE_VALUE;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
@@ -92,10 +92,17 @@ void log_rotate(void)
 }
 // --------
 
-void log_print(const char *str)
-{
-	if (log_queue) {
-		log_queue->enqueue([str = std::string(str)]() {
+static DWORD WINAPI log_thread(LPVOID lpParameter) {
+	for (;;) {
+		EnterCriticalSection(&queue_cs);
+		if (log_queue.empty()) {
+			LeaveCriticalSection(&queue_cs);
+			WaitForSingleObject(log_semaphore, INFINITE);
+		} else {
+			std::string str = std::move(log_queue.front());
+			log_queue.pop();
+			LeaveCriticalSection(&queue_cs);
+
 			DWORD byteRet;
 			if (console_open) {
 				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str.c_str(), str.length(), &byteRet, NULL);
@@ -106,43 +113,24 @@ void log_print(const char *str)
 			if (log_print_hook) {
 				log_print_hook(str.c_str());
 			}
-		});
+		}
 	}
 }
 
-void log_print_fast(const char* str, size_t n) {
-	if (log_queue) {
-		log_queue->enqueue([str = std::string(str, n), n]() {
-			DWORD byteRet;
-			if (console_open) {
-				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str.c_str(), n, &byteRet, NULL);
-			}
-			if (log_file != INVALID_HANDLE_VALUE) {
-				WriteFile(log_file, str.c_str(), n, &byteRet, NULL);
-			}
-			if (log_print_hook) {
-				log_print_hook(str.c_str());
-			}
-		});
-	}
+void log_nprint(const char* str, size_t n) {
+	std::string _str(str, n);
+
+	EnterCriticalSection(&queue_cs);
+
+	log_queue.push(_str);
+	ReleaseSemaphore(log_semaphore, 1, NULL);
+
+	LeaveCriticalSection(&queue_cs);
 }
 
-void log_nprint(const char *str, size_t n)
+void log_print(const char *str)
 {
-	if (log_queue) {
-		log_queue->enqueue([str = std::string(str, n), n]() {
-			DWORD byteRet;
-			if (console_open) {
-				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str.c_str(), n, &byteRet, NULL);
-			}
-			if (log_file != INVALID_HANDLE_VALUE) {
-				WriteFile(log_file, str.c_str(), n, &byteRet, NULL);
-			}
-			if (log_nprint_hook) {
-				log_nprint_hook(str.c_str(), n);
-			}
-		});
-	}
+	log_nprint(str, strlen(str));
 }
 
 void log_vprintf(const char *format, va_list va)
@@ -154,7 +142,7 @@ void log_vprintf(const char *format, va_list va)
 	if (total_size > 0) {
 		VLA(char, str, total_size + 1);
 		vsprintf(str, format, va);
-		log_print_fast(str, total_size);
+		log_nprint(str, total_size);
 		VLA_FREE(str);
 	}
 }
@@ -169,7 +157,7 @@ void log_printf(const char *format, ...)
 
 void log_flush()
 {
-	while (!log_queue->empty()) {
+	while (!log_queue.empty()) {
 		Sleep(0);
 	}
 	FlushFileBuffers(log_file);
@@ -335,7 +323,9 @@ void log_init(int console)
 
 	// Using CreateFile, _open_osfhandle and _fdopen instead of plain fopen because we need the flag FILE_SHARE_DELETE for log rotation
 	log_file = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-	log_queue = new ThreadPool(1);
+	InitializeCriticalSection(&queue_cs);
+	log_semaphore = CreateSemaphoreW(NULL, 0, 1, NULL);
+	CreateThread(0, 0, log_thread, NULL, 0, NULL);
 #ifdef _DEBUG
 	OpenConsole();
 #else
@@ -521,14 +511,15 @@ void log_init(int console)
 	}
 }
 
-void log_exit(void)
-{
-	// Run the destructor to ensure all remaining log messages were printed
-	delete log_queue;
+void log_exit(void) {
+	log_flush();
+	DeleteCriticalSection(&queue_cs);
+	CloseHandle(log_semaphore);
+	log_semaphore = INVALID_HANDLE_VALUE;
 
-	if(console_open)
+	if (console_open)
 		FreeConsole();
-	if(log_file) {
+	if (log_file) {
 		CloseHandle(log_filemapping);
 		CloseHandle(log_file);
 		log_file = INVALID_HANDLE_VALUE;
