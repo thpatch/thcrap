@@ -147,6 +147,84 @@ static void runconfig_stage_load(json_t *stage_json)
 	}
 }
 
+int BP_runtime_apply_stage_by_name(x86_reg_t *regs, json_t *bp_info) {
+
+	// Use stage_name to lookup which hackpoints to apply
+	if (const char* stage_name = (char*)json_object_get_immediate(bp_info, regs, "stage_name")) {
+		json_t* stage_list = json_object_get(bp_info, "stages_list");
+		if (json_t* stage_data = json_object_get(stage_list, stage_name)) {
+			size_t next_stage_index = run_cfg.stages.size();
+			runconfig_stage_load(stage_data);
+			HMODULE module_base_addr = (HMODULE)json_object_get_immediate(stage_data, regs, "base_addr");
+			runconfig_stage_apply(next_stage_index, RUNCFG_STAGE_USE_MODULE, module_base_addr);
+		}
+	}
+	return 1;
+}
+
+int BP_runtime_apply_stage_by_address(x86_reg_t *regs, json_t *bp_info) {
+	if (void* address_from_module = (void*)json_object_get_immediate(bp_info, regs, "address_expr")) {
+		HMODULE module_base_addr;
+		if (GetModuleHandleExA(
+			GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, /* dwFlags */
+			(char*)address_from_module, /* lpModuleName (NOT A STRING WITH THIS FLAG)*/
+			&module_base_addr /* phModule */
+		)) {
+			size_t mod_name_len = GetModuleFileNameU(module_base_addr, NULL, 0) + 1;
+			VLA(char, mod_name, mod_name_len);
+			GetModuleFileNameU(module_base_addr, mod_name, mod_name_len);
+			const char* stage_name = PathFindFileNameU(mod_name);
+			json_t* stage_list = json_object_get(bp_info, "stages_list");
+			if (json_t* stage_data = json_object_get(stage_list, stage_name)) {
+				size_t next_stage_index = run_cfg.stages.size();
+				runconfig_stage_load(stage_data);
+				runconfig_stage_apply(next_stage_index, RUNCFG_STAGE_USE_MODULE, module_base_addr);
+			}
+			VLA_FREE(mod_name);
+		}
+	}
+	return 1;
+}
+
+// These variants don't seem useful immediately,
+// but they're here just in case.
+/*
+int BP_runtime_apply_stage_by_number(x86_reg_t *regs, json_t *bp_info) {
+	if (size_t lookup_value = json_object_get_immediate(bp_info, regs, "lookup_value")) {
+		json_t* stage_list = json_object_get(bp_info, "stages_list");
+		if (json_t* stage_data = json_object_numkey_get(stage_list, (json_int_t)lookup_value)) {
+			size_t next_stage_index = run_cfg.stages.size();
+			runconfig_stage_load(stage_data);
+			HMODULE module_base_addr = (HMODULE)json_object_get_immediate(stage_data, regs, "base_addr");
+			runconfig_stage_apply(next_stage_index, RUNCFG_STAGE_USE_MODULE, module_base_addr);
+		}
+	}
+	return 1;
+}
+
+int BP_runtime_apply_stage_by_expr(x86_reg_t *regs, json_t *bp_info) {
+	if (size_t lookup_value = json_object_get_immediate(bp_info, regs, "lookup_expr")) {
+		json_t* stage_list = json_object_get(bp_info, "stages_list");
+		json_t* stage_data;
+		const char* list_expr;
+		json_object_foreach(stage_list, list_expr, stage_data) {
+			size_t stage_result;
+			if (eval_expr(list_expr, '\0', &stage_result, regs, NULL, NULL)) {
+				if (lookup_value != stage_result) {
+					continue;
+				}
+				size_t next_stage_index = run_cfg.stages.size();
+				runconfig_stage_load(stage_data);
+				HMODULE module_base_addr = (HMODULE)json_object_get_immediate(stage_data, regs, "base_addr");
+				runconfig_stage_apply(next_stage_index, RUNCFG_STAGE_USE_MODULE, module_base_addr);
+				break;
+			}
+		}
+	}
+	return 1;
+}
+*/
+
 void runconfig_load(json_t *file, int flags)
 {
 	json_t *value;

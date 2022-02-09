@@ -5,7 +5,8 @@ EXPORTS
 	hex_value
 	binhack_from_json
 	binhacks_apply
-
+	codecave_from_json
+	codecaves_apply
 	code_string_calc_size
 	code_string_render
 
@@ -94,6 +95,10 @@ EXPORTS
 	thcrap_init
 
 	BP_init_next_stage
+	BP_runtime_apply_stage_by_name
+	BP_runtime_apply_stage_by_address
+	;BP_runtime_apply_stage_by_number
+	;BP_runtime_apply_stage_by_expr
 
 	; Injection
 	; ---------

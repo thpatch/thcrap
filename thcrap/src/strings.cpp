@@ -85,7 +85,10 @@ const char* strings_id(const char *str)
 
 const json_t* strings_get(const char *id)
 {
-	return json_object_get(jsondata_get("stringdefs.js"), id);
+	if (const json_t* stringdef_json = jsondata_get("stringdefs.js")) {
+		return json_object_get(stringdef_json, id);
+	}
+	return NULL;
 }
 
 stringref_t strings_get_fallback(const string_named_t& sn)
@@ -102,12 +105,14 @@ const char* TH_CDECL strings_lookup(const char *in, size_t *out_len)
 	const char* str = in;
 	if(str) {
 		AcquireSRWLockShared(&stringlocs_srwlock);
+		const json_t* stringdef_json = NULL;
 		if (const char* id = strings_id(in)) {
-			if (const char* new_str = json_string_value(strings_get(id))) {
-				str = new_str;
-			}
+			stringdef_json = strings_get(id);
 		}
 		ReleaseSRWLockShared(&stringlocs_srwlock);
+		if (json_is_string(stringdef_json)) {
+			str = json_string_value(stringdef_json);
+		}
 
 		if (out_len) {
 			*out_len = strlen(str);
