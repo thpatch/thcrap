@@ -286,8 +286,6 @@ int thcrap_init(const char *run_cfg)
 		perf_tested = false;
 	}
 
-	HMODULE hProc = GetModuleHandle(NULL);
-
 	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, exe_fn, exe_fn_len);
@@ -346,7 +344,7 @@ int thcrap_init(const char *run_cfg)
 	// We might want to move this to thcrap_init_binary() too to accommodate
 	// DRM that scrambles the original import table, but since we're not
 	// having any test cases right now...
-	thcrap_detour(hProc);
+	thcrap_detour(CurrentModuleHandle);
 
 	SetCurrentDirectory(game_dir);
 	VLA_FREE(game_dir);

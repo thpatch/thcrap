@@ -69,7 +69,7 @@ size_t str_address_value(const char *str, HMODULE CustomModuleBase, str_address_
 
 	switch (str[0] | 0x20) {
 		case 'r':
-			val = (CustomModuleBase != NULL ? (uintptr_t)CustomModuleBase : (uintptr_t)CurrentImageBase);
+			val = (CustomModuleBase != NULL ? (uintptr_t)CustomModuleBase : CurrentImageBase);
 			[[fallthrough]];
 		case '0':
 		{

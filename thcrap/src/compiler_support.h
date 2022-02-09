@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 // Macros used for concatenating __COUNTER__ and __LINE__
 // because of course it doesn't just work normally.
 #define TH_MACRO_CONCAT_INNER(x, y) x ## y
@@ -499,4 +501,72 @@
 #define TH_NAKED __declspec(naked)
 #else
 #define TH_NAKED
+#endif
+
+// - Segmented Addressing
+#if defined(__SEG_FS)
+#define read_fs_byte(offset) (*(uint8_t __seg_fs*)((uintptr_t)offset))
+#define read_fs_word(offset) (*(uint16_t __seg_fs*)((uintptr_t)offset))
+#define read_fs_dword(offset) (*(uint32_t __seg_fs*)((uintptr_t)offset))
+#define write_fs_byte(offset, data) ((void)(*(uint8_t __seg_fs*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_fs_word(offset, data) ((void)(*(uint16_t __seg_fs*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_fs_dword(offset, data) ((void)(*(uint32_t __seg_fs*)((uintptr_t)offset) = (uint32_t)(data)))
+#elif __has_attribute(address_space)
+#define read_fs_byte(offset) (*(uint8_t __attribute__((address_space(257)))*)((uintptr_t)offset))
+#define read_fs_word(offset) (*(uint16_t __attribute__((address_space(257)))*)((uintptr_t)offset))
+#define read_fs_dword(offset) (*(uint32_t __attribute__((address_space(257)))*)((uintptr_t)offset))
+#define write_fs_byte(offset, data) ((void)(*(uint8_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_fs_word(offset, data) ((void)(*(uint16_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_fs_dword(offset, data) ((void)(*(uint32_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint32_t)(data)))
+#elif MSVC_COMPAT
+#define read_fs_byte(offset) __readfsbyte(offset)
+#define read_fs_word(offset) __readfsword(offset)
+#define read_fs_dword(offset) __readfsdword(offset)
+#define write_fs_byte(offset, data) __writefsbyte(offset, data)
+#define write_fs_word(offset, data) __writefsword(offset, data)
+#define write_fs_dword(offset, data) __writefsdword(offset, data)
+#else
+#define read_fs_byte(offset) (*(uint8_t*)((uintptr_t)offset))
+#define read_fs_word(offset) (*(uint16_t*)((uintptr_t)offset))
+#define read_fs_dword(offset) (*(uint32_t*)((uintptr_t)offset))
+#define write_fs_byte(offset, data) ((void)(*(uint8_t*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_fs_word(offset, data) ((void)(*(uint16_t*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_fs_dword(offset, data) ((void)(*(uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
+#endif
+#if defined(__SEG_GS)
+#define read_gs_byte(offset) (*(uint8_t __seg_gs*)((uintptr_t)offset))
+#define read_gs_word(offset) (*(uint16_t __seg_gs*)((uintptr_t)offset))
+#define read_gs_dword(offset) (*(uint32_t __seg_gs*)((uintptr_t)offset))
+#define read_gs_qword(offset) (*(uint64_t __seg_gs*)((uintptr_t)offset))
+#define write_gs_byte(offset, data) ((void)(*(uint8_t __seg_gs*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_gs_word(offset, data) ((void)(*(uint16_t __seg_gs*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_gs_dword(offset, data) ((void)(*(uint32_t __seg_gs*)((uintptr_t)offset) = (uint32_t)(data)))
+#define write_gs_qword(offset, data) ((void)(*(uint64_t __seg_gs*)((uintptr_t)offset) = (uint64_t)(data)))
+#elif __has_attribute(address_space)
+#define read_gs_byte(offset) (*(uint8_t __attribute__((address_space(256)))*)((uintptr_t)offset))
+#define read_gs_word(offset) (*(uint16_t __attribute__((address_space(256)))*)((uintptr_t)offset))
+#define read_gs_dword(offset) (*(uint32_t __attribute__((address_space(256)))*)((uintptr_t)offset))
+#define read_gs_qword(offset) (*(uint64_t __attribute__((address_space(256)))*)((uintptr_t)offset))
+#define write_gs_byte(offset, data) ((void)(*(uint8_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_gs_word(offset, data) ((void)(*(uint16_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_gs_dword(offset, data) ((void)(*(uint32_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint32_t)(data)))
+#define write_gs_qword(offset, data) ((void)(*(uint64_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint64_t)(data)))
+#elif MSVC_COMPAT
+#define read_gs_byte(offset) __readgsbyte(offset)
+#define read_gs_word(offset) __readgsword(offset)
+#define read_gs_dword(offset) __readgsdword(offset)
+#define read_gs_qword(offset) __readgsqword(offset)
+#define write_gs_byte(offset, data) __writegsbyte(offset, data)
+#define write_gs_word(offset, data) __writegsword(offset, data)
+#define write_gs_dword(offset, data) __writegsdword(offset, data)
+#define write_gs_qword(offset, data) __writegsqword(offset, data)
+#else
+#define read_gs_byte(offset) (*(uint8_t*)((uintptr_t)offset))
+#define read_gs_word(offset) (*(uint16_t*)((uintptr_t)offset))
+#define read_gs_dword(offset) (*(uint32_t*)((uintptr_t)offset))
+#define read_gs_qword(offset) (*(uint64_t*)((uintptr_t)offset))
+#define write_gs_byte(offset, data) ((void)(*(uint8_t*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_gs_word(offset, data) ((void)(*(uint16_t*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_gs_dword(offset, data) ((void)(*(uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
+#define write_gs_qword(offset, data) ((void)(*(uint64_t*)((uintptr_t)offset) = (uint64_t)(data)))
 #endif
