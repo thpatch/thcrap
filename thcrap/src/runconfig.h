@@ -19,6 +19,7 @@ const json_t *runconfig_json_get();
 // Returns the thcrap directory
 const char *runconfig_thcrap_dir_get();
 // Returns the run configuration path
+// If there are multiple ones, return only the 1st one
 const char *runconfig_runcfg_fn_get();
 
 // Returns true if the console should be enabled.
@@ -119,9 +120,6 @@ void runconfig_free();
 
 // Set the thcrap directory
 void runconfig_thcrap_dir_set(const char *thcrap_dir);
-
-// Returns the run configuration path
-void runconfig_runcfg_fn_set(const char *runcfg_fn);
 
 // Set the game build
 void runconfig_build_set(const char *build);

@@ -11,6 +11,7 @@
 #include <thcrap.h>
 #include <string>
 #include <vector>
+#include <filesystem>
 #include <thcrap_update_wrapper.h>
 
 const char *EXE_HELP =
@@ -41,6 +42,81 @@ const char* game_lookup(const json_t *games_js, const char *game, const char *ba
 		return ret;
 	}
 	return game_path_str;
+}
+
+json_t *load_config_from_file(const char *rel_start, json_t *run_cfg, const char *config_path)
+{
+	std::string run_cfg_fn;
+
+	if (PathIsRelativeU(config_path)) {
+		if (strchr(config_path, '\\')) {
+			run_cfg_fn = std::string(rel_start) + config_path;
+		}
+		else {
+			run_cfg_fn = (std::filesystem::current_path() / "config" / config_path).u8string();
+		}
+	}
+	else {
+		run_cfg_fn = config_path;
+	}
+
+	log_printf("Loading run configuration %s... ", run_cfg_fn.c_str());
+	json_t *new_run_cfg = json_load_file_report(run_cfg_fn.c_str());
+	log_print(new_run_cfg != nullptr ? "found\n" : "not found\n");
+
+	if (!run_cfg) {
+		run_cfg = new_run_cfg;
+	}
+	else if (new_run_cfg) {
+		run_cfg = json_object_merge(run_cfg, new_run_cfg);
+	}
+	json_array_append_new(json_object_get_create(run_cfg, "runcfg_fn", JSON_ARRAY), json_string(run_cfg_fn.c_str()));
+	return run_cfg;
+}
+
+json_t *load_config_from_string(json_t *run_cfg, const char *config_string)
+{
+	log_printf("Loading run configuration from command-line... ");
+	json_t *new_run_cfg = json5_loadb(config_string, strlen(config_string), nullptr);
+	log_print(new_run_cfg != nullptr ? "success\n" : "error\n");
+
+	if (!run_cfg) {
+		run_cfg = new_run_cfg;
+	}
+	else if (new_run_cfg) {
+		run_cfg = json_object_merge(run_cfg, new_run_cfg);
+	}
+	json_array_append_new(json_object_get_create(run_cfg, "runcfg_fn", JSON_ARRAY), json_string(
+		(std::string("stdin:") + config_string).c_str()
+	));
+	return run_cfg;
+}
+
+char *find_exe_from_cfg(const char *rel_start, json_t *run_cfg, json_t *games_js)
+{
+	const char *new_exe_fn = NULL;
+	char *cfg_exe_fn = NULL;
+
+	new_exe_fn = json_object_get_string(run_cfg, "exe");
+	if (!new_exe_fn) {
+		const char *game = json_object_get_string(run_cfg, "game");
+		if (game) {
+			new_exe_fn = game_lookup(games_js, game, std::filesystem::current_path().u8string().c_str());
+		}
+	}
+	if (new_exe_fn) {
+		if (PathIsRelativeU(new_exe_fn)) {
+			cfg_exe_fn = (char*)malloc(current_dir_len + strlen(new_exe_fn) + 2);
+			strcpy(cfg_exe_fn, rel_start);
+			PathAppendU(cfg_exe_fn, new_exe_fn);
+		}
+		else {
+			cfg_exe_fn = (char*)malloc(strlen(new_exe_fn) + 1);
+			strcpy(cfg_exe_fn, new_exe_fn);
+		}
+	}
+
+	return cfg_exe_fn;
 }
 
 #include <win32_utf8/entry_winmain.c>
@@ -109,21 +185,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 
-	/**
-	  * ---
-	  * "Activate AppLocale layer in case it's installed."
-	  *
-	  * Seemed like a good idea.
-	  * On Vista and above however, this loads apphelp.dll into our process.
-	  * This DLL sandboxes our application by hooking GetProcAddress and a whole
-	  * bunch of other functions.
-	  * In turn, thcrap_inject gets wrong pointers to the system functions used in
-	  * the injection process, crashing the game as soon as it calls one of those.
-	  * ----
-	  */
-	// SetEnvironmentVariable(L"__COMPAT_LAYER", L"ApplicationLocale");
-	// SetEnvironmentVariable(L"AppLocaleID", L"0411");
-
 	// Load games.js
 	{
 		size_t games_js_fn_len = GetCurrentDirectoryU(0, NULL) + 1 + strlen("config\\games.js") + 1;
@@ -142,54 +203,22 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		const char *arg = argv[i];
 		const char *param_ext = PathFindExtensionA(arg);
 
-		if(!stricmp(param_ext, ".js")) {
-			const char *new_exe_fn = NULL;
-
-			// Sorry guys, no run configuration stacking yet
-			if(json_is_object(run_cfg)) {
-				log_print("Several run configurations found on the command line, overwriting previous ones\n");
-				json_decref(run_cfg);
-			}
-			if (PathIsRelativeU(arg)) {
-				if (strchr(arg, '\\')) {
-					run_cfg_fn = std::string(rel_start) + arg;
-				} else {
-					run_cfg_fn = std::string(current_dir) + "config\\" + arg;
-				}
-			} else {
-				run_cfg_fn = arg;
-			}
-
-			log_printf("Loading run configuration %s... ", run_cfg_fn.c_str());
-			run_cfg = json_load_file_report(run_cfg_fn.c_str());
-			log_print(run_cfg != nullptr ? "found\n" : "not found\n");
-
-			new_exe_fn = json_object_get_string(run_cfg, "exe");
-			if(!new_exe_fn) {
-				const char *game = json_object_get_string(run_cfg, "game");
-				if(game) {
-					new_exe_fn = game_lookup(games_js, game, current_dir);
-				}
-			}
-			if(new_exe_fn) {
-				if (PathIsRelativeU(new_exe_fn)) {
-					cfg_exe_fn = (char*)malloc(current_dir_len + strlen(new_exe_fn) + 2);
-					strcpy(cfg_exe_fn, rel_start);
-					PathAppendU(cfg_exe_fn, new_exe_fn);
-				}
-				else {
-					cfg_exe_fn = (char*)malloc(strlen(new_exe_fn) + 1);
-					strcpy(cfg_exe_fn, new_exe_fn);
-				}
-			}
-		} else if(!stricmp(param_ext, ".exe")) {
+		if (!stricmp(param_ext, ".js")) {
+			run_cfg = load_config_from_file(rel_start, run_cfg, arg);
+		}
+		else if (arg[0] == '{') {
+			run_cfg = load_config_from_string(run_cfg, arg);
+		}
+		else if(!stricmp(param_ext, ".exe")) {
 			cmd_exe_fn = arg;
-		} else {
+		}
+		else {
 			// Need to set game_missing even if games_js is null.
 			cmd_exe_fn = game_lookup(games_js, arg, current_dir);
 			game_id = arg;
 		}
 	}
+	cfg_exe_fn = find_exe_from_cfg(rel_start, run_cfg, games_js);
 
 	if(!run_cfg) {
 		if(run_cfg_fn.empty()) {
@@ -214,22 +243,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	final_exe_fn = cmd_exe_fn ? cmd_exe_fn : cfg_exe_fn;
 	log_printf("Using exe %s\n", final_exe_fn);
 
-	/*
-	// Recursively apply the passed runconfigs
-	for(i = 1; i < json_array_size(args); i++)
-	{
-		json_t *cur_cfg = json_load_file_report(args[i]);
-		if(!cur_cfg) {
-			continue;
-		}
-		if(!run_cfg) {
-			run_cfg = cur_cfg;
-		} else {
-			json_object_merge(run_cfg, cur_cfg);
-
-		}
-	}
-	*/
 	// Still none?
 	if(!final_exe_fn) {
 		if(game_missing || !games_js) {
@@ -247,7 +260,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	}
 
 	runconfig_load(run_cfg, RUNCONFIG_NO_BINHACKS);
-	runconfig_runcfg_fn_set(run_cfg_fn.c_str());
 
 	char *cmdline = NULL;
 	if (const char *temp_cmdline = runconfig_cmdline_get()) {

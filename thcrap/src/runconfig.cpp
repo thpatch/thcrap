@@ -29,7 +29,7 @@ struct runconfig_t
 	// Thcrap directory (from runtime)
 	std::string thcrap_dir;
 	// Run configuration path (from runtime)
-	std::string runcfg_fn;
+	std::vector<std::string> runcfg_fn;
 	// Game ID, for example "th06" (from game_id.js)
 	std::string game;
 	// Game build, for example "v1.00a" (from game_id.js)
@@ -194,6 +194,12 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
+	json_flex_array_foreach_scoped(size_t, i, json_object_get(file, "runcfg_fn"), value) {
+		if (json_is_string(value)) {
+			run_cfg.runcfg_fn.push_back(json_string_value(value));
+		}
+	}
+
 	if (can_overwrite) {
 		size_t exception_detail = json_object_get_eval_int_default(file, "exception_detail", 1, JEVAL_STRICT);
 		if (exception_detail > UINT8_MAX) exception_detail = UINT8_MAX;
@@ -262,7 +268,7 @@ void runconfig_load_from_file(const char *path)
 {
 	json_t *new_cfg = json_load_file_report(path);
 	runconfig_load(new_cfg, RUNCFG_STAGE_DEFAULT);
-	runconfig_runcfg_fn_set(path);
+	run_cfg.runcfg_fn.push_back(path);
 	json_decref(new_cfg);
 }
 
@@ -273,9 +279,17 @@ void runconfig_print()
 		"Complete run configuration:\n"
 		"---------------------------\n"
 	);
+	if (run_cfg.runcfg_fn.size() == 1) {
+		log_printf("  runcfg fn: '%s'\n", run_cfg.runcfg_fn[0].c_str());
+	}
+	else {
+		log_print("  runcfg fn:\n");
+		for (auto& it : run_cfg.runcfg_fn) {
+			log_printf("    '%s'\n", it.c_str());
+		}
+	}
 	log_printf("  console: %s\n",      BoolStr(run_cfg.console));
 	log_printf("  thcrap dir: '%s'\n", run_cfg.thcrap_dir.c_str());
-	log_printf("  runcfg fn: '%s'\n",  run_cfg.runcfg_fn.c_str());
 	log_printf("  game id: '%s'\n",    run_cfg.game.c_str());
 	log_printf("  build id: '%s'\n",   run_cfg.build.c_str());
 	log_printf("  game title: '%s'\n", run_cfg.title.c_str());
@@ -392,17 +406,7 @@ void runconfig_thcrap_dir_set(const char *thcrap_dir)
 
 const char *runconfig_runcfg_fn_get()
 {
-	return run_cfg.runcfg_fn.empty() == false ? run_cfg.runcfg_fn.c_str() : nullptr;
-}
-
-void runconfig_runcfg_fn_set(const char *runcfg_fn)
-{
-	if (runcfg_fn != nullptr) {
-		run_cfg.runcfg_fn = runcfg_fn;
-	}
-	else {
-		run_cfg.runcfg_fn.clear();
-	}
+	return run_cfg.runcfg_fn.empty() == false ? run_cfg.runcfg_fn[0].c_str() : nullptr;
 }
 
 const char *runconfig_game_get()

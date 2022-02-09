@@ -64,7 +64,6 @@ EXPORTS
 	runconfig_thcrap_dir_get
 	runconfig_thcrap_dir_set
 	runconfig_runcfg_fn_get
-	runconfig_runcfg_fn_set
 	runconfig_console_get
 	runconfig_game_get
 	runconfig_build_get

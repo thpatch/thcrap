@@ -256,7 +256,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	return return_value;
 }
 
-int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
+int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 {
 	int ret = -1;
 	if (HMODULE inj_mod = GetModuleContaining(thcrap_inject_into_running)) {
@@ -268,22 +268,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn)
 		PathRemoveFileSpecW(inj_dir);
 		PathAddBackslashW(inj_dir);
 
-		const size_t run_cfg_len = strlen(run_cfg_fn) + 1;
-
-		// Allow relative directory names
-		if (PathIsRelativeA(run_cfg_fn)) {
-			const size_t cur_dir_len = GetCurrentDirectoryA(0, NULL);
-			const size_t total_size = run_cfg_len + cur_dir_len;
-			char* param = (char*)malloc(total_size);
-			GetCurrentDirectoryA(cur_dir_len, param);
-			memcpy(param + cur_dir_len, run_cfg_fn, run_cfg_len);
-			ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", param, total_size);
-			free(param);
-		}
-		else {
-			ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", run_cfg_fn, run_cfg_len * 2);
-		}
-		
+		ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", run_cfg, (strlen(run_cfg) + 1));
 	}
 	return ret;
 }
@@ -476,9 +461,11 @@ static inline void inject_CreateProcess_helper(
 )
 {
 	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
-		const char *run_cfg_fn = runconfig_runcfg_fn_get();
+		char *run_cfg = json_dumps(runconfig_json_get(), 0);
 
-		thcrap_inject_into_running(lpPI->hProcess, run_cfg_fn);
+		thcrap_inject_into_running(lpPI->hProcess, run_cfg);
+
+		free(run_cfg);
 	}
 	if(~dwCreationFlags & CREATE_SUSPENDED) {
 		ResumeThread(lpPI->hThread);

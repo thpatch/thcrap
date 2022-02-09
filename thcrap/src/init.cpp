@@ -278,7 +278,7 @@ void thcrap_detour(HMODULE hProc)
 	VLA_FREE(mod_name);
 }
 
-int thcrap_init(const char *run_cfg_fn)
+int thcrap_init(const char *run_cfg)
 {
 	bool perf_tested = true;
 	LARGE_INTEGER begin_time;
@@ -298,11 +298,10 @@ int thcrap_init(const char *run_cfg_fn)
 	PathAppendU(dll_dir, "..");
 	SetCurrentDirectory(dll_dir);
 
-	runconfig_load_from_file(run_cfg_fn);
+	runconfig_load(json_loads(run_cfg, 0, nullptr), RUNCFG_STAGE_DEFAULT);
 	runconfig_thcrap_dir_set(dll_dir);
 
 	log_init(runconfig_console_get());
-	log_printf("Run configuration file: %s\n\n", run_cfg_fn);
 	stack_show_missing();
 
 	log_printf("EXE file name: %s\n", exe_fn);

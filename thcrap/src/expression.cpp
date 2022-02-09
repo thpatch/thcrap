@@ -157,10 +157,10 @@ struct CPUID_Data_t {
 		RtlGetVersion(&ver);
 
 		WinVersion_t windows_version;
-		windows_version.version_major = ver.dwMajorVersion;
-		windows_version.version_minor = ver.dwMinorVersion;
-		windows_version.service_pack_major = ver.wServicePackMajor;
-		windows_version.service_pack_minor = ver.wServicePackMinor;
+		windows_version.version_major = (uint8_t)ver.dwMajorVersion;
+		windows_version.version_minor = (uint8_t)ver.dwMinorVersion;
+		windows_version.service_pack_major = (uint8_t)ver.wServicePackMajor;
+		windows_version.service_pack_minor = (uint8_t)ver.wServicePackMinor;
 		this->WindowsVersion = windows_version;
 
 		int data[4];

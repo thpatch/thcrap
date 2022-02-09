@@ -73,7 +73,7 @@ HMODULE WINAPI inject_LoadLibraryW(
 void inject_mod_detour(void);
 
 // Injects thcrap into the given [hProcess], and passes [run_cfg_fn].
-int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg_fn);
+int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg);
 
 // Starts [exe_fn] as a new process with the given command-line arguments, and
 // injects thcrap with the current run configuration into it.

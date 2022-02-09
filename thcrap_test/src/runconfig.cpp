@@ -104,18 +104,11 @@ TEST(RunconfigTest, RuncfgFn)
 {
     EXPECT_EQ(runconfig_runcfg_fn_get(), nullptr);
 
-    runconfig_runcfg_fn_set(nullptr);
-    EXPECT_EQ(runconfig_runcfg_fn_get(), nullptr);
-
     {
         ScopedRunconfig runconfig(json_pack("{s:s}",
             "runcfg_fn", "C:\\somewhere\\en.js"
         ));
-        // Should not be read from the json file: use runconfig_runcfg_fn_set to change.
-        EXPECT_EQ(runconfig_runcfg_fn_get(), nullptr);
-
-        runconfig_runcfg_fn_set("C:\\example\\en.js");
-        EXPECT_STREQ(runconfig_runcfg_fn_get(), "C:\\example\\en.js");
+        EXPECT_STREQ(runconfig_runcfg_fn_get(), "C:\\somewhere\\en.js");
     }
 
     EXPECT_EQ(runconfig_runcfg_fn_get(), nullptr);
