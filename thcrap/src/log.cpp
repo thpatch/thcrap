@@ -13,11 +13,19 @@
 // -------
 // Globals
 // -------
+
+struct log_string_t {
+	const char* str;
+	size_t n;
+	bool is_n;
+};
+
 static HANDLE log_file = INVALID_HANDLE_VALUE;
 static bool console_open = false;
-static std::queue<std::string> log_queue;
+static std::queue<log_string_t> log_queue;
 static CRITICAL_SECTION queue_cs = {};
 static HANDLE log_semaphore = INVALID_HANDLE_VALUE;
+static bool async_enabled = false;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
@@ -92,6 +100,25 @@ void log_rotate(void)
 }
 // --------
 
+static void log_print_real(log_string_t& log_str) {
+	DWORD byteRet;
+	if (console_open) {
+		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), log_str.str, log_str.n, &byteRet, NULL);
+	}
+	if (log_file) {
+		WriteFile(log_file, log_str.str, log_str.n, &byteRet, NULL);
+	}
+	if ((log_str.is_n)) {
+		if (log_nprint_hook) {
+			log_nprint_hook(log_str.str, log_str.n);
+		}
+	} else {
+		if (log_print_hook) {
+			log_print_hook(log_str.str);
+		}
+	}
+}
+
 static DWORD WINAPI log_thread(LPVOID lpParameter) {
 	for (;;) {
 		EnterCriticalSection(&queue_cs);
@@ -99,42 +126,39 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 			LeaveCriticalSection(&queue_cs);
 			WaitForSingleObject(log_semaphore, INFINITE);
 		} else {
-			std::string str = std::move(log_queue.front());
+			log_string_t log_str = std::move(log_queue.front());
 			log_queue.pop();
 			LeaveCriticalSection(&queue_cs);
 
-			DWORD byteRet;
-			if (console_open) {
-				WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str.c_str(), str.length(), &byteRet, NULL);
-			}
-			if (log_file) {
-				WriteFile(log_file, str.c_str(), str.length(), &byteRet, NULL);
-			}
-			if (log_print_hook) {
-				log_print_hook(str.c_str());
-			}
+			log_print_real(log_str);
+			free((void*)log_str.str);
 		}
 	}
 }
 
+static void log_push(const char* str, size_t n, bool is_n) {
+	log_string_t log_str = { strdup_size(str, n), n, is_n };
+
+	if (async_enabled) {
+		EnterCriticalSection(&queue_cs);
+		log_queue.push(log_str);
+		LeaveCriticalSection(&queue_cs);
+		ReleaseSemaphore(log_semaphore, 1, NULL);
+	} else {
+		log_print_real(log_str);
+		free((void*)log_str.str);
+	}
+}
+
 void log_nprint(const char* str, size_t n) {
-	std::string _str(str, n);
-
-	EnterCriticalSection(&queue_cs);
-
-	log_queue.push(_str);
-	ReleaseSemaphore(log_semaphore, 1, NULL);
-
-	LeaveCriticalSection(&queue_cs);
+	log_push(str, strnlen(str, n), true);
 }
 
-void log_print(const char *str)
-{
-	log_nprint(str, strlen(str));
+void log_print(const char *str) {
+	log_push(str, strlen(str), false);
 }
 
-void log_vprintf(const char *format, va_list va)
-{
+void log_vprintf(const char *format, va_list va) {
 	va_list va2;
 	va_copy(va2, va);
 	const int total_size = vsnprintf(NULL, 0, format, va2);
@@ -142,21 +166,19 @@ void log_vprintf(const char *format, va_list va)
 	if (total_size > 0) {
 		VLA(char, str, total_size + 1);
 		vsprintf(str, format, va);
-		log_nprint(str, total_size);
+		log_push(str, total_size, false);
 		VLA_FREE(str);
 	}
 }
 
-void log_printf(const char *format, ...)
-{
+void log_printf(const char *format, ...) {
 	va_list va;
 	va_start(va, format);
 	log_vprintf(format, va);
 	va_end(va);
 }
 
-void log_flush()
-{
+void log_flush() {
 	while (!log_queue.empty()) {
 		Sleep(0);
 	}
@@ -323,9 +345,6 @@ void log_init(int console)
 
 	// Using CreateFile, _open_osfhandle and _fdopen instead of plain fopen because we need the flag FILE_SHARE_DELETE for log rotation
 	log_file = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-	InitializeCriticalSection(&queue_cs);
-	log_semaphore = CreateSemaphoreW(NULL, 0, 1, NULL);
-	CreateThread(0, 0, log_thread, NULL, 0, NULL);
 #ifdef _DEBUG
 	OpenConsole();
 #else
@@ -509,6 +528,10 @@ void log_init(int console)
 			pExitProcess(-1);
 		}
 	}
+	InitializeCriticalSection(&queue_cs);
+	log_semaphore = CreateSemaphoreW(NULL, 0, 1, NULL);
+	CreateThread(0, 0, log_thread, NULL, 0, NULL);
+	async_enabled = true;
 }
 
 void log_exit(void) {
