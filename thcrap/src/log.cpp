@@ -137,16 +137,16 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 }
 
 static void log_push(const char* str, size_t n, bool is_n) {
-	log_string_t log_str = { strdup_size(str, n), n, is_n };
+	log_string_t log_str = { str, n, is_n };
 
 	if (async_enabled) {
+		log_str.str = strdup_size(log_str.str, log_str.n);
 		EnterCriticalSection(&queue_cs);
 		log_queue.push(log_str);
 		LeaveCriticalSection(&queue_cs);
 		ReleaseSemaphore(log_semaphore, 1, NULL);
 	} else {
 		log_print_real(log_str);
-		free((void*)log_str.str);
 	}
 }
 
