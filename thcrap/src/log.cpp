@@ -23,7 +23,7 @@ static ThreadPool *log_queue = NULL;
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
 static const char LOG[] = "logs/thcrap_log.txt";
 static const char LOG_ROTATED[] = "logs/thcrap_log.%d.txt";
-static const int ROTATIONS = 5; // Number of backups to keep
+static constexpr int ROTATIONS = 5; // Number of backups to keep
 static void (*log_print_hook)(const char*) = NULL;
 static void(*log_nprint_hook)(const char*, size_t) = NULL;
 static HWND mbox_owner_hwnd = NULL; // Set by log_mbox_set_owner
@@ -66,29 +66,22 @@ void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*
 
 // Rotation
 // --------
-void log_fn_for_rotation(char *fn, int rotnum)
-{
-	if(rotnum == 0) {
-		strcpy(fn, LOG);
-	} else {
-		sprintf(fn, LOG_ROTATED, rotnum);
-	}
-}
-
 void log_rotate(void)
 {
-	size_t rot_fn_len = MAX(sizeof(LOG_ROTATED), sizeof(LOG));
-	VLA(char, rot_from, rot_fn_len);
-	VLA(char, rot_to, rot_fn_len);
+	char file_one[sizeof(LOG) + DECIMAL_DIGITS_BOUND(int) + 1];
+	char file_two[sizeof(LOG) + DECIMAL_DIGITS_BOUND(int) + 1];
 
-	for(int rotation = ROTATIONS; rotation > 0; rotation--) {
-		log_fn_for_rotation(rot_from, rotation - 1);
-		log_fn_for_rotation(rot_to, rotation);
+	char* rot_to = &file_one[0];
+	char* rot_from = &file_two[0];
+
+	int rotation = ROTATIONS;
+	sprintf(rot_to, LOG_ROTATED, rotation);
+	while (--rotation) {
+		sprintf(rot_from, LOG_ROTATED, rotation);
 		MoveFileExU(rot_from, rot_to, MOVEFILE_REPLACE_EXISTING);
+		std::swap(rot_from, rot_to);
 	}
-
-	VLA_FREE(rot_from);
-	VLA_FREE(rot_to);
+	MoveFileExU(LOG, rot_to, MOVEFILE_REPLACE_EXISTING);
 }
 // --------
 
@@ -331,7 +324,9 @@ std::nullptr_t logger_t::errorf(const char *format, ...) const
 void log_init(int console)
 {
 	CreateDirectoryU("logs", NULL);
-	log_rotate();
+	if constexpr (ROTATIONS > 0) {
+		log_rotate();
+	}
 
 	// Using CreateFile, _open_osfhandle and _fdopen instead of plain fopen because we need the flag FILE_SHARE_DELETE for log rotation
 	log_file = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -374,7 +369,7 @@ void log_init(int console)
 			SYSTEMTIME time;
 			GetSystemTime(&time);
 			if (time.wMonth > 12) time.wMonth = 0;
-			log_printf("Current time: %s %d %d %d:%d:%d\n",
+			log_printf("Current time: %s %d %d %d:%02d:%02d\n",
 				months[time.wMonth], time.wDay, time.wYear,
 				time.wHour, time.wMinute, time.wSecond);
 		}
@@ -407,28 +402,16 @@ void log_init(int console)
 
 			double ram_total = (double)ram_stats.ullTotalPhys;
 			int div_count_total = 0;
-			for (;;) {
-				int temp = (int)(ram_total / 1024.0f);
-				if (temp) {
-					ram_total = ram_total / 1024.0f;
-					div_count_total++;
-				}
-				else {
-					break;
-				}
+			while (ram_total >= 1024.0) {
+				ram_total /= 1024.0;
+				++div_count_total;
 			}
 
 			double ram_left = (double)ram_stats.ullAvailPhys;
 			int div_count_left = 0;
-			for (;;) {
-				int temp = (int)(ram_left / 1024.0f);
-				if (temp) {
-					ram_left = ram_left / 1024.0f;
-					div_count_left++;
-				}
-				else {
-					break;
-				}
+			while (ram_left >= 1024.0) {
+				ram_left /= 1024.0;
+				++div_count_left;
 			}
 
 			const char* size_units[] = {
@@ -453,24 +436,21 @@ void log_init(int console)
 		log_print("\nScreens:\n");
 
 		{
-			DISPLAY_DEVICEA display_device = {};
-			display_device.cb = sizeof(display_device);
+			DISPLAY_DEVICEA display_device = { sizeof(display_device) };
 			for (int i = 0;
 				EnumDisplayDevicesA(NULL, i, &display_device, EDD_GET_DEVICE_INTERFACE_NAME);
 				i++
 				)
 			{
-				if ((display_device.StateFlags | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP)) {
-					DEVMODEA d;
-					d.dmSize = sizeof(d);
-					DISPLAY_DEVICEA mon = {};
-					mon.cb = sizeof(mon);
+				if (display_device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
+					DISPLAY_DEVICEA mon = { sizeof(mon) };
 					if (!EnumDisplayDevicesA(display_device.DeviceName, 0, &mon, EDD_GET_DEVICE_INTERFACE_NAME)) {
 						continue;
 					}
 
 					log_printf("%s on %s: ", mon.DeviceString, display_device.DeviceString);
 
+					DEVMODEA d = { sizeof(d) };
 					EnumDisplaySettingsA(display_device.DeviceName, ENUM_CURRENT_SETTINGS, &d);
 					if ((d.dmFields & DM_PELSHEIGHT) && !(d.dmFields & DM_PAPERSIZE)) {
 						log_printf("%dx%d@%d %dHz\n", d.dmPelsWidth, d.dmPelsHeight, d.dmBitsPerPel, d.dmDisplayFrequency);

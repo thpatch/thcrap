@@ -9,6 +9,7 @@
 
 #pragma once
 
+#ifndef __cplusplus
 // Expands to an integer constant expression evaluating to a close upper bound
 // on the number the number of decimal digits in a value expressible in the
 // integer type given by the argument (if it is a type name) or the integer
@@ -17,6 +18,16 @@
 // https://stackoverflow.com/questions/43787672/the-max-number-of-digits-in-an-int-based-on-number-of-bits
 // Useful to calculate buffer sizes for itoa() calls.
 #define DECIMAL_DIGITS_BOUND(t) (241 * sizeof(t) / 100 + 1)
+#else
+
+#include <limits>
+extern "C++" template <typename T>
+static inline constexpr auto decimal_digits_bound() {
+	return std::numeric_limits<T>::digits10 + 1;
+}
+
+#define DECIMAL_DIGITS_BOUND(t) decimal_digits_bound<int_width_type<sizeof(t)>>()
+#endif
 
 // Returns [json] if the object is still alive, and NULL if it was deleted.
 json_t* json_decref_safe(json_t *json);

@@ -717,6 +717,22 @@ int8_t hex_value(char c);
 
 #ifdef __cplusplus
 
+extern "C++" {
+	template <int size>
+	using int_width_type = std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(int8_t)>>, int8_t,
+		std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(int16_t)>>, int16_t,
+		std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(int32_t)>>, int32_t,
+		std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(int64_t)>>, int64_t,
+		void>>>>;
+
+	template <int size>
+	using uint_width_type = std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(uint8_t)>>, uint8_t,
+		std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(uint16_t)>>, uint16_t,
+		std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(uint32_t)>>, uint32_t,
+		std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(uint64_t)>>, uint64_t,
+		void>>>>;
+}
+
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer
 constexpr uint32_t TextInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
 	return c4 << 24 | c3 << 16 | c2 << 8 | c1;
