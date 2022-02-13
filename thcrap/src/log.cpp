@@ -22,6 +22,7 @@ struct log_string_t {
 
 static HANDLE log_file = INVALID_HANDLE_VALUE;
 static bool console_open = false;
+static HANDLE log_thread_handle = INVALID_HANDLE_VALUE;
 static std::queue<log_string_t> log_queue;
 static CRITICAL_SECTION queue_cs = {};
 static HANDLE log_semaphore = INVALID_HANDLE_VALUE;
@@ -176,9 +177,16 @@ void log_printf(const char *format, ...) {
 }
 
 void log_flush() {
-	while (!log_queue.empty()) {
-		Sleep(0);
+	if (async_enabled) {
+	EnterCriticalSection(&queue_cs);
+		while (!log_queue.empty()) {
+			log_string_t log_str = std::move(log_queue.front());
+			log_queue.pop();
+			log_print_real(log_str);
+		}
+	LeaveCriticalSection(&queue_cs);
 	}
+	FlushFileBuffers(GetStdHandle(STD_OUTPUT_HANDLE));
 	FlushFileBuffers(log_file);
 }
 
@@ -515,17 +523,19 @@ void log_init(int console)
 	if (log_async) {
 		InitializeCriticalSection(&queue_cs);
 		log_semaphore = CreateSemaphoreW(NULL, 0, 1, NULL);
-		CreateThread(0, 0, log_thread, NULL, 0, NULL);
+		log_thread_handle = CreateThread(0, 0, log_thread, NULL, 0, NULL);
 		async_enabled = true;
 	}
 }
 
 void log_exit(void) {
 	log_flush();
-	DeleteCriticalSection(&queue_cs);
-	CloseHandle(log_semaphore);
-	log_semaphore = INVALID_HANDLE_VALUE;
-
+	if (async_enabled) {
+		TerminateThread(log_thread_handle, 0);
+		DeleteCriticalSection(&queue_cs);
+		CloseHandle(log_semaphore);
+		log_semaphore = INVALID_HANDLE_VALUE;
+	}
 	if (console_open)
 		FreeConsole();
 	if (log_file) {
