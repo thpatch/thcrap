@@ -77,6 +77,7 @@ EXPORTS
 	runconfig_latest_get
 	runconfig_stage_count
 	runconfig_stage_apply
+	globalconfig_init
 	globalconfig_get_boolean
 	globalconfig_set_boolean
 	globalconfig_get_integer

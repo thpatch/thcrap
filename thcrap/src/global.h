@@ -17,6 +17,8 @@ THCRAP_API extern const uint32_t PROJECT_VERSION;
 THCRAP_API extern const char PROJECT_VERSION_STRING[];
 THCRAP_API extern const char PROJECT_BRANCH[];
 
+// Initializes global_cfg
+void globalconfig_init(void);
 // Returns the value matching key in config converted in bool
 // If key isn't in config it returns default_value with errno ENOENT
 BOOL globalconfig_get_boolean(const char* key, const BOOL default_value);
