@@ -352,9 +352,6 @@ void log_init(int console)
 
 	// Using CreateFile, _open_osfhandle and _fdopen instead of plain fopen because we need the flag FILE_SHARE_DELETE for log rotation
 	log_file = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-#ifdef _DEBUG
-	OpenConsole();
-#else
 	if(log_file) {
 
 		constexpr std::string_view DashUChar = u8"―";
@@ -488,7 +485,6 @@ void log_init(int console)
 	if (console) {
 		OpenConsole();
 	}
-#endif
 	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
 	size_t full_fn_len = cur_dir_len + sizeof(LOG);
 	VLA(char, full_fn, full_fn_len);
