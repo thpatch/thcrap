@@ -296,10 +296,12 @@ int thcrap_init(const char *run_cfg)
 	PathAppendU(dll_dir, "..");
 	SetCurrentDirectory(dll_dir);
 
+	globalconfig_init();
+	log_init(globalconfig_get_boolean("console", false));
+
 	runconfig_load(json_loads(run_cfg, 0, nullptr), RUNCFG_STAGE_DEFAULT);
 	runconfig_thcrap_dir_set(dll_dir);
 
-	log_init(runconfig_console_get());
 	stack_show_missing();
 
 	log_printf("EXE file name: %s\n", exe_fn);

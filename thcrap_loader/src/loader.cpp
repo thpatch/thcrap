@@ -157,7 +157,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	std::vector<std::string> update_finalize_logs;
 	bool update_finalize_ret = update_finalize(update_finalize_logs);
 
-	log_init(0);
+	globalconfig_init();
+	log_init(globalconfig_get_boolean("console", false));
 
 	for (auto& it : update_finalize_logs) {
 		log_printf("%s\n", it.c_str());

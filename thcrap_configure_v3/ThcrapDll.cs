@@ -208,9 +208,15 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void thcrap_free(IntPtr ptr);
 
+        // globalconfig
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void globalconfig_init();
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool globalconfig_get_boolean([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string key, bool default_value);
+
         // log
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void log_init(int console);
+        public static extern void log_init(bool console);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void log_set_hook(log_print_cb hookproc, log_nprint_cb hookproc2);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]

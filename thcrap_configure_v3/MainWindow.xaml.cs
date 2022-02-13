@@ -37,7 +37,8 @@ namespace thcrap_configure_v3
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            ThcrapDll.log_init(0);
+            ThcrapDll.globalconfig_init();
+            ThcrapDll.log_init(ThcrapDll.globalconfig_get_boolean("console", false));
 
             var startUrl = "https://srv.thpatch.net/";
             var cmdline = Environment.GetCommandLineArgs();

@@ -200,8 +200,11 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	progress_state_t state;
 
 	strings_mod_init();
+
+	globalconfig_init();
+
 	log_async = false;
-	log_init(0);
+	log_init(globalconfig_get_boolean("console", false));
 	console_init();
 
 	GetCurrentDirectory(cur_dir_len, cur_dir);
