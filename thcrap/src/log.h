@@ -12,6 +12,9 @@
 
 #pragma once
 
+// Config
+THCRAP_API extern DWORD log_async;
+
 // Returns a string representation of the given Win32 error code.
 // Currently in English and fairly abbreviated compared to FormatMessage().
 const char* lasterror_str_for(DWORD err);

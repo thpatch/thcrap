@@ -26,6 +26,10 @@ static std::queue<log_string_t> log_queue;
 static CRITICAL_SECTION queue_cs = {};
 static HANDLE log_semaphore = INVALID_HANDLE_VALUE;
 static bool async_enabled = false;
+
+// Config
+DWORD log_async = true;
+
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
@@ -508,10 +512,12 @@ void log_init(int console)
 			pExitProcess(-1);
 		}
 	}
-	InitializeCriticalSection(&queue_cs);
-	log_semaphore = CreateSemaphoreW(NULL, 0, 1, NULL);
-	CreateThread(0, 0, log_thread, NULL, 0, NULL);
-	async_enabled = true;
+	if (log_async) {
+		InitializeCriticalSection(&queue_cs);
+		log_semaphore = CreateSemaphoreW(NULL, 0, 1, NULL);
+		CreateThread(0, 0, log_thread, NULL, 0, NULL);
+		async_enabled = true;
+	}
 }
 
 void log_exit(void) {

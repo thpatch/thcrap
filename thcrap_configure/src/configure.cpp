@@ -200,6 +200,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	progress_state_t state;
 
 	strings_mod_init();
+	log_async = false;
 	log_init(0);
 	console_init();
 
