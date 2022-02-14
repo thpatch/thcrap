@@ -183,6 +183,7 @@ void log_flush() {
 			log_string_t log_str = std::move(log_queue.front());
 			log_queue.pop();
 			log_print_real(log_str);
+			free((void*)log_str.str);
 		}
 	LeaveCriticalSection(&queue_cs);
 	}
