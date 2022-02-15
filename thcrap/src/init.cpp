@@ -297,6 +297,7 @@ int thcrap_init(const char *run_cfg)
 	SetCurrentDirectory(dll_dir);
 
 	globalconfig_init();
+	exception_load_config();
 	log_init(globalconfig_get_boolean("console", false));
 
 	runconfig_load(json_loads(run_cfg, 0, nullptr), RUNCFG_STAGE_DEFAULT);

@@ -214,6 +214,9 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern bool globalconfig_get_boolean([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string key, bool default_value);
 
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void exception_load_config();
+
         // log
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void log_init(bool console);

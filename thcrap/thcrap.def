@@ -94,6 +94,7 @@ EXPORTS
 
 	thcrap_detour
 	thcrap_init
+	exception_load_config
 
 	BP_init_next_stage
 	BP_runtime_apply_stage_by_name

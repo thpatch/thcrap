@@ -278,12 +278,6 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
-	if (can_overwrite) {
-		size_t exception_detail = json_object_get_eval_int_default(file, "exception_detail", 1, JEVAL_STRICT);
-		if (exception_detail > UINT8_MAX) exception_detail = UINT8_MAX;
-		set_exception_detail((uint8_t)exception_detail);
-	}
-
 	value = json_object_get(file, "latest");
 	if (value && (can_overwrite || run_cfg.latest.empty())) {
 		json_t *latest_entry;

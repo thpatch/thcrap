@@ -38,6 +38,7 @@ namespace thcrap_configure_v3
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             ThcrapDll.globalconfig_init();
+            ThcrapDll.exception_load_config();
             ThcrapDll.log_init(ThcrapDll.globalconfig_get_boolean("console", false));
 
             var startUrl = "https://srv.thpatch.net/";

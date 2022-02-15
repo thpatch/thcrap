@@ -26,11 +26,7 @@ enum ThExceptionDetailLevel : uint8_t {
 	Extreme		= 0b11111111  // All possible information
 };
 
-static uint8_t exception_detail_level = ThExceptionDetailLevel::Full;
-
-void set_exception_detail(uint8_t detail_level) {
-	exception_detail_level = detail_level;
-}
+static uint8_t exception_detail_level = ThExceptionDetailLevel::Basic;
 
 #pragma optimize("y", off)
 static void log_print_context(CONTEXT* ctx)
@@ -1090,4 +1086,9 @@ LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 void exception_init(void)
 {
 	AddVectoredExceptionHandler(0, exception_filter);
+}
+
+void exception_load_config()
+{
+	exception_detail_level = (uint8_t)globalconfig_get_integer("exception_detail", ThExceptionDetailLevel::Basic);
 }
