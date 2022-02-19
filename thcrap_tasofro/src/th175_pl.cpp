@@ -10,6 +10,8 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 
+static const char *STAGE_NAME_COMMAND = u8",ステージ見出し,";
+
 static void copy_line(const char*& file_in, const char *file_in_end, char*& file_out)
 {
 	const char *search_end = std::find(file_in, file_in_end, '\n');
@@ -58,6 +60,36 @@ static void patch_text_line(const char*& file_in, const char *file_in_end, char*
 	copy_line(file_in, file_in_end, file_out);
 }
 
+static void patch_stage_name(const char*& file_in, const char *file_in_end, char*& file_out, json_t *rep_obj)
+{
+	if (!rep_obj) {
+		copy_line(file_in, file_in_end, file_out);
+		return;
+	}
+
+	json_t *value;
+	std::string rep;
+	json_flex_array_foreach_scoped(size_t, i, rep_obj, value) {
+		if (!rep.empty()) {
+			rep += "\n";
+		}
+		rep += json_string_value(value);
+	}
+	if (rep.empty()) {
+		copy_line(file_in, file_in_end, file_out);
+		return;
+	}
+
+	// Skip original text in input
+	file_in = std::find(file_in, file_in_end, '\n');
+	if (file_in != file_in_end) file_in++;
+
+	strcpy(file_out, STAGE_NAME_COMMAND); file_out += strlen(STAGE_NAME_COMMAND);
+	*file_out = '"'; file_out++;
+	file_out = std::copy(rep.begin(), rep.end(), file_out);
+	strcpy(file_out, "\"\r\n"); file_out += 3;
+}
+
 int patch_th175_pl(void *file_inout, size_t, size_t size_in, const char *, json_t *patch)
 {
 	if (!patch) {
@@ -73,7 +105,11 @@ int patch_th175_pl(void *file_inout, size_t, size_t size_in, const char *, json_
 
 	unsigned int line_num = 1;
 	while (file_in < file_in_end) {
-		if (*file_in != '"') {
+		if (strncmp(file_in, STAGE_NAME_COMMAND, strlen(STAGE_NAME_COMMAND)) == 0) {
+			patch_stage_name(file_in, file_in_end, file_out, json_object_get(patch, "stagename"));
+			continue;
+		}
+		else if (*file_in != '"') {
 			copy_line(file_in, file_in_end, file_out);
 			continue;
 		}
