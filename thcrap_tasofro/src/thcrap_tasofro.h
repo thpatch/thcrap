@@ -68,4 +68,7 @@ int patch_th175_pl_ed(void *file_inout, size_t size_out, size_t size_in, const c
 
 #ifdef __cplusplus
 }
+
+std::string parse_ruby(const std::string& in, const char *out_ruby_tag = "\\R[");
+
 #endif

@@ -204,23 +204,13 @@ std::string TasofroPl::ALine::quote(const std::string& in) const
 			}
 			out += "\"\"";
 		}
-		else if (in.compare(i, 7, "{{ruby|") == 0) {
-			i += 7;
-			out += "\\R[";
-			while (i < in.size() && in.compare(i, 2, "}}") != 0) {
-				out += in[i];
-				i++;
-			}
-			out += ']';
-			i++; // Actually i += 2, because it will be incremented once again in the for loop.
-		}
 		else {
 			out += in[i];
 		}
 	}
 	out += '"';
 
-	return out;
+	return parse_ruby(out);
 }
 
 const std::string& TasofroPl::ALine::get(int n) const

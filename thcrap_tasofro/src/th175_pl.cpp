@@ -79,6 +79,7 @@ static void patch_stage_name(const char*& file_in, const char *file_in_end, char
 		copy_line(file_in, file_in_end, file_out);
 		return;
 	}
+	rep = parse_ruby(rep, "\\\\R[");
 
 	// Skip original text in input
 	file_in = std::find(file_in, file_in_end, '\n');
@@ -130,6 +131,7 @@ int patch_th175_pl(void *file_inout, size_t, size_t size_in, const char *, json_
 			}
 			rep_string += json_string_value(value);
 		}
+		rep_string = parse_ruby(rep_string);
 		patch_text_line(file_in, file_in_end, file_out, rep_string);
 	}
 
