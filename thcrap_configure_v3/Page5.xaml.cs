@@ -24,6 +24,16 @@ namespace thcrap_configure_v3
     public partial class Page5 : UserControl
     {
         bool? isUTLPresent = null;
+        GlobalConfig config = null;
+
+        [Flags]
+        public enum ShortcutDestinations
+        {
+            Desktop      = 1,
+            StartMenu    = 2,
+            GamesFolder  = 4,
+            ThcrapFolder = 8,
+        }
 
         public Page5()
         {
@@ -37,6 +47,17 @@ namespace thcrap_configure_v3
 
             if (File.Exists("bin\\Universal THCRAP Launcher.exe"))
                 warningImage.Visibility = Visibility.Collapsed;
+
+            if (config == null)
+            {
+                config = new GlobalConfig();
+                ShortcutDestinations dest = config.default_shortcut_destinations;
+
+                checkboxDesktop.IsChecked      = (dest & ShortcutDestinations.Desktop) != 0;
+                checkboxStartMenu.IsChecked    = (dest & ShortcutDestinations.StartMenu) != 0;
+                checkboxGamesFolder.IsChecked  = (dest & ShortcutDestinations.GamesFolder) != 0;
+                checkboxThcrapFolder.IsChecked = (dest & ShortcutDestinations.ThcrapFolder) != 0;
+            }
         }
 
         private void checkbox_Checked(object sender, RoutedEventArgs e)
@@ -77,6 +98,13 @@ namespace thcrap_configure_v3
 
         public void Leave(string configName, IEnumerable<ThcrapDll.games_js_entry> games)
         {
+            config.default_shortcut_destinations =
+                (checkboxDesktop.IsChecked      == true ? ShortcutDestinations.Desktop      : 0) |
+                (checkboxStartMenu.IsChecked    == true ? ShortcutDestinations.StartMenu    : 0) |
+                (checkboxGamesFolder.IsChecked  == true ? ShortcutDestinations.GamesFolder  : 0) |
+                (checkboxThcrapFolder.IsChecked == true ? ShortcutDestinations.ThcrapFolder : 0);
+            config.Save();
+
             if (checkboxDesktop.IsChecked == true)
                 CreateShortcuts(configName, games, ThcrapDll.ShortcutsDestination.SHDESTINATION_DESKTOP);
             if (checkboxStartMenu.IsChecked == true)

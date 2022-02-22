@@ -212,7 +212,13 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void globalconfig_init();
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool globalconfig_get_boolean([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string key, bool default_value);
+        public static extern bool globalconfig_get_boolean(string key, bool default_value);
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int globalconfig_set_boolean(string key, bool value);
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern long globalconfig_get_integer(string key, long default_value);
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern int globalconfig_set_integer(string key, long value);
 
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void exception_load_config();
