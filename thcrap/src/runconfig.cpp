@@ -271,8 +271,10 @@ void runconfig_load(json_t *file, int flags)
 			run_cfg.dat_dump = "";
 		}
 	}
+	
 
-	json_flex_array_foreach_scoped(size_t, i, json_object_get(file, "runcfg_fn"), value) {
+	json_t* filenames = json_object_get(file, "runcfg_fn");
+	json_flex_array_foreach_scoped(size_t, i, filenames, value) {
 		if (json_is_string(value)) {
 			run_cfg.runcfg_fn.push_back(json_string_value(value));
 		}
@@ -360,12 +362,13 @@ void runconfig_print()
 			log_printf("    '%s'\n", it.c_str());
 		}
 	}
-	log_printf("  console: %s\n",      BoolStr(run_cfg.console));
-	log_printf("  thcrap dir: '%s'\n", run_cfg.thcrap_dir.c_str());
-	log_printf("  game id: '%s'\n",    run_cfg.game.c_str());
-	log_printf("  build id: '%s'\n",   run_cfg.build.c_str());
-	log_printf("  game title: '%s'\n", run_cfg.title.c_str());
-	log_printf("  update URL: '%s'\n", run_cfg.update_url.c_str());
+	log_printf("  console: %s\n",        BoolStr(run_cfg.console));
+	log_printf("  thcrap dir: '%s'\n",   run_cfg.thcrap_dir.c_str());
+	log_printf("  game id: '%s'\n",      run_cfg.game.c_str());
+	log_printf("  build id: '%s'\n",     run_cfg.build.c_str());
+	log_printf("  game title: '%s'\n",   run_cfg.title.c_str());
+	log_printf("  command line: '%s'\n", run_cfg.cmdline.c_str());
+	log_printf("  update URL: '%s'\n",   run_cfg.update_url.c_str());
 	log_print ("  latest:");
 	for (const std::string& it : run_cfg.latest) {
 		log_printf(" '%s'", it.c_str());
@@ -399,6 +402,7 @@ void runconfig_free()
 	run_cfg.runcfg_fn.clear();
 	run_cfg.game.clear();
 	run_cfg.build.clear();
+	run_cfg.cmdline.clear();
 	run_cfg.title.clear();
 	run_cfg.update_url.clear();
 	run_cfg.latest.clear();

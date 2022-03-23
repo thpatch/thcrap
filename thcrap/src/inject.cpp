@@ -268,7 +268,21 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 		PathRemoveFileSpecW(inj_dir);
 		PathAddBackslashW(inj_dir);
 
-		ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", run_cfg, (strlen(run_cfg) + 1));
+		const size_t run_cfg_len = strlen(run_cfg) + 1;
+
+		// Allow relative directory names
+		if (*run_cfg != '{' && PathIsRelativeA(run_cfg)) {
+			const size_t cur_dir_len = GetCurrentDirectoryA(0, NULL);
+			const size_t total_size = run_cfg_len + cur_dir_len;
+			char* param = (char*)malloc(total_size);
+			GetCurrentDirectoryA(cur_dir_len, param);
+			memcpy(param + cur_dir_len, run_cfg, run_cfg_len);
+			ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", param, total_size);
+			free(param);
+		}
+		else {
+			ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", run_cfg, run_cfg_len * 2);
+		}
 	}
 	return ret;
 }

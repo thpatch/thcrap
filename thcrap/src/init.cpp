@@ -300,7 +300,12 @@ int thcrap_init(const char *run_cfg)
 	exception_load_config();
 	log_init(globalconfig_get_boolean("console", false));
 
-	runconfig_load(json_loads(run_cfg, 0, nullptr), RUNCFG_STAGE_DEFAULT);
+	if (*run_cfg != '{') {
+		runconfig_load_from_file(run_cfg);
+	} else {
+		runconfig_load(json_loads(run_cfg, 0, nullptr), RUNCFG_STAGE_DEFAULT);
+	}
+
 	runconfig_thcrap_dir_set(dll_dir);
 
 	stack_show_missing();
