@@ -41,7 +41,7 @@ void stringlocs_reparse(void)
 	AcquireSRWLockExclusive(&stringlocs_srwlock);
 	stringlocs.clear();
 
-	json_object_foreach(new_obj, key, val) {
+	json_object_foreach_fast(new_obj, key, val) {
 		// TODO: For now, we're nagging developers with one message box for
 		// every single parse error. It'd certainly be better if we gathered
 		// all errors into a single message box to be printed at the end of
@@ -468,8 +468,7 @@ void strings_mod_detour(void)
 void strings_mod_repatch(json_t *files_changed)
 {
 	const char *key;
-	const json_t *val;
-	json_object_foreach(files_changed, key, val) {
+	json_object_foreach_key(files_changed, key) {
 		if(strstr(key, "/stringlocs.")) {
 			stringlocs_reparse();
 			break;

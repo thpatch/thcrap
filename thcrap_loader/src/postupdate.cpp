@@ -46,9 +46,8 @@ static void do_update_repo_paths(const char *run_cfg_fn, const char *old_path, c
 		return;
 	}
 
-	size_t i;
 	json_t *patch_info;
-	json_array_foreach(patches, i, patch_info) {
+	json_array_foreach_scoped(size_t, i, patches, patch_info) {
 		const char *archive = json_object_get_string(patch_info, "archive");
 		VLA(char, new_archive, strlen(archive) + strlen(new_path) + 1);
 
@@ -86,9 +85,8 @@ static void do_fix_repo_paths_post_restructuring(const char *run_cfg_fn, const c
 	}
 
 	size_t broken_path_len = strlen(broken_path);
-	size_t i;
 	json_t *patch_info;
-	json_array_foreach(patches, i, patch_info) {
+	json_array_foreach_scoped(size_t, i, patches, patch_info) {
 		const char *archive = json_object_get_string(patch_info, "archive");
 		const char *new_archive = archive;
 
@@ -274,9 +272,8 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 		json_t *exist = json_object_get(update_detect, "exist");
 		if (exist) {
 			// If all these files are here, we want to perform the update
-			size_t i;
 			json_t *it;
-			json_flex_array_foreach(exist, i, it) {
+			json_flex_array_foreach_scoped(size_t, i, exist, it) {
 				logs.push_back(std::string("[update] Detect test - checking if '") + json_string_value(it) + "' exists.");
 				if (PathFileExistsU(json_string_value(it)) == FALSE) {
 					// File don't exist - cancel the update
@@ -288,9 +285,8 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 		json_t *dont_exist = json_object_get(update_detect, "dont_exist");
 		if (dont_exist) {
 			// If none of these files are here, we want to perform the update
-			size_t i;
 			json_t *it;
-			json_flex_array_foreach(dont_exist, i, it) {
+			json_flex_array_foreach_scoped(size_t, i, dont_exist, it) {
 				logs.push_back(std::string("[update] Detect test - checking if '") + json_string_value(it) + "' doesn't exist.");
 				if (PathFileExistsU(json_string_value(it)) != FALSE) {
 					// File exists - cancel the update
@@ -305,9 +301,8 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 
 	if (update_delete) {
 		logs.push_back("[update] delete field present. Running deletion task...");
-		size_t i;
 		json_t *it;
-		json_flex_array_foreach(update_delete, i, it) {
+		json_flex_array_foreach_scoped(size_t, i, update_delete, it) {
 			// No error checking. Failure to remove a file tend to not be a critical error,
 			// it just keeps some clutter around forever.
 			const char* file = json_string_value(it);
@@ -339,7 +334,7 @@ static bool do_update(std::vector<std::string>& logs, json_t *update)
 		logs.push_back("[update] move field present. Running move task...");
 		const char *key;
 		json_t *value;
-		json_object_foreach(update_move, key, value) {
+		json_object_foreach_fast(update_move, key, value) {
 			if (!do_move(logs, key, json_string_value(value))) {
 				return false;
 			}
@@ -443,9 +438,8 @@ bool update_finalize(std::vector<std::string>& logs)
 		return false;
 	}
 
-	size_t i;
 	json_t *update;
-	json_array_foreach(update_list, i, update) {
+	json_array_foreach_scoped(size_t, i, update_list, update) {
 		logs.push_back("[update] Running update " + std::to_string(i) + "...");
 		if (do_update(logs, update) == false) {
 			logs.push_back("[update] Update " + std::to_string(i) + " failed");

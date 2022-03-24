@@ -38,7 +38,7 @@ repo_t *RepoLoadJson(json_t *repo_js)
 			const char* patch_id;
 			json_t* patch_title;
 			repo_patch_t* patch = repo->patches;
-			json_object_foreach(patches, patch_id, patch_title) {
+			json_object_foreach_fast(patches, patch_id, patch_title) {
 				patch->patch_id = strdup(patch_id);
 				patch->title = json_string_copy(patch_title);
 				++patch;

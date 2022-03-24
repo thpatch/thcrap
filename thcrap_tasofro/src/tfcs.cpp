@@ -172,9 +172,8 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 			else if (json_is_array(patch_col)) {
 				line[col].clear();
 				bool add_eol = false;
-				size_t i;
 				json_t *it;
-				json_array_foreach(patch_col, i, it) {
+				json_array_foreach_scoped(size_t, i, patch_col, it) {
 					if (add_eol) {
 						line[col] += "\n";
 					}

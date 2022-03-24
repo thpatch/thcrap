@@ -32,9 +32,8 @@ int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const cha
 		if (json_flex_array_size(lines) > 0) {
 			file_out += '"';
 
-			size_t ind;
 			json_t *val;
-			json_flex_array_foreach(lines, ind, val) {
+			json_flex_array_foreach_scoped(size_t, ind, lines, val) {
 				if (ind > 0) {
 					file_out += "\\n";
 				}

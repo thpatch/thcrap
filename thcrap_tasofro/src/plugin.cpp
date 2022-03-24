@@ -27,7 +27,7 @@ extern "C" int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
 		json_t *binhacks = json_object_get(cur_patch, "binhacks");
 		const char *key;
 		json_t *value;
-		json_object_foreach(binhacks, key, value) {
+		json_object_foreach_fast(binhacks, key, value) {
 			binhack_t binhack;
 			if (binhack_from_json(key, value, &binhack)) {
 				binhacks_apply(&binhack, 1, *plugin, NULL);

@@ -49,7 +49,7 @@ json_t* bgm_generator(std::unordered_map<std::string, json_t*> in_data, const st
 
 	// Extract music names
 	const char *game = runconfig_game_get();
-	json_object_foreach(themes, key, value) {
+	json_object_foreach_fast(themes, key, value) {
 		if (!game || strncmp(key, game, strlen(game)) != 0 || key[strlen(game)] != '_') {
 			continue;
 		}
@@ -70,14 +70,13 @@ json_t* bgm_generator(std::unordered_map<std::string, json_t*> in_data, const st
 
 	if (comment_col && musiccmt) {
 		// Extract music comments
-		json_object_foreach(musiccmt, key, value) {
+		json_object_foreach_fast(musiccmt, key, value) {
 			size_t track = atoi(key);
 			json_t *line = json_object_get_create(ret, std::to_string(track).c_str(), JSON_OBJECT);
 
 			std::string comment;
-			size_t i;
 			json_t *comment_line;
-			json_flex_array_foreach(value, i, comment_line) {
+			json_flex_array_foreach_scoped(size_t, i, value, comment_line) {
 				if (i != 0) {
 					comment += "\n";
 				}

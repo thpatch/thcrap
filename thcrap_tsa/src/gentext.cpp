@@ -59,9 +59,8 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 		size_t key_new_len = value_len * json_flex_array_size(ids) + 1;
 		VLA(char, key_new, key_new_len);
 		char *p = key_new;
-		size_t i;
 		json_t *id;
-		json_flex_array_foreach(ids, i, id) {
+		json_flex_array_foreach_scoped(size_t, i, ids, id) {
 			char id_str[value_len + 1];
 			const char *q = id_str;
 			size_t id_val = json_immediate_value(id, regs);
@@ -80,7 +79,6 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 	}
 	if(strs) {
 		json_t *id_val = json_object_get(gc->file, gc->key);
-		size_t i;
 		json_t *str;
 
 		// More straightforward if we ensure that everything below is valid.
@@ -88,7 +86,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 			return 1;
 		}
 
-		json_flex_array_foreach(strs, i, str) {
+		json_flex_array_foreach_scoped(size_t, i, strs, str) {
 			const char **target = (const char **)json_pointer_value(str, regs);
 			const char *line = json_flex_array_get_string_safe(id_val, gc->line++);
 			assert(line);
@@ -107,7 +105,7 @@ int gentext_mod_init(void)
 	json_t *breakpoints = json_object_get(runconfig_json_get(), "breakpoints");
 	const char *key;
 	json_t *val;
-	json_object_foreach(breakpoints, key, val) {
+	json_object_foreach_fast(breakpoints, key, val) {
 		if(!strncmp(key, prefix, prefix_len)) {
 			const char *file = json_object_get_string(val, "file");
 			if(!jsondata_game_get(file)) {

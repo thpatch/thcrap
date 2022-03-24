@@ -110,7 +110,7 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 	if (json_is_object(map)) {
 		ret = json_object();
 		const char *key;
-		json_object_foreach(map, key, it) {
+		json_object_foreach_fast(map, key, it) {
 			if (json_is_object(it) || json_is_array(it)) {
 				json_object_set_new(ret, key, json_map_patch(it, in));
 			}
@@ -124,8 +124,7 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 	}
 	else if (json_is_array(map)) {
 		ret = json_array();
-		size_t i;
-		json_array_foreach(map, i, it) {
+		json_array_foreach_scoped(size_t, i, map, it) {
 			if (json_is_object(it) || json_is_array(it)) {
 				json_array_append_new(ret, json_map_patch(it, in));
 			}

@@ -193,8 +193,7 @@ game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *gam
 	state.size_min = -1;
 	state.size_max = 0;
 	const char *key;
-	json_t *val;
-	json_object_foreach(sizes, key, val) {
+	json_object_foreach_key(sizes, key) {
 		size_t cur_size = atoi(key);
 
 		if (cur_size < state.size_min)

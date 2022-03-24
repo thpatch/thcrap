@@ -108,7 +108,7 @@ static void runconfig_stage_load(json_t *stage_json)
 	}
 
 	json_t *codecaves = json_object_get(stage_json, "codecaves");
-	json_object_foreach(codecaves, key, value) {
+	json_object_foreach_fast(codecaves, key, value) {
 		if (strcmp(key, "protection") == 0) {
 			continue;
 		}
@@ -126,7 +126,7 @@ static void runconfig_stage_load(json_t *stage_json)
 	}
 
 	json_t *binhacks = json_object_get(stage_json, "binhacks");
-	json_object_foreach(binhacks, key, value) {
+	json_object_foreach_fast(binhacks, key, value) {
 		binhack_t binhack;
 		if (!binhack_from_json(key, value, &binhack)) {
 			continue;
@@ -135,7 +135,7 @@ static void runconfig_stage_load(json_t *stage_json)
 	}
 
 	json_t *breakpoints = json_object_get(stage_json, "breakpoints");
-	json_object_foreach(breakpoints, key, value) {
+	json_object_foreach_fast(breakpoints, key, value) {
 
 		breakpoint_t breakpoint;
 		if (!breakpoint_from_json(key, value, &breakpoint)) {
@@ -205,7 +205,7 @@ int BP_runtime_apply_stage_by_expr(x86_reg_t *regs, json_t *bp_info) {
 		json_t* stage_list = json_object_get(bp_info, "stages_list");
 		json_t* stage_data;
 		const char* list_expr;
-		json_object_foreach(stage_list, list_expr, stage_data) {
+		json_object_foreach_fast(stage_list, list_expr, stage_data) {
 			size_t stage_result;
 			if (eval_expr(list_expr, '\0', &stage_result, regs, NULL, NULL)) {
 				if (lookup_value != stage_result) {
@@ -301,7 +301,7 @@ void runconfig_load(json_t *file, int flags)
 	if (json_t* value = json_object_get(file, "detours")) {
 		const char* dll_name;
 		json_t* detours;
-		json_object_foreach(value, dll_name, detours) {
+		json_object_foreach_fast(value, dll_name, detours) {
 			if (!detours) continue;
 			switch (json_typeof(detours)) {
 				case JSON_NULL:
@@ -310,7 +310,7 @@ void runconfig_load(json_t *file, int flags)
 				case JSON_OBJECT: {
 					const char* func_name;
 					json_t* func_json;
-					json_object_foreach(detours, func_name, func_json) {
+					json_object_foreach_fast(detours, func_name, func_json) {
 						if (json_is_null(func_json)) {
 							detour_disable(dll_name, func_name);
 						}

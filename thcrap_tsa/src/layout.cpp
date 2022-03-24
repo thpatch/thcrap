@@ -595,7 +595,6 @@ BOOL WINAPI layout_TextOutU(
 	}
 
 	if (ruby_shift_debug) {
-		size_t i;
 		json_t *val;
 		static auto pen = CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
 		auto hPrevObject = SelectObject(hdc, pen);
@@ -607,7 +606,7 @@ BOOL WINAPI layout_TextOutU(
 		};
 		draw_at_x(0);
 		draw_at_x(orig_x);
-		json_array_foreach(Layout_Tabs, i, val) {
+		json_array_foreach_scoped(size_t, i, Layout_Tabs, val) {
 			draw_at_x((LONG)json_integer_value(val));
 		}
 		SelectObject(hdc, hPrevObject);
@@ -693,14 +692,13 @@ int widest_string(x86_reg_t *regs, json_t *bp_info)
 	int correction_summand = json_object_get_immediate(bp_info, regs, "correction_summand");
 	// ----------
 	int final_w = 0;
-	size_t i = 0;
 	size_t font_id;
 	json_t *val;
 
 	assert(font_id_obj && strs);
 	font_id = json_immediate_value(font_id_obj, regs);
 
-	json_flex_array_foreach(strs, i, val) {
+	json_flex_array_foreach_scoped(size_t, i, strs, val) {
 		const char *str = (const char*)json_immediate_value(val, regs);
 		assert(str);
 		int w = GetTextExtentForFontID(str, font_id) * 2;

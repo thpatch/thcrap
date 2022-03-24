@@ -55,17 +55,15 @@ size_t get_bmp_font_size(const char *fn, json_t *patch, size_t)
 void add_json_file(char *chars_list, int& chars_list_count, json_t *file)
 {
 	if (json_is_object(file)) {
-		const char *key;
 		json_t *it;
-		json_object_foreach(file, key, it) {
+		json_object_foreach_value(file, it) {
 			json_incref(it);
 			add_json_file(chars_list, chars_list_count, it);
 		}
 	}
 	else if (json_is_array(file)) {
-		size_t i;
 		json_t *it;
-		json_array_foreach(file, i, it) {
+		json_array_foreach_scoped(size_t, i, file, it) {
 			json_incref(it);
 			add_json_file(chars_list, chars_list_count, it);
 		}
@@ -171,9 +169,8 @@ int fill_chars_list_from_files(char *chars_list, json_t *files)
 {
 	int chars_list_count = 0;
 
-	size_t i;
 	json_t *it;
-	json_flex_array_foreach(files, i, it) {
+	json_flex_array_foreach_scoped(size_t, i, files, it) {
 		const char *fn = json_string_value(it);
 		if (!fn) {
 			// Do nothing

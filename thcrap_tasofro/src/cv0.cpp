@@ -205,9 +205,8 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 	this->nb_lines = 0;
 
 	this->content = "";
-	size_t json_line_num;
 	json_t *json_line;
-	json_array_foreach(patch, json_line_num, json_line) {
+	json_array_foreach_scoped(size_t, json_line_num, patch, json_line) {
 		if (this->parseCommand(patch, json_line_num, textbox_size) == true) {
 			continue;
 		}

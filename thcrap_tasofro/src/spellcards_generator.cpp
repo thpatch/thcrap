@@ -53,7 +53,7 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*> in_data, 
 	const char *key;
 	json_t *value;
 	int max_spell_id = -1;
-	json_object_foreach(spells, key, value) {
+	json_object_foreach_fast(spells, key, value) {
 		if (strncmp(key, "story-", strlen("story-")) != 0) {
 			continue;
 		}
@@ -157,7 +157,7 @@ json_t* spell_player_generator(std::unordered_map<std::string, json_t*> in_data,
 	json_t *ret = json_object();
 	const char *key;
 	json_t *value;
-	json_object_foreach(spells, key, value) {
+	json_object_foreach_fast(spells, key, value) {
 		if (strncmp(key, "player-", strlen("player-")) != 0) {
 			continue;
 		}
@@ -223,7 +223,7 @@ json_t* spell_char_select_generator(std::unordered_map<std::string, json_t*> in_
 	json_t *spell_translation = NULL;
 	const char *key;
 	json_t *value;
-	json_object_foreach(spells, key, value) {
+	json_object_foreach_fast(spells, key, value) {
 		if (strncmp(key, "player-", strlen("player-")) != 0) {
 			continue;
 		}

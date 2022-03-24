@@ -208,7 +208,7 @@ int fontrules_apply(LOGFONTA *lf)
 	if(!lf) {
 		return -1;
 	}
-	json_object_foreach(fontrules, key, val) {
+	json_object_foreach_fast(fontrules, key, val) {
 		LOGFONTA rule = {};
 		int rule_score = fontrule_parse(&rule, key);
 		int priority = rule_score >= rep_score;

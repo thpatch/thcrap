@@ -155,10 +155,9 @@ char **games_json_to_array(json_t *games)
 {
     char **array;
     const char *key;
-    json_t *value;
 
     array = strings_array_create();
-    json_object_foreach(games, key, value) {
+    json_object_foreach_key(games, key) {
         array = strings_array_add(array, key);
     }
     return array;

@@ -33,9 +33,8 @@ static void patch_SQFunctionProto(Nut::SQFunctionProto *func, json_t *add_litera
 {
 	// Add literals to the function. They can be used by instructions in insert_instructions and set_instructions.
 	if (add_literals) {
-		size_t i;
 		json_t *value;
-		json_flex_array_foreach(add_literals, i, value) {
+		json_flex_array_foreach_scoped(size_t, i, add_literals, value) {
 			func->addLiteral(json_string_value(value));
 		}
 	}
@@ -44,9 +43,8 @@ static void patch_SQFunctionProto(Nut::SQFunctionProto *func, json_t *add_litera
 	if (remove_instructions) {
 		Nut::vector *instructions = dynamic_cast<Nut::vector*>((*func)["Instructions"]);
 
-		size_t i;
 		json_t *value;
-		json_flex_array_foreach(remove_instructions, i, value) {
+		json_flex_array_foreach_scoped(size_t, i, remove_instructions, value) {
 			size_t line = (size_t)json_integer_value(value);
 			if (line >= instructions->size()) {
 				log_printf("Act/Nut: insert_instructions: instruction number too big (%u)\n", line);
@@ -68,7 +66,7 @@ static void patch_SQFunctionProto(Nut::SQFunctionProto *func, json_t *add_litera
 
 		const char *key;
 		json_t *value;
-		json_object_foreach(replace_instructions, key, value) {
+		json_object_foreach_fast(replace_instructions, key, value) {
 			ActNut::Object *instruction = (*instructions)[key];
 			if (!instruction) {
 				log_printf("Act/Nut: set_instructions: instruction not found (%s)\n", key);
@@ -86,9 +84,8 @@ static void patch_SQFunctionProto(Nut::SQFunctionProto *func, json_t *add_litera
 		size_t offset_for_instructions = 0;
 
 		json_object_numkeys_foreach(insert_instructions, [func, &offset_for_instructions](int instruction_number, json_t *instruction_flexarray) {
-			size_t i;
 			json_t *instruction;
-			json_flex_array_foreach(instruction_flexarray, i, instruction) {
+			json_flex_array_foreach_scoped(size_t, i, instruction_flexarray, instruction) {
 				func->insertInstruction(instruction_number + offset_for_instructions, json_string_value(instruction));
 				offset_for_instructions++;
 			}
@@ -117,10 +114,9 @@ static void patch_actnut_as_object(ActNut::Object* elem, json_t *json)
 static void patch_actnut_as_string(ActNut::Object *elem, json_t *json)
 {
 	std::string text;
-	size_t i;
 	json_t *line;
 
-	json_flex_array_foreach(json, i, line) {
+	json_flex_array_foreach_scoped(size_t, i, json, line) {
 		if (text.length() > 0) {
 			text += "\n";
 		}
@@ -138,7 +134,7 @@ int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, js
 
 	const char *key;
 	json_t *value;
-	json_object_foreach(patch, key, value) {
+	json_object_foreach_fast(patch, key, value) {
 		ActNut::Object *child;
 		if (strcmp(key, "/") == 0) {
 			child = actnutobj;

@@ -593,15 +593,14 @@ int BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
 	const char *slotstr;
 	json_t *image_flarr;
 
-	json_object_foreach(images, slotstr, image_flarr) {
-		size_t priority;
+	json_object_foreach_fast(images, slotstr, image_flarr) {
 		json_t *image_desc;
 		textimage_t *image_last = nullptr;
 		auto ss = sprite_slot_t::parse(slotstr);
 		if(ss.type == SS_ERROR) {
 			continue;
 		}
-		json_flex_array_foreach(image_flarr, priority, image_desc) {
+		json_flex_array_foreach_scoped(size_t, priority, image_flarr, image_desc) {
 			switch(json_typeof(image_desc)) {
 			case JSON_OBJECT:
 				ss.image = textimage_t::create(
@@ -646,13 +645,12 @@ int BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	[groups] {
-		size_t group_num;
 		json_t *group_j;
 		if(!json_is_array(groups)) {
 			return;
 		}
 		groups_clear();
-		json_array_foreach(groups, group_num, group_j) {
+		json_array_foreach_scoped(size_t, group_num, groups, group_j) {
 			auto group_size = json_array_size(group_j);
 			if(group_size < 2) {
 				continue;
@@ -727,9 +725,8 @@ int BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 	// ----------
-	size_t i;
 	json_t *val;
-	json_flex_array_foreach(slots, i, val) {
+	json_flex_array_foreach_scoped(size_t, i, slots, val) {
 		auto sr = sprite_runtime_get(json_string_value(val));
 		if(!sr || !sr->is_ours) {
 			return 1;
@@ -767,8 +764,7 @@ void textimage_mod_repatch(json_t *files_changed)
 		strcpy(base_fn, image->fn);
 
 		const char *changed_fn;
-		json_t *changed_val;
-		json_object_foreach(files_changed, changed_fn, changed_val) {
+		json_object_foreach_key(files_changed, changed_fn) {
 			if(strstr(changed_fn, check_fn)) {
 				image->reload(true);
 			}

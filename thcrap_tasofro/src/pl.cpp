@@ -369,9 +369,8 @@ void TasofroPl::AText::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 	this->_patchInit(file, file_it);
 
 	this->fields[0] = "";
-	size_t json_line_num;
 	json_t *json_line;
-	json_array_foreach(patch, json_line_num, json_line) {
+	json_array_foreach_scoped(size_t, json_line_num, patch, json_line) {
 		if (this->parseCommand(patch, json_line_num) == true) {
 			continue;
 		}

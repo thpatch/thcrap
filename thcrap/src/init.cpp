@@ -337,12 +337,10 @@ int thcrap_init(const char *run_cfg)
 	/*
 	{
 		json_t *patches = json_object_get(run_cfg, "patches");
-		size_t i = 1;
 		json_t *patch_info;
 
-		json_array_foreach(patches, i, patch_info) {
-			const char *archive = json_object_get_string(patch_info, "archive");
-			if(archive) {
+		json_array_foreach_scoped(size_t, i, patches, patch_info) {
+			if(const char* archive = json_object_get_string(patch_info, "archive")) {
 				plugins_load(archive);
 			}
 		}

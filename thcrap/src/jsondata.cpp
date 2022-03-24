@@ -78,8 +78,7 @@ json_t* jsondata_game_get(const char* fn) {
 
 void jsondata_mod_repatch(json_t* files_changed) {
 	const char* fn;
-	json_t* json;
-	json_object_foreach(files_changed, fn, json) {
+	json_object_foreach_key(files_changed, fn) {
 		auto existing = jsondata.find(fn);
 		if (existing != jsondata.end()) {
 			existing->second.emplace_front(stack_json_resolve(fn, NULL));

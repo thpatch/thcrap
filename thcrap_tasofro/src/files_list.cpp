@@ -170,9 +170,8 @@ void register_utf8_filename(const char* file)
 // iconv -f sjis fileslist.txt | sed -e 'y|¥/|\\\\|' | jq -Rs '. | split("\n") | sort' > fileslist.js
 int LoadFileNameListFromJson(json_t *fileslist)
 {
-	size_t i;
 	json_t *file;
-	json_array_foreach(fileslist, i, file) {
+	json_array_foreach_scoped(size_t, i, fileslist, file) {
 		register_utf8_filename(json_string_value(file));
 	}
 	return 0;

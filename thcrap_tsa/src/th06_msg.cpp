@@ -741,10 +741,9 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 				}
 				continue;
 			}
-			size_t line_i;
 			json_t *line;
 			
-			json_array_foreach(lines, line_i, line) {
+			json_array_foreach_scoped(size_t, line_i, lines, line) {
 				const char *line_str = json_string_value(line);
 				if (line_str) {
 					size_t new_line_len = strlen(line_str);

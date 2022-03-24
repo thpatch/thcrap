@@ -118,9 +118,8 @@ int nsml_init()
 	else if (game_id == TH123) {
 		set_resolve_chain_game(th123_resolve_chain_game);
 		json_t *list = stack_game_json_resolve("game_fallback_ignore_list.js", nullptr);
-		size_t i;
 		json_t *value;
-		json_array_foreach(list, i, value) {
+		json_array_foreach_scoped(size_t, i, list, value) {
 			game_fallback_ignore_list.insert(json_string_value(value));
 		}
 

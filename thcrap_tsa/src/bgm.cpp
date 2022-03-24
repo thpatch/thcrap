@@ -386,7 +386,7 @@ int loopmod_fmt()
 	json_t *loops = jsondata_game_get(LOOPMOD_FN.data());
 	const char *key;
 	const json_t *track_mod;
-	json_object_foreach(loops, key, track_mod) {
+	json_object_foreach_fast(loops, key, track_mod) {
 		modded += mod(key, track_mod);
 	}
 	json_decref(loops);
@@ -909,8 +909,7 @@ extern "C" TH_EXPORT void bgm_mod_repatch(json_t *files_changed)
 {
 	if(bgm_fmt) {
 		const char *fn;
-		json_t *val;
-		json_object_foreach(files_changed, fn, val) {
+		json_object_foreach_key(files_changed, fn) {
 			if(strstr(fn, LOOPMOD_FN.data())) {
 				loopmod_fmt();
 				break;

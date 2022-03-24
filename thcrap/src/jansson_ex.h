@@ -131,6 +131,21 @@ json_t* json_object_merge(json_t *old_obj, json_t *new_obj);
 
 // Return an alphabetically sorted JSON array of the keys in [object].
 json_t* json_object_get_keys_sorted(const json_t *object);
+
+#define json_object_foreach_fast(object, key, value) \
+    for (void* iter = json_object_iter(object); \
+		 iter ? (value = json_object_iter_value(iter)), (key = json_object_iter_key(iter)), 1 : 0; \
+		 iter = json_object_iter_next(object, iter))
+
+#define json_object_foreach_value(object, value) \
+    for (void* iter = json_object_iter(object); \
+		 iter ? (value = json_object_iter_value(iter)), 1 : 0; \
+		 iter = json_object_iter_next(object, iter))
+
+#define json_object_foreach_key(object, key) \
+	for (void* iter = json_object_iter(object); \
+		 iter ? (key = json_object_iter_key(iter)), 1 : 0; \
+		 iter = json_object_iter_next(object, iter))
 /// -------
 
 /// "Custom types"

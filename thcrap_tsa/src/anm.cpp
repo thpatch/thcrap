@@ -479,7 +479,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 
 	const char *key;
 	json_t *val_j;
-	json_object_foreach(changes_j, key, val_j) {
+	json_object_foreach_fast(changes_j, key, val_j) {
 		auto fail_key_syntax = [&]() {
 			FAIL(
 				": {\"changes\": {\"%s\"}",

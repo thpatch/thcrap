@@ -146,7 +146,7 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
 
     const char *fn;
     json_t *value;
-    json_object_foreach(*remoteFilesJs, fn, value) {
+    json_object_foreach_fast(*remoteFilesJs, fn, value) {
         json_t *localValue = json_object_get(*localFilesJs, fn);
         // Did someone simply drop a full files.js into a standalone
         // package that doesn't actually come with the files for
@@ -390,8 +390,8 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
 	    	}
 
 	    	size_t i;
-	    	json_t *patch_info;
-	    	json_array_foreach(json_object_get(*config, "patches"), i, patch_info) {
+            json_t *patch_info;
+            json_array_foreach(json_object_get(*config, "patches"), i, patch_info) {
 	    		patch_t patch = patch_init(json_object_get_string(patch_info, "archive"), patch_info, 0);
                 if (patch.id == nullptr) {
                     log_printf("Error loading %s/patch.js\n", json_object_get_string(patch_info, "archive"));
@@ -415,8 +415,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
     {
 	    ScopedJson games_js = json_load_file_report("config/games.js");
         const char *key;
-        json_t *value;
-        json_object_foreach(*games_js, key, value) {
+        json_object_foreach_key(*games_js, key) {
             games = strings_array_add(games, key);
         }
     }

@@ -390,8 +390,7 @@ void ascii_repatch()
 extern "C" TH_EXPORT void ascii_mod_repatch(json_t *files_changed)
 {
 	const char *fn;
-	json_t *val;
-	json_object_foreach(files_changed, fn, val) {
+	json_object_foreach_key(files_changed, fn) {
 		if(strstr(fn, "stringdefs.")) {
 			ascii_repatch();
 			break;

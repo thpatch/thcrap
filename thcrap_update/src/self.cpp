@@ -478,6 +478,9 @@ static self_result_t self_replace(zip_t *zip)
 		// If this fails, writing should fail too.
 		log_printf("Replacing engine...\n");
 		CreateDirectoryU(backup_dir, NULL);
+		// TODO: Can these be changed to not pass a return value
+		// to the foreach macros? It ends up invoking the function
+		// multiple times.
 		json_object_foreach(zip_list(zip), fn, val) {
 			int local_ret = self_move_to_dir(backup_dir, fn);
 			if(
@@ -537,7 +540,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	const json_t* value;
 	const char* netpath = nullptr;
 	auto target_version = latest_version;
-	json_object_foreach(branch_json, version_key, value) {
+	json_object_foreach_fast(branch_json, version_key, value) {
 		errno = 0;
 		uint32_t milestone = strtoul(version_key, NULL, 16);
 		// Check if the string isn't an hex

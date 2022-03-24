@@ -426,9 +426,8 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 		patch.fonts = new char*[array_size + 1];
 		patch.fonts[array_size] = NULL;
 		const char* font_fn;
-		json_t* val;
 		size_t i = 0;
-		json_object_foreach(fonts, font_fn, val) {
+		json_object_foreach_key(fonts, font_fn) {
 			patch.fonts[i++] = strdup(font_fn);
 		}
 	}
@@ -618,7 +617,7 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 void patch_opts_from_json(json_t *opts) {
 	const char *key;
 	json_t *j_val;
-	json_object_foreach(opts, key, j_val) {
+	json_object_foreach_fast(opts, key, j_val) {
 		if (!json_is_object(j_val)) {
 			log_printf("ERROR: invalid parameter for option %s\n", key);
 			continue;

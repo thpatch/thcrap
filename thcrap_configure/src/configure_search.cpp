@@ -159,8 +159,7 @@ json_t *sort_json(json_t *in)
 	std::vector<const char*> keys;
 
 	const char *key;
-	json_t *val;
-	json_object_foreach(in, key, val) {
+	json_object_foreach_key(in, key) {
 		keys.push_back(key);
 	}
 
@@ -196,7 +195,7 @@ games_js_entry *games_js_to_array(json_t *games_js)
 	const char *key;
 	json_t *value;
 	size_t i = 0;
-	json_object_foreach(games_js, key, value) {
+	json_object_foreach_fast(games_js, key, value) {
 		games_array[i].id = key;
 		games_array[i].path = json_string_value(value);
 		i++;
