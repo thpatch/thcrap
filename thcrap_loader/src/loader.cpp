@@ -76,7 +76,7 @@ json_t *load_config_from_file(const char *rel_start, json_t *run_cfg, const char
 
 json_t *load_config_from_string(json_t *run_cfg, const char *config_string)
 {
-	log_printf("Loading run configuration from command-line... ");
+	log_print("Loading run configuration from command-line... ");
 	json_t *new_run_cfg = json5_loadb(config_string, strlen(config_string), nullptr);
 	log_print(new_run_cfg != nullptr ? "success\n" : "error\n");
 

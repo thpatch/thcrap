@@ -97,6 +97,9 @@ Option<HFONT> font_block_get(int id)
 			(id * 2) - ((game_id == TH07 || game_id == TH08) ? 2 : 0)
 		));
 	}
+	// TODO: runconfig_json_get returns a const json* and json_object_get_hex can modify the
+	// passed value, so technically this is a const violation. See if it's possible to convert
+	// all hex strings to JSON5 hex integers so that this isn't a problem.
 	json_t *font_block = json_object_get(runconfig_json_get(), "tsa_font_block");
 	json_int_t min = 0, max = 0;
 	if(json_is_object(font_block)) {

@@ -281,7 +281,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 			free(param);
 		}
 		else {
-			ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", run_cfg, run_cfg_len * 2);
+			ret = Inject(hProcess, inj_dir, inj_dll, "thcrap_init", run_cfg, run_cfg_len);
 		}
 	}
 	return ret;
@@ -475,7 +475,7 @@ static inline void inject_CreateProcess_helper(
 )
 {
 	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
-		char *run_cfg = json_dumps(runconfig_json_get(), 0);
+		char *run_cfg = json_dumps(runconfig_json_get(), JSON_COMPACT);
 
 		thcrap_inject_into_running(lpPI->hProcess, run_cfg);
 

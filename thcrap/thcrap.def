@@ -65,7 +65,6 @@ EXPORTS
 	runconfig_thcrap_dir_get
 	runconfig_thcrap_dir_set
 	runconfig_runcfg_fn_get
-	runconfig_console_get
 	runconfig_game_get
 	runconfig_build_get
 	runconfig_build_set
@@ -278,6 +277,7 @@ EXPORTS
 	mod_func_remove
 	patch_func_run_all
 	patch_func_remove
+	BP_patch_func_run_all
 
 	; Detour promotion
 	; ----------------

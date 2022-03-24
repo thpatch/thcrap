@@ -22,9 +22,6 @@ const char *runconfig_thcrap_dir_get();
 // If there are multiple ones, return only the 1st one
 const char *runconfig_runcfg_fn_get();
 
-// Returns true if the console should be enabled.
-bool runconfig_console_get();
-
 // Returns the game id, for example "th06"
 const char *runconfig_game_get();
 

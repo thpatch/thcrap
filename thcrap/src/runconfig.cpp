@@ -24,8 +24,6 @@ struct runconfig_t
 {
 	// Run configuration in json format (needed for extensions by plugins)
 	json_t *json = nullptr;
-	// True if the console should be enabled (from runcfg)
-	bool console;
 	// Thcrap directory (from runtime)
 	std::string thcrap_dir;
 	// Run configuration path (from runtime)
@@ -227,9 +225,8 @@ int BP_runtime_apply_stage_by_expr(x86_reg_t *regs, json_t *bp_info) {
 
 void runconfig_load(json_t *file, int flags)
 {
-	json_t *value;
-	bool can_overwrite = !(flags & RUNCONFIG_NO_OVERWRITE);
-	bool load_binhacks = !(flags & RUNCONFIG_NO_BINHACKS);
+	bool can_overwrite = (~flags & RUNCONFIG_NO_OVERWRITE);
+	bool load_binhacks = (~flags & RUNCONFIG_NO_BINHACKS);
 
 	if (!run_cfg.json) {
 		run_cfg.json = json_object();
@@ -243,10 +240,11 @@ void runconfig_load(json_t *file, int flags)
 		json_object_update_missing(run_cfg.json, file);
 	}
 
-	auto set_string_if_exist = [file, can_overwrite](const char* key, std::string& out) {
-		json_t *value = json_object_get(file, key);
-		if (value && (can_overwrite || out.empty())) {
-			out = json_string_value(value);
+	auto set_string_if_exist = [=](const char* key, std::string& out) {
+		if (can_overwrite || out.empty()) {
+			if (json_t* value = json_object_get(file, key)) {
+				out = json_string_value(value);
+			}
 		}
 	};
 
@@ -256,23 +254,23 @@ void runconfig_load(json_t *file, int flags)
 	set_string_if_exist("title", run_cfg.title);
 	set_string_if_exist("url_update", run_cfg.update_url);
 
-	run_cfg.console = json_object_get_eval_bool_default(file, "console", false, JEVAL_NO_EXPRS);
 	run_cfg.msgbox_invalid_func = json_object_get_eval_bool_default(file, "msgbox_invalid_func", false, JEVAL_NO_EXPRS);
 
-	value = json_object_get(file, "dat_dump");
-	if (value && (can_overwrite || run_cfg.dat_dump.empty())) {
-		if (json_is_string(value)) {
-			run_cfg.dat_dump = json_string_value(value);
-		}
-		else if (!json_is_false(value)) {
-			run_cfg.dat_dump = "dat";
-		}
-		else {
-			run_cfg.dat_dump = "";
+	if (can_overwrite || run_cfg.dat_dump.empty()) {
+		if (json_t* value = json_object_get(file, "dat_dump")) {
+			if (json_is_string(value)) {
+				run_cfg.dat_dump = json_string_value(value);
+			}
+			else if (!json_is_false(value)) {
+				run_cfg.dat_dump = "dat";
+			}
+			else {
+				run_cfg.dat_dump = "";
+			}
 		}
 	}
-	
 
+	json_t* value;
 	json_t* filenames = json_object_get(file, "runcfg_fn");
 	json_flex_array_foreach_scoped(size_t, i, filenames, value) {
 		if (json_is_string(value)) {
@@ -280,28 +278,27 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
-	value = json_object_get(file, "latest");
-	if (value && (can_overwrite || run_cfg.latest.empty())) {
-		json_t *latest_entry;
+	if (can_overwrite || run_cfg.latest.empty()) {
+		if (json_t* value = json_object_get(file, "latest")) {
+			json_t *latest_entry;
 
-		run_cfg.latest.clear();
-		json_flex_array_foreach_scoped(size_t, i, value, latest_entry) {
-			if (json_is_string(latest_entry)) {
-				run_cfg.latest.push_back(json_string_value(latest_entry));
+			run_cfg.latest.clear();
+			json_flex_array_foreach_scoped(size_t, i, value, latest_entry) {
+				if (json_is_string(latest_entry)) {
+					run_cfg.latest.push_back(json_string_value(latest_entry));
+				}
 			}
 		}
 	}
 
-	value = json_object_get(file, "patches");
-	if (value) {
+	if (json_t* value = json_object_get(file, "patches")) {
 		json_t *patch;
 		json_array_foreach_scoped(size_t, i, value, patch) {
 			stack_add_patch_from_json(patch);
 		}
 	}
 
-	value = json_object_get(file, "detours");
-	if (value) {
+	if (json_t* value = json_object_get(file, "detours")) {
 		const char* dll_name;
 		json_t* detours;
 		json_object_foreach(value, dll_name, detours) {
@@ -362,7 +359,6 @@ void runconfig_print()
 			log_printf("    '%s'\n", it.c_str());
 		}
 	}
-	log_printf("  console: %s\n",        BoolStr(run_cfg.console));
 	log_printf("  thcrap dir: '%s'\n",   run_cfg.thcrap_dir.c_str());
 	log_printf("  game id: '%s'\n",      run_cfg.game.c_str());
 	log_printf("  build id: '%s'\n",     run_cfg.build.c_str());
@@ -397,7 +393,6 @@ void runconfig_free()
 	stack_free();
 	run_cfg.json = json_decref_safe(run_cfg.json);
 	assert(!run_cfg.json);
-	run_cfg.console = false;
 	run_cfg.thcrap_dir.clear();
 	run_cfg.runcfg_fn.clear();
 	run_cfg.game.clear();
@@ -458,11 +453,6 @@ void runconfig_free()
 const json_t *runconfig_json_get()
 {
 	return run_cfg.json;
-}
-
-bool runconfig_console_get()
-{
-	return run_cfg.console;
 }
 
 const char *runconfig_thcrap_dir_get()

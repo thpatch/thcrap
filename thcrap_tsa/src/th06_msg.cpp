@@ -549,7 +549,7 @@ int process_op(const op_info_t *cur_op, patch_msg_state_t* state)
 json_t* font_dialog_id(void)
 {
 	// Yeah, I know, kinda horrible.
-	json_t *breakpoints = json_object_get(runconfig_json_get(), "breakpoints");
+	const json_t *breakpoints = json_object_get(runconfig_json_get(), "breakpoints");
 	json_t *ruby_offset_info = json_object_get(breakpoints, "ruby_offset");
 	return json_object_get(ruby_offset_info, "font_dialog");
 }

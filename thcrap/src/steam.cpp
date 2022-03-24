@@ -45,7 +45,7 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 {
 	std::string appid = "";
 
-	json_t *appid_obj = json_object_get(runconfig_json_get(), "steam_appid");
+	const json_t *appid_obj = json_object_get(runconfig_json_get(), "steam_appid");
 	if (appid_obj) {
 		switch (json_typeof(appid_obj)) {
 		case JSON_STRING:

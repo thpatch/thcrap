@@ -262,7 +262,7 @@ HFONT WINAPI textdisp_CreateFontA(
 	if(string_font != pszFaceName) {
 		pszFaceName = string_font;
 	} else {
-		json_t *run_font = json_object_get(runconfig_json_get(), "font");
+		const json_t *run_font = json_object_get(runconfig_json_get(), "font");
 		if(json_is_string(run_font)) {
 			pszFaceName = json_string_value(run_font);
 		}

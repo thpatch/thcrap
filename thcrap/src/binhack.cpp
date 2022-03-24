@@ -795,7 +795,7 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 		"\n"
 		"-------------------------\n"
 		"Rendering binary hacks... (source cave at 0x%p)\n"
-		"-------------------------\n",
+		"-------------------------",
 		cave_source
 	);
 

@@ -114,36 +114,6 @@ TEST(RunconfigTest, RuncfgFn)
     EXPECT_EQ(runconfig_runcfg_fn_get(), nullptr);
 }
 
-TEST(RunconfigTest, Console)
-{
-    // Defaults to false
-    EXPECT_EQ(runconfig_console_get(), false);
-
-    {
-        ScopedRunconfig runconfig(json_pack("{s:b}",
-            "console", false
-        ));
-        EXPECT_FALSE(runconfig_console_get());
-    }
-
-    {
-        ScopedRunconfig runconfig(json_pack("{s:b}",
-            "console", true
-        ));
-        EXPECT_TRUE(runconfig_console_get());
-    }
-
-    // Any value convertable to true enables the console.
-    {
-        ScopedRunconfig runconfig(json_pack("{s:i}",
-            "console", 1
-        ));
-        EXPECT_TRUE(runconfig_console_get());
-    }
-
-    EXPECT_EQ(runconfig_console_get(), false);
-}
-
 TEST(RunconfigTest, Game)
 {
     EXPECT_EQ(runconfig_game_get(), nullptr);

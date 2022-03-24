@@ -242,6 +242,14 @@ void patch_func_run_all(const char *pattern, void *param)
 	patch_funcs.run(pattern, param);
 }
 
+int BP_patch_func_run_all(x86_reg_t *regs, json_t *bp_info) {
+	if (const char* pattern = json_object_get_string(bp_info, "pattern")) {
+		void* param = (void*)json_object_get_immediate(bp_info, regs, "param");
+		patch_func_run_all(pattern, param);
+	}
+	return breakpoint_cave_exec_flag(bp_info);
+}
+
 inline void mod_funcs_t::remove(std::string_view suffix, mod_call_type func)
 {
 	std::vector<mod_call_type>& func_array = (*this)[suffix];
