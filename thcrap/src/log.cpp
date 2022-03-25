@@ -99,14 +99,14 @@ void log_rotate(void)
 // --------
 
 static void log_print_real(log_string_t& log_str) {
-	DWORD byteRet;
+	static DWORD byteRet;
 	if (console_open) {
 		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), log_str.str, log_str.n, &byteRet, NULL);
 	}
 	if (log_file) {
 		WriteFile(log_file, log_str.str, log_str.n, &byteRet, NULL);
 	}
-	if ((log_str.is_n)) {
+	if (log_str.is_n) {
 		if (log_nprint_hook) {
 			log_nprint_hook(log_str.str, log_str.n);
 		}
@@ -135,16 +135,14 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 }
 
 static void log_push(const char* str, size_t n, bool is_n) {
-	log_string_t log_str = { str, n, is_n };
-
 	if (async_enabled) {
-		log_str.str = strdup_size(log_str.str, log_str.n);
+		const char* new_str = strdup_size(str, n);
 		EnterCriticalSection(&queue_cs);
-		log_queue.push(log_str);
+		log_queue.emplace(log_string_t{ new_str, n, is_n });
 		LeaveCriticalSection(&queue_cs);
 		ReleaseSemaphore(log_semaphore, 1, NULL);
 	} else {
-		log_print_real(log_str);
+		log_print_real(log_string_t{ str, n, is_n });
 	}
 }
 

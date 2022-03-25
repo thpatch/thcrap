@@ -29,19 +29,19 @@ struct runconfig_t
 	// Run configuration path (from runtime)
 	std::vector<std::string> runcfg_fn;
 	// Game ID, for example "th06" (from game_id.js)
-	std::string game;
+	std::string_view game;
 	// Game build, for example "v1.00a" (from game_id.js)
 	std::string build;
 	// Command line parameters passed to the exe
-	std::string cmdline;
+	std::string_view cmdline;
 	// Original game title, for example "東方紅魔郷　～ the Embodiment of Scarlet Devil" (from game_id.js)
-	std::string title;
+	std::string_view title;
 	// URL to download the last game update (from game_id.js)
-	std::string update_url;
+	std::string_view update_url;
 	// Array of latest builds. For example, [ "v0.13", "v1.02h" ] (from game_id.js)
-	std::vector<std::string> latest;
+	std::vector<std::string_view> latest;
 	// dat dump path if dat dump is enabled, empty otherwise (from runcfg)
-	std::string dat_dump;
+	std::string_view dat_dump;
 	// Hackpoints (breakpoints, codecaves and binhacks) for stages (from game_id.js and game_id.build.js).
 	// The global hackpoints (those not in a stage) are put in the last stage.
 	std::vector<stage_t> stages;
@@ -240,7 +240,7 @@ void runconfig_load(json_t *file, int flags)
 		json_object_update_missing(run_cfg.json, file);
 	}
 
-	auto set_string_if_exist = [=](const char* key, std::string& out) {
+	auto set_string_if_exist = [=](const char* key, auto& out) {
 		if (can_overwrite || out.empty()) {
 			if (json_t* value = json_object_get(file, key)) {
 				out = json_string_value(value);
@@ -360,17 +360,17 @@ void runconfig_print()
 		}
 	}
 	log_printf("  thcrap dir: '%s'\n",   run_cfg.thcrap_dir.c_str());
-	log_printf("  game id: '%s'\n",      run_cfg.game.c_str());
+	log_printf("  game id: '%s'\n",      run_cfg.game.data());
 	log_printf("  build id: '%s'\n",     run_cfg.build.c_str());
-	log_printf("  game title: '%s'\n",   run_cfg.title.c_str());
-	log_printf("  command line: '%s'\n", run_cfg.cmdline.c_str());
-	log_printf("  update URL: '%s'\n",   run_cfg.update_url.c_str());
+	log_printf("  game title: '%s'\n",   run_cfg.title.data());
+	log_printf("  command line: '%s'\n", run_cfg.cmdline.data());
+	log_printf("  update URL: '%s'\n",   run_cfg.update_url.data());
 	log_print ("  latest:");
-	for (const std::string& it : run_cfg.latest) {
-		log_printf(" '%s'", it.c_str());
+	for (const auto& it : run_cfg.latest) {
+		log_printf(" '%s'", it.data());
 	}
 	log_print("\n");
-	log_printf("  dat_dump: '%s'\n", run_cfg.dat_dump.c_str());
+	log_printf("  dat_dump: '%s'\n", run_cfg.dat_dump.data());
 	log_print(
 		"---------------------------\n"
 		"Patch stack:\n"
@@ -395,13 +395,13 @@ void runconfig_free()
 	assert(!run_cfg.json);
 	run_cfg.thcrap_dir.clear();
 	run_cfg.runcfg_fn.clear();
-	run_cfg.game.clear();
+	run_cfg.game = {};
 	run_cfg.build.clear();
-	run_cfg.cmdline.clear();
-	run_cfg.title.clear();
-	run_cfg.update_url.clear();
+	run_cfg.cmdline = {};
+	run_cfg.title = {};
+	run_cfg.update_url = {};
 	run_cfg.latest.clear();
-	run_cfg.dat_dump.clear();
+	run_cfg.dat_dump = {};
 	for (auto& stage : run_cfg.stages) {
 		for (auto& binhack : stage.binhacks) {
 			free((void*)binhack.name);
@@ -477,7 +477,7 @@ const char *runconfig_runcfg_fn_get()
 
 const char *runconfig_game_get()
 {
-	return run_cfg.game.empty() == false ? run_cfg.game.c_str() : nullptr;
+	return run_cfg.game.data();
 }
 
 const char *runconfig_build_get()
@@ -487,7 +487,7 @@ const char *runconfig_build_get()
 
 const char *runconfig_cmdline_get()
 {
-	return run_cfg.cmdline.empty() == false ? run_cfg.cmdline.c_str() : nullptr;
+	return run_cfg.cmdline.data();
 }
 
 std::string_view runconfig_game_get_view()
@@ -514,7 +514,7 @@ const char *runconfig_title_get()
 {
 	// Try to get a translated title
 	if (!run_cfg.game.empty()) {
-		const json_t *title = strings_get(run_cfg.game.c_str());
+		const json_t *title = strings_get(run_cfg.game.data());
 		if (title) {
 			return json_string_value(title);
 		}
@@ -522,12 +522,12 @@ const char *runconfig_title_get()
 
 	// Get the title from [game_id].js
 	if (!run_cfg.title.empty()) {
-		return run_cfg.title.c_str();
+		return run_cfg.title.data();
 	}
 
 	// Fallback to the game id
 	if (!run_cfg.game.empty()) {
-		return run_cfg.game.c_str();
+		return run_cfg.game.data();
 	}
 
 	// Nothing worked
@@ -536,12 +536,12 @@ const char *runconfig_title_get()
 
 const char *runconfig_update_url_get()
 {
-	return run_cfg.update_url.empty() == false ? run_cfg.update_url.c_str() : nullptr;
+	return run_cfg.update_url.data();
 }
 
 const char *runconfig_dat_dump_get()
 {
-	return run_cfg.dat_dump.empty() == false ? run_cfg.dat_dump.c_str() : nullptr;
+	return run_cfg.dat_dump.data();
 }
 
 bool runconfig_latest_check()
@@ -550,7 +550,7 @@ bool runconfig_latest_check()
 		return true;
 	}
 
-	for (const std::string& it : run_cfg.latest) {
+	for (const auto& it : run_cfg.latest) {
 		if (run_cfg.build == it) {
 			return true;
 		}
@@ -561,10 +561,10 @@ bool runconfig_latest_check()
 
 const char *runconfig_latest_get()
 {
-	if (run_cfg.latest.empty()) {
-		return nullptr;
+	if (!run_cfg.latest.empty()) {
+		return run_cfg.latest.back().data();
 	}
-	return run_cfg.latest.back().c_str();
+	return nullptr;
 }
 
 bool runconfig_msgbox_invalid_func() {
