@@ -10,20 +10,32 @@
     <DockPanel>
         <TextBlock x:Name="AddGamesNotice" DockPanel.Dock="Top" Margin="0,0,0,7">Now, it's time to add games</TextBlock>
         <Grid DockPanel.Dock="Bottom" Margin="0,7,0,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="auto" />
+                <RowDefinition Height="auto" />
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition Width="auto" />
                 <ColumnDefinition />
                 <ColumnDefinition Width="auto" />
             </Grid.ColumnDefinitions>
-            <Button Grid.Column="0" x:Name="SearchButton1" Click="SearchDirectory" Margin="0,0,7,0">
+
+            <Button Grid.Row="0" Grid.Column="0" x:Name="ButtonSelectAll" Click="SelectAll" Margin="0,0,7,7" IsEnabled="False">
+                <TextBlock Margin="2,1">Select all</TextBlock>
+            </Button>
+            <Button Grid.Row="0" Grid.Column="1" x:Name="ButtonUnselectAll" Click="UnselectAll" Margin="0,0,7,7" IsEnabled="False">
+                <TextBlock Margin="2,1">Unselect all</TextBlock>
+            </Button>
+
+            <Button Grid.Row="1" Grid.Column="0" x:Name="SearchButton1" Click="SearchDirectory" Margin="0,0,7,0">
                 <TextBlock Margin="2,1">Find games in a specific folder...</TextBlock>
             </Button>
-            <Button Grid.Column="1" x:Name="SearchButton2" Click="SearchEverywhere" Margin="0,0,7,0">
+            <Button Grid.Row="1" Grid.Column="1" x:Name="SearchButton2" Click="SearchEverywhere" Margin="0,0,7,0">
                 <TextBlock Margin="2,1">Find every game on your computer (slow)</TextBlock>
             </Button>
-            <ProgressBar Grid.Column="2" x:Name="ProgressBar" IsIndeterminate="True" Margin="0,0,7,0" Visibility="Hidden" />
-            <Button Grid.Column="3" x:Name="SearchButtonCancel" Click="SearchCancel" Visibility="Hidden">
+            <ProgressBar Grid.Row="1" Grid.Column="2" x:Name="ProgressBar" IsIndeterminate="True" Margin="0,0,7,0" Visibility="Hidden" />
+            <Button Grid.Row="1" Grid.Column="3" x:Name="SearchButtonCancel" Click="SearchCancel" Visibility="Hidden">
                 <TextBlock Margin="2,1">Cancel search</TextBlock>
             </Button>
         </Grid>

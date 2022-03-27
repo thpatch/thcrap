@@ -87,6 +87,7 @@ namespace thcrap_configure_v3
             private void RemoveFromList(object sender, RoutedEventArgs e)
             {
                 parentWindow.games.Remove(this);
+                parentWindow.Refresh();
             }
 
             public Game(Page4 parentWindow, string game_id, string path, bool wasAlreadyPresent)
@@ -188,7 +189,17 @@ namespace thcrap_configure_v3
                 }
             }
 
-            public bool IsSelected { get; set; }
+            private bool _isSelected;
+            public bool IsSelected
+            {
+                get => _isSelected;
+                set
+                {
+                    _isSelected = value;
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
+                }
+            }
+
             // True if this game was already present in games.js, false otherwise
             public bool WasAlreadyPresent { get; private set; }
 
@@ -209,11 +220,15 @@ namespace thcrap_configure_v3
             {
                 wizardPage.CanSelectNextPage = false;
                 AddGamesNotice.Visibility = Visibility.Visible;
+                ButtonSelectAll.IsEnabled = false;
+                ButtonUnselectAll.IsEnabled = false;
             }
             else
             {
                 wizardPage.CanSelectNextPage = true;
                 AddGamesNotice.Visibility = Visibility.Collapsed;
+                ButtonSelectAll.IsEnabled = true;
+                ButtonUnselectAll.IsEnabled = true;
             }
         }
 
@@ -269,12 +284,6 @@ namespace thcrap_configure_v3
             this.games = await LoadGamesJs();
 
             GamesControl.ItemsSource = games;
-            Refresh();
-        }
-
-        private void RemoveGame(object sender, RoutedEventArgs e)
-        {
-            games.Remove((sender as Button).DataContext as Game);
             Refresh();
         }
 
@@ -335,6 +344,22 @@ namespace thcrap_configure_v3
             if (!gamesListWasEmpty)
                 GamesScroll.ScrollToBottom();
             Refresh();
+        }
+
+        private void SelectAll(object sender, RoutedEventArgs e)
+        {
+            foreach (var game in this.games)
+            {
+                game.IsSelected = true;
+            }
+        }
+
+        private void UnselectAll(object sender, RoutedEventArgs e)
+        {
+            foreach (var game in this.games)
+            {
+                game.IsSelected = false;
+            }
         }
 
         private void SearchDirectory(object sender, RoutedEventArgs e)
