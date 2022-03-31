@@ -304,7 +304,11 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		console_print_percent(-1);
 
 		games_js_entry *games_array = games_js_to_array(games);
-		found = SearchForGames(search_path_w, games_array);
+		LPCWSTR search_array[] = {
+			search_path_w,
+			nullptr,
+		};
+		found = SearchForGames(search_array, games_array);
 		delete[] games_array;
 		
 		if(found && found[0].id) {

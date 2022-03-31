@@ -285,6 +285,11 @@ namespace thcrap_configure_v3
 
             GamesControl.ItemsSource = games;
             Refresh();
+
+            if (games.Count == 0)
+            {
+                Search(null, true);
+            }
         }
 
         private void SetSearching(bool state)
@@ -295,8 +300,9 @@ namespace thcrap_configure_v3
                 wizardPage.CanSelectNextPage = false;
                 ProgressBar.Visibility = Visibility.Visible;
                 SearchButtonCancel.Visibility = Visibility.Visible;
-                SearchButton1.IsEnabled = false;
-                SearchButton2.IsEnabled = false;
+                SearchButtonAuto.IsEnabled = false;
+                SearchButtonDirectory.IsEnabled = false;
+                SearchButtonEverywhere.IsEnabled = false;
             }
             else
             {
@@ -304,18 +310,28 @@ namespace thcrap_configure_v3
                 wizardPage.CanSelectNextPage = true;
                 ProgressBar.Visibility = Visibility.Hidden;
                 SearchButtonCancel.Visibility = Visibility.Hidden;
-                SearchButton1.IsEnabled = true;
-                SearchButton2.IsEnabled = true;
+                SearchButtonAuto.IsEnabled = true;
+                SearchButtonDirectory.IsEnabled = true;
+                SearchButtonEverywhere.IsEnabled = true;
             }
         }
-        private async void Search(string root)
+        private async void Search(string root, bool useAutoBehavior = false)
         {
             bool gamesListWasEmpty = this.games.Count == 0;
             foreach (var it in this.games)
                 it.SetNew(false);
 
             SetSearching(true);
-            IntPtr foundPtr = await Task.Run(() => ThcrapDll.SearchForGames(root, null));
+            IntPtr foundPtr;
+            if (useAutoBehavior)
+            {
+                foundPtr = await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null));
+            }
+            else
+            {
+                foundPtr = await Task.Run(() => ThcrapDll.SearchForGames(new string[] { root, null }, null));
+            }
+
             SetSearching(false);
 
             var found = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr);
@@ -360,6 +376,11 @@ namespace thcrap_configure_v3
             {
                 game.IsSelected = false;
             }
+        }
+
+        private void SearchAuto(object sender, RoutedEventArgs e)
+        {
+            Search(null, true);
         }
 
         private void SearchDirectory(object sender, RoutedEventArgs e)

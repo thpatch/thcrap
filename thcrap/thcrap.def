@@ -300,6 +300,7 @@ EXPORTS
 	; Search on disk
 	; --------------
 	SearchForGames
+	SearchForGamesInstalled
 	SearchForGames_cancel
 	SearchForGames_free
 

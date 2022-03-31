@@ -13,6 +13,11 @@ protected:
     json_t *hashes;
     json_t *sizes;
 
+    const wchar_t *dirlist[2] = {
+        L"testdir",
+        nullptr,
+    };
+
     void SetUp() override
     {
         if (std::filesystem::exists("testdir")) {
@@ -68,7 +73,7 @@ TEST_F(SearchForGamesTest, TestSearchNormalFile)
 {
     add_version(abcSha, 3, "th_abc", "v1.00", "(original)");
 
-    game_search_result *found = SearchForGames(L"testdir", nullptr);
+    game_search_result *found = SearchForGames(dirlist, nullptr);
     ASSERT_NE(found, nullptr);
     EXPECT_STREQ(found[0].path, "testdir/abc.exe");
     EXPECT_STREQ(found[0].id, "th_abc");
@@ -83,7 +88,7 @@ TEST_F(SearchForGamesTest, TestSearch2games)
     add_version(abcSha, 3, "th_abc", "v1.00", "(original)");
     add_version(defSha, 3, "th_def", "v1.00", "(original)");
 
-    game_search_result *found = SearchForGames(L"testdir", nullptr);
+    game_search_result *found = SearchForGames(dirlist, nullptr);
     ASSERT_NE(found, nullptr);
     EXPECT_STREQ(found[0].id, "th_abc");
     EXPECT_STREQ(found[1].id, "th_def");
@@ -96,7 +101,7 @@ TEST_F(SearchForGamesTest, TestSearch2versions)
     add_version(abcSha, 3, "th_abc", "v1.00", "(original)");
     add_version(defSha, 3, "th_abc", "v1.01", "(original)");
 
-    game_search_result *found = SearchForGames(L"testdir", nullptr);
+    game_search_result *found = SearchForGames(dirlist, nullptr);
     ASSERT_NE(found, nullptr);
     EXPECT_STREQ(found[0].build, "v1.01");
     EXPECT_STREQ(found[1].build, "v1.00");
@@ -106,7 +111,7 @@ TEST_F(SearchForGamesTest, TestSearch2versions)
 
 TEST_F(SearchForGamesTest, TestSearchNoResults)
 {
-    game_search_result *found = SearchForGames(L"testdir", nullptr);
+    game_search_result *found = SearchForGames(dirlist, nullptr);
     EXPECT_EQ(found, nullptr);
 }
 
@@ -119,7 +124,7 @@ TEST_F(SearchForGamesTest, TestSearchWithInputGames)
         { "th_abc", "randompath.exe" },
         { nullptr, nullptr},
     };
-    game_search_result *found = SearchForGames(L"testdir", games_in);
+    game_search_result *found = SearchForGames(dirlist, games_in);
     ASSERT_NE(found, nullptr);
     EXPECT_STREQ(found[0].id, "th_def");
     EXPECT_EQ(found[1].id, nullptr);

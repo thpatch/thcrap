@@ -172,7 +172,7 @@ bool compare_search_results(const game_search_result& a, const game_search_resul
 	return false;
 }
 
-game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *games_in)
+game_search_result* SearchForGames(const wchar_t **dir, const games_js_entry *games_in)
 {
 	search_state_t state;
 	const char *versions_js_fn = "versions.js";
@@ -213,9 +213,11 @@ game_search_result* SearchForGames(const wchar_t *dir, const games_js_entry *gam
 	HANDLE threads[max_threads];
 	DWORD count = 0;
 
-	if(dir && dir[0]) {
-		if ((threads[count] = LaunchSearchThread(state, dir)) != NULL)
-			count++;
+	if(dir && dir[0] && dir[0][0]) {
+		while (dir[count] && dir[count][0]) {
+			if ((threads[count] = LaunchSearchThread(state, dir[count])) != NULL)
+				count++;
+		}
 	} else {
 		wchar_t drive_strings[512];
 		wchar_t *p = drive_strings;
@@ -268,4 +270,122 @@ void SearchForGames_free(game_search_result *games)
 		free(games[i].description);
 	}
 	free(games);
+}
+
+static bool FilterOnSubkeyName(LPCWSTR subkeyName)
+{
+	return wcsncmp(subkeyName, L"Steam App ", wcslen(L"Steam App ")) == 0;
+}
+
+static std::wstring GetValueFromKey(HKEY key, LPCWSTR subkey, LPCWSTR valueName)
+{
+	LSTATUS ret;
+	std::vector<WCHAR> value;
+	DWORD valueSize = 64;
+
+	do {
+		value.resize(valueSize);
+		ret = RegGetValueW(key, subkey, valueName, RRF_RT_REG_SZ | KEY_WOW64_64KEY, nullptr, value.data(), &valueSize);
+	} while (ret == ERROR_MORE_DATA);
+	if (ret != ERROR_SUCCESS) {
+		return false;
+	}
+
+	return std::wstring(value.data(), valueSize);
+}
+
+static bool FilterOnKey(HKEY key, LPCWSTR subkey)
+{
+	std::wstring displayName = GetValueFromKey(key, subkey, L"DisplayName");
+
+	return displayName.compare(0, wcslen(L"東方"), L"東方") == 0
+		|| displayName.compare(0, wcslen(L"弾幕アマノジャク"), L"弾幕アマノジャク") == 0;
+}
+
+static std::vector<wchar_t*> FindInstalledGamesDir()
+{
+	log_printf("Loading games from registry...");
+
+	LSTATUS ret;
+	HKEY hUninstallKey;
+
+	ret = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+		L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
+		0,
+		KEY_READ | KEY_WOW64_64KEY,
+		&hUninstallKey);
+	if (ret != ERROR_SUCCESS)
+	{
+		log_printf(" failed (RerOpenKeyEx error %d)\n", ret);
+		return {};
+	}
+
+	DWORD    cSubKeys;                 // number of subkeys
+	DWORD    cbMaxSubKeyLen;           // longest subkey size
+
+	RegQueryInfoKeyW(
+		hUninstallKey,   // key handle
+		nullptr,         // buffer for class name
+		nullptr,         // size of class string
+		nullptr,         // reserved
+		&cSubKeys,       // number of subkeys
+		&cbMaxSubKeyLen, // longest subkey size
+		nullptr,         // longest class string
+		nullptr,         // number of values for this key
+		nullptr,         // longest value name
+		nullptr,         // longest value data
+		nullptr,         // security descriptor
+		nullptr);        // last write time
+
+	if (!cSubKeys) {
+		log_print(" no installed programs found.\n");
+		RegCloseKey(hUninstallKey);
+		return {};
+	}
+	log_print("\n");
+
+	std::vector<wchar_t*> dirlist;
+	auto subkeyName = std::make_unique<WCHAR[]>(cbMaxSubKeyLen + 1);
+
+	for (DWORD i = 0; i < cSubKeys; i++) {
+		DWORD cchName = cbMaxSubKeyLen + 1;
+		ret = RegEnumKeyEx(hUninstallKey, i,
+			subkeyName.get(),
+			&cchName,
+			nullptr,
+			nullptr,
+			nullptr,
+			nullptr);
+		if (ret != ERROR_SUCCESS || !FilterOnSubkeyName(subkeyName.get())) {
+			continue;
+		}
+
+		if (!FilterOnKey(hUninstallKey, subkeyName.get())) {
+			continue;
+		}
+		std::wstring location = GetValueFromKey(hUninstallKey, subkeyName.get(), L"InstallLocation");
+		log_printf("Found %S at %S\n", subkeyName.get(), location.c_str());
+		dirlist.push_back(wcsdup(location.c_str()));
+	}
+
+	RegCloseKey(hUninstallKey);
+	return dirlist;
+}
+
+game_search_result* SearchForGamesInstalled(const games_js_entry *games_in)
+{
+	std::vector<wchar_t*> paths = FindInstalledGamesDir();
+	if (paths.empty()) {
+		return nullptr;
+	}
+
+	paths.push_back(nullptr);
+	auto ret = SearchForGames(const_cast<const wchar_t**>(paths.data()), games_in);
+
+	for (auto& it : paths) {
+		if (it) {
+			free(it);
+		}
+	}
+	return ret;
 }
