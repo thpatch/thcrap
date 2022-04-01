@@ -265,7 +265,7 @@ void runconfig_load(json_t *file, int flags)
 				run_cfg.dat_dump = "dat";
 			}
 			else {
-				run_cfg.dat_dump = "";
+				run_cfg.dat_dump = {};
 			}
 		}
 	}
