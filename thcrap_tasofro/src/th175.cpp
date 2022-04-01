@@ -13,6 +13,19 @@
 #include "files_list.h"
 #include "act-nut.h"
 
+static json_t *flandre_copy_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
+{
+	if (out_size) {
+		*out_size = 0;
+	}
+
+	if (in_data.empty()) {
+		return NULL;
+	}
+
+	return json_incref(in_data.begin()->second);
+}
+
 int th175_init()
 {
 	patchhook_register("data/event/script/*.pl", patch_th175_pl, nullptr);
@@ -25,6 +38,10 @@ int th175_init()
 	jsonvfs_add_map(pause_pattern_fn,     { "themes.js" });
 	SAFE_FREE(musicroom_pattern_fn);
 	SAFE_FREE(pause_pattern_fn);
+
+	// Flandre easy route
+	jsonvfs_game_add("data/event/script/flandre_stage4_easy.pl.jdiff",     { "data/event/script/flandre_stage4_normal.pl.jdiff" },     flandre_copy_generator);
+	jsonvfs_game_add("data/event/script/flandre_stage4_easy_win.pl.jdiff", { "data/event/script/flandre_stage4_normal_win.pl.jdiff" }, flandre_copy_generator);
 
 	return 0;
 }
