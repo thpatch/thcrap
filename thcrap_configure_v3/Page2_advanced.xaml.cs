@@ -89,7 +89,7 @@ namespace thcrap_configure_v3
                 isSelected = newState;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
             }
-            public void UpdateVisibilityWithSearch(string filter)
+            public bool UpdateVisibilityWithSearch(string filter)
             {
                 bool newIsVisible;
 
@@ -99,6 +99,7 @@ namespace thcrap_configure_v3
                     isVisibleWithSearch = newIsVisible;
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
                 }
+                return newIsVisible;
             }
             public void SetVisibilityWithSearch()
             {
@@ -109,27 +110,52 @@ namespace thcrap_configure_v3
             public event PropertyChangedEventHandler PropertyChanged;
         }
 
-        public class Repo
+        public class Repo : INotifyPropertyChanged
         {
             public thcrap_configure_v3.Repo SourceRepo { get; private set; }
             public List<RepoPatch> Patches { get; private set; }
+            private bool isVisible = true;
 
             public Repo(thcrap_configure_v3.Repo repo)
             {
                 SourceRepo = repo;
                 Patches = repo.Patches.ConvertAll((thcrap_configure_v3.RepoPatch patch) => new RepoPatch(patch));
             }
-            public void UpdateFilter(string filter)
+
+            public Visibility VisibilityInTree
+            {
+                get
+                {
+                    return isVisible ? Visibility.Visible : Visibility.Collapsed;
+                }
+            }
+
+            public void SetVisibility(bool v)
+            {
+                isVisible = v;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
+            }
+
+            public bool UpdateFilter(string filter)
             {
                 bool selfMatch = SourceRepo.Id.ToLower().Contains(filter);
+                var patchesVisible = new List<bool>();
                 foreach (RepoPatch patch in Patches)
                 {
                     if (selfMatch)
+                    {
                         patch.SetVisibilityWithSearch();
+                        patchesVisible.Add(true);
+                    }
                     else
-                        patch.UpdateVisibilityWithSearch(filter);
+                    { 
+                        patchesVisible.Add(patch.UpdateVisibilityWithSearch(filter));
+                    }
                 }
+                return patchesVisible.Contains(true);
             }
+
+            public event PropertyChangedEventHandler PropertyChanged;
         }
 
         ObservableCollection<RepoPatch> selectedPatches = new ObservableCollection<RepoPatch>();
@@ -271,7 +297,7 @@ namespace thcrap_configure_v3
             var filter = textbox.Text.ToLower();
 
             foreach (Repo repo in (AvailablePatches.ItemsSource as IEnumerable<Repo>))
-                repo.UpdateFilter(filter);
+                repo.SetVisibility(repo.UpdateFilter(filter));
         }
     }
 }

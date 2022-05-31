@@ -23,6 +23,7 @@
                 <TreeView.Resources>
                     <Style TargetType="TreeViewItem">
                         <Setter Property="IsExpanded" Value="True" />
+                        <Setter Property="Visibility" Value="{Binding VisibilityInTree}" />
                     </Style>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}" ItemsSource="{Binding Patches}">
                         <HierarchicalDataTemplate.ItemContainerStyle>
