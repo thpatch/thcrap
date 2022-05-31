@@ -139,20 +139,21 @@ namespace thcrap_configure_v3
             public bool UpdateFilter(string filter)
             {
                 bool selfMatch = SourceRepo.Id.ToLower().Contains(filter);
-                var patchesVisible = new List<bool>();
+                bool patchesVisible = false;
                 foreach (RepoPatch patch in Patches)
                 {
                     if (selfMatch)
                     {
                         patch.SetVisibilityWithSearch();
-                        patchesVisible.Add(true);
+                        patchesVisible = true;
                     }
                     else
-                    { 
-                        patchesVisible.Add(patch.UpdateVisibilityWithSearch(filter));
+                    {
+                        if (patch.UpdateVisibilityWithSearch(filter))
+                            patchesVisible = true;
                     }
                 }
-                return patchesVisible.Contains(true);
+                return patchesVisible;
             }
 
             public event PropertyChangedEventHandler PropertyChanged;
@@ -296,7 +297,7 @@ namespace thcrap_configure_v3
             var textbox = sender as TextBox;
             var filter = textbox.Text.ToLower();
 
-            foreach (Repo repo in (AvailablePatches.ItemsSource as IEnumerable<Repo>))
+            foreach (Repo repo in AvailablePatches.ItemsSource as IEnumerable<Repo>)
                 repo.SetVisibility(repo.UpdateFilter(filter));
         }
     }
