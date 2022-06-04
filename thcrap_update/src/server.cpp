@@ -1,13 +1,8 @@
 #include "thcrap.h"
 #include "server.h"
 
-#if defined(USE_HTTP_CURL)
-# include "http_curl.h"
-#elif defined(USE_HTTP_WININET)
-# include "http_wininet.h"
-#else
-# error "Unknown http library. Please define either USE_HTTP_CURL or USE_HTTP_WININET"
-#endif
+#include "http_curl.h"
+#include "http_wininet.h"
 
 std::unique_ptr<ServerCache> ServerCache::instance;
 
@@ -109,11 +104,28 @@ void Server::giveBackHandle(std::unique_ptr<IHttpHandle> handle)
 
 std::unique_ptr<IHttpHandle> ServerCache::defaultHttpHandleFactory()
 {
-#ifdef USE_HTTP_CURL
-    return std::make_unique<CurlHandle>();
-#elif defined(USE_HTTP_WININET)
-    return std::make_unique<WininetHandle>();
-#endif
+    static enum {
+        WININET_NOT_INITIALIZED = -1,
+        WININET_FALSE = 0,
+        WININET_TRUE  = 1,
+    } use_wininet = WININET_NOT_INITIALIZED;
+
+    if (use_wininet == WININET_NOT_INITIALIZED) {
+        use_wininet = globalconfig_get_boolean("use_wininet", false) ? WININET_TRUE : WININET_FALSE;
+        if (use_wininet) {
+            log_print("Update: using WinINet backend\n");
+        }
+        else {
+            log_print("Update: using libcurl backend\n");
+        }
+    }
+
+    if (use_wininet) {
+        return std::make_unique<WininetHandle>();
+    }
+    else {
+        return std::make_unique<CurlHandle>();
+    }
 }
 
 ServerCache::~ServerCache()

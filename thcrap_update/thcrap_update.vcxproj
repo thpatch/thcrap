@@ -25,13 +25,13 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>USE_HTTP_CURL;THCRAP_UPDATE_EXPORTS;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>THCRAP_UPDATE_EXPORTS;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libs/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_update.def</ModuleDefinitionFile>
-      <AdditionalDependencies>crypt32.lib;shlwapi.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;shlwapi.lib;comctl32.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;libcurl_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
@@ -42,6 +42,7 @@
     <ClCompile Include="src\file.cpp" />
     <ClCompile Include="src\http_status.cpp" />
     <ClCompile Include="src\http_curl.cpp" />
+    <ClCompile Include="src\http_wininet.cpp" />
     <ClCompile Include="src\loader_update.cpp" />
     <ClCompile Include="src\notify.cpp" />
     <ClCompile Include="src\random.cpp" />
@@ -60,6 +61,7 @@
     <ClInclude Include="src\http_status.h" />
     <ClInclude Include="src\http_interface.h" />
     <ClInclude Include="src\http_curl.h" />
+    <ClInclude Include="src\http_wininet.h" />
     <ClInclude Include="src\loader_update.h" />
     <ClInclude Include="src\notify.h" />
     <ClInclude Include="src\random.h" />
