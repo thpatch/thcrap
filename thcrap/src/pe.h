@@ -14,6 +14,10 @@ typedef struct {
 	UINT_PTR func;
 } exported_func_t;
 
+// Checks if DLL located at [path] contains the function [func_name] without loading the DLL.
+// Copied: https://github.com/touhouworldcup/thprac/blob/dde0bda25081d5df4fab73c104cc952dcaddcf18/thprac/src/thprac/thprac_launcher_games.cpp#L1716
+bool CheckDLLFunction(const char* const path, const char* const func_name);
+
 /// Local
 /// -----
 // Returns the IMAGE_NT_HEADERS structure of [hMod]

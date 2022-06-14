@@ -254,6 +254,7 @@ EXPORTS
 
 	; PE structures
 	; -------------
+	CheckDLLFunction
 	GetNtHeader
 	GetDllImportDesc
 	GetDllExportDesc
