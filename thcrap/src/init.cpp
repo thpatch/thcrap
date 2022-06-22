@@ -293,7 +293,6 @@ int thcrap_init(const char *run_cfg)
 
 	GetModuleFileNameU(NULL, exe_fn, exe_fn_len);
 	GetCurrentDirectory(game_dir_len, game_dir);
-	PathAppendU(dll_dir, "..");
 	SetCurrentDirectory(dll_dir);
 
 	globalconfig_init();
@@ -431,8 +430,19 @@ int InitDll(HMODULE hDll)
 {
 	HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
 	json_set_alloc_funcs(malloc, free);
-	w32u8_set_fallback_codepage(932);
 
+	// Store the thcrap directory to load plug-ins later
+	// And also load config.js to set fallback codepage
+	dll_dir = (char*)malloc(MAX_PATH);
+	GetModuleFileNameU(hDll, dll_dir, MAX_PATH);
+	PathAppendU(dll_dir, "..\\..");
+	PathAddBackslashU(dll_dir);
+	wchar_t prev_dir[MAX_PATH];
+	GetCurrentDirectoryW(MAX_PATH, prev_dir);
+	SetCurrentDirectoryU(dll_dir);
+	w32u8_set_fallback_codepage(globalconfig_get_integer("codepage", 932));
+	SetCurrentDirectoryW(prev_dir);
+	
 	exception_init();
 	// Needs to be at the lowest level
 	win32_detour();
@@ -442,11 +452,6 @@ int InitDll(HMODULE hDll)
 	);
 
 	hThcrap = hDll;
-
-	// Store the DLL's own directory to load plug-ins later
-	dll_dir = (char*)malloc(MAX_PATH);
-	GetCurrentDirectory(MAX_PATH, dll_dir);
-	PathAddBackslashA(dll_dir);
 
 	return 0;
 }

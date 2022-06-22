@@ -225,11 +225,12 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		if(run_cfg_fn.empty()) {
 			log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"No run configuration .js file given.\n"
+				"Proceeding with empty configuration.\n"
 				"\n"
 				"If you do not have one yet, use the "
 				"thcrap_configure tool to create one.\n"
 			);
-			ret = -2;
+			run_cfg = json_loadb("{}", 3, 0, nullptr);
 		} else {
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"The run configuration file \"%s\" was not found.\n",
@@ -237,8 +238,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 			);
 
 			ret = -4;
+			goto end;
 		}
-		goto end;
 	}
 	// Command-line arguments take precedence over run configuration values
 	final_exe_fn = cmd_exe_fn ? cmd_exe_fn : cfg_exe_fn;
