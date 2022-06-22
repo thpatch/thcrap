@@ -295,7 +295,6 @@ int thcrap_init(const char *run_cfg)
 	GetCurrentDirectory(game_dir_len, game_dir);
 	SetCurrentDirectory(dll_dir);
 
-	globalconfig_init();
 	exception_load_config();
 	log_init(globalconfig_get_boolean("console", false));
 

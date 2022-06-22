@@ -230,7 +230,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 				"If you do not have one yet, use the "
 				"thcrap_configure tool to create one.\n"
 			);
-			run_cfg = json_loadb("{}", 3, 0, nullptr);
+			run_cfg = json_object();
 		} else {
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"The run configuration file \"%s\" was not found.\n",
@@ -271,6 +271,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	log_print("Command-line parsing finished\n");
 	ret = loader_update_with_UI_wrapper(final_exe_fn, cmdline, game_id);
 end:
+	SAFE_FREE(cmdline);
 	json_decref(games_js);
 	json_decref(run_cfg);
 	runconfig_free();
