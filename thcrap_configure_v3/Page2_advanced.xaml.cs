@@ -279,7 +279,14 @@ namespace thcrap_configure_v3
 
             selectedPatches.Move(idx, idx + 1);
         }
+        private void SelectedPatch_Help(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show(
+@"Different patches can change the same graphic, sound, dialouge, etc... of the game
 
+If you select multiple patches that all modify the same thing, higher patches will overwrite the modifications of the patches below them",
+                "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
         public void ConfigNameChanged(object sender, TextChangedEventArgs e)
         {
             if (isUnedited > 0)

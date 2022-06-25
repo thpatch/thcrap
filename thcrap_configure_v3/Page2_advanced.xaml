@@ -96,5 +96,6 @@
                 <Image Source="/img/arrow_down.png" Margin="4" Height="10" />
             </Button>
         </StackPanel>
+        <Button Click="SelectedPatch_Help" Content="?" Grid.Column="3" VerticalAlignment="Top" HorizontalAlignment="Right" Height="22" Width="22" />
     </Grid>
 </UserControl>
