@@ -284,7 +284,7 @@ namespace thcrap_configure_v3
             MessageBox.Show(
 @"Different patches can change the same graphic, sound, dialouge, etc... of the game
 
-If you select multiple patches that all modify the same thing, higher patches will overwrite the modifications of the patches below them",
+If you select multiple patches that all modify the same thing, lower patches will overwrite the modifications of the patches above them",
                 "Information", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         public void ConfigNameChanged(object sender, TextChangedEventArgs e)
