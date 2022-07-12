@@ -26,6 +26,7 @@ HANDLE WINAPI screenshot_CreateFileA(
 	if (PathMatchSpecU(lpFileName, "*.bmp")) {
 		size_t fn_len = strlen(lpFileName);
 		char* fn_real = strdup_size(lpFileName, fn_len);
+		defer(free(fn_real));
 		fn_real[fn_len - 3] = 'p';
 		fn_real[fn_len - 2] = 'n';
 		fn_real[fn_len - 1] = 'g';
