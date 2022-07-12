@@ -39,6 +39,7 @@
     <ClCompile Include="src\anm.cpp" />
     <ClCompile Include="src\anm_bounds.cpp" />
     <ClCompile Include="src\bgm.cpp" />
+    <ClCompile Include="src\screenshot.cpp" />
     <ClCompile Include="src\textimage.cpp" />
     <ClCompile Include="src\devicelost.cpp" />
     <ClCompile Include="src\gentext.cpp" />
