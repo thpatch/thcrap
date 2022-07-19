@@ -93,7 +93,7 @@ namespace thcrap_configure_v3
             {
                 bool newIsVisible;
 
-                newIsVisible = SourcePatch.Id.ToLower().Contains(filter);
+                newIsVisible = SourcePatch.Id.ToLower().Contains(filter) || SourcePatch.Title.ToLower().Contains(filter);
                 if (newIsVisible != isVisibleWithSearch)
                 {
                     isVisibleWithSearch = newIsVisible;
@@ -138,7 +138,7 @@ namespace thcrap_configure_v3
 
             public bool UpdateFilter(string filter)
             {
-                bool selfMatch = SourceRepo.Id.ToLower().Contains(filter);
+                bool selfMatch = SourceRepo.Id.ToLower().Contains(filter) || SourceRepo.Title.ToLower().Contains(filter);
                 bool patchesVisible = false;
                 foreach (RepoPatch patch in Patches)
                 {
