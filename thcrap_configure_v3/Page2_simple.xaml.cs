@@ -49,7 +49,8 @@ namespace thcrap_configure_v3
                 {
                     foreach (var patch in repo.Patches)
                     {
-                        if (patch.Id.StartsWith("lang_" + isoCountryCode))
+                        if (patch.Id == "lang_" + isoCountryCode ||
+                            patch.Id.StartsWith(string.Format("lang_{0}-", isoCountryCode)))
                             patches.Add(new RadioPatch(patch));
                         if (patch.Id.StartsWith("lang_"))
                             allLanguages.Add(patch);
