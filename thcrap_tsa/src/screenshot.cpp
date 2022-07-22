@@ -92,9 +92,9 @@ BOOL WINAPI screenshot_CloseHandle(HANDLE handle) {
 		png_infop info_ptr = png_create_info_struct(png_ptr);
 		png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGB, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 		png_bytep* row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);
-		for (int i = 0; i < height; i++) {
+		for (size_t i = 0; i < height; i++) {
 			uint8_t* row = data + i * pitch;
-			for (int j = 0; j < width * 3; j += 3) {
+			for (size_t j = 0; j < width * 3; j += 3) {
 				uint8_t px[3];
 				px[0] = row[j];
 				px[1] = row[j + 1];

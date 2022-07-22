@@ -439,7 +439,7 @@ int InitDll(HMODULE hDll)
 	wchar_t prev_dir[MAX_PATH];
 	GetCurrentDirectoryW(MAX_PATH, prev_dir);
 	SetCurrentDirectoryU(dll_dir);
-	w32u8_set_fallback_codepage(globalconfig_get_integer("codepage", 932));
+	w32u8_set_fallback_codepage((UINT)globalconfig_get_integer("codepage", 932));
 	SetCurrentDirectoryW(prev_dir);
 	
 	exception_init();
