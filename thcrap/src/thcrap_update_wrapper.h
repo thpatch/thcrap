@@ -11,6 +11,8 @@
 
 #include <thcrap_update/src/repo_discovery.h>
 #include <thcrap_update/src/update.h>
+#include <thcrap_update/src/self.h>
+#include <thcrap_update/src/notify.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +25,8 @@ int update_filter_global_wrapper(const char *fn, void*);
 int update_filter_games_wrapper(const char *fn, void *games);
 void stack_update_wrapper(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param);
 BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *game_id_fallback);
+
+int update_notify_thcrap_wrapper();
 
 repo_t ** RepoDiscover_wrapper(const char *start_url);
 

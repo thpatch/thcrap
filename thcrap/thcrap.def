@@ -389,6 +389,7 @@ EXPORTS
 	stack_update_wrapper
 	loader_update_with_UI_wrapper
 	RepoDiscover_wrapper
+	update_notify_thcrap_wrapper
 	patch_bootstrap_wrapper
 	thcrap_update_exit_wrapper
 

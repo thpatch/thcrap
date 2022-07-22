@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -46,8 +47,20 @@ namespace thcrap_configure_v3
             if (cmdline.Length > 1)
                 startUrl = cmdline[1];
 
-            repoDiscovery = new Task<List<Repo>>(() => Repo.Discovery(startUrl));
+            repoDiscovery = new Task<List<Repo>>(() => {
+                SelfUpdate();
+                return Repo.Discovery(startUrl);
+            });
             repoDiscovery.Start();
+        }
+
+        private void SelfUpdate()
+        {
+            if (ThcrapUpdateDll.update_notify_thcrap() == ThcrapUpdateDll.self_result_t.SELF_OK)
+            {
+                Process.Start(Assembly.GetEntryAssembly().Location);
+                Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());
+            }
         }
 
         // Repo discovery

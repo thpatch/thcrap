@@ -69,6 +69,12 @@ BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *g
 	return thcrap_inject_into_new(exe_fn, args, NULL, NULL);
 }
 
+int update_notify_thcrap_wrapper()
+{
+	CALL_WRAPPED_FUNCTION(update_notify_thcrap)
+	return SELF_NO_UPDATE;
+}
+
 repo_t **RepoDiscover_wrapper(const char *start_url)
 {
 	CALL_WRAPPED_FUNCTION(RepoDiscover, start_url)

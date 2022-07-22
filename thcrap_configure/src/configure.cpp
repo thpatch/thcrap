@@ -38,6 +38,22 @@ int file_write_text(const char *fn, const char *str)
 	return ret;
 }
 
+void self_restart()
+{
+	// Re-run an up-to-date configure process
+	LPSTR commandLine = GetCommandLine();
+	log_printf("Update found! Re-running %s\n", commandLine);
+
+	STARTUPINFOA sa;
+	PROCESS_INFORMATION pi;
+	memset(&sa, 0, sizeof(sa));
+	memset(&pi, 0, sizeof(pi));
+	sa.cb = sizeof(sa);
+	CreateProcess(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+}
+
 std::string run_cfg_fn_build(const patch_sel_stack_t& sel_stack)
 {
 	bool skip = false;
@@ -266,6 +282,11 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		"\n"
 	);
 	pause();
+
+	if (update_notify_thcrap_wrapper() == SELF_OK) {
+		self_restart();
+		goto end;
+	}
 
 	CreateDirectoryU("repos", NULL);
 	repo_list = RepoDiscover_wrapper(start_repo);

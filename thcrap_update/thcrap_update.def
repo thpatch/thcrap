@@ -9,6 +9,8 @@ EXPORTS
 	patch_bootstrap
 	stack_update
 
+	update_notify_thcrap
+
 	RepoDiscover
 
 	loader_update_with_UI

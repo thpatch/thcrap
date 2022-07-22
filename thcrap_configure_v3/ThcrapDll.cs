@@ -285,6 +285,20 @@ namespace thcrap_configure_v3
             GET_CANCELLED,
             GET_SYSTEM_ERROR,
         }
+        public enum self_result_t
+        {
+            SELF_NO_UPDATE = -1,
+            SELF_OK = 0,
+            SELF_NO_PUBLIC_KEY,
+            SELF_SERVER_ERROR,
+            SELF_DISK_ERROR,
+            SELF_NO_SIG,
+            SELF_SIG_FAIL,
+            SELF_REPLACE_ERROR,
+            SELF_VERSION_CHECK_ERROR,
+            SELF_INVALID_NETPATH,
+            SELF_NO_TARGET_VERSION,
+        }
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct progress_callback_status_t
         {
@@ -322,6 +336,8 @@ namespace thcrap_configure_v3
         public delegate bool progress_callback_t(IntPtr /* progress_callback_status_t* */ status, IntPtr param);
 
 
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern self_result_t update_notify_thcrap();
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern IntPtr /* repo_t** */ RepoDiscover(string start_url);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
