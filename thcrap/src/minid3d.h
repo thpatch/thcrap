@@ -371,7 +371,18 @@ MINID3D_TYPEDEF(HRESULT, d3d_CreateDevice)
 	x(IDirect3DSurface*, that), \
 	x(D3DSURFACE_DESC*, pDesc)
 
+#define d3ds_LockRect_(x) \
+	x(IDirect3DSurface*, that), \
+	x(D3DLOCKED_RECT*, pLockedRect), \
+	x(const RECT*, pRect), \
+	x(DWORD, Flags)
+
+#define d3ds_UnlockRect_(x) \
+	x(IDirect3DSurface*, that)
+
 MINID3D_VTABLE_FUNC_DEF(HRESULT, d3ds_GetDesc, 8, 12)
+MINID3D_VTABLE_FUNC_DEF(HRESULT, d3ds_LockRect, 9, 13);
+MINID3D_VTABLE_FUNC_DEF(HRESULT, d3ds_UnlockRect, 10, 14);
 /// ----------------
 
 /// IDirect3DDevice
