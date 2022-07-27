@@ -27,7 +27,7 @@ repo.js decribes a repository and all its patches. Here is an example repo.js fi
 ```
 {
 	"id": "nmlgc",
-	"title": "Nmlgc's patch repository"
+	"title": "Nmlgc's patch repository",
 	"contact": "thcrap@nmlgc.net",
 	"patches": {
 		"aero": "Enable Aero compositing"
@@ -62,10 +62,10 @@ A way to contact the repository owner. It can be an e-mail address, a Discord ta
 ### patches
 The list of patches provided by this repo, with a short description for each patch. This list determines which patches will be shown in thcrap_configure.
 
-### patchdata
-More informations about the patches. These informations aren't in the patches section for backward compatibility. 
-Each entry adds more informations about a patch. 
-Some of these informations used to be in the patch.js file, but providing them at the repo level allow us to use them in thcrap_configure without downloading a lot of new files during patch selection.
+### patchdata (not yet implemented, see [this branch](https://github.com/thpatch/thcrap/compare/master...patch_js_removal))
+More information about the patches. This information isn't in the patches section for backward compatibility. 
+Each entry adds more information about a patch. 
+Some of this information is currently specified in the patch.js file, but providing it at the repo level will allow us to use them in thcrap_configure without downloading a lot of new files during patch selection.
 
 #### flags
 A flag or a set of flags used to put your patch in a category. With these, the user can choose to see only the language or gameplay patches in thcrap_configure, and your patch will be listed only if it has the relevant flag(s).
