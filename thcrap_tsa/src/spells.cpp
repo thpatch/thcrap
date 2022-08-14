@@ -142,6 +142,42 @@ int BP_spell_owner(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
+char th185_spell_id[8] = {};
+
+int BP_th185_spell_id(x86_reg_t* regs, json_t* bp_info) {
+	*th185_spell_id = 0;
+	const char* sub_name = (char*)json_object_get_immediate(bp_info, regs, "sub_name");
+	if (strcmp(sub_name, "Boss01tBossCard1") == 0) {
+		strcpy(th185_spell_id, "0_1");
+		return breakpoint_cave_exec_flag(bp_info);
+	}
+	if (strlen(sub_name) != 15
+		|| strncmp(sub_name, "Boss", 4)
+		|| strncmp(sub_name + 6, "BossCard", 8)
+		|| sub_name[4] > '9' || sub_name[4] < '0'
+		|| sub_name[5] > '9' || sub_name[5] < '0'
+		|| sub_name[14] > '9' || sub_name[14] < '0') {
+		return breakpoint_cave_exec_flag(bp_info);
+	}
+	char* p = th185_spell_id;
+	if (sub_name[4] > '0')
+		*p++ = sub_name[4];
+	*p++ = sub_name[5];
+	*p++ = '_';
+	*p++ = sub_name[14];
+	return breakpoint_cave_exec_flag(bp_info);
+}
+
+int BP_th185_spell_name(x86_reg_t* regs, json_t* bp_info) {
+	if (*th185_spell_id) {
+		json_t* spell_name = json_object_get(jsondata_game_get("spells.js"), th185_spell_id);
+		if (json_is_string(spell_name))
+			*json_object_get_pointer(bp_info, regs, "spell_name") = (size_t)json_string_value(spell_name);
+		*th185_spell_id = 0;
+	}
+	return breakpoint_cave_exec_flag(bp_info);
+}
+
 void spells_mod_init(void)
 {
 	jsondata_game_add("spells.js");
