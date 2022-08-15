@@ -23,17 +23,7 @@ TEST(RepoTest, RepoLoadJsonInvalid)
 TEST(RepoTest, RepoLoadJsonEmpty)
 {
     ScopedJson json = json_object();
-    repo_t *repo = RepoLoadJson(*json);
-    ASSERT_NE(repo, nullptr);
-
-    EXPECT_EQ(repo->id, nullptr);
-    EXPECT_EQ(repo->title, nullptr);
-    EXPECT_EQ(repo->contact, nullptr);
-    EXPECT_EQ(repo->servers, nullptr);
-    EXPECT_EQ(repo->neighbors, nullptr);
-    EXPECT_EQ(repo->patches, nullptr);
-
-    RepoFree(repo);
+    EXPECT_EQ(RepoLoadJson(*json), nullptr);
 }
 
 TEST(RepoTest, RepoLoadJsonValid)
