@@ -108,6 +108,9 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out);
 // (since that code might overwrite the modified data otherwise).
 int breakpoint_cave_exec_flag(json_t *bp_info);
 
+// Same as above but will evaluate expressions
+int breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info);
+
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.

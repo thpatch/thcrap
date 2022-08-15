@@ -102,6 +102,14 @@ int breakpoint_cave_exec_flag(json_t *bp_info)
 	return json_eval_int_default(json_object_get(bp_info, "cave_exec"), 1, JEVAL_DEFAULT);
 }
 
+int breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info) {
+	json_t* cave_exec = json_object_get(bp_info, "cave_exec");
+	if (cave_exec) {
+		return json_immediate_value(cave_exec, regs);
+	}
+	return 1;
+}
+
 size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_index, x86_reg_t regs)
 {
 	// POPAD ignores the ESP register, so we have to implement our own mechanism
