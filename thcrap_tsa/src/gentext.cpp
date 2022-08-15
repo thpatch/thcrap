@@ -64,7 +64,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 			char id_str[value_len + 1];
 			const char *q = id_str;
 			size_t id_val = json_immediate_value(id, regs);
-			snprintf(id_str, sizeof(id_str), "%u", id_val);
+			snprintf(id_str, sizeof(id_str), "%d", id_val);
 			if(i > 0) {
 				*p++ = '_';
 			}
