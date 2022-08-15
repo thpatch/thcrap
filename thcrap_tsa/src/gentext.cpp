@@ -78,6 +78,8 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 		gc->line = json_immediate_value(line_obj, regs);
 	}
 	if(strs) {
+		int cave_exec_flag = breakpoint_cave_exec_flag_eval(regs, bp_info);
+
 		json_t *id_val = json_object_get(gc->file, gc->key);
 		json_t *str;
 
@@ -100,7 +102,7 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 
 		regs->esp += json_object_get_immediate(bp_info, regs, "stack_clear_size");
 
-		return breakpoint_cave_exec_flag_eval(regs, bp_info);
+		return cave_exec_flag;
 	}
 	return 1;
 }
