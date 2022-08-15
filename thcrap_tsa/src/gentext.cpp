@@ -92,7 +92,15 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 			assert(line);
 			*target = line;
 		}
-		return breakpoint_cave_exec_flag(bp_info);
+
+		if (size_t eip_jump_dist = json_object_get_immediate(bp_info, regs, "eip_jump_dist")) {
+			regs->retaddr += eip_jump_dist;
+			return 0;
+		}
+
+		regs->esp += json_object_get_immediate(bp_info, regs, "stack_clear_size");
+
+		return breakpoint_cave_exec_flag_eval(regs, bp_info);
 	}
 	return 1;
 }
