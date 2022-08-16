@@ -32,17 +32,27 @@ extern "C" size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_inde
 size_t json_immediate_value(json_t *val, x86_reg_t *regs)
 {
 	if (val) {
-		const auto jtype = json_typeof(val);
-		if (jtype == JSON_INTEGER) {
+		union {
+			float f;
+			size_t i;
+		} ret;
+		switch (json_typeof(val)) {
+		case JSON_INTEGER:
 			return (size_t)json_integer_value(val);
-		}
-		else if (jtype == JSON_STRING) {
-			size_t ret = 0;
-			eval_expr(json_string_value(val), '\0', &ret, regs, NULL, NULL);
-			return ret;
-		}
-		else if (jtype != JSON_NULL) {
+		case JSON_STRING:
+			ret.i = 0;
+			eval_expr(json_string_value(val), '\0', &ret.i, regs, NULL, NULL);
+			return ret.i;
+		case JSON_REAL:
+			ret.f = json_real_value(val);
+			return ret.i;
+		case JSON_TRUE:
+			return 1;
+		case JSON_FALSE:
+			return 0;
+		case JSON_NULL:
 			log_func_printf("the expression must be either an integer or a string.\n");
+			break;
 		}
 	}
 	return 0;
