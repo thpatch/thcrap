@@ -1236,6 +1236,12 @@ static inline const char* find_matching_end(const char* str, uint16_t delims_in)
 	return NULL;
 };
 
+enum patch_value_bracket_type_t : uint8_t {
+	PVBT_ABSOLUTE = '<',
+	PVBT_RELATIVE = '[',
+	PVBT_INDIRECT = '{'
+};
+
 static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_t *const out, const StackSaver *const data_refs) {
 
 	ExpressionLogging("Patch value opening char: \"%hhX\"\n", expr[0]);
@@ -1250,7 +1256,7 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 	// don't check the opening bracket
 	++expr;
 	if (strnicmp(expr, "codecave:", 9) == 0) {
-		out->type = PVT_POINTER;
+		out->type = is_relative ? PVT_DWORD : PVT_POINTER;
 		out->p = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	}
 	else if (strnicmp(expr, "option:", 7) == 0) {
@@ -1279,7 +1285,7 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 		*out = GetMultibyteInt3(expr, is_relative ? ']' : '>', data_refs);
 	}
 	else {
-		out->type = PVT_POINTER;
+		out->type = is_relative ? PVT_DWORD : PVT_POINTER;
 		out->p = GetBPFuncOrRawAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	}
 	return patch_val_end + 1;

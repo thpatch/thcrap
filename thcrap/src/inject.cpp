@@ -98,41 +98,49 @@ DETOUR_CHAIN_DEF(LoadLibraryW);
 
 extern "C" {
 	extern const uint8_t inject;
-	extern const uint8_t inject_dlldirptr;
-	extern const uint8_t inject_loadlibraryflagsptr;
-	extern const uint8_t inject_dllnameptr;
+	//extern const uint8_t inject_dlldirptr;
+	//extern const uint8_t inject_loadlibraryflagsptr;
+	//extern const uint8_t inject_dllnameptr;
+	extern const uint8_t inject_dllpathptr;
 	extern const uint8_t inject_funcnameptr;
 	extern const uint8_t inject_funcparamptr;
 	extern const uint8_t inject_end;
 
-	extern const uint8_t inject_GetCurrentDirectoryWptr;
-	extern const uint8_t inject_SetCurrentDirectoryWptr;
+	//extern const uint8_t inject_GetCurrentDirectoryWptr;
+	//extern const uint8_t inject_SetCurrentDirectoryWptr;
 	extern const uint8_t inject_LoadLibraryExWptr;
 	extern const uint8_t inject_ExitThreadptr;
 	extern const uint8_t inject_GetProcAddressptr;
 	extern const uint8_t inject_FreeLibraryAndExitThreadptr;
 }
 
+#ifndef TH_X64
+#define MOV_PTR_LEN 1
+#else
+#define MOV_PTR_LEN 2
+#endif
+
 // Calculate all the offsets once and store them for later
 static const size_t inject_size = &inject_end - &inject;
-static const size_t inject_dlldir = &inject_dlldirptr + 1 - &inject;
-static const size_t inject_loadlibraryflags = &inject_loadlibraryflagsptr + 1 - &inject;
-static const size_t inject_dllname = &inject_dllnameptr + 1 - &inject;
-static const size_t inject_funcname = &inject_funcnameptr + 1 - &inject;
-static const size_t inject_funcparam = &inject_funcparamptr + 1 - &inject;
+//static const size_t inject_dlldir = &inject_dlldirptr + MOV_PTR_LEN - &inject;
+//static const size_t inject_loadlibraryflags = &inject_loadlibraryflagsptr + MOV_PTR_LEN - &inject;
+//static const size_t inject_dllname = &inject_dllnameptr + MOV_PTR_LEN - &inject;
+static const size_t inject_dllpath = &inject_dllpathptr + MOV_PTR_LEN - &inject;
+static const size_t inject_funcname = &inject_funcnameptr + MOV_PTR_LEN - &inject;
+static const size_t inject_funcparam = &inject_funcparamptr + MOV_PTR_LEN - &inject;
 
-static const size_t inject_GetCurrentDirectoryW = &inject_GetCurrentDirectoryWptr + 1 - &inject;
-static const size_t inject_SetCurrentDirectoryW = &inject_SetCurrentDirectoryWptr + 1 - &inject;
-static const size_t inject_LoadLibraryExW = &inject_LoadLibraryExWptr + 1 - &inject;
-static const size_t inject_ExitThread = &inject_ExitThreadptr + 1 - &inject;
-static const size_t inject_GetProcAddress = &inject_GetProcAddressptr + 1 - &inject;
-static const size_t inject_FreeLibraryAndExitThread = &inject_FreeLibraryAndExitThreadptr + 1 - &inject;
+//static const size_t inject_GetCurrentDirectoryW = &inject_GetCurrentDirectoryWptr + MOV_PTR_LEN - &inject;
+//static const size_t inject_SetCurrentDirectoryW = &inject_SetCurrentDirectoryWptr + MOV_PTR_LEN - &inject;
+static const size_t inject_LoadLibraryExW = &inject_LoadLibraryExWptr + MOV_PTR_LEN - &inject;
+static const size_t inject_ExitThread = &inject_ExitThreadptr + MOV_PTR_LEN - &inject;
+static const size_t inject_GetProcAddress = &inject_GetProcAddressptr + MOV_PTR_LEN - &inject;
+static const size_t inject_FreeLibraryAndExitThread = &inject_FreeLibraryAndExitThreadptr + MOV_PTR_LEN - &inject;
 
 int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *const dll_fn, const char *const func_name, const void *const param, const size_t param_size)
 {
 	#define have_kb2533623 ((bool)GetProcAddress(GetModuleHandleA("kernel32.dll"), "SetDefaultDllDirectories"))
 
-	size_t dll_dir_size = 0;
+	/*size_t dll_dir_size = 0;
 	size_t dll_dir_total_size = 0;
 	if (dll_dir) {
 		dll_dir_size = (wcslen(dll_dir) + 1) * 2;
@@ -140,14 +148,18 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	}
 
 	const size_t dll_fn_size = (wcslen(dll_fn) + 1) * 2;
-	const size_t dll_fn_total_size = AlignUpToMultipleOf2(dll_fn_size, 4);
+	const size_t dll_fn_total_size = AlignUpToMultipleOf2(dll_fn_size, 4);*/
+
+	const size_t dll_path_size = wcslen(dll_fn) * sizeof(wchar_t) + sizeof(wchar_t);
+	const size_t dll_path_total_size = AlignUpToMultipleOf2(dll_path_size, 4);
 
 	const size_t func_name_size = strlen(func_name) + 1;
 	const size_t func_name_total_size = AlignUpToMultipleOf2(func_name_size, 4);
 
 	const size_t param_total_size = AlignUpToMultipleOf2(param_size, 4);
 
-	const size_t grand_total_size = dll_dir_total_size + dll_fn_total_size + func_name_total_size + param_total_size + inject_size;
+	//const size_t grand_total_size = dll_dir_total_size + dll_fn_total_size + func_name_total_size + param_total_size + inject_size;
+	const size_t grand_total_size = dll_path_total_size + func_name_total_size + param_total_size + inject_size;
 
 	// The workspace we will build the codecave on locally.
 	uint8_t *const Buffer = (uint8_t *const)malloc(grand_total_size);
@@ -175,28 +187,33 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	workspace += param_total_size;
 	PatchInjectInst(inject_ptr, inject_funcparam, const void*, param_ptr);
 
-	// Directory name
-	if (dll_dir) {
-		uint8_t *const dll_dir_ptr = (uint8_t*)memcpy(workspace, dll_dir, dll_dir_size) + BufferOffset;
-		workspace += dll_dir_total_size;
-		PatchInjectInst(inject_ptr, inject_dlldir, const wchar_t*, dll_dir_ptr);
-	}
-	
-	// Dll Name
-	uint8_t *const dll_fn_ptr = (uint8_t*)memcpy(workspace, dll_fn, dll_fn_size) + BufferOffset;
-	workspace += dll_fn_total_size;
-	PatchInjectInst(inject_ptr, inject_dllname, const wchar_t*, dll_fn_ptr);
+	//// Directory name
+	//if (dll_dir) {
+	//	uint8_t *const dll_dir_ptr = (uint8_t*)memcpy(workspace, dll_dir, dll_dir_size) + BufferOffset;
+	//	workspace += dll_dir_total_size;
+	//	PatchInjectInst(inject_ptr, inject_dlldir, const wchar_t*, dll_dir_ptr);
+	//}
+	//
+	//// Dll Name
+	//uint8_t *const dll_fn_ptr = (uint8_t*)memcpy(workspace, dll_fn, dll_fn_size) + BufferOffset;
+	//workspace += dll_fn_total_size;
+	//PatchInjectInst(inject_ptr, inject_dllname, const wchar_t*, dll_fn_ptr);
+
+	// Dll Path
+	uint8_t *const dll_path_ptr = (uint8_t*)memcpy(workspace, dll_fn, dll_path_size) + BufferOffset;
+	workspace += dll_path_total_size;
+	PatchInjectInst(inject_ptr, inject_dllpath, const wchar_t*, dll_path_ptr);
 
 	// Function Name
 	uint8_t *const func_name_ptr = (uint8_t *)memcpy(workspace, func_name, func_name_size) + BufferOffset;
 	PatchInjectInst(inject_ptr, inject_funcname, const char*, func_name_ptr);
 
-	PatchInjectInst(inject_ptr, inject_loadlibraryflags, size_t, PathIsRelativeW(dll_fn) || !have_kb2533623 ? 0 : LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+	//PatchInjectInst(inject_ptr, inject_loadlibraryflags, size_t, PathIsRelativeW(dll_fn) || !have_kb2533623 ? 0 : LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
 
 	// Kernel functions will be located at
 	// the same address in both processes.
-	PatchInjectInst(inject_ptr, inject_GetCurrentDirectoryW, const void*, &GetCurrentDirectoryW);
-	PatchInjectInst(inject_ptr, inject_SetCurrentDirectoryW, const void*, &SetCurrentDirectoryW);
+	//PatchInjectInst(inject_ptr, inject_GetCurrentDirectoryW, const void*, &GetCurrentDirectoryW);
+	//PatchInjectInst(inject_ptr, inject_SetCurrentDirectoryW, const void*, &SetCurrentDirectoryW);
 	PatchInjectInst(inject_ptr, inject_LoadLibraryExW, const void*, &LoadLibraryExW);
 	PatchInjectInst(inject_ptr, inject_ExitThread, const void*, &ExitThread);
 	PatchInjectInst(inject_ptr, inject_GetProcAddress, const void*, &GetProcAddress);
@@ -204,10 +221,10 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 
 	// Return code of injection function
 	DWORD return_value;
+	SIZE_T dummy;
 
-	// Write out the patch, using return_value as a place to dump
-	// an irrelevant value since it'll get overwritten later anyway.
-	WriteProcessMemory(hProcess, CodecaveAddress, Buffer, grand_total_size, &return_value);
+	// Write out the patch
+	WriteProcessMemory(hProcess, CodecaveAddress, Buffer, grand_total_size, &dummy);
 
 	// Free the workspace memory
 	free(Buffer);
@@ -261,7 +278,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 	int ret = -1;
 	if (HMODULE inj_mod = GetModuleContaining(thcrap_inject_into_running)) {
 		
-		const size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
+		const u32size inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
 		wchar_t* inj_dir = (wchar_t*)malloc(inj_dir_len * 2);
 		GetModuleFileNameW(inj_mod, inj_dir, inj_dir_len);
 		wchar_t* inj_dll = _wcsdup(inj_dir);
@@ -272,7 +289,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 
 		// Allow relative directory names
 		if (*run_cfg != '{' && PathIsRelativeA(run_cfg)) {
-			const size_t cur_dir_len = GetCurrentDirectoryA(0, NULL);
+			const u32size cur_dir_len = GetCurrentDirectoryA(0, NULL);
 			const size_t total_size = run_cfg_len + cur_dir_len;
 			char* param = (char*)malloc(total_size);
 			GetCurrentDirectoryA(cur_dir_len, param);
@@ -370,7 +387,7 @@ void* entry_from_context(HANDLE hThread)
 	context.ContextFlags = CONTEXT_INTEGER;
 	if(GetThreadContext(hThread, &context)) {
 #ifdef TH_X64
-		return (void*)context.Rax;
+		return (void*)context.Rcx;
 #else
 		return (void*)context.Eax;
 #endif

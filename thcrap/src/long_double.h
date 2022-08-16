@@ -10,13 +10,14 @@
 #pragma once
 
 // Check whether long double is supported natively
-#if !(defined(_MSC_VER) && !defined(_LDSUPPORT))
+#if !(defined(_MSC_VER) && !defined(_LDSUPPORT)) || defined(TH_X64)
 
 // Somehow it's actually defined, so this can
 // just be a typedef and nothing else is needed.
 typedef long double LongDouble80;
 
 #else
+#include <stdint.h>
 
 // It isn't supported, so time to make it work anyway
 // with C++ template shenanigans and other BS.
@@ -25,6 +26,8 @@ typedef struct LongDouble80 LongDouble80;
 
 #ifdef __cplusplus
 extern "C++" {
+
+#define sfinae_enable(...) std::enable_if_t<(__VA_ARGS__), bool> = true
 
 #define ValidFPValue(T) \
 	(std::is_same_v<T, LongDouble80> || std::is_arithmetic_v<T>)
@@ -38,17 +41,21 @@ extern "C++" {
 // any of the fundamental integer types.
 #define IsAnyIntBelow16(T) \
 	(sizeof(T) < sizeof(int16_t))
-#define IsSigned16OrHigher(T) \
-	(sizeof(T) >= sizeof(int16_t) && std::is_signed_v<T>)
+#define IsSigned16(T) \
+	(sizeof(T) >= sizeof(int16_t) && sizeof(T) < sizeof(int32_t) && std::is_signed_v<T>)
+#define IsSigned32(T) \
+	(sizeof(T) >= sizeof(int32_t) && sizeof(T) < sizeof(int64_t) && std::is_signed_v<T>)
+#define IsSigned64(T) \
+	(sizeof(T) == sizeof(int64_t) && std::is_signed_v<T>)
 #define IsUnsigned16(T) \
-	(sizeof(T) == sizeof(uint16_t) && std::is_unsigned_v<T>)
+	(sizeof(T) >= sizeof(uint16_t) && sizeof(T) < sizeof(uint32_t) && std::is_unsigned_v<T>)
 #define IsUnsigned32(T) \
-	(sizeof(T) == sizeof(uint32_t) && std::is_unsigned_v<T>)
+	(sizeof(T) >= sizeof(uint32_t) && sizeof(T) < sizeof(uint64_t) && std::is_unsigned_v<T>)
 #define IsUnsigned64(T) \
 	(sizeof(T) == sizeof(uint64_t) && std::is_unsigned_v<T>)
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), void> LoadToX87(T t_val) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE void LoadToX87(T t_val) {
 		if constexpr (std::is_same_v<T, LongDouble80>) {
 			__asm FLD TBYTE PTR[t_val];
 		}
@@ -60,7 +67,7 @@ extern "C++" {
 				int32_t temp = (int32_t)t_val;
 				__asm FILD DWORD PTR[temp];
 			}
-			else if constexpr (IsSigned16OrHigher(T)) {
+			else if constexpr (IsSigned16(T) || IsSigned32(T) || IsSigned64(T)) {
 				__asm FILD[t_val];
 			}
 			else if constexpr (IsUnsigned32(T)) {
@@ -69,9 +76,9 @@ extern "C++" {
 			}
 			else if constexpr (IsUnsigned64(T)) {
 				__asm FILD QWORD PTR[t_val];
-				if (*(int64_t*)&t_val < 0) {
-					static constexpr double UINT_MAX_PLUS1 = 4294967296.0;
-					__asm FADD QWORD PTR[UINT_MAX_PLUS1];
+				if (((int32_t*)&t_val)[1] < 0) {
+					static constexpr float_t MAGIC_VALUE_A = 0x1.0p64;
+					__asm FADD[MAGIC_VALUE_A];
 				}
 			}
 			else {
@@ -83,8 +90,58 @@ extern "C++" {
 		}
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), T> StoreFromX87(void) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE T ReadFromX87(void) {
+		T t_val;
+		if constexpr (std::is_same_v<T, LongDouble80>) {
+			__asm {
+				FLD ST(0);
+				FSTP TBYTE PTR[t_val];
+			}
+		} else if constexpr (std::is_floating_point_v<T>) {
+			__asm FST[t_val];
+		} else if constexpr (std::is_integral_v<T>) {
+			if constexpr (IsAnyIntBelow16(T) || IsUnsigned16(T)) {
+				int32_t temp;
+				__asm FIST DWORD PTR[temp];
+				t_val = (T)temp;
+			} else if constexpr (IsSigned16(T) || IsSigned32(T)) {
+				__asm FIST[t_val];
+			} else if constexpr (IsSigned64(T)) {
+				__asm {
+					FLD ST(0);
+					FSTP QWORD PTR[t_val];
+				}
+			} else if constexpr (IsUnsigned32(T)) {
+				int64_t temp;
+				__asm {
+					FLD ST(0);
+					FISTP QWORD PTR[temp];
+				}
+				t_val = (T)temp;
+			} else if constexpr (IsUnsigned64(T)) {
+				static constexpr float_t MAGIC_VALUE_A = 0x1.0p64;
+				static constexpr float_t MAGIC_VALUE_B = 0x1.0p63;
+				__asm {
+					FLD[MAGIC_VALUE_B];
+					FUCOMIP ST, ST(1);
+					FLD ST(0);
+					JA RequireU64;
+					FSUB[MAGIC_VALUE_A];
+				RequireU64:
+					FISTP QWORD PTR[t_val];
+				}
+			} else {
+				static_assert(0, "Invalid integer size");
+			}
+		} else {
+			static_assert(0, "Invalid arithmetic type");
+		}
+		return t_val;
+	}
+
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE T StoreFromX87(void) {
 		T t_val;
 		if constexpr (std::is_same_v<T, LongDouble80>) {
 			__asm FSTP TBYTE PTR[t_val];
@@ -107,22 +164,15 @@ extern "C++" {
 				t_val = (T)temp;
 			}
 			else if constexpr (IsUnsigned64(T)) {
-				static constexpr double DBL_INT64_MAX = (double)INT64_MAX;
-				t_val = UINT64_MAX;
-				LoadToX87(DBL_INT64_MAX);
+				static constexpr float_t MAGIC_VALUE_A = 0x1.0p64;
+				static constexpr float_t MAGIC_VALUE_B = 0x1.0p63;
 				__asm {
-					FCOMI ST, ST(1);
-					JNA RequireU64;
-					FSTP ST(0);
-					FISTP QWORD PTR[t_val];
+					FLD[MAGIC_VALUE_B];
+					FUCOMIP ST, ST(1);
+					JA RequireU64;
+					FSUB[MAGIC_VALUE_A];
 				RequireU64:
-				}
-				if (t_val == UINT64_MAX) {
-					__asm {
-						FSUBP ST(1), ST;
-						FISTP QWORD PTR[t_val];
-					}
-					t_val += INT64_MAX;
+					FISTP QWORD PTR[t_val];
 				}
 			}
 			else {
@@ -162,9 +212,9 @@ extern "C++" {
 #define IncX87() __asm { __asm FLD1 AddPX87() }
 #define DecX87() __asm { __asm FLD1 SubPX87() }
 
-#define ComIX87(cond, ret) __asm { __asm FCOMI ST, ST(1) __asm SET ## cond BYTE PTR [ret] }
-#define ComIPX87(cond, ret) __asm { __asm FCOMIP ST, ST(1) __asm SET ## cond BYTE PTR [ret] }
-#define ComIPPX87(cond, ret) __asm { __asm FCOMIP ST, ST(1) __asm SET ## cond BYTE PTR [ret] __asm FSTP ST(0) }
+#define ComIX87(cond, ret) __asm { __asm FUCOMI ST, ST(1) __asm SET ## cond BYTE PTR [ret] }
+#define ComIPX87(cond, ret) __asm { __asm FUCOMIP ST, ST(1) __asm SET ## cond BYTE PTR [ret] }
+#define ComIPPX87(cond, ret) __asm { __asm FUCOMIP ST, ST(1) __asm SET ## cond BYTE PTR [ret] __asm FSTP ST(0) }
 
 #define X87OneOp(op, val) \
 		LoadToX87(val); \
@@ -186,18 +236,18 @@ extern "C++" {
 
 	struct LongDouble80NonModLVal {
 
-		__forceinline LongDouble80NonModLVal() noexcept {};
-		__forceinline LongDouble80NonModLVal(const LongDouble80NonModLVal&) noexcept = delete;
-		__forceinline LongDouble80NonModLVal& operator=(const LongDouble80NonModLVal&) noexcept = delete;
-		__forceinline LongDouble80NonModLVal(LongDouble80NonModLVal&&) noexcept = delete;
-		__forceinline LongDouble80NonModLVal& operator=(LongDouble80NonModLVal&&) noexcept = delete;
+		TH_FORCEINLINE LongDouble80NonModLVal() noexcept {};
+		TH_FORCEINLINE LongDouble80NonModLVal(const LongDouble80NonModLVal&) noexcept = delete;
+		TH_FORCEINLINE LongDouble80NonModLVal& operator=(const LongDouble80NonModLVal&) noexcept = delete;
+		TH_FORCEINLINE LongDouble80NonModLVal(LongDouble80NonModLVal&&) noexcept = delete;
+		TH_FORCEINLINE LongDouble80NonModLVal& operator=(LongDouble80NonModLVal&&) noexcept = delete;
 
-		template<typename T = void, typename = std::enable_if_t<ValidFPValue(T), T>>
-		__forceinline operator T() noexcept {
+		template<typename T = void, sfinae_enable(ValidFPValue(T))>
+		TH_FORCEINLINE operator T() noexcept {
 			if constexpr (std::is_same_v<T, LongDouble80>) {
 				__asm FLD ST(0);
 			}
-			return StoreFromX87<T>();
+			return StoreFromX87<T, false>();
 		}
 
 #ifdef ALLOW_UNSAFE_LONG_DOUBLE_OPS
@@ -206,63 +256,63 @@ extern "C++" {
 #define X87LValChain const
 #endif
 
-		__forceinline X87LValChain LongDouble80NonModLVal& operator+(LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE X87LValChain LongDouble80NonModLVal& operator+(LongDouble80NonModLVal& right) {
 			AddX87();
 			return right;
 		}
 
-		__forceinline X87LValChain LongDouble80NonModLVal& operator-(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE X87LValChain LongDouble80NonModLVal& operator-(const LongDouble80NonModLVal& right) {
 			SubX87();
 			return right;
 		}
 
-		__forceinline X87LValChain LongDouble80NonModLVal& operator*(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE X87LValChain LongDouble80NonModLVal& operator*(const LongDouble80NonModLVal& right) {
 			MulX87();
 			return right;
 		}
 
-		__forceinline X87LValChain LongDouble80NonModLVal& operator/(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE X87LValChain LongDouble80NonModLVal& operator/(const LongDouble80NonModLVal& right) {
 			DivX87();
 			return right;
 		}
 
-		__forceinline bool operator==(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE bool operator==(const LongDouble80NonModLVal& right) {
 			bool _ret;
 			ComIX87(E, _ret);
 			return _ret;
 		}
 
-		__forceinline bool operator!=(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE bool operator!=(const LongDouble80NonModLVal& right) {
 			bool _ret;
 			ComIX87(NE, _ret);
 			return _ret;
 		}
 
-		__forceinline bool operator<(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE bool operator<(const LongDouble80NonModLVal& right) {
 			bool _ret;
 			ComIX87(B, _ret);
 			return _ret;
 		}
 
-		__forceinline bool operator<=(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE bool operator<=(const LongDouble80NonModLVal& right) {
 			bool _ret;
 			ComIX87(BE, _ret);
 			return _ret;
 		}
 
-		__forceinline bool operator>(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE bool operator>(const LongDouble80NonModLVal& right) {
 			bool _ret;
 			ComIX87(A, _ret);
 			return _ret;
 		}
 
-		__forceinline bool operator>=(const LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE bool operator>=(const LongDouble80NonModLVal& right) {
 			bool _ret;
 			ComIX87(AE, _ret);
 			return _ret;
 		}
 
-		__forceinline ~LongDouble80NonModLVal(void) {
+		TH_FORCEINLINE ~LongDouble80NonModLVal(void) {
 			__asm FSTP ST(0);
 		}
 	};
@@ -282,115 +332,116 @@ extern "C++" {
 
 		LongDouble80() = default;
 
-		template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>, T>>
-		__forceinline constexpr LongDouble80(T right) {
+		template <typename T, sfinae_enable(std::is_arithmetic_v<T>)>
+		TH_FORCEINLINE constexpr LongDouble80(T right) {
 			*this = right;
 		}
 
-		template <typename... T, typename = std::enable_if_t<sizeof...(T) <= 10 && (... && std::is_integral_v<T>)>>
-		__forceinline constexpr LongDouble80(T... right) {
+		template <typename... T, sfinae_enable(sizeof...(T) <= 10 && (... && std::is_integral_v<T>))>
+		TH_FORCEINLINE constexpr LongDouble80(T... right) {
 			this->ld = { (unsigned char)right... };
 		}
 
-		__forceinline constexpr LongDouble80(_LDOUBLE right) : ld(right) {}
+		TH_FORCEINLINE constexpr LongDouble80(_LDOUBLE right) : ld(right) {}
 
 #endif
 
-		__forceinline operator bool() {
+		TH_FORCEINLINE operator bool() {
 			bool _ret;
-			X87OneComSetCC(ComIP, Z, _ret, *this);
+			__asm {
+				FUCOMI ST, ST(0);
+				SETZ BYTE PTR[_ret];
+			}
 			return _ret;
 		}
 
-		template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>, T>>
-		__forceinline operator T() {
-			LoadToX87(*this);
-			T ret = StoreFromX87<T>();
-			return ret;
+		template<typename T, sfinae_enable(std::is_arithmetic_v<T>)>
+		TH_FORCEINLINE operator T() {
+			return ReadFromX87<T>();
 		}
 
-		template<typename T>
-		__forceinline std::enable_if_t<std::is_arithmetic_v<T>, LongDouble80> operator=(T right) {
+		template<typename T, sfinae_enable(std::is_arithmetic_v<T>)>
+		TH_FORCEINLINE LongDouble80 operator=(T right) {
 			LoadToX87(right);
-			return *this = StoreFromX87<LongDouble80>();;
+			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		__forceinline LongDouble80 operator=(_LDOUBLE right) {
+		TH_FORCEINLINE LongDouble80 operator=(_LDOUBLE right) {
 			this->ld = right;
 			return *this;
 		}
 
-		__forceinline LongDouble80 operator+() {
+		TH_FORCEINLINE LongDouble80 operator+() {
 			return *this;
 		}
 
-		__forceinline LongDouble80 operator-() {
+		TH_FORCEINLINE LongDouble80 operator-() {
 			LongDouble80 _ret = *this;
 			_ret.ld.ld[9] ^= (unsigned char)0b10000000; // Flip sign bit
 			return _ret;
 		}
 
-		__forceinline LongDouble80 operator+=(LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE LongDouble80 operator+=(LongDouble80NonModLVal& right) {
 			X87OneOp(Add, *this);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		template<typename T>
-		__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80> operator+=(T right) {
+		template<typename T, sfinae_enable(ValidFPValue(T))>
+		TH_FORCEINLINE LongDouble80 operator+=(T right) {
 			X87Op(AddP, *this, right);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		__forceinline LongDouble80 operator-=(LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE LongDouble80 operator-=(LongDouble80NonModLVal& right) {
 			X87OneOp(Sub, *this);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		template<typename T>
-		__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80> operator-=(T right) {
+		template<typename T, sfinae_enable(ValidFPValue(T))>
+		TH_FORCEINLINE LongDouble80 operator-=(T right) {
 			X87Op(SubP, *this, right);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		__forceinline LongDouble80 operator*=(LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE LongDouble80 operator*=(LongDouble80NonModLVal& right) {
 			X87OneOp(Mul, *this);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		template<typename T>
-		__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80> operator*=(T right) {
+		template<typename T, sfinae_enable(ValidFPValue(T))>
+		TH_FORCEINLINE LongDouble80 operator*=(T right) {
 			X87Op(MulP, *this, right);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		__forceinline LongDouble80 operator/=(LongDouble80NonModLVal& right) {
+		TH_FORCEINLINE LongDouble80 operator/=(LongDouble80NonModLVal& right) {
 			X87OneOp(Div, *this);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		template<typename T>
-		__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80> operator/=(T right) {
+		template<typename T, sfinae_enable(ValidFPValue(T))>
+		TH_FORCEINLINE LongDouble80 operator/=(T right) {
 			X87Op(DivP, *this, right);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		__forceinline LongDouble80 operator++() {
+		TH_FORCEINLINE LongDouble80 operator++() {
 			X87OneOp(Inc, *this);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		__forceinline LongDouble80 operator++(int) {
+		TH_FORCEINLINE LongDouble80 operator++(int) {
 			LongDouble80 ret = *this;
 			++*this;
 			return ret;
 		}
 
-		__forceinline LongDouble80 operator--() {
+		TH_FORCEINLINE LongDouble80 operator--() {
 			X87OneOp(Dec, *this);
 			return *this = StoreFromX87<LongDouble80>();
 		}
 
-		__forceinline LongDouble80 operator--(int) {
+		TH_FORCEINLINE LongDouble80 operator--(int) {
 			LongDouble80 ret = *this;
 			--*this;
 			return ret;
@@ -403,250 +454,237 @@ extern "C++" {
 
 #ifdef __cplusplus
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), LongDouble80NonModLVal> operator+(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE LongDouble80NonModLVal operator+(T1 left, T2 right) {
 		X87Op(AddP, left, right);
 		return {};
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator+(LongDouble80NonModLVal& left, T right) {
+	template<typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal operator+(LongDouble80 left, T right) {
+		__asm FLD TBYTE PTR[left];
+	}
+
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator+(LongDouble80NonModLVal& left, T right) {
 		X87OneOp(AddP, right);
 		return left;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator+(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator+(T left, LongDouble80NonModLVal& right) {
 		X87OneOp(AddP, left);
 		return right;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>, LongDouble80&> operator+(LongDouble80 left, bool right) {
+	template<typename T1, typename T2, sfinae_enable(std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>)>
+	TH_FORCEINLINE LongDouble80& operator+(LongDouble80 left, bool right) {
 		return right ? ++left : left;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), LongDouble80NonModLVal> operator-(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE LongDouble80NonModLVal operator-(T1 left, T2 right) {
 		X87Op(SubP, left, right);
 		return {};
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator-(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator-(LongDouble80NonModLVal& left, T right) {
 		X87OneOp(SubP, right);
 		return left;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator-(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator-(T left, LongDouble80NonModLVal& right) {
 		X87OneOp(SubP, left);
 		return right;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>, LongDouble80&> operator-(LongDouble80 left, bool right) {
+	template<typename T1, typename T2, sfinae_enable(std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>)>
+	TH_FORCEINLINE LongDouble80& operator-(LongDouble80 left, bool right) {
 		return right ? --left : left;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), LongDouble80NonModLVal> operator*(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE LongDouble80NonModLVal operator*(T1 left, T2 right) {
 		X87Op(MulP, left, right);
 		return {};
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator*(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator*(LongDouble80NonModLVal& left, T right) {
 		X87OneOp(MulP, right);
 		return left;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator*(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator*(T left, LongDouble80NonModLVal& right) {
 		X87OneOp(MulP, left);
 		return right;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>, LongDouble80&> operator*(LongDouble80 left, bool right) {
+	template<typename T1, typename T2, sfinae_enable(std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>)>
+	TH_FORCEINLINE LongDouble80& operator*(LongDouble80 left, bool right) {
 		return right ? left : left = _LDOUBLE{ 0 };
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), LongDouble80NonModLVal> operator/(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE LongDouble80NonModLVal operator/(T1 left, T2 right) {
 		X87Op(DivP, left, right);
 		return {};
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator/(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator/(LongDouble80NonModLVal& left, T right) {
 		X87OneOp(DivP, right);
 		return left;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), LongDouble80NonModLVal&> operator/(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE LongDouble80NonModLVal& operator/(T left, LongDouble80NonModLVal& right) {
 		X87OneOp(DivP, left);
 		return right;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>, LongDouble80&> operator/(LongDouble80 left, bool right) {
+	template<typename T1, typename T2, sfinae_enable(std::is_same_v<T1, LongDouble80> && std::is_same_v<T2, bool>)>
+	TH_FORCEINLINE LongDouble80& operator/(LongDouble80 left, bool right) {
 		return right ? left : left = _LDOUBLE{ 0, 0, 0, 0, 0, 0, 0, 0x80, 0xFF, 0x7F };
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), bool> operator==(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE bool operator==(T1 left, T2 right) {
 		bool _ret;
 		X87ComSetCC(ComIPP, E, _ret, left, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator==(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator==(LongDouble80NonModLVal& left, T right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, E, _ret, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator==(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator==(T left, LongDouble80NonModLVal& right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, E, _ret, left);
 		return _ret;
 	}
 
 	template<>
-	__forceinline bool operator==(LongDouble80 left, LongDouble80 right) {
+	TH_FORCEINLINE bool operator==(LongDouble80 left, LongDouble80 right) {
 		return memcmp(&left, &right, sizeof(LongDouble80)) == 0;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), bool> operator!=(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE bool operator!=(T1 left, T2 right) {
 		bool _ret;
 		X87ComSetCC(ComIPP, NE, _ret, left, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator!=(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator!=(LongDouble80NonModLVal& left, T right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, NE, _ret, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator!=(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator!=(T left, LongDouble80NonModLVal& right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, NE, _ret, left);
 		return _ret;
 	}
 
 	template<>
-	__forceinline bool operator!=(LongDouble80 left, LongDouble80 right) {
+	TH_FORCEINLINE bool operator!=(LongDouble80 left, LongDouble80 right) {
 		return memcmp(&left, &right, sizeof(LongDouble80)) != 0;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), bool> operator<(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE bool operator<(T1 left, T2 right) {
 		bool _ret;
 		X87ComSetCC(ComIPP, B, _ret, left, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator<(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator<(LongDouble80NonModLVal& left, T right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, B, _ret, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator<(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator<(T left, LongDouble80NonModLVal& right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, AE, _ret, left);
 		return _ret;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), bool> operator<=(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE bool operator<=(T1 left, T2 right) {
 		bool _ret;
 		X87ComSetCC(ComIPP, BE, _ret, left, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator<=(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator<=(LongDouble80NonModLVal& left, T right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, BE, _ret, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator<=(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator<=(T left, LongDouble80NonModLVal& right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, A, _ret, left);
 		return _ret;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), bool> operator>(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE bool operator>(T1 left, T2 right) {
 		bool _ret;
 		X87ComSetCC(ComIPP, A, _ret, left, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator>(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator>(LongDouble80NonModLVal& left, T right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, A, _ret, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator>(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator>(T left, LongDouble80NonModLVal& right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, BE, _ret, left);
 		return _ret;
 	}
 
-	template<typename T1, typename T2>
-	__forceinline std::enable_if_t<ValidFPArithmetic(T1, T2), bool> operator>=(T1 left, T2 right) {
+	template<typename T1, typename T2, sfinae_enable(ValidFPArithmetic(T1, T2))>
+	TH_FORCEINLINE bool operator>=(T1 left, T2 right) {
 		bool _ret;
 		X87ComSetCC(ComIPP, AE, _ret, left, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator>=(LongDouble80NonModLVal& left, T right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator>=(LongDouble80NonModLVal& left, T right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, AE, _ret, right);
 		return _ret;
 	}
 
-	template <typename T>
-	__forceinline std::enable_if_t<ValidFPValue(T), bool> operator>=(T left, LongDouble80NonModLVal& right) {
+	template <typename T, sfinae_enable(ValidFPValue(T))>
+	TH_FORCEINLINE bool operator>=(T left, LongDouble80NonModLVal& right) {
 		bool _ret;
 		X87OneComSetCC(ComIPP, B, _ret, left);
 		return _ret;
-	}
-
-	template<typename T>
-	__forceinline std::enable_if_t<std::is_integral_v<T>, T> operator<<(T left, LongDouble80 right) {
-		return left << (T)right;
-	}
-	template<typename T>
-	__forceinline std::enable_if_t<std::is_integral_v<T>, T> operator<<=(T left, LongDouble80 right) {
-		return left <<= (T)right;
-	}
-
-	template<typename T>
-	__forceinline std::enable_if_t<std::is_integral_v<T>, T> operator>>(T left, LongDouble80 right) {
-		return left >> (T)right;
-	}
-	template<typename T>
-	__forceinline std::enable_if_t<std::is_integral_v<T>, T> operator>>=(T left, LongDouble80 right) {
-		return left >>= (T)right;
 	}
 
 } // extern "C++"
@@ -743,12 +781,12 @@ extern "C++" {
 #ifdef __cplusplus
 extern "C++" {
 
-	__forceinline LongDouble80 operator"" _ld(unsigned long long int value) {
+	TH_FORCEINLINE LongDouble80 operator"" _ld(unsigned long long int value) {
 		LongDouble80 ret;
 		return ret = value;
 	}
 
-	__forceinline LongDouble80 operator"" _ld(long double value) {
+	TH_FORCEINLINE LongDouble80 operator"" _ld(long double value) {
 		LongDouble80 ret;
 		return ret = value;
 	}

@@ -140,10 +140,13 @@ void plugin_load(const char *const fn_abs, const char *fn)
 	}
 #endif
 
+#ifndef TH_X64
 	if (!CheckDLLFunction(fn_abs, "thcrap_plugin_init")) {
 		log_printf("[Plugin] %s: not a plugin\n", fn);
 		return;
 	}
+#endif
+	//DebugBreak();
 
 	if (HMODULE plugin = LoadLibraryExU(fn_abs, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)) {
 		switch (FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");

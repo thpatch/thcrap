@@ -7,7 +7,7 @@
   * Breakpoint entry point. Written for i686-w64-mingw32-as.
   */
 
-	.intel_syntax
+	.intel_syntax noprefix
 	.global	_bp_entry, _bp_entry_indexptr, _bp_entry_localptr, _bp_entry_callptr, _bp_entry_end
 
 	.macro pushDW value

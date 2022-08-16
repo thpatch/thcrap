@@ -5,9 +5,17 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -17,36 +25,29 @@
     <InDir>$(ProjectDir)external_deps\</InDir>
     <OutSubdir>bin\</OutSubdir>
     <Debug Condition="'$(Configuration)'=='Debug'">_d</Debug>
-	<SkipSign>true</SkipSign>
+    <SkipSign>true</SkipSign>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\base.props" />
   </ImportGroup>
   <ItemGroup>
-    <CopyFiles Include="$(InDir)bin\jansson$(Debug).dll" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\jansson$(Debug).lib" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\jansson$(Debug).pdb" OutputFolder="$(OutDir)" />
-
-    <CopyFiles Include="$(InDir)bin\libmpg123$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Debug)$(Bits).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Debug)$(Bits).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Debug)$(Bits).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libmpg123$(Debug)$(Bits).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)obj\libmpg123 $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
-
-    <CopyFiles Include="$(InDir)bin\libogg$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libogg$(Debug)$(Bits).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)obj\libogg $(Configuration) Static $(PlatformShortName)\libogg.pdb" OutputFolder="$(OutDir)" />
-
-    <CopyFiles Include="$(InDir)bin\libpng16$(Debug).dll" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\libpng16$(Debug).pdb" OutputFolder="$(OutDir)" />
-
-    <CopyFiles Include="$(InDir)bin\libvorbis$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libpng16$(Debug)$(Bits).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libpng16$(Debug)$(Bits).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libvorbis$(Debug)$(Bits).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)obj\libvorbis $(Configuration) Static $(PlatformShortName)\libvorbis_decode.pdb" OutputFolder="$(OutDir)" />
-
-    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).dll" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).lib" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).pdb" OutputFolder="$(OutDir)" />
-	
-	<CopyFiles Include="$(InDir)bin\libcrypto-1_1.dll" OutputFolder="$(OutDir)" />
-	<CopyFiles Include="$(InDir)bin\libssl-1_1.dll" OutputFolder="$(OutDir)" />
-	
-	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).dll" OutputFolder="$(OutDir)" />
-	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug)$(Bits).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug)$(Bits).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug)$(Bits).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libcrypto-1_1.dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libssl-1_1.dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libcurl$(Debug)$(Bits).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libcurl$(Debug)$(Bits).pdb" OutputFolder="$(OutDir)" />
   </ItemGroup>
 </Project>

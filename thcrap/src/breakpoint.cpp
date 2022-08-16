@@ -22,7 +22,14 @@ extern "C" size_t TH_CDECL breakpoint_process(breakpoint_t *bp, size_t addr_inde
 
 /// Constants
 /// ---------
-#define CALL_LEN (sizeof(void*) + 1)
+#ifdef TH_X86
+#define CALL_OP_LEN 1
+#define MOV_PTR_LEN 1
+#else
+#define CALL_OP_LEN 3
+#define MOV_PTR_LEN 2
+#endif
+#define CALL_LEN (CALL_OP_LEN + sizeof(uint32_t))
 #define x86_CALL_NEAR_REL32 0xE8
 #define x86_JMP_NEAR_REL32 0xE9
 #define x86_NOP 0x90
@@ -62,7 +69,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	size_t *ptr;
 	const char *expr_end;
 
-	ptr = reg(regs, expr, &expr_end);
+	ptr = (size_t*)reg(regs, expr, &expr_end);
 	if (ptr && expr_end[0] == '\0') {
 		return ptr;
 	}
@@ -79,7 +86,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
-	return json_string_length(val) >= 3 ? reg(regs, json_string_value(val), nullptr) : nullptr;
+	return json_string_length(val) >= 3 ? (size_t*)reg(regs, json_string_value(val), nullptr) : nullptr;
 }
 
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
@@ -239,10 +246,10 @@ extern "C" {
 // Calculate all the offsets once and store them for later
 static const size_t bp_entry_size  = &bp_entry_end          - (uint8_t*)&bp_entry;
 static const size_t bp_entry_index = &bp_entry_indexptr + 1 - (uint8_t*)&bp_entry;
-static const size_t bp_entry_local = &bp_entry_localptr + 1 - (uint8_t*)&bp_entry;
-static const size_t bp_entry_call  = &bp_entry_callptr  + 1 - (uint8_t*)&bp_entry;
+static const size_t bp_entry_local = &bp_entry_localptr + MOV_PTR_LEN - (uint8_t*)&bp_entry;
+static const size_t bp_entry_call  = &bp_entry_callptr  + MOV_PTR_LEN - (uint8_t*)&bp_entry;
 
-size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod, HackpointMemoryPage page_array[2])
+size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMod, HackpointMemoryPage page_array[BREAKPOINT_PAGE_COUNT])
 {
 	if(!breakpoints || !bp_count) {
 		log_print("No breakpoints to set up.\n");
@@ -322,16 +329,22 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		log_print("No valid breakpoints to render.\n");
 		return failed;
 	}
-
-	uint8_t *const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	uint8_t *const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE);
 	page_array[0].address = cave_source;
 	page_array[0].size = sourcecaves_total_size;
 	memset(cave_source, x86_INT3, sourcecaves_total_size);
 
 	const size_t callcaves_total_size = total_valid_addrs * bp_entry_size;
-	uint8_t *const cave_call = (uint8_t*)VirtualAlloc(0, callcaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	uint8_t *const cave_call = (uint8_t*)VirtualAlloc(0, callcaves_total_size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE);
 	page_array[1].address = cave_call;
 	page_array[1].size = callcaves_total_size;
+
+#ifdef TH_X64
+	const size_t addr_bank_total_size = total_valid_addrs * sizeof(void*);
+	void* *const cave_addr_bank = (void**)VirtualAllocLow(0, addr_bank_total_size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE);
+	page_array[2].address = (uint8_t*)cave_addr_bank;
+	page_array[2].size = addr_bank_total_size;
+#endif
 
 	for (uint8_t *callcave_fill = cave_call, *const callcave_fill_end = cave_call + callcaves_total_size;
 		 callcave_fill < callcave_fill_end;
@@ -349,11 +362,18 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 	uint8_t* sourcecave_p = cave_source;
 	uint8_t* callcave_p = cave_call;
+#ifdef TH_X64
+	void** addrcave_p = cave_addr_bank;
+#endif
 
-	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize);
-	uint8_t* exp_buf = (uint8_t*)malloc(largest_cavesize);
+	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize * 2);
+	uint8_t* exp_buf = asm_buf + largest_cavesize;
 	// CALL bp_entry
+#ifdef TH_X86
 	asm_buf[0] = x86_CALL_NEAR_REL32;
+#else
+	*(uint32_t*)&asm_buf[0] = TextInt(0xFF, 0x14, 0x25);
+#endif
 	if (largest_cavesize > CALL_LEN) {
 		memset(asm_buf + CALL_LEN, x86_NOP, largest_cavesize - CALL_LEN);
 	}
@@ -363,7 +383,6 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 	type *const bp_instance_ptr = (type*const)((uintptr_t)(bp_entry_instance) + (size_t)(bp_entry_offset));\
 	*bp_instance_ptr = (type)(value);\
 }
-
 	for (size_t i = 0; i < bp_count; ++i) {
 		if (breakpoint_total_size[i]) {
 			const breakpoint_t *const cur = &breakpoints[i];
@@ -372,7 +391,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 			bool use_expected = (cur->expected != NULL);
 
-			size_t cur_valid_addrs = 0;
+			uint32_t cur_valid_addrs = 0;
 			uintptr_t addr;
 			for (hackpoint_addr_t* cur_addr = cur->addr;
 				 eval_hackpoint_addr(cur_addr, &addr, hMod);
@@ -385,12 +404,24 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 				PatchBPEntryInst(callcave_p, bp_entry_index, uint32_t, cur_valid_addrs++);
 				PatchBPEntryInst(callcave_p, bp_entry_local, const breakpoint_t*, cur);
-				PatchBPEntryInst(callcave_p, bp_entry_call, uint32_t, (uintptr_t)&breakpoint_process - (uintptr_t)bp_instance_ptr - sizeof(void*));
+#ifdef TH_X86
+				PatchBPEntryInst(callcave_p, bp_entry_call, uintptr_t, (uintptr_t)&breakpoint_process - (uintptr_t)bp_instance_ptr - sizeof(void*));
+#else
+				PatchBPEntryInst(callcave_p, bp_entry_call, uintptr_t, (uintptr_t)&breakpoint_process);
+#endif
 
+#ifdef TH_X86
 				// CALL bp_entry
 				const uint32_t bp_dist = (uintptr_t)callcave_p - (addr + CALL_LEN);
 				// Opcode is set earlier and doesn't change
-				*(uint32_t*)&asm_buf[1] = bp_dist;
+				*(uint32_t*)&asm_buf[CALL_OP_LEN] = bp_dist;
+#else
+				// CALL bp_entry from addr bank
+				*addrcave_p = callcave_p;
+				// Opcode is set earlier and doesn't change
+				*(uint32_t*)&asm_buf[CALL_OP_LEN] = (uint32_t)addrcave_p;
+				++addrcave_p;
+#endif
 
 				callcave_p += bp_entry_size;
 
@@ -418,12 +449,14 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		}
 	}
 	free(asm_buf);
-	free(exp_buf);
 	VLA_FREE(breakpoint_total_size);
 
 	DWORD idgaf;
 	VirtualProtect(cave_source, sourcecaves_total_size, PAGE_EXECUTE, &idgaf);
 	VirtualProtect(cave_call, callcaves_total_size, PAGE_EXECUTE, &idgaf);
+#ifdef TH_X64
+	VirtualProtect(cave_addr_bank, addr_bank_total_size, PAGE_READONLY, &idgaf);
+#endif
 
 	return failed;
 }

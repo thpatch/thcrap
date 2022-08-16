@@ -12,7 +12,7 @@
 
 int file_rep_init(file_rep_t *fr, const char *file_name)
 {
-	size_t fn_len;
+	u32size fn_len;
 
 	if (fr->name) {
 		file_rep_clear(fr);
@@ -129,7 +129,11 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 		*file_buffer_addr_copy = (size_t)fr->game_buffer;
 	}
 	if(stack_clear_size) {
+#ifndef TH_X64
 		regs->esp += stack_clear_size;
+#else
+		regs->rsp += stack_clear_size;
+#endif
 	}
 	file_rep_clear(fr);
 	return 0;

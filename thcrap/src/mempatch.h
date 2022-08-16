@@ -9,6 +9,11 @@
 
 #pragma once
 
+// Variants of VirtualAlloc that are guaranteed to return
+// memory from the lower 4GB of address space on x64
+LPVOID WINAPI VirtualAllocLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+LPVOID WINAPI VirtualAllocLow(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+
 // IsBadReadPtr() without the flawed implementation.
 // Returns TRUE if [ptr] points to at least [len] bytes of valid memory in the
 // address space of the current process.

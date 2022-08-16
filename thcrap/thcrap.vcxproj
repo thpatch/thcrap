@@ -5,9 +5,17 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -115,8 +123,12 @@
     <ClInclude Include="src\win32_detour.h" />
     <ClInclude Include="src\xpcompat.h" />
     <ClInclude Include="src\zip.h" />
-    <GAS Include="src\bp_entry.asm" />
-    <GAS Include="src\inject_func.asm" />
+    <GAS Condition="'$(Platform)'=='Win32'" Include="src\bp_entry.asm" />
+    <!-- <GAS Condition="'$(Platform)'=='Win32'" Include="src\inject_func.asm" /> -->
+    <GAS Condition="'$(Platform)'=='Win32'" Include="src\inject_func_new.asm" />
+    <GAS Condition="'$(Platform)'=='x64'" Include="src\bp_entry_x64.asm" />
+    <!-- <GAS Condition="'$(Platform)'=='x64'" Include="src\inject_func_x64.asm" /> -->
+    <GAS Condition="'$(Platform)'=='x64'" Include="src\inject_func_new_x64.asm" />
     <None Include="thcrap.def" />
   </ItemGroup>
 </Project>

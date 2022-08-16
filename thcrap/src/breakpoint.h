@@ -108,10 +108,12 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out);
 // (since that code might overwrite the modified data otherwise).
 int breakpoint_cave_exec_flag(json_t *bp_info);
 
+#define BREAKPOINT_PAGE_COUNT (2 + ADDR_BANK_COUNT)
+
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.
-size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod, HackpointMemoryPage page_array[2]);
+size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod, HackpointMemoryPage page_array[BREAKPOINT_PAGE_COUNT]);
 
 // Removes all breakpoints in the given set.
 // TODO: Implement!

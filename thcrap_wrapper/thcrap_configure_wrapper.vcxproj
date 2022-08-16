@@ -1,5 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6E41ED18-B3C4-4AF0-9888-80606B5444DE}</ProjectGuid>
     <RootNamespace>thcrap_configure_wrapper</RootNamespace>
@@ -14,7 +32,7 @@
     -->
     <TargetName Condition="'$(Configuration)'=='Debug'">thcrap_d</TargetName>
     <TargetName Condition="'$(Configuration)'!='Debug'">thcrap</TargetName>
-	<TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
+    <TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
   </PropertyGroup>
   <ItemGroup>
     <ResourceCompile Include="thcrap_configure_wrapper.rc">

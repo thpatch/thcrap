@@ -16,7 +16,7 @@
 
 struct log_string_t {
 	const char* str;
-	size_t n;
+	u32size n;
 	bool is_n;
 };
 
@@ -134,7 +134,7 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 	}
 }
 
-static void log_push(const char* str, size_t n, bool is_n) {
+static void log_push(const char* str, u32size n, bool is_n) {
 	if (async_enabled) {
 		const char* new_str = strdup_size(str, n);
 		EnterCriticalSection(&queue_cs);
@@ -146,7 +146,7 @@ static void log_push(const char* str, size_t n, bool is_n) {
 	}
 }
 
-void log_nprint(const char* str, size_t n) {
+void log_nprint(const char* str, u32size n) {
 	log_push(str, strnlen(str, n), true);
 }
 

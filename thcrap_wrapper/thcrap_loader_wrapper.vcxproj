@@ -1,5 +1,23 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{98C00188-ADF9-4C1B-B325-BE4E52411AF9}</ProjectGuid>
     <RootNamespace>thcrap_loader_wrapper</RootNamespace>
@@ -12,9 +30,9 @@
       We need to have a unique RootNamespace, but we want to have the same TargetName
       as the exe we wrap, so we overwrite it here.
     -->
-    <TargetName Condition="'$(Configuration)'=='Debug'">thcrap_loader_d</TargetName>
-    <TargetName Condition="'$(Configuration)'!='Debug'">thcrap_loader</TargetName>
-	<TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
+    <TargetName Condition="'$(Configuration)'=='Debug'">thcrap_loader_d$(Bits)</TargetName>
+    <TargetName Condition="'$(Configuration)'!='Debug'">thcrap_loader$(Bits)</TargetName>
+    <TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
   </PropertyGroup>
   <ItemGroup>
     <ResourceCompile Include="thcrap_loader_wrapper.rc">

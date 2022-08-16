@@ -91,6 +91,12 @@ typedef struct {
 	size_t size;
 } HackpointMemoryPage;
 
+#ifdef TH_X64
+#define ADDR_BANK_COUNT 1
+#else
+#define ADDR_BANK_COUNT 0
+#endif
+
 typedef struct {
 	const char* name;
 	size_t offset;

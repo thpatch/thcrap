@@ -10,6 +10,8 @@
 #pragma once
 #include <uchar.h>
 
+typedef uint32_t u32size;
+
 #define TH_CALLER_CLEANUP(func) TH_NODISCARD_REASON("Return value must be passed to '"#func"' by caller!")
 #define TH_CALLER_FREE TH_CALLER_CLEANUP(free)
 #define TH_CALLER_DELETE TH_CALLER_CLEANUP(delete)
@@ -243,6 +245,9 @@ write_fs_dword(offsetof(TEB, member), (data)) \
 #define CurrentImageBase ((uintptr_t)CurrentPeb()->ImageBaseAddress)
 
 #define CurrentModuleHandle ((HMODULE)CurrentImageBase)
+
+// Same as NtCurrentProcess()
+#define CurrentProcessHandle ((HANDLE)-1)
 
 // TODO: Look into when this member gets used.
 // Supposedly it's just scratch space for strings.

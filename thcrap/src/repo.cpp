@@ -21,9 +21,13 @@ repo_t *RepoLoadJson(json_t *repo_js)
 	if (!json_is_object(repo_js)) {
 		return nullptr;
 	}
-	repo_t *repo = (repo_t*)malloc(sizeof(repo_t));
 
-	repo->id = json_object_get_string_copy(repo_js, "id");
+	char* id = json_object_get_string_copy(repo_js, "id");
+	if unexpected(!id) {
+		return nullptr;
+	}
+	repo_t *repo = (repo_t*)malloc(sizeof(repo_t));
+	repo->id = id;
 	repo->title = json_object_get_string_copy(repo_js, "title");
 	repo->contact = json_object_get_string_copy(repo_js, "contact");
 	repo->servers = json_object_get_string_array_copy(repo_js, "servers");

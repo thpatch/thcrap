@@ -269,7 +269,7 @@ end:
 
 void thcrap_detour(HMODULE hProc)
 {
-	size_t mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
+	DWORD mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
 	VLA(char, mod_name, mod_name_len);
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
 	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT, mod_name);
@@ -286,8 +286,8 @@ int thcrap_init(const char *run_cfg)
 		perf_tested = false;
 	}
 
-	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
+	u32size exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
+	u32size game_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
 
@@ -439,7 +439,7 @@ int InitDll(HMODULE hDll)
 	wchar_t prev_dir[MAX_PATH];
 	GetCurrentDirectoryW(MAX_PATH, prev_dir);
 	SetCurrentDirectoryU(dll_dir);
-	w32u8_set_fallback_codepage(globalconfig_get_integer("codepage", 932));
+	w32u8_set_fallback_codepage((UINT)globalconfig_get_integer("codepage", 932));
 	SetCurrentDirectoryW(prev_dir);
 	
 	exception_init();

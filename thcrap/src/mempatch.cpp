@@ -16,6 +16,76 @@ struct detour_func_map_t {
 
 static std::unordered_map<std::string_view, detour_func_map_t> detours;
 
+#ifdef TH_X64
+#define INVALID_PARAMETER_VALUE 0x57
+#define STATUS_SUCCESS 0x00000000
+
+typedef __success(return >= 0) LONG NTSTATUS;
+
+static ULONG NTAPI RtlNtStatusToDosErrorShim(NTSTATUS Status);
+static NTSTATUS NTAPI NtAllocateVirtualMemoryShim(HANDLE ProcessHandle, PVOID *BaseAddress, ULONG_PTR ZeroBits, PSIZE_T RegionSize, ULONG AllocationType, ULONG Protect);
+
+typedef decltype(&RtlNtStatusToDosErrorShim) RtlNtStatusToDosErrorPtr;
+typedef decltype(&NtAllocateVirtualMemoryShim) NtAllocateVirtualMemoryPtr;
+
+static RtlNtStatusToDosErrorPtr RtlNtStatusToDosError = &RtlNtStatusToDosErrorShim;
+static NtAllocateVirtualMemoryPtr NtAllocateVirtualMemory = &NtAllocateVirtualMemoryShim;
+
+static void resolve_nt_virtual_memory_funcs();
+
+static ULONG NTAPI RtlNtStatusToDosErrorShim(NTSTATUS Status) {
+	resolve_nt_virtual_memory_funcs();
+	return RtlNtStatusToDosError(Status);
+}
+static NTSTATUS NTAPI NtAllocateVirtualMemoryShim(HANDLE ProcessHandle, PVOID *BaseAddress, ULONG_PTR ZeroBits, PSIZE_T RegionSize, ULONG AllocationType, ULONG Protect) {
+	resolve_nt_virtual_memory_funcs();
+	return NtAllocateVirtualMemory(ProcessHandle, BaseAddress, ZeroBits, RegionSize, AllocationType, Protect);
+}
+
+static void resolve_nt_virtual_memory_funcs() {
+	const HMODULE ntdll_module = (HMODULE)GetModuleHandleA("ntdll.dll");
+	RtlNtStatusToDosError = (RtlNtStatusToDosErrorPtr)GetProcAddress(ntdll_module, "RtlNtStatusToDosError");
+	NtAllocateVirtualMemory = (NtAllocateVirtualMemoryPtr)GetProcAddress(ntdll_module, "NtAllocateVirtualMemory");
+}
+
+static constexpr size_t low_mem_zero_mask = 0x7FFFFFFF;
+static constexpr uintptr_t null_region_size = 0x10000;
+static constexpr uint32_t max_numa_node = 0x3F;
+static DWORD set_nt_error_from_nt_status(NTSTATUS status) {
+	DWORD ret = RtlNtStatusToDosError(status);
+	SetLastError(ret);
+	return ret;
+}
+
+// This only implements the functionality that was present in Windows XP
+LPVOID WINAPI VirtualAllocLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) {
+	if unexpected(lpAddress && (uintptr_t)lpAddress < null_region_size) {
+		SetLastError(INVALID_PARAMETER_VALUE);
+		return NULL;
+	}
+	flAllocationType &= ~max_numa_node; // Make sure we don't do anything weird anyway despite only trying to be XP compatible...
+	NTSTATUS status = NtAllocateVirtualMemory(hProcess, &lpAddress, low_mem_zero_mask, &dwSize, flAllocationType, flProtect);
+	if (status == STATUS_SUCCESS) {
+		return lpAddress;
+	}
+	else {
+		set_nt_error_from_nt_status(status);
+		return NULL;
+	}
+}
+
+LPVOID WINAPI VirtualAllocLow(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) {
+	return VirtualAllocLowEx(CurrentProcessHandle, lpAddress, dwSize, flAllocationType, flProtect);
+}
+#else
+LPVOID WINAPI VirtualAllocLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) {
+	return VirtualAllocEx(hProcess, lpAddress, dwSize, flAllocationType, flProtect);
+}
+LPVOID WINAPI VirtualAllocLow(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) {
+	return VirtualAlloc(lpAddress, dwSize, flAllocationType, flProtect);
+}
+#endif
+
 BOOL VirtualCheckRegion(const void *ptr, const size_t len)
 {
 	MEMORY_BASIC_INFORMATION mbi;

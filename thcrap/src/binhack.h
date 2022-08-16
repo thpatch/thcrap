@@ -118,6 +118,9 @@ typedef struct {
 	CodecaveAccessType access_type;
 
 	uint8_t* virtual_address;
+#ifdef TH_X64
+	size_t addr_bank_index;
+#endif
 } codecave_t;
 
 // Shared error message for nonexistent functions.
@@ -134,11 +137,15 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 // Parses a json binhack entry and returns a binhack object
 bool binhack_from_json(const char* name, json_t* in, binhack_t* out);
 
+#define BINHACK_PAGE_COUNT (1)
+
 // Applies every binary hack in [binhacks] irreversibly on the current process.
 // If HMODULE is not null, relative addresses are relative to this module.
 // Else, they are relative to the main module of the current process.
 // Returns the number of binary hacks that could not be applied.
-size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage* page_array);
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage page_array[BINHACK_PAGE_COUNT]);
+
+#define CODECAVE_PAGE_COUNT (5 + ADDR_BANK_COUNT)
 
 // Adds every codecave in [codecaves] on the current process.
 // The codecaves can then be called from binhacks similar to plugin functions. For example:
@@ -151,7 +158,7 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 //		"test_cave": "somecode"
 //		}
 // }
-size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[5]);
+size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[CODECAVE_PAGE_COUNT]);
 
 // Parses a json codecave entry and returns a codecave object
 bool codecave_from_json(const char *name, json_t *in, codecave_t *out);

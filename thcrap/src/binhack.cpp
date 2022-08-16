@@ -705,7 +705,7 @@ static size_t binhacks_total_count(const binhack_t *binhacks, size_t binhacks_co
 	return ret;
 }
 
-size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage* page_array)
+size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage page_array[BINHACK_PAGE_COUNT])
 {
 	if (!binhacks_count) {
 		log_print("No binary hacks to apply.\n");
@@ -785,7 +785,7 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 		return failed;
 	}
 
-	uint8_t* const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	uint8_t* const cave_source = (uint8_t*)VirtualAlloc(0, sourcecaves_total_size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE);
 	if (page_array) {
 		page_array->address = cave_source;
 		page_array->size = sourcecaves_total_size;
@@ -802,8 +802,8 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 	uint8_t* sourcecave_p = cave_source;
 	uint8_t* sourcecave_end = sourcecave_p + sourcecaves_total_size;
 
-	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize);
-	uint8_t* exp_buf = (uint8_t*)malloc(largest_cavesize);
+	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize * 2);
+	uint8_t* exp_buf = asm_buf + largest_cavesize;
 
 	for (size_t i = 0; i < binhacks_count; ++i) {
 		if (binhack_is_valid[i]) {
@@ -846,7 +846,6 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 		}
 	}
 	free(asm_buf);
-	free(exp_buf);
 	VLA_FREE(binhack_is_valid);
 	log_print("\n");
 
@@ -1005,11 +1004,13 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	out->fill = (uint8_t)fill_val;
 	out->export_codecave = export_val;
 	out->virtual_address = NULL;
-
+#ifdef TH_X64
+	out->addr_bank_index = 0;
+#endif
 	return true;
 }
 
-size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[5]) {
+size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[CODECAVE_PAGE_COUNT]) {
 	if (codecaves_count == 0) {
 		return 0;
 	}
@@ -1029,6 +1030,14 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 
 	VLA(size_t, codecaves_full_size, codecaves_count);
 
+#ifdef TH_X64
+	const size_t addr_bank_total_size = sizeof(void*) * codecaves_count;
+	void* *const cave_addr_bank = (void**)VirtualAllocLow(0, addr_bank_total_size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_READWRITE);
+	page_array[6].address = (uint8_t*)cave_addr_bank;
+	page_array[6].size = addr_bank_total_size;
+	void** addrcave_p = cave_addr_bank;
+#endif
+
 	// First pass: calc the complete codecave size
 	for (size_t i = 0; i < codecaves_count; ++i) {
 		if (codecaves[i].export_codecave) {
@@ -1044,7 +1053,7 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 		size_t codecave_size = codecaves_alloc_size[i];
 		page_array[i].size = codecave_size;
 		if (codecave_size > 0) {
-			codecave_buf = (uint8_t*)VirtualAlloc(NULL, codecave_size, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			codecave_buf = (uint8_t*)VirtualAlloc(NULL, codecave_size, MEM_COMMIT | MEM_RESERVE | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE);
 			if (codecave_buf) {
 				/*
 				*  TODO: Profile whether it's faster to memset the whole block
@@ -1105,6 +1114,11 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 			code_string_render(current_cave[access], (uintptr_t)current_cave[access], code, hMod);
 		}
 		codecaves[i].virtual_address = current_cave[access];
+#ifdef TH_X64
+		*addrcave_p = current_cave[access];
+		codecaves[i].addr_bank_index = addrcave_p - cave_addr_bank;
+		++addrcave_p;
+#endif
 
 		current_cave[access] += codecaves[i].size;
 		for (size_t j = codecaves[i].size; j < codecaves_full_size[i]; ++j) {
@@ -1126,5 +1140,8 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 			VirtualProtect(page_array[i].address, page_array[i].size, page_access_type_array[i], &idgaf);
 		}
 	}
+#ifdef TH_X64
+	VirtualProtect(cave_addr_bank, addr_bank_total_size, PAGE_READONLY, &idgaf);
+#endif
 	return 0;
 }

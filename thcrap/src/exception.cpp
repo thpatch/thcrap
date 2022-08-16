@@ -109,6 +109,7 @@ static void log_print_context(CONTEXT* ctx)
 				"Execute/Read (Conforming)",
 				"Execute/Read (Conforming) (Accessed)",
 			};
+#ifndef TH_X64
 			HANDLE current_thread_handle = GetCurrentThread();
 			auto get_segment_data = [&](DWORD segment, LDT_ENTRY& entry, uintptr_t& base_out, size_t& limit_out) {
 				GetThreadSelectorEntry(current_thread_handle, segment, &entry);
@@ -161,6 +162,23 @@ static void log_print_context(CONTEXT* ctx)
 					, ctx->SegGs, gs_base, gs_limit
 				);
 			}
+#else
+			log_printf(
+				"\n"
+				"CS: 0x%04hX\n"
+				"SS: 0x%04hX\n"
+				"DS: 0x%04hX\n"
+				"ES: 0x%04hX\n"
+				"FS: 0x%04hX\n"
+				"GS: 0x%04hX\n"
+				, ctx->SegCs
+				, ctx->SegSs
+				, ctx->SegDs
+				, ctx->SegEs
+				, ctx->SegFs
+				, ctx->SegGs
+			);
+#endif
 		}
 		static constexpr const char* rounding_strings[] = {
 			"Round to Nearest",
@@ -183,16 +201,24 @@ static void log_print_context(CONTEXT* ctx)
 				"Other",
 				"Empty"
 			};
+#ifdef TH_X64
+#define FloatSave FltSave
+#define RegisterArea FloatRegisters
+#endif
 
 #define TagWordString(index) \
 		fpu_tag_strings[(ctx->FloatSave.TagWord >> ((index) * 2)) & 0b11]
 
 #define FPUReg(index) \
-		*(uint16_t*)&ctx->FloatSave.RegisterArea[(10 * (index)) + sizeof(uint64_t)], *(uint64_t*)&ctx->FloatSave.RegisterArea[10 * (index)]
+		*(uint16_t*)&(((uint8_t*)ctx->FloatSave.RegisterArea)[(10 * (index)) + sizeof(uint64_t)]), *(uint64_t*)&(((uint8_t*)ctx->FloatSave.RegisterArea)[10 * (index)])
 
 
 			if (exception_detail_level & ThExceptionDetailLevel::Extra) {
+#ifdef TH_X86
 				XSAVE_FORMAT* fxsave_ctx = (XSAVE_FORMAT*)ctx->ExtendedRegisters;
+#else
+				XSAVE_FORMAT* fxsave_ctx = (XSAVE_FORMAT*)&ctx->FltSave;
+#endif
 				if (CPU_FCS_FDS_Deprecated()) {
 					log_printf(
 						"\n"
@@ -241,8 +267,15 @@ static void log_print_context(CONTEXT* ctx)
 				, TagWordString(7), FPUReg(7)
 			);
 		}
+#ifdef TH_X64
+#undef FloatSave
+#endif
 		if (exception_detail_level & ThExceptionDetailLevel::SSE) {
+#ifdef TH_X86
 			XSAVE_FORMAT* fxsave_ctx = (XSAVE_FORMAT*)ctx->ExtendedRegisters;
+#else
+			XSAVE_FORMAT* fxsave_ctx = (XSAVE_FORMAT*)&ctx->FltSave;
+#endif
 			log_printf(
 				"\n"
 				"MXCSR: 0x%08X (%s)\n"
@@ -299,7 +332,7 @@ static void log_print_context(CONTEXT* ctx)
 
 static void log_print_rva_and_module(HMODULE mod, void *addr)
 {
-	size_t crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
+	DWORD crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
 	VLA(char, crash_fn, crash_fn_len);
 	if (GetModuleFileNameU(mod, crash_fn, crash_fn_len)) {
 		log_printf(
@@ -389,7 +422,7 @@ static TH_CALLER_FREE char* get_windows_error_message(DWORD ExceptionCode) {
 			memcpy(message_text, message_entry->Text, message_length);
 		}
 		else {
-			StringToUTF8(message_text, (wchar_t*)message_entry->Text, message_length);
+			StringToUTF8(message_text, (wchar_t*)message_entry->Text, (int)message_length);
 		}
 	}
 	return message_text;

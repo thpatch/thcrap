@@ -39,7 +39,7 @@ bool CheckDLLFunction(const char* const path, const char* const func_name)
 	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)exeBuffer;
 	if (!pDosHeader || pDosHeader->e_magic != 0x5a4d || (size_t)pDosHeader->e_lfanew + 512 >= exeSize)
 		return false;
-	PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)((DWORD)exeBuffer + pDosHeader->e_lfanew);
+	PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)((uintptr_t)exeBuffer + pDosHeader->e_lfanew);
 	if (!pNtHeader || pNtHeader->Signature != 0x00004550)
 		return false;
 	PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNtHeader);
@@ -50,7 +50,7 @@ bool CheckDLLFunction(const char* const path, const char* const func_name)
 		auto pExportSectionVA = pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
 		for (DWORD i = 0; i < pNtHeader->FileHeader.NumberOfSections; i++, pSection++) {
 			if (pSection->VirtualAddress <= pExportSectionVA && pSection->VirtualAddress + pSection->SizeOfRawData > pExportSectionVA) {
-				auto pSectionBase = (DWORD)exeBuffer - pSection->VirtualAddress + pSection->PointerToRawData;
+				auto pSectionBase = (uintptr_t)exeBuffer - pSection->VirtualAddress + pSection->PointerToRawData;
 				PIMAGE_EXPORT_DIRECTORY pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(pSectionBase + pExportSectionVA);
 				char** pExportNames = (char**)(pSectionBase + pExportDirectory->AddressOfNames);
 				for (DWORD i = 0; i < pExportDirectory->NumberOfNames; ++i) {
@@ -173,8 +173,8 @@ exported_func_t* GetExportedFunctions(HMODULE hDll)
 	}
 
 	UINT_PTR dll_base = (UINT_PTR)hDll; // All this type-casting is annoying
-	UINT_PTR *func_ptrs = (UINT_PTR*)(ExportDesc->AddressOfFunctions + dll_base);
-	UINT_PTR *name_ptrs = (UINT_PTR*)(ExportDesc->AddressOfNames + dll_base);
+	DWORD *func_ptrs = (DWORD*)(ExportDesc->AddressOfFunctions + dll_base);
+	DWORD *name_ptrs = (DWORD*)(ExportDesc->AddressOfNames + dll_base);
 	WORD *name_indices = (WORD*)(ExportDesc->AddressOfNameOrdinals + dll_base);
 
 	exported_func_t* funcs = (exported_func_t*)malloc((ExportDesc->NumberOfFunctions + 1) * sizeof(exported_func_t));
