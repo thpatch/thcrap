@@ -131,6 +131,7 @@ int TH_STDCALL thcrap_plugin_init()
 	patchhook_register("p*.msg", patch_msg_dlg, NULL); // th09
 	patchhook_register("s*.msg", patch_msg_dlg, NULL); // lowest common denominator for th10+
 	patchhook_register("msg*.msg", patch_msg_dlg, NULL); // th143
+	patchhook_register("turtrial.msg", patch_msg_dlg, NULL); // th185
 	patchhook_register("world*.msg", patch_msg_dlg, NULL); // th185
 	patchhook_register("e*.msg", patch_msg_end, NULL); // th10+ endings
 
