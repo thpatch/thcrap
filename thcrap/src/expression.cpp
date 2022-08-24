@@ -10,6 +10,11 @@
 #include "thcrap.h"
 #include <intrin.h>
 
+#undef stricmp
+#define stricmp ascii_stricmp
+#undef strnicmp
+#define strnicmp ascii_strnicmp
+
 //#define EnableExpressionLogging
 
 #ifdef EnableExpressionLogging
@@ -52,9 +57,23 @@ struct CPUID_Data_t {
 	WinVersion_t WindowsVersion = { 0 };
 	FamilyData_t FamilyData = { 0 };
 	ManufacturerID Manufacturer = Unknown;
+	// TODO: Core count detection for omitting LOCK?
+	// Hopefully 64 bytes is a reasonable default for anything ancient enough not to report this
+	uint32_t cache_line_size = 64;
+	// TODO: Add some builtin code options for generating fxsave/xsave patterns
+	uint64_t xsave_mask = 0;
+	size_t xsave_max_size = 0;
+	bool xsave_restores_fpu_errors = true; // Intel doesn't have this flag or any way of disabling this AFAIK, so default to true
+	// TODO: Figure out how to deal with Intel's Alder Lake BS
+	// Apparently individual cores have unique CPUID values,
+	// but that hasn't mattered before since all cores have been the same.
+	bool hybrid_architecture = false;
 	struct {
+		bool HasTSC = false;
 		bool HasCMPXCHG8 = false;
+		bool HasSYSENTER = false;
 		bool HasCMOV = false;
+		bool HasCLFLUSH = false;
 		bool HasMMX = false;
 		bool HasFXSAVE = false;
 		bool HasSSE = false;
@@ -68,49 +87,87 @@ struct CPUID_Data_t {
 		bool HasSSE42 = false;
 		bool HasMOVBE = false;
 		bool HasPOPCNT = false;
+		bool HasAES = false;
+		bool HasXSAVE = false;
 		bool HasAVX = false;
 		bool HasF16C = false;
+		bool HasRDRAND = false;
+		bool HasFSGSBASE = false;
 		bool HasBMI1 = false;
+		bool HasTSXHLE = false;
 		bool HasAVX2 = false;
 		bool FDP_EXCPTN_ONLY = false;
 		bool HasBMI2 = false;
 		bool HasERMS = false;
+		bool HasTSXRTM = false;
 		bool FCS_FDS_DEP = false;
+		bool HasMPX = false;
 		bool HasAVX512F = false;
 		bool HasAVX512DQ = false;
+		bool HasRDSEED = false;
 		bool HasADX = false;
 		bool HasAVX512IFMA = false;
+		bool HasCLFLUSHOPT = false;
+		bool HasCLWB = false;
 		bool HasAVX512PF = false;
 		bool HasAVX512ER = false;
 		bool HasAVX512CD = false;
 		bool HasSHA = false;
 		bool HasAVX512BW = false;
 		bool HasAVX512VL = false;
+		bool HasPREFETCHWT1 = false;
 		bool HasAVX512VBMI = false;
+		bool HasPKU = false;
+		bool HasWAITPKG = false;
 		bool HasAVX512VBMI2 = false;
 		bool HasGFNI = false;
+		bool HasVAES = false;
 		bool HasVPCLMULQDQ = false;
 		bool HasAVX512VNNI = false;
 		bool HasAVX512BITALG = false;
 		bool HasAVX512VPOPCNTDQ = false;
+		bool HasRDPID = false;
+		bool HasCLDEMOTE = false;
+		bool HasMOVDIRI = false;
+		bool HasMOVDIR64B = false;
 		bool HasAVX5124VNNIW = false;
 		bool HasAVX5124FMAPS = false;
 		bool HasFSRM = false;
 		bool HasUINTR = false;
 		bool HasAVX512VP2I = false;
+		bool HasSERIALIZE = false;
+		bool HasCET = false;
 		bool HasAMXBF16 = false;
 		bool HasAVX512FP16 = false;
 		bool HasAMXTILE = false;
 		bool HasAMXINT8 = false;
+		bool HasAVXVNNI = false;
 		bool HasAVX512BF16 = false;
+		bool HasFRMB0 = false;
+		bool HasFRSB = false;
+		bool HasFRCSB = false;
+		bool HasXSAVEOPT = false;
+		bool HasXSAVEC = false;
+		bool HasSYSCALL = false;
 		bool HasMMXEXT = false;
+		bool HasRDTSCP = false;
 		bool Has3DNOWEXT = false;
 		bool Has3DNOW = false;
+		bool HasLMLSAHF = false;
 		bool HasABM = false;
 		bool HasSSE4A = false;
+		bool HasMXCSRMM = false;
+		bool HasPREFETCHW = false;
 		bool HasXOP = false;
+		bool HasLWP = false;
 		bool HasFMA4 = false;
 		bool HasTBM = false;
+		bool HasMONITORX = false;
+		bool HasCLZERO = false;
+		bool HasRDPRU = false;
+		bool HasMCOMMIT = false;
+		bool HasLWPVAL = false;
+		bool HasMVEX = false;
 	};
 	CPUID_Data_t(void) {
 		// GetProcAddress is used to be compatible with XP SP1.
@@ -154,81 +211,162 @@ struct CPUID_Data_t {
 		else {
 			Manufacturer = Unknown;
 		}
-		long* const data0 = (long*)&data[0];
-		long* const data1 = (long*)&data[1];
-		long* const data2 = (long*)&data[2];
-		long* const data3 = (long*)&data[3];
+		const uint32_t& data0 = data[0]; // EAX
+		const uint32_t& data1 = data[1]; // EBX
+		const uint32_t& data2 = data[2]; // ECX
+		const uint32_t& data3 = data[3]; // EDX
 		switch (data[0]) {
-			default: //case 7:
+			default: //case 13:
+				__cpuidex(data, 13, 0);
+				xsave_mask = (uint64_t)data[3] << 32 | data[0];
+				xsave_max_size = data[2];
+				__cpuidex(data, 13, 1);
+				HasXSAVEOPT			= bittest32(data[0], 0);
+				HasXSAVEC			= bittest32(data[0], 1);
+			case 12: case 11: case 10: case 9: case 8: case 7:
 				__cpuidex(data, 7, 0);
-				HasBMI1				= _bittest(data1, 3);
-				HasAVX2				= _bittest(data1, 4);
-				FDP_EXCPTN_ONLY		= _bittest(data1, 6);
-				HasERMS				= _bittest(data1, 9);
-				FCS_FDS_DEP			= _bittest(data1, 13);
-				HasAVX512F			= _bittest(data1, 16);
-				HasAVX512DQ			= _bittest(data1, 17);
-				HasADX				= _bittest(data1, 19);
-				HasAVX512IFMA		= _bittest(data1, 21);
-				HasAVX512PF			= _bittest(data1, 26);
-				HasAVX512ER			= _bittest(data1, 27);
-				HasAVX512CD			= _bittest(data1, 28);
-				HasSHA				= _bittest(data1, 29);
-				HasAVX512BW			= _bittest(data1, 30);
-				HasAVX512VL			= _bittest(data1, 31);
-				HasAVX512VBMI		= _bittest(data2, 1);
-				HasAVX512VBMI2		= _bittest(data2, 6);
-				HasGFNI				= _bittest(data2, 8);
-				HasVPCLMULQDQ		= _bittest(data2, 10);
-				HasAVX512VNNI		= _bittest(data2, 11);
-				HasAVX512BITALG		= _bittest(data2, 12);
-				HasAVX512VPOPCNTDQ	= _bittest(data2, 14);
-				HasAVX5124VNNIW		= _bittest(data3, 2);
-				HasAVX5124FMAPS		= _bittest(data3, 3);
-				HasFSRM				= _bittest(data3, 4);
-				HasUINTR            = _bittest(data3, 5);
-				HasAVX512VP2I		= _bittest(data3, 8);
-				HasAMXBF16          = _bittest(data3, 22);
-				HasAVX512FP16       = _bittest(data3, 23);
-				HasAMXTILE          = _bittest(data3, 24);
-				HasAMXINT8          = _bittest(data3, 25);
+				HasFSGSBASE			= bittest32(data[1], 0);
+				HasBMI1				= bittest32(data[1], 3);
+				HasTSXRTM			= bittest32(data[1], 4);
+				HasAVX2				= bittest32(data[1], 5);
+				FDP_EXCPTN_ONLY		= bittest32(data[1], 6);
+				HasBMI2				= bittest32(data[1], 8);
+				HasERMS				= bittest32(data[1], 9);
+				HasTSXRTM			= bittest32(data[1], 11);
+				FCS_FDS_DEP			= bittest32(data[1], 13);
+				HasMPX				= bittest32(data[1], 14);
+				HasAVX512F			= bittest32(data[1], 16);
+				HasAVX512DQ			= bittest32(data[1], 17);
+				HasRDSEED			= bittest32(data[1], 18);
+				HasADX				= bittest32(data[1], 19);
+				HasAVX512IFMA		= bittest32(data[1], 21);
+				HasCLFLUSHOPT		= bittest32(data[1], 23);
+				HasCLWB				= bittest32(data[1], 24);
+				HasAVX512PF			= bittest32(data[1], 26);
+				HasAVX512ER			= bittest32(data[1], 27);
+				HasAVX512CD			= bittest32(data[1], 28);
+				HasSHA				= bittest32(data[1], 29);
+				HasAVX512BW			= bittest32(data[1], 30);
+				HasAVX512VL			= bittest32(data[1], 31);
+				HasPREFETCHWT1		= bittest32(data[2], 0);
+				HasAVX512VBMI		= bittest32(data[2], 1);
+				HasPKU				= bittest32(data[2], 3) & bittest32(data[2], 4);
+				HasWAITPKG			= bittest32(data[2], 5);
+				HasAVX512VBMI2		= bittest32(data[2], 6);
+				HasGFNI				= bittest32(data[2], 8);
+				HasVAES				= bittest32(data[2], 9);
+				HasVPCLMULQDQ		= bittest32(data[2], 10);
+				HasAVX512VNNI		= bittest32(data[2], 11);
+				HasAVX512BITALG		= bittest32(data[2], 12);
+				HasAVX512VPOPCNTDQ	= bittest32(data[2], 14);
+				HasRDPID			= bittest32(data[2], 22);
+				HasCLDEMOTE			= bittest32(data[2], 25);
+				HasMOVDIRI			= bittest32(data[2], 27);
+				HasMOVDIR64B		= bittest32(data[2], 28);
+				HasAVX5124VNNIW		= bittest32(data[3], 2);
+				HasAVX5124FMAPS		= bittest32(data[3], 3);
+				HasFSRM				= bittest32(data[3], 4);
+				HasUINTR            = bittest32(data[3], 5);
+				HasAVX512VP2I		= bittest32(data[3], 8);
+				HasSERIALIZE		= bittest32(data[3], 14);
+				hybrid_architecture = bittest32(data[3], 15);
+				HasCET				= bittest32(data[3], 20);
+				HasAMXBF16          = bittest32(data[3], 22);
+				HasAVX512FP16       = bittest32(data[3], 23);
+				HasAMXTILE          = bittest32(data[3], 24);
+				HasAMXINT8          = bittest32(data[3], 25);
 				switch (data[0]) {
 					default: //case 1:
 						__cpuidex(data, 7, 1);
-						HasAVX512BF16 = _bittest(data0, 5);
+						HasAVXVNNI		= bittest32(data[0], 4);
+						HasAVX512BF16	= bittest32(data[0], 5);
+						HasFRMB0		= bittest32(data[0], 10);
+						HasFRSB			= bittest32(data[0], 11);
+						HasFRCSB		= bittest32(data[0], 12);
 					case 0:;
 				}
 			case 6: case 5: case 4: case 3: case 2:
+				__cpuid(data, 0x20000000);
+				if unexpected(data[0] > 0) {
+					__cpuid(data, 0x20000001);
+					HasMVEX = bittest32(data[3], 4);
+				}
 				__cpuid(data, 0x80000000);
-				if (data[0] >= 0x80000001) {
-					HasMMXEXT		= _bittest(data3, 22);
-					Has3DNOWEXT		= _bittest(data3, 30);
-					Has3DNOW		= _bittest(data3, 31);
-					HasABM			= _bittest(data2, 5);
-					HasSSE4A		= _bittest(data2, 6);
-					HasXOP			= _bittest(data2, 7);
-					HasFMA4			= _bittest(data2, 16);
-					HasTBM			= _bittest(data2, 21);
+				if ((uint32_t)data[0] > 0x80000000) {
+					switch (data[0]) {
+						default: // case 0x8000001C:
+							__cpuid(data, 0x8000001C);
+							HasLWPVAL		= bittest32(data[0], 1);
+						case 0x8000001B: case 0x8000001A: case 0x80000019: case 0x80000018: case 0x80000017: case 0x80000016:
+						case 0x80000015: case 0x80000014: case 0x80000013: case 0x80000012: case 0x80000011: case 0x80000010: case 0x8000000F:
+						case 0x8000000E: case 0x8000000D: case 0x8000000C: case 0x8000000B: case 0x8000000A: case 0x80000009: case 0x80000008:
+							__cpuid(data, 0x80000008);
+							HasCLZERO		= bittest32(data[1], 0);
+							xsave_restores_fpu_errors = bittest32(data[1], 2);
+							HasRDPRU		= bittest32(data[1], 4);
+							HasMCOMMIT		= bittest32(data[1], 8);
+						case 0x80000007: case 0x80000006: case 0x80000005: case 0x80000004: case 0x80000003: case 0x80000002: case 0x80000001:
+							__cpuid(data, 0x80000001);
+							HasSYSCALL		= bittest32(data[3], 11);
+							HasMMXEXT		= bittest32(data[3], 22);
+							Has3DNOWEXT		= bittest32(data[3], 30);
+							Has3DNOW		= bittest32(data[3], 31);
+							HasLMLSAHF		= bittest32(data[2], 0);
+							HasABM			= bittest32(data[2], 5);
+							HasSSE4A		= bittest32(data[2], 6);
+							HasMXCSRMM		= bittest32(data[2], 7);
+							HasPREFETCHW	= bittest32(data[2], 8);
+							HasXOP			= bittest32(data[2], 11);
+							HasFMA4			= bittest32(data[2], 16);
+							HasTBM			= bittest32(data[2], 21);
+							HasMONITORX		= bittest32(data[2], 29);
+					}
 				}
 			case 1:
 				__cpuid(data, 1);
-				HasCMPXCHG8			= _bittest(data3, 8);
-				HasCMOV				= _bittest(data3, 15);
-				HasMMX				= _bittest(data3, 23);
-				HasFXSAVE			= _bittest(data3, 24);
-				HasSSE				= _bittest(data3, 25);
-				HasSSE2				= _bittest(data3, 26);
-				HasSSE3				= _bittest(data2, 1);
-				HasPCLMULQDQ		= _bittest(data2, 1);
-				HasSSSE3			= _bittest(data2, 9);
-				HasFMA				= _bittest(data2, 12);
-				HasCMPXCHG16B		= _bittest(data2, 13);
-				HasSSE41			= _bittest(data2, 19);
-				HasSSE42			= _bittest(data2, 20);
-				HasMOVBE			= _bittest(data2, 22);
-				HasPOPCNT			= _bittest(data2, 23);
-				HasAVX				= _bittest(data2, 28);
-				HasF16C				= _bittest(data2, 29);
+				HasTSC				= bittest32(data[3], 4);
+				HasCMPXCHG8			= bittest32(data[3], 8);
+				HasSYSENTER			= bittest32(data[3], 11);
+				HasCMOV				= bittest32(data[3], 15);
+				if (HasCLFLUSH		= bittest32(data[3], 19)) {
+					cache_line_size = (data[1] & 0xFF00) >> 5;
+				}
+				HasMMX				= bittest32(data[3], 23);
+				HasFXSAVE			= bittest32(data[3], 24);
+				HasSSE				= bittest32(data[3], 25);
+				HasSSE2				= bittest32(data[3], 26);
+				HasSSE3				= bittest32(data[2], 1);
+				HasPCLMULQDQ		= bittest32(data[2], 1);
+				HasSSSE3			= bittest32(data[2], 9);
+				HasFMA				= bittest32(data[2], 12);
+				HasCMPXCHG16B		= bittest32(data[2], 13);
+				HasSSE41			= bittest32(data[2], 19);
+				HasSSE42			= bittest32(data[2], 20);
+				HasMOVBE			= bittest32(data[2], 22);
+				HasPOPCNT			= bittest32(data[2], 23);
+				HasAES				= bittest32(data[2], 25);
+				HasXSAVE			= bittest32(data[2], 26) & bittest32(data[2], 27);
+				HasAVX				= bittest32(data[2], 28);
+				HasF16C				= bittest32(data[2], 29);
+				HasRDRAND			= bittest32(data[2], 30);
+
+				// Fast system call/return compatibility table.
+				// This isn't really *important* to anything that thcrap does,
+				// but the shear inconsistency of it is laughable enough to document.
+				//          | Legacy Modes                            | Long Modes
+				//          | Real Mode | v8086 Mode | Protected Mode | Compatibility Mode | 64 Bit Mode
+				// SYSENTER |           | Intel, AMD | Intel, AMD     | Intel              | Intel
+				// SYSEXIT  |           |            | Intel, AMD     | Intel              | Intel
+				// SYSCALL  | AMD(?)    | AMD        | AMD            | AMD                | Intel, AMD
+				// SYSRET   |           |            | AMD            | AMD                | Intel, AMD
+				//
+				// Oh, and Intel sets the SYSCALL CPUID bit to 0 outside of 64 bit mode,
+				// but AMD leaves the SYSENTER bit set in all modes. And that's why this
+				// if statement is here.
+				if (OSIsX64 && Manufacturer == AMD) {
+					HasSYSENTER = false;
+				}
+
 				{
 					union FamilyDataIn_t {
 						uint32_t raw;
@@ -243,7 +381,7 @@ struct CPUID_Data_t {
 							uint32_t : 4;
 						};
 					};
-					FamilyDataIn_t family_data_in = *(FamilyDataIn_t*)data0;
+					FamilyDataIn_t family_data_in = { data0 };
 					uint32_t temp = (uint32_t)-1;
 					FamilyData_t family_data_out;
 					family_data_out.stepping = family_data_in.stepping;
@@ -311,7 +449,7 @@ static bool DisableCodecaveNotFound = false;
 void DisableCodecaveNotFoundWarning(bool state) {
 	DisableCodecaveNotFound = state;
 }
-static TH_NOINLINE void CodecaveNotFoundWarningMessage(const char *const name, size_t name_length) {
+static inline void CodecaveNotFoundWarningMessage(const char *const name, size_t name_length) {
 	if (!DisableCodecaveNotFound) {
 		log_printf("EXPRESSION WARNING 3: Codecave \"%.*s\" not found! Returning NULL...\n", name_length, name);
 	}
@@ -321,8 +459,8 @@ static TH_NOINLINE void PostIncDecWarningMessage(void) {
 	WarnOnce(log_print("EXPRESSION WARNING 4: Postfix increment and decrement operators do not currently function as expected because it is not possible to modify the value of an option in an expression. These operators do nothing and are only included for future compatibility and operator precedence reasons.\n"));
 }
 
-static TH_NOINLINE void InvalidCPUFeatureWarningMessage(const char* name, size_t name_length) {
-	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%.*s\"! Assuming feature is present and returning 1...\n", name_length, name);
+static inline void InvalidCPUFeatureWarningMessage(const char* name, size_t name_length) {
+	log_printf("EXPRESSION WARNING 5: Unknown CPU feature \"%.*s\"! Assuming feature is not present and returning 0...\n", name_length, name);
 }
 
 static TH_NOINLINE void NullDerefWarningMessage(void) {
@@ -345,7 +483,7 @@ static TH_NOINLINE void BadCharacterErrorMessage(void) {
 	log_print("EXPRESSION ERROR 2: Unknown character\n");
 }
 
-static TH_NOINLINE void OptionNotFoundErrorMessage(const char* name, size_t name_length) {
+static inline void OptionNotFoundErrorMessage(const char* name, size_t name_length) {
 	log_printf("EXPRESSION ERROR 3: Option \"%.*s\" not found\n", name_length, name);
 }
 
@@ -978,112 +1116,157 @@ static inline const uint32_t GetPatchTestValue(const char* name, size_t name_len
 	return patch_test ? patch_test->i : (uint32_t)patch_test; // Returns 0 if patch_test is NULL
 }
 
-static TH_NOINLINE bool GetCPUFeatureTest(const char* name, size_t name_length) {
+static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_length) {
 	ExpressionLogging("CPUFeatureTest: \"%.*s\"\n", name_length, name);
-	bool ret = false;
 	// Yuck
 	switch (name_length) {
 		case 15:
-			if		(strnicmp(name, "avx512vpopcntdq", name_length) == 0) ret = CPUID_Data.HasAVX512VPOPCNTDQ;
+			if		(strnicmp(name, "avx512vpopcntdq", name_length) == 0) return CPUID_Data.HasAVX512VPOPCNTDQ;
+			else	goto InvalidCPUFeatureError;
+			break;
+		case 13:
+			if		(strnicmp(name, "cachelinesize", name_length) == 0) return CPUID_Data.cache_line_size;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 12:
-			if		(strnicmp(name, "avx512bitalg", name_length) == 0) ret = CPUID_Data.HasAVX512BITALG;
-			else if (strnicmp(name, "avx5124fmaps", name_length) == 0) ret = CPUID_Data.HasAVX5124FMAPS;
-			else if (strnicmp(name, "avx5124vnniw", name_length) == 0) ret = CPUID_Data.HasAVX5124VNNIW;
+			if		(strnicmp(name, "avx512bitalg", name_length) == 0) return CPUID_Data.HasAVX512BITALG;
+			else if (strnicmp(name, "avx5124fmaps", name_length) == 0) return CPUID_Data.HasAVX5124FMAPS;
+			else if (strnicmp(name, "avx5124vnniw", name_length) == 0) return CPUID_Data.HasAVX5124VNNIW;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 11:
-			if		(strnicmp(name, "avx512vbmi1", name_length) == 0) ret = CPUID_Data.HasAVX512VBMI;
-			else if (strnicmp(name, "avx512vbmi2", name_length) == 0) ret = CPUID_Data.HasAVX512VBMI2;
+			if		(strnicmp(name, "avx512vbmi1", name_length) == 0) return CPUID_Data.HasAVX512VBMI;
+			else if (strnicmp(name, "avx512vbmi2", name_length) == 0) return CPUID_Data.HasAVX512VBMI2;
+			else if (strnicmp(name, "prefetchwt1", name_length) == 0) return CPUID_Data.HasPREFETCHWT1;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 10:
-			if		(strnicmp(name, "cmpxchg16b", name_length) == 0) ret = CPUID_Data.HasCMPXCHG16B;
-			else if (strnicmp(name, "vpclmulqdq", name_length) == 0) ret = CPUID_Data.HasVPCLMULQDQ;
-			else if (strnicmp(name, "avx512ifma", name_length) == 0) ret = CPUID_Data.HasAVX512IFMA;
-			else if (strnicmp(name, "avx512vnni", name_length) == 0) ret = CPUID_Data.HasAVX512VNNI;
-			else if (strnicmp(name, "avx512vp2i", name_length) == 0) ret = CPUID_Data.HasAVX512VP2I;
-			else if (strnicmp(name, "avx512fp16", name_length) == 0) ret = CPUID_Data.HasAVX512FP16;
-			else if (strnicmp(name, "avx512bf16", name_length) == 0) ret = CPUID_Data.HasAVX512BF16;
+			if		(strnicmp(name, "vpclmulqdq", name_length) == 0) return CPUID_Data.HasVPCLMULQDQ;
+			else if	(strnicmp(name, "cmpxchg16b", name_length) == 0) return CPUID_Data.HasCMPXCHG16B;
+			else if (strnicmp(name, "avx512ifma", name_length) == 0) return CPUID_Data.HasAVX512IFMA;
+			else if (strnicmp(name, "avx512vbmi", name_length) == 0) return CPUID_Data.HasAVX512VBMI;
+			else if (strnicmp(name, "avx512vp2i", name_length) == 0) return CPUID_Data.HasAVX512VP2I;
+			else if (strnicmp(name, "avx512bf16", name_length) == 0) return CPUID_Data.HasAVX512BF16;
+			else if (strnicmp(name, "clflushopt", name_length) == 0) return CPUID_Data.HasCLFLUSHOPT;
+			else if (strnicmp(name, "avx512vnni", name_length) == 0) return CPUID_Data.HasAVX512VNNI;
+			else if (strnicmp(name, "avx512fp16", name_length) == 0) return CPUID_Data.HasAVX512FP16;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 9:
-			if      (strnicmp(name, "thcrapver", name_length) == 0) ret = PROJECT_VERSION;
-			else if (strnicmp(name, "pclmulqdq", name_length) == 0) ret = CPUID_Data.HasPCLMULQDQ;
+			if      (strnicmp(name, "thcrapver", name_length) == 0) return PROJECT_VERSION;
+			else if (strnicmp(name, "pclmulqdq", name_length) == 0) return CPUID_Data.HasPCLMULQDQ;
+			else if (strnicmp(name, "movdir64b", name_length) == 0) return CPUID_Data.HasMOVDIR64B;
+			else if (strnicmp(name, "prefetchw", name_length) == 0) return CPUID_Data.HasPREFETCHW;
+			else if (strnicmp(name, "serialize", name_length) == 0) return CPUID_Data.HasSERIALIZE;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 8:
-			if		(strnicmp(name, "cmpxchg8", name_length) == 0) ret = CPUID_Data.HasCMPXCHG8;
-			else if (strnicmp(name, "avx512dq", name_length) == 0) ret = CPUID_Data.HasAVX512DQ;
-			else if (strnicmp(name, "avx512pf", name_length) == 0) ret = CPUID_Data.HasAVX512PF;
-			else if (strnicmp(name, "avx512er", name_length) == 0) ret = CPUID_Data.HasAVX512ER;
-			else if (strnicmp(name, "avx512cd", name_length) == 0) ret = CPUID_Data.HasAVX512CD;
-			else if (strnicmp(name, "avx512bw", name_length) == 0) ret = CPUID_Data.HasAVX512BW;
-			else if (strnicmp(name, "avx512vl", name_length) == 0) ret = CPUID_Data.HasAVX512VL;
-			else if (strnicmp(name, "3dnowext", name_length) == 0) ret = CPUID_Data.Has3DNOWEXT;
+			if		(strnicmp(name, "xsaveopt", name_length) == 0) return CPUID_Data.HasXSAVEOPT;
+			else if	(strnicmp(name, "fsgsbase", name_length) == 0) return CPUID_Data.HasFSGSBASE;
+			else if	(strnicmp(name, "cmpxchg8", name_length) == 0) return CPUID_Data.HasCMPXCHG8;
+			else if (strnicmp(name, "avx512vl", name_length) == 0) return CPUID_Data.HasAVX512VL;
+			else if (strnicmp(name, "avx512dq", name_length) == 0) return CPUID_Data.HasAVX512DQ;
+			else if (strnicmp(name, "avx512bw", name_length) == 0) return CPUID_Data.HasAVX512BW;
+			else if (strnicmp(name, "avx512cd", name_length) == 0) return CPUID_Data.HasAVX512CD;
+			else if (strnicmp(name, "cldemote", name_length) == 0) return CPUID_Data.HasCLDEMOTE;
+			else if (strnicmp(name, "sysenter", name_length) == 0) return CPUID_Data.HasSYSENTER;
+			else if (strnicmp(name, "avx512er", name_length) == 0) return CPUID_Data.HasAVX512ER;
+			else if (strnicmp(name, "avx512pf", name_length) == 0) return CPUID_Data.HasAVX512PF;
+			else if (strnicmp(name, "3dnowext", name_length) == 0) return CPUID_Data.Has3DNOWEXT;
+			else if (strnicmp(name, "monitorx", name_length) == 0) return CPUID_Data.HasMONITORX;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 7:
-			if		(strnicmp(name, "avx512f", name_length) == 0) ret = CPUID_Data.HasAVX512F;
-			else if (strnicmp(name, "amxfp16", name_length) == 0) ret = CPUID_Data.HasAMXBF16;
-			else if (strnicmp(name, "amxtile", name_length) == 0) ret = CPUID_Data.HasAMXTILE;
-			else if (strnicmp(name, "amxint8", name_length) == 0) ret = CPUID_Data.HasAMXINT8;
+			if		(strnicmp(name, "waitpkg", name_length) == 0) return CPUID_Data.HasWAITPKG;
+			else if (strnicmp(name, "movdiri", name_length) == 0) return CPUID_Data.HasMOVDIRI;
+			else if (strnicmp(name, "avx512f", name_length) == 0) return CPUID_Data.HasAVX512F;
+			else if (strnicmp(name, "mxcsrmm", name_length) == 0) return CPUID_Data.HasMXCSRMM;
+			else if (strnicmp(name, "lmlsahf", name_length) == 0) return CPUID_Data.HasLMLSAHF;
+			else if (strnicmp(name, "clflush", name_length) == 0) return CPUID_Data.HasCLFLUSH;
+			else if (strnicmp(name, "amxint8", name_length) == 0) return CPUID_Data.HasAMXINT8;
+			else if (strnicmp(name, "amxtile", name_length) == 0) return CPUID_Data.HasAMXTILE;
+			else if (strnicmp(name, "amxfp16", name_length) == 0) return CPUID_Data.HasAMXBF16;
+			else if (strnicmp(name, "avxvnni", name_length) == 0) return CPUID_Data.HasAVXVNNI;
+			else if (strnicmp(name, "mcommit", name_length) == 0) return CPUID_Data.HasMCOMMIT;
+			else if (strnicmp(name, "syscall", name_length) == 0) return CPUID_Data.HasSYSCALL;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 6:
-			if      (strnicmp(name, "winver", name_length) == 0) ret = CPUID_Data.WindowsVersion.raw;
-			else if (strnicmp(name, "popcnt", name_length) == 0) ret = CPUID_Data.HasPOPCNT;
-			else if (strnicmp(name, "fxsave", name_length) == 0) ret = CPUID_Data.HasFXSAVE;
-			else if (strnicmp(name, "mmxext", name_length) == 0) ret = CPUID_Data.HasMMXEXT;
+			if      (strnicmp(name, "winver", name_length) == 0) return CPUID_Data.WindowsVersion.raw;
+			else if (strnicmp(name, "popcnt", name_length) == 0) return CPUID_Data.HasPOPCNT;
+			else if (strnicmp(name, "rdtscp", name_length) == 0) return CPUID_Data.HasRDTSCP;
+			else if (strnicmp(name, "xsavec", name_length) == 0) return CPUID_Data.HasXSAVEC;
+			else if (strnicmp(name, "fxsave", name_length) == 0) return CPUID_Data.HasFXSAVE;
+			else if (strnicmp(name, "mmxext", name_length) == 0) return CPUID_Data.HasMMXEXT;
+			else if (strnicmp(name, "rdrand", name_length) == 0) return CPUID_Data.HasRDRAND;
+			else if (strnicmp(name, "rdseed", name_length) == 0) return CPUID_Data.HasRDSEED;
+			else if (strnicmp(name, "clzero", name_length) == 0) return CPUID_Data.HasCLZERO;
+			else if (strnicmp(name, "lwpval", name_length) == 0) return CPUID_Data.HasLWPVAL;
+			else if (strnicmp(name, "tsxhle", name_length) == 0) return CPUID_Data.HasTSXHLE;
+			else if (strnicmp(name, "tsxrtm", name_length) == 0) return CPUID_Data.HasTSXRTM;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 5:
-			if      (strnicmp(name, "model", name_length) == 0) ret = CPUID_Data.FamilyData.raw;
-			else if (strnicmp(name, "intel", name_length) == 0) ret = CPUID_Data.Manufacturer == Intel;
-			else if (strnicmp(name, "ssse3", name_length) == 0) ret = CPUID_Data.HasSSSE3;
-			else if (strnicmp(name, "sse41", name_length) == 0) ret = CPUID_Data.HasSSE41;
-			else if (strnicmp(name, "sse42", name_length) == 0) ret = CPUID_Data.HasSSE42;
-			else if (strnicmp(name, "sse4a", name_length) == 0) ret = CPUID_Data.HasSSE4A;
-			else if (strnicmp(name, "movbe", name_length) == 0) ret = CPUID_Data.HasMOVBE;
-			else if (strnicmp(name, "3dnow", name_length) == 0) ret = CPUID_Data.Has3DNOW;
-			else if (strnicmp(name, "win64", name_length) == 0) ret = CPUID_Data.OSIsX64;
-			else if (strnicmp(name, "uintr", name_length) == 0) ret = CPUID_Data.HasUINTR;
+			if      (strnicmp(name, "intel", name_length) == 0) return CPUID_Data.Manufacturer == Intel;
+			else if (strnicmp(name, "ssse3", name_length) == 0) return CPUID_Data.HasSSSE3;
+			else if (strnicmp(name, "sse41", name_length) == 0) return CPUID_Data.HasSSE41;
+			else if (strnicmp(name, "sse42", name_length) == 0) return CPUID_Data.HasSSE42;
+			else if (strnicmp(name, "sse4a", name_length) == 0) return CPUID_Data.HasSSE4A;
+			else if (strnicmp(name, "movbe", name_length) == 0) return CPUID_Data.HasMOVBE;
+			else if (strnicmp(name, "xsave", name_length) == 0) return CPUID_Data.HasXSAVE;
+			else if (strnicmp(name, "model", name_length) == 0) return CPUID_Data.FamilyData.raw;
+			else if (strnicmp(name, "3dnow", name_length) == 0) return CPUID_Data.Has3DNOW;
+			else if (strnicmp(name, "frmb0", name_length) == 0) return CPUID_Data.HasFRMB0;
+			else if (strnicmp(name, "frcsb", name_length) == 0) return CPUID_Data.HasFRCSB;
+			else if (strnicmp(name, "win64", name_length) == 0) return CPUID_Data.OSIsX64;
+			else if (strnicmp(name, "rdpid", name_length) == 0) return CPUID_Data.HasRDPID;
+			else if (strnicmp(name, "uintr", name_length) == 0) return CPUID_Data.HasUINTR;
+			else if (strnicmp(name, "rdpru", name_length) == 0) return CPUID_Data.HasRDPRU;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 4:
-			if		(strnicmp(name, "cmov", name_length) == 0) ret = CPUID_Data.HasCMOV;
-			else if (strnicmp(name, "sse2", name_length) == 0) ret = CPUID_Data.HasSSE2;
-			else if (strnicmp(name, "sse3", name_length) == 0) ret = CPUID_Data.HasSSE3;
-			else if (strnicmp(name, "avx2", name_length) == 0) ret = CPUID_Data.HasAVX2;
-			else if (strnicmp(name, "bmi1", name_length) == 0) ret = CPUID_Data.HasBMI1;
-			else if (strnicmp(name, "bmi2", name_length) == 0) ret = CPUID_Data.HasBMI2;
-			else if (strnicmp(name, "erms", name_length) == 0) ret = CPUID_Data.HasERMS;
-			else if (strnicmp(name, "fsrm", name_length) == 0) ret = CPUID_Data.HasFSRM;
-			else if (strnicmp(name, "f16c", name_length) == 0) ret = CPUID_Data.HasF16C;
-			else if (strnicmp(name, "gfni", name_length) == 0) ret = CPUID_Data.HasGFNI;
-			else if (strnicmp(name, "fma4", name_length) == 0) ret = CPUID_Data.HasFMA4;
-			else if (strnicmp(name, "wine", name_length) == 0) ret = wine_version != NULL;
+			if		(strnicmp(name, "sse3", name_length) == 0) return CPUID_Data.HasSSE3;
+			else if (strnicmp(name, "avx2", name_length) == 0) return CPUID_Data.HasAVX2;
+			else if (strnicmp(name, "bmi1", name_length) == 0) return CPUID_Data.HasBMI1;
+			else if (strnicmp(name, "bmi2", name_length) == 0) return CPUID_Data.HasBMI2;
+			else if (strnicmp(name, "fma4", name_length) == 0) return CPUID_Data.HasFMA4;
+			else if (strnicmp(name, "vaes", name_length) == 0) return CPUID_Data.HasVAES;
+			else if (strnicmp(name, "wine", name_length) == 0) return wine_version != NULL;
+			else if	(strnicmp(name, "cmov", name_length) == 0) return CPUID_Data.HasCMOV;
+			else if (strnicmp(name, "sse2", name_length) == 0) return CPUID_Data.HasSSE2;
+			else if (strnicmp(name, "f16c", name_length) == 0) return CPUID_Data.HasF16C;
+			else if (strnicmp(name, "gfni", name_length) == 0) return CPUID_Data.HasGFNI;
+			else if (strnicmp(name, "erms", name_length) == 0) return CPUID_Data.HasERMS;
+			else if (strnicmp(name, "fsrm", name_length) == 0) return CPUID_Data.HasFSRM;
+			else if (strnicmp(name, "frsb", name_length) == 0) return CPUID_Data.HasFRSB;
+			else if (strnicmp(name, "clwb", name_length) == 0) return CPUID_Data.HasCLWB;
+			else if (strnicmp(name, "mvex", name_length) == 0) return CPUID_Data.HasMVEX;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 3:
-			if		(strnicmp(name, "amd", name_length) == 0) ret = CPUID_Data.Manufacturer == AMD;
-			else if (strnicmp(name, "sse", name_length) == 0) ret = CPUID_Data.HasSSE;
-			else if (strnicmp(name, "fma", name_length) == 0) ret = CPUID_Data.HasFMA;
-			else if (strnicmp(name, "mmx", name_length) == 0) ret = CPUID_Data.HasMMX;
-			else if (strnicmp(name, "avx", name_length) == 0) ret = CPUID_Data.HasAVX;
-			else if (strnicmp(name, "adx", name_length) == 0) ret = CPUID_Data.HasADX;
-			else if (strnicmp(name, "sha", name_length) == 0) ret = CPUID_Data.HasSHA;
-			else if (strnicmp(name, "abm", name_length) == 0) ret = CPUID_Data.HasABM;
-			else if (strnicmp(name, "xop", name_length) == 0) ret = CPUID_Data.HasXOP;
-			else if (strnicmp(name, "tbm", name_length) == 0) ret = CPUID_Data.HasTBM;
+			if		(strnicmp(name, "amd", name_length) == 0) return CPUID_Data.Manufacturer == AMD;
+			else if (strnicmp(name, "avx", name_length) == 0) return CPUID_Data.HasAVX;
+			else if (strnicmp(name, "fma", name_length) == 0) return CPUID_Data.HasFMA;
+			else if (strnicmp(name, "bmi", name_length) == 0) return CPUID_Data.HasBMI1;
+			else if (strnicmp(name, "adx", name_length) == 0) return CPUID_Data.HasADX;
+			else if (strnicmp(name, "sha", name_length) == 0) return CPUID_Data.HasSHA;
+			else if (strnicmp(name, "aes", name_length) == 0) return CPUID_Data.HasAES;
+			else if (strnicmp(name, "abm", name_length) == 0) return CPUID_Data.HasABM;
+			else if (strnicmp(name, "xop", name_length) == 0) return CPUID_Data.HasXOP;
+			else if (strnicmp(name, "tbm", name_length) == 0) return CPUID_Data.HasTBM;
+			else if (strnicmp(name, "sse", name_length) == 0) return CPUID_Data.HasSSE;
+			else if (strnicmp(name, "mmx", name_length) == 0) return CPUID_Data.HasMMX;
+			else if (strnicmp(name, "lwp", name_length) == 0) return CPUID_Data.HasLWP;
+			else if (strnicmp(name, "cet", name_length) == 0) return CPUID_Data.HasCET;
+			else if (strnicmp(name, "mpx", name_length) == 0) return CPUID_Data.HasMPX;
+			else if (strnicmp(name, "pku", name_length) == 0) return CPUID_Data.HasPKU;
 			else	goto InvalidCPUFeatureError;
 			break;
 		default:
 InvalidCPUFeatureError:
 			InvalidCPUFeatureWarningMessage(name, name_length);
+			return false;
 	}
-	return ret;
 }
 
 static uintptr_t GetCodecaveAddress(const char *const name, const size_t name_length, const bool is_relative, const StackSaver *const data_refs) {
@@ -1248,40 +1431,54 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 	const bool is_relative = expr[0] == '[';
 	// Increment expr so that the comparisons
 	// don't check the opening bracket
-	++expr;
-	if (strnicmp(expr, "codecave:", 9) == 0) {
-		out->type = PVT_POINTER;
-		out->p = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
+	switch (*++expr) {
+		case 'c':
+			if (strnicmp(expr, "codecave:", 9) == 0) {
+				out->type = PVT_POINTER;
+				out->p = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
+				return patch_val_end + 1;
+			}
+			else if (strnicmp(expr, "cpuid:", 6) == 0) {
+				expr += 6;
+				out->type = PVT_DWORD;
+				out->i = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
+				return patch_val_end + 1;
+			}
+			break;
+		case 'o':
+			if (strnicmp(expr, "option:", 7) == 0) {
+				expr += 7;
+				out->type = PVT_UNKNOWN; // Will be overwritten if the option is valid
+				if (const patch_val_t* option = GetOptionValue(expr, PtrDiffStrlen(patch_val_end, expr))) {
+					*out = *option;
+				}
+				return patch_val_end + 1;
+			}
+			break;
+		case 'p':
+			if (strnicmp(expr, "patch:", 6) == 0) {
+				out->type = PVT_DWORD;
+				out->i = GetPatchTestValue(expr, PtrDiffStrlen(patch_val_end, expr));
+				return patch_val_end + 1;
+			}
+			break;
+		case 'n':
+			if (strnicmp(expr, "nop:", 4) == 0) {
+				expr += 4;
+				*out = GetMultibyteNOP(expr, is_relative ? ']' : '>', data_refs);
+				return patch_val_end + 1;
+			}
+			break;
+		case 'i':
+			if (strnicmp(expr, "int3:", 5) == 0) {
+				expr += 5;
+				*out = GetMultibyteInt3(expr, is_relative ? ']' : '>', data_refs);
+				return patch_val_end + 1;
+			}
+			break;
 	}
-	else if (strnicmp(expr, "option:", 7) == 0) {
-		expr += 7;
-		out->type = PVT_UNKNOWN; // Will be overwritten if the option is valid
-		const patch_val_t* option = GetOptionValue(expr, PtrDiffStrlen(patch_val_end, expr));
-		if (option) {
-			*out = *option;
-		}
-	}
-	else if (strnicmp(expr, "patch:", 6) == 0) {
-		out->type = PVT_DWORD;
-		out->i = GetPatchTestValue(expr, PtrDiffStrlen(patch_val_end, expr));
-	}
-	else if (strnicmp(expr, "cpuid:", 6) == 0) {
-		expr += 6;
-		out->type = PVT_BOOL;
-		out->b = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
-	}
-	else if (strnicmp(expr, "nop:", 4) == 0) {
-		expr += 4;
-		*out = GetMultibyteNOP(expr, is_relative ? ']' : '>', data_refs);
-	}
-	else if (strnicmp(expr, "int3:", 5) == 0) {
-		expr += 5;
-		*out = GetMultibyteInt3(expr, is_relative ? ']' : '>', data_refs);
-	}
-	else {
-		out->type = PVT_POINTER;
-		out->p = GetBPFuncOrRawAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
-	}
+	out->type = PVT_POINTER;
+	out->p = GetBPFuncOrRawAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	return patch_val_end + 1;
 };
 
