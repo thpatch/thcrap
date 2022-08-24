@@ -59,6 +59,35 @@ void str_hexdate_format(char format[11], uint32_t date)
 	);
 }
 
+TH_NOINLINE int TH_VECTORCALL ascii_stricmp(const char* str1, const char* str2) {
+	unsigned char c1, c2;
+	for (size_t i = 0;; ++i) {
+		c1 = ((unsigned char*)str1)[i];
+		c1 |= (c1 - 'A' < 26) << 5;
+		c2 = ((unsigned char*)str2)[i];
+		c2 |= (c2 - 'A' < 26) << 5;
+		if ((c1 -= c2) || !c2) {
+			break;
+		}
+	}
+	return (signed char)c1;
+}
+
+TH_NOINLINE int TH_VECTORCALL ascii_strnicmp(const char* str1, const char* str2, size_t count) {
+	unsigned char c1, c2;
+	TH_OPTIMIZING_ASSERT(count > 0);
+	for (size_t i = 0; i < count; ++i) {
+		c1 = ((unsigned char*)str1)[i];
+		c1 |= (c1 - 'A' < 26) << 5;
+		c2 = ((unsigned char*)str2)[i];
+		c2 |= (c2 - 'A' < 26) << 5;
+		if ((c1 -= c2) || !c2) {
+			break;
+		}
+	}
+	return (signed char)c1;
+}
+
 size_t str_address_value(const char *str, HMODULE CustomModuleBase, str_address_ret_t *ret)
 {
 	errno = 0;

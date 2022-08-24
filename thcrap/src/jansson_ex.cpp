@@ -543,6 +543,7 @@ TH_CHECK_RET jeval_error_t json_eval_bool(const json_t* val, bool* out, jeval_fl
 }
 
 TH_CHECK_RET jeval_error_t json_eval_int(const json_t* val, size_t* out, jeval_flags_t flags) {
+#ifndef TH_X64
 	json_int_t temp;
 	jeval_error_t ret = json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), &temp);
 	if (ret == JEVAL_SUCCESS) {
@@ -554,11 +555,16 @@ TH_CHECK_RET jeval_error_t json_eval_int(const json_t* val, size_t* out, jeval_f
 		}
 	}
 	return ret;
+#else
+	return json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), out);
+#endif
 }
 
+#ifndef TH_X64
 TH_CHECK_RET jeval_error_t json_eval_int64(const json_t* val, json_int_t* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), out);
 }
+#endif
 
 TH_CHECK_RET jeval_error_t json_eval_real(const json_t* val, double* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_REAL | (flags & JEVAL_MODE_MASK), out);
@@ -577,9 +583,11 @@ TH_CHECK_RET jeval_error_t json_object_get_eval_int(const json_t* object, const 
 	return json_eval_int(json_object_get(object, key), out, flags);
 }
 
+#ifndef TH_X64
 TH_CHECK_RET jeval_error_t json_object_get_eval_int64(const json_t* object, const char* key, json_int_t* out, jeval_flags_t flags) {
 	return json_eval_int64(json_object_get(object, key), out, flags);
 }
+#endif
 
 TH_CHECK_RET jeval_error_t json_object_get_eval_real(const json_t* object, const char* key, double* out, jeval_flags_t flags) {
 	return json_eval_real(json_object_get(object, key), out, flags);
@@ -602,11 +610,13 @@ size_t json_eval_int_default(const json_t* val, size_t default_ret, jeval_flags_
 	return ret;
 }
 
+#ifndef TH_X64
 json_int_t json_eval_int64_default(const json_t* val, json_int_t default_ret, jeval_flags_t flags) {
 	json_int_t ret = default_ret;
 	(void)json_eval_int64(val, &ret, flags);
 	return ret;
 }
+#endif
 
 double json_eval_real_default(const json_t* val, double default_ret, jeval_flags_t flags) {
 	double ret = default_ret;
@@ -633,11 +643,13 @@ size_t json_object_get_eval_int_default(const json_t* object, const char* key, s
 	return ret;
 }
 
+#ifndef TH_X64
 json_int_t json_object_get_eval_int64_default(const json_t* object, const char* key, json_int_t default_ret, jeval_flags_t flags) {
 	json_int_t ret = default_ret;
 	(void)json_eval_int64(json_object_get(object, key), &ret, flags);
 	return ret;
 }
+#endif
 
 double json_object_get_eval_real_default(const json_t* object, const char* key, double default_ret, jeval_flags_t flags) {
 	double ret = default_ret;

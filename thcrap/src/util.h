@@ -240,6 +240,8 @@ write_fs_dword(offsetof(TEB, member), (data)) \
 #define CurrentTeb() ((TEB*)read_teb_member(Self))
 #define CurrentPeb() ((PEB*)read_teb_member(ProcessEnvironmentBlock))
 
+#define KernelSharedDataAddr (0x7FFE0000u)
+
 #define CurrentImageBase ((uintptr_t)CurrentPeb()->ImageBaseAddress)
 
 #define CurrentModuleHandle ((HMODULE)CurrentImageBase)
@@ -556,6 +558,10 @@ THCRAP_API TH_CALLER_FREE inline char32_t* utf8_to_utf32(const char* utf8_str) {
 	return NULL;
 }
 
+inline bool bittest32(uint32_t value, uint32_t bit) {
+	return value & 1u << bit;
+}
+
 inline char* strncpy_advance_dst(char *dst, const char *src, size_t len)
 {
 	assert(src);
@@ -635,6 +641,9 @@ inline TH_CALLER_FREE char* strndup(const char* src, size_t size) {
 	return strdup_size(src, strnlen(src, size));
 }
 
+TH_NOINLINE int TH_VECTORCALL ascii_stricmp(const char* str1, const char* str2);
+TH_NOINLINE int TH_VECTORCALL ascii_strnicmp(const char* str1, const char* str2, size_t count);
+
 #ifdef __cplusplus
 extern "C++" {
 
@@ -710,6 +719,16 @@ size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
 bool is_valid_hex(char c);
 
 #define is_valid_decimal(c) ((uint8_t)((c) - '0') < 10)
+
+// Efficiently tests if [value] is within the range [min, max)
+inline bool int_in_range_exclusive(int32_t value, int32_t min, int32_t max) {
+	return (uint32_t)(value - min) < (uint32_t)(max - min);
+}
+// Efficiently tests if [value] is within the range [min, max]
+// Valid for both signed and unsigned integers
+inline bool int_in_range_inclusive(int32_t value, int32_t min, int32_t max) {
+	return (uint32_t)(value - min) <= (uint32_t)(max - min);
+}
 
 // Returns either the hexadecimal value of [c]
 // or -1 if [c] is not a valid hexadecimal character

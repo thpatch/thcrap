@@ -1,0 +1,7 @@
+EXPORTS
+	; JSON extensions
+	; ---------------
+	json_eval_int64
+	json_object_get_eval_int64
+	json_eval_int64_default
+	json_object_get_eval_int64_default
