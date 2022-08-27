@@ -492,7 +492,7 @@ static TH_NOINLINE void InvalidValueErrorMessage(const char *const str) {
 }
 
 static TH_NOINLINE void InvalidPatchValueTypeErrorMessage(void) {
-	log_print("EXPRESSION ERROR 5: Invalid patch value type!");
+	log_print("EXPRESSION ERROR 5: Invalid patch value type!\n");
 }
 
 typedef uint8_t op_t;

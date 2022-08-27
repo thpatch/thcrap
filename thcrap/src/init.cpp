@@ -391,7 +391,7 @@ int thcrap_init_binary(size_t stage_num, HMODULE module)
 
 		if (stages_remaining != 0) {
 			log_printf(
-				"Initialization stage %d...\n"
+				"Initialization stage %zu...\n"
 				"-------------------------\n",
 				stage_num
 			);
