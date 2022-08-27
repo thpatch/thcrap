@@ -280,11 +280,8 @@ void thcrap_detour(HMODULE hProc)
 
 int thcrap_init(const char *run_cfg)
 {
-	bool perf_tested = true;
 	LARGE_INTEGER begin_time;
-	if (!QueryPerformanceCounter(&begin_time)) {
-		perf_tested = false;
-	}
+	QueryPerformanceCounter(&begin_time); // Always succeeds since XP
 
 	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
@@ -357,25 +354,17 @@ int thcrap_init(const char *run_cfg)
 
 	int ret = thcrap_init_binary(0, nullptr);
 
-	if (perf_tested) {
-		LARGE_INTEGER end_time;
-		LARGE_INTEGER perf_freq;
-		QueryPerformanceFrequency(&perf_freq);
-		QueryPerformanceCounter(&end_time);
-		double time = (double)(end_time.QuadPart - begin_time.QuadPart) / perf_freq.QuadPart;
-		log_printf(
-			"---------------------------\n"
-			"Initialization completed in %f seconds\n"
-			"---------------------------\n"
-			, time
-		);
-	} else {
-		log_print(
-			"---------------------------\n"
-			"Initialization completed, but measuring performance failed\n"
-			"---------------------------\n"
-		);
-	}
+	LARGE_INTEGER end_time;
+	QueryPerformanceCounter(&end_time);
+	LARGE_INTEGER perf_freq;
+	QueryPerformanceFrequency(&perf_freq);
+	double time = (double)(end_time.QuadPart - begin_time.QuadPart) / perf_freq.QuadPart;
+	log_printf(
+		"---------------------------\n"
+		"Initialization completed in %f seconds\n"
+		"---------------------------\n"
+		, time
+	);
 
 	return ret;
 }

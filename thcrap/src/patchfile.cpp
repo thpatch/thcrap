@@ -28,26 +28,41 @@ HANDLE file_stream(const char *fn)
 	);
 }
 
-void* file_stream_read(HANDLE stream, size_t *file_size)
+void* file_stream_read(HANDLE stream, size_t *file_size_out)
 {
-	void *ret = nullptr;
-	size_t file_size_tmp;
-	if(!file_size) {
-		file_size = &file_size_tmp;
+#ifndef TH_X64
+	size_t* file_size_ptr = file_size_out ? file_size_out : (size_t*)&file_size_out;
+	*file_size_ptr = 0;
+	void* ret = NULL;
+	if (stream != INVALID_HANDLE_VALUE) {
+		if (size_t file_size = GetFileSize(stream, NULL);
+			file_size && (ret = malloc(file_size))
+		) {
+			ReadFile(stream, ret, file_size, (LPDWORD)file_size_ptr, NULL);
+		}
+		CloseHandle(stream);
 	}
-	*file_size = 0;
-	if(stream == INVALID_HANDLE_VALUE) {
-		return ret;
-	}
-
-	DWORD byte_ret;
-	*file_size = GetFileSize(stream, nullptr);
-	if(*file_size != 0) {
-		ret = malloc(*file_size);
-		ReadFile(stream, ret, *file_size, &byte_ret, nullptr);
-	}
-	CloseHandle(stream);
 	return ret;
+#else
+	LARGE_INTEGER* file_size_ptr = file_size_out ? (LARGE_INTEGER*)file_size_out : (LARGE_INTEGER*)&file_size_out;
+	file_size_ptr->QuadPart = 0;
+	void* ret = NULL;
+	if (stream != INVALID_HANDLE_VALUE) {
+		GetFileSizeEx(stream, file_size_ptr);
+		if (size_t file_size = file_size_ptr->QuadPart;
+			file_size && (ret = malloc(file_size))
+		) {
+			uint8_t* ret_writer = (uint8_t*)ret;
+			for (; file_size > UINT32_MAX; file_size -= UINT32_MAX) {
+				ReadFile(stream, ret_writer, UINT32_MAX, (LPDWORD)file_size_ptr, NULL);
+				ret_writer += UINT32_MAX;
+			}
+			ReadFile(stream, ret_writer, file_size, (LPDWORD)file_size_ptr, NULL);
+		}
+		CloseHandle(stream);
+	}
+	return ret;
+#endif
 }
 
 void* file_read(const char *fn, size_t *file_size)
@@ -55,30 +70,46 @@ void* file_read(const char *fn, size_t *file_size)
 	return file_stream_read(file_stream(fn), file_size);
 }
 
-int file_write(const char *fn, const void *file_buffer, const size_t file_size)
+int file_write(const char *fn, const void *file_buffer, size_t file_size)
 {
-	if(!fn || !file_buffer || !file_size) {
+	if unexpected(!fn || !file_buffer || !file_size) {
 		return ERROR_INVALID_PARAMETER;
 	}
-	DWORD byte_ret;
 
 	dir_create_for_fn(fn);
 
-	auto handle = CreateFile(
-		fn, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr
+	HANDLE handle = CreateFile(
+		fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 	);
-	if(handle == INVALID_HANDLE_VALUE) {
+	if unexpected(handle == INVALID_HANDLE_VALUE) {
 		return GetLastError();
 	}
-	auto ret = W32_ERR_WRAP(
-		WriteFile(handle, file_buffer, file_size, &byte_ret, nullptr
-	));
+#ifndef TH_X64
+	int ret = W32_ERR_WRAP(WriteFile(handle, file_buffer, file_size, (LPDWORD)&file_size, NULL));
+#else
+	uint8_t* file_buffer_reader = (uint8_t*)file_buffer;
+	DWORD idgaf;
+	int ret;
+	for (; file_size > UINT32_MAX; file_size -= UINT32_MAX) {
+		if unexpected(!WriteFile(handle, file_buffer_reader, UINT32_MAX, &idgaf, NULL)) {
+			goto get_error;
+		}
+		file_buffer_reader += UINT32_MAX;
+	}
+	if (WriteFile(handle, file_buffer_reader, file_size, &idgaf, NULL)) {
+		ret = 0;
+	}
+	else {
+get_error:
+		ret = GetLastError();
+	}
+#endif
 	CloseHandle(handle);
 	return ret;
 }
 
-char* fn_for_build(const char *fn)
+TH_CALLER_FREE char* fn_for_build(const char *fn)
 {
 	std::string_view build_view = runconfig_build_get_view();
 	if (!build_view.empty()) {
@@ -88,7 +119,7 @@ char* fn_for_build(const char *fn)
 	return NULL;
 }
 
-char* fn_for_game(const char *fn)
+TH_CALLER_FREE char* fn_for_game(const char *fn)
 {
 	auto game_id = runconfig_game_get_view();
 	if (!game_id.empty()) {
@@ -117,25 +148,22 @@ void patch_print_fn(const patch_t *patch_info, const char *fn)
 int dir_create_for_fn(const char *fn)
 {
 	int ret = -1;
-	if(fn) {
-		char *fn_dir = PathFindFileNameU(fn);
-		size_t path_length = PtrDiffStrlen(fn_dir, fn);
-		if(path_length) {
-			fn_dir = strdup_size(fn, path_length);
+	if (fn) {
+		if (size_t path_length = PtrDiffStrlen(PathFindFileNameU(fn), fn)) {
+			char* fn_dir = strdup_size(fn, path_length);
 			ret = CreateDirectory(fn_dir, NULL);
 			free(fn_dir);
-		} else {
+		}
+		else {
 			ret = 0;
 		}
 	}
 	return ret;
 }
 
-char* fn_for_patch(const patch_t *patch_info, const char *fn)
+TH_CALLER_FREE char* fn_for_patch(const patch_t *patch_info, const char *fn)
 {
-	char *patch_fn = NULL;
-
-	if(!patch_info || !patch_info->archive || !fn) {
+	if unexpected(!patch_info || !patch_info->archive || !fn) {
 		return NULL;
 	}
 	/*if(char archive_end = patch_info->archive[patch_info->archive_length - 1];
@@ -144,31 +172,31 @@ char* fn_for_patch(const patch_t *patch_info, const char *fn)
 		return NULL;
 	}*/
 
-	patch_fn = strdup_cat({ patch_info->archive, patch_info->archive_length }, '/', fn);
+	char *patch_fn = strdup_cat({ patch_info->archive, patch_info->archive_length }, '/', fn);
 	str_slash_normalize(patch_fn);
 	return patch_fn;
 }
 
 int patch_file_exists(const patch_t *patch_info, const char *fn)
 {
-	if (patch_file_blacklisted(patch_info, fn)) {
+	if unexpected(patch_file_blacklisted(patch_info, fn)) {
 		return false;
 	}
-
-	char *patch_fn = fn_for_patch(patch_info, fn);
-	BOOL ret = PathFileExists(patch_fn);
-	SAFE_FREE(patch_fn);
+	BOOL ret = FALSE;
+	if (char *patch_fn = fn_for_patch(patch_info, fn)) {
+		ret = PathFileExists(patch_fn);
+		free(patch_fn);
+	}
 	return ret;
 }
 
 int patch_file_blacklisted(const patch_t *patch_info, const char *fn)
 {
-	if (!patch_info->ignore) {
-		return 0;
-	}
-	for (size_t i = 0; patch_info->ignore[i]; i++) {
-		if (PathMatchSpec(fn, patch_info->ignore[i])) {
-			return 1;
+	if unexpected(patch_info->ignore) {
+		for (size_t i = 0; patch_info->ignore[i]; i++) {
+			if (PathMatchSpec(fn, patch_info->ignore[i])) {
+				return 1;
+			}
 		}
 	}
 	return 0;
@@ -176,12 +204,13 @@ int patch_file_blacklisted(const patch_t *patch_info, const char *fn)
 
 HANDLE patch_file_stream(const patch_t *patch_info, const char *fn)
 {
-	if(patch_file_blacklisted(patch_info, fn)) {
-		return INVALID_HANDLE_VALUE;
+	HANDLE ret = INVALID_HANDLE_VALUE;
+	if (!patch_file_blacklisted(patch_info, fn)) {
+		if (char *patch_fn = fn_for_patch(patch_info, fn)) {
+			ret = file_stream(patch_fn);
+			free(patch_fn);
+		}
 	}
-	auto *patch_fn = fn_for_patch(patch_info, fn);
-	auto ret = file_stream(patch_fn);
-	SAFE_FREE(patch_fn);
 	return ret;
 }
 
@@ -197,35 +226,37 @@ void* patch_file_load(const patch_t *patch_info, const char *fn, size_t *file_si
 
 int patch_file_store(const patch_t *patch_info, const char *fn, const void *file_buffer, const size_t file_size)
 {
-	char *patch_fn = fn_for_patch(patch_info, fn);
-	int ret = file_write(patch_fn, file_buffer, file_size);
-	SAFE_FREE(patch_fn);
+	int ret = ERROR_INVALID_PARAMETER;
+	if (char *patch_fn = fn_for_patch(patch_info, fn)) {
+		ret = file_write(patch_fn, file_buffer, file_size);
+		free(patch_fn);
+	}
 	return ret;
 }
 
 json_t* patch_json_load(const patch_t *patch_info, const char *fn, size_t *file_size)
 {
-	if (patch_file_blacklisted(patch_info, fn)) {
+	if unexpected(patch_file_blacklisted(patch_info, fn)) {
 		if (file_size) {
 			*file_size = 0;
 		}
-		return nullptr;
+		return NULL;
 	}
-
-	char *_fn = fn_for_patch(patch_info, fn);
-	json_t *file_json = json_load_file_report(_fn);
-
-	if(file_size) {
-		HANDLE fn_stream = file_stream(_fn);
-		if (fn_stream != INVALID_HANDLE_VALUE) {
-			*file_size = GetFileSize(fn_stream, NULL);
-			CloseHandle(fn_stream);
+	json_t *file_json = NULL;
+	if (char *_fn = fn_for_patch(patch_info, fn)) {
+		file_json = json_load_file_report(_fn);
+		if (file_size) {
+			HANDLE fn_stream = file_stream(_fn);
+			if (fn_stream != INVALID_HANDLE_VALUE) {
+				*file_size = GetFileSize(fn_stream, NULL);
+				CloseHandle(fn_stream);
+			}
+			else {
+				*file_size = 0;
+			}
 		}
-		else {
-			*file_size = 0;
-		}
+		free(_fn);
 	}
-	SAFE_FREE(_fn);
 	return file_json;
 }
 
@@ -249,23 +280,24 @@ size_t patch_json_merge(json_t **json_inout, const patch_t *patch_info, const ch
 
 int patch_json_store(const patch_t *patch_info, const char *fn, const json_t *json)
 {
-	char *file_buffer = NULL;
-	BOOL ret;
-
-	if(!patch_info || !fn || !json) {
+	if unexpected(!patch_info || !fn || !json) {
 		return -1;
 	}
-	file_buffer = json_dumps(json, JSON_SORT_KEYS | JSON_INDENT(2));
-	ret = patch_file_store(patch_info, fn, file_buffer, strlen(file_buffer));
-	SAFE_FREE(file_buffer);
+	int ret = -1;
+	if (char* file_buffer = json_dumps(json, JSON_SORT_KEYS | JSON_INDENT(2))) {
+		ret = patch_file_store(patch_info, fn, file_buffer, strlen(file_buffer));
+		free(file_buffer);
+	}
 	return ret;
 }
 
 int patch_file_delete(const patch_t *patch_info, const char *fn)
 {
-	char *patch_fn = fn_for_patch(patch_info, fn);
-	int ret = W32_ERR_WRAP(DeleteFile(patch_fn));
-	SAFE_FREE(patch_fn);
+	int ret = 1;
+	if (char *patch_fn = fn_for_patch(patch_info, fn)) {
+		ret = W32_ERR_WRAP(DeleteFile(patch_fn));
+		free(patch_fn);
+	}
 	return ret;
 }
 
@@ -306,13 +338,12 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 {
 	patch_desc_t desc = {};
 
-	if (!dep_str) {
+	if unexpected(!dep_str) {
 		return desc;
 	}
 
 	char *dep_buffer = strdup(dep_str);
-	char *slash = strrchr(dep_buffer, '/');
-	if (slash) {
+	if (char *slash = strrchr(dep_buffer, '/')) {
 		*slash = '\0';
 		desc.repo_id = dep_buffer;
 		desc.patch_id = strdup(slash + 1);
@@ -356,7 +387,8 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	json_t* id = json_object_get(patch_js, "id");
 	if (json_is_string(id)) {
 		patch.id = json_string_copy(id);
-	} else if (patch.archive) {
+	}
+	else if (patch.archive) {
 		const char* patch_folder = strrchr(patch.archive, '/');
 		if (patch_folder && patch_folder != patch.archive) {
 			// Don't read backwards past the beginning of the string

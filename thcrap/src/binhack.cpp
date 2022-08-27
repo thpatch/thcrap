@@ -72,7 +72,7 @@ TH_CALLER_DELETEA hackpoint_addr_t* hackpoint_addrs_from_json(json_t* addr_array
 		return NULL;
 	}
 
-	hackpoint_addr_t* ret = new hackpoint_addr_t[addr_count + 1];
+	hackpoint_addr_t* ret = (hackpoint_addr_t*)malloc(sizeof(hackpoint_addr_t) * (addr_count + 1));
 	ret[addr_count].str = NULL;
 	ret[addr_count].raw = 0;
 	ret[addr_count].type = END_ADDR;

@@ -102,8 +102,7 @@ static void runconfig_stage_load(json_t *stage_json)
 
 	stage.module = (HMODULE)json_object_get_eval_int_default(stage_json, "module", NULL, JEVAL_STRICT | JEVAL_NO_EXPRS);
 
-	json_t *options = json_object_get(stage_json, "options");
-	if (options) {
+	if (json_t* options = json_object_get(stage_json, "options")) {
 		patch_opts_from_json(options);
 	}
 
@@ -122,7 +121,7 @@ static void runconfig_stage_load(json_t *stage_json)
 		if (!codecave_from_json(key, value, &codecave)) {
 			continue;
 		}
-		stage.codecaves.push_back(codecave);
+		stage.codecaves.push_back(std::move(codecave));
 	}
 
 	json_t *binhacks = json_object_get(stage_json, "binhacks");
@@ -131,7 +130,7 @@ static void runconfig_stage_load(json_t *stage_json)
 		if (!binhack_from_json(key, value, &binhack)) {
 			continue;
 		}
-		stage.binhacks.push_back(binhack);
+		stage.binhacks.push_back(std::move(binhack));
 	}
 
 	json_t *breakpoints = json_object_get(stage_json, "breakpoints");
@@ -141,7 +140,7 @@ static void runconfig_stage_load(json_t *stage_json)
 		if (!breakpoint_from_json(key, value, &breakpoint)) {
 			continue;
 		}
-		stage.breakpoints.push_back(breakpoint);
+		stage.breakpoints.push_back(std::move(breakpoint));
 	}
 }
 
@@ -325,7 +324,7 @@ void runconfig_load(json_t *file, int flags)
 		json_t *stages = json_object_get(file, "init_stages");
 		if ((can_overwrite || run_cfg.stages.empty()) &&
 			(stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) || json_object_get(file, "options")
-			) {
+		) {
 			run_cfg.stages.clear();
 			json_flex_array_foreach_scoped(size_t, i, stages, value) {
 				runconfig_stage_load(value);
@@ -359,22 +358,31 @@ void runconfig_print()
 			log_printf("    '%s'\n", it.c_str());
 		}
 	}
-	log_printf("  thcrap dir: '%s'\n",   run_cfg.thcrap_dir.c_str());
-	log_printf("  game id: '%s'\n",      run_cfg.game.data());
-	log_printf("  build id: '%s'\n",     run_cfg.build.c_str());
-	log_printf("  game title: '%s'\n",   run_cfg.title.data());
-	log_printf("  command line: '%s'\n", run_cfg.cmdline.data());
-	log_printf("  update URL: '%s'\n",   run_cfg.update_url.data());
-	log_print ("  latest:");
+	log_printf(
+		"  thcrap dir: '%s'\n"
+		"  game id: '%s'\n"
+		"  build id: '%s'\n"
+		"  game title: '%s'\n"
+		"  command line: '%s'\n"
+		"  update URL: '%s'\n"
+		"  latest:"
+		, run_cfg.thcrap_dir.c_str()
+		, run_cfg.game.data()
+		, run_cfg.build.c_str()
+		, run_cfg.title.data()
+		, run_cfg.cmdline.data()
+		, run_cfg.update_url.data()
+	);
 	for (const auto& it : run_cfg.latest) {
 		log_printf(" '%s'", it.data());
 	}
-	log_print("\n");
-	log_printf("  dat_dump: '%s'\n", run_cfg.dat_dump.data());
-	log_print(
+	log_printf(
+		"\n"
+		"  dat_dump: '%s'\n"
 		"---------------------------\n"
 		"Patch stack:\n"
 		"---------------------------\n"
+		, run_cfg.dat_dump.data()
 	);
 	stack_print();
 	log_print(
@@ -384,7 +392,8 @@ void runconfig_print()
 	);
 	json_dump_log(run_cfg.json, JSON_INDENT(2));
 	log_print(
-		"\n---------------------------\n"
+		"\n"
+		"---------------------------\n"
 	);
 }
 
@@ -433,17 +442,17 @@ void runconfig_free()
 			json_decref(breakpoint.json_obj);
 		}
 		stage.breakpoints.clear();
-		if (stage.binhack_page.address) {
-			VirtualFree(stage.binhack_page.address, 0, MEM_RELEASE);
+		if (void* address = stage.binhack_page.address) {
+			VirtualFree(address, 0, MEM_RELEASE);
 		}
 		for (size_t i = 0; i < elementsof(stage.codecave_pages); ++i) {
-			if (stage.codecave_pages[i].address) {
-				VirtualFree(stage.codecave_pages[i].address, 0, MEM_RELEASE);
+			if (void* address = stage.codecave_pages[i].address) {
+				VirtualFree(address, 0, MEM_RELEASE);
 			}
 		}
 		for (size_t i = 0; i < elementsof(stage.breakpoint_pages); ++i) {
-			if (stage.breakpoint_pages[i].address) {
-				VirtualFree(stage.breakpoint_pages[i].address, 0, MEM_RELEASE);
+			if (void* address = stage.breakpoint_pages[i].address) {
+				VirtualFree(address, 0, MEM_RELEASE);
 			}
 		}
 	}
@@ -514,8 +523,7 @@ const char *runconfig_title_get()
 {
 	// Try to get a translated title
 	if (!run_cfg.game.empty()) {
-		const json_t *title = strings_get(run_cfg.game.data());
-		if (title) {
+		if (const json_t *title = strings_get(run_cfg.game.data())) {
 			return json_string_value(title);
 		}
 	}
@@ -578,7 +586,7 @@ size_t runconfig_stage_count()
 
 bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 {
-	assert(stage_num < run_cfg.stages.size());
+	TH_OPTIMIZING_ASSERT(stage_num < run_cfg.stages.size());
 	stage_t& stage = run_cfg.stages[stage_num];
 	size_t failed = 0;
 
