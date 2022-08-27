@@ -627,9 +627,8 @@ void str_hexdate_format(char format[11], uint32_t date);
 // Custom strndup variant that returns (size + 1) bytes.
 inline TH_CALLER_FREE char* strdup_size(const char* src, size_t size) {
 	char* ret = (char*)malloc(size + 1);
-	if (!ret) return NULL;
 	// strncpy will 0 pad
-	if (!memccpy(ret, src, '\0', size)) {
+	if (ret && !memccpy(ret, src, '\0', size)) {
 		ret[size] = '\0';
 	}
 	return ret;

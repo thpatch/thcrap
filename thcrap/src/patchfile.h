@@ -102,6 +102,10 @@ typedef struct
 // Parses and error checks patch options from game_id.js
 void patch_opts_from_json(json_t *opts);
 
+bool TH_FASTCALL patch_opt_from_raw(patch_value_type_t type, const char* name, void* value);
+
+void patch_opts_clear_all();
+
 // Obtains the value of a patch option
 patch_val_t* patch_opt_get(const char *name);
 

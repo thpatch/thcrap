@@ -244,6 +244,8 @@ EXPORTS
 	patch_rel_to_abs
 	patch_dep_to_desc
 
+	patch_opts_from_json
+	patch_opt_from_raw
 	patch_opt_get
 	patch_opt_get_len
 

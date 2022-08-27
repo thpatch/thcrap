@@ -236,7 +236,8 @@ void runconfig_load(json_t *file, int flags)
 	else {
 		// The JSON values already in run_cfg.json should be applied
 		// over the new ones in file.
-		json_object_update_missing(run_cfg.json, file);
+		json_object_update_recursive(file, run_cfg.json);
+		json_object_update(run_cfg.json, file);
 	}
 
 	auto set_string_if_exist = [=](const char* key, auto& out) {
@@ -400,6 +401,7 @@ void runconfig_print()
 void runconfig_free()
 {
 	stack_free();
+	patch_opts_clear_all();
 	run_cfg.json = json_decref_safe(run_cfg.json);
 	assert(!run_cfg.json);
 	run_cfg.thcrap_dir.clear();
