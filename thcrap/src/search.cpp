@@ -282,12 +282,19 @@ static std::wstring GetValueFromKey(HKEY key, LPCWSTR subkey, LPCWSTR valueName)
 	LSTATUS ret;
 	std::vector<WCHAR> value;
 	DWORD valueSize = 64;
+	HKEY hSub;
+	DWORD type = 0;
+
+	if (RegOpenKeyExW(key, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &hSub)) {
+		return false;
+	}
 
 	do {
 		value.resize(valueSize);
-		ret = RegGetValueW(key, subkey, valueName, RRF_RT_REG_SZ | KEY_WOW64_64KEY, nullptr, value.data(), &valueSize);
+		ret = RegQueryValueExW(hSub, valueName, 0, &type, (LPBYTE)value.data(), &valueSize);
 	} while (ret == ERROR_MORE_DATA);
-	if (ret != ERROR_SUCCESS) {
+	RegCloseKey(hSub);
+	if (ret != ERROR_SUCCESS || type != REG_SZ) {
 		return false;
 	}
 
