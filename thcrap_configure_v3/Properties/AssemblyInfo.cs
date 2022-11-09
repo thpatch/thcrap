@@ -1,55 +1,55 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 
-// Les informations générales relatives à un assembly dépendent de
-// l'ensemble d'attributs suivant. Changez les valeurs de ces attributs pour modifier les informations
-// associées à un assembly.
+// General Information about an assembly is controlled through the following
+// set of attributes. Change these attribute values to modify the information
+// associated with an assembly.
 [assembly: AssemblyTitle("thcrap_configure_v3")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("HP Inc.")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("thcrap_configure_v3")]
-[assembly: AssemblyCopyright("Copyright © HP Inc. 2018")]
+[assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
-// L'affectation de la valeur false à ComVisible rend les types invisibles dans cet assembly
-// aux composants COM. Si vous devez accéder à un type dans cet assembly à partir de
-// COM, affectez la valeur true à l'attribut ComVisible sur ce type.
+// Setting ComVisible to false makes the types in this assembly not visible
+// to COM components.  If you need to access a type in this assembly from
+// COM, set the ComVisible attribute to true on that type.
 [assembly: ComVisible(false)]
 
-//Pour commencer à générer des applications localisables, définissez
-//<UICulture>CultureUtiliséePourCoder</UICulture> dans votre fichier .csproj
-//dans <PropertyGroup>.  Par exemple, si vous utilisez le français
-//dans vos fichiers sources, définissez <UICulture> à fr-FR. Puis, supprimez les marques de commentaire de
-//l'attribut NeutralResourceLanguage ci-dessous. Mettez à jour "fr-FR" dans
-//la ligne ci-après pour qu'elle corresponde au paramètre UICulture du fichier projet.
+//In order to begin building localizable applications, set
+//<UICulture>CultureYouAreCodingWith</UICulture> in your .csproj file
+//inside a <PropertyGroup>.  For example, if you are using US english
+//in your source files, set the <UICulture> to en-US.  Then uncomment
+//the NeutralResourceLanguage attribute below.  Update the "en-US" in
+//the line below to match the UICulture setting in the project file.
 
 //[assembly: NeutralResourcesLanguage("en-US", UltimateResourceFallbackLocation.Satellite)]
 
 
 [assembly: ThemeInfo(
-    ResourceDictionaryLocation.None, //où se trouvent les dictionnaires de ressources spécifiques à un thème
-                                     //(utilisé si une ressource est introuvable dans la page,
-                                     // ou dictionnaires de ressources de l'application)
-    ResourceDictionaryLocation.SourceAssembly //où se trouve le dictionnaire de ressources générique
-                                              //(utilisé si une ressource est introuvable dans la page,
-                                              // dans l'application ou dans l'un des dictionnaires de ressources spécifiques à un thème)
+    ResourceDictionaryLocation.None, //where theme specific resource dictionaries are located
+                                     //(used if a resource is not found in the page,
+                                     // or application resource dictionaries)
+    ResourceDictionaryLocation.SourceAssembly //where the generic resource dictionary is located
+                                              //(used if a resource is not found in the page,
+                                              // app, or any theme specific resource dictionaries)
 )]
 
 
-// Les informations de version pour un assembly se composent des quatre valeurs suivantes :
+// Version information for an assembly consists of the following four values:
 //
-//      Version principale
-//      Version secondaire
-//      Numéro de build
-//      Révision
+//      Major Version
+//      Minor Version
+//      Build Number
+//      Revision
 //
-// Vous pouvez spécifier toutes les valeurs ou indiquer les numéros de build et de révision par défaut
-// en utilisant '*', comme indiqué ci-dessous :
+// You can specify all the values or you can default the Build and Revision Numbers
+// by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
