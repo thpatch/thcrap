@@ -227,7 +227,7 @@ struct CPUID_Data_t {
 				__cpuidex(data, 7, 0);
 				HasFSGSBASE			= bittest32(data[1], 0);
 				HasBMI1				= bittest32(data[1], 3);
-				HasTSXRTM			= bittest32(data[1], 4);
+				HasTSXHLE			= bittest32(data[1], 4);
 				HasAVX2				= bittest32(data[1], 5);
 				FDP_EXCPTN_ONLY		= bittest32(data[1], 6);
 				HasBMI2				= bittest32(data[1], 8);
@@ -335,7 +335,7 @@ struct CPUID_Data_t {
 				HasFXSAVE			= bittest32(data[3], 24);
 				HasSSE				= bittest32(data[3], 25);
 				HasSSE2				= bittest32(data[3], 26);
-				HasSSE3				= bittest32(data[2], 1);
+				HasSSE3				= bittest32(data[2], 0);
 				HasPCLMULQDQ		= bittest32(data[2], 1);
 				HasSSSE3			= bittest32(data[2], 9);
 				HasFMA				= bittest32(data[2], 12);
