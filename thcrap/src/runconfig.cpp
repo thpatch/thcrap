@@ -270,11 +270,13 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
-	json_t* value;
-	json_t* filenames = json_object_get(file, "runcfg_fn");
-	json_flex_array_foreach_scoped(size_t, i, filenames, value) {
-		if (json_is_string(value)) {
-			run_cfg.runcfg_fn.push_back(json_string_value(value));
+	if (can_overwrite || run_cfg.runcfg_fn.empty()) {
+		json_t* value;
+		json_t* filenames = json_object_get(file, "runcfg_fn");
+		json_flex_array_foreach_scoped(size_t, i, filenames, value) {
+			if (json_is_string(value)) {
+				run_cfg.runcfg_fn.push_back(json_string_value(value));
+			}
 		}
 	}
 
@@ -291,10 +293,12 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
-	if (json_t* value = json_object_get(file, "patches")) {
-		json_t *patch;
-		json_array_foreach_scoped(size_t, i, value, patch) {
-			stack_add_patch_from_json(patch);
+	if (can_overwrite || stack_get_size() == 0) {
+		if (json_t* value = json_object_get(file, "patches")) {
+			json_t *patch;
+			json_array_foreach_scoped(size_t, i, value, patch) {
+				stack_add_patch_from_json(patch);
+			}
 		}
 	}
 
@@ -327,6 +331,7 @@ void runconfig_load(json_t *file, int flags)
 			(stages || json_object_get(file, "binhacks") || json_object_get(file, "codecaves") || json_object_get(file, "breakpoints")) || json_object_get(file, "options")
 		) {
 			run_cfg.stages.clear();
+			json_t* value;
 			json_flex_array_foreach_scoped(size_t, i, stages, value) {
 				runconfig_stage_load(value);
 			};

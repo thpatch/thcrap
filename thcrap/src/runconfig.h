@@ -104,7 +104,7 @@ HackpointMemoryName locate_address_in_stage_pages(void* FindAddress);
 
 // Load a run configuration.
 // If called several times, the new configuration will be merged with the old one
-// (the new values overwrite the older ones).
+// (the new values overwrite the older ones unless RUNCONFIG_NO_OVERWRITE is specified).
 void runconfig_load(json_t *file, int flags);
 
 // Load a run configuration from a file.
