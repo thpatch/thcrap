@@ -31,13 +31,7 @@ int th175_init()
 	patchhook_register("data/event/script/*.pl", patch_th175_pl, nullptr);
 	patchhook_register("data/event/script/ending/*.pl", patch_th175_pl_ed, nullptr);
 	patchhook_register("*.nut", patch_nut, nullptr);
-
-	char *musicroom_pattern_fn = fn_for_game("data/script/scene/musicroom.nut.jdiff");
-	char *pause_pattern_fn     = fn_for_game("data/script/scene/pause.nut.jdiff");
-	jsonvfs_add_map(musicroom_pattern_fn, { "themes.js" });
-	jsonvfs_add_map(pause_pattern_fn,     { "themes.js" });
-	SAFE_FREE(musicroom_pattern_fn);
-	SAFE_FREE(pause_pattern_fn);
+	jsonvfs_game_add_map("*.nut.jdiff", { "nut_strings.js" });
 
 	// Flandre easy route
 	jsonvfs_game_add("data/event/script/flandre_stage4_easy.pl.jdiff",     { "data/event/script/flandre_stage4_normal.pl.jdiff" },     flandre_copy_generator);
