@@ -13,7 +13,7 @@ std::filesystem::path get_dll_source_path()
 	// we don't link statically to it, and it doesn't run any code
 	// from DllMain, so it's a nice target for a quick DLL that
 	// we just want to load.
-	exe_path /= "act_nut_lib.dll";
+	exe_path /= "act_nut_lib" DEBUG_OR_RELEASE ".dll";
 
 	return exe_path;
 }
@@ -91,7 +91,7 @@ TEST(Win32Utf8Test, GetModuleHandleEx)
 	// Can't be represented with a single code page.
 	std::filesystem::path dll_dir = "tmp";
 	std::filesystem::path dll_fn = L"東方_éè.dll";
-	std::filesystem::path dll_path = dll_dir / dll_fn;
+	std::filesystem::path dll_path = std::filesystem::absolute(dll_dir / dll_fn);
 
 	if (std::filesystem::create_directory(dll_dir) == false) {
 		throw std::runtime_error("tmp directory already exists");
