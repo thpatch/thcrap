@@ -146,19 +146,19 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 }
 
 // Cool function name.
-int DumpDatFile(const char *dir, const file_rep_t *fr)
+int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size)
 {
-	if(!fr || !fr->game_buffer || !fr->name) {
+	if(!buffer || !name) {
 		return -1;
 	}
 	{
-		size_t fn_len = strlen(dir) + 1 + strlen(fr->name) + 1;
+		size_t fn_len = strlen(dir) + 1 + strlen(name) + 1;
 		VLA(char, fn, fn_len);
 
-		sprintf(fn, "%s/%s", dir, fr->name);
+		sprintf(fn, "%s/%s", dir, name);
 
 		if(!PathFileExists(fn)) {
-			file_write(fn, fr->game_buffer, fr->pre_json_size);
+			file_write(fn, buffer, size);
 		}
 		VLA_FREE(fn);
 	}
@@ -180,7 +180,7 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	}
 	dat_dump = runconfig_dat_dump_get();
 	if(dat_dump) {
-		DumpDatFile(dat_dump, fr);
+		DumpDatFile(dat_dump, fr->name, fr->game_buffer, fr->pre_json_size);
 	}
 
 	file_rep_hooks_run(fr);

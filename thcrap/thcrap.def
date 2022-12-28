@@ -73,6 +73,7 @@ EXPORTS
 	runconfig_title_get
 	runconfig_update_url_get
 	runconfig_dat_dump_get
+	runconfig_patched_files_dump_get
 	runconfig_latest_check
 	runconfig_latest_get
 	runconfig_stage_count

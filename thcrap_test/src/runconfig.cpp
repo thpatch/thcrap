@@ -243,6 +243,43 @@ TEST(RunconfigTest, DatDump)
     EXPECT_EQ(runconfig_dat_dump_get(), nullptr);
 }
 
+TEST(RunconfigTest, PatchedFilesDump)
+{
+    EXPECT_EQ(runconfig_patched_files_dump_get(), nullptr);
+
+    {
+        ScopedRunconfig runconfig(json_pack("{s:b}",
+            "patched_files_dump", false
+        ));
+        EXPECT_EQ(runconfig_patched_files_dump_get(), nullptr);
+    }
+
+    {
+        ScopedRunconfig runconfig(json_pack("{s:s}",
+            "patched_files_dump", "C:\\Somewhere\\"
+        ));
+        EXPECT_STREQ(runconfig_patched_files_dump_get(), "C:\\Somewhere\\");
+    }
+
+    // With true, default to "patched_files"
+    {
+        ScopedRunconfig runconfig(json_pack("{s:b}",
+            "patched_files_dump", true
+        ));
+        EXPECT_STREQ(runconfig_patched_files_dump_get(), "patched_files");
+    }
+
+    // Any non-false value is equivalent to true
+    {
+        ScopedRunconfig runconfig(json_pack("{s:o}",
+            "patched_files_dump", json_object()
+        ));
+        EXPECT_STREQ(runconfig_patched_files_dump_get(), "patched_files");
+    }
+
+    EXPECT_EQ(runconfig_patched_files_dump_get(), nullptr);
+}
+
 TEST(RunconfigTest, Latest)
 {
     EXPECT_EQ(runconfig_latest_check(), true);

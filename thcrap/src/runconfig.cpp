@@ -42,6 +42,8 @@ struct runconfig_t
 	std::vector<std::string_view> latest;
 	// dat dump path if dat dump is enabled, empty otherwise (from runcfg)
 	std::string_view dat_dump;
+	// patched files dump path if patched files dump is enabled, empty otherwise (from runcfg)
+	std::string_view patched_files_dump;
 	// Hackpoints (breakpoints, codecaves and binhacks) for stages (from game_id.js and game_id.build.js).
 	// The global hackpoints (those not in a stage) are put in the last stage.
 	std::vector<stage_t> stages;
@@ -270,6 +272,20 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
+	if (can_overwrite || run_cfg.patched_files_dump.empty()) {
+		if (json_t* value = json_object_get(file, "patched_files_dump")) {
+			if (json_is_string(value)) {
+				run_cfg.patched_files_dump = json_string_value(value);
+			}
+			else if (!json_is_false(value)) {
+				run_cfg.patched_files_dump = "patched_files";
+			}
+			else {
+				run_cfg.patched_files_dump = {};
+			}
+		}
+	}
+
 	if (can_overwrite || run_cfg.runcfg_fn.empty()) {
 		json_t* value;
 		json_t* filenames = json_object_get(file, "runcfg_fn");
@@ -385,10 +401,12 @@ void runconfig_print()
 	log_printf(
 		"\n"
 		"  dat_dump: '%s'\n"
+		"  patched_files_dump: '%s'\n"
 		"---------------------------\n"
 		"Patch stack:\n"
 		"---------------------------\n"
 		, run_cfg.dat_dump.data()
+		, run_cfg.patched_files_dump.data()
 	);
 	stack_print();
 	log_print(
@@ -418,6 +436,7 @@ void runconfig_free()
 	run_cfg.update_url = {};
 	run_cfg.latest.clear();
 	run_cfg.dat_dump = {};
+	run_cfg.patched_files_dump = {};
 	for (auto& stage : run_cfg.stages) {
 		for (auto& binhack : stage.binhacks) {
 			free((void*)binhack.name);
@@ -557,6 +576,11 @@ const char *runconfig_update_url_get()
 const char *runconfig_dat_dump_get()
 {
 	return run_cfg.dat_dump.data();
+}
+
+const char *runconfig_patched_files_dump_get()
+{
+	return run_cfg.patched_files_dump.data();
 }
 
 bool runconfig_latest_check()

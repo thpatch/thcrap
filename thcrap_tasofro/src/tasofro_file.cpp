@@ -131,7 +131,7 @@ void TasofroFile::init_buffer()
 {
 	const char *dat_dump = runconfig_dat_dump_get();
 	if (dat_dump) {
-		DumpDatFile(dat_dump, this);
+		DumpDatFile(dat_dump, this->name, this->game_buffer, this->pre_json_size);
 	}
 
 	if (!this->hooks) {

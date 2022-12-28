@@ -639,6 +639,10 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 		func_patch_t func = hook_array[i].patch_func;
 		if(func) {
 			if (func(file_inout, size_out, size_in, fn, patch) > 0) {
+				const char *patched_files_dump = runconfig_patched_files_dump_get();
+				if (patched_files_dump) {
+					DumpDatFile(patched_files_dump, fn, file_inout, size_out);
+				}
 				ret = 1;
 			}
 		}

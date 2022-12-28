@@ -313,6 +313,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	// Other default settings
 	json_object_set_new(new_cfg, "dat_dump", json_false());
+	json_object_set_new(new_cfg, "patched_files_dump", json_false());
 
 	run_cfg_fn = run_cfg_fn_build(sel_stack);
 	run_cfg_fn = EnterRunCfgFN(run_cfg_fn);

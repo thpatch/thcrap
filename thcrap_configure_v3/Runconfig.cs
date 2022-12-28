@@ -20,6 +20,7 @@ namespace thcrap_configure_v3
     class Runconfig
     {
         public bool dat_dump { get; set; } = false;
+        public bool patched_files_dump { get; set; } = false;
         public List<RunconfigPatch> patches { get; set; } = new List<RunconfigPatch>();
 
         public void Save(string config_name)

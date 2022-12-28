@@ -54,8 +54,11 @@ const char *runconfig_update_url_get();
 
 // Returns the dat dump path if dat dump is enabled,
 // or NULL if it is disabled.
-// TODO: return "dat" if dat_dump is true
 const char *runconfig_dat_dump_get();
+
+// Returns the patched files dump path if patched files dump is enabled,
+// or NULL if it is disabled.
+const char *runconfig_patched_files_dump_get();
 
 // Returns true if the current build in runconfig is a latest build, false otherwise
 bool runconfig_latest_check();

@@ -129,7 +129,7 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info);
   * Placed at a position where a complete file is loaded into a single block
   * of memory, this breakpoint...
   * - applies a JSON patch on top of it if available
-  * - dumps the original file (unless [dat_dump] in the run configuration is false)
+  * - dumps the original file if [dat_dump] in the run configuration is true
   *
   * Own JSON parameters
   * -------------------
@@ -142,7 +142,7 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info);
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
 // Cool function name.
-int DumpDatFile(const char *dir, const file_rep_t *fr);
+int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size);
 
 int bp_file_init(void);
 void bp_file_mod_thread_exit(void);
