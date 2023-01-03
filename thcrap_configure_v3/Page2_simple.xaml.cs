@@ -69,6 +69,8 @@ namespace thcrap_configure_v3
             AllLanguages.ItemsSource = allLanguages;
             if (allLanguages.Count > 0)
                 AllLanguages.SelectedIndex = 0;
+            // Wine checks that radio when we change it, we need to uncheck it again
+            AllLanguagesRadio.IsChecked = false;
         }
         private string GetIsoCountryCode()
         {
