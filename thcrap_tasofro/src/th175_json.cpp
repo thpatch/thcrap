@@ -87,7 +87,6 @@ int patch_th175_json(void *file_inout, size_t size_out, size_t size_in, const ch
 
 	json_object_update_recursive(json, patch);
 
-	// TODO: error checking
 	size_t new_size = json_dumpb(json, (char*)file_inout, size_out, JSON_COMPACT);
 	if (new_size > size_out) {
 		log_printf("[th175_json] Error: %s: buffer too small (need %u, have %u)", fn, new_size, size_out);
