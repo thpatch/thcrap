@@ -487,31 +487,3 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID)
 	}
 	return TRUE;
 }
-
-// Visual Studio's CRT registers destructors for STL containers with global
-// lifetime using atexit(), which is run *after* DllMain(DLL_PROCESS_DETACH),
-// so we shouldn't report memory leaks there. Registering our own atexit()
-// handler in DllMain(DLL_PROCESS_ATTACH) unfortunately pushes it onto the top
-// of the atexit() stack, which means it gets run *first* before all of the
-// destructors, so that's not an option either.
-// Thankfully, the CRT provides a separate, undocumented (?) hook in
-// _pRawDllMain, which does indeed run after all of those.
-#if defined(_MSC_VER) && defined(_DEBUG)
-extern "C" {
-
-	BOOL APIENTRY RawDllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID)
-	{
-		switch(ulReasonForCall) {
-		case DLL_PROCESS_DETACH:
-			_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-			_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
-			_CrtDumpMemoryLeaks();
-			log_exit();
-			break;
-		}
-		return TRUE;
-	}
-
-	auto *_pRawDllMain = RawDllMain;
-}
-#endif
