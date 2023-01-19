@@ -90,8 +90,9 @@ namespace thcrap_configure_v3
             ThcrapDll.stack_foreach((IntPtr it, IntPtr userdata) =>
             {
                 var cur_patch = Marshal.PtrToStructure<ThcrapDll.patch_t>(it);
-                var archive = ThcrapHelper.PtrToStringUTF8(cur_patch.archive);
-                runconfig.patches.Add(new RunconfigPatch(archive));
+                var id = ThcrapHelper.PtrToStringUTF8(cur_patch.id);
+                var cur_RepoPatch = knownPatches.First(x => x.Id == id);
+                runconfig.patches.Add(new RunconfigPatch(cur_RepoPatch.Archive));
             }, IntPtr.Zero);
             runconfig.Save(this.configName);
         }
