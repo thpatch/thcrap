@@ -43,7 +43,7 @@ parser.add_argument(
 
 def alg_mod_from_str(alg):
     """Returns the PyCrypto hash module that corresponds to [alg]."""
-    if alg is 'SHA1':
+    if alg == 'SHA1':
         alg = 'SHA'
     return importlib.import_module('Crypto.Hash.' + alg)
 
