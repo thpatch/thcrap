@@ -58,9 +58,6 @@ namespace thcrap_configure_v3
                 }
             }
 
-            if (cmdline.Length > 1)
-                startUrl = cmdline[1];
-
             repoDiscovery = new Task<List<Repo>>(() => {
                 SelfUpdate();
                 return Repo.Discovery(startUrl);
