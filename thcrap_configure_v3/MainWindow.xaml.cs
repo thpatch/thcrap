@@ -35,6 +35,7 @@ namespace thcrap_configure_v3
         Task<List<Repo>> repoDiscovery;
         List<Repo> repoList;
         string configName;
+        bool skipSearchGames = false;
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -44,6 +45,19 @@ namespace thcrap_configure_v3
 
             var startUrl = "https://srv.thpatch.net/";
             var cmdline = Environment.GetCommandLineArgs();
+
+            for(int i = 1; i < cmdline.Length; i++)
+            {
+                if (cmdline[i] == "--skip-search-games")
+                {
+                    this.skipSearchGames = true;
+                }
+                else
+                {
+                    startUrl = cmdline[i];
+                }
+            }
+
             if (cmdline.Length > 1)
                 startUrl = cmdline[1];
 
@@ -110,11 +124,19 @@ namespace thcrap_configure_v3
                 Page3Content.DownloadCoreFiles();
             });
 
-            // Page4 can take a bit of time to load, so we load it before displaying it
-            await Page4Content.Enter(Page4);
+            if(this.skipSearchGames)
+            {
+                wizard.CurrentPage = LastPage;
+                LastPage.CanSelectNextPage = true;
+            }
+            else
+            {
+                // Page4 can take a bit of time to load, so we load it before displaying it
+                await Page4Content.Enter(Page4);
 
-            Page3.CanSelectNextPage = true;
-            wizard.CurrentPage = Page4;
+                Page3.CanSelectNextPage = true;
+                wizard.CurrentPage = Page4;
+            }
         }
 
         private void Page5_Enter(object sender, RoutedEventArgs e)
