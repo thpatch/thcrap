@@ -85,6 +85,7 @@ tsa_game_t end(tsa_game_t game);
 #endif
 
 extern tsa_game_t game_id;
+extern bool is_custom;
 
 // Returns 0 if the currently running game is a full version, 1 if it is a
 // trial, or -1 if this can't be determined.

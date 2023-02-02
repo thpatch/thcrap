@@ -15,6 +15,7 @@
 #include "layout.h"
 
 tsa_game_t game_id;
+bool is_custom;
 
 // Game iterator
 // -------------
@@ -124,6 +125,7 @@ int TH_STDCALL thcrap_plugin_init()
 
 	const char *game = runconfig_game_get();
 	game_id = game_id_from_string(game);
+	is_custom = strstr(game, "custom");
 
 	// th06_msg
 	patchhook_register("msg*.dat", patch_msg_dlg, NULL); // th06-08
