@@ -41,7 +41,7 @@ namespace thcrap_configure_v3
         public bool console              { get; set; }
         public long exception_detail     { get; set; }
         public long codepage             { get; set; }
-        public Page5.ShortcutDestinations default_shortcut_destinations { get; set; }
+        public long default_shortcut_destinations { get; set; }
 
         public GlobalConfig()
         {
@@ -52,7 +52,7 @@ namespace thcrap_configure_v3
             console                       = ThcrapDll.globalconfig_get_boolean("console", false);
             exception_detail              = ThcrapDll.globalconfig_get_integer("exception_detail", 1);
             codepage                      = ThcrapDll.globalconfig_get_integer("codepage", 932);
-            default_shortcut_destinations = (Page5.ShortcutDestinations)ThcrapDll.globalconfig_get_integer("default_shortcut_destinations",
+            default_shortcut_destinations = ThcrapDll.globalconfig_get_integer("default_shortcut_destinations",
                 (long)(Page5.ShortcutDestinations.Desktop | Page5.ShortcutDestinations.StartMenu));
         }
         public void Save()

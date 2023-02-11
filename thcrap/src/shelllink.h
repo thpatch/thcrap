@@ -17,6 +17,13 @@ enum ShortcutsDestination
 	SHDESTINATION_GAMES_DIRECTORY = 4,
 };
 
+enum ShortcutsType
+{
+	SHTYPE_SHORTCUT = 1,
+	SHTYPE_WRAPPER_ABSPATH = 2,
+	SHTYPE_WRAPPER_RELPATH = 3,
+};
+
 // Create a shortcut with the given parameters.
 // It is assumed that CoInitialize has already been called.
 HRESULT CreateLink(
@@ -25,4 +32,4 @@ HRESULT CreateLink(
 );
 
 // Create shortcuts for the given games
-int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, enum ShortcutsDestination destination);
+int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, enum ShortcutsDestination destination, enum ShortcutsType shortcut_type);

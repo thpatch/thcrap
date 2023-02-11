@@ -15,21 +15,12 @@
 #include <shlguid.h>
 #include <filesystem>
 
-typedef enum {
-	LINK_FN = 3, // Slots 1 and 2 are used by thcrap_configure, that needs them for run_cfg_fn
-	LINK_ARGS,
-} shelllink_slot_t;
-
-#define LINK_MACRO_EXPAND(macro) \
-	macro(link_fn); \
-	macro(target_cmd); \
-	macro(target_args); \
-	macro(work_path); \
-	macro(icon_fn)
-
 HRESULT CreateLink(
-	const char *link_fn, const char *target_cmd, const char *target_args,
-	const char *work_path, const char *icon_fn
+	const std::filesystem::path& link_fn,
+	const std::filesystem::path& target_cmd,
+	const std::wstring& target_args,
+	const std::filesystem::path& work_path,
+	const std::filesystem::path& icon_fn
 )
 {
 	HRESULT hres;
@@ -41,14 +32,11 @@ HRESULT CreateLink(
 	if (SUCCEEDED(hres)) {
 		IPersistFile* ppf;
 
-		LINK_MACRO_EXPAND(WCHAR_T_DEC);
-		LINK_MACRO_EXPAND(WCHAR_T_CONV);
-
 		// Set the path to the shortcut target and add the description.
-		psl->SetPath(target_cmd_w);
-		psl->SetArguments(target_args_w);
-		psl->SetWorkingDirectory(work_path_w);
-		psl->SetIconLocation(icon_fn_w, 0);
+		psl->SetPath(target_cmd.wstring().c_str());
+		psl->SetArguments(target_args.c_str());
+		psl->SetWorkingDirectory(work_path.wstring().c_str());
+		psl->SetIconLocation(icon_fn.wstring().c_str(), 0);
 
 		// Query IShellLink for the IPersistFile interface, used for saving the
 		// shortcut in persistent storage.
@@ -56,19 +44,143 @@ HRESULT CreateLink(
 
 		if (SUCCEEDED(hres)) {
 			// Save the link by calling IPersistFile::Save.
-			hres = ppf->Save(link_fn_w, FALSE);
+			hres = ppf->Save(link_fn.wstring().c_str(), FALSE);
 			if (FAILED(hres)) {
 				hres = GetLastError();
 			}
 			ppf->Release();
 		}
 		psl->Release();
-		LINK_MACRO_EXPAND(WCHAR_T_FREE);
 	}
 	return hres;
 }
 
-std::string get_link_dir(ShortcutsDestination destination, const char *self_path)
+void ReplaceStringTable(HANDLE hUpdate, std::vector<std::wstring> strings)
+{
+	if (strings.size() > 16) {
+		throw std::runtime_error("ReplaceStringTable supports at most 16 strings");
+	}
+
+	std::vector<wchar_t> newStringTable;
+	for (auto& str : strings) {
+		size_t pos = newStringTable.size();
+		newStringTable.resize(newStringTable.size() + 1 + str.length());
+		newStringTable[pos] = static_cast<wchar_t>(str.length());
+		std::copy(str.begin(), str.end(), newStringTable.begin() + pos + 1);
+	}
+
+	for (size_t i = strings.size(); i < 16; i++) {
+		newStringTable.push_back(0);
+	}
+
+	UpdateResourceW(hUpdate, RT_STRING, MAKEINTRESOURCE(1),
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), newStringTable.data(), newStringTable.size() * sizeof(wchar_t));
+}
+
+std::pair<LPVOID, DWORD> GetResource(HMODULE hMod, LPCWSTR resourceId, LPCWSTR resourceType)
+{
+	HRSRC hRes = FindResourceW(hMod, resourceId, resourceType);
+	if (hRes == nullptr) {
+	    return {};
+	}
+
+	HGLOBAL hResLoad = LoadResource(hMod, hRes);
+	if (hResLoad == nullptr) {
+	    return {};
+	}
+
+	LPVOID lpResLock = LockResource(hResLoad);
+	if (lpResLock == nullptr) {
+		return {};
+	}
+
+	DWORD size = SizeofResource(hMod, hRes);
+	if (size == 0) {
+		return {};
+	}
+
+	return std::make_pair(lpResLock, size);
+}
+
+// This function doesn't work. TODO: fix
+void ReplaceIcon(HANDLE hUpdate, const std::filesystem::path& icon_path)
+{
+	HMODULE hIconExe = LoadLibraryExW(icon_path.wstring().c_str(), nullptr, LOAD_LIBRARY_AS_DATAFILE);
+	if (hIconExe == nullptr) {
+		return;
+	}
+
+	auto& [iconData,      iconSize     ] = GetResource(hIconExe, MAKEINTRESOURCE(1), RT_ICON);
+	auto& [iconGroupData, iconGroupSize] = GetResource(hIconExe, MAKEINTRESOURCE(1), RT_GROUP_ICON);
+	if (!iconData || !iconGroupData) {
+		FreeLibrary(hIconExe);
+		return;
+	}
+
+	UpdateResourceW(hUpdate, RT_ICON, MAKEINTRESOURCE(1),
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconData, iconSize);
+	UpdateResourceW(hUpdate, RT_GROUP_ICON, MAKEINTRESOURCE(1),
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconGroupData, iconGroupSize);
+
+	FreeLibrary(hIconExe);
+}
+
+bool CreateWrapper(
+	const std::filesystem::path& link_path,
+	const std::filesystem::path& thcrap_dir,
+	const std::wstring& loader_exe,
+	const std::wstring& target_args,
+	const std::filesystem::path& icon_path,
+	ShortcutsType shortcut_type
+)
+{
+	auto wrapper_path = thcrap_dir / loader_exe;
+	if (!CopyFileW(wrapper_path.wstring().c_str(), link_path.wstring().c_str(), FALSE)) {
+		log_printf("Could not copy %s to %s (%u)\n", wrapper_path.string().c_str(),
+		link_path.string().c_str(), GetLastError());
+		return false;
+	}
+
+	HANDLE hUpdate = BeginUpdateResourceW(link_path.wstring().c_str(), FALSE);
+	if (!hUpdate) {
+		DeleteFileW(link_path.wstring().c_str());
+		return false;
+	}
+
+	auto target_dir = thcrap_dir / "bin";
+	if (shortcut_type == SHTYPE_WRAPPER_RELPATH) {
+		auto link_dir = link_path;
+		link_dir.remove_filename();
+		target_dir = target_dir.lexically_proximate(link_dir);
+	}
+	ReplaceStringTable(hUpdate, {
+		target_dir.wstring(),
+		target_args,
+		loader_exe
+	});
+	ReplaceIcon(hUpdate, icon_path);
+
+	EndUpdateResourceW(hUpdate, FALSE /* Don't discard changes */);
+	return true;
+}
+
+std::filesystem::path GetThcrapDir()
+{
+	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
+	VLA(char, self_fn, self_fn_len);
+
+	GetModuleFileNameU(NULL, self_fn, self_fn_len);
+
+	auto thcrap_dir = std::filesystem::u8path(self_fn);
+	thcrap_dir.remove_filename();
+	thcrap_dir /= "..";
+	thcrap_dir = thcrap_dir.lexically_normal();
+
+	VLA_FREE(self_fn);
+	return thcrap_dir;
+}
+
+std::filesystem::path get_link_dir(ShortcutsDestination destination, const std::filesystem::path& self_path)
 {
 	switch (destination)
 	{
@@ -80,16 +192,16 @@ std::string get_link_dir(ShortcutsDestination destination, const char *self_path
 		return self_path;
 
 	case SHDESTINATION_DESKTOP: {
-		char szPath[MAX_PATH];
-		if (SHGetFolderPathU(NULL, CSIDL_DESKTOPDIRECTORY, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
+		wchar_t szPath[MAX_PATH];
+		if (SHGetFolderPathW(NULL, CSIDL_DESKTOPDIRECTORY, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
 			return "";
 		}
 		return szPath;
 	}
 
 	case SHDESTINATION_START_MENU: {
-		char szPath[MAX_PATH];
-		if (SHGetFolderPathU(NULL, CSIDL_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
+		wchar_t szPath[MAX_PATH];
+		if (SHGetFolderPathW(NULL, CSIDL_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
 			return "";
 		}
 
@@ -98,7 +210,7 @@ std::string get_link_dir(ShortcutsDestination destination, const char *self_path
 		if (!std::filesystem::is_directory(path)) {
 			std::filesystem::create_directory(path);
 		}
-		return path.generic_u8string();
+		return path;
 	}
 
 	case SHDESTINATION_GAMES_DIRECTORY:
@@ -107,77 +219,90 @@ std::string get_link_dir(ShortcutsDestination destination, const char *self_path
 	}
 }
 
-std::string GetIconPath(const char *icon_path_, const char *game_id)
+std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
 {
 	auto icon_path = std::filesystem::u8path(icon_path_);
 
 	if (icon_path.filename() != "vpatch.exe")
-		return icon_path_;
+		return icon_path;
 
-	icon_path.replace_filename(std::string(game_id) + ".exe");
-	if (std::filesystem::is_regular_file(icon_path))
-		return icon_path.u8string();
+	auto new_path = icon_path;
+	new_path.replace_filename(std::string(game_id) + ".exe");
+	if (std::filesystem::is_regular_file(new_path))
+		return new_path;
 
 	// Special case - EoSD
 	if (strcmp(game_id, "th06") == 0) {
-		icon_path.replace_filename(L"東方紅魔郷.exe");
-		if (std::filesystem::is_regular_file(icon_path))
-			return icon_path.u8string();
+		new_path = icon_path;
+		new_path.replace_filename(L"東方紅魔郷.exe");
+		if (std::filesystem::is_regular_file(new_path))
+			return new_path;
 	}
 
-	return icon_path_;
+	return icon_path;
 }
 
-int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination)
+int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination, ShortcutsType shortcut_type)
 {
-	constexpr stringref_t loader_exe = "thcrap_loader" DEBUG_OR_RELEASE ".exe";
+	LPCWSTR loader_exe = L"thcrap_loader" DEBUG_OR_RELEASE_W L".exe";
+	auto thcrap_dir = GetThcrapDir();
+	auto self_path = thcrap_dir / L"bin" / loader_exe;
+	auto link_dir = get_link_dir(destination, thcrap_dir);
 	int ret = 0;
-	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	VLA(char, self_fn, self_fn_len);
 
-	GetModuleFileNameU(NULL, self_fn, self_fn_len);
-	PathRemoveFileSpec(self_fn);
-	PathAppendU(self_fn, "..");
-	PathAddBackslashU(self_fn);
+	if (shortcut_type != SHTYPE_SHORTCUT &&
+		shortcut_type != SHTYPE_WRAPPER_ABSPATH &&
+		shortcut_type != SHTYPE_WRAPPER_RELPATH) {
+		log_print("Error creating shortcuts: invalid parameter for shortcut_type. Please report this error to the developpers.\n");
+		return 1;
+	}
 
 	// Yay, COM.
-	HRESULT com_init_succeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
-	{
-		VLA(char, self_path, self_fn_len + loader_exe.length());
-		strcpy(self_path, self_fn);
+	HRESULT com_init_succeded = E_FAIL;
+	if (shortcut_type == SHTYPE_SHORTCUT) {
+		com_init_succeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	}
 
-		strcat(self_fn, "bin\\");
-		strcat(self_fn, loader_exe.data());
+	log_printf("Creating shortcuts");
 
-		std::string link_dir = get_link_dir(destination, self_path);
+	for (size_t i = 0; games[i].id; i++) {
+		log_printf(".");
 
-		log_printf("Creating shortcuts");
+		if (destination == SHDESTINATION_GAMES_DIRECTORY) {
+			link_dir = std::filesystem::absolute(games[i].path).remove_filename();
+		}
 
-		for (size_t i = 0; games[i].id; i++) {
-			if (destination == SHDESTINATION_GAMES_DIRECTORY) {
-				link_dir = std::filesystem::u8path(games[i].path).remove_filename().generic_u8string();
-			}
-			const char *link_fn = strings_sprintf(LINK_FN, "%s\\%s (%s).lnk", link_dir.c_str(), games[i].id, run_cfg_fn);
-			const char *link_args = strings_sprintf(LINK_ARGS, "\"%s.js\" %s", run_cfg_fn, games[i].id);
+		auto icon_path = GetIconPath(games[i].path, games[i].id);
+		auto link_path = link_dir / (std::string(games[i].id) + " (" + run_cfg_fn + ").ext");
+		std::string link_args = std::string("\"") + run_cfg_fn + ".js\" " + games[i].id;
+		auto link_args_w = std::make_unique<wchar_t[]>(link_args.length() + 1);
+		StringToUTF16(link_args_w.get(), link_args.c_str(), -1);
 
-			log_printf(".");
-
-			std::string icon_path = GetIconPath(games[i].path, games[i].id);
-			if (CreateLink(link_fn, self_fn, link_args, self_path, icon_path.c_str())) {
-				log_printf(
-					"\n"
-					"Error writing to %s!\n"
-					"You probably do not have the permission to write to the current directory,\n"
-					"or the file itself is write-protected.\n",
-					link_fn
-				);
+		if (shortcut_type == SHTYPE_SHORTCUT) {
+			link_path.replace_extension("lnk");
+			if (CreateLink(link_path, self_path, link_args_w.get(), thcrap_dir, icon_path)) {
 				ret = 1;
-				break;
 			}
 		}
-		VLA_FREE(self_path);
+		else if (shortcut_type == SHTYPE_WRAPPER_ABSPATH || shortcut_type == SHTYPE_WRAPPER_RELPATH) {
+			link_path.replace_extension("exe");
+			auto exe_args = std::wstring(loader_exe) + L" " + link_args_w.get();
+			if (!CreateWrapper(link_path, thcrap_dir, loader_exe, exe_args, icon_path, shortcut_type)) {
+				ret = 1;
+			}
+		}
+		if (ret != 0) {
+			log_printf(
+				"\n"
+				"Error writing to %s!\n"
+				"You probably do not have the permission to write to its directory,\n"
+				"or the file itself is write-protected.\n",
+				link_path.string().c_str()
+			);
+			break;
+		}
 	}
-	VLA_FREE(self_fn);
+
 	if (com_init_succeded == S_OK) {
 		CoUninitialize();
 	}

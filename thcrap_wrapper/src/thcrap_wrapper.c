@@ -65,6 +65,9 @@ int main()
 	if (rcApplicationPath == NULL) {
 		PathAppendW(ApplicationPath, L"bin\\");
 	}
+	else if (!PathIsRelative(rcApplicationPath)) {
+		my_strcpy(ApplicationPath, rcApplicationPath);
+	}
 	else {
 		PathAppendW(ApplicationPath, rcApplicationPath);
 	}
