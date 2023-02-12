@@ -279,6 +279,8 @@ inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
 #ifdef __cplusplus
 extern "C++" {
 
+#include <memory>
+
 struct UniqueFree {
 	inline void operator()(void* mem_to_free) {
 		free(mem_to_free);

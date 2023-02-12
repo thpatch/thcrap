@@ -41,7 +41,7 @@ BOOL WINAPI cfg_ReadFile(
 )
 {
 	BOOL ret = chain_ReadFile(hFile, lpBuffer, nNumberOfBytesToRead, lpNumberOfBytesRead, lpOverlapped);
-	if (!cfg_loaded && ret && hFile != INVALID_HANDLE_VALUE && hFile == cfg_handle) {
+	if (!cfg_loaded && ret && hFile == cfg_handle) {
 		cfg_loaded = true;
 	}
 	return ret;
@@ -60,10 +60,12 @@ BOOL WINAPI cfg_WriteFile(
 }
 
 extern "C" TH_EXPORT void cfg_mod_detour(void) {
-	detour_chain("kernel32.dll", 1,
-		"CreateFileA", cfg_CreateFileA, &chain_CreateFileA,
-		"ReadFile", cfg_ReadFile, &chain_ReadFile,
-		"WriteFile", cfg_WriteFile, &chain_WriteFile,
-		nullptr
-	);
+	if (!is_custom) {
+		detour_chain("kernel32.dll", 1,
+			"CreateFileA", cfg_CreateFileA, &chain_CreateFileA,
+			"ReadFile", cfg_ReadFile, &chain_ReadFile,
+			"WriteFile", cfg_WriteFile, &chain_WriteFile,
+			nullptr
+		);
+	}
 }

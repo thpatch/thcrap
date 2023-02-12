@@ -153,6 +153,8 @@ json_t* json_object_get_keys_sorted(const json_t *object);
 #ifdef __cplusplus
 extern "C++" {
 
+#include <memory>
+
 struct DerefAutoJson {
 	inline void operator()(json_t* obj) {
 		json_decref(obj);
