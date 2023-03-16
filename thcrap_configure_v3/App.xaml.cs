@@ -13,5 +13,18 @@ namespace thcrap_configure_v3
     /// </summary>
     public partial class App : Application
     {
+        public App()
+        {
+            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(ExceptionHandler);
+        }
+
+        static void ExceptionHandler(object sender, UnhandledExceptionEventArgs args)
+        {
+            if(args.IsTerminating)
+            {
+                ThcrapDll.log_print(".NET Exception details:\n");
+                ThcrapDll.log_print((args.ExceptionObject as Exception).ToString());
+            }
+        }
     }
 }
