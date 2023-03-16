@@ -67,7 +67,7 @@ namespace thcrap_configure_v3
 
         private void SelfUpdate()
         {
-            if (ThcrapUpdateDll.update_notify_thcrap() == ThcrapUpdateDll.self_result_t.SELF_OK)
+            if (ThcrapDll.update_notify_thcrap_wrapper() == ThcrapDll.self_result_t.SELF_OK)
             {
                 Process.Start(Assembly.GetEntryAssembly().Location);
                 Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());

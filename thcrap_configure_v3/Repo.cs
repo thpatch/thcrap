@@ -70,7 +70,7 @@ namespace thcrap_configure_v3
             patch_desc.patch_id = ThcrapHelper.StringUTF8ToPtr(this.Id);
 
             IntPtr patch_desc_ptr = ThcrapHelper.AllocStructure(patch_desc);
-            ThcrapDll.patch_t patch_info = ThcrapUpdateDll.patch_bootstrap(patch_desc_ptr, this.Repo.repo_ptr);
+            ThcrapDll.patch_t patch_info = ThcrapDll.patch_bootstrap_wrapper(patch_desc_ptr, this.Repo.repo_ptr);
 
             this.Archive = ThcrapHelper.PtrToStringUTF8(patch_info.archive);
             ThcrapDll.patch_t patch_full = ThcrapDll.patch_init(this.Archive, IntPtr.Zero, 0);
@@ -95,7 +95,7 @@ namespace thcrap_configure_v3
         public List<RepoPatch> Patches { get; set; }
         public static List<Repo> Discovery(string start_url)
         {
-            IntPtr repo_list = ThcrapUpdateDll.RepoDiscover(start_url);
+            IntPtr repo_list = ThcrapDll.RepoDiscover_wrapper(start_url);
             if (repo_list == IntPtr.Zero)
                 return new List<Repo>();
 

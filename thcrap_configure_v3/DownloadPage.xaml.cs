@@ -37,8 +37,8 @@ namespace thcrap_configure_v3
 
         bool DownloadCallbak(IntPtr status_, IntPtr param)
         {
-            var status = Marshal.PtrToStructure<ThcrapUpdateDll.progress_callback_status_t>(status_);
-            if (status.status == ThcrapUpdateDll.get_status_t.GET_OK)
+            var status = Marshal.PtrToStructure<ThcrapDll.progress_callback_status_t>(status_);
+            if (status.status == ThcrapDll.get_status_t.GET_OK)
             {
                 var cur_patch = Marshal.PtrToStructure<ThcrapDll.patch_t>(status.patch);
                 string cur_patch_id = ThcrapHelper.PtrToStringUTF8(cur_patch.id);
@@ -71,7 +71,7 @@ namespace thcrap_configure_v3
         public void DownloadCoreFiles()
         {
             ResetProgress();
-            ThcrapUpdateDll.stack_update((string fn, IntPtr unused) => ThcrapUpdateDll.update_filter_global(fn, unused),
+            ThcrapDll.stack_update_wrapper((string fn, IntPtr unused) => ThcrapDll.update_filter_global_wrapper(fn, unused),
                 IntPtr.Zero, DownloadCallbak, IntPtr.Zero);
         }
 
@@ -105,7 +105,7 @@ namespace thcrap_configure_v3
             gamesArray.Add(IntPtr.Zero);
             var gamesPtr = GamesArrayToIntPtr(gamesArray);
 
-            ThcrapUpdateDll.stack_update((string fn, IntPtr games_) => ThcrapUpdateDll.update_filter_games(fn, games_), gamesPtr, DownloadCallbak, IntPtr.Zero);
+            ThcrapDll.stack_update_wrapper((string fn, IntPtr games_) => ThcrapDll.update_filter_games_wrapper(fn, games_), gamesPtr, DownloadCallbak, IntPtr.Zero);
 
             FreeGames(gamesPtr, gamesArray);
         }
