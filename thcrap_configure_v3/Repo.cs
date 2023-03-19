@@ -117,8 +117,8 @@ namespace thcrap_configure_v3
         {
             ThcrapDll.repo_t repo = Marshal.PtrToStructure<ThcrapDll.repo_t>(repo_ptr);
 
-            Id = repo.id;
-            Title = repo.title;
+            Id = ThcrapHelper.PtrToStringUTF8(repo.id);
+            Title = ThcrapHelper.PtrToStringUTF8(repo.title);
             this.repo_ptr = repo_ptr;
 
             var patchesList = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.repo_patch_t>(repo.patches);

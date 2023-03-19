@@ -138,9 +138,9 @@ namespace thcrap_configure_v3
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct repo_t
         {
-            public string id;
-            public string title;
-            public string contact;
+            public IntPtr id;
+            public IntPtr title;
+            public IntPtr contact;
             public IntPtr servers;
             public IntPtr neighbors;
             public IntPtr patches;
