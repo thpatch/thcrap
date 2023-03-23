@@ -760,43 +760,15 @@ void patch_opts_from_json(json_t *opts) {
 						case 16:
 							entry.type = PVT_STRING16;
 							entry.str16.len = narrow_len * sizeof(char16_t);
-							if (char16_t* str_16 = (char16_t*)malloc(narrow_len * sizeof(char16_t))) {
-								const char* opt_str_end = opt_str + narrow_len;
-								size_t c = mbrtoc16(NULL, NULL, 0, NULL);
-								for (char16_t* write_str = str_16; c = mbrtoc16(write_str, opt_str, PtrDiffStrlen(opt_str_end, opt_str), NULL); ++write_str) {
-									if (c > 0) opt_str += c;
-									else if (c > -3) break;
-								}
-								if unexpected(c != 0) {
-									free(str_16);
-									log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
-									continue;
-								}
-								entry.str16.ptr = str_16;
-								break;
-							}
-							else {
+							if (!(entry.str16.ptr = utf8_to_utf16(opt_str))) {
+								log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
 								continue;
 							}
 						case 32:
 							entry.type = PVT_STRING32;
 							entry.str32.len = narrow_len * sizeof(char32_t);
-							if (char32_t* str_32 = (char32_t*)malloc(narrow_len * sizeof(char32_t))) {
-								const char* opt_str_end = opt_str + narrow_len;
-								size_t c = mbrtoc32(NULL, NULL, 0, NULL);
-								for (char32_t* write_str = str_32; c = mbrtoc32(write_str, opt_str, PtrDiffStrlen(opt_str_end, opt_str), NULL); ++write_str) {
-									if (c > 0) opt_str += c;
-									else if (c > -3) break;
-								}
-								if unexpected(c != 0) {
-									free(str_32);
-									log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
-									continue;
-								}
-								entry.str32.ptr = str_32;
-								break;
-							}
-							else {
+							if (!(entry.str32.ptr = utf8_to_utf32(opt_str))) {
+								log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
 								continue;
 							}
 						default:
