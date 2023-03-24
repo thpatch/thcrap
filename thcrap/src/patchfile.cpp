@@ -764,6 +764,7 @@ void patch_opts_from_json(json_t *opts) {
 								log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
 								continue;
 							}
+							break;
 						case 32:
 							entry.type = PVT_STRING32;
 							entry.str32.len = narrow_len * sizeof(char32_t);
@@ -771,6 +772,7 @@ void patch_opts_from_json(json_t *opts) {
 								log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
 								continue;
 							}
+							break;
 						default:
 							log_printf("ERROR: invalid char size %s for string option %s\n", tname + 1, key);
 							continue;
