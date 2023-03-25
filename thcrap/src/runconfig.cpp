@@ -49,6 +49,8 @@ struct runconfig_t
 	std::vector<stage_t> stages;
 	// Boolean flag that tells the binhack parser if it should show a message box, should it fail to find a function
 	bool msgbox_invalid_func;
+	// Process ID of the thcrap_loader instance used at the start
+	size_t loader_pid;
 };
 
 static runconfig_t run_cfg;
@@ -354,6 +356,9 @@ void runconfig_load(json_t *file, int flags)
 			runconfig_stage_load(file);
 		}
 	}
+
+	run_cfg.loader_pid = 0;
+	json_object_get_eval_int(file, "loader_pid", &run_cfg.loader_pid, JEVAL_STRICT | JEVAL_NO_EXPRS);
 }
 
 void runconfig_load_from_file(const char *path)
@@ -608,6 +613,15 @@ const char *runconfig_latest_get()
 
 bool runconfig_msgbox_invalid_func() {
 	return run_cfg.msgbox_invalid_func;
+}
+
+size_t runconfig_loader_pid_get() {
+	return run_cfg.loader_pid;
+}
+
+void runconfig_loader_pid_set(size_t loader_pid) {
+	run_cfg.loader_pid = loader_pid;
+	json_object_set(run_cfg.json, "loader_pid", json_integer(loader_pid));
 }
 
 size_t runconfig_stage_count()

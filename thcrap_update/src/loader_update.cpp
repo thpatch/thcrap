@@ -563,7 +563,8 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 	auto* state = (loader_update_state_t*)param;
 
 	char game_id[128] = {};
-	HANDLE hMail = CreateMailslotW(L"\\\\.\\mailslot\\thcrap_request_update", sizeof(game_id), MAILSLOT_WAIT_FOREVER, NULL);
+	std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
+	HANDLE hMail = CreateMailslotW(mailslotName.c_str(), sizeof(game_id), MAILSLOT_WAIT_FOREVER, NULL);
 	OVERLAPPED overlapped = {};
 	overlapped.hEvent = CreateEvent(nullptr, false, false, nullptr);
 
@@ -607,6 +608,8 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 
 BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_fallback)
 {
+	runconfig_loader_pid_set(GetProcessId(GetCurrentProcess()));
+
 	loader_update_state_t state;
 	bool game_started;
 	BOOL ret = 0;

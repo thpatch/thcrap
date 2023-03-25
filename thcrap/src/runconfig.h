@@ -72,6 +72,12 @@ size_t runconfig_stage_count();
 // Return true if the binhack parser if it should show a message box, should it fail to find a function
 bool runconfig_msgbox_invalid_func();
 
+// Return the PID of the thcrap_loader process that started the exe
+size_t runconfig_loader_pid_get();
+
+// Set the PID of the thcrap_loader process. For use in thcrap_loader
+void runconfig_loader_pid_set(size_t loader_pid);
+
 #define RUNCFG_STAGE_DEFAULT 0
 #define RUNCFG_STAGE_USE_MODULE	1
 #define RUNCFG_STAGE_SKIP_BREAKPOINTS 2

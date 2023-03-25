@@ -480,7 +480,8 @@ static inline void inject_CreateProcess_helper(
 	if (!id) id = identify_by_size(exe_size, versions_js);
 
 	if (id && id->id) {
-		HANDLE hMail = CreateFileW(L"\\\\.\\mailslot\\thcrap_request_update", GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+		std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
+		HANDLE hMail = CreateFileW(mailslotName.c_str(), GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 		if (hMail != INVALID_HANDLE_VALUE) {
 			std::wstring event_name = L"thcrap inject " + std::to_wstring(GetProcessId(GetCurrentProcess()));
 			HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, event_name.c_str());
