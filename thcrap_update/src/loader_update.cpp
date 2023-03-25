@@ -738,6 +738,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	game_started = state.game_started;
 	state.game_started = true;
 	LeaveCriticalSection(&state.cs);
+
+	HANDLE hWrapperUpdateThread = CreateThread(NULL, 0, update_wrapper_patch, &state, 0, NULL);
 	if (game_started == false) {
 		log_printf("Starting %s with arguments %s... ", exe_fn, args);
 		ret = thcrap_inject_into_new(exe_fn, args, NULL, NULL);
@@ -750,8 +752,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		handles[1] = state.event_require_update;
 		handles[2] = state.event_wrapper_request_update;
 		DWORD wait_ret = -1;
-
-		HANDLE hWrapperUpdateThread = CreateThread(NULL, 0, update_wrapper_patch, &state, 0, NULL);
 
 		do {
 			progress_bar_set_marquee(&state, true, true);
@@ -813,13 +813,13 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 				log_print("main window closed. Exiting.\n");
 			}
 		} while (wait_ret == WAIT_OBJECT_0 + 1 || wait_ret == WAIT_OBJECT_0 + 2 || wait_ret == WAIT_TIMEOUT);
-		WaitForSingleObject(hWrapperUpdateThread, INFINITY);
-		CloseHandle(hWrapperUpdateThread);
 	}
 	else {
 		log_print("Background updates are disabled. Closing thcrap_loader.\n");
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
+	WaitForSingleObject(hWrapperUpdateThread, INFINITY);
+	CloseHandle(hWrapperUpdateThread);
 
 	end:	
 	globalconfig_set_boolean("update_at_exit", state.update_at_exit);
