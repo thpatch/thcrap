@@ -111,12 +111,21 @@ get_error:
 
 TH_CALLER_FREE char* fn_for_build(const char *fn)
 {
+	if (!fn) return nullptr;
 	std::string_view build_view = runconfig_build_get_view();
 	if (!build_view.empty()) {
-		const size_t fn_length = PtrDiffStrlen(strchr(fn, '.'), fn);
-		return strdup_cat({ fn, fn_length + 1 }, build_view, fn + fn_length);
+		const char* fn_offset = strrchr(fn, '/');
+		if(!fn_offset) fn_offset = strrchr(fn, '\\');
+		if (!fn_offset) fn_offset = fn;
+
+		if (const char* dot_offset = strchr(fn_offset, '.')) {
+			const size_t fn_length = PtrDiffStrlen(dot_offset, fn);
+			return strdup_cat({ fn, fn_length + 1 }, build_view, fn + fn_length);
+		} else {
+			return strdup_cat(fn, ".", build_view);
+		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 TH_CALLER_FREE char* fn_for_game(const char *fn)
