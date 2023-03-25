@@ -340,6 +340,7 @@ EXPORTS
 	stack_foreach
 	stack_foreach_cpp
 	stack_remove_if_unneeded
+	stack_check_if_unneeded
 	stack_free
 
 	; Hardcoded string translation

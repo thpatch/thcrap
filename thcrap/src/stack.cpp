@@ -353,7 +353,7 @@ void stack_print()
 	log_print("\n");
 }
 
-int stack_remove_if_unneeded(const char *patch_id)
+int stack_check_if_unneeded(const char *patch_id)
 {
 	const char *c_game = runconfig_game_get();
 	std::string game = "";
@@ -390,15 +390,14 @@ int stack_remove_if_unneeded(const char *patch_id)
 			game_found |= patch_file_exists(&patch, js.c_str());
 		}
 	}
-	if (!game_found) {
-		stack.erase(patch_it);
-
-		// Fix levels
-		for (size_t i = 0; i < stack.size(); i++) {
-			stack[i].level = i + 1;
-		}
-	}
 	return !game_found;
+}
+
+int stack_remove_if_unneeded(const char *patch_id)
+{
+	int ret = stack_check_if_unneeded(patch_id);
+	if (ret) stack_remove_patch(patch_id);
+	return ret;
 }
 
 void stack_free()

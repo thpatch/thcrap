@@ -47,6 +47,8 @@ typedef struct {
 	CRITICAL_SECTION cs;
 	HANDLE event_created;
 	HANDLE event_require_update;
+	HANDLE event_wrapper_request_update;
+	HANDLE event_update_finished;
 	HANDLE hThread;
 	update_state_t state;
 	bool settings_visible;
@@ -555,6 +557,54 @@ void log_ncallback(const char* text, size_t len)
 	VLA_FREE(ntext);
 }
 
+const char* game_id_other = NULL;
+
+static DWORD WINAPI update_wrapper_patch(void* param) {
+	auto* state = (loader_update_state_t*)param;
+
+	char game_id[128] = {};
+	HANDLE hMail = CreateMailslotW(L"\\\\.\\mailslot\\thcrap_request_update", sizeof(game_id), MAILSLOT_WAIT_FOREVER, NULL);
+	OVERLAPPED overlapped = {};
+	overlapped.hEvent = CreateEvent(nullptr, false, false, nullptr);
+
+	HANDLE handles[2];
+	handles[0] = state->hThread;
+	handles[1] = overlapped.hEvent;
+
+	for (;;) {
+		ReadFile(hMail, game_id, sizeof(game_id), nullptr, &overlapped);
+		DWORD signal = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+
+		if (signal == WAIT_OBJECT_0 + 1) {
+			EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], FALSE);
+			if(game_id_other) free((void*)game_id_other);
+			game_id_other = strdup(game_id);
+						
+			SetEvent(state->event_wrapper_request_update);
+
+			WaitForSingleObject(state->event_update_finished, INFINITE);
+
+			char* event_name_addr = game_id + strlen(game_id) + 1;
+			if ((size_t)event_name_addr & 1) event_name_addr++;
+
+			const wchar_t* event_name = (wchar_t*)event_name_addr;
+
+			HANDLE hEvent = OpenEventW(EVENT_MODIFY_STATE, FALSE, event_name);
+			if (hEvent) {
+				SetEvent(hEvent);
+				CloseHandle(hEvent);
+			}
+			EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], TRUE);
+		}
+		else {
+			break;
+		}
+	}
+	CloseHandle(hMail);
+	CloseHandle(overlapped.hEvent);
+	return 0;
+}
+
 BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_fallback)
 {
 	loader_update_state_t state;
@@ -575,6 +625,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	InitializeCriticalSection(&state.cs);
 	state.event_created = CreateEvent(nullptr, true, false, nullptr);
 	state.event_require_update = CreateEvent(nullptr, false, false, nullptr);
+	state.event_wrapper_request_update = CreateEvent(nullptr, false, false, nullptr);
+	state.event_update_finished = CreateEvent(nullptr, false, false, nullptr);
 	state.settings_visible = false;
 	state.game_started = false;
 	state.cancel_update = false;
@@ -690,10 +742,14 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	}
 	if (state.background_updates) {
 		int time_between_updates;
-		HANDLE handles[2];
+		HANDLE handles[3];
 		handles[0] = state.hThread;
 		handles[1] = state.event_require_update;
-		DWORD wait_ret;
+		handles[2] = state.event_wrapper_request_update;
+		DWORD wait_ret = -1;
+
+		HANDLE hWrapperUpdateThread = CreateThread(NULL, 0, update_wrapper_patch, &state, 0, NULL);
+
 		do {
 			progress_bar_set_marquee(&state, true, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], FALSE);
@@ -729,17 +785,33 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 
 			// Wait until the next update
 			log_printf("Update finished. Waiting until next update (%d min)... ", time_between_updates);
-			wait_ret = WaitForMultipleObjects(2, handles, FALSE, time_between_updates * 60 * 1000);
+
+			if (wait_ret == WAIT_OBJECT_0 + 2) SetEvent(state.event_update_finished);
+			wait_ret = WaitForMultipleObjects(3, handles, FALSE, time_between_updates * 60 * 1000);
+
 			if (wait_ret == WAIT_TIMEOUT) {
 				log_print("timeout, running update.\n");
 			}
 			else if (wait_ret == WAIT_OBJECT_0 + 1) {
 				log_print("update button clicked, running update.\n");
 			}
+			else if (wait_ret == WAIT_OBJECT_0 + 2) {
+				log_print("update requested by another process.\n");
+				const char* filter[] = {
+					game_id_other,
+					nullptr
+				};
+				log_print("Updating patches with game-specific filter...\n");
+				loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
+				stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
+				log_print("Stack update done.\n");
+			}
 			else {
 				log_print("main window closed. Exiting.\n");
 			}
-		} while (wait_ret == WAIT_OBJECT_0 + 1 || wait_ret == WAIT_TIMEOUT);
+		} while (wait_ret == WAIT_OBJECT_0 + 1 || wait_ret == WAIT_OBJECT_0 + 2 || wait_ret == WAIT_TIMEOUT);
+		WaitForSingleObject(hWrapperUpdateThread, INFINITY);
+		CloseHandle(hWrapperUpdateThread);
 	}
 	else {
 		log_print("Background updates are disabled. Closing thcrap_loader.\n");
@@ -756,5 +828,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	CloseHandle(state.hThread);
 	CloseHandle(state.event_created);
 	CloseHandle(state.event_require_update);
+	CloseHandle(state.event_wrapper_request_update);
+	CloseHandle(state.event_update_finished);
 	return ret;
 }

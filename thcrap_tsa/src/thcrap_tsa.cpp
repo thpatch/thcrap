@@ -119,7 +119,7 @@ size_t tlnote_remove_size_hook(const char *fn, json_t *patch, size_t patch_size)
 
 int TH_STDCALL thcrap_plugin_init()
 {
-	if(stack_remove_if_unneeded("base_tsa")) {
+	if(stack_check_if_unneeded("base_tsa")) {
 		return 1;
 	}
 
