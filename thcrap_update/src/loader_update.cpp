@@ -595,7 +595,13 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 				SetEvent(hEvent);
 				CloseHandle(hEvent);
 			}
-			EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], TRUE);
+			if (state->background_updates) {
+				EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], TRUE);
+				EnableWindow(state->hwnd[HWND_BUTTON_RUN], TRUE);
+			}
+			else {
+				SendMessage(state->hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
+			}
 		}
 		else {
 			break;
@@ -606,7 +612,7 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 	return 0;
 }
 
-BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_fallback)
+BOOL loader_update_with_UI(const char *exe_fn, char *args)
 {
 	runconfig_loader_pid_set(GetProcessId(GetCurrentProcess()));
 
@@ -716,11 +722,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 	log_print("Stack update done.\n");
 
+	const char* game = runconfig_game_get();
 	{
-		const char *game = runconfig_game_get();
-		if (!game) {
-			game = game_id_fallback;
-		}
 		if (game) {
             const char *filter[] = {
                 game,
@@ -745,8 +748,8 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		ret = thcrap_inject_into_new(exe_fn, args, NULL, NULL);
 		log_print("done.\n");
 	}
-	if (state.background_updates) {
-		int time_between_updates;
+	if (state.background_updates || !game) {
+		int time_between_updates = -1;
 		HANDLE handles[3];
 		handles[0] = state.hThread;
 		handles[1] = state.event_require_update;
@@ -756,47 +759,51 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		do {
 			progress_bar_set_marquee(&state, true, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], FALSE);
-			if (state.update_others) {
-				log_print("Updating every patches with no filter...\n");
-				loader_update_progress_init(&state, STATE_GLOBAL_UPDATE);
-				global_update(loader_update_progress_callback, &state);
-				log_print("Global update done.\n");
-			}
-			else {
-				const char *game = runconfig_game_get();
-				if (game) {
-                    const char *filter[] = {
-                        game,
-                        nullptr
-                    };
-					log_print("Updating patches with game-specific filter...\n");
-					loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
-					stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
-					log_print("Stack update done.\n");
+			if (state.background_updates) {
+				if (state.update_others) {
+					log_print("Updating every patches with no filter...\n");
+					loader_update_progress_init(&state, STATE_GLOBAL_UPDATE);
+					global_update(loader_update_progress_callback, &state);
+					log_print("Global update done.\n");
 				}
+				else {
+					const char* game = runconfig_game_get();
+					if (game) {
+						const char* filter[] = {
+							game,
+							nullptr
+						};
+						log_print("Updating patches with game-specific filter...\n");
+						loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
+						stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
+						log_print("Stack update done.\n");
+					}
+				}
+				EnterCriticalSection(&state.cs);
+				time_between_updates = state.time_between_updates;
+				LeaveCriticalSection(&state.cs);
+
+				// Display the "Update finished" message
+				EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], TRUE);
+				SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
+				state.state = STATE_WAITING;
+				progress_bar_set_marquee(&state, false, true);
+				SendMessage(state.hwnd[HWND_PROGRESS], PBM_SETPOS, 100, 0);
+
+				// Wait until the next update
+				log_printf("Update finished. Waiting until next update (%d min)... ", time_between_updates);
 			}
-			EnterCriticalSection(&state.cs);
-			time_between_updates = state.time_between_updates;
-			LeaveCriticalSection(&state.cs);
-
-			// Display the "Update finished" message
-			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], TRUE);
-			SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
-			state.state = STATE_WAITING;
-			progress_bar_set_marquee(&state, false, true);
-			SendMessage(state.hwnd[HWND_PROGRESS], PBM_SETPOS, 100, 0);
-
-			// Wait until the next update
-			log_printf("Update finished. Waiting until next update (%d min)... ", time_between_updates);
 
 			if (wait_ret == WAIT_OBJECT_0 + 2) SetEvent(state.event_update_finished);
 			wait_ret = WaitForMultipleObjects(3, handles, FALSE, time_between_updates * 60 * 1000);
 
 			if (wait_ret == WAIT_TIMEOUT) {
-				log_print("timeout, running update.\n");
+				if (state.background_updates)
+					log_print("timeout, running update.\n");
 			}
 			else if (wait_ret == WAIT_OBJECT_0 + 1) {
-				log_print("update button clicked, running update.\n");
+				if(state.background_updates)
+					log_print("update button clicked, running update.\n");
 			}
 			else if (wait_ret == WAIT_OBJECT_0 + 2) {
 				log_print("update requested by another process.\n");
@@ -818,7 +825,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args, const char *game_id_f
 		log_print("Background updates are disabled. Closing thcrap_loader.\n");
 		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
-	WaitForSingleObject(hWrapperUpdateThread, INFINITY);
+	WaitForSingleObject(hWrapperUpdateThread, -1);
 	CloseHandle(hWrapperUpdateThread);
 
 	end:	

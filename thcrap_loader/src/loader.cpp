@@ -143,7 +143,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	std::string run_cfg_fn;
 	json_t *run_cfg = NULL;
 
-	const char *game_id = nullptr;
 	const char *cmd_exe_fn = NULL;
 	char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
@@ -216,7 +215,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		else {
 			// Need to set game_missing even if games_js is null.
 			cmd_exe_fn = game_lookup(games_js, arg, current_dir);
-			game_id = arg;
 		}
 	}
 	cfg_exe_fn = find_exe_from_cfg(rel_start, run_cfg, games_js);
@@ -269,7 +267,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	}
 
 	log_print("Command-line parsing finished\n");
-	ret = loader_update_with_UI_wrapper(final_exe_fn, cmdline, game_id);
+	ret = loader_update_with_UI_wrapper(final_exe_fn, cmdline);
 end:
 	SAFE_FREE(cmdline);
 	json_decref(games_js);

@@ -24,7 +24,7 @@ HMODULE thcrap_update_module(void);
 int update_filter_global_wrapper(const char *fn, void*);
 int update_filter_games_wrapper(const char *fn, void *games);
 void stack_update_wrapper(update_filter_func_t filter_func, void *filter_data, progress_callback_t progress_callback, void *progress_param);
-BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *game_id_fallback);
+BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args);
 
 int update_notify_thcrap_wrapper();
 

@@ -474,30 +474,32 @@ static inline void inject_CreateProcess_helper(
 	DWORD dwCreationFlags
 )
 {
-	json_t* versions_js = stack_json_resolve("versions.js", NULL);
-	size_t exe_size;
-	game_version* id = identify_by_hash(lpAppName, &exe_size, versions_js);
-	if (!id) id = identify_by_size(exe_size, versions_js);
+	if (GetProcessId(GetCurrentProcess()) != runconfig_loader_pid_get()) {
+		json_t* versions_js = stack_json_resolve("versions.js", NULL);
+		size_t exe_size;
+		game_version* id = identify_by_hash(lpAppName, &exe_size, versions_js);
+		if (!id) id = identify_by_size(exe_size, versions_js);
 
-	if (id && id->id) {
-		std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
-		HANDLE hMail = CreateFileW(mailslotName.c_str(), GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-		if (hMail != INVALID_HANDLE_VALUE) {
-			std::wstring event_name = L"thcrap inject " + std::to_wstring(GetProcessId(GetCurrentProcess()));
-			HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, event_name.c_str());
+		if (id && id->id) {
+			std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
+			HANDLE hMail = CreateFileW(mailslotName.c_str(), GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (hMail != INVALID_HANDLE_VALUE) {
+				std::wstring event_name = L"thcrap inject " + std::to_wstring(GetProcessId(GetCurrentProcess()));
+				HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, event_name.c_str());
 
-			char data_to_send[128] = {};
-			strcpy(data_to_send, id->id);
-			char* event_name_addr = data_to_send + strlen(id->id) + 1;
-			if ((size_t)event_name_addr & 1) event_name_addr++;
-			memcpy(event_name_addr, event_name.c_str(), event_name.length() * sizeof(wchar_t));
+				char data_to_send[128] = {};
+				strcpy(data_to_send, id->id);
+				char* event_name_addr = data_to_send + strlen(id->id) + 1;
+				if ((size_t)event_name_addr & 1) event_name_addr++;
+				memcpy(event_name_addr, event_name.c_str(), event_name.length() * sizeof(wchar_t));
 
-			DWORD byteRet;
-			WriteFile(hMail, data_to_send, sizeof(data_to_send), &byteRet, NULL);
-			CloseHandle(hMail);
+				DWORD byteRet;
+				WriteFile(hMail, data_to_send, sizeof(data_to_send), &byteRet, NULL);
+				CloseHandle(hMail);
 
-			WaitForSingleObject(hEvent, INFINITE);
-			CloseHandle(hEvent);
+				WaitForSingleObject(hEvent, INFINITE);
+				CloseHandle(hEvent);
+			}
 		}
 	}
 
