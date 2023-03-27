@@ -160,5 +160,41 @@ namespace thcrap_configure_v3
             isClosedWithX = false;
             this.Close();
         }
+
+        private void ExceptionSetDefault(object sender, RoutedEventArgs e)
+        {
+            ExceptionDetailBasic.IsChecked = true;
+            ExceptionDetailFPU.IsChecked = false;
+            ExceptionDetailSSE.IsChecked = false;
+            ExceptionDetailSegments.IsChecked = false;
+            ExceptionDetailDebug.IsChecked = false;
+            ExceptionDetailManualTrace.IsChecked = false;
+            ExceptionDetailTraceDump.IsChecked = false;
+            ExceptionDetailExtra.IsChecked = false;
+        }
+
+        private void ExceptionSetEnchanced(object sender, RoutedEventArgs e)
+        {
+            ExceptionDetailBasic.IsChecked = true;
+            ExceptionDetailFPU.IsChecked = true;
+            ExceptionDetailSSE.IsChecked = true;
+            ExceptionDetailSegments.IsChecked = false;
+            ExceptionDetailDebug.IsChecked = false;
+            ExceptionDetailManualTrace.IsChecked = true;
+            ExceptionDetailTraceDump.IsChecked = true;
+            ExceptionDetailExtra.IsChecked = false;
+        }
+
+        private void ExceptionSetFull(object sender, RoutedEventArgs e)
+        {
+            ExceptionDetailBasic.IsChecked = true;
+            ExceptionDetailFPU.IsChecked = true;
+            ExceptionDetailSSE.IsChecked = true;
+            ExceptionDetailSegments.IsChecked = true;
+            ExceptionDetailDebug.IsChecked = true;
+            ExceptionDetailManualTrace.IsChecked = true;
+            ExceptionDetailTraceDump.IsChecked = true;
+            ExceptionDetailExtra.IsChecked = false;
+        }
     }
 }
