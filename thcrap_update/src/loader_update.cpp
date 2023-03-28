@@ -761,7 +761,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		do {
 			progress_bar_set_marquee(&state, true, true);
 			EnableWindow(state.hwnd[HWND_BUTTON_UPDATE], FALSE);
-			if (state.background_updates) {
+			if (state.background_updates && (game || game_id_other)) {
 				if (state.update_others) {
 					log_print("Updating every patches with no filter...\n");
 					loader_update_progress_init(&state, STATE_GLOBAL_UPDATE);
@@ -796,7 +796,9 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 				log_printf("Update finished. Waiting until next update (%d min)... ", time_between_updates);
 			}
 
-			if (wait_ret == WAIT_OBJECT_0 + 2) SetEvent(state.event_update_finished);
+			if (!game && !game_id_other)
+				SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Waiting for game to open");
+
 			wait_ret = WaitForMultipleObjects(3, handles, FALSE, time_between_updates * 60 * 1000);
 
 			if (wait_ret == WAIT_TIMEOUT) {
@@ -808,7 +810,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 					log_print("update button clicked, running update.\n");
 			}
 			else if (wait_ret == WAIT_OBJECT_0 + 2) {
-				log_print("update requested by another process.\n");
+				log_print("Update requested by wrapper patch");
 				const char* filter[] = {
 					game_id_other,
 					nullptr
@@ -817,6 +819,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 				loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
 				stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
 				log_print("Stack update done.\n");
+				SetEvent(state.event_update_finished);
 			}
 			else {
 				log_print("main window closed. Exiting.\n");
