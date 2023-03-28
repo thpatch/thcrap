@@ -486,37 +486,37 @@ static inline void inject_CreateProcess_helper(
 			if (hMail != INVALID_HANDLE_VALUE) {
 				std::string event_name = "thcrap inject " + std::to_string(GetProcessId(GetCurrentProcess()));
 
-				const wchar_t* event_name_w = (wchar_t*)utf8_to_utf16(event_name.c_str());
-				HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, event_name_w);
-				free((void*)event_name_w);
-
 				json_t* data_json = json_object();
 				json_object_set(data_json, "event_name", json_string(event_name.c_str()));
 				json_object_set(data_json, "game_id", json_string(id->id));
 
 				char* data_to_send = json_dumps(data_json, 0);
-				defer(free((void*)data_to_send));
+
+				json_decref(data_json);
+
 				size_t data_to_send_len = strlen(data_to_send);
-				if (data_to_send_len > 1024) {
-					// TODO: what to do?
-				}
 
-				DWORD byteRet;
-				WriteFile(hMail, data_to_send, data_to_send_len, &byteRet, NULL);
+				if (data_to_send_len < 1024) {
+					const wchar_t* event_name_w = (wchar_t*)utf8_to_utf16(event_name.c_str());
+					HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, event_name_w);
+					free((void*)event_name_w);
+					DWORD byteRet;
+					WriteFile(hMail, data_to_send, data_to_send_len, &byteRet, NULL);
+
+					HANDLE hLoaderProcess = OpenProcess(SYNCHRONIZE, FALSE, runconfig_loader_pid_get());
+
+					if (hLoaderProcess) {
+						HANDLE handles[] = {
+							hEvent,
+							hLoaderProcess
+						};
+						WaitForMultipleObjects(elementsof(handles), handles, FALSE, INFINITE);
+						CloseHandle(hLoaderProcess);
+					}
+					CloseHandle(hEvent);
+				}
+				free((void*)data_to_send);
 				CloseHandle(hMail);
-
-				HANDLE hLoaderProcess = OpenProcess(SYNCHRONIZE, FALSE, runconfig_loader_pid_get());
-
-				if (hLoaderProcess) {
-					HANDLE handles[] = {
-						hEvent,
-						hLoaderProcess
-					};
-					WaitForMultipleObjects(elementsof(handles), handles, FALSE, INFINITE);
-					CloseHandle(hLoaderProcess);
-
-				}
-				CloseHandle(hEvent);
 			}
 		}
 	}
