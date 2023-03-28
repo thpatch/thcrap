@@ -484,17 +484,25 @@ static inline void inject_CreateProcess_helper(
 			std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
 			HANDLE hMail = CreateFileW(mailslotName.c_str(), GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hMail != INVALID_HANDLE_VALUE) {
-				std::wstring event_name = L"thcrap inject " + std::to_wstring(GetProcessId(GetCurrentProcess()));
-				HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, event_name.c_str());
+				std::string event_name = "thcrap inject " + std::to_string(GetProcessId(GetCurrentProcess()));
 
-				char data_to_send[128] = {};
-				strcpy(data_to_send, id->id);
-				char* event_name_addr = data_to_send + strlen(id->id) + 1;
-				if ((size_t)event_name_addr & 1) event_name_addr++;
-				memcpy(event_name_addr, event_name.c_str(), event_name.length() * sizeof(wchar_t));
+				const wchar_t* event_name_w = (wchar_t*)utf8_to_utf16(event_name.c_str());
+				HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, event_name_w);
+				free((void*)event_name_w);
+
+				json_t* data_json = json_object();
+				json_object_set(data_json, "event_name", json_string(event_name.c_str()));
+				json_object_set(data_json, "game_id", json_string(id->id));
+
+				char* data_to_send = json_dumps(data_json, 0);
+				defer(free((void*)data_to_send));
+				size_t data_to_send_len = strlen(data_to_send);
+				if (data_to_send_len > 1024) {
+					// TODO: what to do?
+				}
 
 				DWORD byteRet;
-				WriteFile(hMail, data_to_send, sizeof(data_to_send), &byteRet, NULL);
+				WriteFile(hMail, data_to_send, data_to_send_len, &byteRet, NULL);
 				CloseHandle(hMail);
 
 				WaitForSingleObject(hEvent, INFINITE);

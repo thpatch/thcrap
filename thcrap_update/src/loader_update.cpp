@@ -561,10 +561,9 @@ const char* game_id_other = NULL;
 
 static DWORD WINAPI update_wrapper_patch(void* param) {
 	auto* state = (loader_update_state_t*)param;
-
-	char game_id[128] = {};
+		
 	std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
-	HANDLE hMail = CreateMailslotW(mailslotName.c_str(), sizeof(game_id), MAILSLOT_WAIT_FOREVER, NULL);
+	HANDLE hMail = CreateMailslotW(mailslotName.c_str(), 1024, MAILSLOT_WAIT_FOREVER, NULL);
 	OVERLAPPED overlapped = {};
 	overlapped.hEvent = CreateEvent(nullptr, false, false, nullptr);
 
@@ -573,10 +572,18 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 	handles[1] = overlapped.hEvent;
 
 	for (;;) {
-		ReadFile(hMail, game_id, sizeof(game_id), nullptr, &overlapped);
+		char json_data[1024] = {};
+		ReadFile(hMail, json_data, sizeof(json_data), nullptr, &overlapped);
 		DWORD signal = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+		json_t* json_data_ = json_loads(json_data, 0, nullptr);
 
-		if (signal == WAIT_OBJECT_0 + 1) {
+
+		if (json_data_ && (signal == WAIT_OBJECT_0 + 1)) {
+			const char* game_id = json_object_get_string(json_data_, "game_id");
+			const wchar_t* event_name = (wchar_t*)utf8_to_utf16(json_object_get_string(json_data_, "event_name"));
+			defer(free((void*)event_name));
+			defer(json_decref(json_data_));
+
 			EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], FALSE);
 			if(game_id_other) free((void*)game_id_other);
 			game_id_other = strdup(game_id);
@@ -584,11 +591,6 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 			SetEvent(state->event_wrapper_request_update);
 
 			WaitForSingleObject(state->event_update_finished, INFINITE);
-
-			char* event_name_addr = game_id + strlen(game_id) + 1;
-			if ((size_t)event_name_addr & 1) event_name_addr++;
-
-			const wchar_t* event_name = (wchar_t*)event_name_addr;
 
 			HANDLE hEvent = OpenEventW(EVENT_MODIFY_STATE, FALSE, event_name);
 			if (hEvent) {
