@@ -461,9 +461,23 @@ void ExitDll()
 #endif
 }
 
+std::vector<DWORD> started_processes;
+
 VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
 {
 	ExitDll();
+
+	{
+		std::vector<HANDLE> hStartedProcesses;
+		for (DWORD i : started_processes) {
+			HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, i);
+			if (hProcess) hStartedProcesses.push_back(hProcess);
+		}
+		if (hStartedProcesses.size()) {
+			WaitForMultipleObjects(hStartedProcesses.size(), hStartedProcesses.data(), TRUE, INFINITE);
+		}
+	}
+
 	// The detour cache is already freed at this point, and this will
 	// always be the final detour in the chain, so detour_next() doesn't
 	// make any sense here (and would leak memory as well).

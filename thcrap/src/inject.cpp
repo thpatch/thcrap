@@ -467,6 +467,7 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 	}
 }
 
+extern std::vector<DWORD> started_processes;
 // Injection calls shared between the U and W versions
 static inline void inject_CreateProcess_helper(
 	LPPROCESS_INFORMATION lpPI,
@@ -475,6 +476,10 @@ static inline void inject_CreateProcess_helper(
 )
 {
 	if (GetProcessId(GetCurrentProcess()) != runconfig_loader_pid_get()) {
+		if (globalconfig_get_boolean("update_at_exit", false)) {
+			started_processes.push_back(lpPI->dwProcessId);
+		}
+
 		json_t* versions_js = stack_json_resolve("versions.js", NULL);
 		size_t exe_size;
 		game_version* id = identify_by_hash(lpAppName, &exe_size, versions_js);

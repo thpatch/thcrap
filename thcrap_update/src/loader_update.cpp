@@ -750,7 +750,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		ret = thcrap_inject_into_new(exe_fn, args, NULL, NULL);
 		log_print("done.\n");
 	}
-	if (state.background_updates || !game) {
+	if (!(state.update_at_exit && !game) && (state.background_updates || !game)) {
 		int time_between_updates = -1;
 		HANDLE handles[3];
 		handles[0] = state.hThread;
