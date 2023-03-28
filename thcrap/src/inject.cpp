@@ -505,7 +505,17 @@ static inline void inject_CreateProcess_helper(
 				WriteFile(hMail, data_to_send, data_to_send_len, &byteRet, NULL);
 				CloseHandle(hMail);
 
-				WaitForSingleObject(hEvent, INFINITE);
+				HANDLE hLoaderProcess = OpenProcess(SYNCHRONIZE, FALSE, runconfig_loader_pid_get());
+
+				if (hLoaderProcess) {
+					HANDLE handles[] = {
+						hEvent,
+						hLoaderProcess
+					};
+					WaitForMultipleObjects(elementsof(handles), handles, FALSE, INFINITE);
+					CloseHandle(hLoaderProcess);
+
+				}
 				CloseHandle(hEvent);
 			}
 		}
