@@ -688,11 +688,49 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 
 		SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Waiting until the game exits...");
 		log_printf("'run_at_exit' setting is set. Running %s...\n", exe_fn);
-		HANDLE hProcess;
-		ret = thcrap_inject_into_new(exe_fn, args, &hProcess, NULL);
+
+		std::wstring shared_mem_name = L"thcrap loader process list " + std::to_wstring(runconfig_loader_pid_get());
+		HANDLE hSharedMem = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, 128 * sizeof(DWORD), shared_mem_name.c_str());
+		DWORD* pid_list = (DWORD*)MapViewOfFile(hSharedMem, FILE_MAP_ALL_ACCESS, 0, 0, 128 * sizeof(DWORD));
+
+		std::wstring mutex_name = L"thcrap loader process list mutex " + std::to_wstring(runconfig_loader_pid_get());
+		HANDLE hMutex = CreateMutexW(nullptr, false, mutex_name.c_str());
+
+		HANDLE hProcess1;
+		ret = thcrap_inject_into_new(exe_fn, args, &hProcess1, NULL);
 		log_printf("Waiting until %s is finished... ", exe_fn);
-		WaitForSingleObject(hProcess, INFINITE);
-		CloseHandle(hProcess);
+		WaitForSingleObject(hProcess1, INFINITE);
+		CloseHandle(hProcess1);
+
+		std::vector<HANDLE> processHandleList;
+		do {
+			for (auto i : processHandleList) {
+				CloseHandle(i);
+			}
+			processHandleList = {};
+
+			WaitForSingleObject(hMutex, INFINITE);
+			for (size_t i = 0; i < 128; i++) {
+				if (pid_list[i]) {
+					HANDLE hNewProcess = OpenProcess(SYNCHRONIZE, FALSE, pid_list[i]);
+					if (hNewProcess) {
+						processHandleList.push_back(hNewProcess);
+					}
+					else {
+						pid_list[i] = 0;
+					}
+				}
+			}
+			ReleaseMutex(hMutex);
+
+			if (processHandleList.size())
+				WaitForMultipleObjects(processHandleList.size(), processHandleList.data(), false, INFINITE);
+		} while (processHandleList.size());
+
+		CloseHandle(hMutex);
+		UnmapViewOfFile(pid_list);
+		CloseHandle(hSharedMem);
+
 		log_print("done.\n");
 	}
 

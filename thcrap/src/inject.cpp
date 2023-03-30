@@ -467,7 +467,6 @@ int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module)
 	}
 }
 
-extern std::vector<DWORD> started_processes;
 // Injection calls shared between the U and W versions
 static inline void inject_CreateProcess_helper(
 	LPPROCESS_INFORMATION lpPI,
@@ -475,11 +474,33 @@ static inline void inject_CreateProcess_helper(
 	DWORD dwCreationFlags
 )
 {
-	if (GetProcessId(GetCurrentProcess()) != runconfig_loader_pid_get()) {
-		if (globalconfig_get_boolean("update_at_exit", false)) {
-			started_processes.push_back(lpPI->dwProcessId);
-		}
+	{
+		std::wstring shared_mem_name = L"thcrap loader process list " + std::to_wstring(runconfig_loader_pid_get());
+		std::wstring mutex_name = L"thcrap loader process list mutex " + std::to_wstring(runconfig_loader_pid_get());
 
+		HANDLE hFileMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, shared_mem_name.c_str());
+		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, mutex_name.c_str());
+
+		if (hMutex) {
+			DWORD* pid_list = (DWORD*)MapViewOfFile(hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 128 * sizeof(DWORD));
+
+			WaitForSingleObject(hMutex, INFINITE);
+
+			for (size_t i = 0; i < 128; i++) {
+				if (!pid_list[i]) {
+					pid_list[i] = lpPI->dwProcessId;
+					break;
+				}
+			}
+
+			ReleaseMutex(hMutex);
+
+			CloseHandle(hFileMapping);
+			CloseHandle(hMutex);
+		}
+	}
+
+	if (GetProcessId(GetCurrentProcess()) != runconfig_loader_pid_get()) {
 		json_t* versions_js = stack_json_resolve("versions.js", NULL);
 		size_t exe_size;
 		game_version* id = identify_by_hash(lpAppName, &exe_size, versions_js);

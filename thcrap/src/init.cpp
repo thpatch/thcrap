@@ -468,13 +468,30 @@ VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
 	ExitDll();
 
 	{
-		std::vector<HANDLE> hStartedProcesses;
-		for (DWORD i : started_processes) {
-			HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, i);
-			if (hProcess) hStartedProcesses.push_back(hProcess);
-		}
-		if (hStartedProcesses.size()) {
-			WaitForMultipleObjects(hStartedProcesses.size(), hStartedProcesses.data(), TRUE, INFINITE);
+		std::wstring shared_mem_name = L"thcrap loader process list " + std::to_wstring(runconfig_loader_pid_get());
+		std::wstring mutex_name = L"thcrap loader process list mutex " + std::to_wstring(runconfig_loader_pid_get());
+
+		HANDLE hFileMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, shared_mem_name.c_str());
+		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, mutex_name.c_str());
+
+		if (hMutex) {
+			DWORD* pid_list = (DWORD*)MapViewOfFile(hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 128 * sizeof(DWORD));
+
+			WaitForSingleObject(hMutex, INFINITE);
+
+			DWORD pid = GetProcessId(GetCurrentProcess());
+
+			for (size_t i = 0; i < 128; i++) {
+				if (pid_list[i] == pid) {
+					pid_list[i] = 0;
+					break;
+				}
+			}
+
+			ReleaseMutex(hMutex);
+
+			CloseHandle(hFileMapping);
+			CloseHandle(hMutex);
 		}
 	}
 
