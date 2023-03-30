@@ -590,19 +590,22 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 						
 			SetEvent(state->event_wrapper_request_update);
 
-			WaitForSingleObject(state->event_update_finished, INFINITE);
+			if(!globalconfig_get_boolean("update_at_exit", false))
+				WaitForSingleObject(state->event_update_finished, INFINITE);
 
 			HANDLE hEvent = OpenEventW(EVENT_MODIFY_STATE, FALSE, event_name);
 			if (hEvent) {
 				SetEvent(hEvent);
 				CloseHandle(hEvent);
 			}
-			if (state->background_updates) {
-				EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], TRUE);
-				EnableWindow(state->hwnd[HWND_BUTTON_RUN], TRUE);
-			}
-			else {
-				SendMessage(state->hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
+			if (!globalconfig_get_boolean("update_at_exit", false)) {
+				if (state->background_updates) {
+					EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], TRUE);
+					EnableWindow(state->hwnd[HWND_BUTTON_RUN], TRUE);
+				}
+				else {
+					SendMessage(state->hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
+				}
 			}
 		}
 		else {
@@ -680,6 +683,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	log_set_hook(log_callback, log_ncallback);
 	log_print("done.\n");
 
+	HANDLE hWrapperUpdateThread = CreateThread(NULL, 0, update_wrapper_patch, &state, 0, NULL);
 	if (state.update_at_exit) {
 		EnterCriticalSection(&state.cs);
 		// We didn't enable the "start game" button yet, the game can't be running.
@@ -763,6 +767,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	log_print("Stack update done.\n");
 
 	const char* game = runconfig_game_get();
+	if (!game) game = game_id_other;
 	{
 		if (game) {
             const char *filter[] = {
@@ -782,7 +787,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	state.game_started = true;
 	LeaveCriticalSection(&state.cs);
 
-	HANDLE hWrapperUpdateThread = CreateThread(NULL, 0, update_wrapper_patch, &state, 0, NULL);
 	if (game_started == false) {
 		log_printf("Starting %s with arguments %s... ", exe_fn, args);
 		ret = thcrap_inject_into_new(exe_fn, args, NULL, NULL);
