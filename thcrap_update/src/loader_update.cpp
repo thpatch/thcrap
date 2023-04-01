@@ -49,6 +49,7 @@ typedef struct {
 	HANDLE event_require_update;
 	HANDLE event_wrapper_request_update;
 	HANDLE event_update_finished;
+	HANDLE event_update_wrapper_terminate;
 	HANDLE hThread;
 	update_state_t state;
 	bool settings_visible;
@@ -567,14 +568,15 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 	OVERLAPPED overlapped = {};
 	overlapped.hEvent = CreateEvent(nullptr, false, false, nullptr);
 
-	HANDLE handles[2];
+	HANDLE handles[3];
 	handles[0] = state->hThread;
 	handles[1] = overlapped.hEvent;
+	handles[2] = state->event_update_wrapper_terminate;
 
 	for (;;) {
 		char json_data[1024] = {};
 		ReadFile(hMail, json_data, sizeof(json_data), nullptr, &overlapped);
-		DWORD signal = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+		DWORD signal = WaitForMultipleObjects(3, handles, FALSE, INFINITE);
 		json_t* json_data_ = json_loads(json_data, 0, nullptr);
 
 
@@ -641,6 +643,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	state.event_require_update = CreateEvent(nullptr, false, false, nullptr);
 	state.event_wrapper_request_update = CreateEvent(nullptr, false, false, nullptr);
 	state.event_update_finished = CreateEvent(nullptr, false, false, nullptr);
+	state.event_update_wrapper_terminate = CreateEvent(nullptr, false, false, nullptr);
 	state.settings_visible = false;
 	state.game_started = false;
 	state.cancel_update = false;
@@ -734,6 +737,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		CloseHandle(hMutex);
 		UnmapViewOfFile(pid_list);
 		CloseHandle(hSharedMem);
+		SetEvent(state.event_update_wrapper_terminate);
 
 		log_print("done.\n");
 	}
@@ -886,6 +890,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	CloseHandle(state.event_created);
 	CloseHandle(state.event_require_update);
 	CloseHandle(state.event_wrapper_request_update);
+	CloseHandle(state.event_update_wrapper_terminate);
 	CloseHandle(state.event_update_finished);
 	return ret;
 }
