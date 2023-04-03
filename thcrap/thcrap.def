@@ -139,6 +139,7 @@ EXPORTS
 	json_object_get_create
 	json_object_numkey_get
 	json_object_get_string
+	json_object_get_string_copy
 	json_object_get_hex
 	json_object_merge
 	json_object_get_keys_sorted

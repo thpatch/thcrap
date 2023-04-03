@@ -461,8 +461,6 @@ void ExitDll()
 #endif
 }
 
-std::vector<DWORD> started_processes;
-
 VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
 {
 	ExitDll();
@@ -479,7 +477,7 @@ VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
 
 			WaitForSingleObject(hMutex, INFINITE);
 
-			DWORD pid = GetProcessId(GetCurrentProcess());
+			DWORD pid = GetCurrentProcessId();
 
 			for (size_t i = 0; i < 128; i++) {
 				if (pid_list[i] == pid) {

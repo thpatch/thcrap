@@ -581,14 +581,13 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 
 
 		if (json_data_ && (signal == WAIT_OBJECT_0 + 1)) {
-			const char* game_id = json_object_get_string(json_data_, "game_id");
 			const wchar_t* event_name = (wchar_t*)utf8_to_utf16(json_object_get_string(json_data_, "event_name"));
 			defer(free((void*)event_name));
 			defer(json_decref(json_data_));
 
 			EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], FALSE);
 			if(game_id_other) free((void*)game_id_other);
-			game_id_other = strdup(game_id);
+			game_id_other = json_object_get_string_copy(json_data_, "game_id");
 						
 			SetEvent(state->event_wrapper_request_update);
 
@@ -621,7 +620,7 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 
 BOOL loader_update_with_UI(const char *exe_fn, char *args)
 {
-	runconfig_loader_pid_set(GetProcessId(GetCurrentProcess()));
+	runconfig_loader_pid_set(GetCurrentProcessId());
 
 	loader_update_state_t state;
 	bool game_started;
@@ -815,7 +814,6 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 					log_print("Global update done.\n");
 				}
 				else {
-					const char* game = runconfig_game_get();
 					if (game) {
 						const char* filter[] = {
 							game,
@@ -856,7 +854,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 					log_print("update button clicked, running update.\n");
 			}
 			else if (wait_ret == WAIT_OBJECT_0 + 2) {
-				log_print("Update requested by wrapper patch");
+				log_print("Update requested by wrapper patch\n");
 				const char* filter[] = {
 					game_id_other,
 					nullptr

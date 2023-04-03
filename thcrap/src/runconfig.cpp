@@ -621,7 +621,7 @@ size_t runconfig_loader_pid_get() {
 
 void runconfig_loader_pid_set(size_t loader_pid) {
 	run_cfg.loader_pid = loader_pid;
-	json_object_set(run_cfg.json, "loader_pid", json_integer(loader_pid));
+	json_object_set_new(run_cfg.json, "loader_pid", json_integer(loader_pid));
 }
 
 size_t runconfig_stage_count()
