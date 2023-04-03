@@ -67,7 +67,7 @@ namespace thcrap_configure_v3
 
         private void SelfUpdate()
         {
-            if (ThcrapUpdateDll.update_notify_thcrap() == ThcrapUpdateDll.self_result_t.SELF_OK)
+            if (ThcrapDll.update_notify_thcrap_wrapper() == ThcrapDll.self_result_t.SELF_OK)
             {
                 Process.Start(Assembly.GetEntryAssembly().Location);
                 Application.Current.Dispatcher.Invoke(() => Application.Current.Shutdown());
@@ -162,6 +162,21 @@ namespace thcrap_configure_v3
         {
             Process.Start("bin\\thcrap_configure" + ThcrapDll.DEBUG_OR_RELEASE + ".exe");
             this.Close();
+        }
+
+        private void SettingsWindow_Open(object sender, RoutedEventArgs e)
+        {
+            this.Hide();
+            var settingsWindow = new SettingsWindow();
+            settingsWindow.mainWindow = this;
+            settingsWindow.ShowDialog();
+            if (settingsWindow.isClosedWithX)
+            {
+                this.Close();
+            } else
+            {
+                this.Show();
+            }
         }
     }
 }

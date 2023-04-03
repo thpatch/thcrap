@@ -14,13 +14,16 @@
                  HelpButtonVisibility="Hidden">
         <xctk:WizardPage x:Name="IntroPage"
                          Title="Welcome to thcrap">
-            <TextBlock>
+            <Grid>
+                <TextBlock>
                 This tool will let you patch your games with thcrap.<LineBreak />
                 If you prefer to use the old version of this tool, click
                 <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="RunThcrapConfigure">here</TextBlock>.<LineBreak />
                 <LineBreak />
-                Click Next to continue.
+                Click Next to continue, or click "Configure Settings" to change settings.   
             </TextBlock>
+             <Button Content="Configure Settings" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="SettingsWindow_Open" />
+            </Grid>
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="Page1" PageType="Interior"
                          Title="Initializing things"

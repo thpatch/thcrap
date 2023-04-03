@@ -138,9 +138,9 @@ namespace thcrap_configure_v3
         [StructLayout(LayoutKind.Sequential, Pack = 4), Serializable]
         public struct repo_t
         {
-            public string id;
-            public string title;
-            public string contact;
+            public IntPtr id;
+            public IntPtr title;
+            public IntPtr contact;
             public IntPtr servers;
             public IntPtr neighbors;
             public IntPtr patches;
@@ -277,11 +277,8 @@ namespace thcrap_configure_v3
         public static extern int CreateShortcuts(
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string run_cfg_fn,
             games_js_entry[] games, ShortcutsDestination destination, ShortcutsType type);
-    }
 
-    class ThcrapUpdateDll
-    {
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "thcrap_update" + ThcrapDll.DEBUG_OR_RELEASE + ".dll";
+        // Update
         public enum get_status_t
         {
             GET_DOWNLOADING,
@@ -334,7 +331,6 @@ namespace thcrap_configure_v3
             public UInt32 nb_files_total;
         }
 
-
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int update_filter_func_t(
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
@@ -342,21 +338,20 @@ namespace thcrap_configure_v3
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate bool progress_callback_t(IntPtr /* progress_callback_status_t* */ status, IntPtr param);
 
-
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern self_result_t update_notify_thcrap();
+        public static extern self_result_t update_notify_thcrap_wrapper();
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern IntPtr /* repo_t** */ RepoDiscover(string start_url);
+        public static extern IntPtr /* repo_t** */ RepoDiscover_wrapper(string start_url);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern ThcrapDll.patch_t patch_bootstrap(IntPtr /* patch_desc_t* */ sel, IntPtr /* repo_t* */ repo);
+        public static extern ThcrapDll.patch_t patch_bootstrap_wrapper(IntPtr /* patch_desc_t* */ sel, IntPtr /* repo_t* */ repo);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern void stack_update(update_filter_func_t filter_func, IntPtr filter_data, progress_callback_t progress_callback, IntPtr progress_param);
+        public static extern void stack_update_wrapper(update_filter_func_t filter_func, IntPtr filter_data, progress_callback_t progress_callback, IntPtr progress_param);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int update_filter_global(
+        public static extern int update_filter_global_wrapper(
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
             IntPtr unused);
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int update_filter_games(
+        public static extern int update_filter_games_wrapper(
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
             IntPtr games);
     }

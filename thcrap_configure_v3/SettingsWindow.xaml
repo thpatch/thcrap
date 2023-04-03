@@ -1,0 +1,63 @@
+<Window x:Class="thcrap_configure_v3.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:thcrap_configure_v3"
+        mc:Ignorable="d"
+        Title="thcrap Settings" Height="450" Width="800"
+        Loaded="WindowOpened">
+    <Grid Margin="10,0,0,0">
+        <StackPanel>
+            <StackPanel>
+                <Label Content="Updating"/>
+                <CheckBox Name="background_updates" Content="Enable background updates when a game is running" Checked="BackgroundUpdates_Checked" Unchecked="BackgroundUpdates_Unchecked"/>
+                <CheckBox Name="update_at_exit" Content="Update game files after the game exits"/>
+                <CheckBox Name="update_others" Content="Update other games" IsEnabled="False"/>
+                <Grid Margin="0,5,0,0" Height="18" IsEnabled="False" Name="time_between_updates_grid">
+                    <TextBox PreviewTextInput="NumericTextbox" Name="time_between_updates" Width="30" HorizontalAlignment="Left" Margin="1,0,0,0"/>
+                    <Label Padding="0" HorizontalAlignment="Left" Content="Time between updates (in minutes)" Margin="36,0,0,0" />
+                </Grid>
+            </StackPanel>
+
+            <StackPanel Margin="0,10,0,0">
+                <Label Content="Advanced" />
+                <CheckBox Name="console" Content="Enable the log console"/>
+                <Grid Margin="0,5,0,0" Height="18">
+                    <TextBox PreviewTextInput="NumericTextbox" Name="codepage" Width="30" HorizontalAlignment="Left" Margin="1,0,0,0"/>
+                    <Label Padding="0" HorizontalAlignment="Left" Content="Fallback codepage" Margin="36,0,0,0" />
+                </Grid>
+            </StackPanel>
+
+            <StackPanel Margin="0,10,0,0">
+                <Label Content="Exception Detail" />
+                <Grid Margin="0,0,0,5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="1*" />
+                        <ColumnDefinition Width="3*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0" Click="ExceptionSetDefault" Content="Default" />
+                    <Button Grid.Column="1" Click="ExceptionSetEnchanced" Content="Enhanced" />
+                    <Button Grid.Column="2" Click="ExceptionSetFull" Content="Full" />
+                </Grid>
+                <StackPanel Margin="20,0,0,0">
+                    <CheckBox Name="ExceptionDetailBasic" Content="Basic" />
+                    <CheckBox Name="ExceptionDetailFPU" Content="FPU" />
+                    <CheckBox Name="ExceptionDetailSSE" Content="SSE" />
+                    <CheckBox Name="ExceptionDetailSegments" Content="Segments" />
+                    <CheckBox Name="ExceptionDetailDebug" Content="Debug" />
+                    <CheckBox Name="ExceptionDetailManualTrace" Content="ManualTrace" />
+                    <CheckBox Name="ExceptionDetailTraceDump" Content="TraceDump" />
+                    <CheckBox Name="ExceptionDetailExtra" Content="Extra" />
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+        <Grid VerticalAlignment="Bottom" Margin="0,0,10,10">
+            <Button Click="Settings_Save" Width="50" HorizontalAlignment="Right" Content="Save" />
+            <Button Click="Settings_Cancel" Width="50" HorizontalAlignment="Right" Content="Cancel" Margin="0,0,60,0" />
+        </Grid>
+    </Grid>
+</Window>
