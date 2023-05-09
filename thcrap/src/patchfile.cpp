@@ -674,8 +674,72 @@ void patch_opts_clear_all() {
 	patch_options.clear();
 }
 
+patch_value_type_t TH_FASTCALL patch_parse_type(const char *type) {
+	switch (const uint8_t type_char = type[0] | 0x20) {
+	case 's': case 'w':
+		size_t char_size;
+		if (type[1] != '\0') char_size = strtol(type + 1, nullptr, 10);
+		else char_size = (type_char == 's' ? sizeof(char) : sizeof(wchar_t)) * CHAR_BIT;
+		switch (char_size) {
+		case 8:
+			return PVT_STRING;
+		case 16:
+			return PVT_STRING16;
+		case 32:
+			return PVT_STRING32;
+		}
+	case 'c':
+		return PVT_CODE;
+	case 'i':
+		switch (strtol(type + 1, NULL, 10)) {
+		case 8:
+			bool_default:
+			return PVT_SBYTE;
+		case 16:
+			return PVT_SWORD;
+		case 32:
+			return PVT_SDWORD;
+		case 64:
+			return PVT_SQWORD;
+		}
+	case 'b': case 'u': case 'p':
+		switch (strtol(type + 1, NULL, 10)) {
+		case 8:
+			return PVT_BYTE;
+		case 16:
+			return PVT_WORD;
+		case 32:
+#ifdef TH_X86
+			ptr_default :
+#endif
+			return PVT_DWORD;
+		case 64:
+#ifdef TH_X64
+			ptr_default :
+#endif
+			return PVT_QWORD;
+		case 0:
+			switch (type_char) {
+				case 'b': goto bool_default;
+				case 'p': goto ptr_default;
+			}
+			return PVT_UNKNOWN;
+		}
+	case 'f':
+		switch (strtol(type + 1, nullptr, 10)) {
+		case 32:
+			return PVT_FLOAT;
+		case 64:
+			return PVT_DOUBLE;
+		case 80:
+			return PVT_LONGDOUBLE;
+		}
+	}
+	return PVT_UNKNOWN;
+}
+
 bool TH_FASTCALL patch_opt_from_raw(patch_value_type_t type, const char* name, void* value) {
-	patch_val_t option;
+	patch_val_t option = {};
 	switch ((option.type = type)) {
 		default:
 			return false;
@@ -751,48 +815,39 @@ void patch_opts_from_json(json_t *opts) {
 		if unexpected(!tname) {
 			continue;
 		}
-		patch_val_t entry;
-		switch (const uint8_t type_char = tname[0] | 0x20) {
-			case 's': case 'w':
-				if (json_is_string(j_val_val)) {
-					const char* opt_str = json_string_value(j_val_val);
-					const size_t narrow_len = strlen(opt_str) + 1;
-					size_t char_size;
-					if (tname[1] != '\0') char_size = strtol(tname + 1, nullptr, 10);
-					else char_size = (type_char == 's' ? sizeof(char) : sizeof(wchar_t)) * CHAR_BIT;
-					switch (char_size) {
-						case 8:
-							entry.type = PVT_STRING;
-							entry.str.len = narrow_len;
-							entry.str.ptr = strdup(opt_str);
-							break;
-						case 16:
-							entry.type = PVT_STRING16;
-							entry.str16.len = narrow_len * sizeof(char16_t);
-							if (!(entry.str16.ptr = utf8_to_utf16(opt_str))) {
-								log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
-								continue;
-							}
-							break;
-						case 32:
-							entry.type = PVT_STRING32;
-							entry.str32.len = narrow_len * sizeof(char32_t);
-							if (!(entry.str32.ptr = utf8_to_utf32(opt_str))) {
-								log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
-								continue;
-							}
-							break;
-						default:
-							log_printf("ERROR: invalid char size %s for string option %s\n", tname + 1, key);
-							continue;
-					}
-				}
-				else {
+
+		patch_val_t entry = {};
+		switch (entry.type = patch_parse_type(tname)) {
+			case PVT_STRING: case PVT_STRING16: case PVT_STRING32: {
+				if(!json_is_string(j_val_val)) {
 					log_printf("ERROR: invalid json type for string option %s\n", key);
 					continue;
 				}
-				break;
-			case 'c':
+				const char* opt_str = json_string_value(j_val_val);
+				const size_t narrow_len = strlen(opt_str) + 1;
+				
+				switch(entry.type) {
+				case PVT_STRING:
+					entry.str.len = narrow_len;
+					entry.str.ptr = strdup(opt_str);
+					break;
+				case PVT_STRING16:
+					entry.str16.len = narrow_len * sizeof(char16_t);
+					if (!(entry.str16.ptr = utf8_to_utf16(opt_str))) {
+						log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
+						continue;
+					}
+					break;
+				case PVT_STRING32:
+					entry.str32.len = narrow_len * sizeof(char32_t);
+					if (!(entry.str32.ptr = utf8_to_utf32(opt_str))) {
+						log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
+						continue;
+					}
+					break;
+				}
+			}
+			case PVT_CODE:
 				if (json_is_string(j_val_val) || json_is_array(j_val_val)) {
 					if (const char* opt_code_str = json_concat_string_array(j_val_val, key)) {
 						entry.type = PVT_CODE;
@@ -814,94 +869,58 @@ void patch_opts_from_json(json_t *opts) {
 					log_printf("ERROR: invalid json type for code option %s\n", key);
 					continue;
 				}
-			case 'i': {
+			case PVT_SBYTE: case PVT_SWORD: case PVT_SDWORD: case PVT_SQWORD:
+			case PVT_BYTE: case PVT_WORD: case PVT_DWORD: case PVT_QWORD:
 				json_int_t value;
 				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
-				switch (strtol(tname + 1, NULL, 10)) {
-					case 8:
-						entry.type = PVT_SBYTE;
+				switch (entry.type) {
+					case PVT_SBYTE:
 						entry.sb = (int8_t)value;
 						break;
-					case 16:
-						entry.type = PVT_SWORD;
+					case PVT_SWORD:
 						entry.sw = (int16_t)value;
 						break;
-					case 32:
-						entry.type = PVT_SDWORD;
+					case PVT_SDWORD:
 						entry.si = (int32_t)value;
 						break;
-					case 64:
-						entry.type = PVT_SQWORD;
+					case PVT_SQWORD:
 						entry.sq = (int64_t)value;
 						break;
-					default:
-						log_printf("ERROR: invalid integer size %s for option %s\n", tname + 1, key);
-						continue;
-				}
-				break;
-			}
-			case 'b': case 'u': case 'p': {
-				json_int_t value;
-				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
-				switch (strtol(tname + 1, NULL, 10)) {
-					bool_default:
-					case 8:
-						entry.type = PVT_BYTE;
+					case PVT_BYTE:
 						entry.b = (uint8_t)value;
 						break;
-					case 16:
-						entry.type = PVT_WORD;
+					case PVT_WORD:
 						entry.w = (uint16_t)value;
 						break;
-#ifdef TH_X86
-					ptr_default:
-#endif
-					case 32:
-						entry.type = PVT_DWORD;
+					case PVT_DWORD:
 						entry.i = (uint32_t)value;
 						break;
-#ifdef TH_X64
-					ptr_default:
-#endif
-					case 64:
-						entry.type = PVT_QWORD;
+					case PVT_QWORD:
 						entry.q = (uint64_t)value;
 						break;
-					case 0:
-						switch (type_char) {
-							case 'b': goto bool_default;
-							case 'p': goto ptr_default;
-						}
-						TH_FALLTHROUGH;
-					default:
-						log_printf("ERROR: invalid integer size %s for option %s\n", tname + 1, key);
-						continue;
 				}
 				break;
-			}
-			case 'f': {
+			case PVT_FLOAT: case PVT_DOUBLE: case PVT_LONGDOUBLE: {
 				double value;
 				(void)json_eval_real(j_val_val, &value, JEVAL_DEFAULT);
-				switch (strtol(tname + 1, nullptr, 10)) {
-					case 32:
-						entry.type = PVT_FLOAT;
-						entry.f = (float)value;
-						break;
-					case 64:
-						entry.type = PVT_DOUBLE;
-						entry.d = value;
-						break;
-					case 80:
-						entry.type = PVT_LONGDOUBLE;
-						entry.ld = /*(LongDouble80)*/value;
-						break;
-					default:
-						log_printf("ERROR: invalid float size %s for option %s\n", tname + 1, key);
-						continue;
+				switch (entry.type) {
+				case PVT_FLOAT:
+					entry.f = (float)value;
+					break;
+				case PVT_DOUBLE:
+					entry.d = value;
+					break;
+				case PVT_LONGDOUBLE:
+					entry.ld = value;
+					break;
 				}
 				break;
 			}
+			default:
+				log_printf("ERROR: invalid type %s\n", tname);
+				continue;
 		}
+
 		const char* op_str = json_object_get_string(j_val, "op");
 		patch_val_set_op(op_str, &entry);
 		if (const char* slot = strchr(key, '#')) {

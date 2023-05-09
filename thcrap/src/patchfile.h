@@ -102,6 +102,9 @@ typedef struct
 // Parses and error checks patch options from game_id.js
 void patch_opts_from_json(json_t *opts);
 
+
+patch_value_type_t TH_FASTCALL patch_parse_type(const char* type);
+
 bool TH_FASTCALL patch_opt_from_raw(patch_value_type_t type, const char* name, void* value);
 
 void patch_opts_clear_all();
