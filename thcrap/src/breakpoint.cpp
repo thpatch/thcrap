@@ -83,6 +83,45 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	return NULL;
 }
 
+patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t type) {
+	patch_val_t ret = {};
+
+	void* value = json_pointer_value(val, regs);
+	if (!value) return ret;
+
+	switch (ret.type = type) {
+	case PVT_STRING:
+		ret.str = { ((char*)value), strlen((char*)value) };
+		break;
+	case PVT_SBYTE:
+		ret.sb = *(int8_t*)value;
+		break;
+	case PVT_SWORD:
+		ret.sw = *(int16_t*)value;
+		break;
+	case PVT_SDWORD:
+		ret.si = *(int32_t*)value;
+		break;
+	case PVT_SQWORD:
+		ret.sq = *(int64_t*)value;
+		break;
+	case PVT_BYTE:
+		ret.b = *(uint8_t*)value;
+		break;
+	case PVT_WORD:
+		ret.w = *(uint16_t*)value;
+		break;
+	case PVT_DWORD:
+		ret.i = *(uint32_t*)value;
+		break;
+	case PVT_QWORD:
+		ret.q = *(uint64_t*)value;
+		break;
+	}
+
+	return ret;
+}
+
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
 	return json_string_length(val) >= 3 ? reg(regs, json_string_value(val), nullptr) : nullptr;
@@ -101,6 +140,11 @@ size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key
 size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key)
 {
 	return json_immediate_value(json_object_get(object, key), regs);
+}
+
+patch_val_t json_object_get_typed(json_t *object, x86_reg_t *regs, const char *key, patch_value_type_t type)
+{
+	return json_typed_value(json_object_get(object, key), regs, type);
 }
 
 int breakpoint_cave_exec_flag(json_t *bp_info)

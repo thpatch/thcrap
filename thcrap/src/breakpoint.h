@@ -89,6 +89,9 @@ size_t json_immediate_value(json_t *val, x86_reg_t *regs);
 // Evaluate the JSON string [val] as an expression, and returns a pointer to the result.
 size_t* json_pointer_value(json_t *val, x86_reg_t *regs);
 
+// Evaluare the JSON string [val] as en expression, and return a patch_val_t from memory contents.
+patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t type);
+
 // Calls json_register_pointer() on the value of [key] in [object].
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
 
@@ -97,6 +100,9 @@ size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key
 
 // Calls json_immediate_value() on the value of [key] in [object].
 size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key);
+
+// Calls json_typed_value() on the value of [key] in [object].
+patch_val_t json_object_get_typed(json_t *object, x86_reg_t *regs, const char *key, patch_value_type_t type);
 /// =====================================
 
 // Parses a json breakpoint entry and returns a breakpoint object
