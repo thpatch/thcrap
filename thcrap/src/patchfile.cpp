@@ -148,7 +148,7 @@ void patch_print_fn(const patch_t *patch_info, const char *fn)
 		const char* archive = patch_info->archive;
 		char end_char = archive[patch_info->archive_length - 1];
 		log_printf(
-			(end_char == '/') | (end_char == '\\') ? "\n%*s+ %s%s" : "\n%*s+ %s/%s"
+			(end_char == '/') || (end_char == '\\') ? "\n%*s+ %s%s" : "\n%*s+ %s/%s"
 			, patch_info->level, "", archive, fn
 		);
 	}
@@ -435,7 +435,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 
 	if (patch.id) {
 		char* patch_test_opt_name = strdup_cat("patch:", patch.id);
-		patch_val_t patch_test_opt;
+		patch_val_t patch_test_opt = {};
 		patch_test_opt.type = PVT_DWORD;
 		patch_test_opt.i = patch.version;
 		patch_options[patch_test_opt_name] = patch_test_opt;

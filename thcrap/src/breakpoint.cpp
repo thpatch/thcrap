@@ -201,7 +201,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 		return false;
 	}
 
-	size_t cavesize;
+	size_t cavesize = 0;
 	switch (json_object_get_eval_int(in, "cavesize", &cavesize, JEVAL_STRICT)) {
 		default:
 			log_printf("ERROR: invalid json type for cavesize of breakpoint %s, must be 32-bit integer or string\n", name);
