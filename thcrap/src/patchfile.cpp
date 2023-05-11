@@ -675,6 +675,7 @@ void patch_opts_clear_all() {
 }
 
 patch_value_type_t TH_FASTCALL patch_parse_type(const char *type) {
+	if (!type) return PVT_UNKNOWN;
 	switch (const uint8_t type_char = type[0] | 0x20) {
 	case 's': case 'w':
 		size_t char_size;
