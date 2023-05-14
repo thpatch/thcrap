@@ -91,7 +91,7 @@ patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t ty
 
 	switch (ret.type = type) {
 	case PVT_STRING:
-		ret.str = { ((char*)value), strlen((char*)value) };
+		ret.str = { (*(char**)value), strlen(*(char**)value) };
 		break;
 	case PVT_SBYTE:
 		ret.sb = *(int8_t*)value;
