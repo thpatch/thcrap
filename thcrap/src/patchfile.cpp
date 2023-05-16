@@ -675,85 +675,101 @@ void patch_opts_clear_all() {
 }
 
 patch_value_type_t TH_FASTCALL patch_parse_type(const char *type) {
-	if (!type) return PVT_UNKNOWN;
+	if unexpected(!type) return PVT_UNKNOWN;
 	switch (const uint8_t type_char = type[0] | 0x20) {
-	case 's': case 'w':
-		size_t char_size;
-		if (type[1] != '\0') char_size = strtol(type + 1, nullptr, 10);
-		else char_size = (type_char == 's' ? sizeof(char) : sizeof(wchar_t)) * CHAR_BIT;
-		switch (char_size) {
-		case 8:
-			return PVT_STRING;
-		case 16:
-			return PVT_STRING16;
-		case 32:
-			return PVT_STRING32;
-		}
-	case 'c':
-		return PVT_CODE;
-	case 'i':
-		switch (strtol(type + 1, NULL, 10)) {
-		case 8:
-			bool_default:
-			return PVT_SBYTE;
-		case 16:
-			return PVT_SWORD;
-		case 32:
-			return PVT_SDWORD;
-		case 64:
-			return PVT_SQWORD;
-		}
-	case 'b': case 'u': case 'p':
-		switch (strtol(type + 1, NULL, 10)) {
-		case 8:
-			return PVT_BYTE;
-		case 16:
-			return PVT_WORD;
-		case 32:
-#ifdef TH_X86
-			ptr_default :
-#endif
-			return PVT_DWORD;
-		case 64:
-#ifdef TH_X64
-			ptr_default :
-#endif
-			return PVT_QWORD;
-		case 0:
-			switch (type_char) {
-				case 'b': goto bool_default;
-				case 'p': goto ptr_default;
+		case 's': case 'w':
+			size_t char_size;
+			if (type[1] != '\0') char_size = strtol(type + 1, nullptr, 10);
+			else char_size = (type_char == 's' ? sizeof(char) : sizeof(wchar_t)) * CHAR_BIT;
+			switch (char_size) {
+				case 8:
+					return PVT_STRING;
+				case 16:
+					return PVT_STRING16;
+				case 32:
+					return PVT_STRING32;
 			}
-			return PVT_UNKNOWN;
-		}
-	case 'f':
-		switch (strtol(type + 1, nullptr, 10)) {
-		case 32:
-			return PVT_FLOAT;
-		case 64:
-			return PVT_DOUBLE;
-		case 80:
-			return PVT_LONGDOUBLE;
-		}
+			break;
+		case 'c':
+			return PVT_CODE;
+		case 'i':
+			switch (strtol(type + 1, NULL, 10)) {
+				case 8:
+				bool_default:
+					return PVT_SBYTE;
+				case 16:
+					return PVT_SWORD;
+				case 32:
+					return PVT_SDWORD;
+				case 64:
+					return PVT_SQWORD;
+			}
+			break;
+		case 'b': case 'u': case 'p':
+			switch (strtol(type + 1, NULL, 10)) {
+				case 8:
+					return PVT_BYTE;
+				case 16:
+					return PVT_WORD;
+				case 32:
+#ifdef TH_X86
+				ptr_default:
+#endif
+					return PVT_DWORD;
+				case 64:
+#ifdef TH_X64
+				ptr_default:
+#endif
+					return PVT_QWORD;
+				case 0:
+					switch (type_char) {
+						case 'b': goto bool_default;
+						case 'p': goto ptr_default;
+					}
+					break;
+			}
+			break;
+		case 'f':
+			switch (strtol(type + 1, nullptr, 10)) {
+				case 32:
+					return PVT_FLOAT;
+				case 64:
+					return PVT_DOUBLE;
+				case 80:
+					return PVT_LONGDOUBLE;
+			}
+			break;
 	}
 	return PVT_UNKNOWN;
 }
 
 bool TH_FASTCALL patch_opt_from_raw(patch_value_type_t type, const char* name, void* value) {
-	patch_val_t option = {};
+	patch_val_t option;
 	switch ((option.type = type)) {
 		default:
 			return false;
-		case PVT_BYTE: case PVT_SBYTE:
-			option.b = *(uint8_t*)value;
+		case PVT_SBYTE:
+			option.sq = *(int8_t*)value;
 			break;
-		case PVT_WORD: case PVT_SWORD:
-			option.w = *(uint16_t*)value;
+		case PVT_SWORD:
+			option.sq = *(int16_t*)value;
 			break;
-		case PVT_DWORD: case PVT_SDWORD:
-			option.i = *(uint32_t*)value;
+		case PVT_SDWORD:
+			option.sq = *(int32_t*)value;
 			break;
-		case PVT_QWORD: case PVT_SQWORD:
+		case PVT_SQWORD:
+			option.sq = *(int64_t*)value;
+			break;
+		case PVT_BYTE:
+			option.q = *(uint8_t*)value;
+			break;
+		case PVT_WORD:
+			option.q = *(uint16_t*)value;
+			break;
+		case PVT_DWORD:
+			option.q = *(uint32_t*)value;
+			break;
+		case PVT_QWORD:
 			option.q = *(uint64_t*)value;
 			break;
 		case PVT_FLOAT:
@@ -770,9 +786,37 @@ bool TH_FASTCALL patch_opt_from_raw(patch_value_type_t type, const char* name, v
 			size_t length = strlen(str);
 			if (const char* new_str = strdup_size(str, length)) {
 				option.str.ptr = new_str;
-				option.str.len = length;
+				option.str.len = length + 1;
 			}
 			else {
+				return false;
+			}
+			break;
+		}
+		case PVT_STRING16: {
+			const char16_t* str = (char16_t*)value;
+			size_t length = 0;
+			while (str[length++]);
+			size_t size = length * sizeof(char16_t);
+			if (char16_t* new_str = (char16_t*)malloc(size)) {
+				memcpy(new_str, str, size);
+				option.str16.ptr = new_str;
+				option.str16.len = size;
+			} else {
+				return false;
+			}
+			break;
+		}
+		case PVT_STRING32: {
+			const char32_t* str = (char32_t*)value;
+			size_t length = 0;
+			while (str[length++]);
+			size_t size = length * sizeof(char32_t);
+			if (char32_t* new_str = (char32_t*)malloc(size)) {
+				memcpy(new_str, str, size);
+				option.str32.ptr = new_str;
+				option.str32.len = size;
+			} else {
 				return false;
 			}
 			break;
@@ -817,36 +861,37 @@ void patch_opts_from_json(json_t *opts) {
 			continue;
 		}
 
-		patch_val_t entry = {};
+		patch_val_t entry;
 		switch (entry.type = patch_parse_type(tname)) {
 			case PVT_STRING: case PVT_STRING16: case PVT_STRING32: {
-				if(!json_is_string(j_val_val)) {
+				if unexpected(!json_is_string(j_val_val)) {
 					log_printf("ERROR: invalid json type for string option %s\n", key);
 					continue;
 				}
 				const char* opt_str = json_string_value(j_val_val);
 				const size_t narrow_len = strlen(opt_str) + 1;
 				
-				switch(entry.type) {
-				case PVT_STRING:
-					entry.str.len = narrow_len;
-					entry.str.ptr = strdup(opt_str);
-					break;
-				case PVT_STRING16:
-					entry.str16.len = narrow_len * sizeof(char16_t);
-					if (!(entry.str16.ptr = utf8_to_utf16(opt_str))) {
-						log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
-						continue;
-					}
-					break;
-				case PVT_STRING32:
-					entry.str32.len = narrow_len * sizeof(char32_t);
-					if (!(entry.str32.ptr = utf8_to_utf32(opt_str))) {
-						log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
-						continue;
-					}
-					break;
+				switch (entry.type) {
+					case PVT_STRING:
+						entry.str.len = narrow_len;
+						entry.str.ptr = strdup(opt_str);
+						break;
+					case PVT_STRING16:
+						entry.str16.len = narrow_len * sizeof(char16_t);
+						if (!(entry.str16.ptr = utf8_to_utf16(opt_str))) {
+							log_printf("ERROR: invalid char16 conversion for string16 option %s\n", key);
+							continue;
+						}
+						break;
+					case PVT_STRING32:
+						entry.str32.len = narrow_len * sizeof(char32_t);
+						if (!(entry.str32.ptr = utf8_to_utf32(opt_str))) {
+							log_printf("ERROR: invalid char32 conversion for string32 option %s\n", key);
+							continue;
+						}
+						break;
 				}
+				break;
 			}
 			case PVT_CODE:
 				if (json_is_string(j_val_val) || json_is_array(j_val_val)) {
@@ -862,39 +907,36 @@ void patch_opts_from_json(json_t *opts) {
 						entry.code.count = 1;
 						break;
 					}
-					else {
-						continue;
-					}
 				}
 				else {
 					log_printf("ERROR: invalid json type for code option %s\n", key);
-					continue;
 				}
+				continue;
 			case PVT_SBYTE: case PVT_SWORD: case PVT_SDWORD: case PVT_SQWORD:
 			case PVT_BYTE: case PVT_WORD: case PVT_DWORD: case PVT_QWORD:
 				json_int_t value;
 				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
 				switch (entry.type) {
 					case PVT_SBYTE:
-						entry.sb = (int8_t)value;
+						entry.sq = (int8_t)value;
 						break;
 					case PVT_SWORD:
-						entry.sw = (int16_t)value;
+						entry.sq = (int16_t)value;
 						break;
 					case PVT_SDWORD:
-						entry.si = (int32_t)value;
+						entry.sq = (int32_t)value;
 						break;
 					case PVT_SQWORD:
 						entry.sq = (int64_t)value;
 						break;
 					case PVT_BYTE:
-						entry.b = (uint8_t)value;
+						entry.q = (uint8_t)value;
 						break;
 					case PVT_WORD:
-						entry.w = (uint16_t)value;
+						entry.q = (uint16_t)value;
 						break;
 					case PVT_DWORD:
-						entry.i = (uint32_t)value;
+						entry.q = (uint32_t)value;
 						break;
 					case PVT_QWORD:
 						entry.q = (uint64_t)value;
@@ -905,15 +947,15 @@ void patch_opts_from_json(json_t *opts) {
 				double value;
 				(void)json_eval_real(j_val_val, &value, JEVAL_DEFAULT);
 				switch (entry.type) {
-				case PVT_FLOAT:
-					entry.f = (float)value;
-					break;
-				case PVT_DOUBLE:
-					entry.d = value;
-					break;
-				case PVT_LONGDOUBLE:
-					entry.ld = value;
-					break;
+					case PVT_FLOAT:
+						entry.f = (float)value;
+						break;
+					case PVT_DOUBLE:
+						entry.d = value;
+						break;
+					case PVT_LONGDOUBLE:
+						entry.ld = value;
+						break;
 				}
 				break;
 			}

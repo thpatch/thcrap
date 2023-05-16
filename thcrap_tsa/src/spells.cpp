@@ -18,19 +18,19 @@ static std::vector<std::string> cache_array_spell_ids;
 static std::string spell_id_params_to_string(std::vector<patch_val_t>& spell_id_params, const char* sep) {
 	std::string str_spell_id;
 	for (size_t i = 0; i < spell_id_params.size(); i++) {
-		char a_num[16] = {};
+		char a_num[DECIMAL_DIGITS_BOUND(uint64_t) + 1] = {};
 		const char* append = a_num;
 
 		switch (spell_id_params[i].type) {
-		case PVT_STRING:
-			append = spell_id_params[i].str.ptr;
-			break;
-		case PVT_SBYTE:	case PVT_SWORD:	case PVT_SDWORD: case PVT_SQWORD:
-			itoa(spell_id_params[i].sq, a_num, 10);
-			break;
-		case PVT_BYTE: case PVT_WORD: case PVT_DWORD: case PVT_QWORD:
-			itoa(spell_id_params[i].q, a_num, 10);
-			break;
+			case PVT_STRING:
+				append = spell_id_params[i].str.ptr;
+				break;
+			case PVT_SBYTE:	case PVT_SWORD:	case PVT_SDWORD: case PVT_SQWORD:
+				_i64toa(spell_id_params[i].sq, a_num, 10);
+				break;
+			case PVT_BYTE: case PVT_WORD: case PVT_DWORD: case PVT_QWORD:
+				_ui64toa(spell_id_params[i].q, a_num, 10);
+				break;
 		}
 		str_spell_id.append(append);
 
@@ -67,8 +67,7 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 			auto it = json_object_get_typed(val, regs, "param", patch_parse_type(json_object_get_string(val, "type")));
 			spell_id_params.push_back(it);
 
-			bool count_down = false;
-			(void)json_object_get_eval_bool(val, "count_down", &count_down, JEVAL_DEFAULT);
+			bool count_down = json_object_get_eval_bool_default(val, "count_down", false, JEVAL_DEFAULT);
 
 			if (count_down) {
 				if (count_down_idx != -1) {
@@ -96,7 +95,7 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 	}
 	else if (patch_value_type_t type = patch_parse_type(json_string_value(spell_id_type)); type == PVT_STRING) {
 		auto val = json_typed_value(spell_id, regs, type);
-		if (val.str.ptr) {
+		if (val.type == PVT_STRING && val.str.ptr) {
 			cache_array_spell_ids = { val.str.ptr };
 		}
 		else {

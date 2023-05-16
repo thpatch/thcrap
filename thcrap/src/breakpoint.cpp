@@ -84,41 +84,64 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 }
 
 patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t type) {
-	patch_val_t ret = {};
+	patch_val_t ret;
 
 	void* value = json_pointer_value(val, regs);
-	if (!value) return ret;
-
-	switch (ret.type = type) {
-	case PVT_STRING:
-		ret.str = { (*(char**)value), strlen(*(char**)value) };
-		break;
-	case PVT_SBYTE:
-		ret.sb = *(int8_t*)value;
-		break;
-	case PVT_SWORD:
-		ret.sw = *(int16_t*)value;
-		break;
-	case PVT_SDWORD:
-		ret.si = *(int32_t*)value;
-		break;
-	case PVT_SQWORD:
-		ret.sq = *(int64_t*)value;
-		break;
-	case PVT_BYTE:
-		ret.b = *(uint8_t*)value;
-		break;
-	case PVT_WORD:
-		ret.w = *(uint16_t*)value;
-		break;
-	case PVT_DWORD:
-		ret.i = *(uint32_t*)value;
-		break;
-	case PVT_QWORD:
-		ret.q = *(uint64_t*)value;
-		break;
+	if unexpected(!value) {
+		ret.type = PVT_UNKNOWN;
+		return ret;
 	}
 
+	switch (ret.type = type) {
+		case PVT_STRING: {
+			const char* str = *(char**)value;
+			ret.str.ptr = str;
+			ret.str.len = strlen(str) + 1;
+			break;
+		}
+		case PVT_STRING16: {
+			const char16_t* str = *(char16_t**)value;
+			ret.str16.ptr = str;
+			size_t length = 0;
+			while (str[length++]);
+			ret.str16.len = length * sizeof(char16_t);
+			break;
+		}
+		case PVT_STRING32: {
+			const char32_t* str = *(char32_t**)value;
+			ret.str32.ptr = str;
+			size_t length = 0;
+			while (str[length++]);
+			ret.str32.len = length * sizeof(char32_t);
+			break;
+		}
+		case PVT_SBYTE:
+			ret.sq = *(int8_t*)value;
+			break;
+		case PVT_SWORD:
+			ret.sq = *(int16_t*)value;
+			break;
+		case PVT_SDWORD:
+			ret.sq = *(int32_t*)value;
+			break;
+		case PVT_SQWORD:
+			ret.sq = *(int64_t*)value;
+			break;
+		case PVT_BYTE:
+			ret.q = *(uint8_t*)value;
+			break;
+		case PVT_WORD:
+			ret.q = *(uint16_t*)value;
+			break;
+		case PVT_DWORD:
+			ret.q = *(uint32_t*)value;
+			break;
+		case PVT_QWORD:
+			ret.q = *(uint64_t*)value;
+			break;
+	}
+
+	ret.type = PVT_UNKNOWN;
 	return ret;
 }
 
