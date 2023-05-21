@@ -38,9 +38,11 @@ EXPORTS
 	json_register_pointer
 	json_pointer_value
 	json_immediate_value
+	json_typed_value
 	json_object_get_register
 	json_object_get_pointer
 	json_object_get_immediate
+	json_object_get_typed
 	breakpoint_cave_exec_flag
 	breakpoint_cave_exec_flag_eval
 	breakpoint_process
@@ -248,6 +250,7 @@ EXPORTS
 	patch_rel_to_abs
 	patch_dep_to_desc
 
+	patch_parse_type
 	patch_opts_from_json
 	patch_opt_from_raw
 	patch_opt_get

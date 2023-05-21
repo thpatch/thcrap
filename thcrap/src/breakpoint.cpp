@@ -83,6 +83,68 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	return NULL;
 }
 
+patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t type) {
+	patch_val_t ret;
+
+	void* value = json_pointer_value(val, regs);
+	if unexpected(!value) {
+		ret.type = PVT_UNKNOWN;
+		return ret;
+	}
+
+	switch (ret.type = type) {
+		case PVT_STRING: {
+			const char* str = *(char**)value;
+			ret.str.ptr = str;
+			ret.str.len = strlen(str) + 1;
+			break;
+		}
+		case PVT_STRING16: {
+			const char16_t* str = *(char16_t**)value;
+			ret.str16.ptr = str;
+			size_t length = 0;
+			while (str[length++]);
+			ret.str16.len = length * sizeof(char16_t);
+			break;
+		}
+		case PVT_STRING32: {
+			const char32_t* str = *(char32_t**)value;
+			ret.str32.ptr = str;
+			size_t length = 0;
+			while (str[length++]);
+			ret.str32.len = length * sizeof(char32_t);
+			break;
+		}
+		case PVT_SBYTE:
+			ret.sq = *(int8_t*)value;
+			break;
+		case PVT_SWORD:
+			ret.sq = *(int16_t*)value;
+			break;
+		case PVT_SDWORD:
+			ret.sq = *(int32_t*)value;
+			break;
+		case PVT_SQWORD:
+			ret.sq = *(int64_t*)value;
+			break;
+		case PVT_BYTE:
+			ret.q = *(uint8_t*)value;
+			break;
+		case PVT_WORD:
+			ret.q = *(uint16_t*)value;
+			break;
+		case PVT_DWORD:
+			ret.q = *(uint32_t*)value;
+			break;
+		case PVT_QWORD:
+			ret.q = *(uint64_t*)value;
+			break;
+	}
+
+	ret.type = PVT_UNKNOWN;
+	return ret;
+}
+
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
 	return json_string_length(val) >= 3 ? reg(regs, json_string_value(val), nullptr) : nullptr;
@@ -101,6 +163,11 @@ size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key
 size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key)
 {
 	return json_immediate_value(json_object_get(object, key), regs);
+}
+
+patch_val_t json_object_get_typed(json_t *object, x86_reg_t *regs, const char *key, patch_value_type_t type)
+{
+	return json_typed_value(json_object_get(object, key), regs, type);
 }
 
 int breakpoint_cave_exec_flag(json_t *bp_info)
@@ -157,7 +224,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 		return false;
 	}
 
-	size_t cavesize;
+	size_t cavesize = 0;
 	switch (json_object_get_eval_int(in, "cavesize", &cavesize, JEVAL_STRICT)) {
 		default:
 			log_printf("ERROR: invalid json type for cavesize of breakpoint %s, must be 32-bit integer or string\n", name);

@@ -222,6 +222,7 @@ namespace thcrap_configure_v3
                 AddGamesNotice.Visibility = Visibility.Visible;
                 ButtonSelectAll.IsEnabled = false;
                 ButtonUnselectAll.IsEnabled = false;
+                ButtonRemoveAll.IsEnabled = false;
             }
             else
             {
@@ -229,6 +230,7 @@ namespace thcrap_configure_v3
                 AddGamesNotice.Visibility = Visibility.Collapsed;
                 ButtonSelectAll.IsEnabled = true;
                 ButtonUnselectAll.IsEnabled = true;
+                ButtonRemoveAll.IsEnabled = true;
             }
         }
 
@@ -376,6 +378,11 @@ namespace thcrap_configure_v3
             {
                 game.IsSelected = false;
             }
+        }
+
+        private void RemoveAll(object sender, RoutedEventArgs e)
+        {
+            this.games.Clear();
         }
 
         private void SearchAuto(object sender, RoutedEventArgs e)

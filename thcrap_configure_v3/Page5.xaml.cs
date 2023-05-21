@@ -25,6 +25,9 @@ namespace thcrap_configure_v3
     {
         bool? isUTLPresent = null;
         GlobalConfig config = null;
+        ThcrapDll.ShortcutsType shortcutsType = ThcrapDll.ShortcutsType.SHTYPE_SHORTCUT;
+        const long configDestinationMask = 0xFFFF;
+        const int configTypeOffset = 16;
 
         [Flags]
         public enum ShortcutDestinations
@@ -51,12 +54,17 @@ namespace thcrap_configure_v3
             if (config == null)
             {
                 config = new GlobalConfig();
-                ShortcutDestinations dest = config.default_shortcut_destinations;
+                ShortcutDestinations dest = (ShortcutDestinations)(config.default_shortcut_destinations & configDestinationMask);
 
                 checkboxDesktop.IsChecked      = (dest & ShortcutDestinations.Desktop) != 0;
                 checkboxStartMenu.IsChecked    = (dest & ShortcutDestinations.StartMenu) != 0;
                 checkboxGamesFolder.IsChecked  = (dest & ShortcutDestinations.GamesFolder) != 0;
                 checkboxThcrapFolder.IsChecked = (dest & ShortcutDestinations.ThcrapFolder) != 0;
+                shortcutsType = (ThcrapDll.ShortcutsType)(config.default_shortcut_destinations >> configTypeOffset);
+                if (shortcutsType != ThcrapDll.ShortcutsType.SHTYPE_SHORTCUT &&
+                    shortcutsType != ThcrapDll.ShortcutsType.SHTYPE_WRAPPER_ABSPATH &&
+                    shortcutsType != ThcrapDll.ShortcutsType.SHTYPE_WRAPPER_RELPATH)
+                    shortcutsType = ThcrapDll.ShortcutsType.SHTYPE_SHORTCUT;
             }
         }
 
@@ -93,16 +101,17 @@ namespace thcrap_configure_v3
             }
             gamesArray[i] = new ThcrapDll.games_js_entry();
 
-            ThcrapDll.CreateShortcuts(configName, gamesArray, destination);
+            ThcrapDll.CreateShortcuts(configName, gamesArray, destination, shortcutsType);
         }
 
         public void Leave(string configName, IEnumerable<ThcrapDll.games_js_entry> games)
         {
-            config.default_shortcut_destinations =
+            ShortcutDestinations shortcutDestinations =
                 (checkboxDesktop.IsChecked      == true ? ShortcutDestinations.Desktop      : 0) |
                 (checkboxStartMenu.IsChecked    == true ? ShortcutDestinations.StartMenu    : 0) |
                 (checkboxGamesFolder.IsChecked  == true ? ShortcutDestinations.GamesFolder  : 0) |
                 (checkboxThcrapFolder.IsChecked == true ? ShortcutDestinations.ThcrapFolder : 0);
+            config.default_shortcut_destinations = (long)shortcutDestinations | ((long)shortcutsType << configTypeOffset);
             config.Save();
 
             if (checkboxDesktop.IsChecked == true)

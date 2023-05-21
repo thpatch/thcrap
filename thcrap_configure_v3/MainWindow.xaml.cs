@@ -163,5 +163,20 @@ namespace thcrap_configure_v3
             Process.Start("bin\\thcrap_configure" + ThcrapDll.DEBUG_OR_RELEASE + ".exe");
             this.Close();
         }
+
+        private void SettingsWindow_Open(object sender, RoutedEventArgs e)
+        {
+            this.Hide();
+            var settingsWindow = new SettingsWindow();
+            settingsWindow.mainWindow = this;
+            settingsWindow.ShowDialog();
+            if (settingsWindow.isClosedWithX)
+            {
+                this.Close();
+            } else
+            {
+                this.Show();
+            }
+        }
     }
 }

@@ -194,6 +194,13 @@ namespace thcrap_configure_v3
             SHDESTINATION_GAMES_DIRECTORY = 4,
         }
 
+        public enum ShortcutsType
+        {
+            SHTYPE_SHORTCUT = 1,
+            SHTYPE_WRAPPER_ABSPATH = 2,
+            SHTYPE_WRAPPER_RELPATH = 3,
+        }
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void log_print_cb([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string text);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -269,7 +276,7 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern int CreateShortcuts(
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string run_cfg_fn,
-            games_js_entry[] games, ShortcutsDestination destination);
+            games_js_entry[] games, ShortcutsDestination destination, ShortcutsType type);
 
         // Update
         public enum get_status_t

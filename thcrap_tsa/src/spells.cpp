@@ -13,28 +13,121 @@
 #include "thcrap_tsa.h"
 
 // Lookup cache
-static int cache_spell_id = 0;
-static int cache_spell_id_real = 0;
+static std::vector<std::string> cache_array_spell_ids;
+
+static std::string spell_id_params_to_string(std::vector<patch_val_t>& spell_id_params, const char* sep) {
+	std::string str_spell_id;
+	for (size_t i = 0; i < spell_id_params.size(); i++) {
+		char a_num[DECIMAL_DIGITS_BOUND(uint64_t) + 1] = {};
+		const char* append = a_num;
+
+		switch (spell_id_params[i].type) {
+			case PVT_STRING:
+				append = spell_id_params[i].str.ptr;
+				break;
+			case PVT_SBYTE:	case PVT_SWORD:	case PVT_SDWORD: case PVT_SQWORD:
+				_i64toa(spell_id_params[i].sq, a_num, 10);
+				break;
+			case PVT_BYTE: case PVT_WORD: case PVT_DWORD: case PVT_QWORD:
+				_ui64toa(spell_id_params[i].q, a_num, 10);
+				break;
+		}
+		str_spell_id.append(append);
+
+		if ((i + 1) != spell_id_params.size()) {
+			str_spell_id.append(sep);
+		}
+	}
+	return str_spell_id;
+}
 
 int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
 	json_t *spell_id = json_object_get(bp_info, "spell_id");
+	json_t *spell_id_type = json_object_get(bp_info, "spell_id_type");
 	json_t *spell_id_real = json_object_get(bp_info, "spell_id_real");
 	json_t *spell_rank = json_object_get(bp_info, "spell_rank");
 	// ----------
+	// These have to be signed...
+	int int_spell_id = 0;
+	int int_spell_id_real = 0;
 
-	if(spell_id) {
-		cache_spell_id = json_immediate_value(spell_id, regs);
-		cache_spell_id_real = cache_spell_id;
+	if (json_is_array(spell_id)) {
+		std::vector<patch_val_t> spell_id_params;
+
+		const char* sep = json_object_get_string(bp_info, "separator");
+		if (!sep) sep = "+";
+
+		size_t count_down_idx = -1;
+
+		json_t* val;
+		json_array_foreach_scoped(size_t, i, spell_id, val) {
+			auto it = json_object_get_typed(val, regs, "param", patch_parse_type(json_object_get_string(val, "type")));
+			spell_id_params.push_back(it);
+
+			bool count_down = json_object_get_eval_bool_default(val, "count_down", false, JEVAL_DEFAULT);
+
+			if (count_down) {
+				if (count_down_idx != -1) {
+					log_print("WARNING: count_down in spell_id can only be set for one parameter\n");
+				}
+				if (it.type == PVT_STRING) {
+					log_print("WARNING: count_down in spell_id cannot be true for string parameters\n");
+				}
+				else {
+					count_down_idx = i;
+				}
+			}
+		}
+
+		cache_array_spell_ids = {};
+		if (count_down_idx == -1) {
+			cache_array_spell_ids.push_back(spell_id_params_to_string(spell_id_params, sep));
+		}
+		else {
+			for (; spell_id_params[count_down_idx].q; spell_id_params[count_down_idx].q--) {
+				cache_array_spell_ids.push_back(spell_id_params_to_string(spell_id_params, sep));
+			}
+			cache_array_spell_ids.push_back(spell_id_params_to_string(spell_id_params, sep));
+		}
 	}
-	if(spell_id_real) {
-		cache_spell_id_real = json_immediate_value(spell_id_real, regs);
+	else if (patch_value_type_t type = patch_parse_type(json_string_value(spell_id_type)); type == PVT_STRING) {
+		auto val = json_typed_value(spell_id, regs, type);
+		if (val.type == PVT_STRING && val.str.ptr) {
+			cache_array_spell_ids = { val.str.ptr };
+		}
+		else {
+			// spell_id_real and spell_rank could still be set with an int value
+			goto spell_id_int;
+		}
 	}
-	if(spell_rank) {
-		int rank = json_immediate_value(spell_rank, regs);
-		cache_spell_id = cache_spell_id_real - rank;
+	else {
+		if (spell_id || spell_id_real || spell_rank) {
+			if (spell_id) {
+				int_spell_id = json_immediate_value(spell_id, regs);
+				int_spell_id_real = int_spell_id;
+			}
+		spell_id_int:
+			if (spell_id_real) {
+				int_spell_id_real = json_immediate_value(spell_id_real, regs);
+			}
+			if (spell_rank) {
+				int rank = json_immediate_value(spell_rank, regs);
+				int_spell_id = int_spell_id_real - rank;
+			}
+
+			cache_array_spell_ids = {};
+
+			// ...otherwise this loop goes on forever if the spell ID is 0
+			while (int_spell_id_real >= int_spell_id) {
+				char str_spell_id[16] = {};
+				itoa(int_spell_id_real, str_spell_id, 10);
+				cache_array_spell_ids.push_back(str_spell_id);
+				int_spell_id_real--;
+			}
+		}
 	}
 	return 1;
 }
@@ -53,20 +146,17 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 
 	tlnote_remove();
 
-	if(spell_name && cache_spell_id_real >= cache_spell_id) {
+	if(cache_array_spell_ids.size()) {
 		const char *new_name = NULL;
-		int i = cache_spell_id_real;
 		json_t *spells = jsondata_game_get("spells.js");
 
 		// Count down from the real number to the given number
 		// until we find something
-		do {
-			new_name = json_string_value(json_object_numkey_get(spells, i));
-		} while( (i-- > cache_spell_id) && i >= 0 && !new_name );
-
-		if(new_name) {
-			*spell_name = new_name;
-			return breakpoint_cave_exec_flag(bp_info);
+		for (auto& i : cache_array_spell_ids) {
+			if (new_name = json_object_get_string(spells, i.c_str())) {
+				*spell_name = new_name;
+				return breakpoint_cave_exec_flag(bp_info);
+			}
 		}
 	}
 	return 1;
@@ -88,7 +178,6 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 
 	if(str && comment_num) {
 		json_t *json_cmt = NULL;
-		int i = cache_spell_id_real;
 		json_t *spellcomments = jsondata_game_get("spellcomments.js");
 
 		size_t cmt_key_str_len = strlen("comment_") + 16 + 1;
@@ -98,14 +187,14 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 
 		// Count down from the real number to the given number
 		// until we find something
-		do {
-			json_cmt = json_object_numkey_get(spellcomments, i);
-			json_cmt = json_object_get(json_cmt, cmt_key_str);
-		} while( (i-- > cache_spell_id) && !json_is_array(json_cmt) );
 
-		if(json_is_array(json_cmt)) {
-			*str = json_array_get_string_safe(json_cmt, line_num);
-			return breakpoint_cave_exec_flag(bp_info);
+		for (auto& i : cache_array_spell_ids) {
+			json_cmt = json_object_get(spellcomments, i.c_str());
+			json_cmt = json_object_get(json_cmt, cmt_key_str);
+			if (json_is_array(json_cmt)) {
+				*str = json_array_get_string_safe(json_cmt, line_num);
+				return breakpoint_cave_exec_flag(bp_info);
+			}
 		}
 	}
 	return 1;
@@ -123,24 +212,22 @@ int BP_spell_owner(x86_reg_t *regs, json_t *bp_info)
 	BP_spell_id(regs, bp_info);
 	// -----------------
 
-	if (spell_owner && cache_spell_id_real >= cache_spell_id) {
+	if (spell_owner && cache_array_spell_ids.size()) {
 		const char *new_owner = NULL;
-		int i = cache_spell_id_real;
 		json_t *spellcomments = jsondata_game_get("spellcomments.js");
 
-		// Count down from the real number to the given number
-		// until we find something
-		do {
-			new_owner = json_string_value(json_object_get(json_object_numkey_get(spellcomments, i), "owner"));
-		} while ((i-- > cache_spell_id) && i >= 0 && !new_owner);
-
-		if (new_owner) {
-			*spell_owner = new_owner;
-			return breakpoint_cave_exec_flag(bp_info);
+		for (auto& i : cache_array_spell_ids) {
+			if (const char* new_owner = json_object_get_string(json_object_get(spellcomments, i.c_str()), "owner")) {
+				*spell_owner = new_owner;
+				return breakpoint_cave_exec_flag(bp_info);
+			}
 		}
 	}
 	return 1;
 }
+
+
+// Legacy TH185 specific spell breakpoints
 
 char th185_spell_id[8] = {};
 

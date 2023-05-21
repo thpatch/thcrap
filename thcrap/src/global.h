@@ -42,6 +42,8 @@ void  TH_CDECL thcrap_free(void *mem);
 // Release builds.
 #ifdef _DEBUG
 # define DEBUG_OR_RELEASE "_d"
+# define DEBUG_OR_RELEASE_W L"_d"
 #else
 # define DEBUG_OR_RELEASE
+# define DEBUG_OR_RELEASE_W
 #endif

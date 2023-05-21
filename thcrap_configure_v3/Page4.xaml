@@ -28,6 +28,9 @@
             <Button Grid.Row="0" Grid.Column="1" x:Name="ButtonUnselectAll" Click="UnselectAll" Margin="0,0,7,7" IsEnabled="False">
                 <TextBlock Margin="2,1">Unselect all</TextBlock>
             </Button>
+            <Button Grid.Row="0" Grid.Column="2" x:Name="ButtonRemoveAll" Click="RemoveAll" Margin="0,0,7,7" IsEnabled="False">
+                <TextBlock Margin="2,1">Remove all</TextBlock>
+            </Button>
 
             <Button Grid.Row="1" Grid.Column="0" x:Name="SearchButtonAuto" Click="SearchAuto" Margin="0,0,7,0">
                 <TextBlock Margin="2,1"
