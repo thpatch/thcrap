@@ -459,12 +459,6 @@ void ExitDll()
 #else
 	log_exit();
 #endif
-}
-
-VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
-{
-	ExitDll();
-
 	{
 		std::wstring shared_mem_name = L"thcrap loader process list " + std::to_wstring(runconfig_loader_pid_get());
 		std::wstring mutex_name = L"thcrap loader process list mutex " + std::to_wstring(runconfig_loader_pid_get());
@@ -492,6 +486,11 @@ VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
 			CloseHandle(hMutex);
 		}
 	}
+}
+
+VOID WINAPI thcrap_ExitProcess(UINT uExitCode)
+{
+	ExitDll();
 
 	// The detour cache is already freed at this point, and this will
 	// always be the final detour in the chain, so detour_next() doesn't
