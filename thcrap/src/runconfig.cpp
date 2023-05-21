@@ -50,7 +50,7 @@ struct runconfig_t
 	// Boolean flag that tells the binhack parser if it should show a message box, should it fail to find a function
 	bool msgbox_invalid_func;
 	// Process ID of the thcrap_loader instance used at the start
-	size_t loader_pid;
+	uint32_t loader_pid;
 };
 
 static runconfig_t run_cfg;
