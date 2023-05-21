@@ -14,7 +14,7 @@
                 <CheckBox Name="background_updates" Content="Enable background updates when a game is running" Checked="BackgroundUpdates_Checked" Unchecked="BackgroundUpdates_Unchecked"/>
                 <CheckBox Name="update_at_exit" Content="Update game files after the game exits"/>
                 <CheckBox Name="update_others" Content="Update other games" IsEnabled="False"/>
-                <Grid Margin="0,5,0,0" Height="18" IsEnabled="False" Name="time_between_updates_grid">
+                <Grid Margin="0,5,0,0" IsEnabled="False" Name="time_between_updates_grid">
                     <TextBox PreviewTextInput="NumericTextbox" Name="time_between_updates" Width="30" HorizontalAlignment="Left" Margin="1,0,0,0"/>
                     <Label Padding="0" HorizontalAlignment="Left" Content="Time between updates (in minutes)" Margin="36,0,0,0" />
                 </Grid>
@@ -23,7 +23,7 @@
             <StackPanel Margin="0,10,0,0">
                 <Label Content="Advanced" />
                 <CheckBox Name="console" Content="Enable the log console"/>
-                <Grid Margin="0,5,0,0" Height="18">
+                <Grid Margin="0,5,0,0">
                     <TextBox PreviewTextInput="NumericTextbox" Name="codepage" Width="30" HorizontalAlignment="Left" Margin="1,0,0,0"/>
                     <Label Padding="0" HorizontalAlignment="Left" Content="Fallback codepage" Margin="36,0,0,0" />
                 </Grid>
