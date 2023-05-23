@@ -269,7 +269,7 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 		log_printf(".");
 
 		if (destination == SHDESTINATION_GAMES_DIRECTORY) {
-			link_dir = std::filesystem::absolute(games[i].path).remove_filename();
+			link_dir = std::filesystem::absolute(std::filesystem::u8path(games[i].path)).remove_filename();
 		}
 
 		auto icon_path = GetIconPath(games[i].path, games[i].id);
