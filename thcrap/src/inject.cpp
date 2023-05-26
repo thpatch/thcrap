@@ -474,6 +474,63 @@ static inline void inject_CreateProcess_helper(
 	DWORD dwCreationFlags
 )
 {
+	{
+		HANDLE hFileMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, (L"thcrap loader process list " + std::to_wstring(runconfig_loader_pid_get())).c_str());
+		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, (L"thcrap loader process list mutex " + std::to_wstring(runconfig_loader_pid_get())).c_str());
+
+		if (hMutex) {
+			DWORD* pid_list = (DWORD*)MapViewOfFile(hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 128 * sizeof(DWORD));
+
+			WaitForSingleObject(hMutex, INFINITE);
+
+			for (size_t i = 0; i < 128; i++) {
+				if (!pid_list[i]) {
+					pid_list[i] = lpPI->dwProcessId;
+					break;
+				}
+			}
+
+			ReleaseMutex(hMutex);
+
+			CloseHandle(hFileMapping);
+			CloseHandle(hMutex);
+		}
+	}
+
+	if (GetCurrentProcessId() != runconfig_loader_pid_get()) {
+		json_t* versions_js = stack_json_resolve("versions.js", NULL);
+		size_t exe_size;
+		game_version* id = identify_by_hash(lpAppName, &exe_size, versions_js);
+		if (!id) id = identify_by_size(exe_size, versions_js);
+
+		if (id && id->id) {
+			std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
+			HANDLE hMail = CreateFileW(mailslotName.c_str(), GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			if (hMail != INVALID_HANDLE_VALUE) {
+				char data_to_send[1024] = {};
+				const int data_to_send_len = snprintf(data_to_send, elementsof(data_to_send), "{\"event_name\":\"thcrap inject %u\",\"game_id\":\"%s\"}", GetCurrentProcessId(), id->id);
+				if (int_in_range_exclusive(data_to_send_len, 0, elementsof(data_to_send))) {
+					HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, (L"thcrap inject " + std::to_wstring(GetCurrentProcessId())).c_str());
+					DWORD byteRet;
+					WriteFile(hMail, data_to_send, data_to_send_len, &byteRet, NULL);
+
+					HANDLE hLoaderProcess = OpenProcess(SYNCHRONIZE, FALSE, runconfig_loader_pid_get());
+
+					if (hLoaderProcess) {
+						HANDLE handles[] = {
+							hEvent,
+							hLoaderProcess
+						};
+						WaitForMultipleObjects(elementsof(handles), handles, FALSE, INFINITE);
+						CloseHandle(hLoaderProcess);
+					}
+					CloseHandle(hEvent);
+				}
+				CloseHandle(hMail);
+			}
+		}
+	}
+
 	if(!WaitUntilEntryPoint(lpPI->hProcess, lpPI->hThread, lpAppName)) {
 		char *run_cfg = json_dumps(runconfig_json_get(), JSON_COMPACT);
 

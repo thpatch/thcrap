@@ -145,6 +145,8 @@ void stack_foreach_cpp(std::function<void (const patch_t*)> callback);
 // patch ever as an explicit, upfront dependency of every stack ever.
 int stack_remove_if_unneeded(const char *patch_id);
 
+int stack_check_if_unneeded(const char* patch_id);
+
 // Clear the stack and free its patches
 void stack_free();
 /// ------------

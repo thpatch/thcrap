@@ -76,6 +76,8 @@ EXPORTS
 	runconfig_update_url_get
 	runconfig_dat_dump_get
 	runconfig_patched_files_dump_get
+	runconfig_loader_pid_get
+	runconfig_loader_pid_set
 	runconfig_latest_check
 	runconfig_latest_get
 	runconfig_stage_count
@@ -139,6 +141,7 @@ EXPORTS
 	json_object_get_create
 	json_object_numkey_get
 	json_object_get_string
+	json_object_get_string_copy
 	json_object_get_hex
 	json_object_merge
 	json_object_get_keys_sorted
@@ -343,6 +346,7 @@ EXPORTS
 	stack_foreach
 	stack_foreach_cpp
 	stack_remove_if_unneeded
+	stack_check_if_unneeded
 	stack_free
 
 	; Hardcoded string translation

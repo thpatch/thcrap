@@ -63,9 +63,9 @@ void stack_update_wrapper(update_filter_func_t filter_func, void *filter_data, p
 {
 	CALL_WRAPPED_FUNCTION(stack_update, filter_func, filter_data, progress_callback, progress_param)
 }
-BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args, const char *game_id_fallback)
+BOOL loader_update_with_UI_wrapper(const char *exe_fn, char *args)
 {
-	CALL_WRAPPED_FUNCTION(loader_update_with_UI, exe_fn, args, game_id_fallback)
+	CALL_WRAPPED_FUNCTION(loader_update_with_UI, exe_fn, args)
 	return thcrap_inject_into_new(exe_fn, args, NULL, NULL);
 }
 

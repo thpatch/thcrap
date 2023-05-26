@@ -50,15 +50,15 @@ static tasofro_game_t game_id_from_string(const char *game)
 
 int TH_STDCALL thcrap_plugin_init()
 {
-	int base_tasofro_removed = stack_remove_if_unneeded("base_tasofro");
-	if (base_tasofro_removed == 1) {
+	int base_tasofro_needed = stack_check_if_unneeded("base_tasofro");
+	if (base_tasofro_needed == 1) {
 		return 1;
 	}
 
 	const char *game = runconfig_game_get();
 	game_id = game_id_from_string(game);
 
-	if(base_tasofro_removed == -1) {
+	if(base_tasofro_needed == -1) {
 		if(game_id == TH145) {
 			log_mboxf(NULL, MB_OK | MB_ICONINFORMATION,
 				"Support for TH14.5 has been moved out of the sandbox.\n"
