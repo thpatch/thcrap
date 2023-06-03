@@ -139,9 +139,9 @@ patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t ty
 		case PVT_QWORD:
 			ret.q = *(uint64_t*)value;
 			break;
+		default:
+			ret.type = PVT_UNKNOWN;
 	}
-
-	ret.type = PVT_UNKNOWN;
 	return ret;
 }
 
