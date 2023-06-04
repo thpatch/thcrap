@@ -14,6 +14,8 @@
 /// -------------
 W32U8_DETOUR_CHAIN_DEF(CreateFont);
 W32U8_DETOUR_CHAIN_DEF(CreateFontIndirectEx);
+auto chain_CreateFontW = CreateFontW;
+auto chain_CreateFontIndirectExW = CreateFontIndirectExW;
 /// -------------
 
 /// Quality enum
@@ -315,6 +317,96 @@ HFONT WINAPI textdisp_CreateFontIndirectExA(
 	return chain_CreateFontIndirectExU(lpelfe);
 }
 
+HFONT WINAPI textdisp_CreateFontW(
+	int cHeight,
+	int cWidth,
+	int cEscapement,
+	int cOrientation,
+	int cWeight,
+	DWORD bItalic,
+	DWORD bUnderline,
+	DWORD bStrikeOut,
+	DWORD iCharSet,
+	DWORD iOutPrecision,
+	DWORD iClipPrecision,
+	DWORD iQuality,
+	DWORD iPitchAndFamily,
+	LPCWSTR pszFaceName
+)
+{
+	wchar_t* face_name_real = NULL;
+	defer(SAFE_FREE(face_name_real));
+
+	// Check hardcoded strings and the run configuration for a replacement
+	// font. Hardcoded strings take priority here.
+	const char* string_font = strings_lookup((char*)pszFaceName, NULL);
+	if (string_font != (char*)pszFaceName) {
+		face_name_real = (wchar_t*)utf8_to_utf16(string_font);
+	}
+	else {
+		const json_t* run_font = json_object_get(runconfig_json_get(), "font");
+		if (json_is_string(run_font)) {
+			face_name_real = (wchar_t*)utf8_to_utf16(json_string_value(run_font));
+		}
+	}
+	return (HFONT)chain_CreateFontW(
+		cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic,
+		bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision,
+		iQuality, iPitchAndFamily, face_name_real ? face_name_real : pszFaceName
+	);
+}
+
+HFONT WINAPI textdisp_CreateFontIndirectExW(
+	ENUMLOGFONTEXDVW* lpelfe
+)
+{
+	if (!lpelfe) {
+		return NULL;
+	}
+
+	LOGFONTA lf = {};
+
+	{
+		static_assert(offsetof(LOGFONTA, lfFaceName) == offsetof(LOGFONTW, lfFaceName));
+		memcpy(&lf, &lpelfe->elfEnumLogfontEx.elfLogFont, offsetof(LOGFONTA, lfFaceName));
+
+		// Ensure that the font face is in UTF-8
+		wchar_t* face_name = lpelfe->elfEnumLogfontEx.elfLogFont.lfFaceName;
+		UTF8_DEC(face_name);
+		UTF8_CONV(face_name);
+		strcpy(lf.lfFaceName, face_name_utf8);
+		UTF8_FREE(face_name);
+	}
+
+	fontrules_apply(&lf);
+	/**
+	  * CreateFont() prioritizes [lfCharSet] and ensures that the font
+	  * created can display the given charset. If the font given in
+	  * [lfFaceName] is not found *or* does not claim to cover the range of
+	  * codepoints used in [lfCharSet], GDI will just ignore [lfFaceName]
+	  * and instead select the font that provides the closest match for
+	  * [lfPitchAndFamily], out of all installed fonts that cover
+	  * [lfCharSet].
+	  *
+	  * To ensure that we actually get the named font, we instead specify
+	  * DEFAULT_CHARSET, which refers to the charset of the current system
+	  * locale. Yes, there's unfortunately no DONTCARE_CHARSET, but this
+	  * should be fine for most use cases.
+	  *
+	  * However, we only do this if we *have* a face name, either from the
+	  * original code or the run configuration. If [lfFaceName] is NULL or
+	  * empty, the original intention of the CreateFont() call was indeed
+	  * to select the default match for [lfPitchAndFamily] and [lfCharSet].
+	  * DEFAULT_CHARSET might therefore result in a different font.
+	  */
+	if (lf.lfFaceName[0]) {
+		lf.lfCharSet = DEFAULT_CHARSET;
+	}
+	log_printf("(Font) Creating %s...\n", logfont_stringify(&lf));
+	memcpy(&lpelfe->elfEnumLogfontEx.elfLogFont, &lf, offsetof(LOGFONTW, lfFaceName));
+	return chain_CreateFontIndirectExW(lpelfe);
+}
+
 void patch_fonts_load(const patch_t *patch_info)
 {
 	for (size_t i = 0; patch_info->fonts && patch_info->fonts[i]; i++) {
@@ -340,6 +432,8 @@ void textdisp_mod_detour(void)
 	detour_chain("gdi32.dll", 1,
 		"CreateFontA", textdisp_CreateFontA, &chain_CreateFontU,
 		"CreateFontIndirectExA", textdisp_CreateFontIndirectExA, &chain_CreateFontIndirectExU,
+		"CreateFontW", textdisp_CreateFontW, &chain_CreateFontW,
+		"CreateFontIndirectExW", textdisp_CreateFontIndirectExW, &chain_CreateFontIndirectExW,
 		NULL
 	);
 }

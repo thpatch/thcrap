@@ -10,7 +10,7 @@
 #include "thcrap.h"
 #include "promote.h"
 
-/// CreateFont() family (promoting to CreateFontIndirectExA)
+/// CreateFontA() family (promoting to CreateFontIndirectExA)
 /// -------------------
 HFONT WINAPI promote_CreateFontA(
 	int cHeight,
@@ -49,12 +49,54 @@ HFONT WINAPI promote_CreateFontIndirectA(
 	return lower_CreateFontIndirectA(target, lplf);
 }
 /// -------------------
+/// CreateFontW() family (promoting to CreateFontIndirectExW)
+/// -------------------
+HFONT WINAPI promote_CreateFontW(
+	int cHeight,
+	int cWidth,
+	int cEscapement,
+	int cOrientation,
+	int cWeight,
+	DWORD bItalic,
+	DWORD bUnderline,
+	DWORD bStrikeOut,
+	DWORD iCharSet,
+	DWORD iOutPrecision,
+	DWORD iClipPrecision,
+	DWORD iQuality,
+	DWORD iPitchAndFamily,
+	LPCWSTR pszFaceName
+)
+{
+	CreateFontIndirectW_type* target = (CreateFontIndirectW_type*)detour_top(
+		"gdi32.dll", "CreateFontIndirectW", (FARPROC)CreateFontIndirectW
+	);
+	return lower_CreateFontW(target,
+		cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic,
+		bUnderline, bStrikeOut, iCharSet, iOutPrecision,
+		iClipPrecision, iQuality, iPitchAndFamily, pszFaceName
+	);
+}
+
+HFONT WINAPI promote_CreateFontIndirectW(
+	CONST LOGFONTW* lplf
+)
+{
+	CreateFontIndirectExW_type* target = (CreateFontIndirectExW_type*)detour_top(
+		"gdi32.dll", "CreateFontIndirectExW", (FARPROC)CreateFontIndirectExW
+	);
+	return lower_CreateFontIndirectW(target, lplf);
+}
+/// -------------------
 
 void promote_mod_init(void)
 {
 	detour_chain("gdi32.dll", 0,
 		"CreateFontIndirectA", promote_CreateFontIndirectA,
 		"CreateFontA", promote_CreateFontA,
+
+		"CreateFontIndirectW", promote_CreateFontIndirectW,
+		"CreateFontW", promote_CreateFontW,
 		NULL
 	);
 }

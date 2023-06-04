@@ -42,6 +42,7 @@ W32U8_DETOUR_CHAIN_DEF(CreateFont);
 DETOUR_CHAIN_DEF(DeleteObject);
 DETOUR_CHAIN_DEF(SelectObject);
 W32U8_DETOUR_CHAIN_DEF(TextOut);
+auto chain_TextOutW = TextOutW;
 /// -------------
 
 /// TH06-TH09 font cache
@@ -323,7 +324,21 @@ BOOL layout_textout_raw(layout_state_t *lay, POINT p)
 		const size_t len = json_string_length(lay->draw_str);
 		return chain_TextOutU(lay->hdc, p.x, p.y, str, len);
 	}
-	return 0;
+	return FALSE;
+}
+
+BOOL layout_textout_raw_w(layout_state_t *lay, POINT p)
+{
+	if (lay) {
+		const char* str = json_string_value(lay->draw_str);
+
+		WCHAR_T_DEC(str);
+		WCHAR_T_CONV(str);
+		defer(WCHAR_T_FREE(str));
+
+		return chain_TextOutW(lay->hdc, p.x, p.y, str_w, wcslen(str_w));
+	}
+	return FALSE;
 }
 
 // Modifies [lf] according to the font-related commands in [cmd].
@@ -582,6 +597,24 @@ HGDIOBJ WINAPI layout_SelectObject(
 
 size_t ruby_offset_actual;
 
+void ruby_shift_debug_impl(HDC hdc, int orig_x) {
+	json_t* val;
+	static auto pen = CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
+	auto hPrevObject = SelectObject(hdc, pen);
+
+	auto draw_at_x = [&](LONG x) {
+		auto point = x;
+		POINT points[2] = { {point, 0}, {point, 32} };
+		Polyline(hdc, points, sizeof(points) / sizeof(points[0]));
+	};
+	draw_at_x(0);
+	draw_at_x(orig_x);
+	json_array_foreach_scoped(size_t, i, Layout_Tabs, val) {
+		draw_at_x((LONG)json_integer_value(val));
+	}
+	SelectObject(hdc, hPrevObject);
+}
+
 BOOL WINAPI layout_TextOutU(
 	HDC hdc,
 	int orig_x,
@@ -594,29 +627,40 @@ BOOL WINAPI layout_TextOutU(
 		orig_x = (orig_x - RUBY_OFFSET_DUMMY_FULL) + ruby_offset_actual;
 	}
 
-	if (ruby_shift_debug) {
-		json_t *val;
-		static auto pen = CreatePen(PS_SOLID, 3, RGB(255, 0, 0));
-		auto hPrevObject = SelectObject(hdc, pen);
-
-		auto draw_at_x = [&](LONG x) {
-			auto point = x;
-			POINT points[2] = { {point, 0}, {point, 32} };
-			Polyline(hdc, points, sizeof(points) / sizeof(points[0]));
-		};
-		draw_at_x(0);
-		draw_at_x(orig_x);
-		json_array_foreach_scoped(size_t, i, Layout_Tabs, val) {
-			draw_at_x((LONG)json_integer_value(val));
-		}
-		SelectObject(hdc, hPrevObject);
-	}
+	if (ruby_shift_debug)
+		ruby_shift_debug_impl(hdc, orig_x);
 
 	layout_state_t lay = {hdc, {orig_x, orig_y}};
 	auto ret = layout_process(&lay, layout_textout_raw, lpString, c);
 	tlnote_show(lay.tlnote);
 	return ret;
 }
+
+BOOL WINAPI layout_TextOutW(
+	HDC hdc,
+	int orig_x,
+	int orig_y,
+	LPCWSTR lpString,
+	int c
+) {
+	// Make sure to keep shadow offsets...
+	if (orig_x > (RUBY_OFFSET_DUMMY_FULL / 2)) {
+		orig_x = (orig_x - RUBY_OFFSET_DUMMY_FULL) + ruby_offset_actual;
+	}
+
+	if (ruby_shift_debug)
+		ruby_shift_debug_impl(hdc, orig_x);
+
+	layout_state_t lay = { hdc, {orig_x, orig_y} };
+	UTF8_DEC(lpString);
+	UTF8_CONV(lpString);
+	auto ret = layout_process(&lay, layout_textout_raw_w, lpString_utf8, lpString_len);
+	tlnote_show(lay.tlnote);
+	UTF8_FREE(lpString);
+	return ret;
+}
+
+
 /// ----------------
 
 size_t GetTextExtentBase(HDC hdc, const json_t *str_obj)
@@ -749,6 +793,7 @@ void layout_mod_detour(void)
 		"DeleteObject", fontcache_DeleteObject, &chain_DeleteObject,
 		"SelectObject", layout_SelectObject, &chain_SelectObject,
 		"TextOutA", layout_TextOutU, &chain_TextOutU,
+		"TextOutW", layout_TextOutW, &chain_TextOutU,
 		NULL
 	);
 }
