@@ -113,6 +113,10 @@ repo_t **RepoDiscover(const char *start_url)
     RepoDiscovery discover;
 
     // Start with the remote discovery
+    if (start_url == nullptr) {
+        start_url = DISCOVERY_DEFAULT_REPO;
+    }
+    log_printf("Starting repository discovery at %s...\n", start_url);
     discover.addServer(start_url);
     discover.wait();
 

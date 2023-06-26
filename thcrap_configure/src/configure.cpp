@@ -199,7 +199,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	repo_t **repo_list = nullptr;
 
-	const char *start_repo = "https://srv.thpatch.net/";
+	const char *start_repo = nullptr;
 
 	patch_sel_stack_t sel_stack;
 	json_t *new_cfg = json_pack("{s[]}", "patches");
@@ -254,14 +254,9 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 			"\n"
 			"\n"
 			"\n"
-			"Patch repository discovery will start at\n"
-			"\n"
-			"\t%s\n"
-			"\n"
-			"You can specify a different URL as a command-line parameter.\n"
+			"You can specify a repository discovery URL as a command-line parameter.\n"
 			"Additionally, all patches from previously discovered repositories, stored in\n"
-			"subdirectories of the current directory, will be available for selection.\n"),
-			start_repo
+			"subdirectories of the current directory, will be available for selection.\n")
 		);
 	}
 	else {

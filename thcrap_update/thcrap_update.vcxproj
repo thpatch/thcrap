@@ -16,6 +16,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <DiscoveryDefaultRepo>https://srv.thpatch.net/</DiscoveryDefaultRepo>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
@@ -25,7 +26,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>THCRAP_UPDATE_EXPORTS;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>THCRAP_UPDATE_EXPORTS;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;DISCOVERY_DEFAULT_REPO="$(DiscoveryDefaultRepo)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libs/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

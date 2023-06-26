@@ -43,7 +43,7 @@ namespace thcrap_configure_v3
             ThcrapDll.exception_load_config();
             ThcrapDll.log_init(ThcrapDll.globalconfig_get_boolean("console", false));
 
-            var startUrl = "https://srv.thpatch.net/";
+            string startUrl = null;
             var cmdline = Environment.GetCommandLineArgs();
 
             for(int i = 1; i < cmdline.Length; i++)
