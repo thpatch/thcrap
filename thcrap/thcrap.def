@@ -368,6 +368,11 @@ EXPORTS
 	strings_mod_repatch
 	strings_mod_exit
 
+	; Dictionary based string translation
+	; -----------------------------------
+	BP_dict_translate
+	dict_mod_init
+
 	; Strings array
 	; -------------
 	strings_array_create

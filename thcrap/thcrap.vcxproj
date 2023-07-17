@@ -62,6 +62,7 @@
     <ClCompile Include="src\sha256.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\dict_translate.cpp" />
     <ClCompile Include="src\inject.cpp" />
     <ClCompile Include="src\shelllink.cpp" />
     <ClCompile Include="src\stack.cpp" />
