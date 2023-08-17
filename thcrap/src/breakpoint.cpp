@@ -79,6 +79,13 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 		}
 		return ptr;
 	}
+	else {
+		expr_end = eval_expr(expr, '\0', (size_t*)&ptr, regs, NULL, NULL);
+		if (expr_end && expr_end[0] != '\0') {
+			log_func_printf("Warning: leftover bytes after dereferencing: '%s'\n", expr_end);
+		}
+		return ptr;
+	}
 	log_func_printf("Error: called with something other than a register or a dereferencing.\n");
 	return NULL;
 }
