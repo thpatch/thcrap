@@ -86,8 +86,6 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 		}
 		return ptr;
 	}
-	log_func_printf("Error: called with something other than a register or a dereferencing.\n");
-	return NULL;
 }
 
 patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t type) {
