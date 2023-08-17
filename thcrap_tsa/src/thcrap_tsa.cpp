@@ -86,6 +86,10 @@ static tsa_game_t game_id_from_string(const char *game)
 		return TH17;
 	} else if(!strcmp(game, "th18")) {
 		return TH18;
+	} else if(!strcmp(game, "th185")) {
+		return TH185;
+	} else if(!strcmp(game, "th19")) {
+		return TH19;
 	}
 	return TH_FUTURE;
 }

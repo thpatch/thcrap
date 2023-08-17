@@ -120,6 +120,7 @@ void msg_crypt_th09(uint8_t *data, size_t data_len)
 // Format information for a specific game
 typedef struct {
 	uint32_t entry_offset_mul;
+	uint32_t header_size_mul;
 	EncryptionFunc_t enc_func;
 	op_info_t opcodes[];
 } msg_format_t;
@@ -597,19 +598,19 @@ int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 
 	// Read .msg header
 	entry_count = *msg_in;
-	entry_offsets_in = msg_in + 1;
+	entry_offsets_in = msg_in + format->header_size_mul;
 
 	entry_offset_size = entry_count * format->entry_offset_mul;
 
-	state.cmd_in = (th06_msg_t*)(msg_in + 1 + entry_offset_size);
+	state.cmd_in = (th06_msg_t*)(msg_in + format->header_size_mul + entry_offset_size);
 
-	*msg_out = entry_count;
-	entry_offsets_out = msg_out + 1;
+	memcpy(msg_out, msg_in, format->header_size_mul * sizeof(*msg_in));
+	entry_offsets_out = msg_out + format->header_size_mul;
 
 	// Include whatever junk there might be in the header
 	memcpy(entry_offsets_out, entry_offsets_in, entry_offset_size);
 
-	state.cmd_out = (th06_msg_t*)(msg_out + 1 + entry_offset_size);
+	state.cmd_out = (th06_msg_t*)(msg_out + format->header_size_mul + entry_offset_size);
 
 	for(;;) {
 		const ptrdiff_t offset_in  = (uint8_t*)state.cmd_in - (uint8_t*)msg_in;
@@ -793,13 +794,13 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 /// Game formats
 /// ------------
 // In-game dialog
-const msg_format_t MSG_TH06 = { 1, nullptr, {
+const msg_format_t MSG_TH06 = { 1, 1, nullptr, {
 	{ 3, OP_HARD_LINE },
 	{ 8, OP_HARD_LINE, "h1" },
 	{ 0 }
 } };
 
-const msg_format_t MSG_TH08 = { 1, msg_crypt_th08, {
+const msg_format_t MSG_TH08 = { 1, 1, msg_crypt_th08, {
 	{  3, OP_HARD_LINE },
 	{  4, OP_AUTO_END },
 	{ 15, OP_AUTO_END },
@@ -809,14 +810,14 @@ const msg_format_t MSG_TH08 = { 1, msg_crypt_th08, {
 	{ 0 }
 } };
 
-const msg_format_t MSG_TH09 = { 2, msg_crypt_th09, {
+const msg_format_t MSG_TH09 = { 2, 1, msg_crypt_th09, {
 	{  4, OP_AUTO_END },
 	{ 15, OP_AUTO_END },
 	{ 16, OP_AUTO_LINE },
 	{ 0 }
 } };
 
-const msg_format_t MSG_TH10 = { 2, msg_crypt_th09, {
+const msg_format_t MSG_TH10 = { 2, 1, msg_crypt_th09, {
 	{  7, OP_AUTO_END },
 	{  8, OP_AUTO_END },
 	{ 10, OP_AUTO_END },
@@ -824,7 +825,7 @@ const msg_format_t MSG_TH10 = { 2, msg_crypt_th09, {
 	{ 0 }
 } };
 
-const msg_format_t MSG_TH11 = { 2, msg_crypt_th09, {
+const msg_format_t MSG_TH11 = { 2, 1, msg_crypt_th09, {
 	{  7, OP_AUTO_END },
 	{  8, OP_AUTO_END },
 	{  9, OP_AUTO_END },
@@ -834,7 +835,7 @@ const msg_format_t MSG_TH11 = { 2, msg_crypt_th09, {
 	{ 0 }
 } };
 
-const msg_format_t MSG_TH128 = { 2, msg_crypt_th09, {
+const msg_format_t MSG_TH128 = { 2, 1, msg_crypt_th09, {
 	{  7, OP_SIDE_LEFT },
 	{  8, OP_SIDE_RIGHT },
 
@@ -849,7 +850,19 @@ const msg_format_t MSG_TH128 = { 2, msg_crypt_th09, {
 	{ 0 }
 } };
 
-const msg_format_t MSG_TH14 = { 2, msg_crypt_th09, {
+const msg_format_t MSG_TH14 = { 2, 1, msg_crypt_th09, {
+	{ 7, OP_SIDE_LEFT },
+	{ 8, OP_SIDE_RIGHT },
+	{ 9, OP_SIDE_LEFT }, // unused
+	{ 11, OP_AUTO_END },
+	{ 17, OP_AUTO_LINE },
+	{ 25, OP_DELETE },
+	{ 28, OP_BUBBLE_POS },
+	{ 32, OP_BUBBLE_SHAPE },
+	{ 0 }
+} };
+
+const msg_format_t MSG_TH19 = { 2, 0x15, msg_crypt_th09, {
 	{ 7, OP_SIDE_LEFT },
 	{ 8, OP_SIDE_RIGHT },
 	{ 9, OP_SIDE_LEFT }, // unused
@@ -862,7 +875,7 @@ const msg_format_t MSG_TH14 = { 2, msg_crypt_th09, {
 } };
 
 // Endings (TH10 and later)
-const msg_format_t END_TH10 = { 2, msg_crypt_th09, {
+const msg_format_t END_TH10 = { 2, 1, msg_crypt_th09, {
 	{ 3, OP_AUTO_LINE },
 	{ 5, OP_AUTO_END },
 	{ 6, OP_AUTO_END },
@@ -872,7 +885,9 @@ const msg_format_t END_TH10 = { 2, msg_crypt_th09, {
 
 const msg_format_t* msg_format_for(tsa_game_t game)
 {
-	if(game >= TH14) {
+	if(game >= TH19) {
+		return &MSG_TH19;
+	} else if(game >= TH14) {
 		return &MSG_TH14;
 	} else if(game >= TH128) {
 		return &MSG_TH128;
