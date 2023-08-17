@@ -71,6 +71,10 @@ typedef enum {
 	TH165,
 	TH17,
 	TH18,
+	TH185,
+
+	// • msg: Adds a 0x50 bytes header
+	TH19,
 
 	// Any future game without relevant changes
 	TH_FUTURE,

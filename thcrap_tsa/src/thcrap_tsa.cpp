@@ -86,6 +86,10 @@ static tsa_game_t game_id_from_string(const char *game)
 		return TH17;
 	} else if(!strcmp(game, "th18")) {
 		return TH18;
+	} else if(!strcmp(game, "th185")) {
+		return TH185;
+	} else if(!strcmp(game, "th19")) {
+		return TH19;
 	}
 	return TH_FUTURE;
 }
@@ -137,7 +141,9 @@ int TH_STDCALL thcrap_plugin_init()
 	patchhook_register("world*.msg", patch_msg_dlg, NULL); // th185
 	patchhook_register("e*.msg", patch_msg_end, NULL); // th10+ endings
 
-	patchhook_register("*.anm", patch_anm, tlnote_remove_size_hook);
+	if (game_id != TH19) {
+		patchhook_register("*.anm", patch_anm, tlnote_remove_size_hook);
+	}
 	// Remove TL notes when retrying a stage
 	patchhook_register("*.std", nullptr, tlnote_remove_size_hook);
 	return 0;
