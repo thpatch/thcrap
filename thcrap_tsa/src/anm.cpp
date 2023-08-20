@@ -228,46 +228,43 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 /// ---------------------
 int sprite_patch_set(
 	sprite_patch_t &sp,
-	const anm_entry_t &entry,
+	const img_patch_t &patch,
 	const sprite_local_t &sprite,
 	const png_image_ex &image
 )
 {
-	if(!entry.thtx || !image.buf) {
-		return -1;
-	}
 	ZeroMemory(&sp, sizeof(sp));
 
 	// Note that we don't use the PNG_IMAGE_* macros here - the actual bit depth
 	// after format_from_bgra() may no longer be equal to the one in the PNG header.
-	sp.format = (format_t)entry.thtx->format;
+	sp.format = patch.format;
 	sp.bpp = format_Bpp(sp.format);
 	sp.blitmode = sprite.blitmode;
 
 	sp.dst_x = sprite.x;
 	sp.dst_y = sprite.y;
 
-	sp.rep_x = entry.x + sp.dst_x;
-	sp.rep_y = entry.y + sp.dst_y;
+	sp.rep_x = patch.x + sp.dst_x;
+	sp.rep_y = patch.y + sp.dst_y;
 
-	assert(sp.dst_x < entry.w || sp.dst_y < entry.h);
+	assert(sp.dst_x < patch.w || sp.dst_y < patch.h);
 	if(sp.rep_x >= image.img.width || sp.rep_y >= image.img.height) {
 		return 2;
 	}
 
 	sp.rep_stride = image.img.width * sp.bpp;
-	sp.dst_stride = entry.w * sp.bpp;
+	sp.dst_stride = patch.stride;
 
 	// See th11's face/enemy5/face05lo.png (the dummy 8x8 one from
 	// stgenm06.anm, not stgenm05.anm) for an example where the sprite
 	// width and height actually exceed the dimensions of the THTX.
-	assert(sprite.w <= (entry.w - sprite.x));
-	assert(sprite.h <= (entry.h - sprite.y));
+	assert(sprite.w <= (patch.w - sprite.x));
+	assert(sprite.h <= (patch.h - sprite.y));
 
 	sp.copy_w = MIN(sprite.w, (image.img.width - sp.rep_x));
 	sp.copy_h = MIN(sprite.h, (image.img.height - sp.rep_y));
 
-	sp.dst_buf = entry.thtx->data + (sp.dst_y * sp.dst_stride) + (sp.dst_x * sp.bpp);
+	sp.dst_buf = patch.img_raw + (sp.dst_y * sp.dst_stride) + (sp.dst_x * sp.bpp);
 	sp.rep_buf = image.buf + (sp.rep_y * sp.rep_stride) + (sp.rep_x * sp.bpp);
 	return 0;
 }
@@ -842,7 +839,7 @@ template <typename T> void script_t::init(T *first)
 	entry.hasdata = (header->hasdata != 0); \
 	headersize = sizeof(type);
 
-int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *patch)
+int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, uint8_t *in, uint8_t* in_endptr, uint8_t* out, json_t *patch)
 {
 	if(!in) {
 		return -1;
@@ -870,12 +867,20 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 
 	entry.hasdata |= (entry.name[0] != '@');
 	if(thtxoffset) {
-		entry.thtx = (thtx_header_t*)(thtxoffset + (size_t)in);
-		if(memcmp(entry.thtx->magic, "THTX", sizeof(entry.thtx->magic))) {
+		thtx_header_t* thtx = (thtx_header_t*)(in + thtxoffset);
+		if(memcmp(thtx->magic, "THTX", sizeof(thtx->magic))) {
 			return 1;
 		}
-		entry.w = entry.thtx->w;
-		entry.h = entry.thtx->h;
+		entry.w = thtx->w;
+		entry.h = thtx->h;
+		entry.thtxoffset = thtxoffset;
+		memcpy(out, in, thtxoffset + sizeof(thtx_header_t));
+	}
+	else if(entry.next) {
+		memcpy(out, in, entry.next - in);
+	}
+	else {
+		memcpy(out, in, in_endptr - in);
 	}
 
 	if(sprite_orig_num == 0) {
@@ -883,9 +888,9 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 		entry.sprites.emplace_back(entry_blitmode, 0, 0, entry.w, entry.h);
 	} else {
 		entry.sprites.reserve(sprite_orig_num);
-		auto *sprite_in = (uint32_t*)(in + headersize);
+		auto *sprite_in = (uint32_t*)(out + headersize);
 		for(size_t i = 0; i < sprite_orig_num; i++, sprite_in++) {
-			auto *s_orig = (sprite_t*)(in + *sprite_in);
+			auto *s_orig = (sprite_t*)(out + *sprite_in);
 
 			// This needs, in fact, be called for every sprite in order
 			// to not mess up its internal counter! Which is why we have
@@ -912,10 +917,10 @@ int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *p
 	}
 
 	auto script_offsets = (anm_offset_t*)(
-		in + headersize + sprite_orig_num * sizeof(uint32_t)
+		out + headersize + sprite_orig_num * sizeof(uint32_t)
 	);
 	for(size_t i = 0; i < script_num; i++) {
-		ent_m.script_mods(in, script_offsets[i], version).apply_orig();
+		ent_m.script_mods(out, script_offsets[i], version).apply_orig();
 	}
 	ent_m.apply_ourdata(entry);
 	return 0;
@@ -932,19 +937,15 @@ void anm_entry_clear(anm_entry_t &entry)
 	entry.hasdata = false;
 	entry.next = nullptr;
 	entry.name = nullptr;
-	entry.thtx = nullptr;
+	entry.thtxoffset = 0;
 	entry.sprites.clear();
 }
 /// -------------
 
-int patch_png_load_for_thtx(png_image_ex &image, const patch_t *patch_info, const char *fn, thtx_header_t *thtx)
+int patch_png_load_for_thtx(png_image_ex &image, const patch_t *patch_info, const char *fn, format_t format)
 {
 	void *file_buffer = NULL;
 	size_t file_size;
-
-	if(!thtx) {
-		return -1;
-	}
 
 	SAFE_FREE(image.buf);
 	png_image_free(&image.img);
@@ -957,7 +958,7 @@ int patch_png_load_for_thtx(png_image_ex &image, const patch_t *patch_info, cons
 	}
 
 	if(png_image_begin_read_from_memory(&image.img, file_buffer, file_size)) {
-		image.img.format = format_png_equiv((format_t)thtx->format);
+		image.img.format = format_png_equiv(format);
 		if(image.img.format != PNG_FORMAT_INVALID) {
 			size_t png_size = PNG_IMAGE_SIZE(image.img);
 			image.buf = (png_bytep)malloc(png_size);
@@ -970,22 +971,22 @@ int patch_png_load_for_thtx(png_image_ex &image, const patch_t *patch_info, cons
 	SAFE_FREE(file_buffer);
 	if(image.buf) {
 		unsigned int pixels = image.img.width * image.img.height;
-		format_from_bgra(image.buf, pixels, (format_t)thtx->format);
+		format_from_bgra(image.buf, pixels, format);
 	}
 	return !image.buf;
 }
 
 // Helper function for stack_game_png_apply.
-int patch_png_apply(anm_entry_t &entry, const patch_t *patch_info, const char *fn)
+int patch_png_apply(img_patch_t &patch, std::vector<sprite_local_t>& sprites, const patch_t *patch_info, const char *fn)
 {
 	int ret = -1;
 	if(patch_info && fn) {
 		png_image_ex png = {};
-		ret = patch_png_load_for_thtx(png, patch_info, fn, entry.thtx);
+		ret = patch_png_load_for_thtx(png, patch_info, fn, patch.format);
 		if(!ret && png.buf) {
-			for(const auto &sprite : entry.sprites) {
+			for(const auto &sprite : sprites) {
 				sprite_patch_t sp;
-				if(!sprite_patch_set(sp, entry, sprite, png)) {
+				if(!sprite_patch_set(sp, patch, sprite, png)) {
 					sprite_patch(sp);
 				}
 			}
@@ -996,32 +997,29 @@ int patch_png_apply(anm_entry_t &entry, const patch_t *patch_info, const char *f
 	return ret;
 }
 
-int stack_game_png_apply(anm_entry_t &entry)
+int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprites)
 {
 	int ret = -1;
-	if(entry.thtx && entry.name) {
-		stack_chain_iterate_t sci;
-		sci.fn = NULL;
-		ret = 0;
-		if(char** chain = resolve_chain_game(entry.name);
-			chain && chain[0])
-		{
-			log_printf("(PNG) Resolving %s... ", chain[0]);
-			while (stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
-				if (!patch_png_apply(entry, sci.patch_info, sci.fn)) {
-					ret = 1;
-				}
+	stack_chain_iterate_t sci;
+	sci.fn = NULL;
+	ret = 0;
+	if(char** chain = resolve_chain_game(patch.name);
+		chain && chain[0])
+	{
+		log_printf("(PNG) Resolving %s... ", chain[0]);
+		while (stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
+			if (!patch_png_apply(patch, sprites, sci.patch_info, sci.fn)) {
+				ret = 1;
 			}
-			log_print(ret ? "\n" : "not found\n");
-			chain_free(chain);
 		}
+		log_print(ret ? "\n" : "not found\n");
+		chain_free(chain);
 	}
 	return ret;
 }
 
 int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
-	(void)fn;
 	const char *dat_dump = runconfig_dat_dump_get();
 
 	// Some ANMs reference the same file name multiple times in a row
@@ -1032,13 +1030,18 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	png_image_ex png = {};
 	png_image_ex bounds = {};
 
+	auto* anm_entry_in = (uint8_t*)malloc(size_in);
+	memmove(anm_entry_in, file_inout, size_in);
+	memset(file_inout, 0, size_out);
+
 	auto *anm_entry_out = (uint8_t *)file_inout;
-	auto *endptr = (uint8_t *)(file_inout) + size_in;
+	auto *endptr = anm_entry_in + size_in;
 
 	log_debugf("---- ANM ----\n");
+	log_debugf("-- %s --", fn);
 
-	while(anm_entry_out && anm_entry_out < endptr) {
-		if(!anm_entry_init(hdr_m, entry, anm_entry_out, patch)); else {
+	while(anm_entry_in && anm_entry_in < endptr) {
+		if(!anm_entry_init(hdr_m, entry, anm_entry_in, endptr, anm_entry_out, patch)); else {
 			log_print("Corrupt ANM file or format definition, aborting ...\n");
 			break;
 		}
@@ -1054,17 +1057,45 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 			for(const auto &sprite : entry.sprites) {
 				bounds_draw_rect(bounds, entry.x, entry.y, sprite);
 			}
+
 			// Do the patching
-			stack_game_png_apply(entry);
+			thtx_header_t* thtx_in = (thtx_header_t*)(anm_entry_in + entry.thtxoffset);
+
+			uint8_t* orig_img = (uint8_t*)malloc(thtx_in->size);
+			memcpy(orig_img, thtx_in->data, thtx_in->size);
+
+			img_patch_t img_patch = {};
+			img_patch.name = entry.name;
+			img_patch.img_raw = orig_img;
+			img_patch.img_size = thtx_in->size;
+			img_patch.format = (format_t)thtx_in->format;
+			img_patch.w = entry.w;
+			img_patch.h = entry.h;
+			img_patch.x = entry.x;
+			img_patch.y = entry.y;
+			img_patch.stride = format_Bpp(img_patch.format) * img_patch.w;
+
+			stack_game_png_apply(img_patch, entry.sprites);
+
+			thtx_header_t* thtx_out = (thtx_header_t*)(anm_entry_out + entry.thtxoffset);
+			memcpy(thtx_out->data, img_patch.img_raw, thtx_out->size);
+
+			anm_entry_out += entry.thtxoffset + sizeof(thtx_header_t) + img_patch.img_size;
+
+			free(orig_img);
+		}
+		else if (entry.next) {
+			anm_entry_out += entry.next - anm_entry_in;
 		}
 		if(!entry.next) {
 			bounds_store(name_prev, bounds);
 		}
-		anm_entry_out = entry.next;
+		anm_entry_in = entry.next;
 		anm_entry_clear(entry);
 	}
 	png_image_clear(bounds);
 	png_image_clear(png);
+	free(anm_entry_in);
 
 	log_debugf("-------------\n");
 	return 1;

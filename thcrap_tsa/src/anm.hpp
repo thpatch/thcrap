@@ -68,7 +68,7 @@ struct anm_entry_t {
 	// Can be set to a custom name by an ANM header patch.
 	const char *name;
 
-	thtx_header_t *thtx;
+	size_t thtxoffset;
 
 	// Guaranteed to contain at least one sprite after initialization.
 	std::vector<sprite_local_t> sprites;
@@ -103,6 +103,17 @@ struct sprite_patch_t {
 	png_uint_32 copy_w;
 	png_uint_32 copy_h;
 };
+
+// Contains all the data needed patching an image
+struct img_patch_t {
+	uint8_t* img_raw;
+	size_t img_size;
+	format_t format;
+	uint32_t stride;
+	uint32_t w, h, x, y;
+	const char* name;
+};
+
 /// --------------
 
 /// Formats
