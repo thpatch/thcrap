@@ -11,10 +11,124 @@
   */
 
 #include <thcrap.h>
+#include <tlnote.hpp>
 #include <png.h>
 #include "png_ex.h"
 #include "thcrap_tsa.h"
 #include "anm.hpp"
+#include <GdiPlus.h>
+
+
+/// GDI+
+/// ----
+struct AnmGdiplus {
+	Gdiplus::Status initStatus;
+	Gdiplus::GdiplusStartupInput startupInput;
+	Gdiplus::GdiplusStartupOutput startupOutput;
+	ULONG_PTR token;
+
+	CLSID pngClsid;
+	CLSID jpegClsid;
+
+	bool havePngEncoder = false;
+	bool haveJpgEncoder = false;
+
+	void GetEncoderCLSIDs(void);
+	uint8_t* Decode(const uint8_t* data, size_t len, size_t* width, size_t* height);
+
+	AnmGdiplus() {
+		Gdiplus::GdiplusStartup(&this->token, &this->startupInput, &this->startupOutput);
+		this->GetEncoderCLSIDs();
+	}
+	~AnmGdiplus() {
+		if (this->initStatus == Gdiplus::Ok) {
+			Gdiplus::GdiplusShutdown(this->token);
+		}
+	}
+};
+
+void AnmGdiplus::GetEncoderCLSIDs(void) {
+	static const wchar_t formatPNG[] = L"image/png";
+	static const wchar_t formatJPEG[] = L"image/jpeg";
+
+	UINT  num = 0;          // number of image encoders
+	UINT  size = 0;         // size of the image encoder array in bytes
+
+	Gdiplus::GetImageEncodersSize(&num, &size);
+	if (size == 0)
+		return;
+
+	auto* pImageCodecInfo = (Gdiplus::ImageCodecInfo*)(malloc(size));
+	Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
+
+	for (UINT j = 0; j < num; ++j)
+	{
+		if (wcscmp(pImageCodecInfo[j].MimeType, formatPNG) == 0)
+		{
+			this->pngClsid = pImageCodecInfo[j].Clsid;
+			this->havePngEncoder = true;
+		}
+		else if (wcscmp(pImageCodecInfo[j].MimeType, formatJPEG) == 0) {
+			this->jpegClsid = pImageCodecInfo[j].Clsid;
+			this->haveJpgEncoder = true;
+		}
+	}
+
+	free(pImageCodecInfo);
+}
+
+uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size_t* height) {
+	uint8_t* out = 0;
+
+	IStream* stream = SHCreateMemStream((const BYTE*)data, len);
+	if (!stream) {
+		return out;
+	}
+	defer(stream->Release());
+
+	Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(stream);
+	DWORD err = GetLastError();
+	if (!bitmap) {
+		return out;
+	}
+	defer(delete bitmap);
+
+	int w = bitmap->GetWidth();
+	int h = bitmap->GetHeight();
+	Gdiplus::Rect r(0, 0, w, h);
+	Gdiplus::BitmapData bmdata;
+
+	if (bitmap->LockBits(&r, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bmdata)
+		!= Gdiplus::Ok) {
+		return out;
+	}
+	defer(bitmap->UnlockBits(&bmdata));
+
+	out = (uint8_t*)malloc(w * h * 4);
+
+	char* p = (char*)bmdata.Scan0;
+	char* q = (char*)out;
+	for (int y = 0; y < h; y++) {
+		memcpy(q, p, w * 4);
+		p += bmdata.Stride;
+		q += w * 4;
+	}
+	*width = w;
+	*height = h;
+
+	return out;
+}
+
+AnmGdiplus* anmGdiplus = nullptr;
+
+extern "C" void gdiplus_mod_init(void) {
+	anmGdiplus = new AnmGdiplus();
+}
+
+extern "C" void gdiplus_mod_exit(void) {
+	delete anmGdiplus;
+	anmGdiplus = nullptr;
+}
 
 /// Blitting modes
 /// --------------
@@ -1019,25 +1133,51 @@ int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprite
 }
 
 img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
-	uint8_t* orig_img = (uint8_t*)malloc(thtx->size);
-	memcpy(orig_img, thtx->data, thtx->size);
-
 	img_patch_t img_patch = {};
 	img_patch.name = entry.name;
-	img_patch.img_data = orig_img;
-	img_patch.img_size = thtx->size;
-	img_patch.format = (format_t)thtx->format;
-	img_patch.w = entry.w;
-	img_patch.h = entry.h;
 	img_patch.x = entry.x;
 	img_patch.y = entry.y;
-	img_patch.stride = format_Bpp(img_patch.format) * img_patch.w;
+
+	size_t w, h;
+	uint8_t* orig_img = anmGdiplus->Decode(thtx->data, thtx->size, &w, &h);
+
+	if (orig_img) {
+		img_patch.img_data = orig_img;
+		img_patch.img_size = w * h * 4;
+		img_patch.format = FORMAT_BGRA8888;
+		img_patch.w = w;
+		img_patch.h = h;
+		img_patch.stride = w * 4;
+	}
+	else {
+		orig_img = (uint8_t*)malloc(thtx->size);
+		memcpy(orig_img, thtx->data, thtx->size);
+
+		img_patch.img_data = orig_img;
+		img_patch.img_size = thtx->size;
+		img_patch.format = (format_t)thtx->format;
+		img_patch.w = entry.w;
+		img_patch.h = entry.h;
+		img_patch.stride = format_Bpp(img_patch.format) * img_patch.w;
+	}
+
+	assert(img_patch.w == entry.w && img_patch.w == thtx->w);
+	assert(img_patch.h == entry.h && img_patch.h == thtx->h);
 
 	return img_patch;
 }
 
 void img_encode(img_patch_t& patched) {
+	
+}
 
+uint32_t* anm_get_nextoffset_ptr(uint8_t* entry) {
+	if (game_id >= TH11) {
+		return &((anm_header11_t*)entry)->nextoffset;
+	}
+	else {
+		return &((anm_header06_t*)entry)->nextoffset;
+	}
 }
 
 int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
@@ -1089,9 +1229,15 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 				img_encode(img_patch);
 
 				thtx_header_t* thtx_out = (thtx_header_t*)(anm_entry_out + entry.thtxoffset);
+				thtx_out->size = img_patch.img_size;
+
 				memcpy(thtx_out->data, img_patch.img_data, img_patch.img_size);
 
-				anm_entry_out += entry.thtxoffset + sizeof(thtx_header_t) + img_patch.img_size;
+				uint32_t* nextoffset_ptr = anm_get_nextoffset_ptr(anm_entry_out);
+				size_t out_nextoffset = entry.thtxoffset + sizeof(thtx_header_t) + img_patch.img_size;
+				if (*nextoffset_ptr)
+					*nextoffset_ptr = out_nextoffset;
+				anm_entry_out += out_nextoffset;
 
 				free(img_patch.img_data);
 			}
