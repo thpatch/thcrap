@@ -19,6 +19,41 @@
 #include <GdiPlus.h>
 
 
+/// Image type identification
+/// -------------------------
+static inline bool
+jfif_identify(uint8_t* jfif, uint32_t size) {
+	return size > 11 &&
+		memcmp(jfif, "\xFF\xD8\xFF\xE0", 4) == 0 &&
+		memcmp(jfif + 6, "JFIF", 5) == 0;
+}
+
+static inline bool
+exif_identify(uint8_t* exif, uint32_t size) {
+	return size > 11 &&
+		memcmp(exif, "\xFF\xD8\xFF\xE1", 4) == 0 &&
+		memcmp(exif + 6, "Exif", 5) == 0;
+}
+
+struct png_IHDR_t {
+	uint8_t length[4];
+	uint8_t magic[4];
+	uint8_t width[4];
+	uint8_t height[4];
+	uint8_t color_type;
+	uint8_t compression;
+	uint8_t filter;
+	uint8_t interlace;
+};
+
+static inline bool
+png_identify(uint8_t* png, uint32_t size) {
+	return size > 8 + sizeof(png_IHDR_t) &&
+		memcmp(png, "\x89PNG\r\n\x1A\n", 8) == 0 &&
+		memcmp(png + 12, "IHDR", 4) == 0;
+}
+
+
 /// GDI+
 /// ----
 struct AnmGdiplus {
@@ -35,6 +70,7 @@ struct AnmGdiplus {
 
 	void GetEncoderCLSIDs(void);
 	uint8_t* Decode(const uint8_t* data, size_t len, size_t* width, size_t* height);
+	uint8_t* Encode(uint8_t* data, size_t width, size_t height, size_t stride, img_patch_t::encoding enc, size_t& out_size);
 
 	AnmGdiplus() {
 		Gdiplus::GdiplusStartup(&this->token, &this->startupInput, &this->startupOutput);
@@ -115,6 +151,55 @@ uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size
 	}
 	*width = w;
 	*height = h;
+
+	return out;
+}
+
+uint8_t* AnmGdiplus::Encode(uint8_t* data, size_t width, size_t height, size_t stride, img_patch_t::encoding enc, size_t& out_size) {
+	CLSID* encClsid = nullptr;
+
+	switch (enc) {
+	case img_patch_t::ENCODING_PNG:
+		encClsid = &this->pngClsid;
+		break;
+	case img_patch_t::ENCODING_JPEG:
+		encClsid = &this->jpegClsid;
+		break;
+	}
+
+	if (!encClsid) {
+		return nullptr;
+	}
+
+	Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(width, height, stride, PixelFormat32bppARGB, data);
+	if (!bitmap) {
+		return nullptr;
+	}
+	defer(delete bitmap);	
+
+	IStream* stream = SHCreateMemStream(nullptr, 0);
+	if (!stream) {
+		return nullptr;
+	}
+	defer(stream->Release());
+
+	auto res = bitmap->Save(stream, encClsid);
+	if (res != Gdiplus::Ok) {
+		return nullptr;
+	}
+	STATSTG stat;
+	stream->Stat(&stat, 0);
+
+	uint8_t* out = (uint8_t*)malloc(stat.cbSize.LowPart);
+
+	LARGE_INTEGER seek = { };
+	ULARGE_INTEGER newPos = { };
+	stream->Seek(seek, 0, &newPos);
+
+	ULONG byteRet;
+	stream->Read(out, stat.cbSize.LowPart, &byteRet);
+
+	out_size = byteRet;
 
 	return out;
 }
@@ -1142,6 +1227,13 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 	uint8_t* orig_img = anmGdiplus->Decode(thtx->data, thtx->size, &w, &h);
 
 	if (orig_img) {
+		if (png_identify(thtx->data, thtx->size)) {
+			img_patch.enc = img_patch_t::ENCODING_PNG;
+		} else if (jfif_identify(thtx->data, thtx->size)
+					|| exif_identify(thtx->data, thtx->size)) {
+			img_patch.enc = img_patch_t::ENCODING_JPEG;
+		}
+
 		img_patch.img_data = orig_img;
 		img_patch.img_size = w * h * 4;
 		img_patch.format = FORMAT_BGRA8888;
@@ -1168,7 +1260,14 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 }
 
 void img_encode(img_patch_t& patched) {
-	
+	size_t out_size;
+	uint8_t* encoded = anmGdiplus->Encode(patched.img_data, patched.w, patched.h, patched.stride, patched.enc, out_size);
+	if (!encoded) {
+		return;
+	}
+	free(patched.img_data);
+	patched.img_data = encoded;
+	patched.img_size = out_size;
 }
 
 uint32_t* anm_get_nextoffset_ptr(uint8_t* entry) {
@@ -1261,4 +1360,57 @@ next_no_thtx:
 
 	log_debugf("-------------\n");
 	return 1;
+}
+
+typedef uint8_t* __fastcall file_load_t(const char* fn, size_t& out_size, bool from_archive);
+
+size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
+	tlnote_remove();
+
+	if (game_id < TH19) {
+		return 0;
+	}
+
+	uintptr_t file_load = (CurrentImageBase + 0xC82A0);
+
+	// Hack
+	file_rep_t* fr = fr_tls_get();
+	fr->disable = true;
+
+	size_t out_size;
+	size_t* pout_size = &out_size;
+	anm_header11_t* entry;
+
+	// WARNING: INLINE ASSEMBLY
+	// TH19's file_load function uses a calling convention that's basically __fastcall...
+	// except that the caller has to do the stack cleanup
+	__asm {
+		push 0
+		mov ecx, fn
+		mov edx, pout_size
+		mov eax, file_load
+		call eax
+		mov entry, eax
+		add esp, 4
+	}
+
+	fr->disable = false;
+
+	size_t d_size = 0;
+
+	for (;;) {
+		if (entry->thtxoffset) {
+			thtx_header_t* thtx = (thtx_header_t*)((uintptr_t)entry + entry->thtxoffset);
+			d_size +=  (thtx->w * thtx->h * 4) - thtx->size;
+		}
+
+		if (entry->nextoffset) {
+			entry = (anm_header11_t*)((uintptr_t)entry + entry->nextoffset);
+		}
+		else {
+			break;
+		}
+	}
+
+	return d_size;
 }

@@ -140,10 +140,8 @@ int TH_STDCALL thcrap_plugin_init()
 	patchhook_register("turtrial.msg", patch_msg_dlg, NULL); // th185
 	patchhook_register("world*.msg", patch_msg_dlg, NULL); // th185
 	patchhook_register("e*.msg", patch_msg_end, NULL); // th10+ endings
+	patchhook_register("*.anm", patch_anm, anm_get_size);
 
-	if (game_id != TH19) {
-		patchhook_register("*.anm", patch_anm, tlnote_remove_size_hook);
-	}
 	// Remove TL notes when retrying a stage
 	patchhook_register("*.std", nullptr, tlnote_remove_size_hook);
 	return 0;

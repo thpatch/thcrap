@@ -30,6 +30,9 @@ typedef struct {
 	size_t pre_json_size;
 
 	void *game_buffer;
+
+	// Hack
+	bool disable;
 } file_rep_t;
 
 // Initialize a file_rep_t object, and loads the replacement file and patch for file_name.
