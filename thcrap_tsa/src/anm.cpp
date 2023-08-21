@@ -264,7 +264,7 @@ int sprite_patch_set(
 	sp.copy_w = MIN(sprite.w, (image.img.width - sp.rep_x));
 	sp.copy_h = MIN(sprite.h, (image.img.height - sp.rep_y));
 
-	sp.dst_buf = patch.img_raw + (sp.dst_y * sp.dst_stride) + (sp.dst_x * sp.bpp);
+	sp.dst_buf = patch.img_data + (sp.dst_y * sp.dst_stride) + (sp.dst_x * sp.bpp);
 	sp.rep_buf = image.buf + (sp.rep_y * sp.rep_stride) + (sp.rep_x * sp.bpp);
 	return 0;
 }
@@ -1018,6 +1018,28 @@ int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprite
 	return ret;
 }
 
+img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
+	uint8_t* orig_img = (uint8_t*)malloc(thtx->size);
+	memcpy(orig_img, thtx->data, thtx->size);
+
+	img_patch_t img_patch = {};
+	img_patch.name = entry.name;
+	img_patch.img_data = orig_img;
+	img_patch.img_size = thtx->size;
+	img_patch.format = (format_t)thtx->format;
+	img_patch.w = entry.w;
+	img_patch.h = entry.h;
+	img_patch.x = entry.x;
+	img_patch.y = entry.y;
+	img_patch.stride = format_Bpp(img_patch.format) * img_patch.w;
+
+	return img_patch;
+}
+
+void img_encode(img_patch_t& patched) {
+
+}
+
 int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	const char *dat_dump = runconfig_dat_dump_get();
@@ -1058,33 +1080,27 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 				bounds_draw_rect(bounds, entry.x, entry.y, sprite);
 			}
 
-			// Do the patching
-			thtx_header_t* thtx_in = (thtx_header_t*)(anm_entry_in + entry.thtxoffset);
+			if (entry.thtxoffset) {
+				// Do the patching
+				thtx_header_t* thtx_in = (thtx_header_t*)(anm_entry_in + entry.thtxoffset);
 
-			uint8_t* orig_img = (uint8_t*)malloc(thtx_in->size);
-			memcpy(orig_img, thtx_in->data, thtx_in->size);
+				img_patch_t img_patch = img_get_patch(entry, thtx_in);
+				stack_game_png_apply(img_patch, entry.sprites);
+				img_encode(img_patch);
 
-			img_patch_t img_patch = {};
-			img_patch.name = entry.name;
-			img_patch.img_raw = orig_img;
-			img_patch.img_size = thtx_in->size;
-			img_patch.format = (format_t)thtx_in->format;
-			img_patch.w = entry.w;
-			img_patch.h = entry.h;
-			img_patch.x = entry.x;
-			img_patch.y = entry.y;
-			img_patch.stride = format_Bpp(img_patch.format) * img_patch.w;
+				thtx_header_t* thtx_out = (thtx_header_t*)(anm_entry_out + entry.thtxoffset);
+				memcpy(thtx_out->data, img_patch.img_data, img_patch.img_size);
 
-			stack_game_png_apply(img_patch, entry.sprites);
+				anm_entry_out += entry.thtxoffset + sizeof(thtx_header_t) + img_patch.img_size;
 
-			thtx_header_t* thtx_out = (thtx_header_t*)(anm_entry_out + entry.thtxoffset);
-			memcpy(thtx_out->data, img_patch.img_raw, thtx_out->size);
-
-			anm_entry_out += entry.thtxoffset + sizeof(thtx_header_t) + img_patch.img_size;
-
-			free(orig_img);
+				free(img_patch.img_data);
+			}
+			else {
+				goto next_no_thtx;
+			}
 		}
 		else if (entry.next) {
+next_no_thtx:
 			anm_entry_out += entry.next - anm_entry_in;
 		}
 		if(!entry.next) {

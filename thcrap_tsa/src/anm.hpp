@@ -106,7 +106,7 @@ struct sprite_patch_t {
 
 // Contains all the data needed patching an image
 struct img_patch_t {
-	uint8_t* img_raw;
+	uint8_t* img_data;
 	size_t img_size;
 	format_t format;
 	uint32_t stride;
