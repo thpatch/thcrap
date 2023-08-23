@@ -1379,6 +1379,7 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 
 	size_t out_size;
 	size_t* pout_size = &out_size;
+	void* anm_file;
 	anm_header11_t* entry;
 
 	// WARNING: INLINE ASSEMBLY
@@ -1390,11 +1391,12 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 		mov edx, pout_size
 		mov eax, file_load
 		call eax
-		mov entry, eax
+		mov anm_file, eax
 		add esp, 4
 	}
 
 	fr->disable = false;
+	entry = (anm_header11_t*)anm_file;
 
 	size_t d_size = 0;
 
@@ -1411,6 +1413,9 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 			break;
 		}
 	}
+
+	uintptr_t _game_free = CurrentImageBase + 0x6590e;
+	((void(__cdecl*)(void*))_game_free)(anm_file);
 
 	return d_size;
 }
