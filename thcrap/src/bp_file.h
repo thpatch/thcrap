@@ -31,7 +31,8 @@ typedef struct {
 
 	void *game_buffer;
 
-	// Hack
+	// A hack to be able to temporairly disable file patching on the current thread
+	// if something that runs as part of the file patcher needs to load a file
 	bool disable;
 } file_rep_t;
 
