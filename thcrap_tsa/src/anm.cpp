@@ -1339,60 +1339,62 @@ next_no_thtx:
 	return 1;
 }
 
-typedef uint8_t* __fastcall file_load_t(const char* fn, size_t& out_size, bool from_archive);
+template<typename T>
+inline size_t anm_get_imgsize_diff(void* anm_file, size_t anm_size) {
+	auto* entry = (T*)anm_file;
+	size_t ret = 0;
+	while ((size_t)entry - (size_t)anm_file < anm_size) {
+		if (entry->thtxoffset) {
+			thtx_header_t* thtx = (thtx_header_t*)((uintptr_t)entry + entry->thtxoffset);
+			ret += (thtx->w * thtx->h * 4) - thtx->size;
+		}
+
+		if (entry->nextoffset) {
+			entry = (T*)((uintptr_t)entry + entry->nextoffset);
+		}
+		else {
+			break;
+		}
+	}
+	return ret;
+}
 
 size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 	tlnote_remove();
 
-	if (game_id < TH19) {
+	typedef void* __stdcall file_load_t(const char* filename, size_t* out_size);
+	typedef void __cdecl ingame_free_t(void* mem);
+
+	const json_t* runcfg = runconfig_json_get();
+	const char* file_load_func_name = json_object_get_string(runcfg, "file_load_func");
+	const char* free_func_name = json_object_get_string(runcfg, "free_func");
+
+	if (!file_load_func_name || !free_func_name) {
 		return 0;
 	}
 
-	uintptr_t file_load = (CurrentImageBase + 0xC82A0);
+	auto* file_load = (file_load_t*)func_get(file_load_func_name);
+	auto* _ingame_free = (ingame_free_t*)func_get(free_func_name);
+
+	if (!file_load || !_ingame_free) {
+		return 0;
+	}
 
 	// Hack
 	file_rep_t* fr = fr_tls_get();
 	fr->disable = true;
 
 	size_t out_size;
-	size_t* pout_size = &out_size;
 	void* anm_file;
 	anm_header11_t* entry;
 
-	// WARNING: INLINE ASSEMBLY
-	// TH19's file_load function uses a calling convention that's basically __fastcall...
-	// except that the caller has to do the stack cleanup
-	__asm {
-		push 0
-		mov ecx, fn
-		mov edx, pout_size
-		mov eax, file_load
-		call eax
-		mov anm_file, eax
-		add esp, 4
-	}
+	anm_file = file_load(fn, &out_size);
 
 	fr->disable = false;
-	entry = (anm_header11_t*)anm_file;
+	
+	size_t d_size = anm_get_imgsize_diff<anm_header11_t>(anm_file, out_size);
 
-	size_t d_size = 0;
-
-	for (;;) {
-		if (entry->thtxoffset) {
-			thtx_header_t* thtx = (thtx_header_t*)((uintptr_t)entry + entry->thtxoffset);
-			d_size +=  (thtx->w * thtx->h * 4) - thtx->size;
-		}
-
-		if (entry->nextoffset) {
-			entry = (anm_header11_t*)((uintptr_t)entry + entry->nextoffset);
-		}
-		else {
-			break;
-		}
-	}
-
-	uintptr_t _game_free = CurrentImageBase + 0x6590e;
-	((void(__cdecl*)(void*))_game_free)(anm_file);
+	_ingame_free(anm_file);
 
 	return d_size;
 }
