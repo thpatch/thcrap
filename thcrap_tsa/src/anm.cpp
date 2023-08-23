@@ -63,18 +63,16 @@ struct AnmGdiplus {
 	ULONG_PTR token;
 
 	CLSID pngClsid;
-	CLSID jpegClsid;
 
 	bool havePngEncoder = false;
-	bool haveJpgEncoder = false;
 
-	void GetEncoderCLSIDs(void);
+	void GetPNGEncoderCLSID(void);
 	uint8_t* Decode(const uint8_t* data, size_t len, size_t* width, size_t* height);
-	uint8_t* Encode(uint8_t* data, size_t width, size_t height, size_t stride, img_patch_t::encoding enc, size_t& out_size);
+	uint8_t* Encode(uint8_t* data, size_t width, size_t height, size_t stride, size_t& out_size);
 
 	AnmGdiplus() {
 		Gdiplus::GdiplusStartup(&this->token, &this->startupInput, &this->startupOutput);
-		this->GetEncoderCLSIDs();
+		this->GetPNGEncoderCLSID();
 	}
 	~AnmGdiplus() {
 		if (this->initStatus == Gdiplus::Ok) {
@@ -83,9 +81,8 @@ struct AnmGdiplus {
 	}
 };
 
-void AnmGdiplus::GetEncoderCLSIDs(void) {
+void AnmGdiplus::GetPNGEncoderCLSID(void) {
 	static const wchar_t formatPNG[] = L"image/png";
-	static const wchar_t formatJPEG[] = L"image/jpeg";
 
 	UINT  num = 0;          // number of image encoders
 	UINT  size = 0;         // size of the image encoder array in bytes
@@ -103,10 +100,6 @@ void AnmGdiplus::GetEncoderCLSIDs(void) {
 		{
 			this->pngClsid = pImageCodecInfo[j].Clsid;
 			this->havePngEncoder = true;
-		}
-		else if (wcscmp(pImageCodecInfo[j].MimeType, formatJPEG) == 0) {
-			this->jpegClsid = pImageCodecInfo[j].Clsid;
-			this->haveJpgEncoder = true;
 		}
 	}
 
@@ -155,17 +148,8 @@ uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size
 	return out;
 }
 
-uint8_t* AnmGdiplus::Encode(uint8_t* data, size_t width, size_t height, size_t stride, img_patch_t::encoding enc, size_t& out_size) {
-	CLSID* encClsid = nullptr;
-
-	switch (enc) {
-	case img_patch_t::ENCODING_PNG:
-		encClsid = &this->pngClsid;
-		break;
-	case img_patch_t::ENCODING_JPEG:
-		encClsid = &this->jpegClsid;
-		break;
-	}
+uint8_t* AnmGdiplus::Encode(uint8_t* data, size_t width, size_t height, size_t stride, size_t& out_size) {
+	CLSID* encClsid = &this->pngClsid;
 
 	if (!encClsid) {
 		return nullptr;
@@ -1227,13 +1211,6 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 	uint8_t* orig_img = anmGdiplus->Decode(thtx->data, thtx->size, &w, &h);
 
 	if (orig_img) {
-		if (png_identify(thtx->data, thtx->size)) {
-			img_patch.enc = img_patch_t::ENCODING_PNG;
-		} else if (jfif_identify(thtx->data, thtx->size)
-					|| exif_identify(thtx->data, thtx->size)) {
-			img_patch.enc = img_patch_t::ENCODING_JPEG;
-		}
-
 		img_patch.img_data = orig_img;
 		img_patch.img_size = w * h * 4;
 		img_patch.format = FORMAT_BGRA8888;
@@ -1261,7 +1238,7 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 
 void img_encode(img_patch_t& patched) {
 	size_t out_size;
-	uint8_t* encoded = anmGdiplus->Encode(patched.img_data, patched.w, patched.h, patched.stride, patched.enc, out_size);
+	uint8_t* encoded = anmGdiplus->Encode(patched.img_data, patched.w, patched.h, patched.stride, out_size);
 	if (!encoded) {
 		return;
 	}
