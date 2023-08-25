@@ -68,7 +68,7 @@ struct AnmGdiplus {
 
 	void GetPNGEncoderCLSID(void);
 	uint8_t* Decode(const uint8_t* data, size_t len, size_t* width, size_t* height);
-	uint8_t* Encode(uint8_t* data, size_t width, size_t height, size_t stride, size_t& out_size);
+	std::pair<uint8_t*, size_t> Encode(uint8_t* data, size_t width, size_t height, size_t stride);
 
 	AnmGdiplus() {
 		Gdiplus::GdiplusStartup(&this->token, &this->startupInput, &this->startupOutput);
@@ -147,28 +147,28 @@ uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size
 	return out;
 }
 
-uint8_t* AnmGdiplus::Encode(uint8_t* data, size_t width, size_t height, size_t stride, size_t& out_size) {
+std::pair<uint8_t*, size_t> AnmGdiplus::Encode(uint8_t* data, size_t width, size_t height, size_t stride) {
 	CLSID* encClsid = &this->pngClsid;
 
 	if (!encClsid) {
-		return nullptr;
+		return { nullptr, 0 };
 	}
 
 	Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(width, height, stride, PixelFormat32bppARGB, data);
 	if (!bitmap) {
-		return nullptr;
+		return { nullptr, 0 };
 	}
 	defer(delete bitmap);	
 
 	IStream* stream = SHCreateMemStream(nullptr, 0);
 	if (!stream) {
-		return nullptr;
+		return { nullptr, 0 };
 	}
 	defer(stream->Release());
 
 	auto res = bitmap->Save(stream, encClsid);
 	if (res != Gdiplus::Ok) {
-		return nullptr;
+		return { nullptr, 0 };
 	}
 	STATSTG stat;
 	stream->Stat(&stat, 0);
@@ -182,9 +182,7 @@ uint8_t* AnmGdiplus::Encode(uint8_t* data, size_t width, size_t height, size_t s
 	ULONG byteRet;
 	stream->Read(out, stat.cbSize.LowPart, &byteRet);
 
-	out_size = byteRet;
-
-	return out;
+	return { out, byteRet };
 }
 
 AnmGdiplus* anmGdiplus = nullptr;
@@ -1236,8 +1234,7 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 }
 
 void img_encode(img_patch_t& patched) {
-	size_t out_size;
-	uint8_t* encoded = anmGdiplus->Encode(patched.img_data, patched.w, patched.h, patched.stride, out_size);
+	auto [encoded, out_size] = anmGdiplus->Encode(patched.img_data, patched.w, patched.h, patched.stride);
 	if (!encoded) {
 		return;
 	}
