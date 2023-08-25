@@ -116,7 +116,6 @@ uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size
 	defer(stream->Release());
 
 	Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(stream);
-	DWORD err = GetLastError();
 	if (!bitmap) {
 		return out;
 	}
@@ -1361,6 +1360,8 @@ inline size_t anm_get_imgsize_diff(void* anm_file, size_t anm_size) {
 
 size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 	tlnote_remove();
+
+	(void)patch_size;
 
 	typedef void* __stdcall file_load_t(const char* filename, size_t* out_size);
 	typedef void __cdecl ingame_free_t(void* mem);
