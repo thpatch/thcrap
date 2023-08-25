@@ -18,42 +18,6 @@
 #include "anm.hpp"
 #include <GdiPlus.h>
 
-
-/// Image type identification
-/// -------------------------
-static inline bool
-jfif_identify(uint8_t* jfif, uint32_t size) {
-	return size > 11 &&
-		memcmp(jfif, "\xFF\xD8\xFF\xE0", 4) == 0 &&
-		memcmp(jfif + 6, "JFIF", 5) == 0;
-}
-
-static inline bool
-exif_identify(uint8_t* exif, uint32_t size) {
-	return size > 11 &&
-		memcmp(exif, "\xFF\xD8\xFF\xE1", 4) == 0 &&
-		memcmp(exif + 6, "Exif", 5) == 0;
-}
-
-struct png_IHDR_t {
-	uint8_t length[4];
-	uint8_t magic[4];
-	uint8_t width[4];
-	uint8_t height[4];
-	uint8_t color_type;
-	uint8_t compression;
-	uint8_t filter;
-	uint8_t interlace;
-};
-
-static inline bool
-png_identify(uint8_t* png, uint32_t size) {
-	return size > 8 + sizeof(png_IHDR_t) &&
-		memcmp(png, "\x89PNG\r\n\x1A\n", 8) == 0 &&
-		memcmp(png + 12, "IHDR", 4) == 0;
-}
-
-
 /// GDI+
 /// ----
 struct AnmGdiplus {
@@ -1392,12 +1356,10 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 	anm_header11_t* entry;
 
 	anm_file = file_load(fn, &out_size);
-
 	fr->disable = false;
 	
 	size_t d_size = anm_get_imgsize_diff<anm_header11_t>(anm_file, out_size);
 
 	_ingame_free(anm_file);
-
 	return d_size;
 }
