@@ -108,6 +108,7 @@ struct sprite_patch_t {
 struct img_patch_t {
 	uint8_t* img_data;
 	size_t img_size;
+	bool was_encoded;
 	format_t format;
 	uint32_t stride;
 	uint32_t w, h, x, y;

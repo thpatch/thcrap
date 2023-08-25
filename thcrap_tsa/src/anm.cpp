@@ -1208,6 +1208,7 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 	uint8_t* orig_img = anmGdiplus->Decode(thtx->data, thtx->size, &w, &h);
 
 	if (orig_img) {
+		img_patch.was_encoded = true;
 		img_patch.img_data = orig_img;
 		img_patch.img_size = w * h * 4;
 		img_patch.format = FORMAT_BGRA8888;
@@ -1219,6 +1220,7 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 		orig_img = (uint8_t*)malloc(thtx->size);
 		memcpy(orig_img, thtx->data, thtx->size);
 
+		img_patch.was_encoded = false;
 		img_patch.img_data = orig_img;
 		img_patch.img_size = thtx->size;
 		img_patch.format = (format_t)thtx->format;
@@ -1234,6 +1236,9 @@ img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
 }
 
 void img_encode(img_patch_t& patched) {
+	if (!patched.was_encoded) {
+		return;
+	}
 	auto [encoded, out_size] = anmGdiplus->Encode(patched.img_data, patched.w, patched.h, patched.stride);
 	if (!encoded) {
 		return;
