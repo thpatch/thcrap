@@ -287,6 +287,7 @@ int patch_msg_dlg(void *file_inout, size_t size_out, size_t size_in, const char 
 int patch_msg_end(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
 int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch);
+size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size);
 /// ---------------
 
 /// Win32 wrappers

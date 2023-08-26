@@ -24,6 +24,7 @@ int file_rep_init(file_rep_t *fr, const char *file_name)
 	if (fr->hooks) {
 		fr->patch = patchhooks_load_diff(fr->hooks, fr->name, &fr->patch_size);
 	}
+	fr->disable = false;
 	return 1;
 }
 
@@ -46,6 +47,7 @@ int file_rep_clear(file_rep_t *fr)
 	fr->patch_size = 0;
 	fr->pre_json_size = 0;
 	SAFE_FREE(fr->name);
+	fr->disable = false;
 	return 0;
 }
 
@@ -59,6 +61,9 @@ THREAD_LOCAL(file_rep_t, fr_tls, NULL, file_rep_clear);
 int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
+	if unexpected(fr->disable) {
+		return 1;
+	}
 
 	// Parameters
 	// ----------
@@ -73,6 +78,10 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
+	if unexpected(fr->disable) {
+		return 1;
+	}
+
 
 	// Mandatory parameters
 	// --------------------
@@ -168,6 +177,10 @@ int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t si
 int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
+	if unexpected(fr->disable) {
+		return 1;
+	}
+
 	const char *dat_dump;
 
 	// Other breakpoints

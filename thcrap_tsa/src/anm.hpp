@@ -68,7 +68,7 @@ struct anm_entry_t {
 	// Can be set to a custom name by an ANM header patch.
 	const char *name;
 
-	thtx_header_t *thtx;
+	size_t thtxoffset;
 
 	// Guaranteed to contain at least one sprite after initialization.
 	std::vector<sprite_local_t> sprites;
@@ -103,6 +103,18 @@ struct sprite_patch_t {
 	png_uint_32 copy_w;
 	png_uint_32 copy_h;
 };
+
+// Contains all the data needed patching an image
+struct img_patch_t {
+	uint8_t* img_data;
+	size_t img_size;
+	bool was_encoded;
+	format_t format;
+	uint32_t stride;
+	uint32_t w, h, x, y;
+	const char* name;
+};
+
 /// --------------
 
 /// Formats
@@ -304,7 +316,7 @@ struct header_mods_t {
 /// -------------
 // Fills [entry] with the data of an ANM entry starting at [in], automatically
 // detecting the correct source format, and applying the given ANM header [patch].
-int anm_entry_init(header_mods_t &hdr_m, anm_entry_t &entry, BYTE *in, json_t *patch);
+int anm_entry_init(header_mods_t& hdr_m, anm_entry_t& entry, uint8_t* in, uint8_t* in_endptr, uint8_t* out, json_t* patch);
 
 void anm_entry_clear(anm_entry_t &entry);
 /// -------------
@@ -313,10 +325,10 @@ void anm_entry_clear(anm_entry_t &entry);
 /// ---------------------
 // Calculates the coordinates.
 int sprite_patch_set(
-	sprite_patch_t &sp,
-	const anm_entry_t &entry,
-	const sprite_local_t &sprite,
-	const png_image_exp image
+	sprite_patch_t& sp,
+	const img_patch_t& patch,
+	const sprite_local_t& sprite,
+	const png_image_ex& image
 );
 
 // Analyzes the alpha channel contents in a rectangle of size [w]*[h] in the
@@ -341,7 +353,7 @@ int sprite_patch(const sprite_patch_t &sp);
 // Walks through the patch stack and patches every game-local PNG file called
 // [entry->name] onto the THTX texture [entry->thtx] on sprite level, using
 // the coordinates in [entry->sprites].
-int stack_game_png_apply(anm_entry_t *entry);
+int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprites);
 /// ---------------------
 
 /// Sprite boundary dumping

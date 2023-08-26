@@ -13,6 +13,11 @@ EXPORTS
 	BP_th06_file_load
 	BP_th06_file_loaded
 
+	; GDI+
+	; ----
+	gdiplus_mod_init
+	gdiplus_mod_exit
+
 	; Generic text
 	; ------------
 	BP_gentext

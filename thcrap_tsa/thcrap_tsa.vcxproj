@@ -27,7 +27,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tsa.def</ModuleDefinitionFile>
-      <AdditionalDependencies>comctl32.lib;shlwapi.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>comctl32.lib;gdiplus.lib;shlwapi.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_d.lib;libpng16_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap.lib;libpng16.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
