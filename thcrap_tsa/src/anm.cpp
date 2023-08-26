@@ -1212,7 +1212,7 @@ void img_encode(img_patch_t& patched) {
 	patched.img_size = out_size;
 }
 
-uint32_t* anm_get_nextoffset_ptr(uint8_t* entry) {
+inline uint32_t* anm_get_nextoffset_ptr(uint8_t* entry) {
 	if (game_id >= TH11) {
 		return &((anm_header11_t*)entry)->nextoffset;
 	}
@@ -1240,8 +1240,11 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	auto *anm_entry_out = (uint8_t *)file_inout;
 	auto *endptr = anm_entry_in + size_in;
 
-	log_debugf("---- ANM ----\n");
-	log_debugf("-- %s --", fn);
+	log_debugf(
+		"---- ANM ----\n"
+		"-- %s --\n"
+		, fn
+	);
 
 	while(anm_entry_in && anm_entry_in < endptr) {
 		if(!anm_entry_init(hdr_m, entry, anm_entry_in, endptr, anm_entry_out, patch)); else {
