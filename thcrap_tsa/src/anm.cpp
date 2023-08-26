@@ -1233,8 +1233,9 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	png_image_ex png = {};
 	png_image_ex bounds = {};
 
-	auto* anm_entry_in = (uint8_t*)malloc(size_in);
-	memmove(anm_entry_in, file_inout, size_in);
+	auto* file_in = (uint8_t*)malloc(size_in);
+	auto* anm_entry_in = file_in;
+	memcpy(anm_entry_in, file_inout, size_in);
 	memset(file_inout, 0, size_out);
 
 	auto *anm_entry_out = (uint8_t *)file_inout;
@@ -1301,7 +1302,7 @@ next_no_thtx:
 	}
 	png_image_clear(bounds);
 	png_image_clear(png);
-	free(anm_entry_in);
+	free(file_in);
 
 	log_debugf("-------------\n");
 	return 1;
@@ -1343,8 +1344,8 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 		return 0;
 	}
 
-	auto* file_load = (file_load_t*)func_get(file_load_func_name);
-	auto* _ingame_free = (ingame_free_t*)func_get(free_func_name);
+	auto* file_load = (file_load_t*)json_object_get_eval_addr_default(runcfg, "file_load_func", NULL, JEVAL_DEFAULT);
+	auto* _ingame_free = (ingame_free_t*)json_object_get_eval_addr_default(runcfg, "free_func", NULL, JEVAL_DEFAULT);
 
 	if (!file_load || !_ingame_free) {
 		return 0;
