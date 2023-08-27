@@ -118,6 +118,7 @@
     <ClInclude Include="src\zip.h" />
     <GAS Include="src\bp_entry.asm" />
     <GAS Include="src\inject_func.asm" />
+	<GAS Include="src\str_to_addr.asm" />
     <None Include="thcrap.def" />
     <None Condition="'$(Platform)'!='x64'" Include="thcrap_x86.def" />
     <None Condition="'$(Platform)'=='x64'" Include="thcrap_x64.def" />

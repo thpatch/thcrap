@@ -96,6 +96,7 @@ EXPORTS
 	identify
 	identify_by_hash
 	identify_by_size
+	identify_free
 
 	thcrap_detour
 	thcrap_init
@@ -203,7 +204,7 @@ EXPORTS
 	log_init
 	log_exit
 
-	log_async
+	log_async DATA
 
 	; Memory patching
 	; ---------------
@@ -394,7 +395,7 @@ EXPORTS
 	str_num_digits
 	str_num_base
 	str_hexdate_format
-	str_address_value
+	@str_to_addr_impl@8
 
 	; thcrap_update wrapper functions
 	; -------------------------------

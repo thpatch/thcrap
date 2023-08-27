@@ -175,8 +175,7 @@ enum {
 	PVT_STRING8 = PVT_STRING,
 	PVT_STRING16 = 13,
 	PVT_STRING32 = 14,
-	PVT_CODE = 15,
-	PVT_ADDRRET = 16
+	PVT_CODE = 15
 };
 typedef uint8_t patch_value_type_t;
 
@@ -225,11 +224,6 @@ typedef union {
 		size_t count;
 	} code;
 
-	// Note: This isn't *really* supposed to be a part
-	// of this union, but consume_value was struggling
-	// to optimize away a bunch of variables.
-	str_address_ret_t addr_ret;
-
 } patch_val_t;
 
 // Parses [expr], a string containing a [relative] or <absolute> patch value and writes it [out].
@@ -258,3 +252,36 @@ const char* TH_FASTCALL eval_expr(const char* expr, char end, size_t* out, x86_r
 void patch_val_set_op(const char* op_str, patch_val_t* Val);
 
 patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t Val2);
+
+/**
+  * Returns the numeric value of a stringified address at the machine's word
+  * size. The following string prefixes are supported:
+  *
+  *	- "0x": Hexadecimal, as expected.
+  *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
+  *	        If hMod is NULL, the main module of the current process is used.
+  * - "0b": Binary value
+  * - "Rb": Binary version of "Rx".
+  * - "0": Decimal, since accidental octal bugs are evil.
+  * - "R": Decimal version of "Rx".
+  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+	extern uint64_t TH_FASTCALL str_to_addr_impl(uintptr_t base_addr, const char* str);
+#ifdef __cplusplus
+}
+
+extern "C++" {
+template <typename T>
+static TH_FORCEINLINE size_t str_to_addr(const char* str, const char*& end_str, T base_addr) {
+	uint64_t temp = str_to_addr_impl(base_addr ? (uintptr_t)base_addr : CurrentImageBase, str);
+	end_str = (const char*)(temp >> 32);
+	return (size_t)temp;
+}
+template <typename T>
+static TH_FORCEINLINE size_t str_to_addr(const char* str, T base_addr) {
+	return (size_t)str_to_addr_impl(base_addr ? (uintptr_t)base_addr : CurrentImageBase, str);
+}
+}
+#endif

@@ -601,8 +601,7 @@ enum : uint8_t {
 	XnorAssign = BitwiseXnor + '=',
 	OrAssign = BitwiseOr + '=',
 	NorAssign = BitwiseNor + '=',
-	Comma = ',',
-	Gomma = ';'
+	Comma = ','
 };
 #pragma warning(pop)
 
@@ -619,74 +618,70 @@ struct OpData_t {
 #define ERROR_ASSOCIATIVITY LeftAssociative
 		Precedence[BadBrackets] = ERROR_PRECEDENCE;
 		Associativity[BadBrackets] = ERROR_ASSOCIATIVITY;
-#define POWER_PRECEDENCE 19
+#define POWER_PRECEDENCE 18
 #define POWER_ASSOCIATIVITY LeftAssociative
 		Precedence[Power] = POWER_PRECEDENCE;
 		Associativity[Power] = POWER_ASSOCIATIVITY;
-#define MULTIPLY_PRECEDENCE 17
+#define MULTIPLY_PRECEDENCE 16
 #define MULTIPLY_ASSOCIATIVITY LeftAssociative
 		Precedence[Multiply] = Precedence[Divide] = Precedence[Modulo] = MULTIPLY_PRECEDENCE;
 		Associativity[Multiply] = Associativity[Divide] = Associativity[Modulo] = MULTIPLY_ASSOCIATIVITY;
-#define ADD_PRECEDENCE 16
+#define ADD_PRECEDENCE 15
 #define ADD_ASSOCIATIVITY LeftAssociative
 		Precedence[Add] = Precedence[Subtract] = ADD_PRECEDENCE;
 		Associativity[Add] = Associativity[Subtract] = ADD_ASSOCIATIVITY;
-#define SHIFT_PRECEDENCE 15
+#define SHIFT_PRECEDENCE 14
 #define SHIFT_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalLeftShift] = Precedence[LogicalRightShift] = Precedence[ArithmeticLeftShift] = Precedence[ArithmeticRightShift] = Precedence[CircularLeftShift] = Precedence[CircularRightShift] = SHIFT_PRECEDENCE;
 		Associativity[LogicalLeftShift] = Associativity[LogicalRightShift] = Associativity[ArithmeticLeftShift] = Associativity[ArithmeticRightShift] = Associativity[CircularLeftShift] = Associativity[CircularRightShift] = SHIFT_ASSOCIATIVITY;
-#define COMPARE_PRECEDENCE 14
+#define COMPARE_PRECEDENCE 13
 #define COMPARE_ASSOCIATIVITY LeftAssociative
 		Precedence[Less] = Precedence[LessEqual] = Precedence[Greater] = Precedence[GreaterEqual] = COMPARE_PRECEDENCE;
 		Associativity[Less] = Associativity[LessEqual] = Associativity[Greater] = Associativity[GreaterEqual] = COMPARE_ASSOCIATIVITY;
-#define EQUALITY_PRECEDENCE 13
+#define EQUALITY_PRECEDENCE 12
 #define EQUALITY_ASSOCIATIVITY LeftAssociative
 		Precedence[Equal] = Precedence[NotEqual] = EQUALITY_PRECEDENCE;
 		Associativity[Equal] = Associativity[NotEqual] = EQUALITY_ASSOCIATIVITY;
-#define THREEWAY_PRECEDENCE 12
+#define THREEWAY_PRECEDENCE 11
 #define THREEWAY_ASSOCIATIVITY LeftAssociative
 		Precedence[ThreeWay] = THREEWAY_PRECEDENCE;
 		Associativity[ThreeWay] = THREEWAY_ASSOCIATIVITY;
-#define BITAND_PRECEDENCE 11
+#define BITAND_PRECEDENCE 10
 #define BITAND_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseAnd] = Precedence[BitwiseNand] = BITAND_PRECEDENCE;
 		Associativity[BitwiseAnd] = Associativity[BitwiseNand] = BITAND_ASSOCIATIVITY;
-#define BITXOR_PRECEDENCE 10
+#define BITXOR_PRECEDENCE 9
 #define BITXOR_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseXor] = Precedence[BitwiseXnor] = BITXOR_PRECEDENCE;
 		Associativity[BitwiseXor] = Associativity[BitwiseXnor] = BITXOR_ASSOCIATIVITY;
-#define BITOR_PRECEDENCE 9
+#define BITOR_PRECEDENCE 8
 #define BITOR_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseOr] = Precedence[BitwiseNor] = BITOR_PRECEDENCE;
 		Associativity[BitwiseOr] = Associativity[BitwiseNor] = BITOR_ASSOCIATIVITY;
-#define AND_PRECEDENCE 8
+#define AND_PRECEDENCE 7
 #define AND_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalAnd] = Precedence[LogicalNand] = Precedence[LogicalAndSC] = Precedence[LogicalNandSC] = AND_PRECEDENCE;
 		Associativity[LogicalAnd] = Associativity[LogicalNand] = Associativity[LogicalAndSC] = Associativity[LogicalNandSC] = AND_ASSOCIATIVITY;
-#define XOR_PRECEDENCE 7
+#define XOR_PRECEDENCE 6
 #define XOR_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalXor] = Precedence[LogicalXnor] = XOR_PRECEDENCE;
 		Associativity[LogicalXor] = Associativity[LogicalXnor] = XOR_ASSOCIATIVITY;
-#define OR_PRECEDENCE 6
+#define OR_PRECEDENCE 5
 #define OR_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalOr] = Precedence[LogicalNor] = Precedence[LogicalOrSC] = Precedence[LogicalNorSC] = OR_PRECEDENCE;
 		Associativity[LogicalOr] = Associativity[LogicalNor] = Associativity[LogicalOrSC] = Associativity[LogicalNorSC] = OR_ASSOCIATIVITY;
-#define TERNARY_PRECEDENCE 5
+#define TERNARY_PRECEDENCE 4
 #define TERNARY_ASSOCIATIVITY RightAssociative
 		Precedence[TernaryConditional] = TERNARY_PRECEDENCE;
 		Associativity[TernaryConditional] = TERNARY_ASSOCIATIVITY;
-#define ASSIGN_PRECEDENCE 4
+#define ASSIGN_PRECEDENCE 3
 #define ASSIGN_ASSOCIATIVITY RightAssociative
 		Precedence[Assign] = Precedence[AddAssign] = Precedence[SubtractAssign] = Precedence[MultiplyAssign] = Precedence[DivideAssign] = Precedence[ModuloAssign] = Precedence[LogicalLeftShiftAssign] = Precedence[LogicalRightShiftAssign] = Precedence[ArithmeticLeftShiftAssign] = Precedence[ArithmeticRightShiftAssign] = Precedence[CircularLeftShiftAssign] = Precedence[CircularRightShiftAssign] = Precedence[AndAssign] = Precedence[OrAssign] = Precedence[XorAssign] = Precedence[NandAssign] = Precedence[XnorAssign] = Precedence[NorAssign] = ASSIGN_PRECEDENCE;
 		Associativity[Assign] = Associativity[AddAssign] = Associativity[SubtractAssign] = Associativity[MultiplyAssign] = Associativity[DivideAssign] = Associativity[ModuloAssign] = Associativity[LogicalLeftShiftAssign] = Associativity[LogicalRightShiftAssign] = Associativity[ArithmeticLeftShiftAssign] = Associativity[ArithmeticRightShiftAssign] = Associativity[CircularLeftShiftAssign] = Associativity[CircularRightShiftAssign] = Associativity[AndAssign] = Associativity[OrAssign] = Associativity[XorAssign] = Associativity[NandAssign] = Associativity[XnorAssign] = Associativity[NorAssign] = ASSIGN_ASSOCIATIVITY;
-#define COMMA_PRECEDENCE 3
+#define COMMA_PRECEDENCE 2
 #define COMMA_ASSOCIATIVITY LeftAssociative
 		Precedence[Comma] = COMMA_PRECEDENCE;
 		Associativity[Comma] = COMMA_ASSOCIATIVITY;
-#define GOMMA_PRECEDENCE 2
-#define GOMMA_ASSOCIATIVITY LeftAssociative
-		Precedence[Gomma] = GOMMA_PRECEDENCE;
-		Associativity[Gomma] = GOMMA_ASSOCIATIVITY;
 #define STARTOP_PRECEDENCE 1
 #define STARTOP_ASSOCIATIVITY LeftAssociative
 		Precedence[StartNoOp] = STARTOP_PRECEDENCE;
@@ -838,7 +833,7 @@ static inline const char* find_next_op_impl(const char* const expr, op_t* const 
 			case '?':
 				c += c;
 				[[fallthrough]];
-			case ',': case ';': //case ':':
+			case ',': //case ':':
 				goto CRetPlus1;
 			case ':':
 				*out = c;
@@ -922,7 +917,6 @@ static TH_NOINLINE const char *const PrintOp(const op_t op) {
 		case XnorAssign: return "~^=";
 		case NorAssign: return "~|=";
 		case Comma: return ",";
-		case Gomma: return ";";
 		case NullOp: return "NullOp";
 		case EndGroupOp: return "EndGroupNoOp";
 		case StandaloneTernaryEnd: return "TernaryNoOp";
@@ -1090,7 +1084,6 @@ static size_t ApplyOperator(const size_t value, const size_t arg, const op_t op)
 			AssignmentWarningMessage();
 			[[fallthrough]];
 		case Comma:
-		case Gomma:
 			//why tho
 		case StartNoOp:
 		case NullOp:
@@ -1755,12 +1748,8 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 				{
 				RawValue:
-					size_t current = str_address_value(expr, data_refs->current_module, &cur_value.addr_ret);
-					expr_next = cur_value.addr_ret.endptr;
-					if (expr == expr_next || (cur_value.addr_ret.error & STR_ADDRESS_ERROR_OVERFLOW)) {
-						/*if (expr[0] == end) {
-							return expr;
-						}*/
+					size_t current = str_to_addr(expr, expr_next, data_refs->current_module);
+					if (expr == expr_next) {
 						goto InvalidCharacterError;
 					}
 					ExpressionLogging(
@@ -2378,7 +2367,7 @@ patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t V
 		case Assign:
 			log_print("Options cannot use assignment!\n");
 			break;
-		case Comma: case Gomma:
+		case Comma:
 			log_print("but why tho\n");
 			break;
 	}

@@ -595,35 +595,6 @@ inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view s
 }
 #endif
 
-#define STR_ADDRESS_ERROR_NONE 0
-#define STR_ADDRESS_ERROR_OVERFLOW 0x1
-#define STR_ADDRESS_ERROR_GARBAGE 0x2
-
-typedef struct {
-	// Points to the first character after the number
-	const char *endptr;
-
-	// Bitfield of the flags #defined above
-	uint8_t error;
-} str_address_ret_t;
-
-/**
-  * Returns the numeric value of a stringified address at the machine's word
-  * size. The following string prefixes are supported:
-  *
-  *	- "0x": Hexadecimal, as expected.
-  *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
-  *	        If hMod is NULL, the main module of the current process is used.
-  * - "0b": Binary value
-  * - "Rb": Binary version of "Rx".
-  * - "0": Decimal, since accidental octal bugs are evil.
-  * - "R": Decimal version of "Rx".
-  *
-  * [ret] can be a nullptr if a potential parse error and/or a pointer to the
-  * end of the parsed address are not needed.
-  */
-size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
-
 // Returns whether [c] is a valid hexadecimal character
 bool is_valid_hex(char c);
 

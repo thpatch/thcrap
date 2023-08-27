@@ -28,7 +28,7 @@ size_t json_hex_value(json_t *val)
 {
 	const char *str = json_string_value(val);
 	if(str) {
-		return str_address_value(str, NULL, NULL);
+		return str_to_addr(str, NULL);
 	}
 	return (size_t)json_integer_value(val);
 }
