@@ -647,7 +647,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 
 		if(!strcmp(key_sep + 1, "time")) {
 			auto time = json_integer_value(val_j);
-			if(!json_is_integer(val_j) || (time < INT16_MIN) | (time > INT16_MAX)) {
+			if(!json_is_integer(val_j) || (time < INT16_MIN) || (time > INT16_MAX)) {
 				FAIL(
 					": {\"changes\": {\"%s\"}", "Time must be a signed 16-bit integer, between %d and %d.",
 					key, INT16_MIN, INT16_MAX
@@ -1380,7 +1380,6 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 
 	size_t out_size;
 	void* anm_file;
-	anm_header11_t* entry;
 
 	anm_file = file_load(fn, &out_size);
 	fr->disable = false;
