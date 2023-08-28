@@ -61,12 +61,6 @@ EXPORTS
 	BP_th185_spell_name
 	spells_mod_init
 
-	; Dialog
-	; ------
-	patch_msg
-	patch_msg_dlg
-	patch_msg_end
-
 	; Mission
 	; -------
 	BP_mission
