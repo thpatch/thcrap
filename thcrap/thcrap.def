@@ -395,6 +395,8 @@ EXPORTS
 	str_num_base
 	str_hexdate_format
 	str_address_value
+	_asprintf
+	_vasprintf
 
 	; thcrap_update wrapper functions
 	; -------------------------------
