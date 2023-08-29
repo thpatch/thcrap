@@ -22,8 +22,10 @@
 
 #ifdef THCRAP_EXPORTS
 # define THCRAP_API TH_EXPORT
+# define THCRAP_INTERNAL_API TH_EXPORT
 #else
 # define THCRAP_API TH_IMPORT
+# define THCRAP_INTERNAL_API TH_DEPRECATED_REASON("This function is not available for use outside of the main thcrap dll")
 #endif
 
 #ifdef __cplusplus
@@ -54,6 +56,7 @@ extern "C" {
 #include "stack.h"
 #include "binhack.h"
 #include "breakpoint.h"
+#include "memalloc_low.h"
 #include "mempatch.h"
 #include "pe.h"
 #include "plugin.h"

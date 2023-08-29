@@ -18,6 +18,7 @@ struct stage_t
 	HackpointMemoryPage binhack_page = { NULL, 0 };
 	HackpointMemoryPage codecave_pages[5] = { { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 }, { NULL, 0 } };
 	HackpointMemoryPage breakpoint_pages[2] = { { NULL, 0 }, { NULL, 0 } };
+	HackpointMemoryPage constpool_page = { NULL, 0 };
 };
 
 struct runconfig_t
@@ -639,8 +640,10 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 		module = stage.module;
 	}
 
+	constpool_reset();
 	failed += codecaves_apply(stage.codecaves.data(), stage.codecaves.size(), module, stage.codecave_pages);
 	failed += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), module, &stage.binhack_page);
+	constpool_apply(&stage.constpool_page);
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
 		const size_t breakpoint_count = stage.breakpoints.size();
 		if (stage_num == 0 && run_cfg.stages.size() > 1) {

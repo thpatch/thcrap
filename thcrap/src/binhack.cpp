@@ -10,6 +10,7 @@
 #include "thcrap.h"
 #include <math.h>
 #include <locale.h>
+#include <algorithm>
 
 /*
  * Grumble, grumble, C is garbage and will only do string→float conversion
@@ -159,6 +160,305 @@ static TH_NOINLINE const char* consume_float_value(const char *const expr, patch
 	}
 }
 
+struct constpool_value_t {
+	uintptr_t addr;
+	HMODULE source_module;
+	size_t render_index;
+
+	inline constexpr constpool_value_t(uintptr_t addr, HMODULE source_module) : addr(addr), source_module(source_module), render_index(0) {}
+};
+
+struct constpool_key_t {
+	uint8_t alignment;
+	patch_value_type_t type;
+	size_t str_index;
+
+	inline constexpr constpool_key_t(uint8_t alignment, patch_value_type_t type, size_t str_index) : alignment(alignment), type(type), str_index(str_index) {}
+
+	inline bool operator<(const constpool_key_t& rhs) const {
+		return this->alignment > rhs.alignment;
+	}
+};
+
+static std::vector<std::string_view> constpool_strs;
+static std::multimap<constpool_key_t, constpool_value_t> constpool_prerenders;
+
+void constpool_reset() {
+	constpool_strs.clear();
+	constpool_prerenders.clear();
+}
+
+void add_constpool(const char* data, size_t data_length, patch_value_type_t type, uint8_t alignment, uintptr_t addr, HMODULE source_module) {
+	std::string_view data_view = std::string_view(data, data_length);
+	size_t str_index = constpool_strs.size();
+	for (const auto& constpool_str : constpool_strs) {
+		if (constpool_str == data_view) {
+			str_index = &constpool_str - constpool_strs.data();
+			goto has_str;
+		}
+	}
+	constpool_strs.emplace_back(data_view);
+has_str:
+	constpool_prerenders.emplace(std::piecewise_construct,
+								 std::forward_as_tuple(alignment, type, str_index),
+								 std::forward_as_tuple(addr, source_module)
+	);
+}
+
+struct constpool_t : patch_val_t {
+
+	inline bool operator==(const constpool_t& rhs) {
+		if (!this->is_padding && this->alignment >= rhs.alignment) {
+			patch_value_type_t rhs_type = rhs.type != PVT_FLOAT ? rhs.type : PVT_DWORD;
+			if (this->type >= rhs_type) {
+				switch (rhs_type) {
+					default:
+						TH_UNREACHABLE;
+					case PVT_LONGDOUBLE:
+						return !memcmp(&this->ld, &rhs.ld, sizeof(LongDouble80));
+					case PVT_QWORD: case PVT_SQWORD: case PVT_DOUBLE:
+						return this->q == rhs.q;
+					case PVT_DWORD: case PVT_SDWORD: case PVT_FLOAT:
+						return this->i == rhs.i;
+					case PVT_WORD: case PVT_SWORD:
+						return this->w == rhs.w;
+					case PVT_BYTE: case PVT_SBYTE:
+						return this->b == rhs.b;
+				}
+			}
+		}
+		return false;
+	}
+};
+
+static constexpr size_t patch_val_sizes[] = { 0, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 16 };
+
+inline void constpool_apply_inner(constpool_t& out, const char* expr, char end_char, patch_value_type_t type, uintptr_t rel_source, HMODULE hMod) {
+	switch (type) {
+		default:
+			eval_expr(expr, end_char, &out.z, NULL, rel_source, hMod);
+			break;
+		case PVT_FLOAT:
+		case PVT_DOUBLE:
+		case PVT_LONGDOUBLE:
+			consume_float_value(expr, &out);
+			// Literally the only time when x87
+			// is probably still faster: converting to/from arbitrary widths
+			// Shame the compiler throws a fit if you try using it.
+			switch (out.type) {
+				default:
+					memset(&out.ld, 0, sizeof(LongDouble80));
+					break;
+				case PVT_FLOAT:
+					switch (type) {
+						case PVT_DOUBLE:
+							out.d = (double)out.f;
+							break;
+						case PVT_LONGDOUBLE:
+							out.ld = out.f;
+							break;
+					}
+					break;
+				case PVT_DOUBLE:
+					switch (type) {
+						case PVT_FLOAT:
+							out.f = (float)out.d;
+							break;
+						case PVT_LONGDOUBLE:
+							out.ld = out.d;
+							break;
+					}
+					break;
+				case PVT_LONGDOUBLE:
+					switch (type) {
+						case PVT_FLOAT:
+							out.f = out.ld;
+							break;
+						case PVT_DOUBLE:
+							out.f = out.ld;
+							break;
+					}
+			}
+			out.type = type;
+			break;
+	}
+}
+
+void constpool_apply(HackpointMemoryPage* page_array) {
+
+	if unexpected(constpool_prerenders.empty()) {
+		return;
+	}
+
+	std::vector<constpool_t> rendered_value_vec;
+	std::vector<constpool_t> value_vec;
+	size_t constpool_memory_size = 0;
+	for (auto& [key, value] : constpool_prerenders) {
+		value_vec.clear();
+		const std::string_view& exprs = constpool_strs[key.str_index];
+
+		constpool_t pool_value = {};
+		pool_value.type = key.type;
+		pool_value.alignment = key.alignment;
+		//pool_value.is_padding = false;
+		
+		// Calculate the value of each element...
+		//
+		// Is there no "for each delimitted chunk of string"
+		// function anywhere in the C++ library? Weird.
+		size_t element_pos = 0;
+		for (
+			size_t end_element;
+			(end_element = exprs.find(';', element_pos)) != std::string_view::npos;
+			element_pos = end_element + 1
+		) {
+			// Repeat the previous element if it's just a consecutive ;
+			if (element_pos != end_element) {
+				constpool_apply_inner(pool_value, exprs.data() + element_pos, ';', key.type, value.addr, value.source_module);
+			}
+			value_vec.emplace_back(pool_value);
+		}
+		if (exprs.data()[element_pos] != '}') {
+			constpool_apply_inner(pool_value, exprs.data() + element_pos, '}', key.type, value.addr, value.source_module);
+		}
+		value_vec.emplace_back(pool_value);
+
+		size_t per_element_size = patch_val_sizes[key.type];
+		size_t element_count = value_vec.size();
+		size_t filled_value_size = per_element_size * element_count;
+		size_t aligned_value_size = AlignUpToMultipleOf2(filled_value_size, key.alignment);
+		value_vec[0].alignment = key.alignment;
+
+		// Add padding elements if necessary...
+		if (filled_value_size != aligned_value_size) {
+			size_t padded_value_size = filled_value_size;
+			pool_value.is_padding = true;
+			do {
+				value_vec.emplace_back(pool_value);
+				padded_value_size += per_element_size;
+			} while (padded_value_size <= aligned_value_size);
+		}
+
+		// Calculate alignments of individual elements
+		// 
+		// Tries to use the largest value possible for the initially
+		// specified alignment, which improves the chances of
+		// finding matches later
+		size_t element_offset = 0;
+		for (size_t i = 1; i < element_count; ++i) {
+			element_offset += per_element_size;
+			switch (key.alignment) {
+				default:
+					TH_UNREACHABLE;
+				case 64:
+					if (!(element_offset & 63)) {
+						value_vec[i].alignment = 64;
+						break;
+					}
+				case 32:
+					if (!(element_offset & 31)) {
+						value_vec[i].alignment = 32;
+						break;
+					}
+				case 16:
+					if (!(element_offset & 15)) {
+						value_vec[i].alignment = 16;
+						break;
+					}
+				case 8:
+					if (!(element_offset & 7)) {
+						value_vec[i].alignment = 8;
+						break;
+					}
+				case 4:
+					if (!(element_offset & 3)) {
+						value_vec[i].alignment = 4;
+						break;
+					}
+				case 2:
+					if (!(element_offset & 1)) {
+						value_vec[i].alignment = 2;
+						break;
+					}
+				case 1:
+					value_vec[i].alignment = 1;
+					break;
+			}
+		}
+
+		// Check if the element array is already present in the rendered values...
+		if (auto matching_elements = std::search(rendered_value_vec.begin(), rendered_value_vec.end(), value_vec.begin(), value_vec.end());
+			matching_elements == rendered_value_vec.end()
+		) {
+			// Check if any of the padding elements can be reused...
+			if (auto matching_padding = std::search(rendered_value_vec.begin(), rendered_value_vec.end(), value_vec.begin(), value_vec.end(),
+													[](const constpool_t& lhs, const constpool_t& rhs) {
+														return lhs.is_padding && lhs.alignment >= rhs.alignment;
+													});
+				matching_padding != rendered_value_vec.end()
+			) {
+				value.render_index = &*matching_padding - rendered_value_vec.data();
+				// Copy new values into the previous padding
+				for (const auto& value_copy : value_vec) {
+					uint8_t old_alignment = matching_padding->alignment;
+					*matching_padding = value_copy;
+					matching_padding->alignment = old_alignment;
+					++matching_padding;
+				}
+			} else {
+				value.render_index = rendered_value_vec.size();
+				// Render the new values since none of the padding matched...
+				for (const auto& value_insert : value_vec) {
+					rendered_value_vec.emplace_back(value_insert);
+				}
+				// These are brand new values, so expand the allocation
+				constpool_memory_size += aligned_value_size;
+			}
+		} else {
+			// Found match, just use that index
+			value.render_index = &*matching_elements - rendered_value_vec.data();
+		}
+	}
+	page_array[0].size = constpool_memory_size;
+	if (constpool_memory_size) {
+		uint8_t* const constpool = page_array[0].address = (uint8_t*)VirtualAllocLow(0, constpool_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+		log_printf(
+			"-------------------------\n"
+			"Generating constpool... (at 0x%p)\n"
+			"-------------------------\n",
+			constpool
+		);
+
+		uint8_t *__ptr32 __sptr constpool_write = (uint8_t * __ptr32 __sptr)constpool;
+		for (const auto& [_, value] : constpool_prerenders) {
+			const constpool_t& render_value = rendered_value_vec[value.render_index];
+			switch (render_value.type) {
+				default:
+					TH_UNREACHABLE;
+				case PVT_LONGDOUBLE:
+					memcpy(constpool_write, &render_value.ld, sizeof(LongDouble80));
+					break;
+				case PVT_QWORD: case PVT_SQWORD: case PVT_DOUBLE:
+					*(uint64_t*)constpool_write = render_value.q;
+					break;
+				case PVT_DWORD: case PVT_SDWORD: case PVT_FLOAT:
+					*(uint32_t*)constpool_write = render_value.i;
+					break;
+				case PVT_WORD: case PVT_SWORD:
+					*(uint16_t*)constpool_write = render_value.w;
+					break;
+				case PVT_BYTE: case PVT_SBYTE:
+					*(uint8_t*)constpool_write = render_value.b;
+					break;
+			}
+			log_printf("fixup at 0x%p (0x%.8X)...\n", value.addr, (uint32_t)constpool_write);
+			PatchRegion((void*)value.addr, NULL, &constpool_write, sizeof(uint32_t));
+			constpool_write += patch_val_sizes[render_value.type];
+		}
+	}
+}
+
 // TODO: Check if anyone uses single quotes already in code strings
 //// Char
 //else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
@@ -191,6 +491,12 @@ static TH_NOINLINE const char* consume_float_value(const char *const expr, patch
 static TH_FORCEINLINE const char* check_for_code_string_cast(const char* expr, patch_val_t *const val)
 {
 	switch (const uint8_t c = expr[0] | 0x20) {
+		case 'p':
+			if (expr[1] == ':') {
+				val->type = PVT_POINTER;
+				return expr + 4;
+			}
+			break;
 		case 'i': case 'u': case 'f':
 			if (expr[1] && expr[2]) {
 				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
@@ -232,23 +538,52 @@ static TH_FORCEINLINE const char* check_for_code_string_cast(const char* expr, p
 						}
 				}
 			}
-		default:
-			//log_printf("WARNING: no code string expression size specified, assuming default...\n");
-			val->type = PVT_DEFAULT;
-			return expr;
+			break;
 	}
+	//log_printf("WARNING: no code string expression size specified, assuming default...\n");
+	val->type = PVT_DEFAULT;
+	return expr;
+}
+
+static inline const char* check_for_code_string_alignment(const char* expr, uint8_t& align_out) {
+	if (uint8_t c = expr[0]) {
+		switch (TextInt(c, expr[1]) | TextInt(0x20, 0)) {
+			case TextInt('z', '.'): align_out = 64; break;
+			case TextInt('y', '.'): align_out = 32; break;
+			case TextInt('x', '.'): align_out = 16; break;
+#ifdef TH_X64
+			case TextInt('p', '.'):
+#endif
+			case TextInt('q', '.'): align_out = 8; break;
+#ifndef TH_X64
+			case TextInt('p', '.'):
+#endif
+			case TextInt('d', '.'): align_out = 4; break;
+			case TextInt('w', '.'): align_out = 2; break;
+			case TextInt('b', '.'): align_out = 1; break;
+			default:
+#ifdef TH_X64
+				align_out = 8;
+#else
+				align_out = 4;
+#endif
+				return expr;
+		}
+		return expr + 2;
+	}
+	return NULL;
 }
 
 static inline const char* parse_brackets(const char* str, char c) {
 	--str;
 	int32_t paren_count = 0;
 	int32_t square_count = 0;
-	int32_t curly_count = 0;
+	//int32_t curly_count = 0;
 	do {
 		paren_count += (c == '(') - (c == ')');
 		square_count += (c == '[') - (c == ']');
-		curly_count += (c == '{') - (c == '}');
-		if (const int32_t temp = (paren_count | square_count | curly_count);
+		//curly_count += (c == '{') - (c == '}');
+		if (const int32_t temp = (paren_count | square_count /*| curly_count*/);
 			temp == 0) {
 			return str;
 		}
@@ -285,7 +620,23 @@ size_t code_string_calc_size(const char* code_str) {
 					++code_str;
 				}
 				continue;
-			case '(': case '{': case '[':
+			case '{': // Absolute address of constant value
+				while (1) {
+					switch (cur_char = *++code_str) {
+						default:
+							continue;
+						case '}':
+							val.type = PVT_DWORD; // Always a 32 bit address, even on x64 (bottom 2GB)
+							++code_str;
+							break;
+						case '\0':
+							code_str = NULL;
+							break;
+					}
+					break;
+				}
+				break;
+			case '(': case '[':
 				++code_str;
 				if (cur_char == '[') { // Relative patch value
 					val.type = PVT_DWORD; // x64 uses 32 bit relative offsets as well
@@ -415,51 +766,39 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 					++code_str;
 				}
 				continue;
-			case '(': case '{': // Expression
+			case '(': // Expression
 				code_str = check_for_code_string_cast(++code_str, &val);
-				if (cur_char == '(') { // Raw value
-					code_str = eval_expr(code_str, ')', &val.z, NULL, target_addr, hMod);
-					if unexpected(!code_str) {
-						break; // Error
-					}
-					switch (val.type) {
-						case PVT_FLOAT:
-							val.f = (float)val.z;
-							break;
-						case PVT_DOUBLE:
-							val.d = (double)val.z;
-							break;
-						case PVT_LONGDOUBLE:
-							val.ld = /*(LongDouble80)*/val.z;
-							break;
-					}
-					break;
+				code_str = eval_expr(code_str, ')', &val.z, NULL, target_addr, hMod);
+				if unexpected(!code_str) {
+					break; // Error
 				}
-				else { // Dereference
-					code_str = eval_expr(code_str, '}', &val.z, NULL, target_addr, hMod);
-					if unexpected(!code_str) {
-						break; // Error
-					}
-					switch (val.type) {
-						case PVT_BYTE:		val.b = *(uint8_t*)val.z; break;
-						case PVT_SBYTE:		val.sb = *(int8_t*)val.z; break;
-						case PVT_WORD:		val.w = *(uint16_t*)val.z; break;
-						case PVT_SWORD:		val.sw = *(int16_t*)val.z; break;
-						case PVT_DWORD:		val.i = *(uint32_t*)val.z; break;
-						case PVT_SDWORD:	val.si = *(int32_t*)val.z; break;
-						case PVT_QWORD:		val.q = *(uint64_t*)val.z; break;
-						case PVT_SQWORD:	val.sq = *(int64_t*)val.z; break;
-						case PVT_FLOAT:		val.f = *(float*)val.z; break;
-						case PVT_DOUBLE:	val.d = *(double*)val.z; break;
-						case PVT_LONGDOUBLE:val.ld = *(LongDouble80*)val.z; break;
-
-						// This switch is only used when the type is set via
-						// a cast operation, which doesn't include any of
-						// the other patch value types.
-						default: TH_UNREACHABLE;
-					}
-					break;
+				switch (val.type) {
+					case PVT_FLOAT:
+						val.f = (float)val.z;
+						break;
+					case PVT_DOUBLE:
+						val.d = (double)val.z;
+						break;
+					case PVT_LONGDOUBLE:
+						val.ld = /*(LongDouble80)*/val.z;
+						break;
 				}
+				break;
+			case '{': { // Absolute address of constant value in bottom 2GB
+				if (code_str = check_for_code_string_alignment(++code_str, val.alignment)) {
+					code_str = check_for_code_string_cast(code_str, &val);
+					size_t i = 0;
+					while (code_str[i] != '}') ++i;
+					if (i) {
+						add_constpool(code_str, i, val.type, val.alignment, target_addr, hMod);
+						code_str += i;
+					}
+					++code_str;
+					val.i = 0; // Use NULL as a placeholder to avoid silent failure if the constpool breaks
+					val.type = PVT_DWORD;
+				}
+				break;
+			}
 			case '[': case '<': // Patch value
 				code_str = get_patch_value(code_str, &val, NULL, target_addr, hMod);
 				break;
@@ -1077,7 +1416,7 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 	for (size_t i = 0; i < codecaves_count; ++i) {
 		const CodecaveAccessType access = codecaves[i].access_type;
 
-		log_printf("Recording codecave: \"%s\" at 0x%p\n", codecaves[i].name, (uintptr_t)current_cave[access]);
+		log_printf("Recording \"%s\" at 0x%p\n", codecaves[i].name, (uintptr_t)current_cave[access]);
 		func_add(codecaves[i].name, (uintptr_t)current_cave[access]);
 
 		if (codecaves[i].export_codecave) {
