@@ -1813,6 +1813,10 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					*out = current;
 					goto PostfixCheck;
 				}
+			// Current address
+			case '@':
+				*out = data_refs->rel_source;
+				goto PostfixCheck;
 			// Somehow it ran out of expression string, so stop parsing
 			case '\0':
 				goto InvalidValueError;
