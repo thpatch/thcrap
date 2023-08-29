@@ -40,32 +40,31 @@
 	MOV		EBX, 0x0A01
 	MOV		ESI, EDX
 	MOVZX	ECX, BYTE PTR [EDX]
-	LEA		EAX, [ECX-0x31]
+	LEA		EAX, [ECX-'1']
 	CMP		AL, 9
 	JB		is_base_ten
-	CMP		CL, 0x30
+	CMP		CL, '0'
 	JE		is_leading_zero
 	OR		CL, 0x20
-	CMP		CL, 0x72
+	CMP		CL, 'r'
 	JNE		failA
 	XOR		BL, BL
 is_leading_zero:
 	MOVZX	ECX, BYTE PTR [EDX+1]
 	INC		ESI
-	LEA		EAX, [ECX-0x30]
+	LEA		EAX, [ECX-'0']
 	CMP		AL, 10
 	JB		is_base_ten
 	MOV		BH, 16
 	OR		CL, 0x20
-	CMP		CL, 0x78
-	JE		is_hex
-	CMP		CL, 0x62
-	JE		is_binary
-	TEST	BL, BL /* Make sure that a single 0 is valid but a single R is not */ 
-	JZ		failA
-is_binary:
+	CMP		CL, 'x'
+	JE		is_zero_prefix
 	MOV		BH, 2
-is_hex:
+	CMP		CL, 'b'
+	JE		is_zero_prefix
+	TEST	BL, BL /* Make sure that a single 0 is valid but a single R is not */
+	JZ		failA
+is_zero_prefix:
 	MOVZX	ECX, BYTE PTR [EDX+2]
 	INC		ESI
 is_base_ten:
@@ -77,13 +76,13 @@ is_base_ten:
 	MOV		EDI, EDX
 	XOR		EAX, EAX
 digit_loop: /* This loop is aligned despite having no padding */
-	ADD		CL, 0xD0
+	ADD		CL, -'0'
 	CMP		CL, 10
 	JB		is_decimal_digit
-	ADD		CL, 0xEF
+	ADD		CL, -('A'-'0')
 	CMP		CL, 6
 	JB		is_upper_hex_digit
-	ADD		CL, 0xE0
+	ADD		CL, -('a'-'A')
 	CMP		CL, 6
 	JAE		end_parse
 is_upper_hex_digit:
