@@ -25,6 +25,11 @@ namespace thcrap_configure_v3
     /// </summary>
     public partial class MainWindow : Window
     {
+        [DllImport("kernel32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
+        static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
+        [DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern IntPtr GetModuleHandle([MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
+
         public MainWindow()
         {
             InitializeComponent();
@@ -42,6 +47,15 @@ namespace thcrap_configure_v3
             ThcrapDll.globalconfig_init();
             ThcrapDll.exception_load_config();
             ThcrapDll.log_init(ThcrapDll.globalconfig_get_boolean("console", false));
+
+            // C# doesn't have global variables, or the ability to import global variables from DLL files. 
+            // This is a workaround.
+            IntPtr p = GetProcAddress(GetModuleHandle(ThcrapDll.DLL), "PROJECT_VERSION_STRING");
+            if (p != IntPtr.Zero)
+            {
+                string version = ThcrapHelper.PtrToStringUTF8(p);
+                VersionText.Text = "Version " + version;
+            }
 
             string startUrl = null;
             var cmdline = Environment.GetCommandLineArgs();
