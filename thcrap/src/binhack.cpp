@@ -207,6 +207,9 @@ has_str:
 
 static constexpr size_t patch_val_sizes[] = { 0, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 16 };
 
+#pragma warning(push)
+// Intentional overflow/wraparound on some values,
+#pragma warning(disable : 4307 4146)
 void constpool_apply(HackpointMemoryPage* page_array) {
 
 	if unexpected(constpool_prerenders.empty()) {
@@ -567,6 +570,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 		}
 	}
 }
+#pragma warning(pop)
 
 // TODO: Check if anyone uses single quotes already in code strings
 //// Char

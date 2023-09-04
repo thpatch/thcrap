@@ -37,6 +37,9 @@ confusing, so this macro exists to better document the intent.
 */
 #define unexpected(condition) (!(condition)) TH_LIKELY; TH_UNLIKELY else
 
+#define func_ptr_typedef(return_type, calling_convention, name) \
+typedef return_type (calling_convention* name)
+
 /// Internal Windows Structs
 /// TODO: Move these to some sort of header like windows_support.h
 /// -------
