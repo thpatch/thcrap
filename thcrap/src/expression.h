@@ -180,62 +180,56 @@ enum {
 typedef uint8_t patch_value_type_t;
 
 // Description of a value specified by the options
-//
-// Unions can't be used as the base class of a struct,
-// but wrapping a nameless union inside a struct produces
-// the same effect.
-typedef struct {
-	union {
-		// Note: This is implemented as a struct within the main union
-		// rather than as a field in an outer struct since the compiler
-		// insisted on aligning things weirdly and taking up ~24 bytes of
-		// data for a 16 byte struct, thus preventing XMM move optimizations.
-		struct {
+typedef union {
+	// Note: This is implemented as a struct within the main union
+	// rather than as a field in an outer struct since the compiler
+	// insisted on aligning things weirdly and taking up ~24 bytes of
+	// data for a 16 byte struct, thus preventing XMM move optimizations.
+	struct {
 #if TH_X64
-			unsigned char raw_bytes[24];
+		unsigned char raw_bytes[24];
 #else
-			unsigned char raw_bytes[12];
+		unsigned char raw_bytes[12];
 #endif
-			patch_value_type_t type;
-			uint8_t merge_op; // Op values not exposed outside expression.cpp
+		patch_value_type_t type;
+		uint8_t merge_op; // Op values not exposed outside expression.cpp
 
-			// Constpool fields
-			uint8_t alignment;
-			bool is_padding;
-		};
-
-		uint8_t b;
-		int8_t sb;
-		uint16_t w;
-		int16_t sw;
-		uint32_t i;
-		int32_t si;
-		uint64_t q;
-		int64_t sq;
-		size_t z; // Default
-		uintptr_t p;
-		float f;
-		double d;
-		LongDouble80 ld;
-		struct {
-			const char* ptr;
-			size_t len;
-		} str;
-		struct {
-			const char16_t* ptr;
-			size_t len;
-		} str16;
-		struct {
-			const char32_t* ptr;
-			size_t len;
-		} str32;
-		struct {
-			const char* ptr;
-			size_t len;
-			size_t count;
-		} code;
-
+		// Constpool fields
+		uint8_t alignment;
+		// Room for 1 more byte of flags or other data
 	};
+
+	uint8_t b;
+	int8_t sb;
+	uint16_t w;
+	int16_t sw;
+	uint32_t i;
+	int32_t si;
+	uint64_t q;
+	int64_t sq;
+	size_t z; // Default
+	uintptr_t p;
+	float f;
+	double d;
+	LongDouble80 ld;
+	struct {
+		const char* ptr;
+		size_t len;
+	} str;
+	struct {
+		const char16_t* ptr;
+		size_t len;
+	} str16;
+	struct {
+		const char32_t* ptr;
+		size_t len;
+	} str32;
+	struct {
+		const char* ptr;
+		size_t len;
+		size_t count;
+	} code;
+
 } patch_val_t;
 
 // Parses [expr], a string containing a [relative] or <absolute> patch value and writes it [out].
