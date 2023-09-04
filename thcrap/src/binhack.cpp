@@ -205,84 +205,7 @@ has_str:
 	);
 }
 
-struct constpool_t : patch_val_t {
-
-	inline bool operator==(const constpool_t& rhs) {
-		if (!this->is_padding && this->alignment >= rhs.alignment) {
-			patch_value_type_t rhs_type = rhs.type != PVT_FLOAT ? rhs.type : PVT_DWORD;
-			if (this->type >= rhs_type) {
-				switch (rhs_type) {
-					default:
-						TH_UNREACHABLE;
-					case PVT_LONGDOUBLE:
-						return !memcmp(&this->ld, &rhs.ld, sizeof(LongDouble80));
-					case PVT_QWORD: case PVT_SQWORD: case PVT_DOUBLE:
-						return this->q == rhs.q;
-					case PVT_DWORD: case PVT_SDWORD: case PVT_FLOAT:
-						return this->i == rhs.i;
-					case PVT_WORD: case PVT_SWORD:
-						return this->w == rhs.w;
-					case PVT_BYTE: case PVT_SBYTE:
-						return this->b == rhs.b;
-				}
-			}
-		}
-		return false;
-	}
-};
-
 static constexpr size_t patch_val_sizes[] = { 0, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 16 };
-
-inline void constpool_apply_inner(constpool_t& out, const char* expr, char end_char, patch_value_type_t type, uintptr_t rel_source, HMODULE hMod) {
-	switch (type) {
-		default:
-			eval_expr(expr, end_char, &out.z, NULL, rel_source, hMod);
-			break;
-		case PVT_FLOAT:
-		case PVT_DOUBLE:
-		case PVT_LONGDOUBLE:
-			consume_float_value(expr, &out);
-			// Literally the only time when x87
-			// is probably still faster: converting to/from arbitrary widths
-			// Shame the compiler throws a fit if you try using it.
-			switch (out.type) {
-				default:
-					memset(&out.ld, 0, sizeof(LongDouble80));
-					break;
-				case PVT_FLOAT:
-					switch (type) {
-						case PVT_DOUBLE:
-							out.d = (double)out.f;
-							break;
-						case PVT_LONGDOUBLE:
-							out.ld = out.f;
-							break;
-					}
-					break;
-				case PVT_DOUBLE:
-					switch (type) {
-						case PVT_FLOAT:
-							out.f = (float)out.d;
-							break;
-						case PVT_LONGDOUBLE:
-							out.ld = out.d;
-							break;
-					}
-					break;
-				case PVT_LONGDOUBLE:
-					switch (type) {
-						case PVT_FLOAT:
-							out.f = out.ld;
-							break;
-						case PVT_DOUBLE:
-							out.f = out.ld;
-							break;
-					}
-			}
-			out.type = type;
-			break;
-	}
-}
 
 void constpool_apply(HackpointMemoryPage* page_array) {
 
@@ -290,171 +213,357 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 		return;
 	}
 
-	std::vector<constpool_t> rendered_value_vec;
-	std::vector<constpool_t> value_vec;
+	//__asm { __asm _emit 0xEB __asm _emit 0xFE }
+
+	uint8_t* rendered_values = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	uint8_t* current_value = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	uint8_t* padding_tracking = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN); // Could this be compressed to a bit array instead of bytes?
+	{
+		__m128i xmm_zero = {};
+		__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
+		for (size_t i = 0; i < BINHACK_BUFSIZE_MIN / sizeof(__m128i); ++i) {
+			((__m128i*)rendered_values)[i] = xmm_zero;
+			((__m128i*)padding_tracking)[i] = xmm_neg_one;
+		}
+	}
+
+	size_t rendered_values_alloc_size = BINHACK_BUFSIZE_MIN;
+	size_t current_value_alloc_size = BINHACK_BUFSIZE_MIN;
+
 	size_t constpool_memory_size = 0;
-	for (auto& [key, value] : constpool_prerenders) {
-		value_vec.clear();
+	for (auto& [_key, value] : constpool_prerenders) {
+		const auto& key = _key;
 		const std::string_view& exprs = constpool_strs[key.str_index];
 
-		constpool_t pool_value = {};
-		pool_value.type = key.type;
-		pool_value.alignment = key.alignment;
-		//pool_value.is_padding = false;
-		
-		// Calculate the value of each element...
-		//
-		// Is there no "for each delimitted chunk of string"
-		// function anywhere in the C++ library? Weird.
-		size_t element_pos = 0;
-		for (
-			size_t end_element;
-			(end_element = exprs.find(';', element_pos)) != std::string_view::npos;
-			element_pos = end_element + 1
-		) {
-			// Repeat the previous element if it's just a consecutive ;
-			if (element_pos != end_element) {
-				constpool_apply_inner(pool_value, exprs.data() + element_pos, ';', key.type, value.addr, value.source_module);
-			}
-			value_vec.emplace_back(pool_value);
-		}
-		if (exprs.data()[element_pos] != '}') {
-			constpool_apply_inner(pool_value, exprs.data() + element_pos, '}', key.type, value.addr, value.source_module);
-		}
-		value_vec.emplace_back(pool_value);
+		patch_val_t pool_value = {};
 
+		size_t filled_value_size = 0;
 		size_t per_element_size = patch_val_sizes[key.type];
-		size_t element_count = value_vec.size();
-		size_t filled_value_size = per_element_size * element_count;
-		size_t aligned_value_size = AlignUpToMultipleOf2(filled_value_size, key.alignment);
-		value_vec[0].alignment = key.alignment;
+		size_t element_count = 0;
 
-		// Add padding elements if necessary...
-		if (filled_value_size != aligned_value_size) {
-			size_t padded_value_size = filled_value_size;
-			pool_value.is_padding = true;
-			do {
-				value_vec.emplace_back(pool_value);
-				padded_value_size += per_element_size;
-			} while (padded_value_size <= aligned_value_size);
-		}
-
-		// Calculate alignments of individual elements
-		// 
-		// Tries to use the largest value possible for the initially
-		// specified alignment, which improves the chances of
-		// finding matches later
-		size_t element_offset = 0;
-		for (size_t i = 1; i < element_count; ++i) {
-			element_offset += per_element_size;
-			switch (key.alignment) {
-				default:
-					TH_UNREACHABLE;
-				case 64:
-					if (!(element_offset & 63)) {
-						value_vec[i].alignment = 64;
-						break;
-					}
-				case 32:
-					if (!(element_offset & 31)) {
-						value_vec[i].alignment = 32;
-						break;
-					}
-				case 16:
-					if (!(element_offset & 15)) {
-						value_vec[i].alignment = 16;
-						break;
-					}
-				case 8:
-					if (!(element_offset & 7)) {
-						value_vec[i].alignment = 8;
-						break;
-					}
-				case 4:
-					if (!(element_offset & 3)) {
-						value_vec[i].alignment = 4;
-						break;
-					}
-				case 2:
-					if (!(element_offset & 1)) {
-						value_vec[i].alignment = 2;
-						break;
-					}
-				case 1:
-					value_vec[i].alignment = 1;
-					break;
-			}
-		}
-
-		// Check if the element array is already present in the rendered values...
-		if (auto matching_elements = std::search(rendered_value_vec.begin(), rendered_value_vec.end(), value_vec.begin(), value_vec.end());
-			matching_elements == rendered_value_vec.end()
-		) {
-			// Check if any of the padding elements can be reused...
-			if (auto matching_padding = std::search(rendered_value_vec.begin(), rendered_value_vec.end(), value_vec.begin(), value_vec.end(),
-													[](const constpool_t& lhs, const constpool_t& rhs) {
-														return lhs.is_padding && lhs.alignment >= rhs.alignment;
-													});
-				matching_padding != rendered_value_vec.end()
-			) {
-				value.render_index = &*matching_padding - rendered_value_vec.data();
-				// Copy new values into the previous padding
-				for (const auto& value_copy : value_vec) {
-					uint8_t old_alignment = matching_padding->alignment;
-					*matching_padding = value_copy;
-					matching_padding->alignment = old_alignment;
-					++matching_padding;
+		// Calculate the value of each element...
+		size_t element_pos = 0;
+		do {
+			// TODO: Find calls memchr, which seems a bit overkill
+			size_t end_element = exprs.find(';', element_pos);
+			char end_char;
+			if (end_element != std::string_view::npos) {
+				// Repeat the previous element if it's just a consecutive ;
+				if (element_pos != end_element) {
+					end_char = ';';
+					// MSVC is too dumb to merge two function calls
+					goto parse_constpoool_expr;
 				}
 			} else {
-				value.render_index = rendered_value_vec.size();
-				// Render the new values since none of the padding matched...
-				for (const auto& value_insert : value_vec) {
-					rendered_value_vec.emplace_back(value_insert);
+				if (exprs[element_pos] != '}') {
+					end_char = '}';
+				parse_constpoool_expr:
+					if (key.type < PVT_FLOAT) {
+						(void)eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
+					} else {
+						(void)consume_float_value(&exprs[element_pos], &pool_value);
+						// Literally the only time when x87
+						// is probably still faster: converting to/from arbitrary widths
+						switch (pool_value.type) {
+							default:
+								eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
+								__asm { __asm FILD QWORD PTR[pool_value] }
+								break;
+							case PVT_FLOAT: __asm { __asm FLD DWORD PTR[pool_value] } break;
+							case PVT_DOUBLE: __asm { __asm FLD QWORD PTR[pool_value] } break;
+							case PVT_LONGDOUBLE: __asm { __asm FLD TBYTE PTR[pool_value] } break;
+						}
+						switch (key.type) {
+							default: TH_UNREACHABLE;
+							case PVT_FLOAT: __asm { __asm FSTP DWORD PTR[pool_value] } break;
+							case PVT_DOUBLE: __asm { __asm FSTP QWORD PTR[pool_value] } break;
+							case PVT_LONGDOUBLE: __asm { __asm FSTP TBYTE PTR[pool_value] } break;
+						}
+					}
 				}
-				// These are brand new values, so expand the allocation
-				constpool_memory_size += aligned_value_size;
+			}
+			element_pos = end_element + 1;
+			if unexpected(filled_value_size + per_element_size >= current_value_alloc_size) {
+				current_value = (uint8_t*)realloc(current_value, current_value_alloc_size += BINHACK_BUFSIZE_MIN);
+			}
+			switch (per_element_size) {
+				default:
+					TH_UNREACHABLE;
+				case 16:
+					memcpy(&current_value[filled_value_size], &pool_value.ld, sizeof(LongDouble80));
+					break;
+				case 8:
+					// double forces an XMM QWORD copy
+					*(double*)&current_value[filled_value_size] = pool_value.d;
+					break;
+				case 4:
+					*(uint32_t*)&current_value[filled_value_size] = pool_value.i;
+					break;
+				case 2:
+					*(uint16_t*)&current_value[filled_value_size] = pool_value.w;
+					break;
+				case 1:
+					*(uint8_t*)&current_value[filled_value_size] = pool_value.b;
+					break;
+			}
+			filled_value_size += per_element_size;
+			++element_count;
+		} while (element_pos != std::string_view::npos + 1);
+
+		size_t aligned_value_size = AlignUpToMultipleOf2(filled_value_size, key.alignment);
+		TH_ASSUME(element_count > 0);
+
+		size_t render_index;
+		if (aligned_value_size <= constpool_memory_size) {
+			size_t render_index_end = constpool_memory_size - aligned_value_size;
+			render_index = 0;
+			switch (per_element_size) {
+				default:
+					TH_UNREACHABLE;
+				case 16:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							uint64_t* temp = (uint64_t*)&padding_tracking[render_index + i * 16];
+							if (temp[0] || *(uint16_t*)&temp[1] ||
+								memcmp(&rendered_values[render_index + i * 16], current_value + i * 16, sizeof(LongDouble80))
+							) {
+								goto continue_outer_match_ld;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_ld:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							uint64_t* temp = (uint64_t*)&padding_tracking[render_index + i * 16];
+							if (temp[0] != 0xFFFFFFFFFFFFFFFFull || *(int16_t*)&temp[1] != -1) { // MSVC hates uint16_t comparisons
+								goto continue_outer_padding_ld;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_ld:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 8:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (((uint64_t*)&padding_tracking[render_index])[i] ||
+								((uint64_t*)&rendered_values[render_index])[i] != ((uint64_t*)current_value)[i]
+							) {
+								goto continue_outer_match_q;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_q:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (((uint64_t*)&padding_tracking[render_index])[i] != 0xFFFFFFFFFFFFFFFFull) {
+								goto continue_outer_padding_q;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_q:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 4:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (((uint32_t*)&padding_tracking[render_index])[i] ||
+								((uint32_t*)&rendered_values[render_index])[i] != ((uint32_t*)current_value)[i]
+							) {
+								goto continue_outer_match_d;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_d:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (((uint32_t*)&padding_tracking[render_index])[i] != 0xFFFFFFFFu) {
+								goto continue_outer_padding_d;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_d:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 2:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (((uint16_t*)&padding_tracking[render_index])[i] ||
+								((uint16_t*)&rendered_values[render_index])[i] != ((uint16_t*)current_value)[i]
+							) {
+								goto continue_outer_match_w;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_w:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (((int16_t*)&padding_tracking[render_index])[i] != -1) { // MSVC hates uint16_t comparisons
+								goto continue_outer_padding_w;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_w:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 1:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (padding_tracking[render_index + i] ||
+								rendered_values[render_index + i] != current_value[i]
+							) {
+								goto continue_outer_match_b;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_b:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (padding_tracking[render_index + i] != 0xFF) {
+								goto continue_outer_padding_b;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_b:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
 			}
 		} else {
-			// Found match, just use that index
-			value.render_index = &*matching_elements - rendered_value_vec.data();
+			// Not enough memory, always expand the allocation
+			
+			// Does this get alignment right?
+			render_index = AlignUpToMultipleOf2(constpool_memory_size, key.alignment);
 		}
+		// These are brand new values, so expand the allocation
+		size_t overaligned_value_size = AlignUpToMultipleOf2(aligned_value_size, sizeof(__m128i));
+		if unexpected(constpool_memory_size + overaligned_value_size >= rendered_values_alloc_size) {
+			size_t new_alloc_size = rendered_values_alloc_size + overaligned_value_size + BINHACK_BUFSIZE_MIN;
+			rendered_values = (uint8_t*)realloc(rendered_values, new_alloc_size);
+			padding_tracking = (uint8_t*)realloc(padding_tracking, new_alloc_size);
+			{
+				__m128i xmm_zero = {};
+				__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
+				size_t i = rendered_values_alloc_size;
+				do {
+					*(__m128i*)&rendered_values[i] = xmm_zero;
+					*(__m128i*)&padding_tracking[i] = xmm_neg_one;
+					i += sizeof(__m128i);
+				} while (i < new_alloc_size);
+			}
+			rendered_values_alloc_size = new_alloc_size;
+		}
+		constpool_memory_size += overaligned_value_size;
+	padding_success:
+		// Render the new values...
+		switch (per_element_size) {
+			default:
+				TH_UNREACHABLE;
+			case 16: {
+				size_t i = 0;
+				do {
+					memset(&padding_tracking[render_index + i * 16], 0, sizeof(LongDouble80));
+					memcpy(&rendered_values[render_index + i * 16], current_value + i * 16, sizeof(LongDouble80));
+				} while (++i < element_count);
+				break;
+			}
+			case 8: {
+				size_t i = 0;
+				do {
+					// memset forces an XMM XOR/MOV
+					memset(&((uint64_t*)&padding_tracking[render_index])[i], 0, sizeof(uint64_t));
+					// double forces an XMM QWORD copy
+					((double*)&rendered_values[render_index])[i] = ((double*)current_value)[i];
+				} while (++i < element_count);
+				break;
+			}
+			case 4: {
+				size_t i = 0;
+				do {
+					((uint32_t*)&padding_tracking[render_index])[i] = 0;
+					((uint32_t*)&rendered_values[render_index])[i] = ((uint32_t*)current_value)[i];
+				} while (++i < element_count);
+				break;
+			}
+			case 2: {
+				size_t i = 0;
+				do {
+					((uint16_t*)&padding_tracking[render_index])[i] = 0;
+					((uint16_t*)&rendered_values[render_index])[i] = ((uint16_t*)current_value)[i];
+				} while (++i < element_count);
+				break;
+			}
+			case 1: {
+				size_t i = 0;
+				do {
+					padding_tracking[render_index + i] = 0;
+					rendered_values[render_index + i] = current_value[i];
+				} while (++i < element_count);
+				break;
+			}
+		}
+	match_success:
+		value.render_index = render_index;
 	}
 	page_array[0].size = constpool_memory_size;
 	if (constpool_memory_size) {
-		uint8_t* const constpool = page_array[0].address = (uint8_t*)VirtualAllocLow(0, constpool_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+		uint8_t* constpool = page_array[0].address = (uint8_t*)VirtualAllocLow(0, constpool_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
 		log_printf(
 			"-------------------------\n"
-			"Generating constpool... (at 0x%p)\n"
+			"Generating constpool... (0x%zX bytes at 0x%.8X)\n"
 			"-------------------------\n",
-			constpool
+			constpool_memory_size, (uint32_t)constpool
 		);
 
-		uint8_t *__ptr32 __sptr constpool_write = (uint8_t * __ptr32 __sptr)constpool;
+		memcpy(constpool, rendered_values, constpool_memory_size);
+
+		DWORD idgaf;
+		VirtualProtect(constpool, constpool_memory_size, PAGE_READONLY, &idgaf);
+		
 		for (const auto& [_, value] : constpool_prerenders) {
-			const constpool_t& render_value = rendered_value_vec[value.render_index];
-			switch (render_value.type) {
-				default:
-					TH_UNREACHABLE;
-				case PVT_LONGDOUBLE:
-					memcpy(constpool_write, &render_value.ld, sizeof(LongDouble80));
-					break;
-				case PVT_QWORD: case PVT_SQWORD: case PVT_DOUBLE:
-					*(uint64_t*)constpool_write = render_value.q;
-					break;
-				case PVT_DWORD: case PVT_SDWORD: case PVT_FLOAT:
-					*(uint32_t*)constpool_write = render_value.i;
-					break;
-				case PVT_WORD: case PVT_SWORD:
-					*(uint16_t*)constpool_write = render_value.w;
-					break;
-				case PVT_BYTE: case PVT_SBYTE:
-					*(uint8_t*)constpool_write = render_value.b;
-					break;
-			}
+			uint8_t *__ptr32 __sptr constpool_write = (uint8_t * __ptr32 __sptr)constpool + value.render_index;
 			log_printf("fixup at 0x%p (0x%.8X)...\n", value.addr, (uint32_t)constpool_write);
 			PatchRegion((void*)value.addr, NULL, &constpool_write, sizeof(uint32_t));
-			constpool_write += patch_val_sizes[render_value.type];
 		}
 	}
 }
@@ -784,7 +893,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 						break;
 				}
 				break;
-			case '{': { // Absolute address of constant value in bottom 2GB
+			case '{': // Absolute address of constant value in bottom 2GB
 				if (code_str = check_for_code_string_alignment(++code_str, val.alignment)) {
 					code_str = check_for_code_string_cast(code_str, &val);
 					size_t i = 0;
@@ -798,7 +907,6 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 					val.type = PVT_DWORD;
 				}
 				break;
-			}
 			case '[': case '<': // Patch value
 				code_str = get_patch_value(code_str, &val, NULL, target_addr, hMod);
 				break;
@@ -858,7 +966,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 
 		// Check for errors
 		if unexpected(!code_str) {
-			log_printf("Code string render error!\n");
+			log_print("Code string render error!\n");
 			return CodeStringErrorRet;
 		}
 
