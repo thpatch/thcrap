@@ -290,7 +290,15 @@ int ascii_vpatchf_th07_th08(
 		const float CORRECTION = -7.5f;
 		auto center_cur = pos.x + (ascii_extent("Border Bonus 1234567") / 2.0f) + CORRECTION;
 		pos.x = ascii_align_center(center_cur, single_str);
-	} 
+	} else if (!strcmp(id, "th08 Last Spell Failed")) {
+		const float CORRECTION = 18.5;
+		auto center_cur = pos.x + (ascii_extent("Last Spell Failed") / 2.0f) + CORRECTION;
+		pos.x = ascii_align_center(center_cur, single_str);
+	} else if (!strcmp(id, "th08 Spell Bonus Failed")) {
+		const float CORRECTION = 13.5;
+		auto center_cur = pos.x + (ascii_extent("Spell Bonus Failed") / 2.0f) + CORRECTION;
+		pos.x = ascii_align_center(center_cur, single_str);
+	}
 
 	return putfunc(params.ClassPtr(), pos, single_str);
 }
