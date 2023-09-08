@@ -255,6 +255,46 @@ int ascii_vpatchf_th06(
 #undef SCORE_LEN
 }
 
+int ascii_vpatchf_th07_th08(
+	ascii_put_func_t& putfunc, vector3_t pos, const char* fmt, va_list va
+)
+{
+	auto id = strings_id(fmt);
+	auto single_str = strings_vsprintf((size_t) &pos, fmt, va);
+	if (!id) {
+		return putfunc(params.ClassPtr(), pos, single_str);
+	}
+
+	// Since ZUN didn't bother centering these strings, a correction must be
+	// applied to each one in addition to the usual center alignment.
+	// Since the spell card bonus doesn't move, I just centered it outright.
+	if (!strcmp(id, "th07 Full Power")) {
+		const float CORRECTION = game_id == TH07 ? 8.5f : 15.5f;
+		auto center_cur = pos.x + (ascii_extent("Full Power Mode!") / 2.0f) + CORRECTION;
+		pos.x = ascii_align_center(center_cur, single_str);
+	} else if (!strcmp(id, "th06_ascii_bonus_format")) {
+		auto center_cur = pos.x + (ascii_extent("BONUS 12345678") / 2.0f);
+		pos.x = ascii_align_center(center_cur, single_str);
+	} else if (!strcmp(id, "th06_ascii_centered_spell_bonus")) {
+		const float PLAYFIELD_CENTER = 224.0f;
+		pos.x = ascii_align_center(PLAYFIELD_CENTER, single_str);
+	} else if (!strcmp(id, "th07 Supernatural Border")) {
+		const float CORRECTION = -11.5f;
+		auto center_cur = pos.x + (ascii_extent("Supernatural Border!!") / 2.0f) + CORRECTION;
+		pos.x = ascii_align_center(center_cur, single_str);
+	} else if (!strcmp(id, "th07 CherryPoint Max")) {
+		const float CORRECTION = 8.5f;
+		auto center_cur = pos.x + (ascii_extent("CherryPoint Max!") / 2.0f) + CORRECTION;
+		pos.x = ascii_align_center(center_cur, single_str);
+	} else if (!strcmp(id, "th07 Border Bonus Format")) {
+		const float CORRECTION = -7.5f;
+		auto center_cur = pos.x + (ascii_extent("Border Bonus 1234567") / 2.0f) + CORRECTION;
+		pos.x = ascii_align_center(center_cur, single_str);
+	} 
+
+	return putfunc(params.ClassPtr(), pos, single_str);
+}
+
 int ascii_vpatchf_th165(
 	ascii_put_func_t &putfunc, vector3_t pos, const char* fmt, va_list va
 )
@@ -275,11 +315,18 @@ extern "C" int TH_STDCALL ascii_vpatchf(
 	ascii_put_func_t &putfunc, vector3_t &pos, const char* fmt, va_list va
 )
 {
-	if(game_id == TH06) {
+	switch (game_id) {
+	case TH06:
 		return ascii_vpatchf_th06(putfunc, pos, fmt, va);
-	} else if(game_id == TH165) {
+	case TH07:
+	case TH08:
+		return ascii_vpatchf_th07_th08(putfunc, pos, fmt, va);
+	case TH165:
 		return ascii_vpatchf_th165(putfunc, pos, fmt, va);
+	default:
+		break;
 	}
+
 	auto single_str = strings_vsprintf((size_t)&pos, fmt, va);
 	return putfunc(params.ClassPtr(), pos, single_str);
 }
