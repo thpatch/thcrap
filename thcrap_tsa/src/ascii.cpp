@@ -265,39 +265,31 @@ int ascii_vpatchf_th07_th08(
 		return putfunc(params.ClassPtr(), pos, single_str);
 	}
 
-	// Since ZUN didn't bother centering these strings, a correction must be
-	// applied to each one in addition to the usual center alignment.
-	// Since the spell card bonus doesn't move, I just centered it outright.
-	if (!strcmp(id, "th07 Full Power")) {
-		const float CORRECTION = game_id == TH07 ? 8.5f : 15.5f;
-		auto center_cur = pos.x + (ascii_extent("Full Power Mode!") / 2.0f) + CORRECTION;
-		pos.x = ascii_align_center(center_cur, single_str);
-	} else if (!strcmp(id, "th06_ascii_bonus_format")) {
-		auto center_cur = pos.x + (ascii_extent("BONUS 12345678") / 2.0f);
-		pos.x = ascii_align_center(center_cur, single_str);
-	} else if (!strcmp(id, "th06_ascii_centered_spell_bonus")) {
-		const float PLAYFIELD_CENTER = 224.0f;
-		pos.x = ascii_align_center(PLAYFIELD_CENTER, single_str);
-	} else if (!strcmp(id, "th07 Supernatural Border")) {
-		const float CORRECTION = -11.5f;
-		auto center_cur = pos.x + (ascii_extent("Supernatural Border!!") / 2.0f) + CORRECTION;
-		pos.x = ascii_align_center(center_cur, single_str);
-	} else if (!strcmp(id, "th07 CherryPoint Max")) {
-		const float CORRECTION = 8.5f;
-		auto center_cur = pos.x + (ascii_extent("CherryPoint Max!") / 2.0f) + CORRECTION;
-		pos.x = ascii_align_center(center_cur, single_str);
-	} else if (!strcmp(id, "th07 Border Bonus Format")) {
-		const float CORRECTION = -7.5f;
-		auto center_cur = pos.x + (ascii_extent("Border Bonus 1234567") / 2.0f) + CORRECTION;
-		pos.x = ascii_align_center(center_cur, single_str);
-	} else if (!strcmp(id, "th08 Last Spell Failed")) {
-		const float CORRECTION = 18.5;
-		auto center_cur = pos.x + (ascii_extent("Last Spell Failed") / 2.0f) + CORRECTION;
-		pos.x = ascii_align_center(center_cur, single_str);
-	} else if (!strcmp(id, "th08 Spell Bonus Failed")) {
-		const float CORRECTION = 13.5;
-		auto center_cur = pos.x + (ascii_extent("Spell Bonus Failed") / 2.0f) + CORRECTION;
-		pos.x = ascii_align_center(center_cur, single_str);
+	struct align_info_t {
+		const char* id;
+		const char* base;
+		// Since ZUN didn't bother centering these strings, a correction must be
+		// applied to each one in addition to the usual center alignment.
+		float offset;
+	};
+
+	static const align_info_t align_info[] {
+		{ "th07 Full Power", "Full Power Mode!", game_id == TH07 ? 8.5f : 15.5f },
+		{ "th06_ascii_bonus_format", "BONUS 12345678", 0.0f },
+		{ "th06_ascii_centered_spell_bonus", "Spell Card Bonus!", game_id == TH07 ? 17.5f : 8.5f },
+		{ "th07 Supernatural Border", "Supernatural Border!!", -11.5f },
+		{ "th07 CherryPoint Max", "CherryPoint Max!", 8.5f },
+		{ "th07 Border Bonus Format", "Border Bonus 1234567", -7.5f },
+		{ "th08 Last Spell Failed", "Last Spell Failed", 18.5f },
+		{ "th08 Spell Bonus Failed", "Spell Bonus Failed", 13.5f }
+	};
+	
+	for (const auto& str : align_info) {
+		if (!strcmp(id, str.id)) {
+			auto center_cur = pos.x + (ascii_extent(str.base) / 2.0f) + str.offset;
+			pos.x = ascii_align_center(center_cur, single_str);
+			break;
+		}
 	}
 
 	return putfunc(params.ClassPtr(), pos, single_str);
