@@ -290,7 +290,8 @@ namespace thcrap_configure_v3
 
             if (games.Count == 0)
             {
-                Search(null, true);
+                await Search(null, true);
+                NoGamesFound.Visibility = Visibility.Collapsed;
             }
         }
 
@@ -317,8 +318,10 @@ namespace thcrap_configure_v3
                 SearchButtonEverywhere.IsEnabled = true;
             }
         }
-        private async void Search(string root, bool useAutoBehavior = false)
+        private async Task Search(string root, bool useAutoBehavior = false)
         {
+            NoGamesFound.Visibility = Visibility.Collapsed;
+
             bool gamesListWasEmpty = this.games.Count == 0;
             foreach (var it in this.games)
                 it.SetNew(false);
@@ -360,7 +363,14 @@ namespace thcrap_configure_v3
             ThcrapDll.SearchForGames_free(foundPtr);
 
             if (!gamesListWasEmpty)
+            {
                 GamesScroll.ScrollToBottom();
+            }
+            else
+            {
+                NoGamesFound.Visibility = Visibility.Visible;
+            }
+
             Refresh();
         }
 
@@ -385,12 +395,12 @@ namespace thcrap_configure_v3
             this.games.Clear();
         }
 
-        private void SearchAuto(object sender, RoutedEventArgs e)
+        private async void SearchAuto(object sender, RoutedEventArgs e)
         {
-            Search(null, true);
+            await Search(null, true);
         }
 
-        private void SearchDirectory(object sender, RoutedEventArgs e)
+        private async void SearchDirectory(object sender, RoutedEventArgs e)
         {
             var dialog = new CommonOpenFileDialog()
             {
@@ -398,13 +408,13 @@ namespace thcrap_configure_v3
             };
             if (dialog.ShowDialog(Window.GetWindow(this)) == CommonFileDialogResult.Ok)
             {
-                Search(dialog.FileName);
+                await Search(dialog.FileName);
             }
         }
 
-        private void SearchEverywhere(object sender, RoutedEventArgs e)
+        private async void SearchEverywhere(object sender, RoutedEventArgs e)
         {
-            Search(null);
+            await Search(null);
         }
 
         private void SearchCancel(object sender, RoutedEventArgs e)
