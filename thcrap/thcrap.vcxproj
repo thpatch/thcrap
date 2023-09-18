@@ -25,7 +25,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>THCRAP_EXPORTS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_RAND_S=1;THCRAP_EXPORTS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libs/json5pp/;$(SolutionDir)libs/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
