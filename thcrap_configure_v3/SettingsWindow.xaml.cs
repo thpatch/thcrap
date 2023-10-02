@@ -23,6 +23,7 @@ namespace thcrap_configure_v3
             time_between_updates.Text = ThcrapDll.globalconfig_get_integer("time_between_updates", 5).ToString();
 
             console.IsChecked = ThcrapDll.globalconfig_get_boolean("console", false);
+            use_wininet.IsChecked = ThcrapDll.globalconfig_get_boolean("use_wininet", false);
             codepage.Text = ThcrapDll.globalconfig_get_integer("codepage", 932).ToString();
 
             {
@@ -111,6 +112,7 @@ namespace thcrap_configure_v3
             ThcrapDll.globalconfig_set_integer("time_between_updates", Int32.Parse(time_between_updates.Text));
 
             ThcrapDll.globalconfig_set_boolean("console", console.IsChecked == true);
+            ThcrapDll.globalconfig_set_boolean("use_wininet", use_wininet.IsChecked == true);
             ThcrapDll.globalconfig_set_integer("codepage", Int32.Parse(codepage.Text));
 
             {
