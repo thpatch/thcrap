@@ -240,7 +240,7 @@ void Update::startPatchUpdate(const patch_t *patch)
                 // Another file finished before
                 return ;
             }
-            log_printf("Downloading files.js from %s failed\n", url.getUrl().c_str());
+            log_printf("Downloading files.js from %s failed: %s\n", url.getUrl().c_str(), httpStatus.toString().c_str());
         }
     );
 }
