@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,42 +32,44 @@ namespace thcrap_configure_v3
     /// </summary>
     public partial class Page4 : UserControl
     {
-        class ThXX_js
+
+        private Timer timer;
+
+        private class GameJs
         {
-            public string title { get; set; }
+            public string Title { get; set; }
         }
-        class Game : INotifyPropertyChanged
+
+        private class Game : INotifyPropertyChanged
         {
-            private readonly Page4 parentWindow;
-            public readonly string game_id;
-            public List<string> Paths { get; private set; }
+            private readonly Page4 _parentWindow;
+            public readonly string GameId;
+            private List<string> Paths { get; set; }
             public string SelectedPath { get; private set; }
             private List<Control> _contextMenu;
             public List<Control> ContextMenu { get {
-                    if (_contextMenu == null)
+                if (_contextMenu != null) return _contextMenu;
+                _contextMenu = new List<Control>();
+                    _contextMenu.AddRange(Paths.Select(path =>
                     {
-                        _contextMenu = new List<Control>();
-                        _contextMenu.AddRange(Paths.Select(path =>
+                        var itemPath = new MenuItem()
                         {
-                            var itemPath = new MenuItem()
-                            {
-                                Header = path,
-                                IsCheckable = true,
-                                IsChecked = (path == SelectedPath),
-                            };
-                            itemPath.Click += SelectPath;
-                            return itemPath;
-                        }));
-
-                        _contextMenu.Add(new Separator());
-
-                        var itemRemove = new MenuItem()
-                        {
-                            Header = "Remove from this list",
+                            Header = path,
+                            IsCheckable = true,
+                            IsChecked = (path == SelectedPath),
                         };
-                        itemRemove.Click += RemoveFromList;
-                        _contextMenu.Add(itemRemove);
-                    }
+                        itemPath.Click += SelectPath;
+                        return itemPath;
+                    }));
+
+                    _contextMenu.Add(new Separator());
+
+                    var itemRemove = new MenuItem()
+                    {
+                        Header = "Remove from this list",
+                    };
+                    itemRemove.Click += RemoveFromList;
+                    _contextMenu.Add(itemRemove);
                     return _contextMenu;
                 } }
 
@@ -79,6 +82,8 @@ namespace thcrap_configure_v3
                     if (control is MenuItem menu && menu.IsCheckable && menu != newMenu)
                         menu.IsChecked = false;
                 }
+
+                if (newMenu == null) return;
                 newMenu.IsChecked = true;
 
                 SelectedPath = newMenu.Header.ToString();
@@ -86,64 +91,68 @@ namespace thcrap_configure_v3
 
             private void RemoveFromList(object sender, RoutedEventArgs e)
             {
-                parentWindow.games.Remove(this);
-                parentWindow.Refresh();
+                _parentWindow.games.Remove(this);
+                _parentWindow.Refresh();
             }
 
-            public Game(Page4 parentWindow, string game_id, string path, bool wasAlreadyPresent)
+            public Game(Page4 parentWindow, string gameId, string path, bool wasAlreadyPresent)
             {
-                this.parentWindow = parentWindow;
-                this.game_id = game_id;
-                this.Paths = new List<string>() { path };
-                this.SelectedPath = path;
-                this.NewVisibility = Visibility.Hidden;
-                this.IsSelected = true;
-                this.WasAlreadyPresent = wasAlreadyPresent;
+                this._parentWindow = parentWindow;
+                GameId = gameId;
+                Paths = new List<string>() { path };
+                SelectedPath = path;
+                NewVisibility = Visibility.Hidden;
+                IsSelected = true;
+                WasAlreadyPresent = wasAlreadyPresent;
             }
 
-            private string name_ = null;
+            private string _name = null;
             public string Name
             {
                 get
                 {
-                    if (name_ == null)
+                    if (_name != null) return _name ?? (_name = GameId);
+                    var stringDefinitions = _parentWindow.GetStringdef();
+                    
+                    if (stringDefinitions != null)
                     {
-                        var stringdefs = parentWindow.GetStringdef();
-                        if (stringdefs != null)
+                        if (GameId.EndsWith("_custom") &&
+                            stringDefinitions.TryGetValue(GameId.Remove(GameId.Length - "_custom".Length),
+                                out var gameDisplayName))
                         {
-                            string value;
-                            if (stringdefs.TryGetValue(game_id, out value))
-                                name_ = value;
-                            else if (game_id.EndsWith("_custom") && stringdefs.TryGetValue(game_id.Remove(game_id.Length - "_custom".Length), out value))
-                                name_ = value + " (configuration)";
+                            if (stringDefinitions.TryGetValue(gameDisplayName + " config", out var customDisplayName))
+                                _name = customDisplayName;
+                            else
+                                _name = gameDisplayName + " (Configuration)";
+                        }
+                        else
+                        {
+                            if (stringDefinitions.TryGetValue(GameId, out var value))
+                                _name = value;
                         }
                     }
+                    
+                    if (_name != null) return _name ?? (_name = GameId);
 
-                    if (name_ == null)
-                    {
-                        var runconfig = ThcrapHelper.stack_json_resolve<ThXX_js>(game_id + ".js");
-                        if (runconfig != null)
-                            name_ = runconfig.title;
-                    }
+                    var runConfig = ThcrapHelper.stack_json_resolve<GameJs>(GameId + ".js");
+                    if (runConfig != null)
+                        _name = runConfig.Title;
 
-                    if (name_ == null)
-                        name_ = game_id;
-
-                    return name_;
+                    return _name ?? (_name = GameId);
                 }
             }
 
             public ImageSource GameIcon { get; private set; }
             public async Task LoadGameIcon() => await Task.Run(() =>
             {
-                string path = SelectedPath;
-                if (path.EndsWith("/vpatch.exe"))
+                var path = SelectedPath;
+                if (path.EndsWith(@"/vpatch.exe"))
                 {
                     // Try to find the game, in order to have a nice icon
-                    string gamePath = path.Replace("/vpatch.exe", "/" + game_id + ".exe");
+                    var gamePath = path.Replace("/vpatch.exe", "/" + GameId + ".exe");
                     if (File.Exists(gamePath))
                         path = gamePath;
-                    else if (game_id == "th06")
+                    else if (GameId == "th06")
                     {
                         // Special case - EoSD
                         gamePath = path.Replace("/vpatch.exe", "/東方紅魔郷.exe");
@@ -156,10 +165,12 @@ namespace thcrap_configure_v3
                 {
                     var icon = Icon.ExtractAssociatedIcon(path);
                     if (icon != null)
-                        parentWindow.Dispatcher.Invoke(() => GameIcon = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()));
+                        _parentWindow.Dispatcher.Invoke(() => GameIcon = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()));
                 }
                 catch
-                { }
+                {
+                    // ignored
+                }
             });
 
             public void AddPath(string path)
@@ -172,21 +183,15 @@ namespace thcrap_configure_v3
                 SetNew(true);
             }
 
-            public string Path { get => SelectedPath; }
+            public string Path => SelectedPath;
 
             public Visibility NewVisibility { get; private set; }
             public void SetNew(bool isNew)
             {
-                Visibility newVisibility;
-                if (isNew)
-                    newVisibility = Visibility.Visible;
-                else
-                    newVisibility = Visibility.Hidden;
-                if (newVisibility != NewVisibility)
-                {
-                    NewVisibility = newVisibility;
-                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NewVisibility)));
-                }
+                var newVisibility = isNew ? Visibility.Visible : Visibility.Hidden;
+                if (newVisibility == NewVisibility) return;
+                NewVisibility = newVisibility;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(NewVisibility)));
             }
 
             private bool _isSelected;
@@ -206,8 +211,8 @@ namespace thcrap_configure_v3
             public event PropertyChangedEventHandler PropertyChanged;
         }
 
-        WizardPage wizardPage;
-        ObservableCollection<Game> games;
+        private WizardPage wizardPage;
+        private ObservableCollection<Game> games;
 
         public Page4()
         {
@@ -234,15 +239,16 @@ namespace thcrap_configure_v3
             }
         }
 
-        Dictionary<string, string> stringdef_ = null;
-        Dictionary<string, string> GetStringdef()
+        private IReadOnlyDictionary<string, string> _stringdef = null;
+
+        private IReadOnlyDictionary<string, string> GetStringdef()
         {
-            if (stringdef_ == null)
-                stringdef_ = ThcrapHelper.stack_json_resolve<Dictionary<string, string>>("stringdefs.js");
-            return stringdef_;
+            return _stringdef ??
+                   // ReSharper disable once StringLiteralTypo
+                   (_stringdef = ThcrapHelper.stack_json_resolve<Dictionary<string, string>>("stringdefs.js"));
         }
 
-        async Task<ObservableCollection<Game>> LoadGamesJs()
+        private async Task<ObservableCollection<Game>> LoadGamesJs()
         {
             try
             {
@@ -253,9 +259,8 @@ namespace thcrap_configure_v3
                     new JsonSerializerOptions() { AllowTrailingCommas = true, ReadCommentHandling = JsonCommentHandling.Skip }
                     );
                 games_js_file.Dispose();
-                foreach (var it in games_js)
+                foreach (var entry in games_js.Select(it => new Game(this, it.Key, it.Value, true)))
                 {
-                    var entry = new Game(this, it.Key, it.Value, true);
                     await entry.LoadGameIcon();
                     games.Add(entry);
                 }
@@ -266,32 +271,33 @@ namespace thcrap_configure_v3
                 return new ObservableCollection<Game>();
             }
         }
-        void SaveGamesJs(IEnumerable<Game> games)
+
+        private static void SaveGamesJs(IEnumerable<Game> games)
         {
             var dict = new SortedDictionary<string, string>();
             foreach (var it in games)
-                dict[it.game_id] = it.SelectedPath;
+                dict[it.GameId] = it.SelectedPath;
 
             var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
             try {
                 File.WriteAllText("config/games.js", json);
-            } catch(System.IO.IOException e) {
-                System.Windows.MessageBox.Show(String.Format("Failed to write games.js ({0})", e.Message), "Error");
+            } catch(IOException e) {
+                System.Windows.MessageBox.Show($"Failed to write games.js ({e.Message})", "Error");
             }
         }
 
-        public async Task Enter(WizardPage wizardPage)
+        public async Task Enter(WizardPage newWizardPage)
         {
-            this.wizardPage = wizardPage;
-            this.games = await LoadGamesJs();
+            wizardPage = newWizardPage;
+            games = await LoadGamesJs();
+            NoNewGamesFound.Visibility = Visibility.Collapsed;
 
             GamesControl.ItemsSource = games;
             Refresh();
 
             if (games.Count == 0)
             {
-                await Search(null, true);
-                NoGamesFound.Visibility = Visibility.Collapsed;
+                await Search(null, true);    
             }
         }
 
@@ -320,10 +326,15 @@ namespace thcrap_configure_v3
         }
         private async Task Search(string root, bool useAutoBehavior = false)
         {
-            NoGamesFound.Visibility = Visibility.Collapsed;
+            if (timer != null)
+            {
+                timer.Dispose();
+                timer = null;
+            }
 
-            bool gamesListWasEmpty = this.games.Count == 0;
-            foreach (var it in this.games)
+            var gamesListWasEmpty = games.Count == 0;
+            var newGamesWereFound = false;
+            foreach (var it in games)
                 it.SetNew(false);
 
             SetSearching(true);
@@ -343,7 +354,7 @@ namespace thcrap_configure_v3
 
             foreach (var it in found)
             {
-                var game = this.games.FirstOrDefault(x => x.game_id == it.id);
+                var game = games.FirstOrDefault(x => x.GameId == it.id);
                 if (game == null)
                 {
                     // new game
@@ -351,7 +362,8 @@ namespace thcrap_configure_v3
                     await game.LoadGameIcon();
                     if (!gamesListWasEmpty)
                         game.SetNew(true);
-                    this.games.Add(game);
+                    games.Add(game);
+                    newGamesWereFound = true;
                 }
                 else
                 {
@@ -366,9 +378,19 @@ namespace thcrap_configure_v3
             {
                 GamesScroll.ScrollToBottom();
             }
-            else
+
+            if (!newGamesWereFound)
             {
-                NoGamesFound.Visibility = Visibility.Visible;
+                NoNewGamesFound.Visibility = Visibility.Visible;
+
+                // Hide the message after 3 second
+                timer = new Timer((object state) =>
+                {
+                    this.Dispatcher.Invoke(() =>
+                    {
+                        NoNewGamesFound.Visibility = Visibility.Collapsed;
+                    });
+                }, null, 3000, Timeout.Infinite);
             }
 
             Refresh();
@@ -376,7 +398,7 @@ namespace thcrap_configure_v3
 
         private void SelectAll(object sender, RoutedEventArgs e)
         {
-            foreach (var game in this.games)
+            foreach (var game in games)
             {
                 game.IsSelected = true;
             }
@@ -384,7 +406,7 @@ namespace thcrap_configure_v3
 
         private void UnselectAll(object sender, RoutedEventArgs e)
         {
-            foreach (var game in this.games)
+            foreach (var game in games)
             {
                 game.IsSelected = false;
             }
@@ -392,7 +414,7 @@ namespace thcrap_configure_v3
 
         private void RemoveAll(object sender, RoutedEventArgs e)
         {
-            this.games.Clear();
+            games.Clear();
         }
 
         private async void SearchAuto(object sender, RoutedEventArgs e)
@@ -426,10 +448,10 @@ namespace thcrap_configure_v3
 
         public void Leave()
         {
-            SaveGamesJs(this.games.Where((Game game) => game.IsSelected || game.WasAlreadyPresent));
-            outGames = this.games.Where((Game game) => game.IsSelected).Select((Game game) => new ThcrapDll.games_js_entry
+            SaveGamesJs(games.Where((Game game) => game.IsSelected || game.WasAlreadyPresent));
+            outGames = games.Where((Game game) => game.IsSelected).Select((Game game) => new ThcrapDll.games_js_entry
             {
-                id = game.game_id,
+                id = game.GameId,
                 path = ThcrapHelper.StringUTF8ToPtr(game.SelectedPath),
             });
         }
@@ -443,41 +465,37 @@ namespace thcrap_configure_v3
     // From https://stackoverflow.com/questions/8958946/how-to-open-a-popup-menu-when-a-button-is-clicked/20710436
     public class Page4DropDownButtonBehavior : Behavior<Button>
     {
-        private bool isContextMenuOpen;
+        private bool _isContextMenuOpen;
 
         protected override void OnAttached()
         {
             base.OnAttached();
-            AssociatedObject.AddHandler(Button.ClickEvent, new RoutedEventHandler(AssociatedObject_Click), true);
+            AssociatedObject.AddHandler(ButtonBase.ClickEvent, new RoutedEventHandler(AssociatedObject_Click), true);
         }
 
-        void AssociatedObject_Click(object sender, System.Windows.RoutedEventArgs e)
+        private void AssociatedObject_Click(object sender, RoutedEventArgs e)
         {
-            Button source = sender as Button;
-            if (source != null && source.ContextMenu != null)
-            {
-                if (!isContextMenuOpen)
-                {
-                    // Add handler to detect when the ContextMenu closes
-                    source.ContextMenu.AddHandler(ContextMenu.ClosedEvent, new RoutedEventHandler(ContextMenu_Closed), true);
-                    // If there is a drop-down assigned to this button, then position and display it
-                    source.ContextMenu.PlacementTarget = source;
-                    source.ContextMenu.Placement = PlacementMode.Bottom;
-                    source.ContextMenu.IsOpen = true;
-                    isContextMenuOpen = true;
-                }
-            }
+            var source = sender as Button;
+            if (source?.ContextMenu == null) return;
+            if (_isContextMenuOpen) return;
+            // Add handler to detect when the ContextMenu closes
+            source.ContextMenu.AddHandler(ContextMenu.ClosedEvent, new RoutedEventHandler(ContextMenu_Closed), true);
+            // If there is a drop-down assigned to this button, then position and display it
+            source.ContextMenu.PlacementTarget = source;
+            source.ContextMenu.Placement = PlacementMode.Bottom;
+            source.ContextMenu.IsOpen = true;
+            _isContextMenuOpen = true;
         }
 
         protected override void OnDetaching()
         {
             base.OnDetaching();
-            AssociatedObject.RemoveHandler(Button.ClickEvent, new RoutedEventHandler(AssociatedObject_Click));
+            AssociatedObject.RemoveHandler(ButtonBase.ClickEvent, new RoutedEventHandler(AssociatedObject_Click));
         }
 
-        void ContextMenu_Closed(object sender, RoutedEventArgs e)
+        private void ContextMenu_Closed(object sender, RoutedEventArgs e)
         {
-            isContextMenuOpen = false;
+            _isContextMenuOpen = false;
             var contextMenu = sender as ContextMenu;
             if (contextMenu != null)
             {
