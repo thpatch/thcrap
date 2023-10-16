@@ -47,7 +47,6 @@ extern "C" {
 #include "exception.h"
 #include "long_double.h"
 #include "util.h"
-#include "ntdll.h"
 #include "jansson_ex.h"
 #include "expression.h"
 #include "global.h"

@@ -205,7 +205,19 @@ has_str:
 	);
 }
 
-static constexpr size_t patch_val_sizes[] = { 0, 1, 1, 2, 2, 4, 4, 8, 8, 4, 8, 16 };
+// String/code types aren't usable in constpools
+// and don't have single defined sizes anyway,
+// so they aren't included in this list
+static constexpr size_t patch_val_sizes[] = {
+	0,
+	sizeof(uint8_t), sizeof(int8_t),
+	sizeof(uint16_t), sizeof(int16_t),
+	sizeof(uint32_t), sizeof(int32_t),
+	sizeof(uint64_t), sizeof(int64_t),
+	sizeof(float),
+	sizeof(double),
+	AlignUpToMultipleOf2(sizeof(long double), 16) // Long double is slightly over aligned
+};
 
 #pragma warning(push)
 // Intentional overflow/wraparound on some values,
@@ -216,18 +228,23 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 		return;
 	}
 
-	//__asm { __asm _emit 0xEB __asm _emit 0xFE }
-
 	uint8_t* rendered_values = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
 	uint8_t* current_value = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
 	uint8_t* padding_tracking = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN); // Could this be compressed to a bit array instead of bytes?
 	{
+#if _M_IX86_FP >= 2
 		__m128i xmm_zero = {};
 		__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
 		for (size_t i = 0; i < BINHACK_BUFSIZE_MIN / sizeof(__m128i); ++i) {
 			((__m128i*)rendered_values)[i] = xmm_zero;
 			((__m128i*)padding_tracking)[i] = xmm_neg_one;
 		}
+#else
+		for (size_t i = 0; i < BINHACK_BUFSIZE_MIN / sizeof(uint32_t); ++i) {
+			((uint32_t*)rendered_values)[i] = 0u;
+			((uint32_t*)padding_tracking)[i] = ~0u;
+		}
+#endif
 	}
 
 	size_t rendered_values_alloc_size = BINHACK_BUFSIZE_MIN;
@@ -484,6 +501,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 			rendered_values = (uint8_t*)realloc(rendered_values, new_alloc_size);
 			padding_tracking = (uint8_t*)realloc(padding_tracking, new_alloc_size);
 			{
+#if _M_IX86_FP >= 2
 				__m128i xmm_zero = {};
 				__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
 				size_t i = rendered_values_alloc_size;
@@ -492,6 +510,12 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 					*(__m128i*)&padding_tracking[i] = xmm_neg_one;
 					i += sizeof(__m128i);
 				} while (i < new_alloc_size);
+#else
+				for (size_t i = rendered_values_alloc_size; i < new_alloc_size; i += sizeof(uint32_t)) {
+					*(uint32_t*)&rendered_values[i] = 0u;
+					*(uint32_t*)&padding_tracking[i] = ~0u;
+				}
+#endif
 			}
 			rendered_values_alloc_size = new_alloc_size;
 		}
@@ -1253,8 +1277,8 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 	uint8_t* sourcecave_p = cave_source;
 	uint8_t* sourcecave_end = sourcecave_p + sourcecaves_total_size;
 
-	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize);
-	uint8_t* exp_buf = (uint8_t*)malloc(largest_cavesize);
+	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize * 2);
+	uint8_t* exp_buf = asm_buf + largest_cavesize;
 
 	for (size_t i = 0; i < binhacks_count; ++i) {
 		if (binhack_is_valid[i]) {
@@ -1297,7 +1321,6 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 		}
 	}
 	free(asm_buf);
-	free(exp_buf);
 	VLA_FREE(binhack_is_valid);
 	log_print("\n");
 

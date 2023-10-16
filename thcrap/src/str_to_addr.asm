@@ -11,6 +11,89 @@
   * returns -1 in EAX and the original string pointer in EDX.
   */
 
+/*
+
+This C++ code is included for readability and does not fully
+reflect all of the optimizations implemented in the assembly.
+
+static std::pair<uintptr_t, const char*> TH_FASTCALL str_to_addr_impl(uintptr_t base_addr, const char* str) {
+	const uint8_t* str_read = (const uint8_t*)str;
+
+	const uint8_t is_not_relative = 0x01;
+	const uint8_t is_overflow = 0x80;
+
+	uint8_t flags = is_not_relative; // BL
+	uint8_t number_base = 10; // BH
+	uint8_t c; // CL
+	switch (c - *str_read) {
+		default:
+			goto fail;
+		case 'r': case 'R':
+			flags = 0;
+			TH_FALLTHROUGH;
+		case '0':
+			switch (*++str_read) {
+				case 'x': case 'X':
+					number_base = 16;
+					c = *++str_read;
+					break;
+				case 'b': case 'B':
+					number_base = 2;
+					c = *++str_read;
+					break;
+				default:
+					if (!flags) {
+						goto fail;
+					}
+					TH_FALLTHROUGH;
+				case '0' ... '9':
+					break;
+			}
+			break;
+		case '1' ... '9':
+			break;
+	}
+	uintptr_t ret = 0; // EAX
+	for (;; c = *++str_read) {
+		uint8_t digit = c; // CL
+		switch (digit) {
+			case '0' ... '9':
+				digit -= '0';
+				break;
+			case 'a' ... 'f':
+				digit -= 'a' - 10;
+				break;
+			case 'A' ... 'F':
+				digit -= 'A' - 10;
+				break;
+			default:
+				goto end_parse;
+		}
+		if (digit >= number_base) {
+			goto end_parse;
+		}
+		if (__builtin_expect(!(flags & is_overflow), true)) {
+			if (__builtin_expect(!__builtin_mul_overflow(ret, number_base, &ret), true)) {
+				if (__builtin_expect(!__builtin_add_overflow(ret, digit, &ret), true)) {
+					continue;
+				}
+			}
+			flags = is_overflow;
+		}
+	}
+end_parse:
+	if (!(flags & is_overflow)) {
+		if (!(flags & is_not_relative)) {
+			ret += base_addr;
+		}
+		return std::make_pair(ret, (const char*)str_read);
+	}
+fail:
+	return std::make_pair(std::numeric_limits<uintptr_t>::max(), str);
+}
+
+*/
+
 	.intel_syntax
 	.global @str_to_addr_impl@8
 

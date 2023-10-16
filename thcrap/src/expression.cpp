@@ -1282,6 +1282,10 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			else if (strnicmp(name, "frsb", name_length) == 0) return CPUID_Data.HasFRSB;
 			else if (strnicmp(name, "clwb", name_length) == 0) return CPUID_Data.HasCLWB;
 			else if (strnicmp(name, "mvex", name_length) == 0) return CPUID_Data.HasMVEX;
+			// A build compiled without SSE could theoretically run on PC98 hardware, so why not?
+#if _M_IX86_FP == 0
+			else if (strnicmp(name, "pc98", name_length) == 0) return USER_SHARED_DATA.AlternativeArchitecture == NEC98x86;
+#endif
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 3:
