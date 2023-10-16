@@ -164,4 +164,6 @@ TH_IMPORT int binhack_render(uint8_t* output_buffer, uintptr_t target_addr, cons
 
 
 void constpool_reset();
+void add_constpool(const char* data, size_t data_length, patch_value_type_t type, uint8_t alignment, uintptr_t addr, HMODULE source_module);
+void add_constpool_raw_pointer(uintptr_t data, uintptr_t addr);
 void constpool_apply(HackpointMemoryPage* page_array);

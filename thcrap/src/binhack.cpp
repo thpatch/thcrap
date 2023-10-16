@@ -160,6 +160,20 @@ static TH_NOINLINE const char* consume_float_value(const char *const expr, patch
 	}
 }
 
+// Data to be rendered into a constpool.
+struct constpool_input_t {
+	union {
+		std::string_view text;
+		uintptr_t raw_pointer;
+	};
+	bool is_raw_pointer;
+
+	inline constexpr constpool_input_t(const std::string_view& text) : text(text), is_raw_pointer(false) {}
+
+	inline constexpr constpool_input_t(uintptr_t raw_pointer) : raw_pointer(raw_pointer), is_raw_pointer(true) {}
+};
+
+// Fields that are unique to each constpool use.
 struct constpool_value_t {
 	uintptr_t addr;
 	HMODULE source_module;
@@ -168,40 +182,57 @@ struct constpool_value_t {
 	inline constexpr constpool_value_t(uintptr_t addr, HMODULE source_module) : addr(addr), source_module(source_module), render_index(0) {}
 };
 
+// Fields that can be shared between constpool uses.
 struct constpool_key_t {
 	uint8_t alignment;
 	patch_value_type_t type;
-	size_t str_index;
+	size_t input_index;
 
-	inline constexpr constpool_key_t(uint8_t alignment, patch_value_type_t type, size_t str_index) : alignment(alignment), type(type), str_index(str_index) {}
+	inline constexpr constpool_key_t(uint8_t alignment, patch_value_type_t type, size_t input_index) : alignment(alignment), type(type), input_index(input_index) {}
 
 	inline bool operator<(const constpool_key_t& rhs) const {
 		return this->alignment > rhs.alignment;
 	}
 };
 
-static std::vector<std::string_view> constpool_strs;
+static std::vector<constpool_input_t> constpool_inputs;
 static std::multimap<constpool_key_t, constpool_value_t> constpool_prerenders;
 
 void constpool_reset() {
-	constpool_strs.clear();
+	constpool_inputs.clear();
 	constpool_prerenders.clear();
 }
 
 void add_constpool(const char* data, size_t data_length, patch_value_type_t type, uint8_t alignment, uintptr_t addr, HMODULE source_module) {
 	std::string_view data_view = std::string_view(data, data_length);
-	size_t str_index = constpool_strs.size();
-	for (const auto& constpool_str : constpool_strs) {
-		if (constpool_str == data_view) {
-			str_index = &constpool_str - constpool_strs.data();
+	size_t input_index = constpool_inputs.size();
+	for (const auto& constpool_input : constpool_inputs) {
+		if (!constpool_input.is_raw_pointer && constpool_input.text == data_view) {
+			input_index = &constpool_input - constpool_inputs.data();
 			goto has_str;
 		}
 	}
-	constpool_strs.emplace_back(data_view);
+	constpool_inputs.emplace_back(data_view);
 has_str:
 	constpool_prerenders.emplace(std::piecewise_construct,
-								 std::forward_as_tuple(alignment, type, str_index),
-								 std::forward_as_tuple(addr, source_module)
+		 /* constpool_key_t */   std::forward_as_tuple(alignment, type, input_index),
+		 /* constpool_value_t */ std::forward_as_tuple(addr, source_module)
+	);
+}
+
+void add_constpool_raw_pointer(uintptr_t data, uintptr_t addr) {
+	size_t input_index = constpool_inputs.size();
+	for (const auto& constpool_input : constpool_inputs) {
+		if (constpool_input.is_raw_pointer && constpool_input.raw_pointer == data) {
+			input_index = &constpool_input - constpool_inputs.data();
+			goto has_pointer;
+		}
+	}
+	constpool_inputs.emplace_back(data);
+has_pointer:
+	constpool_prerenders.emplace(std::piecewise_construct,
+		 /* constpool_key_t */   std::forward_as_tuple(alignof(void*), PVT_POINTER, input_index),
+		 /* constpool_value_t */ std::forward_as_tuple(addr, (HMODULE)NULL)
 	);
 }
 
@@ -232,7 +263,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 	uint8_t* current_value = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
 	uint8_t* padding_tracking = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN); // Could this be compressed to a bit array instead of bytes?
 	{
-#if _M_IX86_FP >= 2
+#if !TH_X86 || _M_IX86_FP >= 2
 		__m128i xmm_zero = {};
 		__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
 		for (size_t i = 0; i < BINHACK_BUFSIZE_MIN / sizeof(__m128i); ++i) {
@@ -253,82 +284,99 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 	size_t constpool_memory_size = 0;
 	for (auto& [_key, value] : constpool_prerenders) {
 		const auto& key = _key;
-		const std::string_view& exprs = constpool_strs[key.str_index];
+		const constpool_input_t& input = constpool_inputs[key.input_index];
 
-		patch_val_t pool_value = {};
-
-		size_t filled_value_size = 0;
-		size_t per_element_size = patch_val_sizes[key.type];
-		size_t element_count = 0;
+		size_t filled_value_size;
+		size_t per_element_size;
+		size_t element_count;
 
 		// Calculate the value of each element...
-		size_t element_pos = 0;
-		do {
-			// TODO: Find calls memchr, which seems a bit overkill
-			size_t end_element = exprs.find(';', element_pos);
-			char end_char;
-			if (end_element != std::string_view::npos) {
-				// Repeat the previous element if it's just a consecutive ;
-				if (element_pos != end_element) {
-					end_char = ';';
-					// MSVC is too dumb to merge two function calls
-					goto parse_constpoool_expr;
-				}
-			} else {
-				if (exprs[element_pos] != '}') {
-					end_char = '}';
-				parse_constpoool_expr:
-					if (key.type < PVT_FLOAT) {
-						(void)eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
-					} else {
-						(void)consume_float_value(&exprs[element_pos], &pool_value);
-						// Literally the only time when x87
-						// is probably still faster: converting to/from arbitrary widths
-						switch (pool_value.type) {
-							default:
-								eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
-								__asm { __asm FILD QWORD PTR[pool_value] }
-								break;
-							case PVT_FLOAT: __asm { __asm FLD DWORD PTR[pool_value] } break;
-							case PVT_DOUBLE: __asm { __asm FLD QWORD PTR[pool_value] } break;
-							case PVT_LONGDOUBLE: __asm { __asm FLD TBYTE PTR[pool_value] } break;
-						}
-						switch (key.type) {
-							default: TH_UNREACHABLE;
-							case PVT_FLOAT: __asm { __asm FSTP DWORD PTR[pool_value] } break;
-							case PVT_DOUBLE: __asm { __asm FSTP QWORD PTR[pool_value] } break;
-							case PVT_LONGDOUBLE: __asm { __asm FSTP TBYTE PTR[pool_value] } break;
+		if (!input.is_raw_pointer) {
+			// Input is a text string from patch JSON
+			const std::string_view& exprs = input.text;
+
+			patch_val_t pool_value = {};
+
+			filled_value_size = 0;
+			per_element_size = patch_val_sizes[key.type];
+			element_count = 0;
+
+			size_t element_pos = 0;
+			do {
+				// TODO: Find calls memchr, which seems a bit overkill
+				size_t end_element = exprs.find(';', element_pos);
+				char end_char;
+				if (end_element != std::string_view::npos) {
+					// Repeat the previous element if it's just a consecutive ;
+					if (element_pos != end_element) {
+						end_char = ';';
+						// MSVC is too dumb to merge two function calls
+						goto parse_constpoool_expr;
+					}
+				} else {
+					if (exprs[element_pos] != '}') {
+						end_char = '}';
+					parse_constpoool_expr:
+						if (key.type < PVT_FLOAT) {
+							(void)eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
+						} else {
+							(void)consume_float_value(&exprs[element_pos], &pool_value);
+							// Literally the only time when x87
+							// is probably still faster: converting to/from arbitrary widths
+							switch (pool_value.type) {
+								default:
+									eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
+									__asm { __asm FILD QWORD PTR[pool_value] }
+									break;
+								case PVT_FLOAT: __asm { __asm FLD DWORD PTR[pool_value] } break;
+								case PVT_DOUBLE: __asm { __asm FLD QWORD PTR[pool_value] } break;
+								case PVT_LONGDOUBLE: __asm { __asm FLD TBYTE PTR[pool_value] } break;
+							}
+							switch (key.type) {
+								default: TH_UNREACHABLE;
+								case PVT_FLOAT: __asm { __asm FSTP DWORD PTR[pool_value] } break;
+								case PVT_DOUBLE: __asm { __asm FSTP QWORD PTR[pool_value] } break;
+								case PVT_LONGDOUBLE: __asm { __asm FSTP TBYTE PTR[pool_value] } break;
+							}
 						}
 					}
 				}
-			}
-			element_pos = end_element + 1;
-			if unexpected(filled_value_size + per_element_size >= current_value_alloc_size) {
-				current_value = (uint8_t*)realloc(current_value, current_value_alloc_size += BINHACK_BUFSIZE_MIN);
-			}
-			switch (per_element_size) {
-				default:
-					TH_UNREACHABLE;
-				case 16:
-					memcpy(&current_value[filled_value_size], &pool_value.ld, sizeof(LongDouble80));
-					break;
-				case 8:
-					// double forces an XMM QWORD copy
-					*(double*)&current_value[filled_value_size] = pool_value.d;
-					break;
-				case 4:
-					*(uint32_t*)&current_value[filled_value_size] = pool_value.i;
-					break;
-				case 2:
-					*(uint16_t*)&current_value[filled_value_size] = pool_value.w;
-					break;
-				case 1:
-					*(uint8_t*)&current_value[filled_value_size] = pool_value.b;
-					break;
-			}
-			filled_value_size += per_element_size;
-			++element_count;
-		} while (element_pos != std::string_view::npos + 1);
+				element_pos = end_element + 1;
+				if unexpected(filled_value_size + per_element_size >= current_value_alloc_size) {
+					current_value = (uint8_t*)realloc(current_value, current_value_alloc_size += BINHACK_BUFSIZE_MIN);
+				}
+				switch (per_element_size) {
+					default:
+						TH_UNREACHABLE;
+					case 16:
+						memcpy(&current_value[filled_value_size], &pool_value.ld, sizeof(LongDouble80));
+						break;
+					case 8:
+						// double forces an XMM QWORD copy
+						*(double*)&current_value[filled_value_size] = pool_value.d;
+						break;
+					case 4:
+						*(uint32_t*)&current_value[filled_value_size] = pool_value.i;
+						break;
+					case 2:
+						*(uint16_t*)&current_value[filled_value_size] = pool_value.w;
+						break;
+					case 1:
+						*(uint8_t*)&current_value[filled_value_size] = pool_value.b;
+						break;
+				}
+				filled_value_size += per_element_size;
+				++element_count;
+			} while (element_pos != std::string_view::npos + 1);
+		}
+		else {
+			// Input is a pointer 
+			filled_value_size = sizeof(void*);
+			per_element_size = sizeof(void*);
+			element_count = 1;
+
+			*(uintptr_t*)current_value = input.raw_pointer;
+		}
 
 		size_t aligned_value_size = AlignUpToMultipleOf2(filled_value_size, key.alignment);
 		TH_ASSUME(element_count > 0);
@@ -501,7 +549,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 			rendered_values = (uint8_t*)realloc(rendered_values, new_alloc_size);
 			padding_tracking = (uint8_t*)realloc(padding_tracking, new_alloc_size);
 			{
-#if _M_IX86_FP >= 2
+#if !TH_X86 || _M_IX86_FP >= 2
 				__m128i xmm_zero = {};
 				__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
 				size_t i = rendered_values_alloc_size;

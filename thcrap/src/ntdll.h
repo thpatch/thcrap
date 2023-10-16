@@ -14,6 +14,8 @@ typedef LONG_PTR KPRIORITY;
 #define STATUS_SUCCESS ((NTSTATUS)0L)
 #define STATUS_INVALID_INFO_CLASS ((NTSTATUS)0xC0000003L)
 
+typedef struct _PEB PEB;
+
 struct PROCESS_BASIC_INFORMATION {
     NTSTATUS ExitStatus;
     PEB* PebBaseAddress;
@@ -66,7 +68,6 @@ TEB: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/te
 PEB: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/peb/index.htm
 */
 
-typedef struct _PEB PEB;
 struct _PEB {
 	BOOLEAN InheritedAddressSpace;
 	BOOLEAN ReadImageFileExecOptions;
@@ -294,7 +295,7 @@ https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntexapi_x/kuse
 */
 
 typedef struct _KUSER_SHARED_DATA KUSER_SHARED_DATA;
-struct KUSER_SHARED_DATA {
+struct _KUSER_SHARED_DATA {
 	volatile ULONG TickCountLowDeprecated; // 0x0
 	ULONG TickCountMultiplier; // 0x4
 	volatile KSYSTEM_TIME InterruptTime; // 0x8

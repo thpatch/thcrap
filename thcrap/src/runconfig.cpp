@@ -358,8 +358,7 @@ void runconfig_load(json_t *file, int flags)
 		}
 	}
 
-	run_cfg.loader_pid = 0;
-	json_object_get_eval_int(file, "loader_pid", &run_cfg.loader_pid, JEVAL_STRICT | JEVAL_NO_EXPRS);
+	run_cfg.loader_pid = json_object_get_eval_int_default(file, "loader_pid", 0, JEVAL_STRICT | JEVAL_NO_EXPRS);
 }
 
 void runconfig_load_from_file(const char *path)
@@ -643,7 +642,6 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 	constpool_reset();
 	failed += codecaves_apply(stage.codecaves.data(), stage.codecaves.size(), module, stage.codecave_pages);
 	failed += binhacks_apply(stage.binhacks.data(), stage.binhacks.size(), module, &stage.binhack_page);
-	constpool_apply(&stage.constpool_page);
 	if (!(flags & RUNCFG_STAGE_SKIP_BREAKPOINTS)) {
 		const size_t breakpoint_count = stage.breakpoints.size();
 		if (stage_num == 0 && run_cfg.stages.size() > 1) {
@@ -654,11 +652,13 @@ bool runconfig_stage_apply(size_t stage_num, int flags, HMODULE module)
 			// 
 			// FIXME: testing failed is needed because breakpoints don't check what they overwrite
 			if (failed > 0 || breakpoint_count == 0) {
+				constpool_apply(&stage.constpool_page);
 				return false;
 			}
 		}
 		failed += breakpoints_apply(stage.breakpoints.data(), breakpoint_count, module, stage.breakpoint_pages);
 	}
 
+	constpool_apply(&stage.constpool_page);
 	return failed == 0;
 }
