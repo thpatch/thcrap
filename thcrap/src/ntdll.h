@@ -16,7 +16,8 @@ typedef LONG_PTR KPRIORITY;
 
 typedef struct _PEB PEB;
 
-struct PROCESS_BASIC_INFORMATION {
+typedef struct _PROCESS_BASIC_INFORMATION PROCESS_BASIC_INFORMATION;
+struct _PROCESS_BASIC_INFORMATION {
     NTSTATUS ExitStatus;
     PEB* PebBaseAddress;
     ULONG_PTR AffinityMask;
@@ -259,23 +260,24 @@ write_fs_dword(offsetof(TEB, member), (data)) \
 #define CurrentTeb() ((TEB*)read_teb_member(Self))
 #define CurrentPeb() ((PEB*)read_teb_member(ProcessEnvironmentBlock))
 
-struct KSYSTEM_TIME {
+typedef struct _KSYSTEM_TIME KSYSTEM_TIME;
+struct _KSYSTEM_TIME {
 	ULONG LowPart;
 	LONG High1Time;
 	LONG High2Time;
 };
 
-enum NT_PRODUCT_TYPE {
+typedef enum {
 	NtProductWinNt = 1,
 	NtProductLanManNt = 2,
 	NtProductServer = 3
-};
+} NT_PRODUCT_TYPE;
 
-enum ALTERNATIVE_ARCHITECTURE_TYPE {
+typedef enum {
 	StandardDesign = 0,
 	NEC98x86 = 1,
 	EndAlternatives = 2
-};
+} ALTERNATIVE_ARCHITECTURE_TYPE;
 
 #define NX_SUPPORT_POLICY_ALWAYSOFF (0)
 #define NX_SUPPORT_POLICY_ALWAYSON (1)
