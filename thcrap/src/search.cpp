@@ -113,9 +113,9 @@ static DWORD WINAPI SearchThread(void *param_)
 					SearchCheckExe(*state, ent);
 				}
 			}
-			catch (fs::filesystem_error &) {}
+			catch (std::system_error &) {}
 		}
-	} catch (fs::filesystem_error &) {}
+	} catch (std::system_error &) {}
 
 	return 0;
 }
