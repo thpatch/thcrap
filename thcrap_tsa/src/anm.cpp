@@ -17,6 +17,7 @@
 #include "thcrap_tsa.h"
 #include "anm.hpp"
 #include <GdiPlus.h>
+#include <filesystem>
 
 /// GDI+
 /// ----
@@ -646,7 +647,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 
 		if(!strcmp(key_sep + 1, "time")) {
 			auto time = json_integer_value(val_j);
-			if(!json_is_integer(val_j) || (time < INT16_MIN) | (time > INT16_MAX)) {
+			if(!json_is_integer(val_j) || (time < INT16_MIN) || (time > INT16_MAX)) {
 				FAIL(
 					": {\"changes\": {\"%s\"}", "Time must be a signed 16-bit integer, between %d and %d.",
 					key, INT16_MIN, INT16_MAX
@@ -1141,15 +1142,25 @@ int patch_png_apply(img_patch_t &patch, std::vector<sprite_local_t>& sprites, co
 	return ret;
 }
 
-int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprites)
+int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprites, const char* anm_fn, size_t entry_num)
 {
-	int ret = -1;
-	stack_chain_iterate_t sci;
-	sci.fn = NULL;
-	ret = 0;
-	if(char** chain = resolve_chain_game(patch.name);
-		chain && chain[0])
-	{
+	std::filesystem::path img_path(patch.name);
+	std::filesystem::path anm_path(anm_fn);
+
+	char* thtk_fn = nullptr;
+	_asprintf(&thtk_fn, "%s/%s@%s@%d%s",
+		img_path.parent_path().u8string().c_str(),
+		img_path.stem().u8string().c_str(),
+		anm_path.stem().u8string().c_str(),
+		entry_num,
+		img_path.extension().u8string().c_str()
+	);
+	defer(SAFE_FREE(thtk_fn));
+
+	int ret = 0;
+	auto iterate_png = [&](char** chain) {
+		stack_chain_iterate_t sci;
+		sci.fn = NULL;
 		log_printf("(PNG) Resolving %s... ", chain[0]);
 		while (stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
 			if (!patch_png_apply(patch, sprites, sci.patch_info, sci.fn)) {
@@ -1158,7 +1169,16 @@ int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprite
 		}
 		log_print(ret ? "\n" : "not found\n");
 		chain_free(chain);
+	};
+
+	if (thtk_fn) {
+		iterate_png(resolve_chain_game(thtk_fn));
+		if (ret) {
+			return ret;
+		}
 	}
+
+	iterate_png(resolve_chain_game(patch.name));
 	return ret;
 }
 
@@ -1232,6 +1252,7 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	anm_entry_t entry = {};
 	png_image_ex png = {};
 	png_image_ex bounds = {};
+	size_t entry_num = 0;
 
 	auto* file_in = (uint8_t*)malloc(size_in);
 	auto* anm_entry_in = file_in;
@@ -1270,7 +1291,7 @@ int patch_anm(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 				thtx_header_t* thtx_in = (thtx_header_t*)(anm_entry_in + entry.thtxoffset);
 
 				img_patch_t img_patch = img_get_patch(entry, thtx_in);
-				stack_game_png_apply(img_patch, entry.sprites);
+				stack_game_png_apply(img_patch, entry.sprites, fn, entry_num);
 				img_encode(img_patch);
 
 				thtx_header_t* thtx_out = (thtx_header_t*)(anm_entry_out + entry.thtxoffset);
@@ -1299,6 +1320,8 @@ next_no_thtx:
 		}
 		anm_entry_in = entry.next;
 		anm_entry_clear(entry);
+
+		entry_num++;
 	}
 	png_image_clear(bounds);
 	png_image_clear(png);
@@ -1357,7 +1380,6 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 
 	size_t out_size;
 	void* anm_file;
-	anm_header11_t* entry;
 
 	anm_file = file_load(fn, &out_size);
 	fr->disable = false;

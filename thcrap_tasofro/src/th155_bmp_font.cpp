@@ -83,6 +83,18 @@ void add_json_file(char *chars_list, int& chars_list_count, json_t *file)
 	json_decref(file);
 }
 
+static void add_json_file(char *chars_list, int& chars_list_count, const std::string& path)
+{
+	size_t file_size;
+	char *file_buffer = (char*)file_read(path.c_str(), &file_size);
+	if (!file_buffer) {
+		return;
+	}
+
+	add_json_file(chars_list, chars_list_count, json_loadb(file_buffer, file_size, 0, nullptr));
+	free(file_buffer);
+}
+
 static void add_files_in_directory(char *chars_list, int& chars_list_count, std::string basedir, bool recurse)
 {
 	std::string pattern = basedir + "\\*";
@@ -107,7 +119,7 @@ static void add_files_in_directory(char *chars_list, int& chars_list_count, std:
 				 strcmp(PathFindExtensionA(ffd.cFileName), ".jdiff") == 0) {
 			std::string filename = basedir + "\\" + ffd.cFileName;
 			log_printf(" + %s\n", filename.c_str());
-			add_json_file(chars_list, chars_list_count, json_load_file(filename.c_str(), 0, nullptr));
+			add_json_file(chars_list, chars_list_count, filename);
 		}
 	} while (FindNextFile(hFind, &ffd));
 

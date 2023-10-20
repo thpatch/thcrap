@@ -353,7 +353,7 @@ int sprite_patch(const sprite_patch_t &sp);
 // Walks through the patch stack and patches every game-local PNG file called
 // [entry->name] onto the THTX texture [entry->thtx] on sprite level, using
 // the coordinates in [entry->sprites].
-int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprites);
+int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprites, const char* anm_fn, size_t entry_num);
 /// ---------------------
 
 /// Sprite boundary dumping

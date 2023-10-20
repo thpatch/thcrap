@@ -255,6 +255,46 @@ int ascii_vpatchf_th06(
 #undef SCORE_LEN
 }
 
+int ascii_vpatchf_th07_th08(
+	ascii_put_func_t& putfunc, vector3_t pos, const char* fmt, va_list va
+)
+{
+	auto id = strings_id(fmt);
+	auto single_str = strings_vsprintf((size_t) &pos, fmt, va);
+	if (!id) {
+		return putfunc(params.ClassPtr(), pos, single_str);
+	}
+
+	struct align_info_t {
+		const char* id;
+		const char* base;
+		// Since ZUN didn't bother centering these strings, a correction must be
+		// applied to each one in addition to the usual center alignment.
+		float offset;
+	};
+
+	static const align_info_t align_info[] {
+		{ "th07 Full Power", "Full Power Mode!", game_id == TH07 ? 8.5f : 15.5f },
+		{ "th06_ascii_bonus_format", "BONUS 12345678", 0.0f },
+		{ "th06_ascii_centered_spell_bonus", "Spell Card Bonus!", game_id == TH07 ? 17.5f : 8.5f },
+		{ "th07 Supernatural Border", "Supernatural Border!!", -11.5f },
+		{ "th07 CherryPoint Max", "CherryPoint Max!", 8.5f },
+		{ "th07 Border Bonus Format", "Border Bonus 1234567", -7.5f },
+		{ "th08 Last Spell Failed", "Last Spell Failed", 18.5f },
+		{ "th08 Spell Bonus Failed", "Spell Bonus Failed", 13.5f }
+	};
+	
+	for (const auto& str : align_info) {
+		if (!strcmp(id, str.id)) {
+			auto center_cur = pos.x + (ascii_extent(str.base) / 2.0f) + str.offset;
+			pos.x = ascii_align_center(center_cur, single_str);
+			break;
+		}
+	}
+
+	return putfunc(params.ClassPtr(), pos, single_str);
+}
+
 int ascii_vpatchf_th165(
 	ascii_put_func_t &putfunc, vector3_t pos, const char* fmt, va_list va
 )
@@ -275,11 +315,18 @@ extern "C" int TH_STDCALL ascii_vpatchf(
 	ascii_put_func_t &putfunc, vector3_t &pos, const char* fmt, va_list va
 )
 {
-	if(game_id == TH06) {
+	switch (game_id) {
+	case TH06:
 		return ascii_vpatchf_th06(putfunc, pos, fmt, va);
-	} else if(game_id == TH165) {
+	case TH07:
+	case TH08:
+		return ascii_vpatchf_th07_th08(putfunc, pos, fmt, va);
+	case TH165:
 		return ascii_vpatchf_th165(putfunc, pos, fmt, va);
+	default:
+		break;
 	}
+
 	auto single_str = strings_vsprintf((size_t)&pos, fmt, va);
 	return putfunc(params.ClassPtr(), pos, single_str);
 }
