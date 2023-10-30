@@ -117,6 +117,7 @@ int thbgm_cur_bgmid = -1;
 size_t thbgm_modtrack_bytes_read = 0;
 
 static auto chain_CreateFileA = CreateFileU;
+static auto chain_CreateFileW = CreateFileW;
 static auto chain_CloseHandle = CloseHandle;
 static auto chain_ReadFile = ReadFile;
 static auto chain_SetFilePointer = SetFilePointer;
@@ -199,6 +200,27 @@ HANDLE WINAPI thbgm_CreateFileA(
 	if(PathMatchSpecU(PathFindFileNameU(lpFileName), "*bgm*.dat")) {
 		thbgm_handles.emplace_back(ret);
 		bgmmod_debugf("CreateFileA(%s) -> %p\n", lpFileName, ret);
+	}
+	return ret;
+}
+
+HANDLE WINAPI thbgm_CreateFileW(
+	LPCWSTR lpFileName,
+	DWORD dwDesiredAccess,
+	DWORD dwShareMode,
+	LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+	DWORD dwCreationDisposition,
+	DWORD dwFlagsAndAttributes,
+	HANDLE hTemplateFile
+)
+{
+	auto ret = chain_CreateFileW(
+		lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
+		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
+	);
+	if (PathMatchSpecW(PathFindFileNameW(lpFileName), L"*bgm*.dat")) {
+		thbgm_handles.emplace_back(ret);
+		bgmmod_debugf("CreateFileW(%S) -> %p\n", lpFileName, ret);
 	}
 	return ret;
 }
@@ -886,6 +908,7 @@ extern "C" TH_EXPORT void bgm_mod_detour(void)
 	} else {
 		detour_chain("kernel32.dll", 1,
 			"CreateFileA", thbgm_CreateFileA, &chain_CreateFileA,
+			"CreateFileW", thbgm_CreateFileW, &chain_CreateFileW,
 			"CloseHandle", thbgm_CloseHandle, &chain_CloseHandle,
 			"ReadFile", thbgm_ReadFile, &chain_ReadFile,
 			"SetFilePointer", thbgm_SetFilePointer, &chain_SetFilePointer,
