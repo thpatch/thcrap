@@ -161,3 +161,9 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out);
 // code_string_render exported under different names.
 TH_IMPORT size_t binhack_calc_size(const char* code_str);
 TH_IMPORT int binhack_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str, HMODULE hMod);
+
+
+void constpool_reset();
+void add_constpool(const char* data, size_t data_length, patch_value_type_t type, uint8_t alignment, uintptr_t addr, HMODULE source_module);
+void add_constpool_raw_pointer(uintptr_t data, uintptr_t addr);
+void constpool_apply(HackpointMemoryPage* page_array);

@@ -339,13 +339,6 @@ TEST(LongDoubleBS, LongDoubleTest6) {
 	EXPECT_EQ(B1, true);
 }
 
-TEST(LongDoubleBS, LongDoubleTest7) {
-	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
-	int I1 = LD1 += 4;
-	I1 << LD1 + 2;
-	EXPECT_EQ(I1, 6);
-}
-
 TEST(LongDoubleBS, LongDoubleTest8) {
 	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
 	bool B1 = LD1 == LD1 + 2;
@@ -356,4 +349,10 @@ TEST(LongDoubleBS, LongDoubleTest9) {
 	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
 	LD1 + 4;
 	EXPECT_EQ((double)LD1, 2.0);
+}
+
+TEST(LongDoubleBS, LongDoubleTest10) {
+	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
+	LD1 = LD1 + LD1 + LD1 + LD1;
+	EXPECT_EQ((double)LD1, 8.0);
 }

@@ -10,6 +10,7 @@
 #include "thcrap.h"
 #include <math.h>
 #include <locale.h>
+#include <algorithm>
 
 /*
  * Grumble, grumble, C is garbage and will only do string→float conversion
@@ -159,6 +160,490 @@ static TH_NOINLINE const char* consume_float_value(const char *const expr, patch
 	}
 }
 
+// Data to be rendered into a constpool.
+struct constpool_input_t {
+	union {
+		std::string_view text;
+		uintptr_t raw_pointer;
+	};
+	bool is_raw_pointer;
+
+	inline constexpr constpool_input_t(const std::string_view& text) : text(text), is_raw_pointer(false) {}
+
+	inline constexpr constpool_input_t(uintptr_t raw_pointer) : raw_pointer(raw_pointer), is_raw_pointer(true) {}
+};
+
+// Fields that are unique to each constpool use.
+struct constpool_value_t {
+	uintptr_t addr;
+	HMODULE source_module;
+	size_t render_index;
+
+	inline constexpr constpool_value_t(uintptr_t addr, HMODULE source_module) : addr(addr), source_module(source_module), render_index(0) {}
+};
+
+// Fields that can be shared between constpool uses.
+struct constpool_key_t {
+	uint8_t alignment;
+	patch_value_type_t type;
+	size_t input_index;
+
+	inline constexpr constpool_key_t(uint8_t alignment, patch_value_type_t type, size_t input_index) : alignment(alignment), type(type), input_index(input_index) {}
+
+	inline bool operator<(const constpool_key_t& rhs) const {
+		return this->alignment > rhs.alignment;
+	}
+};
+
+static std::vector<constpool_input_t> constpool_inputs;
+static std::multimap<constpool_key_t, constpool_value_t> constpool_prerenders;
+
+void constpool_reset() {
+	constpool_inputs.clear();
+	constpool_prerenders.clear();
+}
+
+void add_constpool(const char* data, size_t data_length, patch_value_type_t type, uint8_t alignment, uintptr_t addr, HMODULE source_module) {
+	std::string_view data_view = std::string_view(data, data_length);
+	size_t input_index = constpool_inputs.size();
+	for (const auto& constpool_input : constpool_inputs) {
+		if (!constpool_input.is_raw_pointer && constpool_input.text == data_view) {
+			input_index = &constpool_input - constpool_inputs.data();
+			goto has_str;
+		}
+	}
+	constpool_inputs.emplace_back(data_view);
+has_str:
+	constpool_prerenders.emplace(std::piecewise_construct,
+		 /* constpool_key_t */   std::forward_as_tuple(alignment, type, input_index),
+		 /* constpool_value_t */ std::forward_as_tuple(addr, source_module)
+	);
+}
+
+void add_constpool_raw_pointer(uintptr_t data, uintptr_t addr) {
+	size_t input_index = constpool_inputs.size();
+	for (const auto& constpool_input : constpool_inputs) {
+		if (constpool_input.is_raw_pointer && constpool_input.raw_pointer == data) {
+			input_index = &constpool_input - constpool_inputs.data();
+			goto has_pointer;
+		}
+	}
+	constpool_inputs.emplace_back(data);
+has_pointer:
+	constpool_prerenders.emplace(std::piecewise_construct,
+		 /* constpool_key_t */   std::forward_as_tuple(alignof(void*), PVT_POINTER, input_index),
+		 /* constpool_value_t */ std::forward_as_tuple(addr, (HMODULE)NULL)
+	);
+}
+
+// String/code types aren't usable in constpools
+// and don't have single defined sizes anyway,
+// so they aren't included in this list
+static constexpr size_t patch_val_sizes[] = {
+	0,
+	sizeof(uint8_t), sizeof(int8_t),
+	sizeof(uint16_t), sizeof(int16_t),
+	sizeof(uint32_t), sizeof(int32_t),
+	sizeof(uint64_t), sizeof(int64_t),
+	sizeof(float),
+	sizeof(double),
+	AlignUpToMultipleOf2(sizeof(long double), 16) // Long double is slightly over aligned
+};
+
+#pragma warning(push)
+// Intentional overflow/wraparound on some values,
+#pragma warning(disable : 4307 4146)
+void constpool_apply(HackpointMemoryPage* page_array) {
+
+	if unexpected(constpool_prerenders.empty()) {
+		return;
+	}
+
+	uint8_t* rendered_values = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	uint8_t* current_value = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN);
+	uint8_t* padding_tracking = (uint8_t*)malloc(BINHACK_BUFSIZE_MIN); // Could this be compressed to a bit array instead of bytes?
+	{
+#if !TH_X86 || _M_IX86_FP >= 2
+		__m128i xmm_zero = {};
+		__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
+		for (size_t i = 0; i < BINHACK_BUFSIZE_MIN / sizeof(__m128i); ++i) {
+			((__m128i*)rendered_values)[i] = xmm_zero;
+			((__m128i*)padding_tracking)[i] = xmm_neg_one;
+		}
+#else
+		for (size_t i = 0; i < BINHACK_BUFSIZE_MIN / sizeof(uint32_t); ++i) {
+			((uint32_t*)rendered_values)[i] = 0u;
+			((uint32_t*)padding_tracking)[i] = ~0u;
+		}
+#endif
+	}
+
+	size_t rendered_values_alloc_size = BINHACK_BUFSIZE_MIN;
+	size_t current_value_alloc_size = BINHACK_BUFSIZE_MIN;
+
+	size_t constpool_memory_size = 0;
+	for (auto& [_key, value] : constpool_prerenders) {
+		const auto& key = _key;
+		const constpool_input_t& input = constpool_inputs[key.input_index];
+
+		size_t filled_value_size;
+		size_t per_element_size;
+		size_t element_count;
+
+		// Calculate the value of each element...
+		if (!input.is_raw_pointer) {
+			// Input is a text string from patch JSON
+			const std::string_view& exprs = input.text;
+
+			patch_val_t pool_value = {};
+
+			filled_value_size = 0;
+			per_element_size = patch_val_sizes[key.type];
+			element_count = 0;
+
+			size_t element_pos = 0;
+			do {
+				// TODO: Find calls memchr, which seems a bit overkill
+				size_t end_element = exprs.find(';', element_pos);
+				char end_char;
+				if (end_element != std::string_view::npos) {
+					// Repeat the previous element if it's just a consecutive ;
+					if (element_pos != end_element) {
+						end_char = ';';
+						// MSVC is too dumb to merge two function calls
+						goto parse_constpoool_expr;
+					}
+				} else {
+					if (exprs[element_pos] != '}') {
+						end_char = '}';
+					parse_constpoool_expr:
+						if (key.type < PVT_FLOAT) {
+							(void)eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
+						} else {
+							(void)consume_float_value(&exprs[element_pos], &pool_value);
+							// Literally the only time when x87
+							// is probably still faster: converting to/from arbitrary widths
+							switch (pool_value.type) {
+								default:
+									eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
+									__asm { __asm FILD QWORD PTR[pool_value] }
+									break;
+								case PVT_FLOAT: __asm { __asm FLD DWORD PTR[pool_value] } break;
+								case PVT_DOUBLE: __asm { __asm FLD QWORD PTR[pool_value] } break;
+								case PVT_LONGDOUBLE: __asm { __asm FLD TBYTE PTR[pool_value] } break;
+							}
+							switch (key.type) {
+								default: TH_UNREACHABLE;
+								case PVT_FLOAT: __asm { __asm FSTP DWORD PTR[pool_value] } break;
+								case PVT_DOUBLE: __asm { __asm FSTP QWORD PTR[pool_value] } break;
+								case PVT_LONGDOUBLE: __asm { __asm FSTP TBYTE PTR[pool_value] } break;
+							}
+						}
+					}
+				}
+				element_pos = end_element + 1;
+				if unexpected(filled_value_size + per_element_size >= current_value_alloc_size) {
+					current_value = (uint8_t*)realloc(current_value, current_value_alloc_size += BINHACK_BUFSIZE_MIN);
+				}
+				switch (per_element_size) {
+					default:
+						TH_UNREACHABLE;
+					case 16:
+						memcpy(&current_value[filled_value_size], &pool_value.ld, sizeof(LongDouble80));
+						break;
+					case 8:
+						// double forces an XMM QWORD copy
+						*(double*)&current_value[filled_value_size] = pool_value.d;
+						break;
+					case 4:
+						*(uint32_t*)&current_value[filled_value_size] = pool_value.i;
+						break;
+					case 2:
+						*(uint16_t*)&current_value[filled_value_size] = pool_value.w;
+						break;
+					case 1:
+						*(uint8_t*)&current_value[filled_value_size] = pool_value.b;
+						break;
+				}
+				filled_value_size += per_element_size;
+				++element_count;
+			} while (element_pos != std::string_view::npos + 1);
+		}
+		else {
+			// Input is a pointer 
+			filled_value_size = sizeof(void*);
+			per_element_size = sizeof(void*);
+			element_count = 1;
+
+			*(uintptr_t*)current_value = input.raw_pointer;
+		}
+
+		size_t aligned_value_size = AlignUpToMultipleOf2(filled_value_size, key.alignment);
+		TH_ASSUME(element_count > 0);
+
+		size_t render_index;
+		if (aligned_value_size <= constpool_memory_size) {
+			size_t render_index_end = constpool_memory_size - aligned_value_size;
+			render_index = 0;
+			switch (per_element_size) {
+				default:
+					TH_UNREACHABLE;
+				case 16:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							uint64_t* temp = (uint64_t*)&padding_tracking[render_index + i * 16];
+							if (temp[0] || *(uint16_t*)&temp[1] ||
+								memcmp(&rendered_values[render_index + i * 16], current_value + i * 16, sizeof(LongDouble80))
+							) {
+								goto continue_outer_match_ld;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_ld:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							uint64_t* temp = (uint64_t*)&padding_tracking[render_index + i * 16];
+							if (temp[0] != 0xFFFFFFFFFFFFFFFFull || *(int16_t*)&temp[1] != -1) { // MSVC hates uint16_t comparisons
+								goto continue_outer_padding_ld;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_ld:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 8:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (((uint64_t*)&padding_tracking[render_index])[i] ||
+								((uint64_t*)&rendered_values[render_index])[i] != ((uint64_t*)current_value)[i]
+							) {
+								goto continue_outer_match_q;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_q:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (((uint64_t*)&padding_tracking[render_index])[i] != 0xFFFFFFFFFFFFFFFFull) {
+								goto continue_outer_padding_q;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_q:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 4:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (((uint32_t*)&padding_tracking[render_index])[i] ||
+								((uint32_t*)&rendered_values[render_index])[i] != ((uint32_t*)current_value)[i]
+							) {
+								goto continue_outer_match_d;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_d:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (((uint32_t*)&padding_tracking[render_index])[i] != 0xFFFFFFFFu) {
+								goto continue_outer_padding_d;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_d:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 2:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (((uint16_t*)&padding_tracking[render_index])[i] ||
+								((uint16_t*)&rendered_values[render_index])[i] != ((uint16_t*)current_value)[i]
+							) {
+								goto continue_outer_match_w;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_w:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (((int16_t*)&padding_tracking[render_index])[i] != -1) { // MSVC hates uint16_t comparisons
+								goto continue_outer_padding_w;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_w:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+				case 1:
+					// Check if the element array is already present in the rendered values...
+					do {
+						size_t i = 0;
+						do {
+							if (padding_tracking[render_index + i] ||
+								rendered_values[render_index + i] != current_value[i]
+							) {
+								goto continue_outer_match_b;
+							}
+						} while (++i < element_count);
+						goto match_success;
+					continue_outer_match_b:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					// Check if any of the padding elements can be reused...
+					render_index = 0;
+					do {
+						size_t i = 0;
+						do {
+							if (padding_tracking[render_index + i] != 0xFF) {
+								goto continue_outer_padding_b;
+							}
+						} while (++i < element_count);
+						goto padding_success;
+					continue_outer_padding_b:
+						render_index += key.alignment;
+					} while (render_index < render_index_end);
+					break; // Expand
+			}
+		} else {
+			// Not enough memory, always expand the allocation
+			
+			// Does this get alignment right?
+			render_index = AlignUpToMultipleOf2(constpool_memory_size, key.alignment);
+		}
+		// These are brand new values, so expand the allocation
+		size_t overaligned_value_size = AlignUpToMultipleOf2(aligned_value_size, sizeof(__m128i));
+		if unexpected(constpool_memory_size + overaligned_value_size >= rendered_values_alloc_size) {
+			size_t new_alloc_size = rendered_values_alloc_size + overaligned_value_size + BINHACK_BUFSIZE_MIN;
+			rendered_values = (uint8_t*)realloc(rendered_values, new_alloc_size);
+			padding_tracking = (uint8_t*)realloc(padding_tracking, new_alloc_size);
+			{
+#if !TH_X86 || _M_IX86_FP >= 2
+				__m128i xmm_zero = {};
+				__m128i xmm_neg_one = _mm_cmpeq_epi8(xmm_zero, xmm_zero);
+				size_t i = rendered_values_alloc_size;
+				do {
+					*(__m128i*)&rendered_values[i] = xmm_zero;
+					*(__m128i*)&padding_tracking[i] = xmm_neg_one;
+					i += sizeof(__m128i);
+				} while (i < new_alloc_size);
+#else
+				for (size_t i = rendered_values_alloc_size; i < new_alloc_size; i += sizeof(uint32_t)) {
+					*(uint32_t*)&rendered_values[i] = 0u;
+					*(uint32_t*)&padding_tracking[i] = ~0u;
+				}
+#endif
+			}
+			rendered_values_alloc_size = new_alloc_size;
+		}
+		constpool_memory_size += overaligned_value_size;
+	padding_success:
+		// Render the new values...
+		switch (per_element_size) {
+			default:
+				TH_UNREACHABLE;
+			case 16: {
+				size_t i = 0;
+				do {
+					memset(&padding_tracking[render_index + i * 16], 0, sizeof(LongDouble80));
+					memcpy(&rendered_values[render_index + i * 16], current_value + i * 16, sizeof(LongDouble80));
+				} while (++i < element_count);
+				break;
+			}
+			case 8: {
+				size_t i = 0;
+				do {
+					// memset forces an XMM XOR/MOV
+					memset(&((uint64_t*)&padding_tracking[render_index])[i], 0, sizeof(uint64_t));
+					// double forces an XMM QWORD copy
+					((double*)&rendered_values[render_index])[i] = ((double*)current_value)[i];
+				} while (++i < element_count);
+				break;
+			}
+			case 4: {
+				size_t i = 0;
+				do {
+					((uint32_t*)&padding_tracking[render_index])[i] = 0;
+					((uint32_t*)&rendered_values[render_index])[i] = ((uint32_t*)current_value)[i];
+				} while (++i < element_count);
+				break;
+			}
+			case 2: {
+				size_t i = 0;
+				do {
+					((uint16_t*)&padding_tracking[render_index])[i] = 0;
+					((uint16_t*)&rendered_values[render_index])[i] = ((uint16_t*)current_value)[i];
+				} while (++i < element_count);
+				break;
+			}
+			case 1: {
+				size_t i = 0;
+				do {
+					padding_tracking[render_index + i] = 0;
+					rendered_values[render_index + i] = current_value[i];
+				} while (++i < element_count);
+				break;
+			}
+		}
+	match_success:
+		value.render_index = render_index;
+	}
+	page_array[0].size = constpool_memory_size;
+	if (constpool_memory_size) {
+		uint8_t* constpool = page_array[0].address = (uint8_t*)VirtualAllocLow(0, constpool_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+
+		log_printf(
+			"-------------------------\n"
+			"Generating constpool... (0x%zX bytes at 0x%.8X)\n"
+			"-------------------------\n",
+			constpool_memory_size, (uint32_t)constpool
+		);
+
+		memcpy(constpool, rendered_values, constpool_memory_size);
+
+		DWORD idgaf;
+		VirtualProtect(constpool, constpool_memory_size, PAGE_READONLY, &idgaf);
+		
+		for (const auto& [_, value] : constpool_prerenders) {
+			uint8_t *__ptr32 __sptr constpool_write = (uint8_t * __ptr32 __sptr)constpool + value.render_index;
+			log_printf("fixup at 0x%p (0x%.8X)...\n", value.addr, (uint32_t)constpool_write);
+			PatchRegion((void*)value.addr, NULL, &constpool_write, sizeof(uint32_t));
+		}
+	}
+}
+#pragma warning(pop)
+
 // TODO: Check if anyone uses single quotes already in code strings
 //// Char
 //else if (expr[0] == '\'' && (expr_next = (char*)strchr(expr+1, '\''))) {
@@ -191,6 +676,12 @@ static TH_NOINLINE const char* consume_float_value(const char *const expr, patch
 static TH_FORCEINLINE const char* check_for_code_string_cast(const char* expr, patch_val_t *const val)
 {
 	switch (const uint8_t c = expr[0] | 0x20) {
+		case 'p':
+			if (expr[1] == ':') {
+				val->type = PVT_POINTER;
+				return expr + 4;
+			}
+			break;
 		case 'i': case 'u': case 'f':
 			if (expr[1] && expr[2]) {
 				switch (const uint32_t temp = *(uint32_t*)expr | TextInt(0x20, 0x00, 0x00, 0x00)) {
@@ -232,23 +723,52 @@ static TH_FORCEINLINE const char* check_for_code_string_cast(const char* expr, p
 						}
 				}
 			}
-		default:
-			//log_printf("WARNING: no code string expression size specified, assuming default...\n");
-			val->type = PVT_DEFAULT;
-			return expr;
+			break;
 	}
+	//log_printf("WARNING: no code string expression size specified, assuming default...\n");
+	val->type = PVT_DEFAULT;
+	return expr;
+}
+
+static inline const char* check_for_code_string_alignment(const char* expr, uint8_t& align_out) {
+	if (uint8_t c = expr[0]) {
+		switch (TextInt(c, expr[1]) | TextInt(0x20, 0)) {
+			case TextInt('z', '.'): align_out = 64; break;
+			case TextInt('y', '.'): align_out = 32; break;
+			case TextInt('x', '.'): align_out = 16; break;
+#ifdef TH_X64
+			case TextInt('p', '.'):
+#endif
+			case TextInt('q', '.'): align_out = 8; break;
+#ifndef TH_X64
+			case TextInt('p', '.'):
+#endif
+			case TextInt('d', '.'): align_out = 4; break;
+			case TextInt('w', '.'): align_out = 2; break;
+			case TextInt('b', '.'): align_out = 1; break;
+			default:
+#ifdef TH_X64
+				align_out = 8;
+#else
+				align_out = 4;
+#endif
+				return expr;
+		}
+		return expr + 2;
+	}
+	return NULL;
 }
 
 static inline const char* parse_brackets(const char* str, char c) {
 	--str;
 	int32_t paren_count = 0;
 	int32_t square_count = 0;
-	int32_t curly_count = 0;
+	//int32_t curly_count = 0;
 	do {
 		paren_count += (c == '(') - (c == ')');
 		square_count += (c == '[') - (c == ']');
-		curly_count += (c == '{') - (c == '}');
-		if (const int32_t temp = (paren_count | square_count | curly_count);
+		//curly_count += (c == '{') - (c == '}');
+		if (const int32_t temp = (paren_count | square_count /*| curly_count*/);
 			temp == 0) {
 			return str;
 		}
@@ -285,7 +805,23 @@ size_t code_string_calc_size(const char* code_str) {
 					++code_str;
 				}
 				continue;
-			case '(': case '{': case '[':
+			case '{': // Absolute address of constant value
+				while (1) {
+					switch (cur_char = *++code_str) {
+						default:
+							continue;
+						case '}':
+							val.type = PVT_DWORD; // Always a 32 bit address, even on x64 (bottom 2GB)
+							++code_str;
+							break;
+						case '\0':
+							code_str = NULL;
+							break;
+					}
+					break;
+				}
+				break;
+			case '(': case '[':
 				++code_str;
 				if (cur_char == '[') { // Relative patch value
 					val.type = PVT_DWORD; // x64 uses 32 bit relative offsets as well
@@ -415,51 +951,38 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 					++code_str;
 				}
 				continue;
-			case '(': case '{': // Expression
+			case '(': // Expression
 				code_str = check_for_code_string_cast(++code_str, &val);
-				if (cur_char == '(') { // Raw value
-					code_str = eval_expr(code_str, ')', &val.z, NULL, target_addr, hMod);
-					if unexpected(!code_str) {
-						break; // Error
-					}
-					switch (val.type) {
-						case PVT_FLOAT:
-							val.f = (float)val.z;
-							break;
-						case PVT_DOUBLE:
-							val.d = (double)val.z;
-							break;
-						case PVT_LONGDOUBLE:
-							val.ld = /*(LongDouble80)*/val.z;
-							break;
-					}
-					break;
+				code_str = eval_expr(code_str, ')', &val.z, NULL, target_addr, hMod);
+				if unexpected(!code_str) {
+					break; // Error
 				}
-				else { // Dereference
-					code_str = eval_expr(code_str, '}', &val.z, NULL, target_addr, hMod);
-					if unexpected(!code_str) {
-						break; // Error
-					}
-					switch (val.type) {
-						case PVT_BYTE:		val.b = *(uint8_t*)val.z; break;
-						case PVT_SBYTE:		val.sb = *(int8_t*)val.z; break;
-						case PVT_WORD:		val.w = *(uint16_t*)val.z; break;
-						case PVT_SWORD:		val.sw = *(int16_t*)val.z; break;
-						case PVT_DWORD:		val.i = *(uint32_t*)val.z; break;
-						case PVT_SDWORD:	val.si = *(int32_t*)val.z; break;
-						case PVT_QWORD:		val.q = *(uint64_t*)val.z; break;
-						case PVT_SQWORD:	val.sq = *(int64_t*)val.z; break;
-						case PVT_FLOAT:		val.f = *(float*)val.z; break;
-						case PVT_DOUBLE:	val.d = *(double*)val.z; break;
-						case PVT_LONGDOUBLE:val.ld = *(LongDouble80*)val.z; break;
-
-						// This switch is only used when the type is set via
-						// a cast operation, which doesn't include any of
-						// the other patch value types.
-						default: TH_UNREACHABLE;
-					}
-					break;
+				switch (val.type) {
+					case PVT_FLOAT:
+						val.f = (float)val.z;
+						break;
+					case PVT_DOUBLE:
+						val.d = (double)val.z;
+						break;
+					case PVT_LONGDOUBLE:
+						val.ld = /*(LongDouble80)*/val.z;
+						break;
 				}
+				break;
+			case '{': // Absolute address of constant value in bottom 2GB
+				if (code_str = check_for_code_string_alignment(++code_str, val.alignment)) {
+					code_str = check_for_code_string_cast(code_str, &val);
+					size_t i = 0;
+					while (code_str[i] != '}') ++i;
+					if (i) {
+						add_constpool(code_str, i, val.type, val.alignment, target_addr, hMod);
+						code_str += i;
+					}
+					++code_str;
+					val.i = 0; // Use NULL as a placeholder to avoid silent failure if the constpool breaks
+					val.type = PVT_DWORD;
+				}
+				break;
 			case '[': case '<': // Patch value
 				code_str = get_patch_value(code_str, &val, NULL, target_addr, hMod);
 				break;
@@ -519,7 +1042,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 
 		// Check for errors
 		if unexpected(!code_str) {
-			log_printf("Code string render error!\n");
+			log_print("Code string render error!\n");
 			return CodeStringErrorRet;
 		}
 
@@ -802,8 +1325,8 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 	uint8_t* sourcecave_p = cave_source;
 	uint8_t* sourcecave_end = sourcecave_p + sourcecaves_total_size;
 
-	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize);
-	uint8_t* exp_buf = (uint8_t*)malloc(largest_cavesize);
+	uint8_t* asm_buf = (uint8_t*)malloc(largest_cavesize * 2);
+	uint8_t* exp_buf = asm_buf + largest_cavesize;
 
 	for (size_t i = 0; i < binhacks_count; ++i) {
 		if (binhack_is_valid[i]) {
@@ -846,7 +1369,6 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 		}
 	}
 	free(asm_buf);
-	free(exp_buf);
 	VLA_FREE(binhack_is_valid);
 	log_print("\n");
 
@@ -1077,7 +1599,7 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 	for (size_t i = 0; i < codecaves_count; ++i) {
 		const CodecaveAccessType access = codecaves[i].access_type;
 
-		log_printf("Recording codecave: \"%s\" at 0x%p\n", codecaves[i].name, (uintptr_t)current_cave[access]);
+		log_printf("Recording \"%s\" at 0x%p\n", codecaves[i].name, (uintptr_t)current_cave[access]);
 		func_add(codecaves[i].name, (uintptr_t)current_cave[access]);
 
 		if (codecaves[i].export_codecave) {

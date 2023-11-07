@@ -505,9 +505,9 @@ sprite_slot_t sprite_slot_t::parse(const char *slotstr)
 	assert(slotstr);
 
 	sprite_slot_t ret;
-	str_address_ret_t sar;
-	ret.slot = str_address_value(slotstr, nullptr, &sar);
-	if(sar.error == STR_ADDRESS_ERROR_NONE) {
+	const char* end_str;
+	ret.slot = str_to_addr(slotstr, end_str, nullptr);
+	if(slotstr != end_str) {
 		ret.type = SS_SLOT;
 		return ret;
 	}

@@ -37,210 +37,13 @@ confusing, so this macro exists to better document the intent.
 */
 #define unexpected(condition) (!(condition)) TH_LIKELY; TH_UNLIKELY else
 
+#define func_ptr_typedef(return_type, calling_convention, name) \
+typedef return_type (calling_convention* name)
+
+
 /// Internal Windows Structs
-/// TODO: Move these to some sort of header like windows_support.h
 /// -------
-
-/*
-Struct definitions based on the fields documented to have
-consistent offsets in all Windoes versions 5.0+
-TEB: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/teb/index.htm
-PEB: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/peb/index.htm
-*/
-
-typedef struct _PEB PEB;
-struct _PEB {
-	BOOLEAN InheritedAddressSpace;
-	BOOLEAN ReadImageFileExecOptions;
-	BOOLEAN BeingDebugged;
-	BOOLEAN SpareBool;
-#ifdef TH_X64
-	UCHAR Padding0[4];
-#endif
-	HANDLE Mutant;
-	PVOID ImageBaseAddress;
-	PVOID Ldr; // PEB_LDR_DATA*
-	PVOID ProcessParameters; // RTL_USER_PROCESS_PARAMETERS*
-	PVOID SubSystemData;
-	HANDLE ProcessHeap;
-	RTL_CRITICAL_SECTION* FastPebLock;
-	PVOID unreliable_member_1;
-	PVOID unreliable_member_2;
-	ULONG unreliable_member_3;
-#ifdef TH_X64
-	UCHAR Padding1[4];
-#endif
-	PVOID KernelCallbackTable;
-	ULONG SystemReserved[2];
-	PVOID unreliable_member_4;
-	ULONG TlsExpansionCounter;
-#ifdef TH_X64
-	UCHAR Padding2[4];
-#endif
-	PVOID TlsBitmap;
-	ULONG TlsBitmapBits[2];
-	PVOID ReadOnlySharedMemoryBase;
-	PVOID unreliable_member_5;
-	PVOID* ReadOnlyStaticServerData;
-	PVOID AnsiCodePageData;
-	PVOID OemCodePageData;
-	PVOID UnicodeCaseTableData;
-	ULONG NumberOfProcessors;
-	ULONG NtGlobalFlag;
-	LARGE_INTEGER CriticalSectionTimeout;
-	ULONG_PTR HeapSegmentReserve;
-	ULONG_PTR HeapSegmentCommit;
-	ULONG_PTR HeapDeCommitTotalFreeThreshold;
-	ULONG_PTR HeapDeCommitFreeBlockThreshold;
-	ULONG NumberOfHeaps;
-	ULONG MaximumNumberOfHeaps;
-	PVOID* ProcessHeaps;
-	PVOID GdiSharedHandleTable;
-	PVOID ProcessStarterHelper;
-	ULONG GdiDCAttributeList;
-#ifdef TH_X64
-	UCHAR Padding3[4];
-#endif
-	RTL_CRITICAL_SECTION* LoaderLock;
-	ULONG OSMajorVersion;
-	ULONG OSMinorVersion;
-	USHORT OSBuildNumber;
-	union {
-		USHORT OSCSDVersion;
-		struct {
-			BYTE OSCSDMajorVersion;
-			BYTE OSCSDMinorVersion;
-		};
-	};
-	ULONG OSPlatformId;
-	ULONG ImageSubsystem;
-	ULONG ImageSubsystemMajorVersion;
-	ULONG ImageSubsystemMinorVersion;
-#ifdef TH_X64
-	UCHAR Padding4[4];
-#endif
-	KAFFINITY unreliable_member_6;
-#ifdef TH_X64
-	ULONG GdiHandleBuffer[0x3C];
-#else
-	ULONG GdiHandleBuffer[0x22];
-#endif
-	VOID(*PostProcessInitRoutine)(VOID);
-	PVOID TlsExpansionBitmap;
-	ULONG TlsExpansionBitmapBits[0x20];
-	ULONG SessionId;
-#ifdef TH_X64
-	UCHAR Padding5[4];
-#endif
-};
-typedef struct _CLIENT_ID {
-	HANDLE UniqueProcess;
-	HANDLE UniqueThread;
-} CLIENT_ID;
-typedef struct _GDI_TEB_BATCH {
-	ULONG Offset;
-	ULONG_PTR HDC;
-	ULONG Buffer[310];
-} GDI_TEB_BATCH, *PGDI_TEB_BATCH;
-typedef struct _UNICODE_STRING {
-	USHORT Length;
-	USHORT MaximumLength;
-	PWSTR  Buffer;
-} UNICODE_STRING, *PUNICODE_STRING;
-typedef struct _TEB TEB;
-struct _TEB {
-	//NT_TIB NtTib;
-	struct _EXCEPTION_REGISTRATION_RECORD* ExceptionList;
-	PVOID StackBase;
-	PVOID StackLimit;
-	PVOID SubSystemTib;
-	PVOID FiberData;
-	PVOID ArbitraryUserPointer;
-	TEB* Self;
-	PVOID EnvironmentPointer;
-	CLIENT_ID ClientId;
-	PVOID ActiveRpcHandle;
-	PVOID ThreadLocalStoragePointer;
-	PEB* ProcessEnvironmentBlock;
-	ULONG LastErrorValue;
-	ULONG CountOfOwnedCriticalSections;
-	PVOID CsrClientThread;
-	PVOID Win32ThreadInfo;
-	ULONG User32Reserved[0x1A];
-	ULONG UserReserved[5];
-	PVOID WOW32Reserved;
-	ULONG CurrentLocale;
-	ULONG FpSoftwareStatusRegister;
-	PVOID SystemReserved1[0x36];
-	LONG ExceptionCode;
-#ifdef TH_X64
-	UCHAR Padding0[4];
-#endif
-	UCHAR SpareBytes1[0x2C];
-	GDI_TEB_BATCH GdiTebBatch;
-	CLIENT_ID RealClientId;
-	PVOID GdiCachedProcessHandle;
-	ULONG GdiClientPID;
-	ULONG GdiClientTID;
-	PVOID GdiThreadLocalInfo;
-	ULONG_PTR Win32ClientInfo[0x3E];
-	PVOID glDispatchTable[0xE9];
-	ULONG_PTR glReserved1[0x1D];
-	PVOID glReserved2;
-	PVOID glSectionInfo;
-	PVOID glSection;
-	PVOID glTable;
-	PVOID glCurrentRC;
-	PVOID glContext;
-	ULONG LastStatusValue;
-#ifdef TH_X64
-	UCHAR Padding2[4];
-#endif
-	UNICODE_STRING StaticUnicodeString;
-	union {
-		WCHAR StaticUnicodeBuffer[MAX_PATH + 1];
-		char StaticUTF8Buffer[(MAX_PATH + 1) * sizeof(WCHAR)];
-	};
-#ifdef TH_X64
-	UCHAR Padding3[6];
-#endif
-	PVOID DeallocationStack;
-	PVOID TlsSlots[0x40];
-	LIST_ENTRY TlsLinks;
-	PVOID Vdm;
-	PVOID ReservedForNtRpc;
-	HANDLE DbgSsReserved[2];
-};
-
-#ifdef TH_X64
-#define read_teb_member(member) (\
-member_size(TEB, member) == 1 ? read_gs_byte(offsetof(TEB, member)) : \
-member_size(TEB, member) == 2 ? read_gs_word(offsetof(TEB, member)) : \
-member_size(TEB, member) == 4 ? read_gs_dword(offsetof(TEB, member)) : \
-read_gs_qword(offsetof(TEB, member)) \
-)
-#define write_teb_member(member, data) (\
-member_size(TEB, member) == 1 ? write_gs_byte(offsetof(TEB, member), (data)) : \
-member_size(TEB, member) == 2 ? write_gs_word(offsetof(TEB, member), (data)) : \
-member_size(TEB, member) == 4 ? write_gs_dword(offsetof(TEB, member), (data)) : \
-write_gs_qword(offsetof(TEB, member), (data)) \
-)
-#else
-#define read_teb_member(member) (\
-member_size(TEB, member) == 1 ? read_fs_byte(offsetof(TEB, member)) : \
-member_size(TEB, member) == 2 ? read_fs_word(offsetof(TEB, member)) : \
-read_fs_dword(offsetof(TEB, member)) \
-)
-#define write_teb_member(member, data) (\
-member_size(TEB, member) == 1 ? write_fs_byte(offsetof(TEB, member), (data)) : \
-member_size(TEB, member) == 2 ? write_fs_word(offsetof(TEB, member), (data)) : \
-write_fs_dword(offsetof(TEB, member), (data)) \
-)
-#endif
-#define CurrentTeb() ((TEB*)read_teb_member(Self))
-#define CurrentPeb() ((PEB*)read_teb_member(ProcessEnvironmentBlock))
-
-#define KernelSharedDataAddr (0x7FFE0000u)
+#include "ntdll.h"
 
 #define CurrentImageBase ((uintptr_t)CurrentPeb()->ImageBaseAddress)
 
@@ -595,35 +398,6 @@ inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view s
 }
 #endif
 
-#define STR_ADDRESS_ERROR_NONE 0
-#define STR_ADDRESS_ERROR_OVERFLOW 0x1
-#define STR_ADDRESS_ERROR_GARBAGE 0x2
-
-typedef struct {
-	// Points to the first character after the number
-	const char *endptr;
-
-	// Bitfield of the flags #defined above
-	uint8_t error;
-} str_address_ret_t;
-
-/**
-  * Returns the numeric value of a stringified address at the machine's word
-  * size. The following string prefixes are supported:
-  *
-  *	- "0x": Hexadecimal, as expected.
-  *	- "Rx": Hexadecimal value relative to the base address of the module given in hMod.
-  *	        If hMod is NULL, the main module of the current process is used.
-  * - "0b": Binary value
-  * - "Rb": Binary version of "Rx".
-  * - "0": Decimal, since accidental octal bugs are evil.
-  * - "R": Decimal version of "Rx".
-  *
-  * [ret] can be a nullptr if a potential parse error and/or a pointer to the
-  * end of the parsed address are not needed.
-  */
-size_t str_address_value(const char *str, HMODULE hMod, str_address_ret_t *ret);
-
 // Returns whether [c] is a valid hexadecimal character
 bool is_valid_hex(char c);
 
@@ -664,6 +438,10 @@ extern "C++" {
 // Packs the bytes [c1], [c2], [c3], and [c4] together as a little endian integer
 constexpr uint32_t TextInt(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0) {
 	return c4 << 24 | c3 << 16 | c2 << 8 | c1;
+}
+// Packs the bytes [c1], [c2], [c3], [c4], [c5], [c6], [c7], and [c8] together as a little endian integer
+constexpr uint64_t TextInt64(uint8_t c1, uint8_t c2 = 0, uint8_t c3 = 0, uint8_t c4 = 0, uint8_t c5 = 0, uint8_t c6 = 0, uint8_t c7 = 0, uint8_t c8 = 0) {
+	return (uint64_t)c8 << 56 | (uint64_t)c7 << 48 | (uint64_t)c6 << 40 | (uint64_t)c5 << 32 | c4 << 24 | c3 << 16 | c2 << 8 | c1;
 }
 
 /// Geometry

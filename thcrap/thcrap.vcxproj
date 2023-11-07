@@ -25,7 +25,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>THCRAP_EXPORTS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_RAND_S=1;THCRAP_EXPORTS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libs/json5pp/;$(SolutionDir)libs/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -40,6 +40,7 @@
     <ClCompile Include="src\expression.cpp" />
     <ClCompile Include="src\fonts_charset.cpp" />
     <ClCompile Include="src\jsondata.cpp" />
+	<ClCompile Include="src\ntdll.cpp" />
     <ClCompile Include="src\mempatch.cpp" />
     <ClCompile Include="src\binhack.cpp" />
     <ClCompile Include="src\bp_file.cpp" />
@@ -85,6 +86,7 @@
     <ClInclude Include="src\jsondata.h" />
     <ClInclude Include="src\long_double.h" />
     <ClInclude Include="src\mempatch.h" />
+	<ClInclude Include="src\ntdll.h" />
     <ClInclude Include="src\binhack.h" />
     <ClInclude Include="src\bp_file.h" />
     <ClInclude Include="src\breakpoint.h" />
@@ -118,6 +120,7 @@
     <ClInclude Include="src\zip.h" />
     <GAS Include="src\bp_entry.asm" />
     <GAS Include="src\inject_func.asm" />
+	<GAS Include="src\str_to_addr.asm" />
     <None Include="thcrap.def" />
     <None Condition="'$(Platform)'!='x64'" Include="thcrap_x86.def" />
     <None Condition="'$(Platform)'=='x64'" Include="thcrap_x64.def" />

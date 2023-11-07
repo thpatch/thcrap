@@ -8,7 +8,6 @@
   */
 
 #include "thcrap.h"
-#include <errno.h>
 
 size_t ptr_advance(const unsigned char **src, size_t num)
 {
@@ -86,43 +85,6 @@ TH_NOINLINE int TH_VECTORCALL ascii_strnicmp(const char* str1, const char* str2,
 		}
 	}
 	return (signed char)c1;
-}
-
-size_t str_address_value(const char *str, HMODULE CustomModuleBase, str_address_ret_t *ret)
-{
-	errno = 0;
-
-	int base = 0;
-	size_t val = 0;
-	char **endptr = ret ? (char **)&ret->endptr : NULL;
-
-	switch (str[0] | 0x20) {
-		case 'r':
-			val = (CustomModuleBase != NULL ? (uintptr_t)CustomModuleBase : CurrentImageBase);
-			[[fallthrough]];
-		case '0':
-		{
-			char c = (*++str | 0x20);
-			const bool is_binary = (c == 'b');
-			const bool is_hex = (c == 'x');
-			str += (is_hex | is_binary);
-			base = is_hex ? 16 : is_binary ? 2 : 10;
-		}
-	}
-
-	val += strtouz(str, endptr, base);
-	
-	if(ret) {
-		ret->error = STR_ADDRESS_ERROR_NONE;
-
-		if(errno == ERANGE) {
-			ret->error |= STR_ADDRESS_ERROR_OVERFLOW;
-		}
-		if(endptr && *endptr[0] != '\0') {
-			ret->error |= STR_ADDRESS_ERROR_GARBAGE;
-		}
-	}
-	return val;
 }
 
 bool is_valid_hex(char c) {

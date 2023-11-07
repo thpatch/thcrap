@@ -120,6 +120,7 @@ struct CPUID_Data_t {
 		bool HasPKU = false;
 		bool HasWAITPKG = false;
 		bool HasAVX512VBMI2 = false;
+		bool HasSHSTK = false;
 		bool HasGFNI = false;
 		bool HasVAES = false;
 		bool HasVPCLMULQDQ = false;
@@ -141,11 +142,25 @@ struct CPUID_Data_t {
 		bool HasAVX512FP16 = false;
 		bool HasAMXTILE = false;
 		bool HasAMXINT8 = false;
+		bool HasSHA512 = false;
+		bool HasSM3 = false;
+		bool HasSM4 = false;
+		bool HasRAOINT = false;
 		bool HasAVXVNNI = false;
 		bool HasAVX512BF16 = false;
+		bool HasCMPCCXADD = false;
 		bool HasFRMB0 = false;
 		bool HasFRSB = false;
 		bool HasFRCSB = false;
+		bool HasAMXFP16 = false;
+		bool HasAVXIFMA = false;
+		bool HasAVXVNNIINT8 = false;
+		bool HasAVXNECONVERT = false;
+		bool HasAMXCOMPLEX = false;
+		bool HasAVXVNNIINT16 = false;
+		bool HasPREFETCHI = false;
+		bool HasAVX10 = false;
+		bool HasAPXF = false;
 		bool HasXSAVEOPT = false;
 		bool HasXSAVEC = false;
 		bool HasSYSCALL = false;
@@ -253,6 +268,7 @@ struct CPUID_Data_t {
 				HasPKU				= bittest32(data[2], 3) & bittest32(data[2], 4);
 				HasWAITPKG			= bittest32(data[2], 5);
 				HasAVX512VBMI2		= bittest32(data[2], 6);
+				HasSHSTK			= bittest32(data[2], 7);
 				HasGFNI				= bittest32(data[2], 8);
 				HasVAES				= bittest32(data[2], 9);
 				HasVPCLMULQDQ		= bittest32(data[2], 10);
@@ -278,11 +294,25 @@ struct CPUID_Data_t {
 				switch (data[0]) {
 					default: //case 1:
 						__cpuidex(data, 7, 1);
+						HasSHA512		= bittest32(data[0], 0);
+						HasSM3			= bittest32(data[0], 1);
+						HasSM4			= bittest32(data[0], 2);
+						HasRAOINT		= bittest32(data[0], 3);
 						HasAVXVNNI		= bittest32(data[0], 4);
 						HasAVX512BF16	= bittest32(data[0], 5);
+						HasCMPCCXADD	= bittest32(data[0], 7);
 						HasFRMB0		= bittest32(data[0], 10);
 						HasFRSB			= bittest32(data[0], 11);
 						HasFRCSB		= bittest32(data[0], 12);
+						HasAMXFP16		= bittest32(data[0], 21);
+						HasAVXIFMA		= bittest32(data[0], 23);
+						HasAVXVNNIINT8	= bittest32(data[3], 4);
+						HasAVXNECONVERT	= bittest32(data[3], 5);
+						HasAMXCOMPLEX	= bittest32(data[3], 8);
+						HasAVXVNNIINT16 = bittest32(data[3], 10);
+						HasPREFETCHI	= bittest32(data[3], 14);
+						HasAVX10		= bittest32(data[3], 19);
+						HasAPXF			= bittest32(data[3], 21);
 					case 0:;
 				}
 			case 6: case 5: case 4: case 3: case 2:
@@ -294,7 +324,11 @@ struct CPUID_Data_t {
 				__cpuid(data, 0x80000000);
 				if ((uint32_t)data[0] > 0x80000000) {
 					switch (data[0]) {
-						default: // case 0x8000001C:
+						default: // case 0x80000021:
+							__cpuid(data, 0x80000021);
+							HasFRSB			|= bittest32(data[0], 10);
+							HasFRCSB		|= bittest32(data[0], 11);
+						case 0x80000020: case 0x8000001F: case 0x8000001E: case 0x8000001D: case 0x8000001C:
 							__cpuid(data, 0x8000001C);
 							HasLWPVAL		= bittest32(data[0], 1);
 						case 0x8000001B: case 0x8000001A: case 0x80000019: case 0x80000018: case 0x80000017: case 0x80000016:
@@ -309,6 +343,7 @@ struct CPUID_Data_t {
 							__cpuid(data, 0x80000001);
 							HasSYSCALL		= bittest32(data[3], 11);
 							HasMMXEXT		= bittest32(data[3], 22);
+							HasRDTSCP		= bittest32(data[3], 27);
 							Has3DNOWEXT		= bittest32(data[3], 30);
 							Has3DNOW		= bittest32(data[3], 31);
 							HasLMLSAHF		= bittest32(data[2], 0);
@@ -601,8 +636,7 @@ enum : uint8_t {
 	XnorAssign = BitwiseXnor + '=',
 	OrAssign = BitwiseOr + '=',
 	NorAssign = BitwiseNor + '=',
-	Comma = ',',
-	Gomma = ';'
+	Comma = ','
 };
 #pragma warning(pop)
 
@@ -619,74 +653,70 @@ struct OpData_t {
 #define ERROR_ASSOCIATIVITY LeftAssociative
 		Precedence[BadBrackets] = ERROR_PRECEDENCE;
 		Associativity[BadBrackets] = ERROR_ASSOCIATIVITY;
-#define POWER_PRECEDENCE 19
+#define POWER_PRECEDENCE 18
 #define POWER_ASSOCIATIVITY LeftAssociative
 		Precedence[Power] = POWER_PRECEDENCE;
 		Associativity[Power] = POWER_ASSOCIATIVITY;
-#define MULTIPLY_PRECEDENCE 17
+#define MULTIPLY_PRECEDENCE 16
 #define MULTIPLY_ASSOCIATIVITY LeftAssociative
 		Precedence[Multiply] = Precedence[Divide] = Precedence[Modulo] = MULTIPLY_PRECEDENCE;
 		Associativity[Multiply] = Associativity[Divide] = Associativity[Modulo] = MULTIPLY_ASSOCIATIVITY;
-#define ADD_PRECEDENCE 16
+#define ADD_PRECEDENCE 15
 #define ADD_ASSOCIATIVITY LeftAssociative
 		Precedence[Add] = Precedence[Subtract] = ADD_PRECEDENCE;
 		Associativity[Add] = Associativity[Subtract] = ADD_ASSOCIATIVITY;
-#define SHIFT_PRECEDENCE 15
+#define SHIFT_PRECEDENCE 14
 #define SHIFT_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalLeftShift] = Precedence[LogicalRightShift] = Precedence[ArithmeticLeftShift] = Precedence[ArithmeticRightShift] = Precedence[CircularLeftShift] = Precedence[CircularRightShift] = SHIFT_PRECEDENCE;
 		Associativity[LogicalLeftShift] = Associativity[LogicalRightShift] = Associativity[ArithmeticLeftShift] = Associativity[ArithmeticRightShift] = Associativity[CircularLeftShift] = Associativity[CircularRightShift] = SHIFT_ASSOCIATIVITY;
-#define COMPARE_PRECEDENCE 14
+#define COMPARE_PRECEDENCE 13
 #define COMPARE_ASSOCIATIVITY LeftAssociative
 		Precedence[Less] = Precedence[LessEqual] = Precedence[Greater] = Precedence[GreaterEqual] = COMPARE_PRECEDENCE;
 		Associativity[Less] = Associativity[LessEqual] = Associativity[Greater] = Associativity[GreaterEqual] = COMPARE_ASSOCIATIVITY;
-#define EQUALITY_PRECEDENCE 13
+#define EQUALITY_PRECEDENCE 12
 #define EQUALITY_ASSOCIATIVITY LeftAssociative
 		Precedence[Equal] = Precedence[NotEqual] = EQUALITY_PRECEDENCE;
 		Associativity[Equal] = Associativity[NotEqual] = EQUALITY_ASSOCIATIVITY;
-#define THREEWAY_PRECEDENCE 12
+#define THREEWAY_PRECEDENCE 11
 #define THREEWAY_ASSOCIATIVITY LeftAssociative
 		Precedence[ThreeWay] = THREEWAY_PRECEDENCE;
 		Associativity[ThreeWay] = THREEWAY_ASSOCIATIVITY;
-#define BITAND_PRECEDENCE 11
+#define BITAND_PRECEDENCE 10
 #define BITAND_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseAnd] = Precedence[BitwiseNand] = BITAND_PRECEDENCE;
 		Associativity[BitwiseAnd] = Associativity[BitwiseNand] = BITAND_ASSOCIATIVITY;
-#define BITXOR_PRECEDENCE 10
+#define BITXOR_PRECEDENCE 9
 #define BITXOR_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseXor] = Precedence[BitwiseXnor] = BITXOR_PRECEDENCE;
 		Associativity[BitwiseXor] = Associativity[BitwiseXnor] = BITXOR_ASSOCIATIVITY;
-#define BITOR_PRECEDENCE 9
+#define BITOR_PRECEDENCE 8
 #define BITOR_ASSOCIATIVITY LeftAssociative
 		Precedence[BitwiseOr] = Precedence[BitwiseNor] = BITOR_PRECEDENCE;
 		Associativity[BitwiseOr] = Associativity[BitwiseNor] = BITOR_ASSOCIATIVITY;
-#define AND_PRECEDENCE 8
+#define AND_PRECEDENCE 7
 #define AND_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalAnd] = Precedence[LogicalNand] = Precedence[LogicalAndSC] = Precedence[LogicalNandSC] = AND_PRECEDENCE;
 		Associativity[LogicalAnd] = Associativity[LogicalNand] = Associativity[LogicalAndSC] = Associativity[LogicalNandSC] = AND_ASSOCIATIVITY;
-#define XOR_PRECEDENCE 7
+#define XOR_PRECEDENCE 6
 #define XOR_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalXor] = Precedence[LogicalXnor] = XOR_PRECEDENCE;
 		Associativity[LogicalXor] = Associativity[LogicalXnor] = XOR_ASSOCIATIVITY;
-#define OR_PRECEDENCE 6
+#define OR_PRECEDENCE 5
 #define OR_ASSOCIATIVITY LeftAssociative
 		Precedence[LogicalOr] = Precedence[LogicalNor] = Precedence[LogicalOrSC] = Precedence[LogicalNorSC] = OR_PRECEDENCE;
 		Associativity[LogicalOr] = Associativity[LogicalNor] = Associativity[LogicalOrSC] = Associativity[LogicalNorSC] = OR_ASSOCIATIVITY;
-#define TERNARY_PRECEDENCE 5
+#define TERNARY_PRECEDENCE 4
 #define TERNARY_ASSOCIATIVITY RightAssociative
 		Precedence[TernaryConditional] = TERNARY_PRECEDENCE;
 		Associativity[TernaryConditional] = TERNARY_ASSOCIATIVITY;
-#define ASSIGN_PRECEDENCE 4
+#define ASSIGN_PRECEDENCE 3
 #define ASSIGN_ASSOCIATIVITY RightAssociative
 		Precedence[Assign] = Precedence[AddAssign] = Precedence[SubtractAssign] = Precedence[MultiplyAssign] = Precedence[DivideAssign] = Precedence[ModuloAssign] = Precedence[LogicalLeftShiftAssign] = Precedence[LogicalRightShiftAssign] = Precedence[ArithmeticLeftShiftAssign] = Precedence[ArithmeticRightShiftAssign] = Precedence[CircularLeftShiftAssign] = Precedence[CircularRightShiftAssign] = Precedence[AndAssign] = Precedence[OrAssign] = Precedence[XorAssign] = Precedence[NandAssign] = Precedence[XnorAssign] = Precedence[NorAssign] = ASSIGN_PRECEDENCE;
 		Associativity[Assign] = Associativity[AddAssign] = Associativity[SubtractAssign] = Associativity[MultiplyAssign] = Associativity[DivideAssign] = Associativity[ModuloAssign] = Associativity[LogicalLeftShiftAssign] = Associativity[LogicalRightShiftAssign] = Associativity[ArithmeticLeftShiftAssign] = Associativity[ArithmeticRightShiftAssign] = Associativity[CircularLeftShiftAssign] = Associativity[CircularRightShiftAssign] = Associativity[AndAssign] = Associativity[OrAssign] = Associativity[XorAssign] = Associativity[NandAssign] = Associativity[XnorAssign] = Associativity[NorAssign] = ASSIGN_ASSOCIATIVITY;
-#define COMMA_PRECEDENCE 3
+#define COMMA_PRECEDENCE 2
 #define COMMA_ASSOCIATIVITY LeftAssociative
 		Precedence[Comma] = COMMA_PRECEDENCE;
 		Associativity[Comma] = COMMA_ASSOCIATIVITY;
-#define GOMMA_PRECEDENCE 2
-#define GOMMA_ASSOCIATIVITY LeftAssociative
-		Precedence[Gomma] = GOMMA_PRECEDENCE;
-		Associativity[Gomma] = GOMMA_ASSOCIATIVITY;
 #define STARTOP_PRECEDENCE 1
 #define STARTOP_ASSOCIATIVITY LeftAssociative
 		Precedence[StartNoOp] = STARTOP_PRECEDENCE;
@@ -838,7 +868,7 @@ static inline const char* find_next_op_impl(const char* const expr, op_t* const 
 			case '?':
 				c += c;
 				[[fallthrough]];
-			case ',': case ';': //case ':':
+			case ',': //case ':':
 				goto CRetPlus1;
 			case ':':
 				*out = c;
@@ -922,7 +952,6 @@ static TH_NOINLINE const char *const PrintOp(const op_t op) {
 		case XnorAssign: return "~^=";
 		case NorAssign: return "~|=";
 		case Comma: return ",";
-		case Gomma: return ";";
 		case NullOp: return "NullOp";
 		case EndGroupOp: return "EndGroupNoOp";
 		case StandaloneTernaryEnd: return "TernaryNoOp";
@@ -1090,7 +1119,6 @@ static size_t ApplyOperator(const size_t value, const size_t arg, const op_t op)
 			AssignmentWarningMessage();
 			[[fallthrough]];
 		case Comma:
-		case Gomma:
 			//why tho
 		case StartNoOp:
 		case NullOp:
@@ -1132,11 +1160,14 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			if		(strnicmp(name, "avx512bitalg", name_length) == 0) return CPUID_Data.HasAVX512BITALG;
 			else if (strnicmp(name, "avx5124fmaps", name_length) == 0) return CPUID_Data.HasAVX5124FMAPS;
 			else if (strnicmp(name, "avx5124vnniw", name_length) == 0) return CPUID_Data.HasAVX5124VNNIW;
+			else if (strnicmp(name, "avxvnniint16", name_length) == 0) return CPUID_Data.HasAVXVNNIINT16;
+			else if (strnicmp(name, "avxneconvert", name_length) == 0) return CPUID_Data.HasAVXNECONVERT;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 11:
 			if		(strnicmp(name, "avx512vbmi1", name_length) == 0) return CPUID_Data.HasAVX512VBMI;
 			else if (strnicmp(name, "avx512vbmi2", name_length) == 0) return CPUID_Data.HasAVX512VBMI2;
+			else if (strnicmp(name, "avxvnniint8", name_length) == 0) return CPUID_Data.HasAVXVNNIINT8;
 			else if (strnicmp(name, "prefetchwt1", name_length) == 0) return CPUID_Data.HasPREFETCHWT1;
 			else	goto InvalidCPUFeatureError;
 			break;
@@ -1150,13 +1181,16 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			else if (strnicmp(name, "clflushopt", name_length) == 0) return CPUID_Data.HasCLFLUSHOPT;
 			else if (strnicmp(name, "avx512vnni", name_length) == 0) return CPUID_Data.HasAVX512VNNI;
 			else if (strnicmp(name, "avx512fp16", name_length) == 0) return CPUID_Data.HasAVX512FP16;
+			else if (strnicmp(name, "amxcomplex", name_length) == 0) return CPUID_Data.HasAMXCOMPLEX;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 9:
 			if      (strnicmp(name, "thcrapver", name_length) == 0) return PROJECT_VERSION;
 			else if (strnicmp(name, "pclmulqdq", name_length) == 0) return CPUID_Data.HasPCLMULQDQ;
 			else if (strnicmp(name, "movdir64b", name_length) == 0) return CPUID_Data.HasMOVDIR64B;
+			else if (strnicmp(name, "cmpccxadd", name_length) == 0) return CPUID_Data.HasCMPCCXADD;
 			else if (strnicmp(name, "prefetchw", name_length) == 0) return CPUID_Data.HasPREFETCHW;
+			else if (strnicmp(name, "prefetchi", name_length) == 0) return CPUID_Data.HasPREFETCHI;
 			else if (strnicmp(name, "serialize", name_length) == 0) return CPUID_Data.HasSERIALIZE;
 			else	goto InvalidCPUFeatureError;
 			break;
@@ -1179,13 +1213,15 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 		case 7:
 			if		(strnicmp(name, "waitpkg", name_length) == 0) return CPUID_Data.HasWAITPKG;
 			else if (strnicmp(name, "movdiri", name_length) == 0) return CPUID_Data.HasMOVDIRI;
+			else if (strnicmp(name, "avxifma", name_length) == 0) return CPUID_Data.HasAVXIFMA;
 			else if (strnicmp(name, "avx512f", name_length) == 0) return CPUID_Data.HasAVX512F;
 			else if (strnicmp(name, "mxcsrmm", name_length) == 0) return CPUID_Data.HasMXCSRMM;
 			else if (strnicmp(name, "lmlsahf", name_length) == 0) return CPUID_Data.HasLMLSAHF;
 			else if (strnicmp(name, "clflush", name_length) == 0) return CPUID_Data.HasCLFLUSH;
 			else if (strnicmp(name, "amxint8", name_length) == 0) return CPUID_Data.HasAMXINT8;
 			else if (strnicmp(name, "amxtile", name_length) == 0) return CPUID_Data.HasAMXTILE;
-			else if (strnicmp(name, "amxfp16", name_length) == 0) return CPUID_Data.HasAMXBF16;
+			else if (strnicmp(name, "amxbf16", name_length) == 0) return CPUID_Data.HasAMXBF16;
+			else if (strnicmp(name, "amxfp16", name_length) == 0) return CPUID_Data.HasAMXFP16;
 			else if (strnicmp(name, "avxvnni", name_length) == 0) return CPUID_Data.HasAVXVNNI;
 			else if (strnicmp(name, "mcommit", name_length) == 0) return CPUID_Data.HasMCOMMIT;
 			else if (strnicmp(name, "syscall", name_length) == 0) return CPUID_Data.HasSYSCALL;
@@ -1194,6 +1230,8 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 		case 6:
 			if      (strnicmp(name, "winver", name_length) == 0) return CPUID_Data.WindowsVersion.raw;
 			else if (strnicmp(name, "popcnt", name_length) == 0) return CPUID_Data.HasPOPCNT;
+			else if (strnicmp(name, "sha512", name_length) == 0) return CPUID_Data.HasSHA512;
+			else if (strnicmp(name, "raoint", name_length) == 0) return CPUID_Data.HasRAOINT;
 			else if (strnicmp(name, "rdtscp", name_length) == 0) return CPUID_Data.HasRDTSCP;
 			else if (strnicmp(name, "xsavec", name_length) == 0) return CPUID_Data.HasXSAVEC;
 			else if (strnicmp(name, "fxsave", name_length) == 0) return CPUID_Data.HasFXSAVE;
@@ -1213,7 +1251,9 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			else if (strnicmp(name, "sse42", name_length) == 0) return CPUID_Data.HasSSE42;
 			else if (strnicmp(name, "sse4a", name_length) == 0) return CPUID_Data.HasSSE4A;
 			else if (strnicmp(name, "movbe", name_length) == 0) return CPUID_Data.HasMOVBE;
+			else if (strnicmp(name, "avx10", name_length) == 0) return CPUID_Data.HasAVX10;
 			else if (strnicmp(name, "xsave", name_length) == 0) return CPUID_Data.HasXSAVE;
+			else if (strnicmp(name, "shstk", name_length) == 0) return CPUID_Data.HasSHSTK;
 			else if (strnicmp(name, "model", name_length) == 0) return CPUID_Data.FamilyData.raw;
 			else if (strnicmp(name, "3dnow", name_length) == 0) return CPUID_Data.Has3DNOW;
 			else if (strnicmp(name, "frmb0", name_length) == 0) return CPUID_Data.HasFRMB0;
@@ -1232,6 +1272,7 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			else if (strnicmp(name, "fma4", name_length) == 0) return CPUID_Data.HasFMA4;
 			else if (strnicmp(name, "vaes", name_length) == 0) return CPUID_Data.HasVAES;
 			else if (strnicmp(name, "wine", name_length) == 0) return wine_version != NULL;
+			else if (strnicmp(name, "apxf", name_length) == 0) return CPUID_Data.HasAPXF;
 			else if	(strnicmp(name, "cmov", name_length) == 0) return CPUID_Data.HasCMOV;
 			else if (strnicmp(name, "sse2", name_length) == 0) return CPUID_Data.HasSSE2;
 			else if (strnicmp(name, "f16c", name_length) == 0) return CPUID_Data.HasF16C;
@@ -1241,6 +1282,10 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			else if (strnicmp(name, "frsb", name_length) == 0) return CPUID_Data.HasFRSB;
 			else if (strnicmp(name, "clwb", name_length) == 0) return CPUID_Data.HasCLWB;
 			else if (strnicmp(name, "mvex", name_length) == 0) return CPUID_Data.HasMVEX;
+			// A build compiled without SSE could theoretically run on PC98 hardware, so why not?
+#if !TH_X86 || _M_IX86_FP == 0
+			else if (strnicmp(name, "pc98", name_length) == 0) return USER_SHARED_DATA.AlternativeArchitecture == NEC98x86;
+#endif
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 3:
@@ -1256,6 +1301,8 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			else if (strnicmp(name, "tbm", name_length) == 0) return CPUID_Data.HasTBM;
 			else if (strnicmp(name, "sse", name_length) == 0) return CPUID_Data.HasSSE;
 			else if (strnicmp(name, "mmx", name_length) == 0) return CPUID_Data.HasMMX;
+			else if (strnicmp(name, "sm3", name_length) == 0) return CPUID_Data.HasSM3;
+			else if (strnicmp(name, "sm4", name_length) == 0) return CPUID_Data.HasSM4;
 			else if (strnicmp(name, "lwp", name_length) == 0) return CPUID_Data.HasLWP;
 			else if (strnicmp(name, "cet", name_length) == 0) return CPUID_Data.HasCET;
 			else if (strnicmp(name, "mpx", name_length) == 0) return CPUID_Data.HasMPX;
@@ -1434,7 +1481,7 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 	switch (*++expr) {
 		case 'c':
 			if (strnicmp(expr, "codecave:", 9) == 0) {
-				out->type = PVT_POINTER;
+				out->type = is_relative ? PVT_DWORD : PVT_POINTER; // Relative offsets can only be 32 bits
 				out->p = GetCodecaveAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 				return patch_val_end + 1;
 			}
@@ -1517,6 +1564,9 @@ static inline const char* CheckCastType(const char* expr, uint8_t* out) {
 	switch (*expr++ & 0xDF) {
 		default:
 			return NULL;
+		case 'P':
+			type = PVT_POINTER;
+			break;
 		case 'I':
 			++type;
 		case 'U':
@@ -1755,12 +1805,8 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
 				{
 				RawValue:
-					size_t current = str_address_value(expr, data_refs->current_module, &cur_value.addr_ret);
-					expr_next = cur_value.addr_ret.endptr;
-					if (expr == expr_next || (cur_value.addr_ret.error & STR_ADDRESS_ERROR_OVERFLOW)) {
-						/*if (expr[0] == end) {
-							return expr;
-						}*/
+					size_t current = str_to_addr(expr, expr_next, data_refs->current_module);
+					if (expr == expr_next) {
 						goto InvalidCharacterError;
 					}
 					ExpressionLogging(
@@ -1771,6 +1817,10 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					*out = current;
 					goto PostfixCheck;
 				}
+			// Current address
+			case '@':
+				*out = data_refs->rel_source;
+				goto PostfixCheck;
 			// Somehow it ran out of expression string, so stop parsing
 			case '\0':
 				goto InvalidValueError;
@@ -2378,7 +2428,7 @@ patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t V
 		case Assign:
 			log_print("Options cannot use assignment!\n");
 			break;
-		case Comma: case Gomma:
+		case Comma:
 			log_print("but why tho\n");
 			break;
 	}
