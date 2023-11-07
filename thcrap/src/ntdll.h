@@ -38,8 +38,10 @@ func_ptr_typedef(NTSTATUS, NTAPI, NtQueryInformationProcessPtr)(HANDLE, PROCESSI
 extern NtQueryInformationProcessPtr NtQueryInformationProcess;
 
 #if __cplusplus
-extern "C++" static TH_FORCEINLINE bool NtGetProcessBasicInfomation(HANDLE ProcessHandle, PROCESS_BASIC_INFORMATION& pbi) {
-    return STATUS_SUCCESS == NtQueryInformationProcess(ProcessHandle, ProcessBasicInformation, &pbi, sizeof(PROCESS_BASIC_INFORMATION), NULL);
+extern "C++" {
+    static TH_FORCEINLINE bool NtGetProcessBasicInfomation(HANDLE ProcessHandle, PROCESS_BASIC_INFORMATION& pbi) {
+        return STATUS_SUCCESS == NtQueryInformationProcess(ProcessHandle, ProcessBasicInformation, &pbi, sizeof(PROCESS_BASIC_INFORMATION), NULL);
+    }
 }
 #endif
 
