@@ -13,7 +13,7 @@
 #include "files_list.h"
 #include "act-nut.h"
 
-static json_t *flandre_copy_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
+static json_t *jsonvfs_copy_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
 {
 	if (out_size) {
 		*out_size = 0;
@@ -40,8 +40,16 @@ int th175_init()
 	SAFE_FREE(music_pattern_fn);
 
 	// Flandre easy route
-	jsonvfs_game_add("data/event/script/flandre_stage4_easy.pl.jdiff",     { "data/event/script/flandre_stage4_normal.pl.jdiff" },     flandre_copy_generator);
-	jsonvfs_game_add("data/event/script/flandre_stage4_easy_win.pl.jdiff", { "data/event/script/flandre_stage4_normal_win.pl.jdiff" }, flandre_copy_generator);
+	jsonvfs_game_add("data/event/script/flandre_stage4_easy.pl.jdiff",     { "data/event/script/flandre_stage4_normal.pl.jdiff" },     jsonvfs_copy_generator);
+	jsonvfs_game_add("data/event/script/flandre_stage4_easy_win.pl.jdiff", { "data/event/script/flandre_stage4_normal_win.pl.jdiff" }, jsonvfs_copy_generator);
+
+	// Greedy trial (they all use almost copy-pasted stage 1 files)
+	jsonvfs_game_add("data/event/script/gouyoku_marisa_stage1.pl.jdiff",      { "data/event/script/gouyoku_reimu_stage1.pl.jdiff" }, jsonvfs_copy_generator);
+	jsonvfs_game_add("data/event/script/gouyoku_kanako_stage1.pl.jdiff",      { "data/event/script/gouyoku_reimu_stage1.pl.jdiff" }, jsonvfs_copy_generator);
+	jsonvfs_game_add("data/event/script/gouyoku_murasa_stage1.pl.jdiff",      { "data/event/script/gouyoku_reimu_stage1.pl.jdiff" }, jsonvfs_copy_generator);
+	jsonvfs_game_add("data/event/script/gouyoku_yorigami_js_stage1.pl.jdiff", { "data/event/script/gouyoku_reimu_stage1.pl.jdiff" }, jsonvfs_copy_generator);
+	jsonvfs_game_add("data/event/script/gouyoku_flandre_stage1.pl.jdiff",     { "data/event/script/gouyoku_reimu_stage1.pl.jdiff" }, jsonvfs_copy_generator);
+	jsonvfs_game_add("data/event/script/gouyoku_toutetu_stage1.pl.jdiff",     { "data/event/script/gouyoku_reimu_stage1.pl.jdiff" }, jsonvfs_copy_generator);
 
 	return 0;
 }
