@@ -338,7 +338,7 @@ void str_hexdate_format(char format[11], uint32_t date);
 /// -------
 
 // Custom strndup variant that returns (size + 1) bytes.
-inline TH_CALLER_FREE char* strdup_size(const char* src, size_t size) {
+TH_CALLER_FREE inline char* strdup_size(const char* src, size_t size) {
 	char* ret = (char*)malloc(size + 1);
 	// strncpy will 0 pad
 	if (ret && !memccpy(ret, src, '\0', size)) {
@@ -349,7 +349,7 @@ inline TH_CALLER_FREE char* strdup_size(const char* src, size_t size) {
 
 // C23 compliant implementation of strndup
 // Allocates a buffer of (strnlen(s, size) + 1) bytes.
-inline TH_CALLER_FREE char* strndup(const char* src, size_t size) {
+TH_CALLER_FREE inline char* strndup(const char* src, size_t size) {
 	return strdup_size(src, strnlen(src, size));
 }
 
@@ -363,7 +363,7 @@ extern "C++" {
 // Structured specifically so that the compiler can optimize the copy
 // operations into MOVs for any string literals.
 
-inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view str2) {
+TH_CALLER_FREE inline char* strdup_cat(std::string_view str1, std::string_view str2) {
 	const size_t total_size = str1.length() + str2.length();
 	char* ret = (char*)malloc(total_size + 1);
 	ret[total_size] = '\0';
@@ -373,7 +373,7 @@ inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view s
 	return ret;
 }
 
-inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, char sep, std::string_view str2) {
+TH_CALLER_FREE inline char* strdup_cat(std::string_view str1, char sep, std::string_view str2) {
 	const size_t total_size = str1.length() + sizeof(sep) + str2.length();
 	char* ret = (char*)malloc(total_size + 1);
 	ret[total_size] = '\0';
@@ -384,7 +384,7 @@ inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, char sep, std::str
 	return ret;
 }
 
-inline TH_CALLER_FREE char* strdup_cat(std::string_view str1, std::string_view str2, std::string_view str3) {
+TH_CALLER_FREE inline char* strdup_cat(std::string_view str1, std::string_view str2, std::string_view str3) {
 	const size_t total_size = str1.length() + str2.length() + str3.length();
 	char* ret = (char*)malloc(total_size + 1);
 	ret[total_size] = '\0';

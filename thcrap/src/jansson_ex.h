@@ -20,10 +20,12 @@
 #define DECIMAL_DIGITS_BOUND(t) (241 * sizeof(t) / 100 + 1)
 #else
 
+extern "C++" {
 #include <limits>
-extern "C++" template <typename T>
+template <typename T>
 static inline constexpr auto decimal_digits_bound() {
 	return std::numeric_limits<T>::digits10 + 1;
+}
 }
 
 #define DECIMAL_DIGITS_BOUND(t) decimal_digits_bound<int_width_type<sizeof(t)>>()

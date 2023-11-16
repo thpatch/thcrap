@@ -341,7 +341,7 @@
 // the weird definition for non-MSVC.
 #if MSVC_COMPAT
 #define TH_EVAL_NOOP(...) __noop(__VA_ARGS__)
-#elif
+#else
 #define TH_EVAL_NOOP(...) (((void)sizeof printf("", __VA_ARGS__)), 0)
 #endif
 
@@ -380,6 +380,15 @@
 #define TH_MS_ABI
 #endif
 
+// windows.h defines cdecl as an empty macro
+#ifdef _WINDOWS_
+#ifdef cdecl
+#define WORK_AROUND_CDECL_JANK
+#pragma push_macro("cdecl")
+#undef cdecl
+#endif
+#endif
+
 // - cdecl Calling Convention
 // -Arguments are passed right-to-left on the stack.
 // -Caller cleans the stack.
@@ -389,6 +398,11 @@
 #define TH_CDECL __cdecl
 #else
 #define TH_CDECL
+#endif
+
+#ifdef WORK_AROUND_CDECL_JANK
+#undef WORK_AROUND_CDECL_JANK
+#pragma pop_macro("cdecl")
 #endif
 
 // - stdcall Calling Convention
@@ -504,20 +518,20 @@
 #endif
 
 // - Segmented Addressing
-#if defined(__SEG_FS)
-#define read_fs_byte(offset) (*(uint8_t __seg_fs*)((uintptr_t)offset))
-#define read_fs_word(offset) (*(uint16_t __seg_fs*)((uintptr_t)offset))
-#define read_fs_dword(offset) (*(uint32_t __seg_fs*)((uintptr_t)offset))
-#define write_fs_byte(offset, data) ((void)(*(uint8_t __seg_fs*)((uintptr_t)offset) = (uint8_t)(data)))
-#define write_fs_word(offset, data) ((void)(*(uint16_t __seg_fs*)((uintptr_t)offset) = (uint16_t)(data)))
-#define write_fs_dword(offset, data) ((void)(*(uint32_t __seg_fs*)((uintptr_t)offset) = (uint32_t)(data)))
-#elif __has_attribute(address_space)
+#if __has_attribute(address_space)
 #define read_fs_byte(offset) (*(uint8_t __attribute__((address_space(257)))*)((uintptr_t)offset))
 #define read_fs_word(offset) (*(uint16_t __attribute__((address_space(257)))*)((uintptr_t)offset))
 #define read_fs_dword(offset) (*(uint32_t __attribute__((address_space(257)))*)((uintptr_t)offset))
 #define write_fs_byte(offset, data) ((void)(*(uint8_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint8_t)(data)))
 #define write_fs_word(offset, data) ((void)(*(uint16_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint16_t)(data)))
 #define write_fs_dword(offset, data) ((void)(*(uint32_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint32_t)(data)))
+#elif defined(__SEG_FS) && !defined(__cplusplus) // __seg_fs isn't recognized by GCC when compiling C++
+#define read_fs_byte(offset) (*(__seg_fs uint8_t*)((uintptr_t)offset))
+#define read_fs_word(offset) (*(__seg_fs uint16_t*)((uintptr_t)offset))
+#define read_fs_dword(offset) (*(__seg_fs uint32_t*)((uintptr_t)offset))
+#define write_fs_byte(offset, data) ((void)(*(__seg_fs uint8_t*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_fs_word(offset, data) ((void)(*(__seg_fs uint16_t*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_fs_dword(offset, data) ((void)(*(__seg_fs uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
 #elif MSVC_COMPAT
 #define read_fs_byte(offset) __readfsbyte(offset)
 #define read_fs_word(offset) __readfsword(offset)
@@ -533,16 +547,7 @@
 #define write_fs_word(offset, data) ((void)(*(uint16_t*)((uintptr_t)offset) = (uint16_t)(data)))
 #define write_fs_dword(offset, data) ((void)(*(uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
 #endif
-#if defined(__SEG_GS)
-#define read_gs_byte(offset) (*(uint8_t __seg_gs*)((uintptr_t)offset))
-#define read_gs_word(offset) (*(uint16_t __seg_gs*)((uintptr_t)offset))
-#define read_gs_dword(offset) (*(uint32_t __seg_gs*)((uintptr_t)offset))
-#define read_gs_qword(offset) (*(uint64_t __seg_gs*)((uintptr_t)offset))
-#define write_gs_byte(offset, data) ((void)(*(uint8_t __seg_gs*)((uintptr_t)offset) = (uint8_t)(data)))
-#define write_gs_word(offset, data) ((void)(*(uint16_t __seg_gs*)((uintptr_t)offset) = (uint16_t)(data)))
-#define write_gs_dword(offset, data) ((void)(*(uint32_t __seg_gs*)((uintptr_t)offset) = (uint32_t)(data)))
-#define write_gs_qword(offset, data) ((void)(*(uint64_t __seg_gs*)((uintptr_t)offset) = (uint64_t)(data)))
-#elif __has_attribute(address_space)
+#if __has_attribute(address_space)
 #define read_gs_byte(offset) (*(uint8_t __attribute__((address_space(256)))*)((uintptr_t)offset))
 #define read_gs_word(offset) (*(uint16_t __attribute__((address_space(256)))*)((uintptr_t)offset))
 #define read_gs_dword(offset) (*(uint32_t __attribute__((address_space(256)))*)((uintptr_t)offset))
@@ -551,6 +556,15 @@
 #define write_gs_word(offset, data) ((void)(*(uint16_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint16_t)(data)))
 #define write_gs_dword(offset, data) ((void)(*(uint32_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint32_t)(data)))
 #define write_gs_qword(offset, data) ((void)(*(uint64_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint64_t)(data)))
+#elif defined(__SEG_GS) && !defined(__cplusplus) // __seg_gs isn't recognized by GCC when compiling C++
+#define read_gs_byte(offset) (*(__seg_gs uint8_t*)((uintptr_t)offset))
+#define read_gs_word(offset) (*(__seg_gs uint16_t*)((uintptr_t)offset))
+#define read_gs_dword(offset) (*(__seg_gs uint32_t*)((uintptr_t)offset))
+#define read_gs_qword(offset) (*(__seg_gs uint64_t*)((uintptr_t)offset))
+#define write_gs_byte(offset, data) ((void)(*(__seg_gs uint8_t*)((uintptr_t)offset) = (uint8_t)(data)))
+#define write_gs_word(offset, data) ((void)(*(__seg_gs uint16_t*)((uintptr_t)offset) = (uint16_t)(data)))
+#define write_gs_dword(offset, data) ((void)(*(__seg_gs uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
+#define write_gs_qword(offset, data) ((void)(*(__seg_gs uint64_t*)((uintptr_t)offset) = (uint64_t)(data)))
 #elif MSVC_COMPAT
 #define read_gs_byte(offset) __readgsbyte(offset)
 #define read_gs_word(offset) __readgsword(offset)
