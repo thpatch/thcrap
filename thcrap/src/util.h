@@ -165,7 +165,7 @@ int _asprintf(char** buffer_ret, const char* format, ...);
 
 #include <intrin.h>
 
-THCRAP_API TH_CALLER_FREE inline char16_t* utf8_to_utf16(const char* utf8_str) {
+TH_CALLER_FREE THCRAP_EXPORT_API inline char16_t* utf8_to_utf16(const char* utf8_str) {
 	if (utf8_str) {
 		char16_t* utf16_str = (char16_t*)malloc((strlen(utf8_str) + 1) * sizeof(char16_t));
 		char16_t* utf16_write = utf16_str;
@@ -223,7 +223,7 @@ THCRAP_API TH_CALLER_FREE inline char16_t* utf8_to_utf16(const char* utf8_str) {
 	return NULL;
 }
 
-THCRAP_API TH_CALLER_FREE inline char32_t* utf8_to_utf32(const char* utf8_str) {
+TH_CALLER_FREE THCRAP_EXPORT_API inline char32_t* utf8_to_utf32(const char* utf8_str) {
 	if (utf8_str) {
 		char32_t* utf32_str = (char32_t*)malloc((strlen(utf8_str) + 1) * sizeof(char32_t));
 		char32_t* utf32_write = utf32_str;

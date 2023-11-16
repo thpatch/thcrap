@@ -118,7 +118,13 @@
 // Note: This macro was only "officially" added in C++20
 // despite attributes being introduced in C++11, so tests
 // using it also check for the equivalent C++ version.
-#ifndef __has_cpp_attribute
+//
+// Note2: GCC defines __has_cpp_attribute
+// when compiling as C, so exclude that
+#if !defined(__cplusplus) || !defined(__has_cpp_attribute)
+#ifdef __has_cpp_attribute
+#undef __has_cpp_attribute
+#endif
 #define __has_cpp_attribute(attr) 0
 #endif
 
@@ -148,6 +154,7 @@
 #define TH_SAD_MSVC_DECLSPEC_TEST_deprecated 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_dllimport 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_dllexport 1
+#define TH_SAD_MSVC_DECLSPEC_TEST_empty_bases 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_jitintrinsic 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_naked 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_noalias 1
@@ -161,6 +168,7 @@
 #define TH_SAD_MSVC_DECLSPEC_TEST_restrict 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_safebuffers 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_selectany 1
+#define TH_SAD_MSVC_DECLSPEC_TEST_spectre 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_thread 1
 #define TH_SAD_MSVC_DECLSPEC_TEST_uuid 1
 #define __has_declspec_attribute(attr) TH_MACRO_CONCAT(TH_SAD_MSVC_DECLSPEC_TEST_, attr)
@@ -297,6 +305,14 @@
 #define TH_UNREACHABLE __builtin_unreachable()
 #elif MSVC_COMPAT
 #define TH_UNREACHABLE __assume(0)
+#elif defined(__cpp_lib_unreachable) && __cpp_lib_unreachable >= 202202L
+extern "C++" {
+#include <utility>
+}
+#define TH_UNREACHABLE std::unreachable()
+#elif C2X
+#include <stddef.h>
+#define TH_UNREACHABLE unreachable()
 #elif defined(assert)
 #define TH_UNREACHABLE assert(0)
 #else
@@ -308,9 +324,13 @@
 // https://stackoverflow.com/questions/25667901/assume-clause-in-gcc/26195434#26195434
 #if __has_builtin(__builtin_assume) // Clang
 #define TH_ASSUME(cond) __builtin_assume(cond)
+#elif __has_attribute(assume) // GCC
+#define TH_ASSUME(cond) __attibute__((assume(cond)))
 #elif MSVC_COMPAT
 #define TH_ASSUME(cond) __assume(cond)
-#elif __has_builtin(__builtin_unreachable) // GCC
+#elif __has_cpp_attribute(assume)
+#define TH_ASSUME(cond) [[assume((cond))]]
+#elif __has_builtin(__builtin_unreachable)
 #define TH_ASSUME(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
 #else
 #define TH_ASSUME(cond) TH_EMPTY_STATEMENT
