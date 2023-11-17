@@ -338,7 +338,10 @@ void str_hexdate_format(char format[11], uint32_t date);
 /// -------
 
 // Custom strndup variant that returns (size + 1) bytes.
-TH_CALLER_FREE inline char* strdup_size(const char* src, size_t size) {
+//
+// Note: This needs to be marked extern when
+// compiling as C to avoid linker errors
+TH_CALLER_FREE extern inline char* strdup_size(const char* src, size_t size) {
 	char* ret = (char*)malloc(size + 1);
 	// strncpy will 0 pad
 	if (ret && !memccpy(ret, src, '\0', size)) {
@@ -349,7 +352,7 @@ TH_CALLER_FREE inline char* strdup_size(const char* src, size_t size) {
 
 // C23 compliant implementation of strndup
 // Allocates a buffer of (strnlen(s, size) + 1) bytes.
-TH_CALLER_FREE inline char* strndup(const char* src, size_t size) {
+TH_CALLER_FREE extern inline char* strndup(const char* src, size_t size) {
 	return strdup_size(src, strnlen(src, size));
 }
 
