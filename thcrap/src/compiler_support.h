@@ -293,7 +293,7 @@
 #if __has_cpp_attribute(unlikely) >= 201803L
 #define TH_UNLIKELY [[unlikely]]
 #elif __has_c_attribute(clang::unlikely)
-#define TH_LIKELY [[clang::unlikely]]
+#define TH_UNLIKELY [[clang::unlikely]]
 #else
 #define TH_UNLIKELY
 #endif
@@ -413,7 +413,7 @@ extern "C++" {
 // -Arguments are passed right-to-left on the stack.
 // -Caller cleans the stack.
 #if __has_attribute(cdecl)
-#define TH_CDECL TH_MS_ABI __attribute__((cdecl))
+#define TH_CDECL __attribute__((cdecl))
 #elif MSVC_COMPAT || CLANG_COMPAT || ICC_COMPAT
 #define TH_CDECL __cdecl
 #else
@@ -429,7 +429,7 @@ extern "C++" {
 // -Arguments are passed right-to-left on the stack.
 // -Callee cleans the stack.
 #if __has_attribute(stdcall)
-#define TH_STDCALL TH_MS_ABI __attribute__((stdcall))
+#define TH_STDCALL __attribute__((stdcall))
 #elif MSVC_COMPAT || CLANG_COMPAT || ICC_COMPAT
 #define TH_STDCALL __stdcall
 #else
@@ -442,7 +442,7 @@ extern "C++" {
 // right-to-left on the stack.
 // -Callee cleans the stack.
 #if __has_attribute(fastcall)
-#define TH_FASTCALL TH_MS_ABI __attribute__((fastcall))
+#define TH_FASTCALL __attribute__((fastcall))
 #elif MSVC_COMPAT || CLANG_COMPAT || ICC_COMPAT
 #define TH_FASTCALL __fastcall
 #else
@@ -453,7 +453,7 @@ extern "C++" {
 // -As many arguments as possible are passed in
 // registers.
 #if __has_attribute(regcall)
-#define TH_REGCALL TH_MS_ABI __attribute__((regcall))
+#define TH_REGCALL __attribute__((regcall))
 #elif CLANG_COMPAT || ICC_COMPAT
 #define TH_REGCALL __regcall
 #else
@@ -465,7 +465,7 @@ extern "C++" {
 // in EAX, EDX, and ECX if possible and remaining
 // arguments are passed right-to-left on the stack.
 #if __has_attribute(regparm)
-#define TH_REGPARM(num) TH_MS_ABI __attribute__((regparm(num)))
+#define TH_REGPARM(num) __attribute__((regparm(num)))
 #elif CLANG_COMPAT
 #define TH_REGPARM(num) __attribute__((regparm(num)))
 #else
@@ -474,7 +474,7 @@ extern "C++" {
 
 // - thiscall Calling Convention
 #if __has_attribute(thiscall)
-#define TH_THISCALL TH_MS_ABI __attribute__((thiscall))
+#define TH_THISCALL __attribute__((thiscall))
 #elif MSVC_COMPAT || CLANG_COMPAT || ICC_COMPAT
 #define TH_THISCALL __thiscall
 #else
@@ -483,9 +483,9 @@ extern "C++" {
 
 // - vectorcall Calling Convention
 #if __has_attribute(vectorcall)
-#define TH_VECTORCALL TH_MS_ABI __attribute__((vectorcall))
+#define TH_VECTORCALL __attribute__((vectorcall))
 #elif __has_attribute(sseregparm)
-#define TH_VECTORCALL TH_MS_ABI __attribute__((sseregparm))
+#define TH_VECTORCALL __attribute__((sseregparm))
 #elif MSVC_COMPAT || CLANG_COMPAT || ICC_COMPAT
 #define TH_VECTORCALL __vectorcall
 #else
@@ -545,7 +545,7 @@ extern "C++" {
 #define write_fs_byte(offset, data) ((void)(*(uint8_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint8_t)(data)))
 #define write_fs_word(offset, data) ((void)(*(uint16_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint16_t)(data)))
 #define write_fs_dword(offset, data) ((void)(*(uint32_t __attribute__((address_space(257)))*)((uintptr_t)offset) = (uint32_t)(data)))
-#elif defined(__SEG_FS) && !defined(__cplusplus) // __seg_fs isn't recognized by GCC when compiling C++
+#elif defined(__SEG_FS) && (CLANG_COMPAT || !defined(__cplusplus)) // __seg_fs isn't recognized by GCC when compiling C++
 #define read_fs_byte(offset) (*(__seg_fs uint8_t*)((uintptr_t)offset))
 #define read_fs_word(offset) (*(__seg_fs uint16_t*)((uintptr_t)offset))
 #define read_fs_dword(offset) (*(__seg_fs uint32_t*)((uintptr_t)offset))
@@ -576,7 +576,7 @@ extern "C++" {
 #define write_gs_word(offset, data) ((void)(*(uint16_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint16_t)(data)))
 #define write_gs_dword(offset, data) ((void)(*(uint32_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint32_t)(data)))
 #define write_gs_qword(offset, data) ((void)(*(uint64_t __attribute__((address_space(256)))*)((uintptr_t)offset) = (uint64_t)(data)))
-#elif defined(__SEG_GS) && !defined(__cplusplus) // __seg_gs isn't recognized by GCC when compiling C++
+#elif defined(__SEG_GS) && (CLANG_COMPAT || !defined(__cplusplus)) // __seg_gs isn't recognized by GCC when compiling C++
 #define read_gs_byte(offset) (*(__seg_gs uint8_t*)((uintptr_t)offset))
 #define read_gs_word(offset) (*(__seg_gs uint16_t*)((uintptr_t)offset))
 #define read_gs_dword(offset) (*(__seg_gs uint32_t*)((uintptr_t)offset))
