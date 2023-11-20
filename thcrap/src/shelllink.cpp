@@ -102,27 +102,77 @@ std::pair<LPVOID, DWORD> GetResource(HMODULE hMod, LPCWSTR resourceId, LPCWSTR r
 	return std::make_pair(lpResLock, size);
 }
 
-// This function doesn't work. TODO: fix
-void ReplaceIcon(HANDLE hUpdate, const std::filesystem::path& icon_path)
+#pragma pack(push, 1)
+typedef struct GRPICONDIR
+{
+	WORD idReserved;
+	WORD idType;
+	WORD idCount;
+} GRPICONDIR;
+
+typedef struct GRPICONDIRENTRY
+{
+	BYTE  bWidth;
+	BYTE  bHeight;
+	BYTE  bColorCount;
+	BYTE  bReserved;
+	WORD  wPlanes;
+	WORD  wBitCount;
+	DWORD dwBytesInRes;
+	WORD  nId;
+} GRPICONDIRENTRY;
+#pragma pack(pop)
+
+BOOL CALLBACK CopyIconGroupCallback(HMODULE hModule, LPCWSTR lpType, LPWSTR lpName, LONG_PTR lParam)
+{
+	LPWSTR *iconGroupId = (LPWSTR*)lParam;
+	if (IS_INTRESOURCE(lpName)) {
+		*iconGroupId = lpName;
+	}
+	else {
+		*iconGroupId = wcsdup(lpName);
+	}
+	return FALSE;
+}
+
+void CopyIconGroup(HANDLE hUpdate, const std::filesystem::path& icon_path)
 {
 	HMODULE hIconExe = LoadLibraryExW(icon_path.wstring().c_str(), nullptr, LOAD_LIBRARY_AS_DATAFILE);
 	if (hIconExe == nullptr) {
 		return;
 	}
+	defer(FreeLibrary(hIconExe));
 
-	auto& [iconData,      iconSize     ] = GetResource(hIconExe, MAKEINTRESOURCE(1), RT_ICON);
-	auto& [iconGroupData, iconGroupSize] = GetResource(hIconExe, MAKEINTRESOURCE(1), RT_GROUP_ICON);
-	if (!iconData || !iconGroupData) {
-		FreeLibrary(hIconExe);
+	LPWSTR iconGroupId = nullptr;
+	EnumResourceNamesW(hIconExe, RT_GROUP_ICON, CopyIconGroupCallback, (intptr_t)&iconGroupId);
+	if (!iconGroupId) {
 		return;
 	}
 
-	UpdateResourceW(hUpdate, RT_ICON, MAKEINTRESOURCE(1),
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconData, iconSize);
-	UpdateResourceW(hUpdate, RT_GROUP_ICON, MAKEINTRESOURCE(1),
+	auto [iconGroupData, iconGroupSize] = GetResource(hIconExe, iconGroupId, RT_GROUP_ICON);
+	if (!IS_INTRESOURCE(iconGroupId)) {
+		free(iconGroupId);
+	}
+	if (!iconGroupData || iconGroupSize < sizeof(GRPICONDIR)) {
+		return;
+	}
+
+	const GRPICONDIR *groupIconDir = (GRPICONDIR*)iconGroupData;
+	if (iconGroupSize < sizeof(GRPICONDIR) + groupIconDir->idCount * sizeof(GRPICONDIRENTRY)) {
+		return;
+	}
+	const GRPICONDIRENTRY *groupIconDirEntries = (GRPICONDIRENTRY*)((uint8_t*)iconGroupData + sizeof(GRPICONDIR));
+
+	UpdateResourceW(hUpdate, RT_GROUP_ICON, iconGroupId,
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconGroupData, iconGroupSize);
 
-	FreeLibrary(hIconExe);
+	for (size_t i = 0; i < groupIconDir->idCount; i++) {
+		auto [iconData, iconSize] = GetResource(hIconExe, MAKEINTRESOURCE(groupIconDirEntries[i].nId), RT_ICON);
+		if (iconData && iconSize) {
+			UpdateResourceW(hUpdate, RT_ICON, MAKEINTRESOURCE(groupIconDirEntries[i].nId),
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconData, iconSize);
+		}
+	}
 }
 
 bool CreateWrapper(
@@ -158,7 +208,7 @@ bool CreateWrapper(
 		target_args,
 		loader_exe
 	});
-	ReplaceIcon(hUpdate, icon_path);
+	CopyIconGroup(hUpdate, icon_path);
 
 	EndUpdateResourceW(hUpdate, FALSE /* Don't discard changes */);
 	return true;
