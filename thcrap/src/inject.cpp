@@ -259,7 +259,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 {
 	int ret = -1;
-	if (HMODULE inj_mod = GetModuleContaining(thcrap_inject_into_running)) {
+	if (HMODULE inj_mod = GetModuleContaining((void*)thcrap_inject_into_running)) {
 		
 		const size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
 		wchar_t* inj_dir = (wchar_t*)malloc(inj_dir_len * 2);

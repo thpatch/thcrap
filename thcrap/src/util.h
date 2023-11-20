@@ -35,7 +35,7 @@ readable is to invert the condition, make the first branch an empty statement, a
 the intended statements in an else block. However, this still looks extremely weird and
 confusing, so this macro exists to better document the intent.
 */
-#define unexpected(condition) (!(condition)) TH_LIKELY; TH_UNLIKELY else
+#define unexpected(condition) (!(condition)) TH_LIKELY; else TH_UNLIKELY
 
 #define func_ptr_typedef(return_type, calling_convention, name) \
 typedef return_type (calling_convention* name)

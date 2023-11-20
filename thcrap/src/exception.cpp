@@ -354,7 +354,7 @@ static const char *get_cxx_eh_typename(LPEXCEPTION_RECORD lpER)
 	return (const char*)(&typeDescriptor[2]);
 }
 
-static TH_CALLER_FREE char* get_windows_error_message(DWORD ExceptionCode) {
+TH_CALLER_FREE static char* get_windows_error_message(DWORD ExceptionCode) {
 	HMODULE ntdll_handle = GetModuleHandleW(L"ntdll.dll");
 	HRSRC resource_info_handle = FindResourceEx(ntdll_handle, RT_MESSAGETABLE, MAKEINTRESOURCE(1), MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US));
 	HGLOBAL resource_handle = LoadResource(ntdll_handle, resource_info_handle);

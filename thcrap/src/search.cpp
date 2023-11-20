@@ -286,7 +286,7 @@ static std::wstring GetValueFromKey(HKEY key, LPCWSTR subkey, LPCWSTR valueName)
 	DWORD type = 0;
 
 	if (RegOpenKeyExW(key, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &hSub)) {
-		return false;
+		return L"";
 	}
 
 	do {
@@ -295,7 +295,7 @@ static std::wstring GetValueFromKey(HKEY key, LPCWSTR subkey, LPCWSTR valueName)
 	} while (ret == ERROR_MORE_DATA);
 	RegCloseKey(hSub);
 	if (ret != ERROR_SUCCESS || type != REG_SZ) {
-		return false;
+		return L"";
 	}
 
 	return std::wstring(value.data(), valueSize);

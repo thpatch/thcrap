@@ -455,7 +455,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 	for (uint8_t *callcave_fill = cave_call, *const callcave_fill_end = cave_call + callcaves_total_size;
 		 callcave_fill < callcave_fill_end;
 		 callcave_fill += bp_entry_size) {
-		memcpy(callcave_fill, &bp_entry, bp_entry_size);
+		memcpy(callcave_fill, (uint8_t*)&bp_entry, bp_entry_size);
 	}
 
 	log_printf(

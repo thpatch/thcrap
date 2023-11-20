@@ -323,7 +323,7 @@ struct CPUID_Data_t {
 				}
 				__cpuid(data, 0x80000000);
 				if ((uint32_t)data[0] > 0x80000000) {
-					switch (data[0]) {
+					switch ((uint32_t)data[0]) {
 						default: // case 0x80000021:
 							__cpuid(data, 0x80000021);
 							HasFRSB			|= bittest32(data[0], 10);

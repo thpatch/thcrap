@@ -10,6 +10,7 @@
 #include "thcrap.h"
 #include <algorithm>
 #include <string_view>
+#include <math.h>
 #include <time.h>
 #include <process.h>
 
@@ -250,7 +251,7 @@ int func_add(const char *name, uintptr_t addr) {
 }
 
 bool func_remove(const char *name) {
-	auto& former_func = funcs.extract(name);
+	auto former_func = funcs.extract(name);
 	const bool func_removed = !former_func.empty();
 	if (func_removed) {
 		free((void*)former_func.key().data());

@@ -98,7 +98,7 @@ void log_rotate(void)
 }
 // --------
 
-static void log_print_real(log_string_t& log_str) {
+static void log_print_real(const log_string_t& log_str) {
 	static DWORD byteRet;
 	if (console_open) {
 		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), log_str.str, log_str.n, &byteRet, NULL);

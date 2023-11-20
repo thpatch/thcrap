@@ -1,4 +1,4 @@
-BUILD64=1
+BUILD64=0
 
 ifneq ($(BUILD64),1)
 AS      = i686-w64-mingw32-as
@@ -13,7 +13,9 @@ WINDRES = x86_64-w64-mingw32-windres
 endif
 
 CFLAGS =  -DBUILDER_NAME_W=L\"$(USER)\"
+CFLAGS += -DPROJECT_VERSION_Y=9999 -DPROJECT_VERSION_M=99 -DPROJECT_VERSION_D=99
 CFLAGS += -municode
+CFLAGS += -mfpmath=sse -msse2
 CFLAGS += -Wall -Wextra
 # We want to ignore these warnings.
 # -Wno-unknown-pragmas: our main build platform is still MSVC, we want
@@ -22,14 +24,37 @@ CFLAGS += -Wall -Wextra
 # declarations, even if we don't use them, in order to match how they
 # were originally declared in Windows.
 # -Wno-cast-function-type: it tends to warn on FARPROC casts, which are
-# needed in a lot of cases
-CFLAGS += -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-cast-function-type
-CFLAGS += -I. -Ilibs -Ilibs/external_deps -Ithcrap/src -Ilibs/win32_utf8
+# needed in a lot of cases.
+# -Wno-attributes: triggers a warning when gcc fails to inline a function
+# with TH_FORCEINLINE.
+# -Wno-unused-function: we have a few that we want to to have in case we
+# need to use them in the future.
+# -Wno-multistatement-macros: we like having several statements in unlikely
+# macros.
+CFLAGS += \
+	-Wno-unknown-pragmas \
+	-Wno-unused-local-typedefs \
+	-Wno-cast-function-type \
+	-Wno-attributes \
+	-Wno-unused-function \
+	-Wno-multistatement-macros \
+
+CFLAGS += \
+	-I. \
+	-Ilibs \
+	-Ilibs/external_deps \
+	-Ilibs/external_deps/include \
+	-Ilibs/json5pp \
+	-Ithcrap/src \
+	-Ilibs/win32_utf8 \
 
 # TODO: fix and remove
 CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare
 
 CXXFLAGS = $(CFLAGS) -std=c++17
+# std::unexpected, which is removed in C++17, conflicts with our unexpected() macro.
+# This define tells the glibc to remove the deprecated functions.
+CXXFLAGS += -D_GLIBCXX_USE_DEPRECATED=0
 
 LDFLAGS += -o $@ -Lbin/bin
 
