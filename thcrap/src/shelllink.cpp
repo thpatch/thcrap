@@ -145,14 +145,14 @@ void CopyIconGroup(HANDLE hUpdate, const std::filesystem::path& icon_path)
 
 	LPWSTR iconGroupId = nullptr;
 	EnumResourceNamesW(hIconExe, RT_GROUP_ICON, CopyIconGroupCallback, (intptr_t)&iconGroupId);
+	defer(if (!IS_INTRESOURCE(iconGroupId)) {
+		free(iconGroupId);
+	});
 	if (!iconGroupId) {
 		return;
 	}
 
 	auto [iconGroupData, iconGroupSize] = GetResource(hIconExe, iconGroupId, RT_GROUP_ICON);
-	if (!IS_INTRESOURCE(iconGroupId)) {
-		free(iconGroupId);
-	}
 	if (!iconGroupData || iconGroupSize < sizeof(GRPICONDIR)) {
 		return;
 	}
