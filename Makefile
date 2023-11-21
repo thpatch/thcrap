@@ -15,7 +15,7 @@ endif
 CFLAGS =  -DBUILDER_NAME_W=L\"$(USER)\"
 CFLAGS += -DPROJECT_VERSION_Y=9999 -DPROJECT_VERSION_M=99 -DPROJECT_VERSION_D=99
 CFLAGS += -municode
-CFLAGS += -mfpmath=sse -msse2
+CFLAGS += -mfpmath=sse -msse4.1 -msha
 CFLAGS += -Wall -Wextra
 # We want to ignore these warnings.
 # -Wno-unknown-pragmas: our main build platform is still MSVC, we want
@@ -73,6 +73,7 @@ THCRAP_DLL_SRCS = \
 	thcrap/src/exception.cpp \
 	thcrap/src/fonts_charset.cpp \
 	thcrap/src/jsondata.cpp \
+	thcrap/src/ntdll.cpp \
 	thcrap/src/mempatch.cpp \
 	thcrap/src/binhack.cpp \
 	thcrap/src/bp_file.cpp \
@@ -91,6 +92,7 @@ THCRAP_DLL_SRCS = \
 	thcrap/src/runconfig.cpp \
 	thcrap/src/search.cpp \
 	thcrap/src/sha256.cpp \
+	thcrap/src/dict_translate.cpp \
 	thcrap/src/inject.cpp \
 	thcrap/src/shelllink.cpp \
 	thcrap/src/stack.cpp \
