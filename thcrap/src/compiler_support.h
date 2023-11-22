@@ -604,3 +604,12 @@ extern "C++" {
 #define write_gs_dword(offset, data) ((void)(*(uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
 #define write_gs_qword(offset, data) ((void)(*(uint64_t*)((uintptr_t)offset) = (uint64_t)(data)))
 #endif
+
+#ifdef GCC_COMPAT
+#ifndef __sptr
+#define __sptr
+#endif
+#ifndef __uptr
+#define __uptr
+#endif
+#endif

@@ -18,7 +18,8 @@ constexpr uint32_t DateToVersion(uint32_t y, uint32_t m, uint32_t d)
 	return y * 0x10000 + m * 0x100 + d;
 }
 
-#define TO_HEX(a) (0x ## a)
+#define CONCAT(x, y) x ## y
+#define TO_HEX(a) CONCAT(0x, a)
 
 const char PROJECT_NAME[] = "Touhou Community Reliant Automatic Patcher";
 const char PROJECT_NAME_SHORT[] = "thcrap";

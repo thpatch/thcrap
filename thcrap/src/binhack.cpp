@@ -321,6 +321,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 							(void)eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
 						} else {
 							(void)consume_float_value(&exprs[element_pos], &pool_value);
+#ifndef GCC_COMPAT
 							// Literally the only time when x87
 							// is probably still faster: converting to/from arbitrary widths
 							switch (pool_value.type) {
@@ -338,6 +339,24 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 								case PVT_DOUBLE: __asm { __asm FSTP QWORD PTR[pool_value] } break;
 								case PVT_LONGDOUBLE: __asm { __asm FSTP TBYTE PTR[pool_value] } break;
 							}
+#else
+							LongDouble80 temp_value;
+							switch (pool_value.type) {
+								default:
+									eval_expr(&exprs[element_pos], end_char, &pool_value.z, NULL, value.addr, value.source_module);
+									temp_value = pool_value.z;
+									break;
+								case PVT_FLOAT:      temp_value = pool_value.f; break;
+								case PVT_DOUBLE:     temp_value = pool_value.d; break;
+								case PVT_LONGDOUBLE: temp_value = pool_value.ld; break;
+							}
+							switch (key.type) {
+								default: TH_UNREACHABLE;
+								case PVT_FLOAT:      pool_value.f = temp_value; break;
+								case PVT_DOUBLE:     pool_value.d = temp_value; break;
+								case PVT_LONGDOUBLE: pool_value.ld = temp_value; break;
+							}
+#endif
 						}
 					}
 				}
@@ -379,6 +398,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 		}
 
 		size_t aligned_value_size = AlignUpToMultipleOf2(filled_value_size, key.alignment);
+		size_t overaligned_value_size;
 		TH_ASSUME(element_count > 0);
 
 		size_t render_index;
@@ -543,7 +563,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 			render_index = AlignUpToMultipleOf2(constpool_memory_size, key.alignment);
 		}
 		// These are brand new values, so expand the allocation
-		size_t overaligned_value_size = AlignUpToMultipleOf2(aligned_value_size, sizeof(__m128i));
+		overaligned_value_size = AlignUpToMultipleOf2(aligned_value_size, sizeof(__m128i));
 		if unexpected(constpool_memory_size + overaligned_value_size >= rendered_values_alloc_size) {
 			size_t new_alloc_size = rendered_values_alloc_size + overaligned_value_size + BINHACK_BUFSIZE_MIN;
 			rendered_values = (uint8_t*)realloc(rendered_values, new_alloc_size);

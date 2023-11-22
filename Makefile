@@ -15,7 +15,9 @@ endif
 CFLAGS =  -DBUILDER_NAME_W=L\"$(USER)\"
 CFLAGS += -DPROJECT_VERSION_Y=9999 -DPROJECT_VERSION_M=99 -DPROJECT_VERSION_D=99
 CFLAGS += -municode
-CFLAGS += -mfpmath=sse -msse4.1 -msha
+CFLAGS += -mfpmath=sse -msse4.1 -msha -mlong-double-80
+# -mpreferred-stack-boundary=2 is broken on i686-w64-mingw32-g++ (GCC) 12.2.0
+# CFLAGS += -mfpmath=sse -msse4.1 -msha -mlong-double-80 -mpreferred-stack-boundary=2 -mincoming-stack-boundary=2
 CFLAGS += -Wall -Wextra
 # We want to ignore these warnings.
 # -Wno-unknown-pragmas: our main build platform is still MSVC, we want
@@ -54,6 +56,7 @@ CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare
 CXXFLAGS = $(CFLAGS) -std=c++17
 # std::unexpected, which is removed in C++17, conflicts with our unexpected() macro.
 # This define tells the glibc to remove the deprecated functions.
+# ... until std::unexpected comes back as another thing in C++23.
 CXXFLAGS += -D_GLIBCXX_USE_DEPRECATED=0
 
 LDFLAGS += -o $@ -Lbin/bin
