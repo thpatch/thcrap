@@ -294,6 +294,29 @@ void progress_bar_set_marquee(loader_update_state_t *state, bool marquee, bool c
 	}
 }
 
+HICON get_configure_icon()
+{
+	HMODULE hConfigure = LoadLibraryExW(L"thcrap" DEBUG_OR_RELEASE_W L".exe", NULL, LOAD_LIBRARY_AS_DATAFILE);
+	if (!hConfigure) {
+		return NULL;
+	}
+
+	LPWSTR iconGroupId = GetIconGroupResourceId(hConfigure);
+	if (!iconGroupId) {
+		FreeLibrary(hConfigure);
+		return NULL;
+	}
+
+	HICON hIcon = LoadIcon(hConfigure, iconGroupId);
+	if (!IS_INTRESOURCE(iconGroupId)) {
+		thcrap_free(iconGroupId);
+	}
+
+	return hIcon;
+	// Intentionally leaking hConfigure because we need it until our main
+	// window is destroyed, which is the entire lifetime of the process.
+}
+
 // param should point to a loader_update_state_t object
 DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 {
@@ -309,6 +332,7 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	memset(&wndClass, 0, sizeof(wndClass));
 	wndClass.lpfnWndProc = loader_update_proc;
 	wndClass.hInstance = hMod;
+	wndClass.hIcon = get_configure_icon();
 	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wndClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wndClass.lpszClassName = L"LoaderUpdateWindow";
