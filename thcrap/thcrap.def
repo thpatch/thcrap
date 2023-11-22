@@ -320,6 +320,7 @@ EXPORTS
 	; ---------
 	CreateLink
 	CreateShortcuts
+	GetIconGroupResourceId
 
 	; Stack
 	; -----

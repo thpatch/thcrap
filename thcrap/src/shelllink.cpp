@@ -123,7 +123,7 @@ typedef struct GRPICONDIRENTRY
 } GRPICONDIRENTRY;
 #pragma pack(pop)
 
-BOOL CALLBACK CopyIconGroupCallback(HMODULE hModule, LPCWSTR lpType, LPWSTR lpName, LONG_PTR lParam)
+static BOOL CALLBACK CopyIconGroupCallback(HMODULE hModule, LPCWSTR lpType, LPWSTR lpName, LONG_PTR lParam)
 {
 	LPWSTR *iconGroupId = (LPWSTR*)lParam;
 	if (IS_INTRESOURCE(lpName)) {
@@ -135,6 +135,13 @@ BOOL CALLBACK CopyIconGroupCallback(HMODULE hModule, LPCWSTR lpType, LPWSTR lpNa
 	return FALSE;
 }
 
+LPWSTR GetIconGroupResourceId(HMODULE hModule)
+{
+	LPWSTR iconGroupId = nullptr;
+	EnumResourceNamesW(hModule, RT_GROUP_ICON, CopyIconGroupCallback, (intptr_t)&iconGroupId);
+	return iconGroupId;
+}
+
 void CopyIconGroup(HANDLE hUpdate, const std::filesystem::path& icon_path)
 {
 	HMODULE hIconExe = LoadLibraryExW(icon_path.wstring().c_str(), nullptr, LOAD_LIBRARY_AS_DATAFILE);
@@ -143,14 +150,13 @@ void CopyIconGroup(HANDLE hUpdate, const std::filesystem::path& icon_path)
 	}
 	defer(FreeLibrary(hIconExe));
 
-	LPWSTR iconGroupId = nullptr;
-	EnumResourceNamesW(hIconExe, RT_GROUP_ICON, CopyIconGroupCallback, (intptr_t)&iconGroupId);
-	defer(if (!IS_INTRESOURCE(iconGroupId)) {
-		free(iconGroupId);
-	});
+	LPWSTR iconGroupId = GetIconGroupResourceId(hIconExe);
 	if (!iconGroupId) {
 		return;
 	}
+	defer(if (!IS_INTRESOURCE(iconGroupId)) {
+		free(iconGroupId);
+	});
 
 	auto [iconGroupData, iconGroupSize] = GetResource(hIconExe, iconGroupId, RT_GROUP_ICON);
 	if (!iconGroupData || iconGroupSize < sizeof(GRPICONDIR)) {

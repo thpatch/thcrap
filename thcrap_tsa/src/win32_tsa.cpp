@@ -17,8 +17,14 @@ typedef BOOL WINAPI GetWindowRect_type(
 	LPRECT lpRect
 );
 
+typedef ATOM WINAPI RegisterClassW_type(
+	const WNDCLASSW *lpWndClass
+);
+
 W32U8_DETOUR_CHAIN_DEF(CreateWindowEx);
+W32U8_DETOUR_CHAIN_DEF(RegisterClass);
 DETOUR_CHAIN_DEF(GetWindowRect);
+DETOUR_CHAIN_DEF(RegisterClassW);
 /// -------------
 
 /// Window position hacks
@@ -136,6 +142,35 @@ HWND WINAPI tsa_CreateWindowExA(
 	VLA_FREE(custom_title);
 	return ret;
 }
+
+ATOM WINAPI tsa_RegisterClassA(const WNDCLASSA *lpWndClass)
+{
+	if (lpWndClass->hIcon == NULL) {
+		LPWSTR iconGroupId = GetIconGroupResourceId(GetModuleHandle(NULL));
+		if (iconGroupId) {
+			const_cast<WNDCLASSA*>(lpWndClass)->hIcon = LoadIcon(GetModuleHandle(NULL), iconGroupId);
+			if (!IS_INTRESOURCE(iconGroupId)) {
+				thcrap_free(iconGroupId);
+			}
+		}
+	}
+	return chain_RegisterClassU(lpWndClass);
+}
+
+ATOM WINAPI tsa_RegisterClassW(const WNDCLASSW *lpWndClass)
+{
+	if (lpWndClass->hIcon == NULL) {
+		LPWSTR iconGroupId = GetIconGroupResourceId(GetModuleHandle(NULL));
+		if (iconGroupId) {
+			const_cast<WNDCLASSW*>(lpWndClass)->hIcon = LoadIcon(GetModuleHandle(NULL), iconGroupId);
+			if (!IS_INTRESOURCE(iconGroupId)) {
+				thcrap_free(iconGroupId);
+			}
+		}
+	}
+	return chain_RegisterClassW(lpWndClass);
+}
+
 /// ---------------------
 
 void tsa_mod_detour(void)
@@ -143,6 +178,8 @@ void tsa_mod_detour(void)
 	detour_chain("user32.dll", 1,
 		"CreateWindowExA", tsa_CreateWindowExA, &chain_CreateWindowExU,
 		"GetWindowRect", tsa_GetWindowRect, &chain_GetWindowRect,
+		"RegisterClassA", tsa_RegisterClassA, &chain_RegisterClassU,
+		"RegisterClassW", tsa_RegisterClassW, &chain_RegisterClassU,
 		NULL
 	);
 }
