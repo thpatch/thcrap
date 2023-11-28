@@ -25,7 +25,7 @@ static std::pair<uintptr_t, const char*> TH_FASTCALL str_to_addr_impl(uintptr_t 
 	uint8_t flags = is_not_relative; // BL
 	uint8_t number_base = 10; // BH
 	uint8_t c; // CL
-	switch (c - *str_read) {
+	switch (c = *str_read) {
 		default:
 			goto fail;
 		case 'r': case 'R':
@@ -126,7 +126,7 @@ fail:
 	LEA		EAX, [ECX-'1']
 	CMP		AL, 9
 	JB		is_base_ten
-	CMP		CL, '0'
+	CMP		AL, '0'-'1'
 	JE		is_leading_zero
 	OR		CL, 0x20
 	CMP		CL, 'r'
@@ -147,6 +147,7 @@ is_leading_zero:
 	JE		is_zero_prefix
 	TEST	BL, BL /* Make sure that a single 0 is valid but a single R is not */
 	JZ		failA
+	DEC		ESI /* Don't index the string twice if there isn't a b/x character */
 is_zero_prefix:
 	MOVZX	ECX, BYTE PTR [EDX+2]
 	INC		ESI

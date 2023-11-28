@@ -307,6 +307,15 @@ TEST(ExpressionTest, ExpressionTesting17) {
 	EXPECT_EQ(expr_ret, 0x5FC);
 }
 
+TEST(ExpressionTest, ExpressionTesting18) {
+	size_t expr_ret = 0;
+	ExprRepeatTest{
+		expr_ret = 0;
+		eval_expr("<1+0>", '\0', &expr_ret, NULL, NULL, NULL);
+	}
+	EXPECT_EQ(expr_ret, 1);
+}
+
 TEST(LongDoubleBS, LongDoubleTest1) {
 	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
 	EXPECT_EQ((double)LD1, 2.0);
