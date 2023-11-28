@@ -32,7 +32,7 @@ static std::pair<uintptr_t, const char*> TH_FASTCALL str_to_addr_impl(uintptr_t 
 			flags = 0;
 			TH_FALLTHROUGH;
 		case '0':
-			switch (*++str_read) {
+			switch (c = *++str_read) {
 				case 'x': case 'X':
 					number_base = 16;
 					c = *++str_read;
@@ -42,10 +42,9 @@ static std::pair<uintptr_t, const char*> TH_FASTCALL str_to_addr_impl(uintptr_t 
 					c = *++str_read;
 					break;
 				default:
-					if (!flags) {
-						goto fail;
-					}
-					TH_FALLTHROUGH;
+					return flags == is_not_relative
+							? std::make_pair(0, (const char*)str_read)
+							: std::make_pair(std::numeric_limits<uintptr_t>::max(), str);
 				case '0' ... '9':
 					break;
 			}
@@ -126,7 +125,7 @@ fail:
 	LEA		EAX, [ECX-'1']
 	CMP		AL, 9
 	JB		is_base_ten
-	CMP		AL, '0'-'1'
+	CMP		CL, '0'
 	JE		is_leading_zero
 	OR		CL, 0x20
 	CMP		CL, 'r'
@@ -134,7 +133,7 @@ fail:
 	XOR		BL, BL
 is_leading_zero:
 	MOVZX	ECX, BYTE PTR [EDX+1]
-	INC		ESI
+	ADD		ESI, 1
 	LEA		EAX, [ECX-'0']
 	CMP		AL, 10
 	JB		is_base_ten
@@ -142,15 +141,12 @@ is_leading_zero:
 	OR		CL, 0x20
 	CMP		CL, 'x'
 	JE		is_zero_prefix
-	MOV		BH, 2
 	CMP		CL, 'b'
-	JE		is_zero_prefix
-	TEST	BL, BL /* Make sure that a single 0 is valid but a single R is not */
-	JZ		failA
-	DEC		ESI /* Don't index the string twice if there isn't a b/x character */
+	JNE		standalone_zero
+	MOV		BH, 2
 is_zero_prefix:
 	MOVZX	ECX, BYTE PTR [EDX+2]
-	INC		ESI
+	ADD		ESI, 1
 is_base_ten:
 /*
 	; EAX: ret
@@ -213,6 +209,17 @@ failB:
 	MOV		EDX, EDI
 failA:
 	MOV		EAX, -1
+	POP		EDI
+	POP		ESI
+	POP		EBP
+	POP		EBX
+	RET
+	INT3
+	INT3
+standalone_zero:
+	CMP		BL, 1 /* Make sure that a single 0 is valid but a single R is not */
+	CMOVE	EDX, ESI
+	SBB		EAX, EAX /* Returns 0 or -1 */
 	POP		EDI
 	POP		ESI
 	POP		EBP
