@@ -434,6 +434,18 @@ HANDLE WINAPI strings_CreateFileA(
 		hTemplateFile
 	);
 }
+
+extern "C" int BP_strings_lookup(x86_reg_t * regs, json_t * bp_info)
+{
+	const char **string = (const char**)json_object_get_pointer(bp_info, regs, "str");
+#if 0
+	char *utf8str = EnsureUTF8(*string, strlen(*string));
+	log_printf("[BP_strings_lookup] %p: %s\n", *string - (char*)GetModuleHandle(nullptr) , utf8str);
+	free(utf8str);
+#endif
+	*string = strings_lookup(*string, NULL);
+	return 1;
+}
 /// -------------------
 
 void strings_mod_init(void)
@@ -454,16 +466,6 @@ void strings_mod_detour(void)
 		NULL
 	);
 }
-
-//void strings_mod_repatch(const char* files_changed[])
-//{
-//	while (const char* fn = *files_changed++) {
-//		if (strstr(fn, "/stringlocs.")) {
-//			stringlocs_reparse();
-//			break;
-//		}
-//	}
-//}
 
 void strings_mod_repatch(json_t *files_changed)
 {

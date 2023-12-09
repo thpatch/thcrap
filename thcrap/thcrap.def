@@ -369,6 +369,7 @@ EXPORTS
 	strings_mod_detour
 	strings_mod_repatch
 	strings_mod_exit
+	BP_strings_lookup
 
 	; Dictionary based string translation
 	; -----------------------------------
