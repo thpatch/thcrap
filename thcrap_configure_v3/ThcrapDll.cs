@@ -183,7 +183,7 @@ namespace thcrap_configure_v3
             public string id;
             public string build;
             // Description based on the version and the variety
-            public string description;
+            public IntPtr description;
         }
 
         public enum ShortcutsDestination
