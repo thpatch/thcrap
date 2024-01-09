@@ -552,6 +552,25 @@ extern "C++" {
 #define write_fs_byte(offset, data) ((void)(*(__seg_fs uint8_t*)((uintptr_t)offset) = (uint8_t)(data)))
 #define write_fs_word(offset, data) ((void)(*(__seg_fs uint16_t*)((uintptr_t)offset) = (uint16_t)(data)))
 #define write_fs_dword(offset, data) ((void)(*(__seg_fs uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
+#elif GCC_COMPAT
+#ifdef __cplusplus
+extern "C" {
+#endif
+#define read_fs_byte(offset) read_fs_byte_gcc(offset)
+#define read_fs_word(offset) read_fs_word_gcc(offset)
+#define read_fs_dword(offset) read_fs_dword_gcc(offset)
+#define write_fs_byte(offset, data) write_fs_byte_gcc(offset, data)
+#define write_fs_word(offset, data) write_fs_word_gcc(offset, data)
+#define write_fs_dword(offset, data) write_fs_dword_gcc(offset, data)
+uint8_t read_fs_byte_gcc(size_t offset);
+uint16_t read_fs_word_gcc(size_t offset);
+uint32_t read_fs_dword_gcc(size_t offset);
+void write_fs_byte_gcc(size_t offset, uint8_t data);
+void write_fs_word_gcc(size_t offset, uint16_t data);
+void write_fs_dword_gcc(size_t offset, uint32_t data);
+#ifdef __cplusplus
+};
+#endif
 #elif MSVC_COMPAT
 #define read_fs_byte(offset) __readfsbyte(offset)
 #define read_fs_word(offset) __readfsword(offset)
@@ -585,6 +604,29 @@ extern "C++" {
 #define write_gs_word(offset, data) ((void)(*(__seg_gs uint16_t*)((uintptr_t)offset) = (uint16_t)(data)))
 #define write_gs_dword(offset, data) ((void)(*(__seg_gs uint32_t*)((uintptr_t)offset) = (uint32_t)(data)))
 #define write_gs_qword(offset, data) ((void)(*(__seg_gs uint64_t*)((uintptr_t)offset) = (uint64_t)(data)))
+#elif GCC_COMPAT
+#ifdef __cplusplus
+extern "C" {
+#endif
+#define read_gs_byte(offset) read_gs_byte_gcc(offset)
+#define read_gs_word(offset) read_gs_word_gcc(offset)
+#define read_gs_dword(offset) read_gs_dword_gcc(offset)
+#define read_gs_qword(offset) read_gs_qword_gcc(offset)
+#define write_gs_byte(offset, data) write_gs_byte_gcc(offset, data)
+#define write_gs_word(offset, data) write_gs_word_gcc(offset, data)
+#define write_gs_dword(offset, data) write_gs_dword_gcc(offset, data)
+#define write_gs_qword(offset, data) write_gs_qword_gcc(offset, data)
+uint8_t read_gs_byte_gcc(size_t offset);
+uint16_t read_gs_word_gcc(size_t offset);
+uint32_t read_gs_dword_gcc(size_t offset);
+uint64_t read_gs_qword_gcc(size_t offset);
+void write_gs_byte_gcc(size_t offset, uint8_t data);
+void write_gs_word_gcc(size_t offset, uint16_t data);
+void write_gs_dword_gcc(size_t offset, uint32_t data);
+void write_gs_qword_gcc(size_t offset, uint64_t data);
+#ifdef __cplusplus
+};
+#endif
 #elif MSVC_COMPAT
 #define read_gs_byte(offset) __readgsbyte(offset)
 #define read_gs_word(offset) __readgsword(offset)
@@ -611,5 +653,8 @@ extern "C++" {
 #endif
 #ifndef __uptr
 #define __uptr
+#endif
+#ifndef _MAX_ITOSTR_BASE10_COUNT
+#define _MAX_ITOSTR_BASE10_COUNT   (1 + 10 + 1)
 #endif
 #endif

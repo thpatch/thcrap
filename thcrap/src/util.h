@@ -150,7 +150,7 @@ inline unique_alloc<std::remove_extent_t<T>> make_unique_alloc(size_t count) {
 #endif
 
 // String to size_t
-size_t TH_FORCEINLINE strtouz(const char* str, char** str_end, int base) {
+static size_t TH_FORCEINLINE strtouz(const char* str, char** str_end, int base) {
 #ifdef TH_X64
 	return strtoull(str, str_end, base);
 #else

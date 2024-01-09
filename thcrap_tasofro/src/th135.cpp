@@ -279,7 +279,7 @@ BOOL WINAPI th135_CloseHandle(
 	return chain_CloseHandle(hObject);
 }
 
-void tasofro_mod_detour(void)
+extern "C" void tasofro_mod_detour(void)
 {
 	if (game_id == TH135 || game_id == TH145 || game_id == TH155 || game_id == TH_MARILEGA) {
 		detour_chain("kernel32.dll", 1,

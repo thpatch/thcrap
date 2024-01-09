@@ -410,7 +410,7 @@ void patch_func_run_all(const char *pattern, void *param)
 	patch_funcs.run(pattern, param);
 }
 
-int BP_patch_func_run_all(x86_reg_t *regs, json_t *bp_info) {
+extern "C" int BP_patch_func_run_all(x86_reg_t *regs, json_t *bp_info) {
 	if (const char* pattern = json_object_get_string(bp_info, "pattern")) {
 		void* param = (void*)json_object_get_immediate(bp_info, regs, "param");
 		patch_func_run_all(pattern, param);

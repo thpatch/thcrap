@@ -24,13 +24,6 @@ enum ShortcutsType
 	SHTYPE_WRAPPER_RELPATH = 3,
 };
 
-// Create a shortcut with the given parameters.
-// It is assumed that CoInitialize has already been called.
-HRESULT CreateLink(
-	const char *link_fn, const char *target_cmd, const char *target_args,
-	const char *work_path, const char *icon_fn
-);
-
 // Create shortcuts for the given games
 int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, enum ShortcutsDestination destination, enum ShortcutsType shortcut_type);
 

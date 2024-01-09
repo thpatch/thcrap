@@ -149,7 +149,7 @@ static void runconfig_stage_load(json_t *stage_json)
 	}
 }
 
-int BP_runtime_apply_stage_by_name(x86_reg_t *regs, json_t *bp_info) {
+extern "C" int BP_runtime_apply_stage_by_name(x86_reg_t *regs, json_t *bp_info) {
 
 	// Use stage_name to lookup which hackpoints to apply
 	if (const char* stage_name = (char*)json_object_get_immediate(bp_info, regs, "stage_name")) {
@@ -164,7 +164,7 @@ int BP_runtime_apply_stage_by_name(x86_reg_t *regs, json_t *bp_info) {
 	return 1;
 }
 
-int BP_runtime_apply_stage_by_address(x86_reg_t *regs, json_t *bp_info) {
+extern "C" int BP_runtime_apply_stage_by_address(x86_reg_t *regs, json_t *bp_info) {
 	if (void* address_from_module = (void*)json_object_get_immediate(bp_info, regs, "address_expr")) {
 		HMODULE module_base_addr;
 		if (GetModuleHandleExA(

@@ -9,6 +9,7 @@
 
 #include <thcrap.h>
 #include "self.h"
+#include "notify.h"
 
 /// Self-updating messages
 /// ----------------------
@@ -120,7 +121,7 @@ static const char self_sig_error[] =
 	"this problem has been resolved.";
 /// ----------------------
 
-int update_notify_thcrap(void)
+int update_notify_thcrap()
 {
 	const size_t SELF_MSG_SLOT = (size_t)self_body;
 	self_result_t ret = SELF_NO_UPDATE;

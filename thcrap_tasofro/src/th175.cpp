@@ -142,19 +142,19 @@ void th175_crypt_file(uint8_t* buffer, size_t size, size_t offset_in_file)
 	uint32_t file_key = size ^ offset_in_file;
 
 	for (size_t pos = 0; pos < size; pos += 4) {
-		uint32_t xor = 0;
+		uint32_t xor_value = 0;
 		uint32_t tmp_key = file_key;
 		for (size_t i = 0; i < 4; i++) {
 			tmp_key = do_decrypt_step(tmp_key);
-			xor = (xor << 8) | (tmp_key & 0xFF);
+			xor_value = (xor_value << 8) | (tmp_key & 0xFF);
 		}
 
 		if (pos + 4 <= size) {
-			*(uint32_t*)(buffer + pos) ^= xor;
+			*(uint32_t*)(buffer + pos) ^= xor_value;
 			bytes_processed += 4;
 		}
 		else {
-			do_partial_xor(buffer + pos, (uint8_t*)&xor, size - pos);
+			do_partial_xor(buffer + pos, (uint8_t*)&xor_value, size - pos);
 			bytes_processed += size - pos;
 		}
 		file_key++;

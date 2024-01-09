@@ -1,7 +1,7 @@
 #include <thcrap.h>
 #include <jansson_ex.h>
 
-int BP_dict_translate(x86_reg_t* regs, json_t* bp_info) {
+extern "C" int BP_dict_translate(x86_reg_t* regs, json_t* bp_info) {
 	const char** str = (const char**)json_object_get_pointer(bp_info, regs, "str");
 	if (!str || !*str) {
 		return 1;
@@ -41,7 +41,7 @@ int BP_dict_translate(x86_reg_t* regs, json_t* bp_info) {
 }
 
 
-void dict_mod_init() {
+extern "C" void dict_mod_init() {
 	jsondata_game_add("dictdefs.js");
 	jsondata_game_add("dicttrans.js");
 

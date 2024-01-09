@@ -647,6 +647,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	runconfig_loader_pid_set(GetCurrentProcessId());
 
 	loader_update_state_t state;
+	const char *game;
 	bool game_started;
 	BOOL ret = 0;
 
@@ -793,7 +794,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 	log_print("Stack update done.\n");
 
-	const char* game = runconfig_game_get();
+	game = runconfig_game_get();
 	if (!game) game = game_id_other;
 	{
 		if (game) {

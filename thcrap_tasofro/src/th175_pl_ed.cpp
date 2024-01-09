@@ -74,12 +74,12 @@ static void patch_msg(const std::vector<std::string>& msg, const std::vector<std
 {
 	auto last_line_split = split(*msg.rbegin(), ',');
 
-	for (auto& it = rep.begin(); it != rep.end(); ++it) {
+	for (auto it = rep.begin(); it != rep.end(); ++it) {
 		write_line(",ED_MSG,", file_out);
 		write_line(*it, file_out);
 
 		if (it + 1 == rep.end() && last_line_split.size() > 3) {
-			for (auto& it2 = last_line_split.begin() + 3; it2 != last_line_split.end(); ++it2) {
+			for (auto it2 = last_line_split.begin() + 3; it2 != last_line_split.end(); ++it2) {
 				write_line(",", file_out);
 				write_line(*it2, file_out);
 			}

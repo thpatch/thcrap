@@ -9,4 +9,4 @@
 
 #pragma once
 
-int update_notify_thcrap(void);
+extern "C" int update_notify_thcrap();

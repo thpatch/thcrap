@@ -13,7 +13,7 @@ WINDRES = x86_64-w64-mingw32-windres
 endif
 
 CFLAGS =  -DBUILDER_NAME_W=L\"$(USER)\"
-CFLAGS += -DPROJECT_VERSION_Y=9999 -DPROJECT_VERSION_M=99 -DPROJECT_VERSION_D=99
+CFLAGS += -DPROJECT_VERSION_Y=9999 -DPROJECT_VERSION_M=99 -DPROJECT_VERSION_D=99 '-DDISCOVERY_DEFAULT_REPO="https://srv.thpatch.net/"'
 CFLAGS += -municode
 CFLAGS += -mfpmath=sse -msse4.1 -msha -mlong-double-80
 # -mpreferred-stack-boundary=2 is broken on i686-w64-mingw32-g++ (GCC) 12.2.0
@@ -54,12 +54,14 @@ CFLAGS += \
 CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare
 
 CXXFLAGS = $(CFLAGS) -std=c++17
+# For rand_s
+CXXFLAGS += -D_CRT_RAND_S
 # std::unexpected, which is removed in C++17, conflicts with our unexpected() macro.
 # This define tells the glibc to remove the deprecated functions.
 # ... until std::unexpected comes back as another thing in C++23.
 CXXFLAGS += -D_GLIBCXX_USE_DEPRECATED=0
 
-LDFLAGS += -o $@ -Lbin/bin
+LDFLAGS += -o $@ -Lbin/bin -Llibs/external_deps/bin
 
 %.o : %.asm
 	$(AS) -o $@ $<
@@ -74,6 +76,7 @@ all: bin/bin/thcrap_test.exe bin/bin/thcrap_tasofro.dll bin/bin/thcrap_update.dl
 THCRAP_DLL_SRCS = \
 	thcrap/src/dialog.cpp \
 	thcrap/src/exception.cpp \
+	thcrap/src/expression.cpp \
 	thcrap/src/fonts_charset.cpp \
 	thcrap/src/jsondata.cpp \
 	thcrap/src/ntdll.cpp \
@@ -110,8 +113,13 @@ THCRAP_DLL_SRCS = \
 	thcrap/src/win32_detour.cpp \
 	thcrap/src/xpcompat.cpp \
 	thcrap/src/zip.cpp \
+	thcrap/src/gcc_gs.cpp \
 
-THCRAP_DLL_OBJS = $(THCRAP_DLL_SRCS:.cpp=.o)
+THCRAP_DLL_SRCS_ASM = \
+	thcrap/src/inject_func.o \
+	thcrap/src/str_to_addr.o \
+
+THCRAP_DLL_OBJS = $(THCRAP_DLL_SRCS:.cpp=.o) $(THCRAP_DLL_SRCS_ASM:.asm=.o)
 $(THCRAP_DLL_OBJS): CXXFLAGS += -DTHCRAP_EXPORTS
 # It casts a "DWORD token value" to a pointer, which seems weird
 # and have no chances to work on 64-bits. We will need to look
@@ -121,6 +129,7 @@ thcrap/src/minid3d.o: CXXFLAGS += -Wno-int-to-pointer-cast
 thcrap/src/tlnote.o:  CXXFLAGS += -Wno-int-to-pointer-cast
 
 THCRAP_DLL_LDFLAGS = -shared -Lbin/bin -lwin32_utf8 -ljansson -lzlib-ng -lgdi32 -lshlwapi -luuid -lole32 -lpsapi -lwinmm -Wl,--enable-stdcall-fixup
+THCRAP_DLL_LDFLAGS += -lucrt /usr/lib32/wine/i386-windows/ntdll.dll
 
 ifneq ($(BUILD64),1)
 THCRAP_DLL_OBJS += thcrap/src/bp_entry.o
@@ -138,6 +147,7 @@ THCRAP_UPDATE_SRCS = \
 	thcrap_update/src/download_url.cpp \
 	thcrap_update/src/file.cpp \
 	thcrap_update/src/http_status.cpp \
+	thcrap_update/src/http_curl.cpp \
 	thcrap_update/src/http_wininet.cpp \
 	thcrap_update/src/loader_update.cpp \
 	thcrap_update/src/notify.cpp \
@@ -151,7 +161,7 @@ THCRAP_UPDATE_SRCS = \
 THCRAP_UPDATE_OBJS = $(THCRAP_UPDATE_SRCS:.cpp=.o)
 $(THCRAP_UPDATE_OBJS): CXXFLAGS += -DTHCRAP_UPDATE_EXPORTS -DUSE_HTTP_WININET
 
-THCRAP_UPDATE_LDFLAGS = -shared -lgdi32 -lcrypt32 -lwininet -lshlwapi -lcomctl32 -Lbin/bin -lwin32_utf8 -lthcrap -ljansson
+THCRAP_UPDATE_LDFLAGS = -shared -lgdi32 -lcrypt32 -lwininet -lshlwapi -lcomctl32 -Lbin/bin -lwin32_utf8 -lthcrap -ljansson -lcurl
 
 bin/bin/thcrap_update.dll: bin/bin/thcrap.dll thcrap_update/thcrap_update.def $(THCRAP_UPDATE_OBJS)
 	$(CXX) $(THCRAP_UPDATE_OBJS) thcrap_update/thcrap_update.def $(LDFLAGS) $(THCRAP_UPDATE_LDFLAGS)
@@ -198,16 +208,20 @@ THCRAP_TASOFRO_SRCS = \
 	thcrap_tasofro/src/nhtex.cpp \
 	thcrap_tasofro/src/nsml.cpp \
 	thcrap_tasofro/src/nsml_images.cpp \
-	thcrap_tasofro/src/plaintext.cpp \
 	thcrap_tasofro/src/pl.cpp \
+	thcrap_tasofro/src/plaintext.cpp \
 	thcrap_tasofro/src/plugin.cpp \
 	thcrap_tasofro/src/png.cpp \
+	thcrap_tasofro/src/ruby.cpp \
 	thcrap_tasofro/src/spellcards_generator.cpp \
 	thcrap_tasofro/src/tasofro_file.cpp \
 	thcrap_tasofro/src/tfcs.cpp \
 	thcrap_tasofro/src/th135.cpp \
 	thcrap_tasofro/src/th155_bmp_font.cpp \
 	thcrap_tasofro/src/th175.cpp \
+	thcrap_tasofro/src/th175_json.cpp \
+	thcrap_tasofro/src/th175_pl.cpp \
+	thcrap_tasofro/src/th175_pl_ed.cpp \
 	thcrap_tasofro/src/thcrap_tasofro.cpp \
 
 THCRAP_TASOFRO_OBJS = $(THCRAP_TASOFRO_SRCS:.cpp=.o)
@@ -226,12 +240,10 @@ thcrap_tasofro/src/act-nut.o: CXXFLAGS += -Wno-multichar
 thcrap_tasofro/src/nsml.o: CXXFLAGS += -Wno-unused-variable
 
 THCRAP_TASOFRO_LDFLAGS = -shared -lgdi32 -lcrypt32 -lwininet -lshlwapi -lcomctl32 \
-	-lwin32_utf8 -lthcrap -ljansson -lpng -lzlib-ng -lbmpfont_create -lact_nut_lib
+	-lwin32_utf8 -lthcrap -ljansson -lpng -lzlib-ng -lbmpfont_create -lact_nut_lib \
+	-Wl,--enable-stdcall-fixup
 
-# TODO: I don't know why, but the linker doesn't find the BP_bmpfont_fix_parameters in thcrap_tasofro/src/bp_bmpfont.asm,
-# and it complains about BP_c_bmpfont_fix_parameters (required by thcrap_tasofro/src/bp_bmpfont.o) being undefined.
-# THCRAP_TASOFRO_OBJS += thcrap_tasofro/src/bp_bmpfont.o
-THCRAP_TASOFRO_LDFLAGS += -Wl,--defsym=BP_bmpfont_fix_parameters=0
+THCRAP_TASOFRO_OBJS += thcrap_tasofro/src/bp_bmpfont.o
 
 bin/bin/thcrap_tasofro.dll: bin/bin/thcrap.dll bin/bin/libpng.dll bin/bin/bmpfont_create.dll bin/bin/act_nut_lib.dll thcrap_tasofro/thcrap_tasofro.def $(THCRAP_TASOFRO_OBJS)
 	$(CXX) $(THCRAP_TASOFRO_OBJS) thcrap_tasofro/thcrap_tasofro.def $(LDFLAGS) $(THCRAP_TASOFRO_LDFLAGS)

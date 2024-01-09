@@ -96,7 +96,7 @@ void File::download()
     } while (this->status != Status::Done && this->urls.size() > 0);
 }
 
-int download_single_file(const char* url, const char* fn) {
+extern "C" int download_single_file(const char* url, const char* fn) {
     try {
         auto res = ServerCache::get().downloadFile(url);
         if (res.second == HttpStatus::makeOk()) {

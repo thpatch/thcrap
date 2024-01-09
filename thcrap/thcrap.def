@@ -318,7 +318,6 @@ EXPORTS
 
 	; Shortcuts
 	; ---------
-	CreateLink
 	CreateShortcuts
 	GetIconGroupResourceId
 
