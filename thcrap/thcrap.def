@@ -87,6 +87,8 @@ EXPORTS
 	globalconfig_set_boolean
 	globalconfig_get_integer
 	globalconfig_set_integer
+	globalconfig_get_string
+	globalconfig_set_string
 	globalconfig_release
 	thcrap_alloc
 	thcrap_free

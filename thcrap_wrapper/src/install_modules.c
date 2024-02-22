@@ -93,14 +93,14 @@ static void NETShowWineError(WineNetError_t reason) {
 			L"It seems you are using Wine and Wine Mono is installed\n"
 			L"Unfortunately, Wine Mono does not work with thcrap\n"
 			L"Please use the bundled script to install .NET Framework 4.6.1\n"
-			L"(the script is located in the \"bin\" folder and called \"instal_dotnet461.sh\")";
+			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet461.sh\")";
 		break;
 	case n_NotInstalled:
 		wineMessage =
 			L"It seems you are using Wine and .NET Framework 4.6.1 is not installed\n"
 			L".NET Framework 4.6.1 or higher is required to setup thcrap\n"
 			L"Please use the bundled script to install .NET Framework 4.6.1\n"
-			L"(the script is located in the \"bin\" folder and called \"instal_dotnet461.sh\")";
+			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet461.sh\")";
 		break;
 	case n_OutOfDate:
 		wineMessage =
@@ -108,7 +108,7 @@ static void NETShowWineError(WineNetError_t reason) {
 			L"Unfortunately, the installed version is older than 4.6.1\n"
 			L"Please create a new wineprefix and use the bundled script\n"
 			L"to install .NET Framework 4.6.1\n"
-			L"(the script is located in the \"bin\" folder and called \"instal_dotnet461.sh\")";
+			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet461.sh\")";
 		break;
 	}
 

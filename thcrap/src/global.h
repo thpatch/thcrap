@@ -31,6 +31,12 @@ long long globalconfig_get_integer(const char* key, const long long default_valu
 // Sets the value in config and then writes the result on disk
 // It returns what json_dump_file returns
 int globalconfig_set_integer(const char* key, const long long value);
+// Returns the value matching key in config as a string
+// If key isn't in config it returns default_value with errno ENOENT
+const char* globalconfig_get_string(const char* key, const char* default_value);
+// Sets the value in config and then writes the result on disk
+// It returns what json_dump_file returns
+int globalconfig_set_string(const char* key, const char* value);
 // Releases global_cfg
 void globalconfig_release(void);
 

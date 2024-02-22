@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <functional>
 
 json_t* global_cfg = NULL;
 
@@ -42,7 +43,8 @@ int globalconfig_dump(void)
 	return json_dump_file(global_cfg, "config/config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 }
 
-BOOL globalconfig_get_boolean(const char* key, const BOOL default_value)
+template<typename T>
+T globalconfig_get(std::function<T (const json_t*)> json_T_value, const char* key, const T default_value)
 {
 	if (!global_cfg) {
 		globalconfig_init();
@@ -53,49 +55,56 @@ BOOL globalconfig_get_boolean(const char* key, const BOOL default_value)
 		errno = ENOENT;
 		return default_value;
 	}
-	return json_boolean_value(value_json);
+	return json_T_value(value_json);
+}
+
+template<typename T>
+int globalconfig_set(std::function<json_t* (const T)> json_T, const char* key, const T value)
+{
+	if (!global_cfg) {
+		globalconfig_init();
+	}
+	json_t* j_value = json_T(value);
+	if (json_equal(j_value, json_object_get(global_cfg, key))) {
+		json_decref(j_value);
+		return 0;
+	}
+	json_object_set_new(global_cfg, key, j_value);
+	return globalconfig_dump();
+}
+
+BOOL globalconfig_get_boolean(const char* key, const BOOL default_value)
+{
+	return globalconfig_get<BOOL>(
+		[](const json_t *value) { return json_boolean_value(value); },
+		key, default_value);
 }
 
 int globalconfig_set_boolean(const char* key, const BOOL value)
 {
-	if (!global_cfg) {
-		globalconfig_init();
-	}
-	json_t* j_value = json_boolean(value);
-	if (json_equal(j_value, json_object_get(global_cfg, key))) {
-		json_decref(j_value);
-		return 0;
-	}
-	json_object_set_new(global_cfg, key, j_value);
-	return globalconfig_dump();
+	return globalconfig_set<BOOL>(
+		[](const BOOL value) { return json_boolean(value); },
+		key, value);
 }
 
 long long globalconfig_get_integer(const char* key, const long long default_value)
 {
-	if (!global_cfg) {
-		globalconfig_init();
-	}
-	errno = 0;
-	json_t* value_json = json_object_get(global_cfg, key);
-	if (!value_json) {
-		errno = ENOENT;
-		return default_value;
-	}
-	return json_integer_value(value_json);
+	return globalconfig_get<long long>(json_integer_value, key, default_value);
 }
 
 int globalconfig_set_integer(const char* key, const long long value)
 {
-	if (!global_cfg) {
-		globalconfig_init();
-	}
-	json_t* j_value = json_integer(value);
-	if (json_equal(j_value, json_object_get(global_cfg, key))) {
-		json_decref(j_value);
-		return 0;
-	}
-	json_object_set_new(global_cfg, key, j_value);
-	return globalconfig_dump();
+	return globalconfig_set<long long>(json_integer, key, value);
+}
+
+const char *globalconfig_get_string(const char* key, const char *default_value)
+{
+	return globalconfig_get<const char*>(json_string_value, key, default_value);
+}
+
+int globalconfig_set_string(const char* key, const char *value)
+{
+	return globalconfig_set<const char*>(json_string, key, value);
 }
 
 void globalconfig_release(void)

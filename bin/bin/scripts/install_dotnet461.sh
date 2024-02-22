@@ -26,13 +26,13 @@ fi
 if [ -z "${WINEPREFIX}" ]
 then
 	read -r -t 5 -p "Warning: environment variable WINEPREFIX is not set. This means that the default wineprefix will be used
-When installing .NET, it is recommended to do it in it's own wineprefix.
+When installing .NET, it is recommended to do it in its own wineprefix.
 Press any key or wait 5 seconds to continue
 "
 else
 	[ "${WINEPREFIX: -1}" = "/" ] && export WINEPREFIX=${WINEPREFIX::-1}
 	[ "${WINEPREFIX}" = "$HOME/.wine" ] && read -r -t 5 -p "Warning: environment variable WINEPREFIX set to default wineprefix location.
-When installing .NET, it is recommended to do it in it's own wineprefix.
+When installing .NET, it is recommended to do it in its own wineprefix.
 Press any key or wait 5 seconds to continue
 "
 fi

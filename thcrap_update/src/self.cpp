@@ -505,6 +505,7 @@ end:
 self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 {
 	self_result_t ret;
+	std::string self_server;
 	char arc_fn[TEMP_FN_LEN];
 	zip_t *arc = NULL;
 	PCCERT_CONTEXT context = NULL;
@@ -513,9 +514,10 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 
 	log_printf("Checking for engine updates...\n");
 
-	auto [netpaths, netpaths_status] = ServerCache::get().downloadJsonFile(SELF_SERVER + NETPATHS_FN);
+	self_server = globalconfig_get_string("engine_update_url", SELF_SERVER.c_str());
+	auto [netpaths, netpaths_status] = ServerCache::get().downloadJsonFile(self_server + NETPATHS_FN);
 	if (!netpaths_status || !netpaths) {
-		log_printf("%s%s: %s\n", SELF_SERVER.c_str(), NETPATHS_FN, netpaths_status.toString().c_str());
+		log_printf("%s%s: %s\n", self_server.c_str(), NETPATHS_FN, netpaths_status.toString().c_str());
 		return SELF_VERSION_CHECK_ERROR;
 	}
 
@@ -597,15 +599,15 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(SELF_SERVER + netpath);
+	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(self_server + netpath);
 	if(!arc_dl_status || arc_dl.empty()) {
-		log_printf("%s%s: %s\n", SELF_SERVER.c_str(), netpath, arc_dl_status.toString().c_str());
+		log_printf("%s%s: %s\n", self_server.c_str(), netpath, arc_dl_status.toString().c_str());
 		return SELF_SERVER_ERROR;
 	}
 
-	auto [sig, sig_status] = ServerCache::get().downloadJsonFile(SELF_SERVER + netpath + ".sig");
+	auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig");
 	if(!sig_status || !sig) {
-		log_printf("%s%s%s: %s\n", SELF_SERVER.c_str(), netpath, ".sig", sig_status.toString().c_str());
+		log_printf("%s%s%s: %s\n", self_server.c_str(), netpath, ".sig", sig_status.toString().c_str());
 		return SELF_NO_SIG;
 	}
 
