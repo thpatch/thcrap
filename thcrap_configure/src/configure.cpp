@@ -207,6 +207,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
 	json_t *games = NULL;
+	games_js_entry *gamesArray = nullptr;
 
 	std::string run_cfg_fn;
 	std::string run_cfg_fn_js;
@@ -333,7 +334,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 
-	games_js_entry *gamesArray = nullptr;
 	if (console_ask_yn(_A("Create shortcuts? (required for first run)")) != 'n') {
 		gamesArray = games_js_to_array(games);
 		if (CreateShortcuts(run_cfg_fn.c_str(), gamesArray, SHDESTINATION_THCRAP_DIR, SHTYPE_SHORTCUT) != 0) {
