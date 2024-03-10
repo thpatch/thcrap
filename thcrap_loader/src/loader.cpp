@@ -147,6 +147,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	char *cfg_exe_fn = NULL;
 	const char *final_exe_fn = NULL;
 	size_t run_cfg_fn_len = 0;
+
+	char* cmdline = NULL;
 	
 
 	// If thcrap just updated itself, finalize the update by moving things around if needed.
@@ -261,7 +263,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	runconfig_load(run_cfg, RUNCONFIG_NO_BINHACKS);
 
-	char *cmdline = NULL;
 	if (const char *temp_cmdline = runconfig_cmdline_get()) {
 		cmdline = strdup(temp_cmdline);
 	}
