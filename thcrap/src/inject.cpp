@@ -404,7 +404,7 @@ int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr)
 #else
 		uintptr_t ip = context.Eip;
 #endif
-		if (ip != (uintptr_t)addr) {
+		if (ip == (uintptr_t)addr) {
 			break ;
 		}
 		ResumeThread(hThread);
