@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,6 +32,9 @@ namespace thcrap_configure_v3
     /// </summary>
     public partial class Page4 : UserControl
     {
+
+        private Timer autoHideTimer;
+
         class ThXX_js
         {
             public string title { get; set; }
@@ -42,7 +46,10 @@ namespace thcrap_configure_v3
             public List<string> Paths { get; private set; }
             public string SelectedPath { get; private set; }
             private List<Control> _contextMenu;
-            public List<Control> ContextMenu { get {
+            public List<Control> ContextMenu
+            {
+                get
+                {
                     if (_contextMenu == null)
                     {
                         _contextMenu = new List<Control>();
@@ -68,7 +75,8 @@ namespace thcrap_configure_v3
                         _contextMenu.Add(itemRemove);
                     }
                     return _contextMenu;
-                } }
+                }
+            }
 
             private void SelectPath(object sender, RoutedEventArgs e)
             {
@@ -273,9 +281,12 @@ namespace thcrap_configure_v3
                 dict[it.game_id] = it.SelectedPath;
 
             var json = JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
-            try {
+            try
+            {
                 File.WriteAllText("config/games.js", json);
-            } catch(System.IO.IOException e) {
+            }
+            catch (System.IO.IOException e)
+            {
                 System.Windows.MessageBox.Show(String.Format("Failed to write games.js ({0})", e.Message), "Error");
             }
         }
@@ -284,13 +295,14 @@ namespace thcrap_configure_v3
         {
             this.wizardPage = wizardPage;
             this.games = await LoadGamesJs();
+            NoNewGamesFound.Visibility = Visibility.Collapsed;
 
             GamesControl.ItemsSource = games;
             Refresh();
 
             if (games.Count == 0)
             {
-                Search(null, true);
+                Search(null, true, true);
             }
         }
 
@@ -317,9 +329,17 @@ namespace thcrap_configure_v3
                 SearchButtonEverywhere.IsEnabled = true;
             }
         }
-        private async void Search(string root, bool useAutoBehavior = false)
+        private async void Search(string root, bool useAutoBehavior = false, bool firstSearch = false)
         {
+            NoNewGamesFound.Visibility = Visibility.Collapsed;
+            if (autoHideTimer != null)
+            {
+                autoHideTimer.Dispose();
+                autoHideTimer = null;
+            }
+
             bool gamesListWasEmpty = this.games.Count == 0;
+            bool newGamesWereFound = false;
             foreach (var it in this.games)
                 it.SetNew(false);
 
@@ -349,12 +369,34 @@ namespace thcrap_configure_v3
                     if (!gamesListWasEmpty)
                         game.SetNew(true);
                     this.games.Add(game);
+                    newGamesWereFound = true;
                 }
                 else
                 {
                     // game already exists
                     game.AddPath(ThcrapHelper.PtrToStringUTF8(it.path));
                 }
+            }
+
+            if (!newGamesWereFound && !firstSearch)
+            {
+                NoNewGamesAutoHideProgress.Value = 100;
+                NoNewGamesFound.Visibility = Visibility.Visible;
+
+                // Update the progress bar slowly going down then collapse message
+                autoHideTimer = new Timer(new TimerCallback((object state) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        NoNewGamesAutoHideProgress.Value--;
+                        if (NoNewGamesAutoHideProgress.Value == 0)
+                        {
+                            NoNewGamesFound.Visibility = Visibility.Collapsed;
+                            autoHideTimer.Dispose();
+                            autoHideTimer = null;
+                        }
+                    });
+                }), null, 1, 30);
             }
 
             ThcrapDll.SearchForGames_free(foundPtr);
