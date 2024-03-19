@@ -69,7 +69,4 @@ int patch_th175_json(void *file_inout, size_t size_out, size_t size_in, const ch
 
 #ifdef __cplusplus
 }
-
-std::string parse_ruby(const std::string& in, const char *out_ruby_tag = "\\R[");
-
 #endif

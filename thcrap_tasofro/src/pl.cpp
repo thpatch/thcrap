@@ -9,6 +9,7 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
+#include "mediawiki.h"
 #include "pl.h"
 
 void TasofroPl::readField(const char *in, size_t& pos, size_t size, std::string& out)
@@ -210,7 +211,7 @@ std::string TasofroPl::ALine::quote(const std::string& in) const
 	}
 	out += '"';
 
-	return parse_ruby(out);
+	return parse_mediawiki(out, mwdef_th135);
 }
 
 const std::string& TasofroPl::ALine::get(int n) const

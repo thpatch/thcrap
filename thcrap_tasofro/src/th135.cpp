@@ -20,6 +20,12 @@
 #include "nhtex.h"
 #include "th155_bmp_font.h"
 #include "crypt.h"
+#include "mediawiki.h"
+
+const MwDefinition mwdef_th135 =
+{
+	{ "\\R[", "|", "]", MwDefinition::Ruby::Order::BottomThenTop }, // ruby
+};
 
 int th135_init()
 {

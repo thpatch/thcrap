@@ -129,7 +129,7 @@ thcrap/src/minid3d.o: CXXFLAGS += -Wno-int-to-pointer-cast
 thcrap/src/tlnote.o:  CXXFLAGS += -Wno-int-to-pointer-cast
 
 THCRAP_DLL_LDFLAGS = -shared -Lbin/bin -lwin32_utf8 -ljansson -lzlib-ng -lgdi32 -lshlwapi -luuid -lole32 -lpsapi -lwinmm -Wl,--enable-stdcall-fixup
-THCRAP_DLL_LDFLAGS += -lucrt /usr/lib32/wine/i386-windows/ntdll.dll
+THCRAP_DLL_LDFLAGS += -lucrt
 
 ifneq ($(BUILD64),1)
 THCRAP_DLL_OBJS += thcrap/src/bp_entry.o
@@ -206,13 +206,13 @@ THCRAP_TASOFRO_SRCS = \
 	thcrap_tasofro/src/cv0.cpp \
 	thcrap_tasofro/src/files_list.cpp \
 	thcrap_tasofro/src/nhtex.cpp \
+	thcrap_tasofro/src/mediawiki.cpp \
 	thcrap_tasofro/src/nsml.cpp \
 	thcrap_tasofro/src/nsml_images.cpp \
 	thcrap_tasofro/src/pl.cpp \
 	thcrap_tasofro/src/plaintext.cpp \
 	thcrap_tasofro/src/plugin.cpp \
 	thcrap_tasofro/src/png.cpp \
-	thcrap_tasofro/src/ruby.cpp \
 	thcrap_tasofro/src/spellcards_generator.cpp \
 	thcrap_tasofro/src/tasofro_file.cpp \
 	thcrap_tasofro/src/tfcs.cpp \

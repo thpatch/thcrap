@@ -14,6 +14,7 @@
 #include "bgm.h"
 #include "cv0.h"
 #include "nsml_images.h"
+#include "mediawiki.h"
 #include <map>
 #include <set>
 
@@ -25,6 +26,11 @@ W32U8_DETOUR_CHAIN_DEF(GetGlyphOutline);
 static CRITICAL_SECTION cs;
 std::map<std::string, TasofroFile> files_list;
 static std::set<const char*, bool(*)(const char*, const char*)> game_fallback_ignore_list([](const char *a, const char *b){ return strcmp(a, b) < 0; });
+
+const MwDefinition mwdef_nsml
+{
+	{ "<ruby ", ">", "</ruby>", MwDefinition::Ruby::Order::TopThenBottom }, // ruby
+};
 
 // Copy-paste of fn_for_game from patchfile.cpp
 static char* fn_for_th105(const char *fn)

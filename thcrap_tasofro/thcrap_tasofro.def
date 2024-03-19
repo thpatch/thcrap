@@ -33,5 +33,3 @@ EXPORTS
 	BP_th175_close_file
 
 	patch_th175_pl_ed
-
-	parse_ruby

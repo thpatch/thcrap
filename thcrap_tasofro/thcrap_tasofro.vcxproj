@@ -39,6 +39,7 @@
     <ClCompile Include="src\csv.cpp" />
     <ClCompile Include="src\cv0.cpp" />
     <ClCompile Include="src\files_list.cpp" />
+    <ClCompile Include="src\mediawiki.cpp" />
     <ClCompile Include="src\nhtex.cpp" />
     <ClCompile Include="src\nsml.cpp" />
     <ClCompile Include="src\nsml_images.cpp" />
@@ -46,7 +47,6 @@
     <ClCompile Include="src\plaintext.cpp" />
     <ClCompile Include="src\plugin.cpp" />
     <ClCompile Include="src\png.cpp" />
-    <ClCompile Include="src\ruby.cpp" />
     <ClCompile Include="src\spellcards_generator.cpp" />
     <ClCompile Include="src\tasofro_file.cpp" />
     <ClCompile Include="src\tfcs.cpp" />

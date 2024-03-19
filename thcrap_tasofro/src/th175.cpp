@@ -12,6 +12,12 @@
 #include "thcrap_tasofro.h"
 #include "files_list.h"
 #include "act-nut.h"
+#include "mediawiki.h"
+
+const MwDefinition mwdef_th175_stage_title =
+{
+	{ "\\\\R[", "|", "]", MwDefinition::Ruby::Order::BottomThenTop }, // ruby
+};
 
 static json_t *jsonvfs_copy_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
 {

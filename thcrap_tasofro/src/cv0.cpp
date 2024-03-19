@@ -9,6 +9,7 @@
 
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
+#include "mediawiki.h"
 #include "cv0.h"
 
 TasofroCv0::LineType TasofroCv0::guessLineType(const char* file, size_t size)
@@ -108,28 +109,12 @@ std::string TasofroCv0::ALine::escape(const std::string& in) const
 		if (in[i] == ',') {
 			out += "\\,";
 		}
-		else if (in.compare(i, 7, "{{ruby|") == 0) {
-			i += 7;
-			std::string top;
-			std::string bot;
-			while (i < in.size() && in[i] != '|') {
-				bot += in[i];
-				i++;
-			}
-			i++;
-			while (i < in.size() && in.compare(i, 2, "}}") != 0) {
-				top += in[i];
-				i++;
-			}
-			out += std::string("<ruby ") + top + ">" + bot + "</ruby>";
-			i++; // Actually i += 2, because it will be incremented once again in the for loop.
-		}
 		else {
 			out += in[i];
 		}
 	}
 
-	return out;
+	return parse_mediawiki(out, mwdef_nsml);
 }
 
 

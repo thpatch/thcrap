@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <libs/135tk/Act-Nut-lib/exports.hpp>
 #include "thcrap_tasofro.h"
+#include "mediawiki.h"
 #include "act-nut.h"
 
 void json_object_numkeys_foreach(json_t *obj, std::function<void (int key, json_t *value)> function)
@@ -122,7 +123,7 @@ static void patch_actnut_as_string(ActNut::Object *elem, json_t *json)
 		}
 		text += json_string_value(line);
 	}
-	*elem = parse_ruby(text);
+	*elem = parse_mediawiki(text, mwdef_th135);
 }
 
 int patch_act_nut(ActNut::Object *actnutobj, void *file_out, size_t size_out, json_t *patch)
