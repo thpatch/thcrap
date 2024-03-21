@@ -58,14 +58,12 @@
                     <TextBlock FontWeight="Bold"
                                Padding="0, 7, 7, 7"
                                FontSize="20"
-                               Foreground="Red"
-                    >
+                               Foreground="Red">
                         <TextBlock.Text>
                             ⮾
                         </TextBlock.Text>
                     </TextBlock>
-                    <TextBlock TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
-                    >
+                    <TextBlock TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock.Text>
                             No new games found (︶︹︺)
                         </TextBlock.Text>
@@ -74,9 +72,7 @@
                 <ProgressBar
                         x:Name="NoNewGamesAutoHideProgress"
                         Value="0"
-                        Foreground="#FFB00606"
-                    
-                    />
+                        Foreground="#FFB00606" />
             </StackPanel>
             <ScrollViewer x:Name="GamesScroll" VerticalScrollBarVisibility="Auto">
                 <ItemsControl x:Name="GamesControl" Margin="0,0,10,1">

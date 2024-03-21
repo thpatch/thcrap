@@ -32,20 +32,21 @@ namespace thcrap_configure_v3
     /// </summary>
     public partial class Page4 : UserControl
     {
-
         private Timer autoHideTimer;
 
-        class ThXX_js
+        private class ThXX_js
         {
             public string title { get; set; }
         }
-        class Game : INotifyPropertyChanged
+
+        private class Game : INotifyPropertyChanged
         {
             private readonly Page4 parentWindow;
             public readonly string game_id;
             public List<string> Paths { get; private set; }
             public string SelectedPath { get; private set; }
             private List<Control> _contextMenu;
+
             public List<Control> ContextMenu
             {
                 get
@@ -110,6 +111,7 @@ namespace thcrap_configure_v3
             }
 
             private string name_ = null;
+
             public string Name
             {
                 get
@@ -142,6 +144,7 @@ namespace thcrap_configure_v3
             }
 
             public ImageSource GameIcon { get; private set; }
+
             public async Task LoadGameIcon() => await Task.Run(() =>
             {
                 string path = SelectedPath;
@@ -183,6 +186,7 @@ namespace thcrap_configure_v3
             public string Path { get => SelectedPath; }
 
             public Visibility NewVisibility { get; private set; }
+
             public void SetNew(bool isNew)
             {
                 Visibility newVisibility;
@@ -198,6 +202,7 @@ namespace thcrap_configure_v3
             }
 
             private bool _isSelected;
+
             public bool IsSelected
             {
                 get => _isSelected;
@@ -214,8 +219,8 @@ namespace thcrap_configure_v3
             public event PropertyChangedEventHandler PropertyChanged;
         }
 
-        WizardPage wizardPage;
-        ObservableCollection<Game> games;
+        private WizardPage wizardPage;
+        private ObservableCollection<Game> games;
 
         public Page4()
         {
@@ -242,15 +247,16 @@ namespace thcrap_configure_v3
             }
         }
 
-        Dictionary<string, string> stringdef_ = null;
-        Dictionary<string, string> GetStringdef()
+        private Dictionary<string, string> stringdef_ = null;
+
+        private Dictionary<string, string> GetStringdef()
         {
             if (stringdef_ == null)
                 stringdef_ = ThcrapHelper.stack_json_resolve<Dictionary<string, string>>("stringdefs.js");
             return stringdef_;
         }
 
-        async Task<ObservableCollection<Game>> LoadGamesJs()
+        private async Task<ObservableCollection<Game>> LoadGamesJs()
         {
             try
             {
@@ -274,7 +280,8 @@ namespace thcrap_configure_v3
                 return new ObservableCollection<Game>();
             }
         }
-        void SaveGamesJs(IEnumerable<Game> games)
+
+        private void SaveGamesJs(IEnumerable<Game> games)
         {
             var dict = new SortedDictionary<string, string>();
             foreach (var it in games)
@@ -329,6 +336,7 @@ namespace thcrap_configure_v3
                 SearchButtonEverywhere.IsEnabled = true;
             }
         }
+
         private async void Search(string root, bool useAutoBehavior = false, bool firstSearch = false)
         {
             NoNewGamesFound.Visibility = Visibility.Collapsed;
@@ -483,7 +491,7 @@ namespace thcrap_configure_v3
             AssociatedObject.AddHandler(Button.ClickEvent, new RoutedEventHandler(AssociatedObject_Click), true);
         }
 
-        void AssociatedObject_Click(object sender, System.Windows.RoutedEventArgs e)
+        private void AssociatedObject_Click(object sender, System.Windows.RoutedEventArgs e)
         {
             Button source = sender as Button;
             if (source != null && source.ContextMenu != null)
@@ -507,7 +515,7 @@ namespace thcrap_configure_v3
             AssociatedObject.RemoveHandler(Button.ClickEvent, new RoutedEventHandler(AssociatedObject_Click));
         }
 
-        void ContextMenu_Closed(object sender, RoutedEventArgs e)
+        private void ContextMenu_Closed(object sender, RoutedEventArgs e)
         {
             isContextMenuOpen = false;
             var contextMenu = sender as ContextMenu;
