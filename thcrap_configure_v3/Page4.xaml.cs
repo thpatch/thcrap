@@ -27,7 +27,7 @@ namespace thcrap_configure_v3
     public partial class Page4 : UserControl
     {
         private Timer autoHideTimer;
-        private ObservableCollection<Game> games;
+        private ObservableCollection<Game> gameList;
         private IEnumerable<ThcrapDll.games_js_entry> outGames;
         private Dictionary<string, string> stringdef_ = null;
         private WizardPage wizardPage;
@@ -40,13 +40,13 @@ namespace thcrap_configure_v3
         public async Task Enter(WizardPage wizardPage)
         {
             this.wizardPage = wizardPage;
-            this.games = await LoadGamesJs();
+            this.gameList = await LoadGamesJs();
             NoNewGamesFound.Visibility = Visibility.Collapsed;
 
-            GamesControl.ItemsSource = games;
+            GamesControl.ItemsSource = gameList;
             Refresh();
 
-            if (games.Count == 0)
+            if (gameList.Count == 0)
             {
                 Search(null, true, true);
             }
@@ -59,8 +59,8 @@ namespace thcrap_configure_v3
 
         public void Leave()
         {
-            SaveGamesJs(this.games.Where((Game game) => game.IsSelected || game.WasAlreadyPresent));
-            outGames = this.games.Where((Game game) => game.IsSelected).Select((Game game) => new ThcrapDll.games_js_entry
+            SaveGamesJs(this.gameList.Where((Game game) => game.IsSelected || game.WasAlreadyPresent));
+            outGames = this.gameList.Where((Game game) => game.IsSelected).Select((Game game) => new ThcrapDll.games_js_entry
             {
                 id = game.game_id,
                 path = ThcrapHelper.StringUTF8ToPtr(game.SelectedPath),
@@ -69,9 +69,7 @@ namespace thcrap_configure_v3
 
         private Dictionary<string, string> GetStringdef()
         {
-            if (stringdef_ == null)
-                stringdef_ = ThcrapHelper.stack_json_resolve<Dictionary<string, string>>("stringdefs.js");
-            return stringdef_;
+            return stringdef_ ?? (stringdef_ = ThcrapHelper.stack_json_resolve<Dictionary<string, string>>("stringdefs.js"));
         }
 
         private async Task<ObservableCollection<Game>> LoadGamesJs()
@@ -101,7 +99,7 @@ namespace thcrap_configure_v3
 
         private void Refresh()
         {
-            if (games.Count == 0)
+            if (gameList.Count == 0)
             {
                 wizardPage.CanSelectNextPage = false;
                 AddGamesNotice.Visibility = Visibility.Visible;
@@ -121,7 +119,7 @@ namespace thcrap_configure_v3
 
         private void RemoveAll(object sender, RoutedEventArgs e)
         {
-            this.games.Clear();
+            this.gameList.Clear();
         }
 
         private void SaveGamesJs(IEnumerable<Game> games)
@@ -141,7 +139,7 @@ namespace thcrap_configure_v3
             }
         }
 
-        private async void Search(string root, bool useAutoBehavior = false, bool firstSearch = false)
+        private void Search(string root, bool useAutoBehavior = false, bool firstSearch = false)
         {
             NoNewGamesFound.Visibility = Visibility.Collapsed;
             if (autoHideTimer != null)
@@ -150,72 +148,78 @@ namespace thcrap_configure_v3
                 autoHideTimer = null;
             }
 
-            bool gamesListWasEmpty = this.games.Count == 0;
+            bool gamesListWasEmpty = this.gameList.Count == 0;
             bool newGamesWereFound = false;
-            foreach (var it in this.games)
+            foreach (var it in this.gameList)
+            {
                 it.SetNew(false);
+            }
 
             SetSearching(true);
-            IntPtr foundPtr;
+            IntPtr foundPtr = default;
             if (useAutoBehavior)
             {
-                foundPtr = await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null));
+                Task.Run(() => foundPtr = ThcrapDll.SearchForGamesInstalled(null)).Wait();
             }
             else
             {
-                foundPtr = await Task.Run(() => ThcrapDll.SearchForGames(new string[] { root, null }, null));
+                Task.Run(() => foundPtr = ThcrapDll.SearchForGames(new string[] { root, null }, null)).Wait();
             }
 
             SetSearching(false);
 
-            var found = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr);
-
-            foreach (var it in found)
+            if (!Object.Equals(foundPtr, default(IntPtr)))
             {
-                var game = this.games.FirstOrDefault(x => x.game_id == it.id);
-                if (game == null)
+                foreach (var it in ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr))
                 {
-                    // new game
-                    game = new Game(this, it.id, ThcrapHelper.PtrToStringUTF8(it.path), false);
-                    await game.LoadGameIcon();
-                    if (!gamesListWasEmpty)
-                        game.SetNew(true);
-                    this.games.Add(game);
-                    newGamesWereFound = true;
-                }
-                else
-                {
-                    // game already exists
-                    game.AddPath(ThcrapHelper.PtrToStringUTF8(it.path));
-                }
-            }
-
-            if (!newGamesWereFound && !firstSearch)
-            {
-                NoNewGamesAutoHideProgress.Value = 100;
-                NoNewGamesFound.Visibility = Visibility.Visible;
-
-                // Update the progress bar slowly going down then collapse message
-                autoHideTimer = new Timer(new TimerCallback((object state) =>
-                {
-                    Dispatcher.Invoke(() =>
+                    var game = this.gameList.FirstOrDefault(x => x.game_id == it.id);
+                    if (game == null)
                     {
-                        NoNewGamesAutoHideProgress.Value--;
-                        if (NoNewGamesAutoHideProgress.Value == 0)
+                        // new game
+                        game = new Game(this, it.id, ThcrapHelper.PtrToStringUTF8(it.path), false);
+                        game.LoadGameIcon().Wait();
+                        if (!gamesListWasEmpty)
                         {
-                            NoNewGamesFound.Visibility = Visibility.Collapsed;
-                            autoHideTimer.Dispose();
-                            autoHideTimer = null;
+                            game.SetNew(true);
                         }
-                    });
-                }), null, 1, 30);
+
+                        this.gameList.Add(game);
+                        newGamesWereFound = true;
+                    }
+                    else
+                    {
+                        // game already exists
+                        game.AddPath(ThcrapHelper.PtrToStringUTF8(it.path));
+                    }
+                }
+
+                if (!newGamesWereFound && !firstSearch)
+                {
+                    NoNewGamesAutoHideProgress.Value = 100;
+                    NoNewGamesFound.Visibility = Visibility.Visible;
+
+                    // Update the progress bar slowly going down then collapse message
+                    autoHideTimer = new Timer(new TimerCallback((object state) =>
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            NoNewGamesAutoHideProgress.Value--;
+                            if (NoNewGamesAutoHideProgress.Value == 0)
+                            {
+                                NoNewGamesFound.Visibility = Visibility.Collapsed;
+                                autoHideTimer.Dispose();
+                                autoHideTimer = null;
+                            }
+                        });
+                    }), null, 1, 30);
+                }
+
+                ThcrapDll.SearchForGames_free(foundPtr);
+
+                if (!gamesListWasEmpty)
+                    GamesScroll.ScrollToBottom();
+                Refresh();
             }
-
-            ThcrapDll.SearchForGames_free(foundPtr);
-
-            if (!gamesListWasEmpty)
-                GamesScroll.ScrollToBottom();
-            Refresh();
         }
 
         private void SearchAuto(object sender, RoutedEventArgs e)
@@ -247,7 +251,7 @@ namespace thcrap_configure_v3
 
         private void SelectAll(object sender, RoutedEventArgs e)
         {
-            foreach (var game in this.games)
+            foreach (var game in this.gameList)
             {
                 game.IsSelected = true;
             }
@@ -279,7 +283,7 @@ namespace thcrap_configure_v3
 
         private void UnselectAll(object sender, RoutedEventArgs e)
         {
-            foreach (var game in this.games)
+            foreach (var game in this.gameList)
             {
                 game.IsSelected = false;
             }
@@ -443,7 +447,7 @@ namespace thcrap_configure_v3
 
             private void RemoveFromList(object sender, RoutedEventArgs e)
             {
-                parentWindow.games.Remove(this);
+                parentWindow.gameList.Remove(this);
                 parentWindow.Refresh();
             }
 
