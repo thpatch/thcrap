@@ -17,7 +17,7 @@ namespace thcrap_configure_v3
 
         void WindowOpened(object sender, RoutedEventArgs e)
         {
-            background_updates.IsChecked = ThcrapDll.globalconfig_get_boolean("background_updates", true);
+            background_updates.IsChecked = ThcrapDll.globalconfig_get_boolean("background_updates", false);
             update_others.IsChecked = ThcrapDll.globalconfig_get_boolean("update_others", true);
             update_at_exit.IsChecked = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
             time_between_updates.Text = ThcrapDll.globalconfig_get_integer("time_between_updates", 5).ToString();
