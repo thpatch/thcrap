@@ -373,7 +373,6 @@ extern "C" int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
-	char *string = (char*)json_object_get_immediate(bp_info, regs, "string");
 	char delim = (char)json_object_get_immediate(bp_info, regs, "delim");
 	// ----------
 
@@ -381,6 +380,7 @@ extern "C" int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
+	char *string = (char*)json_object_get_immediate(bp_info, regs, "string");
 	if (string[0] == '\\' && string[1] == ',') {
 		// Erase the backslash
 		int i;

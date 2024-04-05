@@ -159,7 +159,7 @@ int nsml_init()
 static void megamari_xor(const TasofroFile *fr, BYTE *buffer, size_t size)
 {
 	BYTE key = ((fr->offset >> 1) | 8) & 0xFF;
-	for (unsigned int i = 0; i < size; i++) {
+	for (size_t i = 0; i < size; i++) {
 		buffer[i] ^= key;
 	}
 }
@@ -167,7 +167,7 @@ static void megamari_xor(const TasofroFile *fr, BYTE *buffer, size_t size)
 static void nsml_xor(const TasofroFile *fr, BYTE *buffer, size_t size)
 {
 	BYTE key = ((fr->offset >> 1) | 0x23) & 0xFF;
-	for (unsigned int i = 0; i < size; i++) {
+	for (size_t i = 0; i < size; i++) {
 		buffer[i] ^= key;
 	}
 }
@@ -181,7 +181,7 @@ static void th105_xor(const TasofroFile *fr, BYTE *buffer, size_t size)
 		unsigned char xorval = 0x8b;
 		unsigned char xoradd = 0x71;
 		unsigned char xoraddadd = 0x95;
-		for (unsigned int i = 0; i < size; i++) {
+		for (size_t i = 0; i < size; i++) {
 			buffer[i] ^= xorval;
 			xorval += xoradd;
 			xoradd += xoraddadd;
@@ -429,8 +429,8 @@ extern "C" int BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)
 DWORD WINAPI th105_GetGlyphOutlineU(HDC hdc, UINT uChar, UINT uFormat, LPGLYPHMETRICS lpgm, DWORD cbBuffer, LPVOID lpvBuffer, const MAT2 *lpmat2)
 {
 	uChar = CharToUTF16(uChar);
-
-	if (uChar & 0xFFFF0000 ||
+	
+	if (uChar > WCHAR_MAX ||
 		font_has_character(hdc, uChar)) {
 		// is_character_in_font won't work if the character doesn't fit into a WCHAR.
 		// When it happens, we'll be optimistic and hope our font have that character.

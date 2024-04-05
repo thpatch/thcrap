@@ -649,15 +649,12 @@ void TasofroPl::EndingText::endLine()
 
 json_t *TasofroPl::balloonNumberToLines(json_t *patch, size_t balloon_number)
 {
-	json_t *json_line_data;
-	json_t *json_lines;
-
-	json_line_data = json_object_numkey_get(patch, balloon_number);
+	json_t* json_line_data = json_object_numkey_get(patch, balloon_number);
 	if (!json_is_object(json_line_data)) {
 		return nullptr;
 	}
 
-	json_lines = json_object_get(json_line_data, "lines");
+	json_t* json_lines = json_object_get(json_line_data, "lines");
 	if (!json_is_array(json_lines)) {
 		return nullptr;
 	}

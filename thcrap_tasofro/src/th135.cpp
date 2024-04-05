@@ -144,7 +144,7 @@ struct Th145AVFileReader // Inherits from AVPackageReader
 std::unordered_map<HANDLE, Th135File*> openFiles;
 std::mutex openFilesMutex;
 
-bool th135_init_fr(Th135File *fr, std::filesystem::path path)
+bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 {
 	if (path.is_absolute()) {
 		path = path.lexically_relative(std::filesystem::current_path());
@@ -173,7 +173,8 @@ bool th135_init_fr(Th135File *fr, const char *path)
 {
 	WCHAR_T_DEC(path);
 	WCHAR_T_CONV(path);
-	bool ret = th135_init_fr(fr, path_w);
+	std::filesystem::path fs_path = path_w;
+	bool ret = th135_init_fr(fr, fs_path);
 	WCHAR_T_FREE(path);
 	return ret;
 }

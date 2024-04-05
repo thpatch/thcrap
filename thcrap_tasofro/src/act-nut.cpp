@@ -18,8 +18,8 @@ void json_object_numkeys_foreach(json_t *obj, std::function<void (int key, json_
 {
 	std::vector<int> keys;
 
-	for (void *iter = json_object_iter(obj); iter != nullptr; iter = json_object_iter_next(obj, iter)) {
-		const char *key = json_object_iter_key(iter);
+	const char* key;
+	json_object_foreach_key(obj, key) {
 		keys.push_back(atoi(key));
 	}
 
