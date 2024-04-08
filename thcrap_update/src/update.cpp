@@ -299,6 +299,16 @@ int update_filter_games(const char *fn, void *param)
 		) {
 			return 1;
 		}
+
+        // Dirty hack - th123 requires th105 files
+        const char *th105_prefix = "th105/";
+        if (
+            fn_len > strlen(th105_prefix)
+            && strcmp(games[i], "th123") == 0
+            && strncmp(fn, th105_prefix, strlen(th105_prefix)) == 0
+            ) {
+            return 1;
+        }
     }
 
 	return update_filter_global(fn, NULL);
