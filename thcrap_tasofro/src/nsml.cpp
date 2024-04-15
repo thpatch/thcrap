@@ -120,6 +120,7 @@ int nsml_init()
 
 		jsonvfs_game_add_map("data/csv/*/spellcard.cv1.jdiff", { "spells.js" });
 		jsonvfs_game_add_map("data/csv/*/storyspell.cv1.jdiff", { "spells.js" });
+		jsonvfs_game_add("data/csv/*/spellcard.cv1.jdiff", { "spellcomments.js" }, th105_spellcomment_generator);
 	}
 	else if (game_id == TH123) {
 		set_resolve_chain_game(th123_resolve_chain_game);
