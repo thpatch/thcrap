@@ -54,12 +54,14 @@ static json_t *get_row_from_id(json_t *patch, const char *line, size_t size)
 
 json_t *get_patch_obj_for_row(json_t *patch, int row, json_t *patch_row_by_id)
 {
+	json_t *patch_row = json_object_numkey_get(patch, row);
+
 	if (!patch_row_by_id) {
-		return json_incref(patch);
+		return json_incref(patch_row);
 	}
 
 	// We modify this object, make a copy before that
-	json_t *ret = json_deep_copy(patch);
+	json_t *ret = json_deep_copy(patch_row);
 	json_object_merge(ret, json_incref(patch_row_by_id));
 	return ret;
 }
@@ -161,7 +163,7 @@ static json_t *th105_spellcomment_pack_lines(json_t *spell)
 	json_t *line;
 	json_array_foreach_scoped(size_t, i, lines, line) {
 		if (!first) {
-			out += "\\n";
+			out += "<br>";
 		}
 		else {
 			first = false;
