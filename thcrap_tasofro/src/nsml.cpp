@@ -138,14 +138,20 @@ int nsml_init()
 		char *pattern_story = fn_for_game("data/csv/*/storyspell.cv1.jdiff");
 		char *spells_th105 = fn_for_th105("spells.js");
 		char *spells_th123 = fn_for_game("spells.js");
+		char *spellcomments_th105 = fn_for_th105("spellcomments.js");
+		char *spellcomments_th123 = fn_for_game("spellcomments.js");
 		jsonvfs_add_map(pattern_spell, { spells_th105 });
 		jsonvfs_add_map(pattern_spell, { spells_th123 });
 		jsonvfs_add_map(pattern_story, { spells_th105 });
 		jsonvfs_add_map(pattern_story, { spells_th123 });
+		jsonvfs_add(pattern_spell, { spellcomments_th105 }, th105_spellcomment_generator);
+		jsonvfs_add(pattern_spell, { spellcomments_th123 }, th105_spellcomment_generator);
 		SAFE_FREE(pattern_spell);
 		SAFE_FREE(pattern_story);
 		SAFE_FREE(spells_th105);
 		SAFE_FREE(spells_th123);
+		SAFE_FREE(spellcomments_th105);
+		SAFE_FREE(spellcomments_th123);
 	}
 	return 0;
 }
