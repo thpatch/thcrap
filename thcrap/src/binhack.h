@@ -116,6 +116,9 @@ typedef struct {
 	bool export_codecave;
 	// Read, write, execute flags
 	CodecaveAccessType access_type;
+	/* Single padding byte here */
+	// Codecave alignment
+	uint32_t align;
 
 	uint8_t* virtual_address;
 } codecave_t;

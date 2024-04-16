@@ -61,7 +61,8 @@ struct CPUID_Data_t {
 	// Hopefully 64 bytes is a reasonable default for anything ancient enough not to report this
 	uint32_t cache_line_size = 64;
 	// TODO: Add some builtin code options for generating fxsave/xsave patterns
-	uint64_t xsave_mask = 0;
+	uint32_t xsave_mask_low = 0;
+	uint32_t xsave_mask_high = 0;
 	size_t xsave_max_size = 0;
 	bool xsave_restores_fpu_errors = true; // Intel doesn't have this flag or any way of disabling this AFAIK, so default to true
 	// TODO: Figure out how to deal with Intel's Alder Lake BS
@@ -233,7 +234,8 @@ struct CPUID_Data_t {
 		switch (data[0]) {
 			default: //case 13:
 				__cpuidex(data, 13, 0);
-				xsave_mask = (uint64_t)data[3] << 32 | data[0];
+				xsave_mask_low = data[0];
+				xsave_mask_high = data[3];
 				xsave_max_size = data[2];
 				__cpuidex(data, 13, 1);
 				HasXSAVEOPT			= bittest32(data[0], 0);
@@ -1165,14 +1167,17 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 11:
-			if		(strnicmp(name, "avx512vbmi1", name_length) == 0) return CPUID_Data.HasAVX512VBMI;
+			if      (strnicmp(name, "xsavemasklo", name_length) == 0) return CPUID_Data.xsave_mask_low;
+			else if (strnicmp(name, "xsavemaskhi", name_length) == 0) return CPUID_Data.xsave_mask_high;
+			else if (strnicmp(name, "avx512vbmi1", name_length) == 0) return CPUID_Data.HasAVX512VBMI;
 			else if (strnicmp(name, "avx512vbmi2", name_length) == 0) return CPUID_Data.HasAVX512VBMI2;
 			else if (strnicmp(name, "avxvnniint8", name_length) == 0) return CPUID_Data.HasAVXVNNIINT8;
 			else if (strnicmp(name, "prefetchwt1", name_length) == 0) return CPUID_Data.HasPREFETCHWT1;
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 10:
-			if		(strnicmp(name, "vpclmulqdq", name_length) == 0) return CPUID_Data.HasVPCLMULQDQ;
+			if      (strnicmp(name, "xsavealign", name_length) == 0) return CPUID_Data.HasXSAVE ? 64 : 16;
+			else if (strnicmp(name, "vpclmulqdq", name_length) == 0) return CPUID_Data.HasVPCLMULQDQ;
 			else if	(strnicmp(name, "cmpxchg16b", name_length) == 0) return CPUID_Data.HasCMPXCHG16B;
 			else if (strnicmp(name, "avx512ifma", name_length) == 0) return CPUID_Data.HasAVX512IFMA;
 			else if (strnicmp(name, "avx512vbmi", name_length) == 0) return CPUID_Data.HasAVX512VBMI;
@@ -1186,6 +1191,7 @@ static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_leng
 			break;
 		case 9:
 			if      (strnicmp(name, "thcrapver", name_length) == 0) return PROJECT_VERSION;
+			else if (strnicmp(name, "xsavesize", name_length) == 0) return CPUID_Data.xsave_max_size;
 			else if (strnicmp(name, "pclmulqdq", name_length) == 0) return CPUID_Data.HasPCLMULQDQ;
 			else if (strnicmp(name, "movdir64b", name_length) == 0) return CPUID_Data.HasMOVDIR64B;
 			else if (strnicmp(name, "cmpccxadd", name_length) == 0) return CPUID_Data.HasCMPCCXADD;

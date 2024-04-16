@@ -1405,6 +1405,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	bool export_val = false;
 	CodecaveAccessType access_val = EXECUTE_READWRITE;
 	size_t fill_val = 0;
+	size_t align_val = 16;
 
 	if (json_is_object(in)) {
 		if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
@@ -1449,6 +1450,22 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				log_printf("ERROR: invalid json type specified for fill value of codecave %s, must be 32-bit integer or string\n", name);
 				return false;
 			case JEVAL_SUCCESS:
+			case JEVAL_NULL_PTR:
+				break;
+		}
+
+		switch (json_object_get_eval_int(in, "align", &align_val, JEVAL_STRICT)) {
+			default:
+				log_printf("ERROR: invalid json type specified for align value of codecave %s, must be 32-bit integer or string\n", name);
+				return false;
+			case JEVAL_SUCCESS:
+				// Round the alignment to the next power of 2 (including 1)
+				if (unsigned long bit; _BitScanReverse(&bit, align_val - 1)) {
+					align_val = 1u << bit + 1;
+				} else {
+					align_val = 1u;
+				}
+				TH_FALLTHROUGH;
 			case JEVAL_NULL_PTR:
 				break;
 		}
@@ -1508,6 +1525,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		// export_val = false;
 		// access_val = EXECUTE_READWRITE;
 		// fill_val = 0;
+		// align_val = 16;
 	}
 	else if (json_is_integer(in)) {
 		size_val = (size_t)json_integer_value(in);
@@ -1515,6 +1533,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 		// export_val = false;
 		access_val = READWRITE;
 		// fill_val = 0;
+		// align_val = 16;
 	}
 	else {
 		// Don't print an error, this can be used for comments
@@ -1546,6 +1565,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	out->size = size_val;
 	out->fill = (uint8_t)fill_val;
 	out->export_codecave = export_val;
+	out->align = (uint32_t)align_val;
 	out->virtual_address = NULL;
 
 	return true;
@@ -1577,7 +1597,8 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 			++codecave_export_count;
 		}
 		const size_t size = codecaves[i].size + codecave_sep_size_min;
-		codecaves_full_size[i] = AlignUpToMultipleOf2(size, 16);
+		// This doesn't make good use of padding bytes
+		codecaves_full_size[i] = AlignUpToMultipleOf2(size, codecaves[i].align);
 		codecaves_alloc_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
 
