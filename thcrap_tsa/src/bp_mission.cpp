@@ -42,8 +42,6 @@ int BP_mission(x86_reg_t *regs, json_t *bp_info)
 	size_t scene = *(size_t*)(regs->esp + 4 + json_object_get_hex(bp_info, "scene"));
 	size_t chara_offset = json_object_get_hex(bp_info, "chara");
 	size_t chara = chara_offset ? *(size_t*)(regs->esp + 4 + chara_offset) : 0;
-
-	size_t ret_fixup = json_object_get_hex(bp_info, "ret_fixup");
 	// ----------
 
 	if (line < 3) {
@@ -77,7 +75,6 @@ int BP_mission(x86_reg_t *regs, json_t *bp_info)
 
 	// return one function higher
 	regs->retaddr = ((size_t*)regs->esp)[1];
-	regs->esp += 4 + ret_fixup; // ret_fixup is needed because stdcall
 	return 0;
 }
 

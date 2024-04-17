@@ -58,6 +58,9 @@ typedef struct {
 	// Address where the breakpoint is written
 	hackpoint_addr_t *addr;
 
+	uint16_t stack_adjust;
+	uint8_t state_flags;
+
 	/**
 	  * These variables are use internaly by the breakpoints engine
 	  */

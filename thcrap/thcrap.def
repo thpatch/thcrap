@@ -45,7 +45,6 @@ EXPORTS
 	json_object_get_typed
 	breakpoint_cave_exec_flag
 	breakpoint_cave_exec_flag_eval
-	breakpoint_process
 	breakpoints_apply
 
 	; Win32 dialogs

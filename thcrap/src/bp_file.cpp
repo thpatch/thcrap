@@ -122,7 +122,6 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	// Load-specific parameters
 	// ------------------------
 	auto file_buffer_addr_copy = json_object_get_pointer(bp_info, regs, "file_buffer_addr_copy");
-	size_t stack_clear_size = json_object_get_hex(bp_info, "stack_clear_size");
 	size_t eip_jump_dist = json_object_get_hex(bp_info, "eip_jump_dist");
 	// ------------------------
 
@@ -136,9 +135,6 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	}
 	if(file_buffer_addr_copy) {
 		*file_buffer_addr_copy = (size_t)fr->game_buffer;
-	}
-	if(stack_clear_size) {
-		regs->esp += stack_clear_size;
 	}
 	file_rep_clear(fr);
 	return 0;

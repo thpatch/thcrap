@@ -498,7 +498,7 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 	return 1;
 }
 
-extern "C" int BP_c_bmpfont_fix_parameters(DWORD, DWORD, DWORD, x86_reg_t *regs, json_t *bp_info)
+extern "C" int BP_bmpfont_fix_parameters(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

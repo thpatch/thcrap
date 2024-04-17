@@ -74,7 +74,6 @@
     <ClInclude Include="src\tfcs.h" />
     <ClInclude Include="src\th155_bmp_font.h" />
     <ClInclude Include="src\thcrap_tasofro.h" />
-    <GAS Include="src\bp_bmpfont.asm" />
     <None Include="thcrap_tasofro.def" />
   </ItemGroup>
 </Project>

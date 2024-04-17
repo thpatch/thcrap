@@ -1461,7 +1461,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 			case JEVAL_SUCCESS:
 				// Round the alignment to the next power of 2 (including 1)
 				if (unsigned long bit; _BitScanReverse(&bit, align_val - 1)) {
-					align_val = 1u << bit + 1;
+					align_val = 1u << (bit + 1);
 				} else {
 					align_val = 1u;
 				}
@@ -1598,7 +1598,7 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 		}
 		const size_t size = codecaves[i].size + codecave_sep_size_min;
 		// This doesn't make good use of padding bytes
-		codecaves_full_size[i] = AlignUpToMultipleOf2(size, codecaves[i].align);
+		codecaves_full_size[i] = AlignUpToMultipleOf2(size, (int32_t)codecaves[i].align);
 		codecaves_alloc_size[codecaves[i].access_type] += codecaves_full_size[i];
 	}
 

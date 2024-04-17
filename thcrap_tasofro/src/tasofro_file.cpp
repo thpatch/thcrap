@@ -193,7 +193,6 @@ int TasofroFile::replace_ReadFile_write(x86_reg_t *regs, ReadFileStack *stack)
 	*stack->lpNumberOfBytesRead = size;
 
 	regs->eax = 1;
-	regs->esp += 5 * sizeof(DWORD);
 	// Skip the codecave
 	return 0;
 }
