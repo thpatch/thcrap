@@ -740,10 +740,10 @@ static inline const char* find_next_op_impl(const char* const expr, op_t* const 
 			case '\0':
 				*out = c;
 				return expr;
-			case '(': case '[':
+			case '(': case '[': case '{':
 				*out = BadBrackets;
 				return expr;
-			RetEndGroup: case ')': case ']':
+			RetEndGroup: case ')': case ']': case '}': case ';':
 				*out = EndGroupOp;
 				return expr_ref;
 			case '~':
@@ -870,7 +870,7 @@ static inline const char* find_next_op_impl(const char* const expr, op_t* const 
 			case '?':
 				c += c;
 				[[fallthrough]];
-			case ',': //case ':':
+			case ',':
 				goto CRetPlus1;
 			case ':':
 				*out = c;
@@ -1614,6 +1614,7 @@ static inline const char* CheckCastType(const char* expr, uint8_t* out) {
 			}
 			break;
 	}
+	//expr += *expr == '*';
 	if (*expr++ != ')') return NULL;
 	*out = type;
 	return expr;
@@ -1911,6 +1912,14 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				expr_next = CheckCastType(expr, &cur_value.type);
 				if (expr_next) {
 					ExpressionLogging("Cast success\n");
+					// Pointer casts only change the type
+					// just like the "byte ptr" style casts
+					/*
+					if (expr_next[-2] == '*') {
+						expr = expr_next;
+						continue;
+					}
+					*/
 					// Casts
 					expr_next = consume_value_impl(expr_next, out, data_refs);
 					if unexpected(!expr_next) goto InvalidValueError;
