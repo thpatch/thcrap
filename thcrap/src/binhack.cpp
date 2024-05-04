@@ -706,7 +706,7 @@ static TH_FORCEINLINE const char* check_for_code_string_cast(const char* expr, p
 		case 'p':
 			if (expr[1] == ':') {
 				val->type = PVT_POINTER;
-				return expr + 4;
+				return expr + 2;
 			}
 			break;
 		case 'i': case 'u': case 'f':
