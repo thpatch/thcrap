@@ -63,7 +63,7 @@ struct CPUID_Data_t {
 	// TODO: Add some builtin code options for generating fxsave/xsave patterns
 	uint32_t xsave_mask_low = 0;
 	uint32_t xsave_mask_high = 0;
-	size_t xsave_max_size = 0;
+	size_t xsave_max_size = 512; // Default to returning the FXSAVE buffer size incase XSAVE isn't present
 	bool xsave_restores_fpu_errors = true; // Intel doesn't have this flag or any way of disabling this AFAIK, so default to true
 	// TODO: Figure out how to deal with Intel's Alder Lake BS
 	// Apparently individual cores have unique CPUID values,
