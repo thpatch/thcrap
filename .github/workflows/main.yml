@@ -17,7 +17,7 @@ jobs:
     - name: Setup MSBuild environment
       uses: microsoft/setup-msbuild@v1
     - name: Switch to a toolset supported by Github Actions
-      run: (Get-Content thcrap\Base.props) -replace '<PlatformToolset>v141_xp</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>' | Set-Content thcrap\Base.props
+      run: (Get-Content Base.props) -replace '<PlatformToolset>v141_xp</PlatformToolset>', '<PlatformToolset>v143</PlatformToolset>' | Set-Content Base.props
 #Vcpkg stuff
 #    - name: Restore or build dependencies using vcpkg
 #      uses: lukka/run-vcpkg@v2
