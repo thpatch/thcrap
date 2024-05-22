@@ -25,7 +25,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)libs\external_deps\fribidi\lib\;$(SolutionDir)libs\external_deps\fribidi\build\lib\;$(SolutionDir)libs\external_deps\fribidi\build\gen.tab\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\external_deps\fribidi\lib\;$(SolutionDir)libs\external_deps\fribidi_includes\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
