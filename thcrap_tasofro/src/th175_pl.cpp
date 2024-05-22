@@ -74,7 +74,7 @@ static void patch_stage_name(const char*& file_in, const char *file_in_end, char
 		if (!rep.empty()) {
 			rep += "\n";
 		}
-		rep += json_string_value(value);
+		rep += arabic_convert_bidi(json_string_value(value));
 	}
 	if (rep.empty()) {
 		copy_line(file_in, file_in_end, file_out);
@@ -130,7 +130,7 @@ int patch_th175_pl(void *file_inout, size_t, size_t size_in, const char *, json_
 			if (!rep_string.empty()) {
 				rep_string += '\n';
 			}
-			rep_string += json_string_value(value);
+			rep_string += arabic_convert_bidi(json_string_value(value));
 		}
 		rep_string = parse_mediawiki(rep_string, mwdef_th135);
 		patch_text_line(file_in, file_in_end, file_out, rep_string);

@@ -197,7 +197,7 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 		}
 
 		this->beginLine(file, file_it);
-		this->patchLine(json_string_value(json_line));
+		this->patchLine(arabic_convert_bidi(json_string_value(json_line)).c_str());
 		this->endLine();
 	}
 

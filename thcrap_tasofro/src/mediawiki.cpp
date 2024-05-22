@@ -8,6 +8,7 @@
   */
 
 #include <thcrap.h>
+#include "thcrap_tasofro.h"
 #include "mediawiki.h"
 
 std::string parse_mediawiki(const std::string& in, const MwDefinition& mwsyntax)

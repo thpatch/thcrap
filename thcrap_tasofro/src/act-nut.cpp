@@ -121,7 +121,7 @@ static void patch_actnut_as_string(ActNut::Object *elem, json_t *json)
 		if (text.length() > 0) {
 			text += "\n";
 		}
-		text += json_string_value(line);
+		text += arabic_convert_bidi(json_string_value(line));
 	}
 	*elem = parse_mediawiki(text, mwdef_th135);
 }

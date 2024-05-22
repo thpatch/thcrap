@@ -42,11 +42,14 @@
     <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).dll" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).pdb" OutputFolder="$(OutDir)" />
-	
+
 	<CopyFiles Include="$(InDir)bin\libcrypto-1_1.dll" OutputFolder="$(OutDir)" />
 	<CopyFiles Include="$(InDir)bin\libssl-1_1.dll" OutputFolder="$(OutDir)" />
-	
+
 	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).dll" OutputFolder="$(OutDir)" />
 	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).pdb" OutputFolder="$(OutDir)" />
+
+	<CopyFiles Include="$(InDir)bin\fribidi-0.dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\fribidi-0.pdb" OutputFolder="$(OutDir)" />
   </ItemGroup>
 </Project>

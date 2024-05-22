@@ -24,16 +24,20 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
   </PropertyGroup>
   <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)libs\external_deps\fribidi\lib\;$(SolutionDir)libs\external_deps\fribidi\build\lib\;$(SolutionDir)libs\external_deps\fribidi\build\gen.tab\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tasofro.def</ModuleDefinitionFile>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;gdiplus.lib;thcrap_d.lib;libpng16_d.lib;act_nut_lib_d.lib;bmpfont_create_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;gdiplus.lib;thcrap.lib;libpng16.lib;act_nut_lib.lib;bmpfont_create.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;gdiplus.lib;thcrap_d.lib;libpng16_d.lib;act_nut_lib_d.lib;bmpfont_create_d.lib;fribidi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;gdiplus.lib;thcrap.lib;libpng16.lib;act_nut_lib.lib;bmpfont_create.lib;fribidi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\act-nut.cpp" />
+    <ClCompile Include="src\arabic_bidi.cpp" />
     <ClCompile Include="src\bgm.cpp" />
     <ClCompile Include="src\crypt.cpp" />
     <ClCompile Include="src\csv.cpp" />

@@ -565,7 +565,7 @@ void TasofroPl::WinText::beginLine(std::list<ALine*>& file, const std::list<ALin
 
 void TasofroPl::AText::patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it)
 {
-	std::string formattedText = text;
+	std::string formattedText = arabic_convert_bidi(text);
 	if (this->cur_line == this->nb_lines) {
 		if (this->last_char.empty() == false) {
 			formattedText += this->last_char;
@@ -743,10 +743,6 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char *, js
 		dynamic_cast<TasofroPl::AText*>(line)->patch(lines, it, balloonOwner, json_lines);
 	}
 
-#if 0
-	size_t size_out_orig = size_out;
-#endif
-
 	std::string str;
 	for (TasofroPl::ALine* line : lines) {
 		str = line->toString();
@@ -762,10 +758,6 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char *, js
 		size_out -= 2;
 	}
 	*file_out = '\0';
-
-#if 0
-	file_write(fn, file_inout, size_out_orig - size_out);
-#endif
 
 	return 1;
 }
