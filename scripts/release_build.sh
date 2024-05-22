@@ -4,7 +4,9 @@
 FILES_LIST="bin/act_nut_lib.dll \
     bin/bmpfont_create_gdi.dll \
     bin/bmpfont_create_gdiplus.dll \
-    bin/cacert.pem bin/jansson.dll \
+    bin/cacert.pem \
+    bin/fribidi-0.dll \
+    bin/jansson.dll \
     bin/libcrypto-1_1.dll \
     bin/libcurl.dll \
     bin/libpng16.dll \
