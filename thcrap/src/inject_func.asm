@@ -93,9 +93,9 @@ _inject_LoadLibraryExWptr:
 	push	esp /* Reset directory to the original one of the process */
 	call	esi /* Call SetCurrentDirectoryW */
 	add		esp, ebx /* Deallocate buffer from the stack */
+SkipDirectoryBS2:
 _inject_ExitThreadptr:
 	mov		esi, 0xDEADBEEF
-SkipDirectoryBS2:
 	test	edi, edi /* Check whether LoadLibraryEx was successful */
 	jz		ThrowError1
 _inject_funcnameptr:
@@ -114,34 +114,35 @@ _inject_funcparamptr:
 	  If we get here, [func_name] has been called,
 	  so it's time to close this thread and optionally unload the DLL.
 	*/
-
-	push	0 /* Exit code */
+	
 	mov		eax, esi
 	pop		edi
 	pop		esi
 	pop		ebp
 	pop		ebx
+	push	0 /* Exit code */
 	call	eax /* Call ExitThread */
 
 	.balign 16, 0xCC
 
 ThrowError1:
-	push	1 /* Exit code */
 	mov		eax, esi
 	pop		edi
 	pop		esi
 	pop		ebp
 	pop		ebx
+	push	1 /* Exit code */
 	call	eax /* Call ExitThread */
 	.balign 16, 0xCC
 
 ThrowError2:
-	push	2 /* Exit code */
-	push	edi /* Push the injected DLL's module handle */
+	mov		edx, edi
 	pop		edi
 	pop		esi
 	pop		ebp
 	pop		ebx
+	push	2 /* Exit code */
+	push	edx /* Push the injected DLL's module handle */
 _inject_FreeLibraryAndExitThreadptr:
 	mov		eax, 0xDEADBEEF
 	call	eax /* Call FreeLibraryAndExitThread */
