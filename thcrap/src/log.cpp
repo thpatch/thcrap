@@ -18,6 +18,8 @@ struct log_string_t {
 	const char* str;
 	size_t n;
 	bool is_n;
+
+	inline constexpr log_string_t(const char* str, size_t n, bool is_n) : str(str), n(n), is_n(is_n) {}
 };
 
 static HANDLE log_file = INVALID_HANDLE_VALUE;
@@ -141,12 +143,7 @@ static void log_push(const char* str, size_t n, bool is_n) {
 		new_str[n] = '\0';
 		memcpy(new_str, str, n);
 		AcquireSRWLockExclusive(&queue_srwlock);
-		// Somehow this generates better code than directly
-		// emplacing the value. MSVC is stupid.
-		log_string_t& log_str = log_queue.emplace();
-		log_str.str = new_str;
-		log_str.n = n;
-		log_str.is_n = is_n;
+		log_queue.emplace(new_str, n, is_n);
 
 		log_is_empty = false;
 		ReleaseSRWLockExclusive(&queue_srwlock);
