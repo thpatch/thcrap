@@ -87,7 +87,7 @@
 // - C++ Version Detection
 #ifdef __cplusplus
 #if __cplusplus >= 199711L
-#define CPP98
+#define CPP98 1
 #endif
 #if __cplusplus >= 201103L
 #define CPP11 1
