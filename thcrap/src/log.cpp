@@ -24,8 +24,8 @@ static HANDLE log_file = INVALID_HANDLE_VALUE;
 static bool console_open = false;
 static HANDLE log_thread_handle = INVALID_HANDLE_VALUE;
 static std::queue<log_string_t> log_queue;
-static CRITICAL_SECTION queue_cs = {};
-static HANDLE log_semaphore = INVALID_HANDLE_VALUE;
+static SRWLOCK queue_srwlock = { SRWLOCK_INIT };
+static volatile bool log_is_empty = true;
 static bool async_enabled = false;
 
 // Config
@@ -98,37 +98,38 @@ void log_rotate(void)
 }
 // --------
 
-static void log_print_real(const log_string_t& log_str) {
+static void log_print_real(const char* str, size_t n, bool is_n) {
 	static DWORD byteRet;
-	if (console_open) {
-		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), log_str.str, log_str.n, &byteRet, NULL);
+	if unexpected(console_open) {
+		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
 	}
 	if (log_file) {
-		WriteFile(log_file, log_str.str, log_str.n, &byteRet, NULL);
+		WriteFile(log_file, str, n, &byteRet, NULL);
 	}
-	if (log_str.is_n) {
-		if (log_nprint_hook) {
-			log_nprint_hook(log_str.str, log_str.n);
+	if (!is_n) {
+		if (log_print_hook) {
+			log_print_hook(str);
 		}
 	} else {
-		if (log_print_hook) {
-			log_print_hook(log_str.str);
+		if (log_nprint_hook) {
+			log_nprint_hook(str, n);
 		}
 	}
 }
 
 static DWORD WINAPI log_thread(LPVOID lpParameter) {
 	for (;;) {
-		EnterCriticalSection(&queue_cs);
+		AcquireSRWLockExclusive(&queue_srwlock);
 		if (log_queue.empty()) {
-			LeaveCriticalSection(&queue_cs);
-			WaitForSingleObject(log_semaphore, INFINITE);
+			log_is_empty = true;
+			ReleaseSRWLockExclusive(&queue_srwlock);
+			while (log_is_empty) Sleep(0);
 		} else {
 			log_string_t log_str = std::move(log_queue.front());
 			log_queue.pop();
-			LeaveCriticalSection(&queue_cs);
+			ReleaseSRWLockExclusive(&queue_srwlock);
 
-			log_print_real(log_str);
+			log_print_real(log_str.str, log_str.n, log_str.is_n);
 			free((void*)log_str.str);
 		}
 	}
@@ -136,13 +137,21 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 
 static void log_push(const char* str, size_t n, bool is_n) {
 	if (async_enabled) {
-		const char* new_str = strdup_size(str, n);
-		EnterCriticalSection(&queue_cs);
-		log_queue.emplace(log_string_t{ new_str, n, is_n });
-		LeaveCriticalSection(&queue_cs);
-		ReleaseSemaphore(log_semaphore, 1, NULL);
+		char* new_str = (char*)malloc(n + 1);
+		new_str[n] = '\0';
+		memcpy(new_str, str, n);
+		AcquireSRWLockExclusive(&queue_srwlock);
+		// Somehow this generates better code than directly
+		// emplacing the value. MSVC is stupid.
+		log_string_t& log_str = log_queue.emplace();
+		log_str.str = new_str;
+		log_str.n = n;
+		log_str.is_n = is_n;
+
+		log_is_empty = false;
+		ReleaseSRWLockExclusive(&queue_srwlock);
 	} else {
-		log_print_real(log_string_t{ str, n, is_n });
+		log_print_real(str, n, is_n);
 	}
 }
 
@@ -176,14 +185,14 @@ void log_printf(const char *format, ...) {
 
 void log_flush() {
 	if (async_enabled) {
-	EnterCriticalSection(&queue_cs);
+	AcquireSRWLockExclusive(&queue_srwlock);
 		while (!log_queue.empty()) {
 			log_string_t log_str = std::move(log_queue.front());
 			log_queue.pop();
-			log_print_real(log_str);
+			log_print_real(log_str.str, log_str.n, log_str.is_n);
 			free((void*)log_str.str);
 		}
-	LeaveCriticalSection(&queue_cs);
+	ReleaseSRWLockExclusive(&queue_srwlock);
 	}
 	FlushFileBuffers(GetStdHandle(STD_OUTPUT_HANDLE));
 	FlushFileBuffers(log_file);
@@ -535,8 +544,6 @@ void log_init(int console)
 		}
 	}
 	if (log_async) {
-		InitializeCriticalSection(&queue_cs);
-		log_semaphore = CreateSemaphoreW(NULL, 0, 1, NULL);
 		log_thread_handle = CreateThread(0, 0, log_thread, NULL, 0, NULL);
 		async_enabled = true;
 	}
@@ -546,9 +553,6 @@ void log_exit(void) {
 	log_flush();
 	if (async_enabled) {
 		TerminateThread(log_thread_handle, 0);
-		DeleteCriticalSection(&queue_cs);
-		CloseHandle(log_semaphore);
-		log_semaphore = INVALID_HANDLE_VALUE;
 	}
 	if (console_open) {
 		FreeConsole();
