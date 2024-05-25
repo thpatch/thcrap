@@ -176,7 +176,7 @@ static json_t *th105_spellcomment_pack_lines(json_t *spell)
 	return out_obj;
 }
 
-json_t* th105_spellcomment_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
+json_t* th105_spellcomment_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
 {
 	json_t *out = json_object();
 	json_t *patch = json_object();
@@ -258,5 +258,21 @@ extern "C" int BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
 	if (is_in_quote == 1 && (*character & 0xFF) == ',') {
 		*special_character = 'a'; // Just a plain, non-special character.
 	}
+
+	/*
+	if (json_object_get_immediate(bp_info, regs, "is_in_quote")) {
+		switch ((char)*json_object_get_pointer(bp_info, regs, "character")) {
+			case '"': // We'll keep the th135 parser behavior of escaping quotes only inside quotes, to avoid adding more differences to patch_csv.
+				const char** string = (const char**)json_object_get_pointer(bp_info, regs, "string");
+				if ((*string)[1] != '"') {
+					break;
+				}
+				++(*string); // Skip one of the 2 quotes
+			case ',': // I really don't know why this isn't in the original parser...
+				size_t* special_character = json_object_get_pointer(bp_info, regs, "special_character");
+				*special_character = 'a'; // Just a plain, non-special character.
+		}
+	}
+	*/
 	return 1;
 }

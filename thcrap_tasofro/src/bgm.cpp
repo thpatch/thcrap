@@ -13,7 +13,7 @@
 #include "bgm.h"
 #include <algorithm>
 
-json_t* bgm_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
+json_t* bgm_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
 {
 	if (out_size) {
 		*out_size = 0;
@@ -50,16 +50,20 @@ json_t* bgm_generator(std::unordered_map<std::string, json_t*> in_data, const st
 	// Extract music names
 	const char *game = runconfig_game_get();
 	json_object_foreach_fast(themes, key, value) {
-		if (!game || strncmp(key, game, strlen(game)) != 0 || key[strlen(game)] != '_') {
+		if (!game) {
+			continue;
+		}
+		size_t game_len = strlen(game);
+		if (strncmp(key, game, game_len) != 0 || key[game_len] != '_') {
 			continue;
 		}
 		json_t *line = json_object();
 		size_t track;
 		if (game_id != TH155) {
-			track = atoi(key + strlen(game) + 1);
+			track = atoi(key + game_len + 1);
 		}
 		else {
-			track = atoi(key + strlen(game) + 1) + 1;
+			track = atoi(key + game_len + 1) + 1;
 		}
 
 		json_object_set(line, spell_col, value);

@@ -19,7 +19,7 @@ const MwDefinition mwdef_th175_stage_title =
 	{ "\\\\R[", "|", "]", MwDefinition::Ruby::Order::BottomThenTop }, // ruby
 };
 
-static json_t *jsonvfs_copy_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
+static json_t *jsonvfs_copy_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
 {
 	if (out_size) {
 		*out_size = 0;

@@ -12,13 +12,13 @@
 
 struct jsonvfs_handler_t {
 	std::string out_pattern;
-	std::unordered_set<std::string> in_fns;
+	std::vector<std::string> in_fns;
 	jsonvfs_generator_t *gen;
 };
 
 static std::vector<jsonvfs_handler_t> vfs_handlers;
 
-void jsonvfs_add(const char* out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen)
+void jsonvfs_add(const char* out_pattern, const std::vector<std::string>& in_fns, jsonvfs_generator_t *gen)
 {
 	char* str = strdup(out_pattern);
 	str_slash_normalize(str);
@@ -29,7 +29,7 @@ void jsonvfs_add(const char* out_pattern, std::unordered_set<std::string> in_fns
 	free(str);
 }
 
-void jsonvfs_game_add(const char* out_pattern, std::unordered_set<std::string> in_fns, jsonvfs_generator_t *gen)
+void jsonvfs_game_add(const char* out_pattern, const std::vector<std::string>& in_fns, jsonvfs_generator_t *gen)
 {
 	jsonvfs_handler_t& handler = vfs_handlers.emplace_back();
 	char* str;
@@ -41,7 +41,7 @@ void jsonvfs_game_add(const char* out_pattern, std::unordered_set<std::string> i
 
 	for (auto& s : in_fns) {
 		str = fn_for_game(s.c_str());
-		handler.in_fns.insert(str);
+		handler.in_fns.emplace_back(str);
 		jsondata_add(str);
 		SAFE_FREE(str);
 	}
@@ -139,7 +139,7 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 	return ret;
 }
 
-static json_t *map_generator(std::unordered_map<std::string, json_t*> in_data, const std::string out_fn, size_t* out_size)
+static json_t *map_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
 {
 	if (out_size) {
 		*out_size = 0;
@@ -158,12 +158,12 @@ static json_t *map_generator(std::unordered_map<std::string, json_t*> in_data, c
 	
 }
 
-void jsonvfs_add_map(const char* out_pattern, std::unordered_set<std::string> in_fns)
+void jsonvfs_add_map(const char* out_pattern, const std::vector<std::string>& in_fns)
 {
 	jsonvfs_add(out_pattern, in_fns, map_generator);
 }
 
-void jsonvfs_game_add_map(const char* out_pattern, std::unordered_set<std::string> in_fns)
+void jsonvfs_game_add_map(const char* out_pattern, const std::vector<std::string>& in_fns)
 {
 	jsonvfs_game_add(out_pattern, in_fns, map_generator);
 }

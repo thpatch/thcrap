@@ -25,29 +25,27 @@ size_t get_bmp_font_size(const char *fn, json_t *patch, size_t)
 
 	size_t size = 0;
 
-	VLA(char, fn_png, strlen(fn) + 5);
-	strcpy(fn_png, fn);
-	strcat(fn_png, ".png");
+	size_t fn_len = strlen(fn);
+	VLA(char, fn_buf, fn_len + 5);
+	memcpy(fn_buf, fn, fn_len);
+	memcpy(fn_buf + fn_len, ".png", sizeof(".png"));
 
 	uint32_t width, height;
-	bool IHDR_read = png_image_get_IHDR(fn_png, &width, &height, nullptr);
+	bool IHDR_read = png_image_get_IHDR(fn_buf, &width, &height, nullptr);
 	if (IHDR_read) {
 		size += sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height;
 	}
 
-	VLA(char, fn_bin, strlen(fn) + 5);
-	strcpy(fn_bin, fn);
-	strcat(fn_bin, ".bin");
+	memcpy(fn_buf + fn_len, ".bin", sizeof(".bin"));
 
 	size_t bin_size;
-	void *bin_data = stack_game_file_resolve(fn_bin, &bin_size);
+	void *bin_data = stack_game_file_resolve(fn_buf, &bin_size);
 	if (bin_data) {
 		free(bin_data);
 		size += bin_size;
 	}
 
-	VLA_FREE(fn_png);
-	VLA_FREE(fn_bin);
+	VLA_FREE(fn_buf);
 
 	return size;
 }
@@ -386,8 +384,8 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 {
 	if (patch) {
 		// List all the characters to include in out font
-		char *chars_list = new char[65536];
-		for (int i = 0; i < 65536; i++) {
+		char *chars_list = (char*)malloc(sizeof(char[65536]));
+		for (size_t i = 0; i < 65536; i++) {
 			chars_list[i] = 0;
 		}
 		int chars_count = 0;
@@ -403,7 +401,7 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 				bmpfont_update_cache(fn, chars_list, chars_count, buffer, buffer_size, patch);
 			}
 		}
-		delete[] chars_list;
+		free(chars_list);
 		if (!buffer) {
 			log_print("Bitmap font creation failed\n");
 			bmpfont_free(bmpfont);
@@ -434,17 +432,18 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 	BITMAPINFOHEADER *bpInfo = (BITMAPINFOHEADER*)(bpFile + 1);
 	BYTE *bpData = (BYTE*)(bpInfo + 1);
 
-	VLA(char, fn_png, strlen(fn) + 5);
-	strcpy(fn_png, fn);
-	strcat(fn_png, ".png");
+	size_t fn_len = strlen(fn);
+	VLA(char, fn_buf, fn_len + 5);
+	memcpy(fn_buf, fn, fn_len);
+	memcpy(fn_buf + fn_len, ".png", sizeof(".png"));
 
 	uint32_t width, height;
 	uint8_t bpp;
-	BYTE** row_pointers = png_image_read(fn_png, &width, &height, &bpp, false);
-	VLA_FREE(fn_png);
+	BYTE** row_pointers = png_image_read(fn_buf, &width, &height, &bpp, false);
 
 	if (row_pointers) {
 		if (!row_pointers || size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height) {
+			VLA_FREE(fn_buf);
 			log_print("Destination buffer too small!\n");
 			free(row_pointers);
 			return -1;
@@ -476,13 +475,12 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 		free(row_pointers);
 	}
 
-	VLA(char, fn_bin, strlen(fn) + 5);
-	strcpy(fn_bin, fn);
-	strcat(fn_bin, ".bin");
+	memcpy(fn_buf + fn_len, ".bin", sizeof(".bin"));
 
 	size_t bin_size;
-	void *bin_data = stack_game_file_resolve(fn_bin, &bin_size);
-	VLA_FREE(fn_bin);
+	void *bin_data = stack_game_file_resolve(fn_buf, &bin_size);
+	VLA_FREE(fn_buf);
+
 	if (bin_data) {
 		if (size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + bpInfo->biWidth * 4 * bpInfo->biHeight + bin_size) {
 			log_print("Destination buffer too small!\n");

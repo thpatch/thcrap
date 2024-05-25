@@ -32,27 +32,6 @@ const MwDefinition mwdef_nsml
 	{ "<ruby ", ">", "</ruby>", MwDefinition::Ruby::Order::TopThenBottom }, // ruby
 };
 
-// Copy-paste of fn_for_game from patchfile.cpp
-static char* fn_for_th105(const char *fn)
-{
-	const char *game_id = "th105";
-	size_t game_id_len = strlen(game_id) + 1;
-	char *full_fn;
-
-	if (!fn) {
-		return NULL;
-	}
-	full_fn = (char*)malloc(game_id_len + strlen(fn) + 1);
-
-	full_fn[0] = 0; // Because strcat
-	if (game_id) {
-		strncpy(full_fn, game_id, game_id_len);
-		strcat(full_fn, "/");
-	}
-	strcat(full_fn, fn);
-	return full_fn;
-}
-
 size_t get_chain_size(char **chain)
 {
 	size_t i;
@@ -67,9 +46,10 @@ char **th123_resolve_chain_game(const char *fn)
 	char **th105_chain = nullptr;
 	defer(free(th105_chain));
 	if (game_fallback_ignore_list.find(fn) == game_fallback_ignore_list.end()) {
-		char *fn_game = fn_for_th105(fn);
-		th105_chain = resolve_chain(fn_game);
-		SAFE_FREE(fn_game);
+		if (char *fn_game = strdup_cat("th105/", fn)) {
+			th105_chain = resolve_chain(fn_game);
+			free(fn_game);
+		}
 	}
 
 	// Then, th123
@@ -136,21 +116,14 @@ int nsml_init()
 
 		char *pattern_spell = fn_for_game("data/csv/*/spellcard.cv1.jdiff");
 		char *pattern_story = fn_for_game("data/csv/*/storyspell.cv1.jdiff");
-		char *spells_th105 = fn_for_th105("spells.js");
 		char *spells_th123 = fn_for_game("spells.js");
-		char *spellcomments_th105 = fn_for_th105("spellcomments.js");
 		char *spellcomments_th123 = fn_for_game("spellcomments.js");
-		jsonvfs_add_map(pattern_spell, { spells_th105 });
-		jsonvfs_add_map(pattern_spell, { spells_th123 });
-		jsonvfs_add_map(pattern_story, { spells_th105 });
-		jsonvfs_add_map(pattern_story, { spells_th123 });
-		jsonvfs_add(pattern_spell, { spellcomments_th105 }, th105_spellcomment_generator);
-		jsonvfs_add(pattern_spell, { spellcomments_th123 }, th105_spellcomment_generator);
+		jsonvfs_add_map(pattern_spell, { spells_th123, "th105/spells.js"});
+		jsonvfs_add_map(pattern_story, { spells_th123, "th105/spellcomments.js" });
+		jsonvfs_add(pattern_spell, { spellcomments_th123, "th105/spellcomments.js" }, th105_spellcomment_generator);
 		SAFE_FREE(pattern_spell);
 		SAFE_FREE(pattern_story);
-		SAFE_FREE(spells_th105);
 		SAFE_FREE(spells_th123);
-		SAFE_FREE(spellcomments_th105);
 		SAFE_FREE(spellcomments_th123);
 	}
 	return 0;
