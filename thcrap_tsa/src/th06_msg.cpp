@@ -731,7 +731,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 			if (!lines) {
 				while (!is_at_sign(orig_file, orig_file_copy) && advanced_bytes < size_in) {
 					size_t orig_line_len = strlen(orig_file);
-					strcpy(new_end, orig_file);
+					memcpy(new_end, orig_file, orig_line_len + 1);
 					orig_file += orig_line_len + 2;
 					new_end += orig_line_len + 1;
 					*new_end = '\n';
@@ -748,8 +748,7 @@ int patch_end_th06(void *file_inout, size_t size_out, size_t size_in, const char
 				const char *line_str = json_string_value(line);
 				if (line_str) {
 					size_t new_line_len = strlen(line_str);
-					strcpy(new_end, line_str);
-					new_end[new_line_len] = '\0';
+					memcpy(new_end, line_str, new_line_len + 1);
 					new_end[new_line_len + 1] = '\n';
 					new_end += new_line_len + 2;
 				}

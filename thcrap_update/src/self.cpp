@@ -15,11 +15,11 @@
 
 #define TEMP_FN_LEN 41
 
-const std::string SELF_SERVER = "http://thcrap.thpatch.net/";
-const char *NETPATHS_FN = "thcrap_update.js";
-const char *PREFIX_BACKUP = "thcrap_old_%s";
-const char *PREFIX_NEW = "thcrap_new_";
-const char *EXT_NEW = ".zip";
+constexpr char SELF_SERVER[] = "http://thcrap.thpatch.net/";
+constexpr char NETPATHS_FN[] = "thcrap_update.js";
+constexpr char PREFIX_BACKUP[] = "thcrap_old_%s";
+constexpr char PREFIX_NEW[] = "thcrap_new_";
+constexpr char EXT_NEW[] = ".zip";
 
 static char update_version[sizeof("0x20010101")];
 
@@ -512,9 +512,9 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	HCRYPTPROV hCryptProv = 0;
 	HCRYPTHASH hHash = 0;
 
-	log_printf("Checking for engine updates...\n");
+	log_print("Checking for engine updates...\n");
 
-	self_server = globalconfig_get_string("engine_update_url", SELF_SERVER.c_str());
+	self_server = globalconfig_get_string("engine_update_url", SELF_SERVER);
 	auto [netpaths, netpaths_status] = ServerCache::get().downloadJsonFile(self_server + NETPATHS_FN);
 	if (!netpaths_status || !netpaths) {
 		log_printf("%s%s: %s\n", self_server.c_str(), NETPATHS_FN, netpaths_status.toString().c_str());

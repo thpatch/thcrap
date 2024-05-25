@@ -22,7 +22,7 @@ std::vector<patchhook_t> patchhooks;
 
 HANDLE file_stream(const char *fn)
 {
-	return CreateFile(
+	return CreateFileU(
 		fn, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 	);
@@ -78,7 +78,7 @@ int file_write(const char *fn, const void *file_buffer, size_t file_size)
 
 	dir_create_for_fn(fn);
 
-	HANDLE handle = CreateFile(
+	HANDLE handle = CreateFileU(
 		fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 	);
@@ -160,7 +160,7 @@ int dir_create_for_fn(const char *fn)
 	if (fn) {
 		if (size_t path_length = PtrDiffStrlen(PathFindFileNameU(fn), fn)) {
 			char* fn_dir = strdup_size(fn, path_length);
-			ret = CreateDirectory(fn_dir, NULL);
+			ret = CreateDirectoryU(fn_dir, NULL);
 			free(fn_dir);
 		}
 		else {
@@ -193,7 +193,7 @@ int patch_file_exists(const patch_t *patch_info, const char *fn)
 	}
 	BOOL ret = FALSE;
 	if (char *patch_fn = fn_for_patch(patch_info, fn)) {
-		ret = PathFileExists(patch_fn);
+		ret = PathFileExistsU(patch_fn);
 		free(patch_fn);
 	}
 	return ret;
@@ -203,7 +203,7 @@ int patch_file_blacklisted(const patch_t *patch_info, const char *fn)
 {
 	if unexpected(patch_info->ignore) {
 		for (size_t i = 0; patch_info->ignore[i]; i++) {
-			if (PathMatchSpec(fn, patch_info->ignore[i])) {
+			if (PathMatchSpecU(fn, patch_info->ignore[i])) {
 				return 1;
 			}
 		}
@@ -304,7 +304,7 @@ int patch_file_delete(const patch_t *patch_info, const char *fn)
 {
 	int ret = 1;
 	if (char *patch_fn = fn_for_patch(patch_info, fn)) {
-		ret = W32_ERR_WRAP(DeleteFile(patch_fn));
+		ret = W32_ERR_WRAP(DeleteFileU(patch_fn));
 		free(patch_fn);
 	}
 	return ret;
@@ -376,9 +376,9 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	if (PathIsRelativeU(patch_path)) {
 		// Add the current directory to the patch archive field
 		const size_t patch_len = strlen(patch_path) + 1; // Includes + 1 for path separator
-		const size_t dir_len = GetCurrentDirectory(0, NULL); // Includes null terminator
+		const size_t dir_len = GetCurrentDirectoryU(0, NULL); // Includes null terminator
 		char *full_patch_path = patch.archive = (char *)malloc(patch_len + dir_len);
-		GetCurrentDirectory(dir_len, full_patch_path);
+		GetCurrentDirectoryU(dir_len, full_patch_path);
 		full_patch_path += dir_len;
 		full_patch_path[-1] = '/';
 		memcpy(full_patch_path, patch_path, patch_len);
@@ -530,7 +530,7 @@ int patch_rel_to_abs(patch_t *patch_info, const char *base_path)
 	// relative path (most importantly paths that start with a backslash
 	// and are thus relative to the drive root).
 	// However, it also considers file names as one implied directory level
-	// and is path of... that other half of shlwapi functions that don't work
+	// and is part of... that other half of shlwapi functions that don't work
 	// with forward slashes. Since this behavior goes all the way down to
 	// PathCanonicalize(), a "proper" reimplementation is not exactly trivial.
 	// So we play along for now.
@@ -545,16 +545,16 @@ int patch_rel_to_abs(patch_t *patch_info, const char *base_path)
 			abs_archive = strdup_size(base_path, abs_archive_len);
 		}
 		else {
-			size_t base_path_len = GetCurrentDirectory(0, NULL) + strlen(base_path) + 1;
+			size_t base_path_len = GetCurrentDirectoryU(0, NULL) + strlen(base_path) + 1;
 			size_t abs_archive_len = base_path_len + archive_len;
 			abs_archive = (char*)malloc(abs_archive_len);
-			GetCurrentDirectory(abs_archive_len, abs_archive);
+			GetCurrentDirectoryU(abs_archive_len, abs_archive);
 			PathAppendA(abs_archive, base_path);
 		}
 		str_slash_normalize_win(abs_archive);
 
 		if (!PathIsDirectoryA(base_path)) {
-			PathRemoveFileSpec(abs_archive);
+			PathRemoveFileSpecU(abs_archive);
 		}
 
 		VLA(char, archive_win, archive_len);
@@ -589,13 +589,14 @@ patchhook_t *patchhooks_build(const char *fn)
 	if(!fn) {
 		return NULL;
 	}
-	VLA(char, fn_normalized, strlen(fn) + 1);
-	strcpy(fn_normalized, fn);
+	size_t fn_len = strlen(fn) + 1;
+	VLA(char, fn_normalized, fn_len);
+	memcpy(fn_normalized, fn, fn_len);
 	str_slash_normalize(fn_normalized);
 
 	patchhook_t *hooks = (patchhook_t *)malloc((patchhooks.size() + 1) * sizeof(patchhook_t));
 	patchhook_t *last = std::copy_if(patchhooks.begin(), patchhooks.end(), hooks, [fn_normalized](const patchhook_t& hook) {
-		return PathMatchSpec(fn_normalized, hook.wildcard);
+		return PathMatchSpecU(fn_normalized, hook.wildcard);
 	});
 	last->wildcard = nullptr;
 	VLA_FREE(fn_normalized);
@@ -614,10 +615,13 @@ json_t *patchhooks_load_diff(const patchhook_t *hook_array, const char *fn, size
 	}
 	json_t *patch;
 
+	size_t fn_len = strlen(fn);
+	VLA(char, diff_fn, fn_len + strlen(".jdiff") + 1);
+	memcpy(diff_fn, fn, fn_len);
+	memcpy(diff_fn + fn_len, ".jdiff", sizeof(".jdiff"));
 	size_t diff_size = 0;
-	char* diff_fn = strdup_cat(fn, ".jdiff");
 	patch = stack_game_json_resolve(diff_fn, &diff_size);
-	free(diff_fn);
+	VLA_FREE(diff_fn);
 
 	if (size) {
 		*size = 0;

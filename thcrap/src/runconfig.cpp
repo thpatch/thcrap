@@ -530,6 +530,11 @@ const char *runconfig_cmdline_get()
 	return run_cfg.cmdline.data();
 }
 
+std::string_view runconfig_thcrap_dir_get_view()
+{
+	return run_cfg.thcrap_dir;
+}
+
 std::string_view runconfig_game_get_view()
 {
 	return run_cfg.game;

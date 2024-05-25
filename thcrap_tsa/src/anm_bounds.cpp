@@ -30,8 +30,7 @@ void bounds_init(png_image_ex &image, png_uint_32 w, png_uint_32 h, const char *
 
 char* fn_for_bounds(const char *fn)
 {
-	const char *dir = runconfig_dat_dump_get();
-	const char *prefix = "bounds-";
+	static constexpr char prefix[] = "bounds-";
 	size_t ret_len;
 	char *ret = NULL;
 	char *game_fn = fn_for_game(fn);
@@ -40,14 +39,16 @@ char* fn_for_bounds(const char *fn)
 	if(!game_fn) {
 		return ret;
 	}
+	const char *dir = runconfig_dat_dump_get();
 	if(!dir) {
 		dir = "dat";
 	}
 
-	ret_len = strlen(dir) + 1 + strlen(prefix) + strlen(game_fn) + 1;
+	size_t dir_len = strlen(dir);
+	ret_len = dir_len + 1 + strlen(prefix) + strlen(game_fn) + 1;
 	ret = (char *)malloc(ret_len);
 	// Start replacements after the directory
-	p = ret + strlen(dir);
+	p = ret + dir_len;
 
 	sprintf(ret, "%s/%s%s", dir, prefix, game_fn);
 
@@ -56,7 +57,7 @@ char* fn_for_bounds(const char *fn)
 			*p = '-';
 		}
 	}
-	SAFE_FREE(game_fn);
+	free(game_fn);
 	return ret;
 }
 

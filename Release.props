@@ -8,7 +8,7 @@
     <ClCompile>
       <StringPooling>true</StringPooling>
       <!-- Ensures assert()s to be removed, among other things. -->
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WINUTF8_FAST_VLA=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <WholeProgramOptimization>true</WholeProgramOptimization>

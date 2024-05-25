@@ -161,7 +161,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 					"(this file will be created after you click ok)",
 					current_directory) == IDYES) {
 					MoveFileEx("bin\\thcrap_update" DEBUG_OR_RELEASE ".dll", "bin\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll", MOVEFILE_REPLACE_EXISTING);
-					const char *bat_file =
+					static constexpr char bat_file[] =
 						"@echo off\n"
 						"if not exist \"%~dp0\"\\bin\\thcrap_update" DEBUG_OR_RELEASE ".dll (\n"
 						"move \"%~dp0\"\\bin\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll \"%~dp0\"\\bin\\thcrap_update" DEBUG_OR_RELEASE ".dll\n"

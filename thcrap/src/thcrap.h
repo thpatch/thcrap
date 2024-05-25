@@ -41,9 +41,6 @@ extern "C" {
 #endif
 
 #include <win32_utf8.h>
-// The bundled CRT includes a standards compliant snprintf,
-// so the old macro definition to _snprintf is obsolete.
-#undef snprintf
 #include <stdbool.h>
 #include <jansson.h>
 #include "exception.h"

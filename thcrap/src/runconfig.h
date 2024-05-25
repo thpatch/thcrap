@@ -33,6 +33,9 @@ const char *runconfig_cmdline_get();
 
 #ifdef __cplusplus
 extern "C++" {
+	// Returns the thcrap directory
+	std::string_view runconfig_thcrap_dir_get_view();
+
 	// Returns the game id, for example "th06"
 	std::string_view runconfig_game_get_view();
 

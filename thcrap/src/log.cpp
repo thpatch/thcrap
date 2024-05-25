@@ -34,8 +34,8 @@ DWORD log_async = true;
 // For checking nested thcrap instances that access the same log file.
 // We only want to print an error message for the first instance.
 static HANDLE log_filemapping = INVALID_HANDLE_VALUE;
-static const char LOG[] = "logs/thcrap_log.txt";
-static const char LOG_ROTATED[] = "logs/thcrap_log.%d.txt";
+static constexpr char LOG[] = "logs/thcrap_log.txt";
+static constexpr char LOG_ROTATED[] = "logs/thcrap_log.%d.txt";
 static constexpr int ROTATIONS = 5; // Number of backups to keep
 static void (*log_print_hook)(const char*) = NULL;
 static void(*log_nprint_hook)(const char*, size_t) = NULL;
@@ -363,12 +363,18 @@ void log_init(int console)
 			memcpy(&line[i], DashUChar.data(), DashUChar.length());
 		}
 
-		log_printf("%s\n", line);
-		log_printf("%s logfile\n", PROJECT_NAME);
-		log_printf("Branch: %s\n", PROJECT_BRANCH);
-		log_printf("Version: %s\n", PROJECT_VERSION_STRING);
+		log_printf(
+			"%s\n"
+			"%s logfile\n"
+			"Branch: %s\n"
+			"Version: %s\n"
+			, line
+			, PROJECT_NAME
+			, PROJECT_BRANCH
+			, PROJECT_VERSION_STRING
+		);
 		{
-			const char* months[] = {
+			static constexpr const char* months[] = {
 				"Invalid",
 				"Jan",
 				"Feb",
@@ -390,20 +396,30 @@ void log_init(int console)
 				months[time.wMonth], time.wDay, time.wYear,
 				time.wHour, time.wMinute, time.wSecond);
 		}
-		log_printf("Build time: "  __DATE__ " " __TIME__ "\n");
 #if defined(BUILDER_NAME_W)
 		{
-			const wchar_t *builder = BUILDER_NAME_W;
+			static constexpr wchar_t builder[] = BUILDER_NAME_W;
 			UTF8_DEC(builder);
 			UTF8_CONV(builder);
-			log_printf("Built by: %s\n", builder_utf8);
+			log_printf(
+				"Build time: "  __DATE__ " " __TIME__ "\n"
+				"Built by: %s\n"
+				, builder_utf8
+			);
 			UTF8_FREE(builder);
 		}
 #elif defined(BUILDER_NAME)
-		log_printf("Built by: %s\n", BUILDER_NAME);
+		log_printf(
+			"Build time: "  __DATE__ " " __TIME__ "\n"
+			"Built by: %s\n"
+			, BUILDER_NAME
+		);
 #endif
-		log_printf("Command line: %s\n", GetCommandLineU());
-		log_print("\nSystem Information:\n");
+		log_printf(
+			"Command line: %s\n"
+			"\nSystem Information:\n"
+			, GetCommandLineU()
+		);
 
 		{
 			char cpu_brand[48] = {};
@@ -431,7 +447,7 @@ void log_init(int console)
 				++div_count_left;
 			}
 
-			const char* size_units[] = {
+			static constexpr const char* size_units[] = {
 				"B",
 				"KiB",
 				"MiB",
@@ -447,14 +463,17 @@ void log_init(int console)
 			);
 		}
 
-		log_printf("OS/Runtime: %s\n", windows_version());
-		log_printf("Code pages: ANSI=%u, OEM=%u\n", GetACP(), GetOEMCP());
-
-		log_print("\nScreens:\n");
+		log_printf(
+			"OS/Runtime: %s\n"
+			"Code pages: ANSI=%u, OEM=%u\n"
+			"\nScreens:\n"
+			, windows_version()
+			, GetACP(), GetOEMCP()
+		);
 
 		{
 			DISPLAY_DEVICEA display_device = { sizeof(display_device) };
-			for (int i = 0;
+			for (size_t i = 0;
 				EnumDisplayDevicesA(NULL, i, &display_device, EDD_GET_DEVICE_INTERFACE_NAME);
 				i++
 				)
@@ -531,8 +550,9 @@ void log_exit(void) {
 		CloseHandle(log_semaphore);
 		log_semaphore = INVALID_HANDLE_VALUE;
 	}
-	if (console_open)
+	if (console_open) {
 		FreeConsole();
+	}
 	if (log_file) {
 		CloseHandle(log_filemapping);
 		CloseHandle(log_file);

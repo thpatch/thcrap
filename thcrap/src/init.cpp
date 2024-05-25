@@ -26,19 +26,19 @@ static std::vector<bool> bp_set; // One per stage
 
 /// Old game build message
 /// ----------------------
-static const char oldbuild_title[] = "Old version detected";
+static constexpr char oldbuild_title[] = "Old version detected";
 
-static const char oldbuild_header[] =
+static constexpr char oldbuild_header[] =
 	"You are running an old version of ${game_title} (${build_running}).\n"
 	"\n";
 
-static const char oldbuild_maybe_supported[] =
+static constexpr char oldbuild_maybe_supported[] =
 	"${project_short} may or may not work with this version, so we recommend updating to the latest official version (${build_latest}).";
 
-static const char oldbuild_not_supported[] =
+static constexpr char oldbuild_not_supported[] =
 	"${project_short} will *not* work with this version. Please update to the latest official version, ${build_latest}.";
 
-static const char oldbuild_url[] =
+static constexpr char oldbuild_url[] =
 	"\n"
 	"\n"
 	"You can download the update at\n"
@@ -67,7 +67,7 @@ void oldbuild_show()
 		// • What if one patch in the stack *does* provide support for
 		//   this older version, but others don't?
 		// • Stringlocs are also part of support. -.-
-		const char BUILD_JS_FORMAT[] = "%s.%s.js";
+		static constexpr char BUILD_JS_FORMAT[] = "%s.%s.js";
 		const char *game_str = runconfig_game_get();
 		const char *build_str = runconfig_build_get();
 		const int build_js_fn_len = snprintf(NULL, 0, BUILD_JS_FORMAT, game_str, build_str) + 1;
@@ -284,13 +284,13 @@ int thcrap_init(const char *run_cfg)
 	QueryPerformanceCounter(&begin_time); // Always succeeds since XP
 
 	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	size_t game_dir_len = GetCurrentDirectory(0, NULL) + 1;
+	size_t game_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
 	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
 
 	GetModuleFileNameU(NULL, exe_fn, exe_fn_len);
-	GetCurrentDirectory(game_dir_len, game_dir);
-	SetCurrentDirectory(dll_dir);
+	GetCurrentDirectoryU(game_dir_len, game_dir);
+	SetCurrentDirectoryU(dll_dir);
 
 	exception_load_config();
 	log_init(globalconfig_get_boolean("console", false));
@@ -347,7 +347,7 @@ int thcrap_init(const char *run_cfg)
 	// having any test cases right now...
 	thcrap_detour(CurrentModuleHandle);
 
-	SetCurrentDirectory(game_dir);
+	SetCurrentDirectoryU(game_dir);
 	VLA_FREE(game_dir);
 	VLA_FREE(exe_fn);
 	bp_set.resize(runconfig_stage_count(), false);

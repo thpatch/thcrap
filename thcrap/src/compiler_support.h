@@ -46,6 +46,12 @@
 #define ICC_COMPAT 1
 #endif
 
+#if MSVC_COMPAT && !GCC_COMPAT && !CLANG_COMPAT && !MINGW_COMPAT && !ICC_COMPAT
+#define COMPILER_IS_REAL_MSVC 1
+#else
+#define COMPILER_IS_REAL_MSVC 0
+#endif
+
 // Apparently __has_include is part of the C++17 standard
 // despite using the double underscore naming usually reserved
 // for compiler internal use. Weird.
@@ -139,7 +145,7 @@
 // C attributes support namespaces according to the C2X
 // standard, but MSVC toolsets fail to parse namespaces
 // in that location anyway when not parsing as C++.
-#if !defined(__cplusplus) && (MSVC_COMPAT && !GCC_COMPAT && !CLANG_COMPAT && !MINGW_COMPAT && !ICC_COMPAT)
+#if !defined(__cplusplus) && COMPILER_IS_REAL_MSVC
 #define __has_c_attribute_with_namespace(attr) 0
 #else
 #define __has_c_attribute_with_namespace(attr) __has_c_attribute(attr)

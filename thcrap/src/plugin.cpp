@@ -14,10 +14,6 @@
 #include <time.h>
 #include <process.h>
 
-#undef strlen
-#undef wcslen
-#undef strcmp
-
 #if TH_X86
 extern "C" {
 // None of these signatures are accurate,
@@ -114,7 +110,7 @@ static std::unordered_map<std::string_view, uintptr_t> funcs = {
 	{ "th_memset", (uintptr_t)&memset },
 	{ "th_memccpy", (uintptr_t)&memccpy },
 	{ "th_memchr", (uintptr_t)static_cast<memchr_ptr>(&memchr) }, { "th_wmemchr", (uintptr_t)static_cast<wmemchr_ptr>(&wmemchr) },
-	{ "th_strdup", (uintptr_t)&strdup }, { "th_wcsdup", (uintptr_t)&_wcsdup },
+	{ "th_strdup", (uintptr_t)&strdup }, { "th_wcsdup", (uintptr_t)&wcsdup },
 	{ "th_strndup", (uintptr_t)&strndup },
 	{ "th_strdup_size", (uintptr_t)&strdup_size },
 
