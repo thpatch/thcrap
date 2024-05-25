@@ -176,7 +176,7 @@ static json_t *th105_spellcomment_pack_lines(json_t *spell)
 	return out_obj;
 }
 
-json_t* th105_spellcomment_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
+json_t* th105_spellcomment_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
 {
 	json_t *out = json_object();
 	json_t *patch = json_object();
@@ -192,7 +192,7 @@ json_t* th105_spellcomment_generator(std::unordered_map<std::string, json_t*>& i
 	}
 	std::string::size_type character_end = out_fn.find('/', character_begin);
 	if (character_end == std::string::npos) {
-		log_printf("th105_spellcomment_generator: character name not found in %s\n", out_fn.c_str());
+		log_printf("th105_spellcomment_generator: character name not found in %s\n", out_fn.data());
 		return nullptr;
 	}
 	std::string_view character(out_fn.data() + character_begin, character_end - character_begin);

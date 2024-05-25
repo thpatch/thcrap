@@ -13,12 +13,8 @@
 #include "bgm.h"
 #include <algorithm>
 
-json_t* bgm_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
+json_t* bgm_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
 {
-	if (out_size) {
-		*out_size = 0;
-	}
-
 	const char *spell_col = nullptr;
 	const char *comment_col = nullptr;
 	if (game_id == TH105) {
@@ -67,7 +63,7 @@ json_t* bgm_generator(std::unordered_map<std::string, json_t*>& in_data, const s
 		}
 
 		json_object_set(line, spell_col, value);
-		*out_size += json_string_length(value);
+		out_size += json_string_length(value);
 
 		json_object_set_new(ret, std::to_string(track).c_str(), line);
 	}
@@ -87,12 +83,12 @@ json_t* bgm_generator(std::unordered_map<std::string, json_t*>& in_data, const s
 				comment += json_string_value(comment_line);
 			}
 			json_object_set_new(line, comment_col, json_string(comment.c_str()));
-			*out_size += comment.size();
+			out_size += comment.size();
 		}
 	}
 
 	if (game_id >= TH135) {
-		*out_size += 512; // Because these files are zipped, guessing their exact output size is hard. We'll add a few more bytes.
+		out_size += 512; // Because these files are zipped, guessing their exact output size is hard. We'll add a few more bytes.
 	}
 	return ret;
 }

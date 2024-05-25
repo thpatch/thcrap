@@ -12,14 +12,10 @@
 #include <vfs.h>
 #include "spellcards_generator.h"
 
-json_t* spell_story_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
+json_t* spell_story_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
 {
-	if (out_size) {
-		*out_size = 0;
-	}
-
 	// Extract the player and spell id from the file name
-	const char *out_fn_ptr = strchr(out_fn.c_str(), '/');
+	const char *out_fn_ptr = strchr(out_fn.data(), '/');
 	if (out_fn_ptr == NULL || strncmp(out_fn_ptr, "/data/csv/story/", strlen("/data/csv/story/")) != 0) {
 		return NULL;
 	}
@@ -107,7 +103,7 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*>& in_data,
 					json_t *col = json_object_get_create(ret, key, JSON_OBJECT);
 					sprintf(key, "%d", (difficulty_id + 8) % 100);
 					json_object_set_new(col, key, json_string(spell_translation));
-					*out_size += strlen(spell_translation);
+					out_size += strlen(spell_translation);
 					last_spell_translation = spell_translation;
 				}
 			}
@@ -119,14 +115,10 @@ json_t* spell_story_generator(std::unordered_map<std::string, json_t*>& in_data,
 	return ret;
 }
 
-json_t* spell_player_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
+json_t* spell_player_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
 {
-	if (out_size) {
-		*out_size = 0;
-	}
-
 	// Extract the player and spell id from the file name
-	const char *out_fn_ptr = strchr(out_fn.c_str(), '/');
+	const char *out_fn_ptr = strchr(out_fn.data(), '/');
 	if (out_fn_ptr == NULL) {
 		return NULL;
 	}
@@ -183,7 +175,7 @@ json_t* spell_player_generator(std::unordered_map<std::string, json_t*>& in_data
 		json_t *col = json_object();
 		json_object_set(col, "2", value);
 		json_object_set_new(ret, ret_key, col);
-		*out_size += json_string_length(value);
+		out_size += json_string_length(value);
 	}
 
 	VLA_FREE(character_name);
@@ -194,14 +186,10 @@ json_t* spell_player_generator(std::unordered_map<std::string, json_t*>& in_data
 	return ret;
 }
 
-json_t* spell_char_select_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size)
+json_t* spell_char_select_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
 {
-	if (out_size) {
-		*out_size = 0;
-	}
-
 	// Extract the player and spell id from the file name
-	const char *out_fn_ptr = strchr(out_fn.c_str(), '/');
+	const char *out_fn_ptr = strchr(out_fn.data(), '/');
 	if (out_fn_ptr == NULL || strncmp(out_fn_ptr, "/data/system/char_select3/", strlen("/data/system/char_select3/")) != 0) {
 		return NULL;
 	}
@@ -249,7 +237,7 @@ json_t* spell_char_select_generator(std::unordered_map<std::string, json_t*>& in
 		return NULL;
 	}
 
-	*out_size = json_string_length(spell_translation) * 2; // Escaped characters take more place
+	out_size = json_string_length(spell_translation) * 2; // Escaped characters take more place
 	json_t *ret = json_pack("{s{ss}}", "0", "5", json_string_value(spell_translation));
 	json_decref(spell_translation);
 	return ret;

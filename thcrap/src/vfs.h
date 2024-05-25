@@ -10,10 +10,11 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 
-typedef json_t* jsonvfs_generator_t(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size);
+typedef json_t* jsonvfs_generator_t(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size);
 
 extern "C" {
 	/**

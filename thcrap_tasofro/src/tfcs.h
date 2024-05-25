@@ -32,7 +32,7 @@ size_t get_csv_size(const char*, json_t*, size_t patch_size);
 
 #ifdef __cplusplus
 
-json_t* th105_spellcomment_generator(std::unordered_map<std::string, json_t*>& in_data, const std::string& out_fn, size_t* out_size);
+json_t* th105_spellcomment_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size);
 
 }
 #endif
