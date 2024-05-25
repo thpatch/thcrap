@@ -10,31 +10,29 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 
+static TLSSlot tls;
+
 size_t get_nhtex_size(const char *fn, json_t*, size_t)
 {
 	char rep_fn[MAX_PATH];
-	char *rep_fn_end;
-	void *rep_file;
-	size_t rep_size;
 
-	strcpy(rep_fn, fn);
-	rep_fn_end = rep_fn + strlen(rep_fn);
+	size_t rep_fn_length = strlen(fn);
 
-	strcpy(rep_fn_end, ".png");
-	rep_file = stack_game_file_resolve(rep_fn, &rep_size);
-	if (rep_file) {
-		free(rep_file);
-		return rep_size;
+	memcpy(rep_fn, fn, rep_fn_length);
+
+	char* rep_fn_end = rep_fn + rep_fn_length;
+
+	memcpy(rep_fn_end, ".png", sizeof(".png"));
+
+	size_t rep_size = 0;
+	void* rep_file = stack_game_file_resolve(rep_fn, &rep_size);
+	if (!rep_file) {
+		memcpy(rep_fn_end, ".dds", sizeof(".dds"));
+		rep_file = stack_game_file_resolve(rep_fn, &rep_size);
 	}
 
-	strcpy(rep_fn_end, ".dds");
-	rep_file = stack_game_file_resolve(rep_fn, &rep_size);
-	if (rep_file) {
-		free(rep_file);
-		return rep_size;
-	}
-
-	return 0;
+	TlsSetValue(tls.slot, rep_file);
+	return rep_size;
 }
 
 int patch_nhtex(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t*)
@@ -43,22 +41,15 @@ int patch_nhtex(void *file_inout, size_t size_out, size_t size_in, const char *f
 	DWORD *file_size = &file_header[6];
 	BYTE *file_content = (BYTE*)file_inout + 0x30;
 
-	if (*file_size + 0x30 != size_in)
-		log_printf("Warning: nhtex: file size and header size don't match.\n");
+	if (*file_size + 0x30 != size_in) {
+		log_print("Warning: nhtex: file size and header size don't match.\n");
+	}
 
-	char rep_fn[MAX_PATH];
-	char *rep_fn_end;
-	void *rep_file;
-	size_t rep_size;
-
-	strcpy(rep_fn, fn);
-	rep_fn_end = rep_fn + strlen(rep_fn);
-
-	strcpy(rep_fn_end, ".png");
-	rep_file = stack_game_file_resolve(rep_fn, &rep_size);
-	if (rep_file) {
-		if (rep_size + 0x30 > size_out) {
-			log_printf("Error: nhtex: not enough room for replacement file.\n");
+	if (void* rep_file = TlsGetValue(tls.slot)) {
+		size_t rep_size = size_out - size_in + 0x30;
+		log_printf("file size: %zu (out %zu)\n", rep_size, size_out);
+		if (rep_size > size_out) {
+			log_print("Error: nhtex: not enough room for replacement file.\n");
 			return -1;
 		}
 		memcpy(file_content, rep_file, rep_size);
@@ -66,19 +57,5 @@ int patch_nhtex(void *file_inout, size_t size_out, size_t size_in, const char *f
 		free(rep_file);
 		return 1;
 	}
-
-	strcpy(rep_fn_end, ".dds");
-	rep_file = stack_game_file_resolve(rep_fn, &rep_size);
-	if (rep_file) {
-		if (rep_size + 0x30 > size_out) {
-			log_printf("Error: nhtex: not enough room for replacement file.\n");
-			return -1;
-		}
-		memcpy(file_content, rep_file, rep_size);
-		*file_size = rep_size;
-		free(rep_file);
-		return 1;
-	}
-
 	return 0;
 }
