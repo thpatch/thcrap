@@ -7,7 +7,7 @@
   * Breakpoint entry point. Written for i686-w64-mingw32-as.
   */
 
-	.intel_syntax
+	.intel_syntax noprefix
 
 	.global _bp_entry0, _bp_entry0_jsonptr, _bp_entry0_funcptr, _bp_entry0_caveptr, _bp_entry0_end
 	.global _bp_entry0s, _bp_entry0s_jsonptr, _bp_entry0s_funcptr, _bp_entry0s_caveptr, _bp_entry0s_end, _bp_entry0s_retpop

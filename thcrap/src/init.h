@@ -21,7 +21,7 @@ typedef struct game_version
 		: id(     strdup(json_array_get_string(json, 0))),
 		  build(  strdup(json_array_get_string(json, 1))),
 		  variety(strdup(json_array_get_string(json, 2))),
-		  codepage(json_array_get_hex(json, 3))
+		  codepage((unsigned int)json_array_get_hex(json, 3))
 	{}
 #endif
 } game_version;

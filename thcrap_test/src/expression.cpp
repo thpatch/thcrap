@@ -316,6 +316,7 @@ TEST(ExpressionTest, ExpressionTesting18) {
 	EXPECT_EQ(expr_ret, 1);
 }
 
+#if !TH_X64
 TEST(LongDoubleBS, LongDoubleTest1) {
 	LongDouble80 LD1 = { 0, 0, 0, 0, 0, 0, 0, 0x80, 0, 0x40 };
 	EXPECT_EQ((double)LD1, 2.0);
@@ -365,3 +366,4 @@ TEST(LongDoubleBS, LongDoubleTest10) {
 	LD1 = LD1 + LD1 + LD1 + LD1;
 	EXPECT_EQ((double)LD1, 8.0);
 }
+#endif

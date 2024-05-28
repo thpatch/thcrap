@@ -96,6 +96,7 @@ DETOUR_CHAIN_DEF(LoadLibraryW);
   * handling, so the end user knows if something went wrong.
   */
 
+#if TH_X86
 extern "C" {
 	extern const uint8_t inject;
 	extern const uint8_t inject_dlldirptr;
@@ -127,25 +128,27 @@ static const size_t inject_LoadLibraryExW = &inject_LoadLibraryExWptr + 1 - &inj
 static const size_t inject_ExitThread = &inject_ExitThreadptr + 1 - &inject;
 static const size_t inject_GetProcAddress = &inject_GetProcAddressptr + 1 - &inject;
 static const size_t inject_FreeLibraryAndExitThread = &inject_FreeLibraryAndExitThreadptr + 1 - &inject;
+#endif
 
 int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *const dll_fn, const char *const func_name, const void *const param, const size_t param_size)
 {
+#if TH_X86
 	#define have_kb2533623 ((bool)GetProcAddress(GetModuleHandleA("kernel32.dll"), "SetDefaultDllDirectories"))
 
 	size_t dll_dir_size = 0;
 	size_t dll_dir_total_size = 0;
 	if (dll_dir) {
-		dll_dir_size = (wcslen(dll_dir) + 1) * 2;
-		dll_dir_total_size = AlignUpToMultipleOf2(dll_dir_size, 4);
+		dll_dir_size = (wcslen(dll_dir) + 1) * sizeof(wchar_t);
+		dll_dir_total_size = AlignUpToMultipleOf2(dll_dir_size, alignof(void*));
 	}
 
-	const size_t dll_fn_size = (wcslen(dll_fn) + 1) * 2;
-	const size_t dll_fn_total_size = AlignUpToMultipleOf2(dll_fn_size, 4);
+	const size_t dll_fn_size = (wcslen(dll_fn) + 1) * sizeof(wchar_t);
+	const size_t dll_fn_total_size = AlignUpToMultipleOf2(dll_fn_size, alignof(void*));
 
 	const size_t func_name_size = strlen(func_name) + 1;
-	const size_t func_name_total_size = AlignUpToMultipleOf2(func_name_size, 4);
+	const size_t func_name_total_size = AlignUpToMultipleOf2(func_name_size, alignof(void*));
 
-	const size_t param_total_size = AlignUpToMultipleOf2(param_size, 4);
+	const size_t param_total_size = AlignUpToMultipleOf2(param_size, alignof(void*));
 
 	const size_t grand_total_size = dll_dir_total_size + dll_fn_total_size + func_name_total_size + param_total_size + inject_size;
 
@@ -202,12 +205,9 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	PatchInjectInst(inject_ptr, inject_GetProcAddress, const void*, &GetProcAddress);
 	PatchInjectInst(inject_ptr, inject_FreeLibraryAndExitThread, const void*, &FreeLibraryAndExitThread);
 
-	// Return code of injection function
-	DWORD return_value;
-
 	// Write out the patch, using return_value as a place to dump
 	// an irrelevant value since it'll get overwritten later anyway.
-	WriteProcessMemory(hProcess, CodecaveAddress, Buffer, grand_total_size, &return_value);
+	WriteProcessMemory(hProcess, CodecaveAddress, Buffer, grand_total_size, NULL);
 
 	// Free the workspace memory
 	free(Buffer);
@@ -221,6 +221,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	WaitForSingleObject(hThread, INFINITE);
 
 	// Cleanup and retrieve exit code
+	DWORD return_value;
 	GetExitCodeThread(hThread, &return_value);
 	CloseHandle(hThread);
 
@@ -254,6 +255,9 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 		}
 	}
 	return return_value;
+#else
+	return 1;
+#endif
 }
 
 int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
@@ -261,7 +265,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 	int ret = -1;
 	if (HMODULE inj_mod = GetModuleContaining((void*)thcrap_inject_into_running)) {
 		
-		const size_t inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
+		const DWORD inj_dir_len = GetModuleFileNameU(inj_mod, NULL, 0) + 1;
 		wchar_t* inj_dir = (wchar_t*)malloc(inj_dir_len * 2);
 		GetModuleFileNameW(inj_mod, inj_dir, inj_dir_len);
 		wchar_t* inj_dll = _wcsdup(inj_dir);
@@ -272,7 +276,7 @@ int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg)
 
 		// Allow relative directory names
 		if (*run_cfg != '{' && PathIsRelativeA(run_cfg)) {
-			const size_t cur_dir_len = GetCurrentDirectoryA(0, NULL);
+			const DWORD cur_dir_len = GetCurrentDirectoryA(0, NULL);
 			const size_t total_size = run_cfg_len + cur_dir_len;
 			char* param = (char*)malloc(total_size);
 			GetCurrentDirectoryA(cur_dir_len, param);
@@ -370,7 +374,7 @@ void* entry_from_context(HANDLE hThread)
 	context.ContextFlags = CONTEXT_INTEGER;
 	if(GetThreadContext(hThread, &context)) {
 #ifdef TH_X64
-		return (void*)context.Rax;
+		return (void*)context.Rcx;
 #else
 		return (void*)context.Eax;
 #endif

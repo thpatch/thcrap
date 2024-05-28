@@ -11,14 +11,14 @@
 
 #define WIN32_LEAN_AND_MEAN
 
-#include "compiler_support.h"
-
 #ifdef _M_X64
 #define TH_X64 1
 #endif
 #ifdef _M_IX86
 #define TH_X86 1
 #endif
+
+#include "compiler_support.h"
 
 #ifdef THCRAP_EXPORTS
 # define THCRAP_API TH_EXPORT

@@ -318,7 +318,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 			DispatchMessage(&msg);
 		}
 		if (msg.message == WM_QUIT) {
-			PostQuitMessage(msg.wParam);
+			PostQuitMessage((int)msg.wParam);
 			break;
 		}
 		waitStatus = MsgWaitForMultipleObjects(1, &hThread, FALSE, INFINITE, QS_ALLEVENTS);
@@ -373,7 +373,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 			DispatchMessage(&msg);
 		}
 		if (msg.message == WM_QUIT) {
-			PostQuitMessage(msg.wParam);
+			PostQuitMessage((int)msg.wParam);
 			break;
 		}
 		waitStatus = MsgWaitForMultipleObjects(1, &shellex.hProcess, FALSE, INFINITE, QS_ALLEVENTS);
@@ -436,7 +436,7 @@ void installCrt(LPWSTR ApplicationPath)
 			DispatchMessage(&msg);
 		}
 		if (msg.message == WM_QUIT) {
-			PostQuitMessage(msg.wParam);
+			PostQuitMessage((int)msg.wParam);
 			break;
 		}
 		DWORD waitStatus = MsgWaitForMultipleObjects(1, &pi.hProcess, FALSE, INFINITE, QS_ALLEVENTS);

@@ -918,7 +918,7 @@ void patch_opts_from_json(json_t *opts) {
 				continue;
 			case PVT_SBYTE: case PVT_SWORD: case PVT_SDWORD: case PVT_SQWORD:
 			case PVT_BYTE: case PVT_WORD: case PVT_DWORD: case PVT_QWORD:
-				json_int_t value;
+				jeval64_t value;
 				(void)json_eval_int64(j_val_val, &value, JEVAL_DEFAULT);
 				switch (entry.type) {
 					case PVT_SBYTE:

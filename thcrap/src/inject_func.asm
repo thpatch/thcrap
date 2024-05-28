@@ -37,7 +37,7 @@
 	ExitThread(0);
 */
 
-	.intel_syntax
+	.intel_syntax noprefix
 	.global _inject, _inject_dlldirptr, _inject_loadlibraryflagsptr, _inject_dllnameptr, _inject_funcnameptr, _inject_funcparamptr, _inject_end
 
 	/*

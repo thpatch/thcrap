@@ -188,7 +188,7 @@ static TH_NOINLINE double constpool_float_value(const char *const expr, patch_va
 	}
 	// Fallback to the expression parser
 	(void)eval_expr(expr, end_char, &val->z, NULL, rel_source, hMod);
-	return val->z;
+	return (double)val->z;
 }
 
 // Data to be rendered into a constpool.
@@ -1467,7 +1467,11 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				return false;
 			case JEVAL_SUCCESS:
 				// Round the alignment to the next power of 2 (including 1)
+#if TH_X86
 				if (unsigned long bit; _BitScanReverse(&bit, align_val - 1)) {
+#else
+				if (unsigned long bit; _BitScanReverse64(&bit, align_val - 1)) {
+#endif
 					align_val = 1u << (bit + 1);
 				} else {
 					align_val = 1u;

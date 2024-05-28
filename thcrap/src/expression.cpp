@@ -974,7 +974,7 @@ enum : int8_t {
 static inline size_t TH_FASTCALL ApplyPower(size_t value, size_t arg) {
 	if (arg == 0) return 1;
 	size_t result = 1;
-	switch (unsigned long power; _BitScanReverse(&power, arg), power) {
+	switch (unsigned long power; _BitScanReverse(&power, (unsigned long)arg), power) {
 #ifdef TH_X64
 		case 5:
 			result *= arg & 1 ? value : 1;
@@ -1146,7 +1146,7 @@ static inline const uint32_t GetPatchTestValue(const char* name, size_t name_len
 	return patch_test ? patch_test->i : (uint32_t)patch_test; // Returns 0 if patch_test is NULL
 }
 
-static TH_NOINLINE uint32_t GetCPUFeatureTest(const char* name, size_t name_length) {
+static TH_NOINLINE size_t GetCPUFeatureTest(const char* name, size_t name_length) {
 	ExpressionLogging("CPUFeatureTest: \"%.*s\"\n", name_length, name);
 	// Yuck
 	switch (name_length) {
@@ -1493,7 +1493,7 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 			}
 			else if (strnicmp(expr, "cpuid:", 6) == 0) {
 				expr += 6;
-				out->type = PVT_DWORD;
+				out->type = PVT_POINTER;
 				out->i = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
 				return patch_val_end + 1;
 			}
@@ -1530,7 +1530,7 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 			}
 			break;
 	}
-	out->type = PVT_POINTER;
+	out->type = is_relative ? PVT_DWORD : PVT_POINTER; // Relative offsets can only be 32 bits
 	out->p = GetBPFuncOrRawAddress(expr, PtrDiffStrlen(patch_val_end, expr), is_relative, data_refs);
 	return patch_val_end + 1;
 };

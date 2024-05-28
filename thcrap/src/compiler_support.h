@@ -409,7 +409,7 @@ extern "C++" {
 #endif
 
 // - GCC-specific MSVC-Compatibility Attribute
-#if __has_attribute(ms_abi)
+#if TH_X64 && __has_attribute(ms_abi)
 #define TH_MS_ABI __attribute__((ms_abi))
 #else
 #define TH_MS_ABI

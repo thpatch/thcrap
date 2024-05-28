@@ -14,6 +14,13 @@ typedef LONG_PTR KPRIORITY;
 #define STATUS_SUCCESS ((NTSTATUS)0L)
 #define STATUS_INVALID_INFO_CLASS ((NTSTATUS)0xC0000003L)
 
+// Tests whether or not a handle represents a "datafile" library load
+#define LDR_IS_DATAFILE(x)              (((ULONG_PTR)(x)) &  (ULONG_PTR)1)
+// Inverse test of LDR_IS_DATAFILE
+#define LDR_IS_VIEW(x)                  (!LDR_IS_DATAFILE(x))
+// Unset the bit to convert the handle to the load address
+#define LDR_DATAFILE_TO_VIEW(x) ((PVOID)(((ULONG_PTR)(x)) & ~(ULONG_PTR)1))
+
 typedef struct _PEB PEB;
 
 typedef struct _PROCESS_BASIC_INFORMATION PROCESS_BASIC_INFORMATION;

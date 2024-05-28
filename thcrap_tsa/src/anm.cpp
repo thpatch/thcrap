@@ -654,7 +654,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 				);
 			}
 			ret.time_changes.emplace_back(script_time_change_t{
-				line_i - deletions_count, (uint16_t)time
+				(unsigned int)(line_i - deletions_count), (uint16_t)time
 			});
 		} else {
 			auto addr = strtol(key_sep + 1, &endptr, 10);
@@ -681,7 +681,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 			}
 
 			ret.param_changes.emplace_back(script_param_change_t{
-				line_i - deletions_count, (uint16_t)addr, code, code_size
+				(unsigned int)(line_i - deletions_count), (uint16_t)addr, code, code_size
 			});
 		}
 	}

@@ -295,6 +295,18 @@ inline char* stringref_copy_advance_dst(char *dst, const stringref_t &strref)
 {
 	return strncpy_advance_dst(dst, strref.data(), strref.length());
 }
+
+extern "C++" {
+// Remove these once we support C++20
+template<typename T>
+static constexpr inline bool string_view_ends_with(const std::basic_string_view<T>& view, const std::basic_string_view<T>& compare) {
+	return view.length() >= compare.length() && !memcmp(view.data() + view.length() - compare.length(), compare.data(), compare.length() * sizeof(T));
+}
+template<typename T, size_t N>
+static constexpr inline bool string_view_ends_with(const std::basic_string_view<T>& view, const T(&compare)[N]) {
+	return view.length() >= (N - 1) && !memcmp(view.data() + view.length() - (N - 1), compare, sizeof(T[N - 1]));
+}
+}
 #endif
 
 // Replaces every occurence of the ASCII character [from] in [str] with [to].

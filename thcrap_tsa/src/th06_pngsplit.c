@@ -108,7 +108,7 @@ void pngsplit_free(pngsplit_png_t *png)
 
 
 
-void pngsplit_read_callback(png_struct *png, png_bytep out, png_uint_32 len)
+void pngsplit_read_callback(png_struct *png, png_bytep out, size_t len)
 {
 	pngsplit_io_t *io = png_get_io_ptr(png);
 	memcpy(out, (char*)io->buff + io->pos, len);
@@ -166,7 +166,7 @@ pngsplit_png_t *pngsplit_read(void *buff)
 	return png;
 }
 
-void pngsplit_write_callback(png_struct *png, png_bytep in, png_uint_32 len)
+void pngsplit_write_callback(png_struct *png, png_bytep in, size_t len)
 {
 	pngsplit_io_t *io = png_get_io_ptr(png);
 	memcpy((char*)io->buff + io->pos, in, len);

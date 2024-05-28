@@ -340,7 +340,6 @@ static constexpr size_t low_mem_zero_mask = 0x7FFFFFFF;
 static constexpr uintptr_t null_region_size = 0x10000;
 static constexpr uint32_t max_numa_node = 0x3F;
 
-#define STATUS_SUCCESS					((DWORD)0x00000000)
 #define STATUS_INVALID_PAGE_PROTECTION	((DWORD)0xC0000045)
 #define INVALID_PARAMETER_VALUE 0x57
 

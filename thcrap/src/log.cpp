@@ -16,10 +16,10 @@
 
 struct log_string_t {
 	const char* str;
-	size_t n;
+	uint32_t n;
 	bool is_n;
 
-	inline constexpr log_string_t(const char* str, size_t n, bool is_n) : str(str), n(n), is_n(is_n) {}
+	inline constexpr log_string_t(const char* str, uint32_t n, bool is_n) : str(str), n(n), is_n(is_n) {}
 };
 
 static HANDLE log_file = INVALID_HANDLE_VALUE;
@@ -100,7 +100,7 @@ void log_rotate(void)
 }
 // --------
 
-static void log_print_real(const char* str, size_t n, bool is_n) {
+static void log_print_real(const char* str, uint32_t n, bool is_n) {
 	static DWORD byteRet;
 	if unexpected(console_open) {
 		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
@@ -137,7 +137,7 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 	}
 }
 
-static void log_push(const char* str, size_t n, bool is_n) {
+static void log_push(const char* str, uint32_t n, bool is_n) {
 	if (async_enabled) {
 		char* new_str = (char*)malloc(n + 1);
 		new_str[n] = '\0';
@@ -152,12 +152,12 @@ static void log_push(const char* str, size_t n, bool is_n) {
 	}
 }
 
-void log_nprint(const char* str, size_t n) {
-	log_push(str, strnlen(str, n), true);
+void log_nprint(const char* str, uint32_t n) {
+	log_push(str, (uint32_t)strnlen(str, n), true);
 }
 
 void log_print(const char *str) {
-	log_push(str, strlen(str), false);
+	log_push(str, (uint32_t)strlen(str), false);
 }
 
 void log_vprintf(const char *format, va_list va) {

@@ -78,7 +78,7 @@ static INT_PTR CALLBACK DialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARA
 		case IDC_BUTTON1:
 			HWND combo = GetDlgItem(hwndDlg, IDC_COMBO1);
 			int sel = ComboBox_GetCurSel(combo);
-			int index = ComboBox_GetItemData(combo, sel);
+			intptr_t index = ComboBox_GetItemData(combo, sel);
 			const I18nLang &lang = langs[index];
 			currentLang = lang;
 			i18n_save_lang(lang.langid);

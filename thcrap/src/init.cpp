@@ -269,7 +269,7 @@ end:
 
 void thcrap_detour(HMODULE hProc)
 {
-	size_t mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
+	DWORD mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
 	VLA(char, mod_name, mod_name_len);
 	GetModuleFileNameU(hProc, mod_name, mod_name_len);
 	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT, mod_name);
@@ -283,8 +283,8 @@ int thcrap_init(const char *run_cfg)
 	LARGE_INTEGER begin_time;
 	QueryPerformanceCounter(&begin_time); // Always succeeds since XP
 
-	size_t exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	size_t game_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
+	DWORD exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
+	DWORD game_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
 	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
 

@@ -314,46 +314,58 @@ int plugin_init(HMODULE hMod)
 	return 0;
 }
 
-void plugin_load(const char *const fn_abs, const char *fn)
-{
-	const size_t fn_len = strlen(fn);
-	const size_t dbg_len = strlen("_d.dll");
-	const bool is_debug_plugin = fn_len >= dbg_len && strcmp(fn + fn_len - dbg_len, "_d.dll") == 0;
-#ifdef _DEBUG
+void plugin_load(const char *const fn_abs, const char *fn) {
+	std::string_view fn_view = fn;
+	const bool is_debug_plugin = string_view_ends_with(fn_view, "_d.dll");
+#if !NDEBUG
 	if (!is_debug_plugin) {
 		log_printf("[Plugin] %s: release plugin ignored in debug mode (or this dll is not a plugin)\n", fn);
 		return;
 	}
 #else
-	if (is_debug_plugin) {
+	if unexpected(is_debug_plugin) {
 		log_printf("[Plugin] %s: debug plugin ignored in release mode\n", fn);
 		return;
 	}
 #endif
 
-	if (!CheckDLLFunction(fn_abs, "thcrap_plugin_init")) {
-		log_printf("[Plugin] %s: not a plugin\n", fn);
-		return;
-	}
-
-	if (HMODULE plugin = LoadLibraryExU(fn_abs, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)) {
-		switch (FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
-				(uintptr_t)func) {
-			default:
-				if (!func()) {
-					log_printf("[Plugin] %s: initialized and active\n", fn);
-					plugin_init(plugin);
-					plugins.push_back(plugin);
-					break;
+	switch (validate_plugin_dll_for_load(fn_abs)) {
+		default:
+			TH_UNREACHABLE;
+		case NOT_A_DLL:
+		case NOT_PLUGIN:
+			log_printf("[Plugin] %s: not a plugin\n", fn);
+			return;
+		case WRONG_ARCH:
+#if TH_X86
+			log_printf("[Plugin] %s: non-32 bit dll ignored in 32 bit mode\n", fn);
+#else
+			log_printf("[Plugin] %s: non-64 bit dll ignored in 64 bit mode\n", fn);
+#endif
+			return;
+		case SHOULD_LOAD:
+			if (HMODULE plugin = LoadLibraryExU(fn_abs, NULL, LOAD_WITH_ALTERED_SEARCH_PATH)) {
+				switch (FARPROC func = GetProcAddress(plugin, "thcrap_plugin_init");
+						(uintptr_t)func) {
+					default:
+						if (!func()) {
+							plugin_init(plugin);
+							plugins.push_back(plugin);
+							log_printf("[Plugin] %s: initialized and active\n", fn);
+							break;
+						}
+						log_printf("[Plugin] %s: not used for this game\n", fn);
+						TH_FALLTHROUGH;
+					case NULL:
+						FreeLibrary(plugin);
 				}
-				log_printf("[Plugin] %s: not used for this game\n", fn);
-				[[fallthrough]];
-			case NULL:
-				FreeLibrary(plugin);
-		}
-	}
-	else {
-		log_printf("[Plugin] Error loading %s: %s\n", fn_abs, lasterror_str());
+			}
+			else {
+				log_printf("[Plugin] Error loading %s: %s\n", fn_abs, lasterror_str());
+			}
+			return;
+		case ALREADY_LOADED:
+			return;
 	}
 }
 
@@ -369,7 +381,7 @@ int plugins_load(const char *dir)
 
 	{
 		WIN32_FIND_DATAA w32fd;
-		HANDLE hFind = FindFirstFile(dll_path, &w32fd);
+		HANDLE hFind = FindFirstFileU(dll_path, &w32fd);
 		if (hFind == INVALID_HANDLE_VALUE) {
 			return 1;
 		}
@@ -378,12 +390,12 @@ int plugins_load(const char *dir)
 			// box if you try to LoadLibrary() a 0-byte file.
 			if (w32fd.nFileSizeLow | w32fd.nFileSizeHigh) {
 				// Yes, "*.dll" means "*.dll*" in FindFirstFile.
-				// https://blogs.msdn.microsoft.com/oldnewthing/20050720-16/?p=34883
+				// https://devblogs.microsoft.com/oldnewthing/20050720-16/?p=34883
 				if (!stricmp(PathFindExtensionA(w32fd.cFileName), ".dll")) {
 					dlls.push_back(strdup(w32fd.cFileName));
 				}
 			}
-		} while (FindNextFile(hFind, &w32fd));
+		} while (FindNextFileU(hFind, &w32fd));
 		FindClose(hFind);
 	}
 	

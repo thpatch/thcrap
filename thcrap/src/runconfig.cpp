@@ -172,7 +172,7 @@ extern "C" int BP_runtime_apply_stage_by_address(x86_reg_t *regs, json_t *bp_inf
 			(char*)address_from_module, /* lpModuleName (NOT A STRING WITH THIS FLAG)*/
 			&module_base_addr /* phModule */
 		)) {
-			size_t mod_name_len = GetModuleFileNameU(module_base_addr, NULL, 0) + 1;
+			uint32_t mod_name_len = GetModuleFileNameU(module_base_addr, NULL, 0) + 1;
 			VLA(char, mod_name, mod_name_len);
 			GetModuleFileNameU(module_base_addr, mod_name, mod_name_len);
 			const char* stage_name = PathFindFileNameU(mod_name);

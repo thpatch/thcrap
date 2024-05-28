@@ -152,7 +152,6 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 // }
 // "codecaves": {
 //		"test_cave": "somecode"
-//		}
 // }
 size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[5]);
 

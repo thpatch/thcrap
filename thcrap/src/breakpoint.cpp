@@ -71,7 +71,7 @@ size_t *json_pointer_value(json_t *val, x86_reg_t *regs)
 	size_t *ptr;
 	const char *expr_end;
 
-	ptr = reg(regs, expr, &expr_end);
+	ptr = (size_t*)reg(regs, expr, &expr_end);
 	if (ptr && expr_end[0] == '\0') {
 		return ptr;
 	}
@@ -150,7 +150,7 @@ patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t ty
 
 size_t* json_register_pointer(json_t *val, x86_reg_t *regs)
 {
-	return json_string_length(val) >= 3 ? reg(regs, json_string_value(val), nullptr) : nullptr;
+	return json_string_length(val) >= 3 ? (size_t*)reg(regs, json_string_value(val), nullptr) : nullptr;
 }
 
 size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key)
@@ -303,7 +303,7 @@ static inline void TH_FASTCALL cave_fix(uint8_t* sourcecave, uint8_t* bp_addr, s
 		*(uint32_t*)&sourcecave[sourcecave_size + CALL_LEN] = x86_JMP_NEAR_ABSPTR;
 		add_constpool_raw_pointer((uintptr_t)(bp_addr + CALL_REL_LEN + offset_old), (uintptr_t)&sourcecave[sourcecave_size + CALL_LEN + CALL_OP_LEN]);
 
-		log_printf("fixing rel offset 0x%X... \n", offset);
+		log_printf("fixing rel offset 0x%X... \n", offset_old);
 #endif
 	}
 	/// ------------------
@@ -357,77 +357,88 @@ extern "C" {
 
 struct BreakpointTypeData {
 	const uint8_t* entry_addr;
-	int total_size;
-	int json_ptr_offset;
-	int call_offset;
-	int cave_addr_offset;
-	int ret_pop_offset;
+	ptrdiff_t total_size;
+	ptrdiff_t json_ptr_offset;
+	ptrdiff_t call_offset;
+	ptrdiff_t cave_addr_offset;
+	ptrdiff_t ret_pop_offset;
 };
+
+#if TH_X86
+#define JSON_PTR_OFFSET 1
+#define FUNC_PTR_OFFSET 1
+#define CAVE_PTR_OFFSET 3
+#else
+#define JSON_PTR_OFFSET 2
+#define FUNC_PTR_OFFSET 2
+#define CAVE_PTR_OFFSET 2
+#endif
+#define RET_POP_OFFSET 1
 
 static const BreakpointTypeData breakpoint_types[] = {
 	{
 		&bp_entry0,
-		&bp_entry0_end         - &bp_entry0,
-		&bp_entry0_jsonptr + 1 - &bp_entry0,
-		&bp_entry0_funcptr + 1 - &bp_entry0,
-		&bp_entry0_caveptr + 3 - &bp_entry0,
+		&bp_entry0_end                       - &bp_entry0,
+		&bp_entry0_jsonptr + JSON_PTR_OFFSET - &bp_entry0,
+		&bp_entry0_funcptr + FUNC_PTR_OFFSET - &bp_entry0,
+		&bp_entry0_caveptr + CAVE_PTR_OFFSET - &bp_entry0,
 		0
 	},
 	{
 		&bp_entry0s,
-		&bp_entry0s_end         - &bp_entry0s,
-		&bp_entry0s_jsonptr + 1 - &bp_entry0s,
-		&bp_entry0s_funcptr + 1 - &bp_entry0s,
-		&bp_entry0s_caveptr + 3 - &bp_entry0s,
-		&bp_entry0s_retpop  + 1 - &bp_entry0s
+		&bp_entry0s_end                       - &bp_entry0s,
+		&bp_entry0s_jsonptr + JSON_PTR_OFFSET - &bp_entry0s,
+		&bp_entry0s_funcptr + FUNC_PTR_OFFSET - &bp_entry0s,
+		&bp_entry0s_caveptr + CAVE_PTR_OFFSET - &bp_entry0s,
+		&bp_entry0s_retpop  + RET_POP_OFFSET  - &bp_entry0s
 	},
 	{
 		&bp_entry1,
-		&bp_entry1_end         - &bp_entry1,
-		&bp_entry1_jsonptr + 1 - &bp_entry1,
-		&bp_entry1_funcptr + 1 - &bp_entry1,
-		&bp_entry1_caveptr + 3 - &bp_entry1,
+		&bp_entry1_end                       - &bp_entry1,
+		&bp_entry1_jsonptr + JSON_PTR_OFFSET - &bp_entry1,
+		&bp_entry1_funcptr + FUNC_PTR_OFFSET - &bp_entry1,
+		&bp_entry1_caveptr + CAVE_PTR_OFFSET - &bp_entry1,
 		0
 	},
 	{
 		&bp_entry1s,
-		&bp_entry1s_end         - &bp_entry1s,
-		&bp_entry1s_jsonptr + 1 - &bp_entry1s,
-		&bp_entry1s_funcptr + 1 - &bp_entry1s,
-		&bp_entry1s_caveptr + 3 - &bp_entry1s,
-		&bp_entry1s_retpop  + 1 - &bp_entry1s
+		&bp_entry1s_end                       - &bp_entry1s,
+		&bp_entry1s_jsonptr + JSON_PTR_OFFSET - &bp_entry1s,
+		&bp_entry1s_funcptr + FUNC_PTR_OFFSET - &bp_entry1s,
+		&bp_entry1s_caveptr + CAVE_PTR_OFFSET - &bp_entry1s,
+		&bp_entry1s_retpop  + RET_POP_OFFSET  - &bp_entry1s
 	},
 	{
 		&bp_entry2,
-		&bp_entry2_end         - &bp_entry2,
-		&bp_entry2_jsonptr + 1 - &bp_entry2,
-		&bp_entry2_funcptr + 1 - &bp_entry2,
-		&bp_entry2_caveptr + 3 - &bp_entry2,
+		&bp_entry2_end                       - &bp_entry2,
+		&bp_entry2_jsonptr + JSON_PTR_OFFSET - &bp_entry2,
+		&bp_entry2_funcptr + FUNC_PTR_OFFSET - &bp_entry2,
+		&bp_entry2_caveptr + CAVE_PTR_OFFSET - &bp_entry2,
 		0
 	},
 	{
 		&bp_entry2s,
-		&bp_entry2s_end         - &bp_entry2s,
-		&bp_entry2s_jsonptr + 1 - &bp_entry2s,
-		&bp_entry2s_funcptr + 1 - &bp_entry2s,
-		&bp_entry2s_caveptr + 3 - &bp_entry2s,
-		&bp_entry2s_retpop  + 1 - &bp_entry2s
+		&bp_entry2s_end                       - &bp_entry2s,
+		&bp_entry2s_jsonptr + JSON_PTR_OFFSET - &bp_entry2s,
+		&bp_entry2s_funcptr + FUNC_PTR_OFFSET - &bp_entry2s,
+		&bp_entry2s_caveptr + CAVE_PTR_OFFSET - &bp_entry2s,
+		&bp_entry2s_retpop  + RET_POP_OFFSET  - &bp_entry2s
 	},
 	{
 		&bp_entry3,
-		&bp_entry3_end         - &bp_entry3,
-		&bp_entry3_jsonptr + 1 - &bp_entry3,
-		&bp_entry3_funcptr + 1 - &bp_entry3,
-		&bp_entry3_caveptr + 3 - &bp_entry3,
+		&bp_entry3_end                       - &bp_entry3,
+		&bp_entry3_jsonptr + JSON_PTR_OFFSET - &bp_entry3,
+		&bp_entry3_funcptr + FUNC_PTR_OFFSET - &bp_entry3,
+		&bp_entry3_caveptr + CAVE_PTR_OFFSET - &bp_entry3,
 		0
 	},
 	{
 		&bp_entry3s,
-		&bp_entry3s_end         - &bp_entry3s,
-		&bp_entry3s_jsonptr + 1 - &bp_entry3s,
-		&bp_entry3s_funcptr + 1 - &bp_entry3s,
-		&bp_entry3s_caveptr + 3 - &bp_entry3s,
-		&bp_entry3s_retpop  + 1 - &bp_entry3s
+		&bp_entry3s_end                       - &bp_entry3s,
+		&bp_entry3s_jsonptr + JSON_PTR_OFFSET - &bp_entry3s,
+		&bp_entry3s_funcptr + FUNC_PTR_OFFSET - &bp_entry3s,
+		&bp_entry3s_caveptr + CAVE_PTR_OFFSET - &bp_entry3s,
+		&bp_entry3s_retpop  + RET_POP_OFFSET  - &bp_entry3s
 	}
 };
 
@@ -585,8 +596,12 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 				memcpy(callcave_p, breakpoint_types[cur->state_flags].entry_addr, breakpoint_types[cur->state_flags].total_size);
 
 				PatchBPEntryInst(callcave_p, breakpoint_types[cur->state_flags].json_ptr_offset, json_t*, cur->json_obj);
+#if TH_X86
 				PatchBPEntryInst(callcave_p, breakpoint_types[cur->state_flags].call_offset, uint32_t, (uintptr_t)cur->func - (uintptr_t)bp_instance_ptr - sizeof(void*));
-				PatchBPEntryInst(callcave_p, breakpoint_types[cur->state_flags].cave_addr_offset, uint32_t, sourcecave_p);
+#else
+				PatchBPEntryInst(callcave_p, breakpoint_types[cur->state_flags].call_offset, uintptr_t, cur->func);
+#endif
+				PatchBPEntryInst(callcave_p, breakpoint_types[cur->state_flags].cave_addr_offset, uintptr_t, sourcecave_p);
 
 				if (uint16_t stack_adjust = cur->stack_adjust) {
 					PatchBPEntryInst(callcave_p, breakpoint_types[cur->state_flags].ret_pop_offset, uint16_t, stack_adjust);
@@ -610,7 +625,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 
 #if TH_X64
 					// CALL callcave
-					add_constpool_raw_pointer(callcave_p, addr + CALL_OP_LEN);
+					add_constpool_raw_pointer((uintptr_t)callcave_p, addr + CALL_OP_LEN);
 #endif
 
 					sourcecave_p += breakpoint_total_size[i];

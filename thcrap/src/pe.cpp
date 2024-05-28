@@ -9,6 +9,69 @@
 
 #include "thcrap.h"
 
+#define EXPORT_FOUND 0
+#define EXPORT_NOT_FOUND 1
+#define INVALID_FILE 2
+
+int find_export_in_headers(void* buffer, const char* const func_name) {
+	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)buffer;
+	if unexpected(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+		return INVALID_FILE;
+	}
+	PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)((UINT_PTR)buffer + pDosHeader->e_lfanew);
+	if unexpected(pNtHeader->Signature != IMAGE_NT_SIGNATURE) {
+		return INVALID_FILE;
+	}
+#if TH_X86
+	if unexpected(pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_I386) {
+		return INVALID_FILE;
+	}
+#else
+	if unexpected(pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64) {
+		return INVALID_FILE;
+	}
+#endif
+	PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNtHeader);
+
+	if (pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress != 0 && pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size != 0) {
+		DWORD pExportSectionVA = pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+		for (size_t i = 0; i < pNtHeader->FileHeader.NumberOfSections; i++, pSection++) {
+			if (pSection->VirtualAddress <= pExportSectionVA && pSection->VirtualAddress + pSection->SizeOfRawData > pExportSectionVA) {
+				uintptr_t pSectionBase = (uintptr_t)buffer - pSection->VirtualAddress + pSection->PointerToRawData;
+				PIMAGE_EXPORT_DIRECTORY pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(pSectionBase + pExportSectionVA);
+				DWORD* pExportNames = (DWORD*)(pSectionBase + pExportDirectory->AddressOfNames);
+				for (size_t j = 0; j < pExportDirectory->NumberOfNames; ++j) {
+					char* pFunctionName = (char*)(pSectionBase + pExportNames[j]);
+					if (!strcmp(pFunctionName, func_name)) {
+						return EXPORT_FOUND;
+					}
+				}
+			}
+		}
+	}
+
+	return EXPORT_NOT_FOUND;
+}
+
+PluginValidation validate_plugin_dll_for_load(const char* const path) {
+	HMODULE dll = LoadLibraryExU(path, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE | LOAD_WITH_ALTERED_SEARCH_PATH);
+	if unexpected(!dll) {
+		// Loading completely failed
+		return NOT_A_DLL;
+	}
+	if (LDR_IS_VIEW(dll)) {
+		// Module is already loaded, so loading it
+		// just increased the reference count.
+		// Call FreeLibrary to put it back.
+		FreeLibrary(dll);
+		return ALREADY_LOADED;
+	}
+
+	PluginValidation ret = (PluginValidation)find_export_in_headers(LDR_DATAFILE_TO_VIEW(dll), "thcrap_plugin_init");
+	FreeLibrary(dll);
+	return ret;
+}
+
 bool CheckDLLFunction(const char* const path, const char* const func_name)
 {
 	HANDLE hFile = CreateFileU(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -27,34 +90,7 @@ bool CheckDLLFunction(const char* const path, const char* const func_name)
 		return false;
 	defer(UnmapViewOfFile(pFileMapView));
 
-	DWORD exeSize = fileSize;
-	void* exeBuffer = pFileMapView;
-	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)exeBuffer;
-	if (pDosHeader->e_magic != IMAGE_DOS_SIGNATURE || (size_t)pDosHeader->e_lfanew + 512 >= exeSize)
-		return false;
-	PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)((UINT_PTR)exeBuffer + pDosHeader->e_lfanew);
-	if (pNtHeader->Signature != IMAGE_NT_SIGNATURE)
-		return false;
-	PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pNtHeader);
-
-	if (pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress != 0 && pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].Size != 0) {
-		auto pExportSectionVA = pNtHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-		for (size_t i = 0; i < pNtHeader->FileHeader.NumberOfSections; i++, pSection++) {
-			if (pSection->VirtualAddress <= pExportSectionVA && pSection->VirtualAddress + pSection->SizeOfRawData > pExportSectionVA) {
-				UINT_PTR pSectionBase = (UINT_PTR)exeBuffer - pSection->VirtualAddress + pSection->PointerToRawData;
-				PIMAGE_EXPORT_DIRECTORY pExportDirectory = (PIMAGE_EXPORT_DIRECTORY)(pSectionBase + pExportSectionVA);
-				char** pExportNames = (char**)(pSectionBase + pExportDirectory->AddressOfNames);
-				for (size_t j = 0; j < pExportDirectory->NumberOfNames; ++j) {
-					auto pFunctionName = (char*)(pSectionBase + pExportNames[j]);
-					if (!strcmp(pFunctionName, func_name)) {
-						return true;
-					}
-				}
-			}
-		}
-	}
-
-	return false;
+	return find_export_in_headers(pFileMapView, func_name) == EXPORT_FOUND;
 }
 
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
@@ -169,7 +205,7 @@ exported_func_t* GetExportedFunctions(HMODULE hDll)
 			}
 		}
 		if(!name) {
-			itoa(i + ExportDesc->Base, auto_name, 10);
+			itoa((int)i + ExportDesc->Base, auto_name, 10);
 			name = auto_name;
 		}
 		funcs[i].name = name;

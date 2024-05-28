@@ -274,20 +274,35 @@ patch_val_t patch_val_op_str(const char* op_str, patch_val_t Val1, patch_val_t V
 #ifdef __cplusplus
 extern "C" {
 #endif
+#if TH_X86
 	extern uint64_t TH_FASTCALL str_to_addr_impl(uintptr_t base_addr, const char* str);
+#else
+	typedef struct {
+		__m128i value;
+		__m128i ptr;
+	} str_to_addr_ret;
+	extern str_to_addr_ret TH_VECTORCALL str_to_addr_impl(uintptr_t base_addr, const char* str);
+#endif
 #ifdef __cplusplus
 }
 
 extern "C++" {
 template <typename T>
 static TH_FORCEINLINE size_t str_to_addr(const char* str, const char*& end_str, T base_addr) {
+#if TH_X86
 	uint64_t temp = str_to_addr_impl(base_addr ? (uintptr_t)base_addr : CurrentImageBase, str);
 	end_str = (const char*)(temp >> 32);
 	return (size_t)temp;
+#else
+	str_to_addr_ret temp = str_to_addr_impl(base_addr ? (uintptr_t)base_addr : CurrentImageBase, str);
+	size_t ret = *(size_t*)&temp.value;
+	end_str = *(const char**)&temp.ptr;
+	return ret;
+#endif
 }
 template <typename T>
 static TH_FORCEINLINE size_t str_to_addr(const char* str, T base_addr) {
-	return (size_t)str_to_addr_impl(base_addr ? (uintptr_t)base_addr : CurrentImageBase, str);
+	return (size_t)((uint64_t(TH_FASTCALL*)(uintptr_t, const char*))str_to_addr_impl)(base_addr ? (uintptr_t)base_addr : CurrentImageBase, str);
 }
 }
 #endif
