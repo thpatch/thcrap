@@ -10,6 +10,7 @@
 #include <thcrap.h>
 #include "thcrap_tasofro.h"
 #include <algorithm>
+#include <tuple>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,9 +57,10 @@ static bool copy_params(wchar_t *out, size_t& j, const wchar_t *in, size_t& i, b
     }
 }
 
-static wchar_t *arabic_escape_tags_for_bidi(const wchar_t *in)
+static std::tuple<wchar_t *, bool> arabic_escape_tags_for_bidi(const wchar_t *in)
 {
 	wchar_t *out = new wchar_t[wcslen(in) * 2 + 1]();
+	bool ends_with_th155_break = false;
 
     size_t i = 0;
     size_t j = 0;
@@ -79,18 +81,33 @@ static wchar_t *arabic_escape_tags_for_bidi(const wchar_t *in)
 
             out[j] = POP_DIRECTIONAL_FORMATTING; j++;
         }
+        else if (wcsncmp(in + i, L"\\.", 2) == 0) {
+			if (in[i + 2] != L'\0') {
+            	out[j] = LEFT_TO_RIGHT_OVERRIDE; j++;
+
+            	wcsncpy(out + j, in + i, 2);
+            	i += 2; j += 2;
+
+            	out[j] = POP_DIRECTIONAL_FORMATTING; j++;
+			}
+			else {
+				ends_with_th155_break = true;
+				i += 2;
+				// Don't copy anything - we'll write this back in arabic_remote_escapes.
+			}
+		}
         else {
             out[j] = in[i];
             i++; j++;
         }
     }
 
-    return out;
+    return std::make_tuple(out, ends_with_th155_break);
 }
 
 // Guaranteed to return a smaller string than its input,
 // so we can edit the string in-place instead of allocating a new one.
-static void arabic_remove_escapes(wchar_t *str)
+static void arabic_remove_escapes(wchar_t *str, bool ends_with_th155_break)
 {
 	size_t j = 0;
 	for (size_t i = 0; str[i]; i++) {
@@ -102,17 +119,22 @@ static void arabic_remove_escapes(wchar_t *str)
 			j++;
 		}
 	}
+
+	if (ends_with_th155_break) {
+		wcscpy(str + j, L"\\.");
+		j += 2;
+	}
 	str[j] = '\0';
 }
 
 wchar_t *arabic_convert_bidi(const wchar_t *w_in)
 {
-    wchar_t *w_in_escaped = arabic_escape_tags_for_bidi(w_in);
+    auto [w_in_escaped, ends_with_th155_break] = arabic_escape_tags_for_bidi(w_in);
 
 	size_t len = wcslen(w_in_escaped);
 	FriBidiChar *b_in  = new FriBidiChar[len + 1]();
 	FriBidiChar *b_out = new FriBidiChar[len + 1]();
-	wchar_t *w_out = new wchar_t[len + 1]();
+	wchar_t *w_out = new wchar_t[len + wcslen(L"\\.") + 1]();
 
     // UTF-16 to UTF-32 dumb conversion
     std::copy(w_in_escaped, w_in_escaped + len + 1, b_in);
@@ -122,7 +144,7 @@ wchar_t *arabic_convert_bidi(const wchar_t *w_in)
 
     // UTF-32 to UTF-16 dumb conversion
     std::copy(b_out, b_out + len + 1, w_out);
-    arabic_remove_escapes(w_out);
+    arabic_remove_escapes(w_out, ends_with_th155_break);
 	delete[] w_in_escaped;
 	delete[] b_in;
 	delete[] b_out;
