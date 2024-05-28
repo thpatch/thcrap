@@ -96,6 +96,18 @@ static std::tuple<wchar_t *, bool> arabic_escape_tags_for_bidi(const wchar_t *in
 				// Don't copy anything - we'll write this back in arabic_remote_escapes.
 			}
 		}
+        else if (wcsncmp(in + i, L"\\ ", 2) == 0) {
+            out[j] = LEFT_TO_RIGHT_OVERRIDE; j++;
+
+            out[j] = in[i];
+            i++; j++;
+            while (in[i] == L' ') {
+                out[j] = in[i];
+                i++; j++;
+            }
+
+            out[j] = POP_DIRECTIONAL_FORMATTING; j++;
+        }
         else {
             out[j] = in[i];
             i++; j++;
