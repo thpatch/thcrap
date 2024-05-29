@@ -13,8 +13,8 @@
 #define OV_EXCLUDE_STATIC_CALLBACKS
 #include <vorbis/vorbisfile.h>
 
-#pragma comment(lib, "libogg" DEBUG_OR_RELEASE)
-#pragma comment(lib, "libvorbis" DEBUG_OR_RELEASE)
+#pragma comment(lib, "libogg" FILE_SUFFIX)
+#pragma comment(lib, "libvorbis" FILE_SUFFIX)
 
 auto vorbis_l = bgmmod_format_log("Ogg Vorbis");
 

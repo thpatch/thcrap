@@ -9,6 +9,14 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F85D84FC-6CEA-44CD-8A55-015AE9EFD02A}</ProjectGuid>
@@ -27,8 +35,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>wininet.lib;winmm.lib;shlwapi.lib;ole32.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">thcrap_i18n_d.lib;thcrap_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">thcrap_i18n.lib;thcrap.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>thcrap_i18n$(Suffix).lib;thcrap$(Suffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>THCRAP_I18N_APPDOMAIN="thcrap_configure";%(PreprocessorDefinitions)</PreprocessorDefinitions>

@@ -18,11 +18,11 @@ HMODULE thcrap_update_module(void)
 	if (hMod == (HMODULE)-1) {
 		bool isWine = GetProcAddress(GetModuleHandleA("KERNEL32"), "wine_get_unix_file_name");
 		if (isWine) {
-			SetCurrentDirectory("bin");
+			SetCurrentDirectoryU("bin");
 		}
-		hMod = LoadLibraryExU("thcrap_update" DEBUG_OR_RELEASE ".dll", nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+		hMod = LoadLibraryExU("thcrap_update" FILE_SUFFIX ".dll", nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 		if (isWine) {
-			SetCurrentDirectory("..");
+			SetCurrentDirectoryU("..");
 		}
 	}
 	return hMod;

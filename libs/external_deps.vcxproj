@@ -9,6 +9,14 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{8B0918FE-10DA-4DDB-81F8-0137C7C52747}</ProjectGuid>
@@ -16,38 +24,37 @@
   <PropertyGroup>
     <InDir>$(ProjectDir)external_deps\</InDir>
     <OutSubdir>bin\</OutSubdir>
-    <Debug Condition="'$(Configuration)'=='Debug'">_d</Debug>
-	<SkipSign>true</SkipSign>
+    <SkipSign>true</SkipSign>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\base.props" />
   </ImportGroup>
   <ItemGroup>
-    <CopyFiles Include="$(InDir)bin\jansson$(Debug).dll" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\jansson$(Debug).lib" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\jansson$(Debug).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Suffix).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Suffix).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\jansson$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
-    <CopyFiles Include="$(InDir)bin\libmpg123$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libmpg123$(Suffix).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)obj\libmpg123 $(Configuration) Static $(PlatformShortName)\libmpg123.pdb" OutputFolder="$(OutDir)" />
 
-    <CopyFiles Include="$(InDir)bin\libogg$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libogg$(Suffix).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)obj\libogg $(Configuration) Static $(PlatformShortName)\libogg.pdb" OutputFolder="$(OutDir)" />
 
-    <CopyFiles Include="$(InDir)bin\libpng16$(Debug).dll" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\libpng16$(Debug).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libpng16$(Suffix).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libpng16$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
-    <CopyFiles Include="$(InDir)bin\libvorbis$(Debug).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\libvorbis$(Suffix).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)obj\libvorbis $(Configuration) Static $(PlatformShortName)\libvorbis_decode.pdb" OutputFolder="$(OutDir)" />
 
-    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).dll" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).lib" OutputFolder="$(OutDir)" />
-    <CopyFiles Include="$(InDir)bin\zlib-ng$(Debug).pdb" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Suffix).dll" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Suffix).lib" OutputFolder="$(OutDir)" />
+    <CopyFiles Include="$(InDir)bin\zlib-ng$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
 	<CopyFiles Include="$(InDir)bin\libcrypto-1_1.dll" OutputFolder="$(OutDir)" />
 	<CopyFiles Include="$(InDir)bin\libssl-1_1.dll" OutputFolder="$(OutDir)" />
 
-	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).dll" OutputFolder="$(OutDir)" />
-	<CopyFiles Include="$(InDir)bin\libcurl$(Debug).pdb" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
 	<CopyFiles Include="$(InDir)bin\fribidi-0.dll" OutputFolder="$(OutDir)" />
 	<CopyFiles Include="$(InDir)bin\fribidi-0.pdb" OutputFolder="$(OutDir)" />

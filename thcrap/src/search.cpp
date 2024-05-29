@@ -175,7 +175,7 @@ bool compare_search_results(const game_search_result& a, const game_search_resul
 game_search_result* SearchForGames(const wchar_t **dir, const games_js_entry *games_in)
 {
 	search_state_t state;
-	const char *versions_js_fn = "versions.js";
+	const char *versions_js_fn = "versions" VERSIONS_SUFFIX ".js";
 
 	state.versions = stack_json_resolve(versions_js_fn, NULL);
 	if(!state.versions) {

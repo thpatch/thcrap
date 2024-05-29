@@ -5,9 +5,17 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -31,6 +39,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+	  <AdditionalDependencies Condition="'$(Platform)'=='x64'">thcrap_x64_injector$(DebugSuffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>thcrap.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -118,9 +127,11 @@
     <ClInclude Include="src\win32_detour.h" />
     <ClInclude Include="src\xpcompat.h" />
     <ClInclude Include="src\zip.h" />
-    <GAS Include="src\bp_entry.asm" />
-    <GAS Include="src\inject_func.asm" />
-	<GAS Include="src\str_to_addr.asm" />
+    <GAS Condition="'$(Platform)'!='x64'" Include="src\bp_entry.asm" />
+    <GAS Condition="'$(Platform)'!='x64'" Include="src\inject_func.asm" />
+	<GAS Condition="'$(Platform)'!='x64'" Include="src\str_to_addr.asm" />
+    <GAS Condition="'$(Platform)'=='x64'" Include="src\bp_entry_64.asm" />
+	<GAS Condition="'$(Platform)'=='x64'" Include="src\str_to_addr_64.asm" />
     <None Include="thcrap.def" />
     <None Condition="'$(Platform)'!='x64'" Include="thcrap_x86.def" />
     <None Condition="'$(Platform)'=='x64'" Include="thcrap_x64.def" />

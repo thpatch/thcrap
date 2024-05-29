@@ -1,0 +1,4 @@
+EXPORTS
+	set_pid_to_wait_for
+	clear_pid_to_wait_for
+	wait_for_init_address_from_pid

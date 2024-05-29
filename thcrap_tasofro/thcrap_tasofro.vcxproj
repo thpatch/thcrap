@@ -9,6 +9,14 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7833FCCF-C3EA-46ED-8D38-5CAB478AB041}</ProjectGuid>
@@ -31,8 +39,7 @@
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_tasofro.def</ModuleDefinitionFile>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)==true">shlwapi.lib;gdiplus.lib;thcrap_d.lib;libpng16_d.lib;act_nut_lib_d.lib;bmpfont_create_d.lib;fribidi_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalDependencies Condition="$(UseDebugLibraries)!=true">shlwapi.lib;gdiplus.lib;thcrap.lib;libpng16.lib;act_nut_lib.lib;bmpfont_create.lib;fribidi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;gdiplus.lib;thcrap$(Suffix).lib;libpng16$(Suffix).lib;act_nut_lib$(Suffix).lib;bmpfont_create$(Suffix).lib;fribidi$(Suffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

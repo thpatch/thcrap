@@ -175,7 +175,7 @@ json_t* identify(const char *exe_fn)
 {
 	size_t exe_size;
 	json_t *run_ver = NULL;
-	json_t *versions_js = stack_json_resolve("versions.js", NULL);
+	json_t *versions_js = stack_json_resolve("versions" VERSIONS_SUFFIX ".js", NULL);
 
 	// Result of the EXE identification
 	game_version *id = NULL;

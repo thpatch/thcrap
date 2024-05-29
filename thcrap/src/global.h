@@ -53,3 +53,27 @@ void  TH_CDECL thcrap_free(void *mem);
 # define DEBUG_OR_RELEASE
 # define DEBUG_OR_RELEASE_W
 #endif
+
+#if TH_X86
+#define VERSIONS_SUFFIX
+#else
+#define VERSIONS_SUFFIX "64"
+#endif
+
+#if NDEBUG
+#if TH_X86
+#define FILE_SUFFIX
+#define FILE_SUFFIX_W
+#else
+#define FILE_SUFFIX "_64"
+#define FILE_SUFFIX_W L"_64"
+#endif
+#else
+#if TH_X86
+#define FILE_SUFFIX "_d"
+#define FILE_SUFFIX_W L"_d"
+#else
+#define FILE_SUFFIX "_64_d"
+#define FILE_SUFFIX_W L"_64_d"
+#endif
+#endif

@@ -238,7 +238,7 @@ static mod_funcs_t patch_funcs = {};
 static std::vector<HMODULE> plugins;
 
 TH_EXPORT void TH_CDECL export_jansson_funcs_mod_init(void*) {
-	HMODULE jansson_handle = GetModuleHandleA("jansson" DEBUG_OR_RELEASE ".dll");
+	HMODULE jansson_handle = GetModuleHandleA("jansson" FILE_SUFFIX ".dll");
 	if (exported_func_t* jansson_funcs = GetExportedFunctions(jansson_handle)) {
 		for (size_t i = 0; jansson_funcs[i].func != 0 && jansson_funcs[i].name != nullptr; i++) {
 			funcs[jansson_funcs[i].name] = jansson_funcs[i].func;

@@ -160,11 +160,11 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 					"%s\\thcrap_enable_updates.bat\n"
 					"(this file will be created after you click ok)",
 					current_directory) == IDYES) {
-					MoveFileEx("bin\\thcrap_update" DEBUG_OR_RELEASE ".dll", "bin\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll", MOVEFILE_REPLACE_EXISTING);
+					MoveFileEx("bin\\thcrap_update" FILE_SUFFIX ".dll", "bin\\thcrap_update_disabled" FILE_SUFFIX ".dll", MOVEFILE_REPLACE_EXISTING);
 					static constexpr char bat_file[] =
 						"@echo off\n"
-						"if not exist \"%~dp0\"\\bin\\thcrap_update" DEBUG_OR_RELEASE ".dll (\n"
-						"move \"%~dp0\"\\bin\\thcrap_update_disabled" DEBUG_OR_RELEASE ".dll \"%~dp0\"\\bin\\thcrap_update" DEBUG_OR_RELEASE ".dll\n"
+						"if not exist \"%~dp0\"\\bin\\thcrap_update" FILE_SUFFIX ".dll (\n"
+						"move \"%~dp0\"\\bin\\thcrap_update_disabled" FILE_SUFFIX ".dll \"%~dp0\"\\bin\\thcrap_update" FILE_SUFFIX ".dll\n"
 						"echo Updates enabled\n"
 						") else (\n"
 						"echo Updates are already enabled\n"
@@ -681,7 +681,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	state.update_others = globalconfig_get_boolean("update_others", true);
 	
 	SetLastError(0);
-	HANDLE hMap = CreateFileMapping(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), "thcrap update UI");
+	HANDLE hMap = CreateFileMappingU(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), "thcrap update UI");
 	bool mapExists = GetLastError() == ERROR_ALREADY_EXISTS;
 	HWND *globalHwnd;
 	if (hMap != nullptr) {
@@ -768,9 +768,9 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 
 	// Update the thcrap engine
 	log_print("Looking for thcrap updates...\n");
-	size_t cur_dir_len = GetCurrentDirectory(0, nullptr);
+	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
 	VLA(char, cur_dir, cur_dir_len);
-	GetCurrentDirectory(cur_dir_len, cur_dir);
+	GetCurrentDirectoryU(cur_dir_len, cur_dir);
 	runconfig_thcrap_dir_set(cur_dir);
 	if (update_notify_thcrap() == SELF_OK && state.game_started == false) {
 		// Re-run an up-to-date loader
@@ -782,7 +782,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		memset(&sa, 0, sizeof(sa));
 		memset(&pi, 0, sizeof(pi));
 		sa.cb = sizeof(sa);
-		CreateProcess(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
+		CreateProcessU(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
 		goto end;

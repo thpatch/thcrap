@@ -128,12 +128,25 @@ static const size_t inject_LoadLibraryExW = &inject_LoadLibraryExWptr + 1 - &inj
 static const size_t inject_ExitThread = &inject_ExitThreadptr + 1 - &inject;
 static const size_t inject_GetProcAddress = &inject_GetProcAddressptr + 1 - &inject;
 static const size_t inject_FreeLibraryAndExitThread = &inject_FreeLibraryAndExitThreadptr + 1 - &inject;
+#else
+extern "C" {
+	void set_pid_to_wait_for(HANDLE id);
+	void clear_pid_to_wait_for(HANDLE id);
+	void* wait_for_init_address_from_pid();
+}
+
+#if NDEBUG
+static constexpr wchar_t injector_name[] = L"thcrap_x64_injector.dll";
+#else
+static constexpr wchar_t injector_name[] = L"thcrap_x64_injector_d.dll";
+#endif
 #endif
 
 int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *const dll_fn, const char *const func_name, const void *const param, const size_t param_size)
 {
+	#define have_kb2533623 ((bool)GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "SetDefaultDllDirectories"))
+
 #if TH_X86
-	#define have_kb2533623 ((bool)GetProcAddress(GetModuleHandleA("kernel32.dll"), "SetDefaultDllDirectories"))
 
 	size_t dll_dir_size = 0;
 	size_t dll_dir_total_size = 0;
@@ -205,8 +218,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	PatchInjectInst(inject_ptr, inject_GetProcAddress, const void*, &GetProcAddress);
 	PatchInjectInst(inject_ptr, inject_FreeLibraryAndExitThread, const void*, &FreeLibraryAndExitThread);
 
-	// Write out the patch, using return_value as a place to dump
-	// an irrelevant value since it'll get overwritten later anyway.
+	// Write out the patch
 	WriteProcessMemory(hProcess, CodecaveAddress, Buffer, grand_total_size, NULL);
 
 	// Free the workspace memory
@@ -256,7 +268,138 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	}
 	return return_value;
 #else
-	return 1;
+
+	DWORD idgaf;
+	PROCESS_BASIC_INFORMATION process_info;
+	NtQueryInformationProcess(hProcess, ProcessBasicInformation, &process_info, sizeof(process_info), &idgaf);
+
+	size_t prev_current_directory_size = 0;
+
+	// This address is in the address space of the other process
+	WCHAR* prev_current_directory_addr = NULL;
+
+	size_t dll_dir_size = 0;
+	size_t dll_dir_total_size = 0;
+	if (dll_dir) {
+		RTL_USER_PROCESS_PARAMETERS* process_parameters_addr;
+		ReadProcessMemory(hProcess, (uint8_t*)process_info.PebBaseAddress + offsetof(PEB, ProcessParameters), &process_parameters_addr, sizeof(process_parameters_addr), NULL);
+
+		UNICODE_STRING current_directory;
+		ReadProcessMemory(hProcess, &process_parameters_addr->CurrentDirectory.DosPath, &current_directory, sizeof(UNICODE_STRING), NULL);
+
+		prev_current_directory_addr = current_directory.Buffer;
+		prev_current_directory_size = current_directory.Length + sizeof(WCHAR);
+
+		dll_dir_size = (wcslen(dll_dir) + 1) * sizeof(wchar_t);
+		dll_dir_total_size = AlignUpToMultipleOf2(dll_dir_size, alignof(void*));
+	}
+
+	const size_t dll_fn_size = (wcslen(dll_fn) + 1) * sizeof(wchar_t);
+	const size_t dll_fn_total_size = AlignUpToMultipleOf2(dll_fn_size, alignof(void*));
+
+	const size_t func_name_size = strlen(func_name) + 1;
+	const size_t func_name_total_size = AlignUpToMultipleOf2(func_name_size, alignof(void*));
+
+	const size_t param_total_size = AlignUpToMultipleOf2(param_size, alignof(void*));
+
+	const size_t injector_dll_size = sizeof(injector_name);
+	const size_t injector_dll_total_size = AlignUpToMultipleOf2(injector_dll_size, alignof(void*));
+
+	const size_t grand_total_size = sizeof(size_t[3]) + param_total_size + dll_fn_total_size + func_name_total_size + injector_dll_total_size + dll_dir_total_size + prev_current_directory_size;
+
+	// The workspace we will build the codecave on locally.
+	uint8_t *const Buffer = (uint8_t *const)malloc(grand_total_size);
+
+	uint8_t* workspace = Buffer + sizeof(size_t[3]);
+
+	((size_t*)Buffer)[2] = PathIsRelativeW(dll_fn) || !have_kb2533623 ? 0 : LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32;
+
+	// Function Parameter
+	memcpy(workspace, param, param_size);
+	workspace += param_total_size;
+
+	// Dll Name
+	((size_t*)Buffer)[0] = sizeof(size_t[3]) + param_total_size;
+	memcpy(workspace, dll_fn, dll_fn_size);
+	workspace += dll_fn_total_size;
+
+	// Function Name
+	((size_t*)Buffer)[1] = (uint8_t*)memcpy(workspace, func_name, func_name_size) - Buffer;
+	workspace += func_name_total_size;
+
+	// Injector Dll Name
+	size_t injector_dll_offset = (uint8_t*)memcpy(workspace, injector_name, injector_dll_size) - Buffer;
+	workspace += injector_dll_total_size;
+
+	// Directory name
+	size_t dll_dir_offset = 0;
+	size_t prev_current_directory_offset = 0;
+	if (dll_dir) {
+		dll_dir_offset = (uint8_t*)memcpy(workspace, dll_dir, dll_dir_size) - Buffer;
+		workspace += dll_dir_total_size;
+
+		*(wchar_t*)&workspace[prev_current_directory_size - sizeof(WCHAR)] = L'\0';
+		ReadProcessMemory(hProcess, prev_current_directory_addr, workspace, prev_current_directory_size - sizeof(WCHAR), NULL);
+		prev_current_directory_offset = workspace - Buffer;
+	}
+
+	// Allocate space for the codecave in the process
+	uint8_t *const CodecaveAddress = (uint8_t*)VirtualAllocEx(hProcess, 0, grand_total_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	
+	// Write out the data
+	WriteProcessMemory(hProcess, CodecaveAddress, Buffer, grand_total_size, NULL);
+
+	free(Buffer);
+
+	if (dll_dir) {
+		HANDLE set_dir_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&SetCurrentDirectoryW, CodecaveAddress + dll_dir_offset, 0, NULL);
+		if unexpected(set_dir_thread == NULL) {
+			goto fail;
+		}
+		WaitForSingleObject(set_dir_thread, INFINITE);
+		CloseHandle(set_dir_thread);
+	}
+
+	int ret = 1;
+
+	set_pid_to_wait_for((HANDLE)process_info.UniqueProcessId);
+
+	HANDLE library_load_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&LoadLibraryW, CodecaveAddress + injector_dll_offset, 0, NULL);
+	if unexpected(library_load_thread == NULL) {
+		clear_pid_to_wait_for((HANDLE)process_info.UniqueProcessId);
+		goto fail;
+	}
+
+	void* init_addr = wait_for_init_address_from_pid();
+
+	WaitForSingleObject(library_load_thread, INFINITE);
+	CloseHandle(library_load_thread);
+
+	HANDLE init_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)init_addr, CodecaveAddress, 0, NULL);
+	if unexpected(init_thread == NULL) {
+		goto fail;
+	}
+	WaitForSingleObject(init_thread, INFINITE);
+	CloseHandle(init_thread);
+
+	if (dll_dir) {
+		HANDLE restore_dir_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&SetCurrentDirectoryW, CodecaveAddress + prev_current_directory_offset, 0, NULL);
+		if unexpected(restore_dir_thread == NULL) {
+			goto fail;
+		}
+		WaitForSingleObject(restore_dir_thread, INFINITE);
+		CloseHandle(restore_dir_thread);
+	}
+
+	ret = 0;
+
+fail:
+
+	VirtualFreeEx(hProcess, CodecaveAddress, 0, MEM_RELEASE);
+
+	FreeLibrary(GetModuleHandleW(injector_name));
+
+	return ret;
 #endif
 }
 
@@ -502,7 +645,7 @@ static inline void inject_CreateProcess_helper(
 	}
 
 	if (GetCurrentProcessId() != runconfig_loader_pid_get()) {
-		json_t* versions_js = stack_json_resolve("versions.js", NULL);
+		json_t* versions_js = stack_json_resolve("versions" VERSIONS_SUFFIX ".js", NULL);
 		size_t exe_size;
 		game_version* id = identify_by_hash(lpAppName, &exe_size, versions_js);
 		if (!id) id = identify_by_size(exe_size, versions_js);
@@ -624,8 +767,8 @@ HANDLE WINAPI inject_CreateRemoteThread(
 	LPDWORD lpThreadId
 )
 {
-	const char *thcrap_dll = "thcrap" DEBUG_OR_RELEASE ".dll";
-	HMODULE hKernel32 = GetModuleHandleA("kernel32.dll");
+	const char *thcrap_dll = "thcrap" FILE_SUFFIX ".dll";
+	HMODULE hKernel32 = GetModuleHandleW(L"kernel32.dll");
 	FARPROC kernel32_LoadLibraryA = GetProcAddress(hKernel32, "LoadLibraryA");
 	FARPROC kernel32_LoadLibraryW = GetProcAddress(hKernel32, "LoadLibraryW");
 

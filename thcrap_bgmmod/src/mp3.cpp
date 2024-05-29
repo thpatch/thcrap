@@ -12,7 +12,7 @@
 
 #include <libmpg123/mpg123.h>
 
-#pragma comment(lib, "libmpg123" DEBUG_OR_RELEASE)
+#pragma comment(lib, "libmpg123" FILE_SUFFIX)
 
 auto mp3_l = bgmmod_format_log("MP3");
 
