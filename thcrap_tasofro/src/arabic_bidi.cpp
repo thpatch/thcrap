@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <wchar.h>
-#include <fribidi.h>
+#include <fribidi/fribidi.h>
 
 // More information on these characters:
 // https://www.w3.org/International/questions/qa-bidi-unicode-controls
