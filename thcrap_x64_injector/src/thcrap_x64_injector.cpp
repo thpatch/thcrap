@@ -34,7 +34,7 @@ struct InjectData {
 	size_t dll_name_offset;
 	size_t func_name_offset;
 	size_t load_library_flags;
-	uint8_t param[0];
+	uint8_t param[];
 };
 
 DWORD WINAPI inject_and_unload(void* param) {

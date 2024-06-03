@@ -1143,6 +1143,7 @@ static inline const patch_val_t* GetOptionValue(const char* name, size_t name_le
 static inline const uint32_t GetPatchTestValue(const char* name, size_t name_length) {
 	ExpressionLogging("PatchTest: \"%.*s\"\n", name_length, name);
 	const patch_val_t* const patch_test = patch_opt_get_len(name, name_length);
+#pragma warning(suppress : 4302) // Casting the pointer to int only happens when it's known to be 0
 	return patch_test ? patch_test->i : (uint32_t)patch_test; // Returns 0 if patch_test is NULL
 }
 
@@ -1494,7 +1495,7 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 			else if (strnicmp(expr, "cpuid:", 6) == 0) {
 				expr += 6;
 				out->type = PVT_POINTER;
-				out->i = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
+				out->z = GetCPUFeatureTest(expr, PtrDiffStrlen(patch_val_end, expr));
 				return patch_val_end + 1;
 			}
 			break;

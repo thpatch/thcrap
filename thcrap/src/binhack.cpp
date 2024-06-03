@@ -246,7 +246,7 @@ void add_constpool(const char* data, size_t data_length, patch_value_type_t type
 	constpool_inputs.emplace_back(data_view);
 has_str:
 	constpool_prerenders.emplace(std::piecewise_construct,
-		 /* constpool_key_t */   std::forward_as_tuple(alignment, type, input_index),
+		 /* constpool_key_t */   std::forward_as_tuple((uint8_t)alignment, type, input_index),
 		 /* constpool_value_t */ std::forward_as_tuple(addr, source_module)
 	);
 }
@@ -262,7 +262,7 @@ void add_constpool_raw_pointer(uintptr_t data, uintptr_t addr) {
 	constpool_inputs.emplace_back(data);
 has_pointer:
 	constpool_prerenders.emplace(std::piecewise_construct,
-		 /* constpool_key_t */   std::forward_as_tuple(alignof(void*), PVT_POINTER, input_index),
+		 /* constpool_key_t */   std::forward_as_tuple((uint8_t)alignof(void*), PVT_POINTER, input_index),
 		 /* constpool_value_t */ std::forward_as_tuple(addr, (HMODULE)NULL)
 	);
 }
@@ -647,6 +647,13 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 		value.render_index = render_index;
 	}
 	page_array[0].size = constpool_memory_size;
+
+#pragma warning(push)
+// The entire purpose of this code on x64 is to allocate memory in the
+// bottom 2GB of the address space so that is can be accessed from anywhere
+// with a sign extended 32 bit immediate address. That means that any warnings
+// about truncating pointers to int don't apply here.
+#pragma warning(disable : 4311 4302 4244)
 	if (constpool_memory_size) {
 		uint8_t* constpool = page_array[0].address = (uint8_t*)VirtualAllocLow(0, constpool_memory_size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
 
@@ -668,6 +675,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 			PatchRegion((void*)value.addr, NULL, &constpool_write, sizeof(uint32_t));
 		}
 	}
+#pragma warning(pop)
 }
 #pragma warning(pop)
 
@@ -1467,12 +1475,8 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				return false;
 			case JEVAL_SUCCESS:
 				// Round the alignment to the next power of 2 (including 1)
-#if TH_X86
-				if (unsigned long bit; _BitScanReverse(&bit, align_val - 1)) {
-#else
-				if (unsigned long bit; _BitScanReverse64(&bit, align_val - 1)) {
-#endif
-					align_val = 1u << (bit + 1);
+				if (unsigned long bit; _BitScanReverseZ(&bit, align_val - 1)) {
+					align_val = (size_t)1u << (bit + 1);
 				} else {
 					align_val = 1u;
 				}

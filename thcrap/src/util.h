@@ -413,6 +413,12 @@ TH_CALLER_FREE inline char* strdup_cat(std::string_view str1, std::string_view s
 }
 #endif
 
+#if !TH_X64
+#define _BitScanReverseZ(index, mask) _BitScanReverse((index), (mask))
+#else
+#define _BitScanReverseZ(index, mask) _BitScanReverse64((index), (mask))
+#endif
+
 // Returns whether [c] is a valid hexadecimal character
 bool is_valid_hex(char c);
 

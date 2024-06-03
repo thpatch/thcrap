@@ -208,7 +208,7 @@ static void log_print_context(CONTEXT* ctx)
 #endif
 
 #define TagWordString(index) \
-		fpu_tag_strings[(ctx->FloatSave.TagWord >> ((index) * 2)) & 0b11]
+		fpu_tag_strings[((uint32_t)ctx->FloatSave.TagWord >> ((index) * 2)) & 0b11]
 
 #define FPUReg(index) \
 		*(uint16_t*)&(((uint8_t*)ctx->FloatSave.RegisterArea)[(10 * (index)) + sizeof(uint64_t)]), *(uint64_t*)&(((uint8_t*)ctx->FloatSave.RegisterArea)[10 * (index)])
@@ -547,7 +547,7 @@ void manual_stack_walk(uintptr_t current_esp) {
 		"(Execute Write-Copy)",
 		"(Execute Read Write)"
 	};
-	uint8_t stack_offset_length = snprintf(NULL, 0, "%X", (uintptr_t)(stack_top - 1) - current_esp);
+	uint8_t stack_offset_length = snprintf(NULL, 0, "%p", (uintptr_t)(stack_top - 1) - current_esp);
 	for (
 		uintptr_t* stack_addr = (uintptr_t*)current_esp;
 		stack_addr < stack_top - 1; // These don't necessarily align cleanly, so array indexing would be tricky to use here

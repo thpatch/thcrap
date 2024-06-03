@@ -177,7 +177,7 @@ DWORD WINAPI self_window_create_and_run(void *param)
 		}
 	}
 
-	return msg.wParam;
+	return (DWORD)msg.wParam;
 }
 /// ----------------------------
 

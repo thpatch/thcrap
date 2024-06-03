@@ -347,7 +347,7 @@ const char* strings_replace(const size_t slot, const char *src, const char *dst)
 
 		// How many bytes are added/removed from the
 		// total length for each substring instance.
-		int length_diff = replacement_len - substr_len;
+		intptr_t length_diff = replacement_len - substr_len;
 
 		char* parse_str = ret.str;
 		while (parse_str = strstr(parse_str, src)) {

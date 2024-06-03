@@ -72,7 +72,7 @@ void AnmGdiplus::GetPNGEncoderCLSID(void) {
 }
 
 uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size_t* height) {
-	uint8_t* out = 0;
+	uint8_t* out = NULL;
 
 	IStream* stream = SHCreateMemStream((const BYTE*)data, len);
 	if (!stream) {
@@ -86,8 +86,8 @@ uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size
 	}
 	defer(delete bitmap);
 
-	int w = bitmap->GetWidth();
-	int h = bitmap->GetHeight();
+	UINT w = bitmap->GetWidth();
+	UINT h = bitmap->GetHeight();
 	Gdiplus::Rect r(0, 0, w, h);
 	Gdiplus::BitmapData bmdata;
 
@@ -101,7 +101,7 @@ uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size
 
 	char* p = (char*)bmdata.Scan0;
 	char* q = (char*)out;
-	for (int y = 0; y < h; y++) {
+	for (size_t y = 0; y < h; y++) {
 		memcpy(q, p, w * 4);
 		p += bmdata.Stride;
 		q += w * 4;

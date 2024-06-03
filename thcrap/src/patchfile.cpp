@@ -57,7 +57,7 @@ void* file_stream_read(HANDLE stream, size_t *file_size_out)
 				ReadFile(stream, ret_writer, UINT32_MAX, (LPDWORD)file_size_ptr, NULL);
 				ret_writer += UINT32_MAX;
 			}
-			ReadFile(stream, ret_writer, file_size, (LPDWORD)file_size_ptr, NULL);
+			ReadFile(stream, ret_writer, (DWORD)file_size, (LPDWORD)file_size_ptr, NULL);
 		}
 		CloseHandle(stream);
 	}
@@ -97,7 +97,7 @@ int file_write(const char *fn, const void *file_buffer, size_t file_size)
 		}
 		file_buffer_reader += UINT32_MAX;
 	}
-	if (WriteFile(handle, file_buffer_reader, file_size, &idgaf, NULL)) {
+	if (WriteFile(handle, file_buffer_reader, (DWORD)file_size, &idgaf, NULL)) {
 		ret = 0;
 	}
 	else {

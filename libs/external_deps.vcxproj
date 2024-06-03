@@ -50,13 +50,13 @@
     <CopyFiles Include="$(InDir)bin\zlib-ng$(Suffix).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)bin\zlib-ng$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
-	<CopyFiles Include="$(InDir)bin\libcrypto-1_1.dll" OutputFolder="$(OutDir)" />
-	<CopyFiles Include="$(InDir)bin\libssl-1_1.dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libcrypto-1_1$(Suffix).dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libssl-1_1$(Suffix).dll" OutputFolder="$(OutDir)" />
 
 	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).dll" OutputFolder="$(OutDir)" />
 	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
-	<CopyFiles Include="$(InDir)bin\fribidi-0.dll" OutputFolder="$(OutDir)" />
-	<CopyFiles Include="$(InDir)bin\fribidi-0.pdb" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\fribidi-0$(Suffix).dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\fribidi-0$(Suffix).pdb" OutputFolder="$(OutDir)" />
   </ItemGroup>
 </Project>

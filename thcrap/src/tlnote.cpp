@@ -512,7 +512,7 @@ int32_t tlnote_render(const stringref_t &note)
 	}
 
 	tlnote_rendered_t r{ note, env };
-	auto index = rendered.size();
+	int32_t index = (int32_t)rendered.size();
 	if(index >= RENDERED_MAX) {
 		// You absolute madman.
 		static int32_t madness_index = 0;

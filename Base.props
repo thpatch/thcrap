@@ -10,7 +10,7 @@
     <Keyword>Win32Proj</Keyword>
   </PropertyGroup>
   <PropertyGroup>
-    <BitsSuffix Condition="'$(Platform)'=='x64'">_64</BitsSuffix>
+    <BitsSuffix Condition="'$(Platform)'=='x64' And '$(UseBitsSuffix)'==''">_64</BitsSuffix>
     <DebugSuffix Condition="$(UseDebugLibraries)==true Or '$(Configuration)'=='Debug'">_d</DebugSuffix>
     <Suffix>$(BitsSuffix)$(DebugSuffix)</Suffix>
   </PropertyGroup>

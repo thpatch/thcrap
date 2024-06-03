@@ -227,7 +227,7 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 	inflate_bytes(header->data, header->comp_size, file_in_uncomp, header->uncomp_size);
 
 	// We don't have patch_size here, but it is equal to size_out - size_in.
-	DWORD file_out_uncomp_size = header->uncomp_size + (size_out - size_in);
+	SIZE_T file_out_uncomp_size = header->uncomp_size + (size_out - size_in);
 	BYTE *file_out_uncomp = (BYTE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, file_out_uncomp_size);
 
 	BYTE *ptr_in  = file_in_uncomp;

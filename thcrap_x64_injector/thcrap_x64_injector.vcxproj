@@ -16,13 +16,11 @@
   </PropertyGroup>
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseBitsSuffix>false</UseBitsSuffix>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
   </ImportGroup>
-  <PropertyGroup>
-    <TargetName>$(RootNamespace)$(DebugSuffix)</TargetName>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <Link>
       <ModuleDefinitionFile>thcrap_x64_injector.def</ModuleDefinitionFile>

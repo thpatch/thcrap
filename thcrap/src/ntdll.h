@@ -8,6 +8,8 @@
   * internal windows structs
   */
 
+#if !TH_NO_NTDLL_DEFINITIONS
+
 typedef LONG NTSTATUS;
 typedef LONG_PTR KPRIORITY;
 
@@ -22,6 +24,7 @@ typedef LONG_PTR KPRIORITY;
 #define LDR_DATAFILE_TO_VIEW(x) ((PVOID)(((ULONG_PTR)(x)) & ~(ULONG_PTR)1))
 
 typedef struct _PEB PEB;
+typedef struct _RTL_USER_PROCESS_PARAMETERS RTL_USER_PROCESS_PARAMETERS;
 
 typedef struct _PROCESS_BASIC_INFORMATION PROCESS_BASIC_INFORMATION;
 struct _PROCESS_BASIC_INFORMATION {
@@ -70,13 +73,57 @@ extern NtFreeVirtualMemoryPtr NtFreeVirtualMemory;
 extern RtlNtStatusToDosErrorPtr RtlNtStatusToDosError;
 #endif
 
-
 /*
 Struct definitions based on the fields documented to have
 consistent offsets in all Windows versions 5.0+
 TEB: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/teb/index.htm
 PEB: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/peb/index.htm
+RTL_USER_PROCESS_PARAMETERS: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/rtl_user_process_parameters.htm
+CURDIR: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/curdir.htm
 */
+
+typedef struct _UNICODE_STRING {
+	USHORT Length;
+	USHORT MaximumLength;
+	PWSTR  Buffer;
+} UNICODE_STRING, *PUNICODE_STRING;
+
+typedef struct _CURDIR {
+	UNICODE_STRING DosPath;
+	HANDLE Handle;
+} CURDIR;
+
+struct _RTL_USER_PROCESS_PARAMETERS {
+	ULONG MaximumLength;
+	ULONG Length;
+	ULONG Flags;
+	ULONG DebugFlags;
+	HANDLE ConsoleHandle;
+	ULONG ConsoleFlags;
+	// 4 bytes of padding
+	HANDLE StandardInput;
+	HANDLE StandardOutput;
+	HANDLE StandardError;
+	CURDIR CurrentDirectory;
+	UNICODE_STRING DllPath;
+	UNICODE_STRING ImagePathName;
+	UNICODE_STRING CommandLine;
+	PVOID Environment;
+	ULONG StartingX;
+	ULONG StartingY;
+	ULONG CountX;
+	ULONG CountY;
+	ULONG CountCharsX;
+	ULONG CountCharsY;
+	ULONG FillAttribute;
+	ULONG WindowFlags;
+	ULONG ShowWindowFlags;
+	// 4 bytes of padding
+	UNICODE_STRING WindowTitle;
+	UNICODE_STRING DesktopInfo;
+	UNICODE_STRING ShellInfo;
+	UNICODE_STRING RuntimeData;
+};
 
 struct _PEB {
 	BOOLEAN InheritedAddressSpace;
@@ -89,7 +136,7 @@ struct _PEB {
 	HANDLE Mutant;
 	PVOID ImageBaseAddress;
 	PVOID Ldr; // PEB_LDR_DATA*
-	PVOID ProcessParameters; // RTL_USER_PROCESS_PARAMETERS*
+	RTL_USER_PROCESS_PARAMETERS* ProcessParameters;
 	PVOID SubSystemData;
 	HANDLE ProcessHeap;
 	RTL_CRITICAL_SECTION* FastPebLock;
@@ -171,11 +218,6 @@ typedef struct _GDI_TEB_BATCH {
 	ULONG_PTR HDC;
 	ULONG Buffer[310];
 } GDI_TEB_BATCH, *PGDI_TEB_BATCH;
-typedef struct _UNICODE_STRING {
-	USHORT Length;
-	USHORT MaximumLength;
-	PWSTR  Buffer;
-} UNICODE_STRING, *PUNICODE_STRING;
 typedef struct _TEB TEB;
 struct _TEB {
 	//NT_TIB NtTib;
@@ -241,33 +283,74 @@ struct _TEB {
 	HANDLE DbgSsReserved[2];
 };
 
-#ifdef TH_X64
-#define read_teb_member(member) (\
-member_size(TEB, member) == 1 ? read_gs_byte(offsetof(TEB, member)) : \
-member_size(TEB, member) == 2 ? read_gs_word(offsetof(TEB, member)) : \
-member_size(TEB, member) == 4 ? read_gs_dword(offsetof(TEB, member)) : \
-read_gs_qword(offsetof(TEB, member)) \
-)
-#define write_teb_member(member, data) (\
-member_size(TEB, member) == 1 ? write_gs_byte(offsetof(TEB, member), (data)) : \
-member_size(TEB, member) == 2 ? write_gs_word(offsetof(TEB, member), (data)) : \
-member_size(TEB, member) == 4 ? write_gs_dword(offsetof(TEB, member), (data)) : \
-write_gs_qword(offsetof(TEB, member), (data)) \
-)
-#else
-#define read_teb_member(member) (\
-member_size(TEB, member) == 1 ? read_fs_byte(offsetof(TEB, member)) : \
-member_size(TEB, member) == 2 ? read_fs_word(offsetof(TEB, member)) : \
-read_fs_dword(offsetof(TEB, member)) \
-)
-#define write_teb_member(member, data) (\
-member_size(TEB, member) == 1 ? write_fs_byte(offsetof(TEB, member), (data)) : \
-member_size(TEB, member) == 2 ? write_fs_word(offsetof(TEB, member), (data)) : \
-write_fs_dword(offsetof(TEB, member), (data)) \
-)
 #endif
+
+
 #define CurrentTeb() ((TEB*)read_teb_member(Self))
 #define CurrentPeb() ((PEB*)read_teb_member(ProcessEnvironmentBlock))
+
+#if __cplusplus
+extern "C++" {
+
+#define read_teb_member(member) read_teb_value<decltype(TEB::member),offsetof(TEB,member)>()
+#define write_teb_member(member, data) write_teb_value<decltype(TEB::member),offsetof(TEB,member)>(data)
+
+template<typename T, size_t offset>
+static inline auto read_teb_value() {
+	if constexpr (sizeof(T) == sizeof(uint8_t)) {
+		uint8_t temp = read_teb_byte(offset);
+		return *(T*)&temp;
+	} else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+		uint16_t temp = read_teb_word(offset);
+		return *(T*)&temp;
+	} else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+		uint32_t temp = read_teb_dword(offset);
+		return *(T*)&temp;
+	} else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+		uint64_t temp = read_teb_qword(offset);
+		return *(T*)&temp;
+	} else {
+		T& ret = *(T*)((uintptr_t)CurrentTeb() + offset);
+		return ret;
+	}
+}
+
+template<typename T, size_t offset>
+static inline void write_teb_value(const T& value) {
+	if constexpr (sizeof(T) == sizeof(uint8_t)) {
+		write_teb_byte(offset, *(uint8_t*)&value);
+	} else if constexpr (sizeof(T) == sizeof(uint16_t)) {
+		write_teb_word(offset, *(uint16_t*)&value);
+	} else if constexpr (sizeof(T) == sizeof(uint32_t)) {
+		write_teb_dword(offset, *(uint32_t*)&value);
+	} else if constexpr (sizeof(T) == sizeof(uint64_t)) {
+		write_teb_qword(offset, *(uint64_t*)&value);
+	} else {
+		*(T*)((uintptr_t)CurrentTeb() + offset) = value;
+	}
+}
+
+}
+#else
+
+#define read_teb_member(member) (\
+member_size(TEB, member) == 1 ? read_teb_byte(offsetof(TEB, member)) : \
+member_size(TEB, member) == 2 ? read_teb_word(offsetof(TEB, member)) : \
+member_size(TEB, member) == 4 ? read_teb_dword(offsetof(TEB, member)) : \
+member_size(TEB, member) == 8 ? read_teb_qword(offsetof(TEB, member)) : \
+CurrentTeb()->member \
+)
+#define write_teb_member(member, data) (\
+member_size(TEB, member) == 1 ? write_teb_byte(offsetof(TEB, member), (data)) : \
+member_size(TEB, member) == 2 ? write_teb_word(offsetof(TEB, member), (data)) : \
+member_size(TEB, member) == 4 ? write_teb_dword(offsetof(TEB, member), (data)) : \
+member_size(TEB, member) == 8 ? write_teb_qword(offsetof(TEB, member), (data)) : \
+(void)(CurrentTeb()->member = (data)) \
+)
+
+#endif
+
+#if !TH_NO_NTDLL_DEFINITIONS
 
 typedef struct _KSYSTEM_TIME KSYSTEM_TIME;
 struct _KSYSTEM_TIME {
@@ -403,3 +486,5 @@ struct _KUSER_SHARED_DATA {
 
 #define MM_SHARED_USER_DATA_VA (0x7FFE0000u)
 #define USER_SHARED_DATA (*(const KUSER_SHARED_DATA *const)MM_SHARED_USER_DATA_VA)
+
+#endif

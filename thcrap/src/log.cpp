@@ -479,11 +479,11 @@ void log_init(int console)
 
 		{
 			DISPLAY_DEVICEA display_device = { sizeof(display_device) };
-			for (size_t i = 0;
+			for (
+				DWORD i = 0;
 				EnumDisplayDevicesA(NULL, i, &display_device, EDD_GET_DEVICE_INTERFACE_NAME);
-				i++
-				)
-			{
+				++i
+			) {
 				if (display_device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) {
 					DISPLAY_DEVICEA mon = { sizeof(mon) };
 					if (!EnumDisplayDevicesA(display_device.DeviceName, 0, &mon, EDD_GET_DEVICE_INTERFACE_NAME)) {
