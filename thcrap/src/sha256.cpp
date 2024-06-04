@@ -150,9 +150,14 @@ inline void sha256_final(SHA256_CTX *ctx)
 
 	// Append to the padding the total message's length in bits and transform.
     ctx->bitlen.qword += ctx->datalen * 8;
+#if TH_X86
     uint32_t* data_uint = (uint32_t*)ctx->data;
 	data_uint[15] = bswap_32(ctx->bitlen.dwords[0]);
 	data_uint[14] = bswap_32(ctx->bitlen.dwords[1]);
+#else
+    uint64_t* data_uint = (uint64_t*)ctx->data;
+    data_uint[7] = _byteswap_uint64(ctx->bitlen.qword);
+#endif
 	sha256_transform(ctx);
 
 	// Since this implementation uses little endian byte ordering and SHA uses big endian,

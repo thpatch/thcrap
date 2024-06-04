@@ -43,8 +43,8 @@ int globalconfig_dump(void)
 	return json_dump_file(global_cfg, "config/config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 }
 
-template<typename T>
-T globalconfig_get(std::function<T (const json_t*)> json_T_value, const char* key, const T default_value)
+template<typename T, typename L>
+T globalconfig_get(const L& json_T_value, const char* key, const T default_value)
 {
 	if (!global_cfg) {
 		globalconfig_init();
@@ -58,8 +58,8 @@ T globalconfig_get(std::function<T (const json_t*)> json_T_value, const char* ke
 	return json_T_value(value_json);
 }
 
-template<typename T>
-int globalconfig_set(std::function<json_t* (const T)> json_T, const char* key, const T value)
+template<typename T, typename L>
+int globalconfig_set(const L& json_T, const char* key, const T value)
 {
 	if (!global_cfg) {
 		globalconfig_init();

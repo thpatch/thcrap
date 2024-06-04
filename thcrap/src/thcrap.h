@@ -34,8 +34,16 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
+
+// "text"s creates an std::string
+// "text"sv creates an std::string_view
+// L"text"s creates an std::wstring
+// L"text"sv creates an std::wstring_view
+using namespace std::literals::string_literals;
+using namespace std::literals::string_view_literals;
 
 extern "C" {
 #endif

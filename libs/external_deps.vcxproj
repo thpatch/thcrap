@@ -56,7 +56,8 @@
 	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).dll" OutputFolder="$(OutDir)" />
 	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
-	<CopyFiles Include="$(InDir)bin\fribidi-0$(Suffix).dll" OutputFolder="$(OutDir)" />
-	<CopyFiles Include="$(InDir)bin\fribidi-0$(Suffix).pdb" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\fribidi$(Suffix).dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\fribidi$(Suffix).lib" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\fribidi$(Suffix).pdb" OutputFolder="$(OutDir)" />
   </ItemGroup>
 </Project>

@@ -334,9 +334,9 @@ BOOL layout_textout_raw_w(layout_state_t *lay, POINT p)
 
 		WCHAR_T_DEC(str);
 		WCHAR_T_CONV(str);
-		defer(WCHAR_T_FREE(str));
-
-		return chain_TextOutW(lay->hdc, p.x, p.y, str_w, wcslen(str_w));
+		BOOL ret = chain_TextOutW(lay->hdc, p.x, p.y, str_w, wcslen(str_w));
+		WCHAR_T_FREE(str);
+		return ret;
 	}
 	return FALSE;
 }

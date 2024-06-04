@@ -33,7 +33,7 @@ static char **resolve_chain_game_default(const char *fn)
 	char *fn_common = fn_for_game(fn);
 	const char *fn_common_ptr = fn_common ? fn_common : fn;
 	char **ret = resolve_chain(fn_common_ptr);
-	SAFE_FREE(fn_common);
+	free(fn_common);
 	return ret;
 }
 
@@ -222,7 +222,7 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 {
 	char *full_fn = fn_for_game(fn);
 	json_t *ret = stack_json_resolve(full_fn, file_size);
-	SAFE_FREE(full_fn);
+	free(full_fn);
 	return ret;
 }
 
@@ -356,10 +356,7 @@ void stack_print()
 int stack_check_if_unneeded(const char *patch_id)
 {
 	const char *c_game = runconfig_game_get();
-	std::string game = "";
-	if (c_game) {
-		game = c_game;
-	}
+	std::string game = c_game ? c_game : ""s;
 
 	const char *build = runconfig_build_get();
 

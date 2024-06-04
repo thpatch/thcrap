@@ -501,11 +501,7 @@ void manual_stack_walk(uintptr_t current_esp) {
 		, current_esp, stack_top
 	);
 
-#ifdef TH_X64
-	if (current_esp % 16) {
-#else
 	if (((uintptr_t)stack_top - current_esp) % sizeof(uintptr_t)) {
-#endif
 		log_print(
 			"WARNING: Stack is not aligned, data may be unreliable.\n"
 		);
@@ -547,7 +543,7 @@ void manual_stack_walk(uintptr_t current_esp) {
 		"(Execute Write-Copy)",
 		"(Execute Read Write)"
 	};
-	uint8_t stack_offset_length = snprintf(NULL, 0, "%p", (uintptr_t)(stack_top - 1) - current_esp);
+	uint8_t stack_offset_length = snprintf(NULL, 0, "%zX", (uintptr_t)(stack_top - 1) - current_esp);
 	for (
 		uintptr_t* stack_addr = (uintptr_t*)current_esp;
 		stack_addr < stack_top - 1; // These don't necessarily align cleanly, so array indexing would be tricky to use here
