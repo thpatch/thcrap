@@ -231,6 +231,12 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 			break;
 	}
 
+#if TH_X64
+	// x64 CPUs aren't guaranteed to support LAHF/SAHF when operating
+	// in long mode, so don't allow setting those breakpoint types
+	// if that situation is detected.
+	state_type |= !CPU_Supports_LMLSAHF();
+#endif
 	// State bit 1 indicates whether a stack adjustment is required
 	state_type <<= 1;
 

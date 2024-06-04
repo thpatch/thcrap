@@ -242,6 +242,7 @@ bool CPU_Supports_SHA(void);
 bool CPU_FDP_ErrorOnly(void);
 bool CPU_FCS_FDS_Deprecated(void);
 THCRAP_API bool OS_is_wine(void);
+bool CPU_Supports_LMLSAHF(void);
 
 void DisableCodecaveNotFoundWarning(bool state);
 

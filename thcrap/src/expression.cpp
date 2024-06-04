@@ -459,6 +459,10 @@ THCRAP_API bool OS_is_wine(void) {
 	return wine_version != NULL;
 }
 
+bool CPU_Supports_LMLSAHF(void) {
+	return CPUID_Data.HasLMLSAHF;
+}
+
 #define WarnOnce(warning) do {\
 	static bool AlreadyDisplayedWarning = false;\
 	if (!AlreadyDisplayedWarning) { \
