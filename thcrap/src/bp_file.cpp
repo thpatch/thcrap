@@ -153,20 +153,16 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info)
 // Cool function name.
 int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size)
 {
-	if(!buffer || !name) {
+	if unexpected(!buffer || !name) {
 		return -1;
 	}
-	{
-		size_t fn_len = strlen(dir) + 1 + strlen(name) + 1;
-		VLA(char, fn, fn_len);
 
-		sprintf(fn, "%s/%s", dir, name);
-
-		if(!PathFileExists(fn)) {
-			file_write(fn, buffer, size);
-		}
-		VLA_FREE(fn);
+	BUILD_VLA_STR(char, fn, dir, "/", name);
+	if (!PathFileExistsU(fn)) {
+		file_write(fn, buffer, size);
 	}
+	VLA_FREE(fn);
+
 	return 0;
 }
 

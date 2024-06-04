@@ -67,18 +67,15 @@ void oldbuild_show()
 		// • What if one patch in the stack *does* provide support for
 		//   this older version, but others don't?
 		// • Stringlocs are also part of support. -.-
-		static constexpr char BUILD_JS_FORMAT[] = "%s.%s.js";
-		const char *game_str = runconfig_game_get();
-		const char *build_str = runconfig_build_get();
-		const int build_js_fn_len = snprintf(NULL, 0, BUILD_JS_FORMAT, game_str, build_str) + 1;
-		VLA(char, build_js_fn, build_js_fn_len);
-		sprintf(build_js_fn, BUILD_JS_FORMAT, game_str, build_str);
+		std::string_view build_str = runconfig_build_get_view();
+		BUILD_VLA_STR(char, build_js_fn, runconfig_game_get_view(), ".", build_str, ".js");
 		char *build_js_chain[] = {
 			build_js_fn,
 			nullptr
 		};
 		json_t* build_js = stack_json_resolve_chain(build_js_chain, nullptr);
 		VLA_FREE(build_js_fn);
+
 		const bool supported = build_js != nullptr;
 		json_decref(build_js);
 
@@ -96,7 +93,7 @@ void oldbuild_show()
 		}
 
 		strings_replace(MSG_SLOT, "${game_title}", title);
-		strings_replace(MSG_SLOT, "${build_running}", build_str);
+		strings_replace(MSG_SLOT, "${build_running}", build_str.data());
 		strings_replace(MSG_SLOT, "${build_latest}", runconfig_latest_get());
 		strings_replace(MSG_SLOT, "${project_short}", PROJECT_NAME_SHORT);
 		const char *msg = strings_replace(MSG_SLOT, "${url_update}", url_update);
@@ -115,9 +112,15 @@ game_version* identify_by_hash(const char *fn, size_t *file_size, json_t *versio
 			free(file_buffer);
 
 			char hash_str[65];
+#if TH_X86
 			for (size_t i = 0; i < 8; i++) {
 				sprintf(hash_str + (i * 8), "%08x", _byteswap_ulong(hash.dwords[i]));
 			}
+#else
+			for (size_t i = 0; i < 4; i++) {
+				sprintf(hash_str + (i * 16), "%016llx", _byteswap_uint64(hash.qwords[i]));
+			}
+#endif
 			json_t *id = json_object_get(json_hashes, hash_str);
 			return id ? new game_version(id) : nullptr;
 		}

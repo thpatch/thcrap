@@ -331,7 +331,7 @@ patch_t patch_build(const patch_desc_t *desc)
 {
 	std::string_view repo_id = desc->repo_id;
 	std::string_view patch_id = desc->patch_id;
-	static constexpr std::string_view repos = "repos/";
+	static constexpr std::string_view repos = "repos/"sv;
 	char* archive = (char*)malloc(repos.length() + repo_id.length() + 1 + patch_id.length() + 2);
 	char* archive_write = archive;
 	archive_write += repos.copy(archive_write, repos.length());
@@ -453,7 +453,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	json_t *dependencies = json_object_get(patch_js, "dependencies");
 	if (json_is_array(dependencies)) {
 		const size_t array_size = json_array_size(dependencies);
-		patch.dependencies = new patch_desc_t[array_size + 1];
+		patch.dependencies = (patch_desc_t*)malloc(sizeof(patch_desc_t) * (array_size + 1));
 		patch.dependencies[array_size].patch_id = NULL;
 		json_t *val;
 		json_array_foreach_scoped(size_t, i, dependencies, val) {
@@ -464,7 +464,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	json_t *fonts = json_object_get(patch_js, "fonts");
 	if (json_is_object(fonts)) {
 		const size_t array_size = json_object_size(fonts);
-		patch.fonts = new char*[array_size + 1];
+		patch.fonts = (char**)malloc(sizeof(char*) * (array_size + 1));
 		patch.fonts[array_size] = NULL;
 		const char* font_fn;
 		size_t i = 0;
@@ -508,14 +508,14 @@ void patch_free(patch_t *patch)
 			for (size_t i = 0; patch->fonts[i]; i++) {
 				free(patch->fonts[i]);
 			}
-			delete[] patch->fonts;
+			free(patch->fonts);
 		}
 		if (patch->dependencies) {
 			for (size_t i = 0; patch->dependencies[i].patch_id; i++) {
 				free(patch->dependencies[i].patch_id);
 				free(patch->dependencies[i].repo_id);
 			}
-			delete[] patch->dependencies;
+			free(patch->dependencies);
 		}
 	}
 }
@@ -586,12 +586,10 @@ void patchhook_register(const char *wildcard, func_patch_t patch_func, func_patc
 
 patchhook_t *patchhooks_build(const char *fn)
 {
-	if(!fn) {
+	if unexpected(!fn) {
 		return NULL;
 	}
-	size_t fn_len = strlen(fn) + 1;
-	VLA(char, fn_normalized, fn_len);
-	memcpy(fn_normalized, fn, fn_len);
+	STRDUP_VLA(char, fn_normalized, fn);
 	str_slash_normalize(fn_normalized);
 
 	patchhook_t *hooks = (patchhook_t *)malloc((patchhooks.size() + 1) * sizeof(patchhook_t));
@@ -613,14 +611,10 @@ json_t *patchhooks_load_diff(const patchhook_t *hook_array, const char *fn, size
 	if (!hook_array || !fn) {
 		return nullptr;
 	}
-	json_t *patch;
 
-	size_t fn_len = strlen(fn);
-	VLA(char, diff_fn, fn_len + strlen(".jdiff") + 1);
-	memcpy(diff_fn, fn, fn_len);
-	memcpy(diff_fn + fn_len, ".jdiff", sizeof(".jdiff"));
+	BUILD_VLA_STR(char, diff_fn, fn, ".jdiff");
 	size_t diff_size = 0;
-	patch = stack_game_json_resolve(diff_fn, &diff_size);
+	json_t* patch = stack_game_json_resolve(diff_fn, &diff_size);
 	VLA_FREE(diff_fn);
 
 	if (size) {

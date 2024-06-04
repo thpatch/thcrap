@@ -120,6 +120,7 @@
     <ClInclude Include="src\strings_array.h" />
     <ClInclude Include="src\tlnote.hpp" />
     <ClInclude Include="src\util.h" />
+    <ClInclude Include="src\build_str.h" />
     <ClInclude Include="src\textdisp.h" />
     <ClInclude Include="src\thcrap.h" />
     <ClInclude Include="src\thcrap_update_wrapper.h" />

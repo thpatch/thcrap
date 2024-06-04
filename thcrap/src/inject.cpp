@@ -243,7 +243,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	// 
 	switch (return_value) {
 		case 1: {
-			static const wchar_t *const injectError1Format =
+			static constexpr wchar_t injectError1Format[] =
 				L"Could not inject %ls.\n"
 				"\n"
 				"If you're running Windows Vista or 7, make sure that you have installed the KB2533623 update:\n"
@@ -257,7 +257,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 			break;
 		}
 		case 2: {
-			static const char *const injectError2Format =
+			static constexpr char injectError2Format[] =
 				"Could not load the function: %s";
 			char *const injectError2 = (char*)malloc(snprintf(NULL, 0, injectError2Format, func_name) + 1);
 			sprintf(injectError2, injectError2Format, func_name);
@@ -447,13 +447,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 	
 	if (args) {
 		size_t args_len = strlen(args);
-		VLA(char, cmd, exe_fn_len + args_len + 4);
-		cmd[0] = '\"';
-		memcpy(cmd + 1, exe_fn_local, exe_fn_len);
-		cmd[exe_fn_len + 1] = '\"';
-		cmd[exe_fn_len + 2] = ' ';
-		memcpy(cmd + exe_fn_len + 3, args, args_len);
-		cmd[exe_fn_len + args_len + 3] = 0;
+		BUILD_VLA_STR(char, cmd, "\"", exe_fn_local, exe_fn_len, "\" ", args, args_len);
 
 		ret = W32_ERR_WRAP(inject_CreateProcessU(
 			NULL, cmd, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
@@ -476,7 +470,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 	if(ret) {
 		char *msg_str = NULL;
 
-		FormatMessage(
+		FormatMessageU(
 			FORMAT_MESSAGE_FROM_SYSTEM |
 			FORMAT_MESSAGE_ALLOCATE_BUFFER |
 			FORMAT_MESSAGE_IGNORE_INSERTS,

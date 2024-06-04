@@ -19,9 +19,9 @@
 #include "thcrap.h"
 
 #ifdef TH_X64
-static constexpr char STEAM_API_DLL_PATH[] = "\\bin\\steam_api64.dll";
+static constexpr char STEAM_API_DLL_PATH[] = "bin\\steam_api64.dll";
 #else
-static constexpr char STEAM_API_DLL_PATH[] = "\\bin\\steam_api.dll";
+static constexpr char STEAM_API_DLL_PATH[] = "bin\\steam_api.dll";
 #endif
 
 typedef const char* TH_CDECL steam_appid_func_t(void);
@@ -43,7 +43,7 @@ DLL_FUNC_DEF(SteamAPI, Shutdown);
 
 extern "C" TH_EXPORT void steam_mod_post_init(void)
 {
-	std::string appid = "";
+	std::string appid;
 
 	const json_t *appid_obj = json_object_get(runconfig_json_get(), "steam_appid");
 	if (appid_obj) {
@@ -61,7 +61,7 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 	}
 
 	// Got AppID?
-	if (appid == "") {
+	if (!appid.empty()) {
 		return;
 	}
 
@@ -74,15 +74,10 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 	}
 
 	// Got steam_api.dll?
-	std::string_view thcrap_dir = runconfig_thcrap_dir_get_view();
 
-
-	size_t dll_fn_len = thcrap_dir.length() + strlen(STEAM_API_DLL_PATH) + 1;
-	VLA(char, dll_fn, dll_fn_len);
+	BUILD_VLA_STR(char, dll_fn, runconfig_thcrap_dir_get_view(), STEAM_API_DLL_PATH);
 	defer(VLA_FREE(dll_fn));
-	strcpy(dll_fn, thcrap_dir.data());
-	strcat(dll_fn, STEAM_API_DLL_PATH);
-
+	
 	hSteamAPI = LoadLibraryExU(dll_fn, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 	if(!hSteamAPI) {
 		log_printf(
