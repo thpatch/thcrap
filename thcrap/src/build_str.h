@@ -255,6 +255,16 @@ private:
     struct inner;
     template<typename ... ArgsT>
     struct inner<std::tuple<ArgsT...>> {
+
+#if COMPILER_IS_REAL_MSVC
+        template<typename ... Args2>
+        static constexpr TH_FORCEINLINE auto build_vla_data_impl3(Args2&&... strs) {
+            return [=](T* buffer) {
+                build_str<T, null_terminate>(buffer, std::forward<const ArgsT>(strs)...);
+            };
+        }
+#endif
+
         static constexpr TH_FORCEINLINE auto build_vla_impl2(size_t& length, ArgsT&&... strs) {
             size_t length_val = alloc_str_calc_len<T>(0, std::forward<ArgsT>(strs)...);
             if constexpr (null_terminate) {
@@ -263,9 +273,27 @@ private:
             length_val *= sizeof(T);
             length = length_val;
             if constexpr (requires_implicit_strlen) {
-                return [&](T* buffer) {
+#if COMPILER_IS_REAL_MSVC
+                // MSVC generates insanely stupid code
+                // if [=] capture is used without this.
+                //
+                // The intent is to still pass everything
+                // by reference unless the argument is an
+                // implicitly created string_view, since
+                // those need to be captured by value to
+                // avoid a dangling reference when returning.
+                return build_vla_data_impl3(
+                    std::forward<std::conditional_t<
+                        std::is_same_v<ArgsT, std::basic_string_view<T>>,
+                        std::basic_string_view<T>,
+                        std::reference_wrapper<std::remove_reference_t<ArgsT>>
+                    >>(strs)...
+                );
+#else
+                return [=](T* buffer) {
                     build_str<T, null_terminate>(buffer, std::forward<const ArgsT>(strs)...);
                 };
+#endif
             } else {
                 return &build_vla_dummy;
             }
