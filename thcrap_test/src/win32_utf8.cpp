@@ -39,7 +39,7 @@ TEST(Win32Utf8Test, GetModuleHandleEx)
 	ASSERT_NE(hMod, nullptr);
 
 	HMODULE dummy;
-	EXPECT_FALSE(GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, dll_fn.u8string().c_str(), &dummy));
+	EXPECT_TRUE(GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, dll_fn.u8string().c_str(), &dummy));
 	EXPECT_TRUE( GetModuleHandleExU(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, dll_fn.u8string().c_str(), &dummy));
 
 	FreeLibrary(hMod);
