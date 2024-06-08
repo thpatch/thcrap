@@ -16,13 +16,13 @@ HMODULE thcrap_update_module(void)
 	static HMODULE hMod = (HMODULE)-1;
 
 	if (hMod == (HMODULE)-1) {
-		bool isWine = GetProcAddress(GetModuleHandleA("KERNEL32"), "wine_get_unix_file_name");
+		bool isWine = GetProcAddress(GetModuleHandleW(L"KERNEL32"), "wine_get_unix_file_name");
 		if (isWine) {
-			SetCurrentDirectoryU("bin");
+			SetCurrentDirectoryW(L"bin");
 		}
-		hMod = LoadLibraryExU("thcrap_update" FILE_SUFFIX ".dll", nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
+		hMod = LoadLibraryExW(L"thcrap_update" FILE_SUFFIX_W L".dll", nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 		if (isWine) {
-			SetCurrentDirectoryU("..");
+			SetCurrentDirectoryW(L"..");
 		}
 	}
 	return hMod;

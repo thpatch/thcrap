@@ -33,14 +33,15 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_CRT_RAND_S=1;THCRAP_EXPORTS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_RAND_S=1;THCRAP_EXPORTS;THCRAP_ALLOW_INTERNAL_APIS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libs/json5pp/;$(SolutionDir)libs/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-	  <AdditionalDependencies Condition="'$(Platform)'=='x64'">thcrap_x64_injector$(DebugSuffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>thcrap.def</ModuleDefinitionFile>
+      <AdditionalDependencies Condition="'$(Platform)'=='x64'">thcrap_x64_injector$(DebugSuffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile Condition="'$(Platform)'!='x64'">thcrap_x86.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile Condition="'$(Platform)'=='x64'">thcrap_x64.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -133,7 +134,6 @@
 	<GAS Condition="'$(Platform)'!='x64'" Include="src\str_to_addr.asm" />
     <GAS Condition="'$(Platform)'=='x64'" Include="src\bp_entry_64.asm" />
 	<GAS Condition="'$(Platform)'=='x64'" Include="src\str_to_addr_64.asm" />
-    <None Include="thcrap.def" />
     <None Condition="'$(Platform)'!='x64'" Include="thcrap_x86.def" />
     <None Condition="'$(Platform)'=='x64'" Include="thcrap_x64.def" />
   </ItemGroup>

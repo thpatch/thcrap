@@ -574,11 +574,15 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 	return ret;
 }
 
-void dialog_mod_detour(void)
+extern "C" {
+
+TH_EXPORT void dialog_mod_detour(void)
 {
 	detour_chain("user32.dll", 1,
 		"CreateDialogParamA", dialog_CreateDialogParamA, &chain_CreateDialogParamU,
 		"DialogBoxParamA", dialog_DialogBoxParamA, &chain_DialogBoxParamU,
 		NULL
 	);
+}
+
 }

@@ -13,7 +13,7 @@
       as the exe we wrap, so we overwrite it here.
     -->
     <TargetName>thcrap$(Suffix)</TargetName>
-	<TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
+    <TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
   </PropertyGroup>
   <ItemGroup>
     <ResourceCompile Include="thcrap_configure_wrapper.rc">

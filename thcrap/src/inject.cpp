@@ -803,7 +803,9 @@ HMODULE WINAPI inject_LoadLibraryW(
 	return ret;
 }
 
-void inject_mod_detour(void)
+extern "C" {
+
+TH_EXPORT void inject_mod_detour(void)
 {
 	detour_chain("kernel32.dll", 1,
 		"CreateProcessA", inject_CreateProcessU, &chain_CreateProcessU,
@@ -813,4 +815,6 @@ void inject_mod_detour(void)
 		"LoadLibraryW", inject_LoadLibraryW, &chain_LoadLibraryW,
 		NULL
 	);
+}
+
 }

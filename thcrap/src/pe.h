@@ -55,7 +55,7 @@ TH_CALLER_FREE exported_func_t* GetExportedFunctions(HMODULE hDll);
 
 // Shorthand for GetModuleHandleEx() with GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS.
 // Returns a nullptr on failure.
-HMODULE GetModuleContaining(void *addr);
+THCRAP_INTERNAL_API HMODULE GetModuleContaining(void *addr);
 /// -----
 
 /// Remote

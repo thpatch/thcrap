@@ -37,18 +37,18 @@ typedef struct {
 } file_rep_t;
 
 // Initialize a file_rep_t object, and loads the replacement file and patch for file_name.
-int file_rep_init(file_rep_t *fr, const char *file_name);
+THCRAP_API int file_rep_init(file_rep_t *fr, const char *file_name);
 
 // Clears a file_rep_t object.
-int file_rep_clear(file_rep_t *fr);
+THCRAP_API int file_rep_clear(file_rep_t *fr);
 
 // Return the size of the buffer needed for the patched file
-#define POST_JSON_SIZE(fr) (fr)->pre_json_size + (fr)->patch_size
+#define POST_JSON_SIZE(fr) ((fr)->pre_json_size + (fr)->patch_size)
 
 
 /// Thread-local storage
 /// --------------------
-file_rep_t* fr_tls_get(void);
+THCRAP_API file_rep_t* fr_tls_get(void);
 void fr_tls_free(file_rep_t *fr);
 /// --------------------
 
@@ -65,7 +65,7 @@ void fr_tls_free(file_rep_t *fr);
   * ------------------------
   *	None
   */
-int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Collects all necessary file replacement parameters, then writes a
@@ -122,12 +122,12 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_file_buffer
   */
-int BP_file_load(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API int BP_file_load(x86_reg_t *regs, json_t *bp_info);
 
 // These have been merged into BP_file_load() and are only kept for backwards
 // compatibility.
-int BP_file_name(x86_reg_t *regs, json_t *bp_info);
-int BP_file_size(x86_reg_t *regs, json_t *bp_info);
+TH_IMPORT int BP_file_name(x86_reg_t *regs, json_t *bp_info);
+TH_IMPORT int BP_file_size(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Placed at a position where a complete file is loaded into a single block
@@ -143,10 +143,10 @@ int BP_file_size(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_file_buffer
   */
-int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
 // Cool function name.
-int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size);
+THCRAP_API int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size);
 
 int bp_file_init(void);
 void bp_file_mod_thread_exit(void);

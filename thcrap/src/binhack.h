@@ -127,21 +127,21 @@ typedef struct {
 void hackpoints_error_function_not_found(const char *func_name);
 
 // Calculate the length in bytes of [code_str], the string representation of a binary hack
-size_t code_string_calc_size(const char* code_str);
+THCRAP_API size_t code_string_calc_size(const char* code_str);
 
 // Renders [code_str], the string representation of a binary hack,
 // into the byte array [output_buffer]. [target_addr] is used as
 // the basis to resolve relative patch values and wildcard bytes.
-int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str, HMODULE hMod);
+THCRAP_API int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str, HMODULE hMod);
 
 // Parses a json binhack entry and returns a binhack object
-bool binhack_from_json(const char* name, json_t* in, binhack_t* out);
+THCRAP_API bool binhack_from_json(const char* name, json_t* in, binhack_t* out);
 
 // Applies every binary hack in [binhacks] irreversibly on the current process.
 // If HMODULE is not null, relative addresses are relative to this module.
 // Else, they are relative to the main module of the current process.
 // Returns the number of binary hacks that could not be applied.
-size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage* page_array);
+THCRAP_API size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE hMod, HackpointMemoryPage* page_array);
 
 // Adds every codecave in [codecaves] on the current process.
 // The codecaves can then be called from binhacks similar to plugin functions. For example:
@@ -153,10 +153,10 @@ size_t binhacks_apply(const binhack_t *binhacks, size_t binhacks_count, HMODULE 
 // "codecaves": {
 //		"test_cave": "somecode"
 // }
-size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[5]);
+THCRAP_API size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hMod, HackpointMemoryPage page_array[5]);
 
 // Parses a json codecave entry and returns a codecave object
-bool codecave_from_json(const char *name, json_t *in, codecave_t *out);
+THCRAP_API bool codecave_from_json(const char *name, json_t *in, codecave_t *out);
 
 // Compatibility definitions for old code.
 // These are merely code_string_calc_size and
@@ -166,6 +166,6 @@ TH_IMPORT int binhack_render(uint8_t* output_buffer, uintptr_t target_addr, cons
 
 
 void constpool_reset();
-void add_constpool(const char* data, size_t data_length, patch_value_type_t type, uint8_t alignment, uintptr_t addr, HMODULE source_module);
-void add_constpool_raw_pointer(uintptr_t data, uintptr_t addr);
+THCRAP_API void add_constpool(const char* data, size_t data_length, patch_value_type_t type, uint8_t alignment, uintptr_t addr, HMODULE source_module);
+THCRAP_API void add_constpool_raw_pointer(uintptr_t data, uintptr_t addr);
 void constpool_apply(HackpointMemoryPage* page_array);

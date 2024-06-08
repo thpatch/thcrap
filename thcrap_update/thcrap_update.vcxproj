@@ -34,7 +34,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>THCRAP_UPDATE_EXPORTS;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;DISCOVERY_DEFAULT_REPO="$(DiscoveryDefaultRepo)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>THCRAP_UPDATE_EXPORTS;THCRAP_ALLOW_INTERNAL_APIS;_SILENCE_CXX17_RESULT_OF_DEPRECATION_WARNING;DISCOVERY_DEFAULT_REPO="$(DiscoveryDefaultRepo)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libs/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>

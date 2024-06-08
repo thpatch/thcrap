@@ -359,13 +359,15 @@ public:
 
 RepatchWatcher repatcher;
 
-void repatch_mod_init(void*) {
+extern "C" {
+
+TH_EXPORT void repatch_mod_init(void*) {
 	repatcher.AddAllPatchDirectories();
 	repatcher.StartWatchLoop();
 }
 
 // Logging can't be done in the destructor
-void repatch_mod_exit(void*) {
+TH_EXPORT void repatch_mod_exit(void*) {
 	log_printf(
 		"Shutting down repatch watcher thread.\n"
 		"Statistics:\n"
@@ -374,4 +376,6 @@ void repatch_mod_exit(void*) {
 		"----\n"
 		, repatcher.TotalChanges()
 	);
+}
+
 }

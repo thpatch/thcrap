@@ -16,6 +16,8 @@
 #define TH_CALLER_DELETEA TH_CALLER_CLEANUP(delete[])
 #define TH_CHECK_RET TH_NODISCARD_REASON("Return value must be checked to determine validity of other outputs!")
 
+#define TH_DEPRECATED_EXPORT TH_DEPRECATED_REASON("Exported function is only kept for backwards compatibility") THCRAP_API
+
 #define BoolStr(Boolean) (Boolean ? "true" : "false")
 
 #define member_size(type, member) sizeof(((type *)0)->member)
@@ -65,9 +67,15 @@ typedef return_type (calling_convention* name)
 #define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))
 
 // Advances [src] by [num] and returns [num].
-size_t ptr_advance(const unsigned char **src, size_t num);
+inline size_t ptr_advance(const unsigned char **src, size_t num) {
+	*src += num;
+	return num;
+}
 // Copies [num] bytes from [src] to [dst] and advances [src].
-size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num);
+inline size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num) {
+	memcpy(dst, *src, num);
+	return ptr_advance(src, num);
+}
 
 // Copies [num] bytes from [src] to [dst] and returns [dst] advanced by [num].
 inline char* memcpy_advance_dst(char *dst, const void *src, size_t num)
@@ -321,7 +329,13 @@ inline void str_ascii_replace(char* str, const char from, const char to)
 }
 
 // Changes directory slashes in [str] to '/'.
-void str_slash_normalize(char *str);
+TH_DEPRECATED_EXPORT void (str_slash_normalize)(char *str);
+
+inline void str_slash_normalize_inline(char* str) {
+	str_ascii_replace(str, '\\', '/');
+}
+
+#define str_slash_normalize(str) str_slash_normalize_inline(str)
 
 /**
   * Usually, the normal version with Unix-style forward slashes should be
@@ -336,16 +350,52 @@ void str_slash_normalize(char *str);
   *   Yes, out of all sensible bugs there could have been, it had to be _this_.
   *   Amazing.
   */
-void str_slash_normalize_win(char *str);
+TH_DEPRECATED_EXPORT void (str_slash_normalize_win)(char *str);
+
+inline void str_slash_normalize_win_inline(char* str) {
+	str_ascii_replace(str, '/', '\\');
+}
+
+#define str_slash_normalize_win(str) str_slash_normalize_win_inline(str)
 
 // Counts the number of digits in [number]
-unsigned int str_num_digits(int number);
+TH_DEPRECATED_EXPORT unsigned int (str_num_digits)(int number);
+
+inline unsigned int str_num_digits_inline(int number) {
+	unsigned int digits = 0;
+	if (number < 0) {
+		digits = 1; // remove this line if '-' counts as a digit
+	}
+	while (number) {
+		number /= 10;
+		digits++;
+	}
+	return digits;
+}
+
+#define str_num_digits(number) str_num_digits_inline(number)
 
 // Returns the base of the number in [str].
-int str_num_base(const char *str);
+TH_DEPRECATED_EXPORT int (str_num_base)(const char *str);
 
-// Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [format]
-void str_hexdate_format(char format[11], uint32_t date);
+inline int str_num_base_inline(const char* str) {
+	return (str[0] == '0' && (str[1] | 0x20) == 'x') ? 16 : 10;
+}
+
+#define str_num_base(str) str_num_base_inline(str)
+
+// Prints the hexadecimal [date] (0xYYYYMMDD) as YYYY-MM-DD to [buffer]
+TH_DEPRECATED_EXPORT void (str_hexdate_format)(char buffer[11], uint32_t date);
+
+inline void str_hexdate_format_inline(char buffer[11], uint32_t date) {
+	sprintf(buffer, "%04x-%02x-%02x",
+		(date & 0xffff0000) >> 16,
+		(date & 0x0000ff00) >> 8,
+		(date & 0x000000ff)
+	);
+}
+
+#define str_hexdate_format(buffer, date) str_hexdate_format_inline((buffer),(date))
 
 /// -------
 
@@ -419,10 +469,17 @@ TH_CALLER_FREE inline char* strdup_cat(std::string_view str1, std::string_view s
 #define _BitScanReverseZ(index, mask) _BitScanReverse64((index), (mask))
 #endif
 
-// Returns whether [c] is a valid hexadecimal character
-bool is_valid_hex(char c);
-
 #define is_valid_decimal(c) ((uint8_t)((c) - '0') < 10)
+
+// Returns whether [c] is a valid hexadecimal character
+TH_DEPRECATED_EXPORT bool (is_valid_hex)(char c);
+
+inline bool is_valid_hex_inline(char c) {
+	c |= 0x20;
+	return is_valid_decimal(c) | ((uint8_t)(c - 'a') < 6);
+}
+
+#define is_valid_hex(c) is_valid_hex_inline(c)
 
 // Efficiently tests if [value] is within the range [min, max)
 inline bool int_in_range_exclusive(int32_t value, int32_t min, int32_t max) {
@@ -436,7 +493,18 @@ inline bool int_in_range_inclusive(int32_t value, int32_t min, int32_t max) {
 
 // Returns either the hexadecimal value of [c]
 // or -1 if [c] is not a valid hexadecimal character
-int8_t hex_value(char c);
+TH_DEPRECATED_EXPORT int8_t (hex_value)(char c);
+
+inline int8_t hex_value_inline(char c) {
+	c |= 0x20;
+	c -= '0';
+	if ((uint8_t)c < 10) return c;
+	c -= 49;
+	if ((uint8_t)c < 6) return c + 10;
+	return -1;
+}
+
+#define hex_value(c) hex_value_inline(c)
 
 #ifdef __cplusplus
 

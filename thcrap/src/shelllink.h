@@ -25,9 +25,9 @@ enum ShortcutsType
 };
 
 // Create shortcuts for the given games
-int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, enum ShortcutsDestination destination, enum ShortcutsType shortcut_type);
+THCRAP_API int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, enum ShortcutsDestination destination, enum ShortcutsType shortcut_type);
 
 // Get the resource ID of the first icon group for the given module.
 // If the return value is a resource name (IS_INTRESOURCE(iconGroupId) is false),
 // it must be freed with thcrap_free();
-LPWSTR GetIconGroupResourceId(HMODULE hModule);
+THCRAP_API LPWSTR GetIconGroupResourceId(HMODULE hModule);

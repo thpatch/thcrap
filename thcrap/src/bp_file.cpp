@@ -37,18 +37,18 @@ static int file_rep_hooks_run(file_rep_t *fr)
 
 int file_rep_clear(file_rep_t *fr)
 {
-	if(!fr) {
-		return -1;
+	if (fr) {
+		SAFE_FREE(fr->rep_buffer);
+		fr->game_buffer = nullptr;
+		fr->patch = json_decref_safe(fr->patch);
+		SAFE_FREE(fr->hooks);
+		fr->patch_size = 0;
+		fr->pre_json_size = 0;
+		SAFE_FREE(fr->name);
+		fr->disable = false;
+		return 0;
 	}
-	SAFE_FREE(fr->rep_buffer);
-	fr->game_buffer = nullptr;
-	fr->patch = json_decref_safe(fr->patch);
-	SAFE_FREE(fr->hooks);
-	fr->patch_size = 0;
-	fr->pre_json_size = 0;
-	SAFE_FREE(fr->name);
-	fr->disable = false;
-	return 0;
+	return -1;
 }
 
 /// Thread-local storage
@@ -85,14 +85,12 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 
 	// Mandatory parameters
 	// --------------------
-	auto file_name = (char**)json_object_get_pointer(bp_info, regs, "file_name");
-	auto file_size = json_object_get_pointer(bp_info, regs, "file_size");
 	BP_file_buffer(regs, bp_info);
-	// -----------------
-
-	if(file_name) {
+	if (auto file_name = (char**)json_object_get_pointer(bp_info, regs, "file_name")) {
 		file_rep_init(fr, *file_name);
 	}
+	auto file_size = json_object_get_pointer(bp_info, regs, "file_size");
+	// -----------------
 
 	// th08 and th09 use their file size variable as the loop counter for LZSS
 	// decompression. Putting anything other than the original file size from
@@ -115,39 +113,27 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 	}
 
 	// Got everything for a full file replacement?
-	if(!fr->game_buffer || !fr->rep_buffer || !fr->pre_json_size) {
+	if(!fr->rep_buffer || !fr->pre_json_size || !fr->game_buffer) {
 		return 1;
 	}
-
-	// Load-specific parameters
-	// ------------------------
-	auto file_buffer_addr_copy = json_object_get_pointer(bp_info, regs, "file_buffer_addr_copy");
-	size_t eip_jump_dist = json_object_get_hex(bp_info, "eip_jump_dist");
-	// ------------------------
 
 	// Let's do it
 	memcpy(fr->game_buffer, fr->rep_buffer, fr->pre_json_size);
 
 	file_rep_hooks_run(fr);
 
-	if(eip_jump_dist) {
+	// Post-load parameters
+	// ------------------------
+	if(size_t eip_jump_dist = json_object_get_hex(bp_info, "eip_jump_dist")) {
 		regs->retaddr += eip_jump_dist;
 	}
-	if(file_buffer_addr_copy) {
-		*file_buffer_addr_copy = (size_t)fr->game_buffer;
+	if(void** file_buffer_addr_copy = (void**)json_object_get_pointer(bp_info, regs, "file_buffer_addr_copy")) {
+		*file_buffer_addr_copy = fr->game_buffer;
 	}
+	// ------------------------
+
 	file_rep_clear(fr);
 	return 0;
-}
-
-int BP_file_name(x86_reg_t *regs, json_t *bp_info)
-{
-	return BP_file_load(regs, bp_info);
-}
-
-int BP_file_size(x86_reg_t *regs, json_t *bp_info)
-{
-	return BP_file_load(regs, bp_info);
 }
 
 // Cool function name.

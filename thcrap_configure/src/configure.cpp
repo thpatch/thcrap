@@ -179,6 +179,10 @@ char **games_json_to_array(json_t *games)
     return array;
 }
 
+extern "C" {
+	extern void strings_mod_init(void);
+}
+
 #include <win32_utf8/entry_winmain.c>
 #include "thcrap_i18n/src/thcrap_i18n.h"
 int TH_CDECL win32_utf8_main(int argc, const char *argv[])

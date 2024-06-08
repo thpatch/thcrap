@@ -15,13 +15,9 @@
 #include <json5pp.hpp>
 #pragma warning(pop)
 
-json_t* json_decref_safe(json_t *json)
+json_t* (json_decref_safe)(json_t *json)
 {
-	if(json && json->refcount != (size_t)-1 && --json->refcount == 0) {
-        json_delete(json);
-		return NULL;
-	}
-	return json;
+	return json_decref_safe_inline(json);
 }
 
 size_t json_hex_value(json_t *val)
@@ -313,24 +309,27 @@ template <typename T, size_t N> T json_tuple_value(
 		constexpr stringref_t ERR_FMT = "Must be specified as a JSON array in [%s] format.";
 		constexpr stringref_t SEP = ", ";
 		size_t allnames_len = SEP.length() * (N - 1);
-		for(auto &i : value_names) {
-			allnames_len += i.length();
+		for(const auto& name : value_names) {
+			allnames_len += name.length();
 		}
 		VLA(char, allnames, allnames_len + 1);
-		defer({ VLA_FREE(allnames); });
 
 		char *p = allnames;
-		for(int i = 0; i < (int)(N) - 1; i++) {
-			p = stringref_copy_advance_dst(p, value_names[i]);
-			p = stringref_copy_advance_dst(p, SEP);
+
+		p = stringref_copy_advance_dst(p, value_names[0]);
+		if constexpr (N > 1) {
+			for (size_t i = 1; i < N; ++i) {
+				p = stringref_copy_advance_dst(p, SEP);
+				p = stringref_copy_advance_dst(p, value_names[i]);
+			}
 		}
-		p = stringref_copy_advance_dst(p, value_names[N - 1]);
 
 		ret.err.resize(ERR_FMT.length() + allnames_len + 1);
 		sprintf(&ret.err[0], ERR_FMT.data(), allnames);
+		VLA_FREE(allnames);
 		return ret;
 	}
-	for(unsigned int i = 0; i < N; i++) {
+	for(size_t i = 0; i < N; ++i) {
 		auto coord_j = json_array_get(arr, i);
 		bool failed = !json_is_integer(coord_j);
 		if(!failed) {
@@ -564,9 +563,11 @@ TH_CHECK_RET jeval_error_t json_eval_int(const json_t* val, size_t* out, jeval_f
 #endif
 }
 
+#if !TH_X64
 TH_CHECK_RET jeval_error_t json_eval_int64(const json_t* val, jeval64_t* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_INTEGER | (flags & JEVAL_MODE_MASK), out);
 }
+#endif
 
 TH_CHECK_RET jeval_error_t json_eval_real(const json_t* val, double* out, jeval_flags_t flags) {
 	return json_evaluate(val, JEVAL_REAL | (flags & JEVAL_MODE_MASK), out);
@@ -585,9 +586,11 @@ TH_CHECK_RET jeval_error_t json_object_get_eval_int(const json_t* object, const 
 	return json_eval_int(json_object_get(object, key), out, flags);
 }
 
+#if !TH_X64
 TH_CHECK_RET jeval_error_t json_object_get_eval_int64(const json_t* object, const char* key, jeval64_t* out, jeval_flags_t flags) {
 	return json_eval_int64(json_object_get(object, key), out, flags);
 }
+#endif
 
 TH_CHECK_RET jeval_error_t json_object_get_eval_real(const json_t* object, const char* key, double* out, jeval_flags_t flags) {
 	return json_eval_real(json_object_get(object, key), out, flags);
@@ -610,11 +613,13 @@ size_t json_eval_int_default(const json_t* val, size_t default_ret, jeval_flags_
 	return ret;
 }
 
+#if !TH_X64
 jeval64_t json_eval_int64_default(const json_t* val, json_int_t default_ret, jeval_flags_t flags) {
 	jeval64_t ret = default_ret;
 	(void)json_eval_int64(val, &ret, flags);
 	return ret;
 }
+#endif
 
 double json_eval_real_default(const json_t* val, double default_ret, jeval_flags_t flags) {
 	double ret = default_ret;
@@ -641,11 +646,13 @@ size_t json_object_get_eval_int_default(const json_t* object, const char* key, s
 	return ret;
 }
 
+#if !TH_X64
 jeval64_t json_object_get_eval_int64_default(const json_t* object, const char* key, jeval64_t default_ret, jeval_flags_t flags) {
 	jeval64_t ret = default_ret;
 	(void)json_eval_int64(json_object_get(object, key), &ret, flags);
 	return ret;
 }
+#endif
 
 double json_object_get_eval_real_default(const json_t* object, const char* key, double default_ret, jeval_flags_t flags) {
 	double ret = default_ret;

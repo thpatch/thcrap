@@ -38,7 +38,7 @@
       <AdditionalDependencies>thcrap_i18n$(Suffix).lib;thcrap$(Suffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
-      <PreprocessorDefinitions>THCRAP_I18N_APPDOMAIN="thcrap_configure";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>THCRAP_ALLOW_INTERNAL_APIS;THCRAP_I18N_APPDOMAIN="thcrap_configure";%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

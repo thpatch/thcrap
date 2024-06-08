@@ -124,9 +124,6 @@ extern "C" {
 // contained in [str].
 THCRAP_API int fontrule_parse(LOGFONTA *lf, const char *str);
 
-void textdisp_mod_init(void);
-void textdisp_mod_detour(void);
-
 #ifdef __cplusplus
 }
 #endif

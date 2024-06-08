@@ -427,7 +427,9 @@ void patch_fonts_load(const patch_t *patch_info)
 	}
 }
 
-void textdisp_mod_detour(void)
+extern "C" {
+
+TH_EXPORT void textdisp_mod_detour(void)
 {
 	detour_chain("gdi32.dll", 1,
 		"CreateFontA", textdisp_CreateFontA, &chain_CreateFontU,
@@ -438,9 +440,11 @@ void textdisp_mod_detour(void)
 	);
 }
 
-void textdisp_mod_init(void)
+TH_EXPORT void textdisp_mod_init(void)
 {
 	stack_foreach([](const patch_t *patch, void*) {
 		patch_fonts_load(patch);
 	}, nullptr);
+}
+
 }

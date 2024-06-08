@@ -26,25 +26,25 @@ typedef struct game_version
 #endif
 } game_version;
 
-TH_CALLER_CLEANUP(identify_free) game_version* identify_by_hash(const char *fn, size_t *exe_size, json_t *versions);
-TH_CALLER_CLEANUP(identify_free) game_version* identify_by_size(size_t exe_size, json_t *versions);
+TH_CALLER_CLEANUP(identify_free) THCRAP_API game_version* identify_by_hash(const char *fn, size_t *exe_size, json_t *versions);
+TH_CALLER_CLEANUP(identify_free) THCRAP_API game_version* identify_by_size(size_t exe_size, json_t *versions);
 
 // Identifies the game, version and variety of [fn] by looking up its hash
 // and file size in versions.js.
 // Also shows a message box in case an unknown version was detected.
 // Returns a fully merged run configuration on successful identification,
 // NULL on failure or user cancellation.
-json_t* identify(const char *fn);
+THCRAP_API json_t* identify(const char *fn);
 
 // Free the result of an identify function
-void identify_free(game_version *ver);
+THCRAP_API void identify_free(game_version *ver);
 
 // Applies the detour cache to the module at [hProc].
-void thcrap_detour(HMODULE hProc);
+THCRAP_API void thcrap_detour(HMODULE hProc);
 
 // Sets up the engine with the given configuration and the correct game-
 // specific files for the current process.
-int thcrap_init(const char *setup_fn);
+THCRAP_API int thcrap_init(const char *setup_fn);
 
 // Second part of thcrap_init(), applies any sort of binary change to the
 // current process, using the binary hacks and breakpoints from the stage
@@ -53,7 +53,7 @@ int thcrap_init(const char *setup_fn);
 // If it is NULL (which is the case for all calls that didn't come from
 // BP_init_next_stage), it is ignored and the "module" value from
 // the init stage data is used.
-int thcrap_init_binary(size_t stage_num, HMODULE module);
+THCRAP_INTERNAL_API int thcrap_init_binary(size_t stage_num, HMODULE module);
 
 /**
   * Sets up the binary hacks and breakpoints of the next stage.
@@ -71,7 +71,7 @@ int thcrap_init_binary(size_t stage_num, HMODULE module);
   * ------------------------
   *	None
   */
-int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info);
 
 // If the target process terminates using ExitProcess(), any active threads
 // will have most likely already been terminated before DLL_PROCESS_DETACH is

@@ -12,8 +12,8 @@
 // IsBadReadPtr() without the flawed implementation.
 // Returns TRUE if [ptr] points to at least [len] bytes of valid memory in the
 // address space of the current process.
-BOOL VirtualCheckRegion(const void *ptr, const size_t len);
-BOOL VirtualCheckCode(const void *ptr);
+THCRAP_API BOOL VirtualCheckRegion(const void *ptr, const size_t len);
+THCRAP_API BOOL VirtualCheckCode(const void *ptr);
 
 // Writes [len] bytes from [new] to [ptr] in the address space of the current
 // or another process if the current value in [ptr] equals [prev].
@@ -112,13 +112,13 @@ void detour_disable(const char* dll_name, const char* func_name);
   * function pointer in the chain, or left unchanged if no hook was
   * registered before.
   */
-int detour_chain(const char *dll_name, int return_old_ptrs, ...);
+THCRAP_API int detour_chain(const char *dll_name, int return_old_ptrs, ...);
 /**
   * detour_chain() for the function pair list of a single DLL returned by
   * win32_utf8. Does obviously not return any pointers to functions that may
   * have been part of the respective chains before.
   */
-int detour_chain_w32u8(const w32u8_dll_t *dll);
+THCRAP_INTERNAL_API int detour_chain_w32u8(const w32u8_dll_t *dll);
 
 // Using a double pointer for [old_func] because you want both vtable_detour()
 // to provide the pointer, and the correct function pointer type in your usage
@@ -141,14 +141,14 @@ typedef struct {
 //                      previous value
 // • *old_func != NULL: Do nothing
 // Returns the number of functions detoured.
-int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count);
+THCRAP_API int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count);
 
 // Returns a pointer to the first function in a specific detour chain, or
 // [fallback] if no hook has been registered so far.
-FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback);
+THCRAP_API FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback);
 
 // Applies the cached detours to [hMod].
-int iat_detour_apply(HMODULE hMod);
+THCRAP_API int iat_detour_apply(HMODULE hMod);
 /// ---------------
 
 
@@ -158,10 +158,10 @@ int iat_detour_apply(HMODULE hMod);
 // On x32 these are exact duplicates of
 // the regular virtual memory functions
 #if TH_X64
-LPVOID VirtualAllocLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
-LPVOID VirtualAllocLow(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
-BOOL VirtualFreeLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
-BOOL VirtualFreeLow(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+THCRAP_API LPVOID VirtualAllocLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+THCRAP_API LPVOID VirtualAllocLow(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+THCRAP_API BOOL VirtualFreeLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+THCRAP_API BOOL VirtualFreeLow(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
 #else
 static TH_FORCEINLINE LPVOID VirtualAllocLowEx(HANDLE hProcess, LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect) {
 	return VirtualAllocEx(hProcess, lpAddress, dwSize, flAllocationType, flProtect);

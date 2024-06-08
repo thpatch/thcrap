@@ -31,6 +31,7 @@
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
+      <PreprocessorDefinitions>THCRAP_ALLOW_INTERNAL_APIS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(GoogleTestDir);$(GoogleTestDir)Include\;$(SolutionDir)thcrap_update\src\;$(SolutionDir)thcrap_tasofro\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>

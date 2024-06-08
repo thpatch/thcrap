@@ -9,5 +9,5 @@
 
 #pragma once
 
-int font_has_character(HDC hdc, WCHAR c);
-HFONT font_create_for_character(const LOGFONTW *lplf, WORD c);
+THCRAP_API int font_has_character(HDC hdc, WCHAR c);
+THCRAP_API HFONT font_create_for_character(const LOGFONTW *lplf, WORD c);

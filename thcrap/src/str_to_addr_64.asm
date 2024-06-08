@@ -94,7 +94,7 @@ fail:
 */
 
 	.intel_syntax noprefix
-	.global str_to_addr_impl, @str_to_addr_impl@8, str_to_addr_impl@@16
+	.global str_to_addr_impl, str_to_addr_impl@@16
 
 .align 16, 0xCC
 standalone_zero:
@@ -111,7 +111,6 @@ standalone_zero:
 */
 .align 16, 0xCC
 str_to_addr_impl:
-@str_to_addr_impl@8:
 str_to_addr_impl@@16:
 /*
 	; RAX: Scratch

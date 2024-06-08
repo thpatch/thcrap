@@ -88,9 +88,10 @@ void* tlsstruct_get(DWORD slot, size_t struct_size, tlsstruct_ctor_t *ctor)
 		ret = malloc(struct_size);
 		if(ret) {
 			if(ctor == nullptr) {
-				ctor = tlsstruct_default_ctor;
+				tlsstruct_default_ctor(ret, struct_size);
+			} else {
+				ctor(ret, struct_size);
 			}
-			ctor(ret, struct_size);
 		}
 		TlsSetValue(slot, ret);
 	}

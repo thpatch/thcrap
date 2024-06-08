@@ -19,4 +19,4 @@ TH_STATIC_ASSERT(sizeof(void*) <= 4, \
 */
 
 void exception_init(void);
-void exception_load_config(void);
+THCRAP_INTERNAL_API void exception_load_config(void);

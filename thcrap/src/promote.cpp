@@ -89,7 +89,10 @@ HFONT WINAPI promote_CreateFontIndirectW(
 }
 /// -------------------
 
-void promote_mod_init(void)
+extern "C" {
+// _mod_init instead of _mod_detour because we want these to be as low as
+// possible... Kinda ugly, actually.
+TH_EXPORT void promote_mod_init(void)
 {
 	detour_chain("gdi32.dll", 0,
 		"CreateFontIndirectA", promote_CreateFontIndirectA,
@@ -99,4 +102,6 @@ void promote_mod_init(void)
 		"CreateFontW", promote_CreateFontW,
 		NULL
 	);
+}
+
 }

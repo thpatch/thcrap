@@ -51,15 +51,17 @@ typedef struct game_search_result
 // Search for games recognized by thcrap in the given directory.
 // If [dir] is NULL or an empty string, it will search on the whole system.
 // [games_in] contains the list of games already known before the search.
-game_search_result* SearchForGames(const wchar_t **dir, const games_js_entry *games_in);
+TH_CALLER_CLEANUP(SearchForGames_free)
+THCRAP_API game_search_result* SearchForGames(const wchar_t **dir, const games_js_entry *games_in);
 
 // Search for games installed from either the official installer or Steam
+TH_CALLER_CLEANUP(SearchForGames_free)
 game_search_result* SearchForGamesInstalled(const games_js_entry *games_in);
 
 // Cancel a running search.
 // Is always called from another thread, because the search thread
 // is busy with the search.
-void SearchForGames_cancel();
+THCRAP_API void SearchForGames_cancel();
 
 // Free the return of SearchForGames
-void SearchForGames_free(game_search_result *games);
+THCRAP_API void SearchForGames_free(game_search_result *games);

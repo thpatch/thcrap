@@ -67,7 +67,9 @@ json_t* jsondata_game_get(const char* fn) {
 	return NULL;
 }
 
-//void jsondata_mod_repatch(const char* files_changed[]) {
+extern "C" {
+
+//TH_EXPORT void jsondata_mod_repatch(const char* files_changed[]) {
 //	while (const char* fn = *files_changed++) {
 //		auto existing = jsondata.find(fn);
 //		if (existing != jsondata.end()) {
@@ -76,7 +78,7 @@ json_t* jsondata_game_get(const char* fn) {
 //	}
 //}
 
-void jsondata_mod_repatch(json_t* files_changed) {
+TH_EXPORT void jsondata_mod_repatch(json_t* files_changed) {
 	const char* fn;
 	json_object_foreach_key(files_changed, fn) {
 		auto existing = jsondata.find(fn);
@@ -84,4 +86,6 @@ void jsondata_mod_repatch(json_t* files_changed) {
 			existing->second.emplace_front(stack_json_resolve(fn, NULL));
 		}
 	}
+}
+
 }

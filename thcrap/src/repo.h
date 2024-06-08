@@ -24,18 +24,18 @@ typedef struct {
 } repo_t;
 
 // Returns the local file name of a repository file.
-TH_CALLER_FREE char *RepoGetLocalFN(const char *id);
+TH_CALLER_FREE THCRAP_API char *RepoGetLocalFN(const char *id);
 
-repo_t *RepoLocalNext(HANDLE *hFind);
+THCRAP_API repo_t *RepoLocalNext(HANDLE *hFind);
 
 // Loads a repository from a repo.js.
-repo_t *RepoLoadJson(json_t *repo_js);
+THCRAP_API repo_t *RepoLoadJson(json_t *repo_js);
 
 // Loads repository files from all subdirectories of the current directory.
-repo_t **RepoLoad(void);
+THCRAP_API repo_t **RepoLoad(void);
 
 // Write the repo.js for repo to repos/[repo_name]/repo.js
-bool RepoWrite(const repo_t *repo);
+THCRAP_API bool RepoWrite(const repo_t *repo);
 
 // Free a repo returned by RepoLoad, RepoLoadJson or RepoLocalNext.
-void RepoFree(repo_t *repo);
+THCRAP_API void RepoFree(repo_t *repo);

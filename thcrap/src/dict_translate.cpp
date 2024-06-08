@@ -41,7 +41,9 @@ extern "C" int BP_dict_translate(x86_reg_t* regs, json_t* bp_info) {
 }
 
 
-extern "C" void dict_mod_init() {
+extern "C" {
+
+TH_EXPORT void dict_mod_init() {
 	jsondata_game_add("dictdefs.js");
 	jsondata_game_add("dicttrans.js");
 
@@ -49,16 +51,16 @@ extern "C" void dict_mod_init() {
 
 	json_t* bp_info;
 	const char* bp_name;
-	json_object_foreach(breakpoints, bp_name, bp_info) {
-		if (strncmp(bp_name, "dict_trans", strlen("dict_trans")))
-			continue;
-
-		const char* dictdefs_fn = json_object_get_string(bp_info, "dictdefs");
-		const char* dicttrans_fn = json_object_get_string(bp_info, "dicttrans");
-
-		if (dictdefs_fn)
-			jsondata_game_add(dictdefs_fn);
-		if (dicttrans_fn)
-			jsondata_game_add(dicttrans_fn);
+	json_object_foreach_fast(breakpoints, bp_name, bp_info) {
+		if (!strncmp(bp_name, "dict_trans", strlen("dict_trans"))) {
+			if (const char* dictdefs_fn = json_object_get_string(bp_info, "dictdefs")) {
+				jsondata_game_add(dictdefs_fn);
+			}
+			if (const char* dicttrans_fn = json_object_get_string(bp_info, "dicttrans")) {
+				jsondata_game_add(dicttrans_fn);
+			}
+		}
 	}	
+}
+
 }

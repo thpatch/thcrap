@@ -65,9 +65,9 @@ void* file_stream_read(HANDLE stream, size_t *file_size_out)
 #endif
 }
 
-void* file_read(const char *fn, size_t *file_size)
+void* (file_read)(const char *fn, size_t *file_size)
 {
-	return file_stream_read(file_stream(fn), file_size);
+	return file_read_inline(fn, file_size);
 }
 
 int file_write(const char *fn, const void *file_buffer, size_t file_size)

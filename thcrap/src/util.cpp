@@ -9,53 +9,29 @@
 
 #include "thcrap.h"
 
-size_t ptr_advance(const unsigned char **src, size_t num)
+void (str_slash_normalize)(char *str)
 {
-	*src += num;
-	return num;
+	str_slash_normalize_inline(str);
 }
 
-size_t memcpy_advance_src(unsigned char *dst, const unsigned char **src, size_t num)
+void (str_slash_normalize_win)(char *str)
 {
-	memcpy(dst, *src, num);
-	return ptr_advance(src, num);
+	str_slash_normalize_win_inline(str);
 }
 
-void str_slash_normalize(char *str)
+unsigned int (str_num_digits)(int number)
 {
-	str_ascii_replace(str, '\\', '/');
+	return str_num_digits_inline(number);
 }
 
-void str_slash_normalize_win(char *str)
+int (str_num_base)(const char *str)
 {
-	str_ascii_replace(str, '/', '\\');
+	return str_num_base_inline(str);
 }
 
-unsigned int str_num_digits(int number)
+void (str_hexdate_format)(char buffer[11], uint32_t date)
 {
-	unsigned int digits = 0;
-	if(number < 0) {
-		digits = 1; // remove this line if '-' counts as a digit
-	}
-	while(number) {
-		number /= 10;
-		digits++;
-	}
-	return digits;
-}
-
-int str_num_base(const char *str)
-{
-	return (str[0] == '0' && (str[1] | 0x20) == 'x') ? 16 : 10;
-}
-
-void str_hexdate_format(char format[11], uint32_t date)
-{
-	sprintf(format, "%04x-%02x-%02x",
-		(date & 0xffff0000) >> 16,
-		(date & 0x0000ff00) >> 8,
-		(date & 0x000000ff)
-	);
+	str_hexdate_format_inline(buffer, date);
 }
 
 TH_NOINLINE int TH_VECTORCALL ascii_stricmp(const char* str1, const char* str2) {
@@ -87,18 +63,12 @@ TH_NOINLINE int TH_VECTORCALL ascii_strnicmp(const char* str1, const char* str2,
 	return (signed char)c1;
 }
 
-bool is_valid_hex(char c) {
-	c |= 0x20;
-	return is_valid_decimal(c) | ((uint8_t)(c - 'a') < 6);
+bool (is_valid_hex)(char c) {
+	return is_valid_hex_inline(c);
 }
 
-int8_t hex_value(char c) {
-	c |= 0x20;
-	c -= '0';
-	if ((uint8_t)c < 10) return c;
-	c -= 49;
-	if ((uint8_t)c < 6) return c + 10;
-	return -1;
+int8_t (hex_value)(char c) {
+	return hex_value_inline(c);
 }
 
 int _vasprintf(char** buffer_ret, const char* format, va_list va) {

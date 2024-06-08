@@ -84,46 +84,46 @@ typedef struct {
 /// Register and memory values from JSON
 /// ====================================
 // Calls reg() on the JSON string [val].
-size_t* json_register_pointer(json_t *val, x86_reg_t *regs);
+THCRAP_API size_t* json_register_pointer(json_t *val, x86_reg_t *regs);
 
 // Evaluate the JSON string [val] as an expression.
-size_t json_immediate_value(json_t *val, x86_reg_t *regs);
+THCRAP_API size_t json_immediate_value(json_t *val, x86_reg_t *regs);
 
 // Evaluate the JSON string [val] as an expression, and returns a pointer to the result.
-size_t* json_pointer_value(json_t *val, x86_reg_t *regs);
+THCRAP_API size_t* json_pointer_value(json_t *val, x86_reg_t *regs);
 
 // Evaluare the JSON string [val] as en expression, and return a patch_val_t from memory contents.
-patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t type);
+THCRAP_API patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t type);
 
 // Calls json_register_pointer() on the value of [key] in [object].
-size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
+THCRAP_API size_t* json_object_get_register(json_t *object, x86_reg_t *regs, const char *key);
 
 // Calls json_pointer_value() on the value of [key] in [object].
-size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key);
+THCRAP_API size_t* json_object_get_pointer(json_t *object, x86_reg_t *regs, const char *key);
 
 // Calls json_immediate_value() on the value of [key] in [object].
-size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key);
+THCRAP_API size_t json_object_get_immediate(json_t *object, x86_reg_t *regs, const char *key);
 
 // Calls json_typed_value() on the value of [key] in [object].
-patch_val_t json_object_get_typed(json_t *object, x86_reg_t *regs, const char *key, patch_value_type_t type);
+THCRAP_API patch_val_t json_object_get_typed(json_t *object, x86_reg_t *regs, const char *key, patch_value_type_t type);
 /// =====================================
 
 // Parses a json breakpoint entry and returns a breakpoint object
-bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out);
+THCRAP_API bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out);
 
 // Returns 0 if "cave_exec" in [bp_info] is set to false, 1 otherwise.
 // Should be used as the return value for a breakpoint function after it made
 // changes to a register which could require original code to be skipped
 // (since that code might overwrite the modified data otherwise).
-int breakpoint_cave_exec_flag(json_t *bp_info);
+THCRAP_API int breakpoint_cave_exec_flag(json_t *bp_info);
 
 // Same as above but will evaluate expressions
-int breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info);
+THCRAP_API int breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info);
 
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base
 // for relative addresses.
-size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod, HackpointMemoryPage page_array[2]);
+THCRAP_API size_t breakpoints_apply(breakpoint_t *breakpoints, size_t breakpoints_count, HMODULE hMod, HackpointMemoryPage page_array[2]);
 
 // Removes all breakpoints in the given set.
 // TODO: Implement!

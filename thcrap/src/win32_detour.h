@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 // *Not* a _mod_ function to ensure that this remains on the lowest level
-void win32_detour(void);
+THCRAP_API void win32_detour(void);
 
 #ifdef __cplusplus
 }

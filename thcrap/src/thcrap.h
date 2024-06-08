@@ -20,15 +20,24 @@
 
 #include "compiler_support.h"
 
+// THCRAP_API: Regular exports that are supposed to be stable
+// THCRAP_EXPORT_API: Exports that are only exported via dllexport and not a def file
+// THCRAP_INTERNAL_API: Exports that only exist for technical reasons
+// THCRAP_BREAKPOINT_API: Exports that only exist for use with breakpoints. Probably shouldn't be called directly
 #ifdef THCRAP_EXPORTS
 # define THCRAP_API TH_EXPORT
-# define THCRAP_INTERNAL_API TH_EXPORT
 # define THCRAP_EXPORT_API TH_EXPORT
+# define THCRAP_INTERNAL_API TH_EXPORT
 #else
 # define THCRAP_API TH_IMPORT
-# define THCRAP_INTERNAL_API TH_DEPRECATED_REASON("This function is not available for use outside of the main thcrap dll")
-# define THCRAP_EXPORT_API
+# define THCRAP_EXPORT_API TH_IMPORT
+# ifdef THCRAP_ALLOW_INTERNAL_APIS
+#  define THCRAP_INTERNAL_API TH_IMPORT
+# else
+#  define THCRAP_INTERNAL_API TH_DEPRECATED_REASON("This function is not available for use outside of the main thcrap dll") TH_IMPORT
+# endif
 #endif
+# define THCRAP_BREAKPOINT_API THCRAP_API
 
 #ifdef __cplusplus
 #include <functional>

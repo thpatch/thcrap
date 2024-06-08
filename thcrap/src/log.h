@@ -17,22 +17,22 @@ THCRAP_API extern DWORD log_async;
 
 // Returns a string representation of the given Win32 error code.
 // Currently in English and fairly abbreviated compared to FormatMessage().
-const char* lasterror_str_for(DWORD err);
+THCRAP_API const char* lasterror_str_for(DWORD err);
 // Calls GetLastError() itself.
-const char* lasterror_str();
+THCRAP_API const char* lasterror_str();
 
-void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*, size_t));
+THCRAP_API void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*, size_t));
 
 /// ---------------
 /// Standard output
 /// ---------------
 // Basic
-void log_print(const char *text);
+THCRAP_API void log_print(const char *text);
 // Specific length
-void log_nprint(const char *text, size_t n);
+THCRAP_API void log_nprint(const char *text, size_t n);
 // Formatted
-void log_vprintf(const char *format, va_list va);
-void log_printf(const char *format, ...);
+THCRAP_API void log_vprintf(const char *format, va_list va);
+THCRAP_API void log_printf(const char *format, ...);
 #ifdef NDEBUG
 // Using __noop makes the compiler check the validity of the
 // macro contents for syntax errors without actually compiling them.
@@ -50,7 +50,7 @@ void log_printf(const char *format, ...);
 #endif
 
 // Flush the log file
-void log_flush();
+THCRAP_API void log_flush();
 /// ---------------
 
 /// -------------
@@ -58,12 +58,12 @@ void log_flush();
 // Technically not a "logging function", but hey, it has variable arguments.
 /// -------------
 // Basic
-int log_mbox(const char *caption, const UINT type, const char *text);
+THCRAP_API int log_mbox(const char *caption, const UINT type, const char *text);
 // Formatted
-int log_vmboxf(const char *caption, const UINT type, const char *format, va_list va);
-int log_mboxf(const char *caption, const UINT type, const char *format, ...);
+THCRAP_API int log_vmboxf(const char *caption, const UINT type, const char *format, va_list va);
+THCRAP_API int log_mboxf(const char *caption, const UINT type, const char *format, ...);
 // Set the owner hwnd for the log_mbox* functions
-void log_mbox_set_owner(HWND hwnd);
+THCRAP_API void log_mbox_set_owner(HWND hwnd);
 /// -------------
 
 /// Per-module loggers
@@ -97,5 +97,5 @@ public:
 #endif
 /// ------------------
 
-void log_init(int console);
-void log_exit(void);
+THCRAP_INTERNAL_API void log_init(int console);
+THCRAP_INTERNAL_API void log_exit(void);

@@ -16,17 +16,17 @@
 // DYNAMICBASE flag activated in its header.
 //
 // (Works on Windows, but not on Wine)
-void* entry_from_context(HANDLE hThread);
+THCRAP_INTERNAL_API void* entry_from_context(HANDLE hThread);
 /// -------------------------
 
-int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr);
-int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module);
+THCRAP_INTERNAL_API int ThreadWaitUntil(HANDLE hProcess, HANDLE hThread, void *addr);
+THCRAP_INTERNAL_API int WaitUntilEntryPoint(HANDLE hProcess, HANDLE hThread, const char *module);
 
 // CreateProcess with thcrap DLL injection.
 // Careful! If you call this with CREATE_SUSPENDED set, you *must* resume the
 // thread on your own! This is necessary for cooperation with other patches
 // using DLL injection.
-BOOL WINAPI inject_CreateProcessU(
+THCRAP_INTERNAL_API BOOL WINAPI inject_CreateProcessU(
 	LPCSTR lpAppName,
 	LPSTR lpCmdLine,
 	LPSECURITY_ATTRIBUTES lpProcessAttributes,
@@ -38,7 +38,7 @@ BOOL WINAPI inject_CreateProcessU(
 	LPSTARTUPINFOA lpSI,
 	LPPROCESS_INFORMATION lpPI
 );
-BOOL WINAPI inject_CreateProcessW(
+THCRAP_INTERNAL_API BOOL WINAPI inject_CreateProcessW(
 	LPCWSTR lpAppName,
 	LPWSTR lpCmdLine,
 	LPSECURITY_ATTRIBUTES lpProcessAttributes,
@@ -63,18 +63,16 @@ HANDLE WINAPI inject_CreateRemoteThread(
 	LPDWORD lpThreadId
 );
 
-HMODULE WINAPI inject_LoadLibraryU(
+THCRAP_INTERNAL_API HMODULE WINAPI inject_LoadLibraryU(
 	LPCSTR lpLibFileName
 );
-HMODULE WINAPI inject_LoadLibraryW(
+THCRAP_INTERNAL_API HMODULE WINAPI inject_LoadLibraryW(
 	LPCWSTR lpLibFileName
 );
 
-void inject_mod_detour(void);
-
 // Injects thcrap into the given [hProcess], and passes [run_cfg_fn].
-int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg);
+THCRAP_API int thcrap_inject_into_running(HANDLE hProcess, const char *run_cfg);
 
 // Starts [exe_fn] as a new process with the given command-line arguments, and
 // injects thcrap with the current run configuration into it.
-BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HANDLE *hThread);
+THCRAP_API BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HANDLE *hThread);
