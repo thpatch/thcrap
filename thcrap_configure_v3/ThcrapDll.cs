@@ -227,6 +227,10 @@ namespace thcrap_configure_v3
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern int globalconfig_set_integer(string key, long value);
 
+        // runconfig
+        [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
+        public static extern void runconfig_thcrap_dir_set([MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string thcrap_dir);
+
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern void exception_load_config();
 

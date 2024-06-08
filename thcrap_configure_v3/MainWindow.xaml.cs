@@ -81,6 +81,7 @@ namespace thcrap_configure_v3
 
         private void SelfUpdate()
         {
+            ThcrapDll.runconfig_thcrap_dir_set(Directory.GetCurrentDirectory());
             if (ThcrapDll.update_notify_thcrap_wrapper() == ThcrapDll.self_result_t.SELF_OK)
             {
                 Process.Start(Assembly.GetEntryAssembly().Location);
