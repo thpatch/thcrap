@@ -16,8 +16,8 @@ class ICrypt
 {
 public:
 	virtual ~ICrypt() {}
-	virtual DWORD cryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key) = 0;
-	virtual void uncryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key) = 0;
+	virtual DWORD cryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key) = 0;
+	virtual void uncryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key) = 0;
 	virtual DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C9DC5u) = 0;
 	virtual void convertKey(DWORD *key) = 0;
 
@@ -27,24 +27,17 @@ public:
 class CryptTh135 : public ICrypt
 {
 public:
-	virtual DWORD cryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
-	virtual void uncryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
+	virtual DWORD cryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key);
+	virtual void uncryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key);
 	virtual DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C9DC5u);
 	virtual void convertKey(DWORD *key);
 };
 
 class CryptTh145 : public ICrypt
 {
-private:
-	BYTE *tempCopy;
-	DWORD tempCopySize;
-	DWORD cryptBlockInternal(BYTE* Data, DWORD FileSize, const DWORD* Key, DWORD Aux);
-
 public:
-	CryptTh145();
-	~CryptTh145();
-	virtual DWORD cryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
-	virtual void uncryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
+	virtual DWORD cryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key);
+	virtual void uncryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key);
 	virtual DWORD SpecialFNVHash(const char *begin, const char *end, DWORD initHash = 0x811C9DC5u);
 	virtual void convertKey(DWORD *key);
 };
@@ -52,10 +45,8 @@ public:
 class CryptTh175 : public ICrypt
 {
 public:
-	CryptTh175();
-	~CryptTh175();
-	virtual DWORD cryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
-	virtual void uncryptBlock(BYTE* Data, DWORD FileSize, const DWORD* Key);
+	virtual DWORD cryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key);
+	virtual void uncryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key);
 	virtual DWORD SpecialFNVHash(const char *begin, const char *end = nullptr, DWORD initHash = 0);
 	virtual void convertKey(DWORD *key);
 };

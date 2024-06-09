@@ -26,7 +26,6 @@ TasofroFile::TasofroFile()
 	: init_done(false)
 {
 	memset(this, 0, sizeof(file_rep_t));
-	file_rep_clear(this);
 }
 
 TasofroFile::~TasofroFile()
@@ -59,18 +58,17 @@ size_t TasofroFile::init_game_file_size(size_t game_file_size)
 void TasofroFile::clear()
 {
 	if (this->game_buffer) {
-		SAFE_FREE(this->game_buffer);
+		free(this->game_buffer);
 	}
 	file_rep_clear(this);
 	this->offset = 0;
 	this->init_done = false;
 }
 
-bool TasofroFile::need_orig_file()
+bool TasofroFile::need_orig_file() const
 {
 	// If dat_dump is enabled, we *always* need the original buffer
-	const char *dat_dump = runconfig_dat_dump_get();
-	if (dat_dump) {
+	if unexpected(runconfig_dat_dump_get()) {
 		return true;
 	}
 
@@ -90,12 +88,11 @@ bool TasofroFile::need_orig_file()
 	return false;
 }
 
-bool TasofroFile::need_replace()
+bool TasofroFile::need_replace() const
 {
 	// If dat_dump is enabled, we always want to run the patching code
 	// so that we can dump the files in it
-	const char *dat_dump = runconfig_dat_dump_get();
-	if (dat_dump) {
+	if unexpected(runconfig_dat_dump_get()) {
 		return true;
 	}
 

@@ -12,13 +12,10 @@
 
 int file_rep_init(file_rep_t *fr, const char *file_name)
 {
-	size_t fn_len;
-
 	if (fr->name) {
 		file_rep_clear(fr);
 	}
-	fn_len = strlen(file_name) + 1;
-	fr->name = EnsureUTF8(file_name, fn_len);
+	fr->name = EnsureUTF8(file_name, strlen(file_name) + 1);
 	fr->rep_buffer = stack_game_file_resolve(fr->name, &fr->pre_json_size);
 	fr->hooks = patchhooks_build(fr->name);
 	if (fr->hooks) {
@@ -38,14 +35,17 @@ static int file_rep_hooks_run(file_rep_t *fr)
 int file_rep_clear(file_rep_t *fr)
 {
 	if (fr) {
-		SAFE_FREE(fr->rep_buffer);
-		fr->game_buffer = nullptr;
-		fr->patch = json_decref_safe(fr->patch);
-		SAFE_FREE(fr->hooks);
-		fr->patch_size = 0;
-		fr->pre_json_size = 0;
-		SAFE_FREE(fr->name);
-		fr->disable = false;
+		json_decref_safe(fr->patch);
+		if (void* hooks = fr->hooks) {
+			free(hooks);
+		}
+		if (char* name = fr->name) {
+			free(name);
+		}
+		if (void* rep_buffer = fr->rep_buffer) {
+			free(rep_buffer);
+		}
+		*fr = {}; // Sets all fields to 0 or NULL
 		return 0;
 	}
 	return -1;

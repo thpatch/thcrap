@@ -80,13 +80,10 @@ int th135_init()
 
 extern "C" int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 {
-	// Parameters
-	// ----------
-	const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
-	// ----------
-
-	if (filename) {
-		register_filename(filename);
+	if unexpected(runconfig_dat_dump_get()) {
+		if (const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name")) {
+			register_filename(filename);
+		}
 	}
 	return 1;
 }
@@ -144,38 +141,48 @@ struct Th145AVFileReader // Inherits from AVPackageReader
 std::unordered_map<HANDLE, Th135File*> openFiles;
 std::mutex openFilesMutex;
 
+static inline bool th135_init_fr_inner(Th135File* fr, const char* path) {
+	fr->init(path);
+	if (fr->need_replace()) {
+		return true;
+	}
+	fr->clear();
+	return false;
+}
+
 bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 {
 	if (path.is_absolute()) {
 		path = path.lexically_relative(std::filesystem::current_path());
 	}
 
-	fr->init(path.generic_u8string().c_str());
-	if (fr->need_replace()) {
+	if (th135_init_fr_inner(fr, path.generic_u8string().c_str())) {
 		return true;
 	}
-
-	fr->clear();
 
 	// If the game loads a DDS file and we have no corresponding DDS file,
 	// try to replace it with a PNG file (the game will deal with it)
 	if (path.extension() == ".dds") {
 		path.replace_extension(".png");
-		register_utf8_filename(path.generic_u8string().c_str());
+		const char* path_str = path.generic_u8string().c_str();
 
-		return th135_init_fr(fr, path);
+		if unexpected(runconfig_dat_dump_get()) {
+			register_utf8_filename(path_str);
+		}
+
+		return th135_init_fr_inner(fr, path_str);
 	}
 
 	return false;
 }
 
-bool th135_init_fr(Th135File *fr, const char *path)
-{
-	WCHAR_T_DEC(path);
-	WCHAR_T_CONV(path);
-	std::filesystem::path fs_path = path_w;
+bool th135_init_fr(Th135File *fr, const char *path) {
+	size_t path_len = strlen(path) + 1;
+	VLA(wchar_t, path_w, path_len);
+	size_t path_w_len = (size_t)StringToUTF16(path_w, path, path_len);
+	std::filesystem::path fs_path = std::filesystem::path(path_w, path_w + path_w_len);
 	bool ret = th135_init_fr(fr, fs_path);
-	WCHAR_T_FREE(path);
+	VLA_FREE(path_w);
 	return ret;
 }
 
@@ -193,12 +200,13 @@ int th135_openFileCommon(const char *filename, T *file)
 
 	file->FileSize = fr->init_game_file_size(static_cast<size_t>(file->FileSize));
 
+	bool already_opened;
 	{
-		std::scoped_lock lock(openFilesMutex);
-		if (openFiles.count(file->hFile) > 0) {
-			log_printf("Warning: opening an already-opened file\n");
-		}
-		openFiles[file->hFile] = fr;
+		std::lock_guard lock(openFilesMutex);
+		already_opened = !openFiles.insert_or_assign(file->hFile, fr).second;
+	}
+	if (already_opened) {
+		log_print("Warning: opening an already-opened file\n");
 	}
 
 	return 1;
@@ -240,13 +248,16 @@ extern "C" int BP_th145_openFile(x86_reg_t * regs, json_t * bp_info)
 extern "C" int BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
 {
 	ReadFileStack *stack = (ReadFileStack*)(regs->esp + sizeof(void*));
-	std::scoped_lock lock(openFilesMutex);
 
-	auto fr_iterator = openFiles.find(stack->hFile);
-	if (fr_iterator == openFiles.end()) {
-		return 1;
+	Th135File* fr;
+	{
+		std::lock_guard lock(openFilesMutex);
+		auto fr_iterator = openFiles.find(stack->hFile);
+		if (fr_iterator == openFiles.end()) {
+			return 1;
+		}
+		fr = fr_iterator->second;
 	}
-	Th135File *fr = fr_iterator->second;
 
 	return fr->replace_ReadFile(regs,
 		[fr](TasofroFile*, BYTE *buffer, DWORD size) { ICrypt::instance->uncryptBlock(buffer, size, fr->key); },
@@ -270,18 +281,16 @@ BOOL WINAPI th135_CloseHandle(
 	HANDLE hObject
 )
 {
-	{
-		// th155 doesn't have a single "close file" function. In a few places, the AVFileReader structure
-		// is allocated on the stack, and the game just calls CloseHandle and leaves the function to destroy
-		// the object.
-		// So, since CloseHandle is the only thing in common between all the places where AVFileReader
-		// can be destroyed... We'll use it.
-		std::scoped_lock lock(openFilesMutex);
-		auto it = openFiles.find(hObject);
-		if (it != openFiles.end()) {
-			delete it->second;
-			openFiles.erase(it);
-		}
+	// th155 doesn't have a single "close file" function. In a few places, the AVFileReader structure
+	// is allocated on the stack, and the game just calls CloseHandle and leaves the function to destroy
+	// the object.
+	// So, since CloseHandle is the only thing in common between all the places where AVFileReader
+	// can be destroyed... We'll use it.
+	openFilesMutex.lock();
+	auto node = openFiles.extract(hObject);
+	openFilesMutex.unlock();
+	if (node) {
+		delete node.mapped();
 	}
 	return chain_CloseHandle(hObject);
 }

@@ -35,7 +35,7 @@ static inline constexpr auto decimal_digits_bound() {
 TH_DEPRECATED_EXPORT json_t* (json_decref_safe)(json_t *json);
 
 static inline json_t* json_decref_safe_inline(json_t* json) {
-	if (json && json->refcount != (size_t)-1 && --json->refcount == 0) {
+	if (json && json->refcount != ~(size_t)0 && --*(size_t*)&json->refcount == 0) {
 		json_delete(json);
 		return NULL;
 	}

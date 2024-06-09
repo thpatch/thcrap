@@ -48,7 +48,7 @@ struct TasofroFile : public file_rep_t
 	void clear();
 
 	// Return true if we need (or might need) to replace the file, false otherwise.
-	bool need_replace();
+	bool need_replace() const;
 	// Put a breakpoint over a ReadFile call, and call this function from
 	// inside this breakpoint.
 	// It will either replace the game's ReadFile call, loading a replacement file
@@ -63,7 +63,7 @@ private:
 	void read_from_ReadFile(HANDLE hFile, DWORD fileOffset, DWORD size);
 	void init_buffer();
 	// Return true if we need to read the original file, false otherwise.
-	bool need_orig_file();
+	bool need_orig_file() const;
 
 	void replace_ReadFile_init(ReadFileStack *stack,
 		std::function<void (TasofroFile *fr, BYTE *buffer, DWORD size)>& decrypt,
