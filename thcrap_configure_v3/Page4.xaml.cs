@@ -97,7 +97,7 @@ namespace thcrap_configure_v3
                 this.Paths = new List<string>() { path };
                 this.SelectedPath = path;
                 this.NewVisibility = Visibility.Hidden;
-                this.IsSelected = true;
+                this.IsSelected = wasAlreadyPresent ? false : true;
                 this.WasAlreadyPresent = wasAlreadyPresent;
             }
 
@@ -214,11 +214,16 @@ namespace thcrap_configure_v3
             InitializeComponent();
         }
 
+        private void UpdateCanSelectNextPage()
+        {
+            wizardPage.CanSelectNextPage = games.Any(it => it.IsSelected);
+        }
+
         private void Refresh()
         {
+            UpdateCanSelectNextPage();
             if (games.Count == 0)
             {
-                wizardPage.CanSelectNextPage = false;
                 AddGamesNotice.Visibility = Visibility.Visible;
                 ButtonSelectAll.IsEnabled = false;
                 ButtonUnselectAll.IsEnabled = false;
@@ -226,7 +231,6 @@ namespace thcrap_configure_v3
             }
             else
             {
-                wizardPage.CanSelectNextPage = true;
                 AddGamesNotice.Visibility = Visibility.Collapsed;
                 ButtonSelectAll.IsEnabled = true;
                 ButtonUnselectAll.IsEnabled = true;
@@ -427,6 +431,11 @@ namespace thcrap_configure_v3
         public IEnumerable<ThcrapDll.games_js_entry> GetGames()
         {
             return outGames;
+        }
+
+        private void GameSelectionChanged(object sender, RoutedEventArgs e)
+        {
+            UpdateCanSelectNextPage();
         }
     }
 

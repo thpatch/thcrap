@@ -65,7 +65,7 @@
                                         <ContextMenu ItemsSource="{Binding ContextMenu}" />
                                     </Button.ContextMenu>
                                 </Button>
-                                <CheckBox VerticalContentAlignment="Center" Margin="9,2,2,2" IsChecked="{Binding IsSelected}">
+                                <CheckBox VerticalContentAlignment="Center" Margin="9,2,2,2" IsChecked="{Binding IsSelected}" Checked="GameSelectionChanged" Unchecked="GameSelectionChanged" >
                                     <StackPanel Orientation="Horizontal">
                                         <Image Margin="5,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
                                         <StackPanel Margin="7,0,0,0">
