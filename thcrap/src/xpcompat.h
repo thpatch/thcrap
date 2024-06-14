@@ -22,6 +22,15 @@ typedef void TH_STDCALL srwlock_func_t(PSRWLOCK SRWLock);
 THCRAP_API extern srwlock_func_t *srwlock_funcs[4];
 /// ------------------------
 
+func_ptr_typedef(HRESULT, STDAPICALLTYPE, PathMatchSpecExW_t)(LPCWSTR pszFile, LPCWSTR pszSpec, DWORD dwFlags);
+func_ptr_typedef(HRESULT, STDAPICALLTYPE, PathMatchSpecExU_t)(LPCSTR pszFile, LPCSTR pszSpec, DWORD dwFlags);
+
+THCRAP_API extern PathMatchSpecExW_t PathMatchSpecExW_func;
+THCRAP_API extern PathMatchSpecExU_t PathMatchSpecExU_func;
+
+#define PathMatchSpecExW(pszFile, pszSpec, dwFlags) (PathMatchSpecExW_func((pszFile),(pszSpec),(dwFlags)))
+#define PathMatchSpecExU(pszFile, pszSpec, dwFlags) (PathMatchSpecExU_func((pszFile),(pszSpec),(dwFlags)))
+
 #ifdef __cplusplus
 /// Thread-local structures
 /// -----------------------
