@@ -52,6 +52,9 @@ static inline json_t* json_decref_safe_inline(json_t* json) {
 // TODO: The new JSON5 API automatically converts raw hex values to integers
 // for use with jansson, thus rendering this function obsolete. If the values
 // must remain as strings, use json_eval_int instead.
+#if 0
+TH_DEPRECATED_REASON("JSON5 supports hex values now, update JSON files and switch to json_integer_value")
+#endif
 THCRAP_API size_t json_hex_value(json_t *val);
 
 /// Strings
@@ -66,6 +69,9 @@ THCRAP_API int json_array_set_new_expand(json_t *arr, size_t ind, json_t *value)
 
 // Get the integer value of [ind] in [array],
 // automatically converting the JSON value to an integer if necessary.
+#if 0
+TH_DEPRECATED_REASON("JSON5 supports hex values now, update JSON files and switch to json_integer_value(json_array_get)")
+#endif
 THCRAP_API size_t json_array_get_hex(json_t *arr, const size_t ind);
 
 // Converts a JSON value to a code string
@@ -120,7 +126,9 @@ THCRAP_API json_t* json_object_numkey_get(const json_t *object, const json_int_t
 
 // Get the integer value of [key] in [object], automatically
 // converting the JSON value to an integer if necessary.
+#if 0
 TH_DEPRECATED_REASON("JSON5 supports hex values now, update JSON files and switch to json_integer_value(json_object_get)")
+#endif
 THCRAP_API size_t json_object_get_hex(json_t *object, const char *key);
 
 // Convenience function for json_string_array_copy(json_object_get(object, key));
