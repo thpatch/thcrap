@@ -45,7 +45,7 @@ namespace thcrap_configure_v3
 
         public GlobalConfig()
         {
-            background_updates            = ThcrapDll.globalconfig_get_boolean("background_updates", true);
+            background_updates            = ThcrapDll.globalconfig_get_boolean("background_updates", false);
             time_between_updates          = ThcrapDll.globalconfig_get_integer("time_between_updates", 5);
             update_at_exit                = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
             update_others                 = ThcrapDll.globalconfig_get_boolean("update_others", true);
