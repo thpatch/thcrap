@@ -23,7 +23,7 @@ HANDLE WINAPI screenshot_CreateFileA(
 	DWORD dwFlagsAndAttributes, HANDLE hTemplateFile
 )
 {
-	if (PathMatchSpecU(lpFileName, "*.bmp")) {
+	if (PathMatchSpecExU(lpFileName, "*.bmp", PMSF_NORMAL) == S_OK) {
 		size_t fn_len = strlen(lpFileName);
 		char* fn_real = strdup_size(lpFileName, fn_len);
 		defer(free(fn_real));

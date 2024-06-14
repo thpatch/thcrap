@@ -24,7 +24,7 @@ HANDLE WINAPI cfg_CreateFileA(
 	DWORD dwFlagsAndAttributes, HANDLE hTemplateFile
 )
 {
-	if (PathMatchSpecU(lpFileName, "*.cfg")) {
+	if (PathMatchSpecExU(lpFileName, "*.cfg", PMSF_NORMAL) == S_OK) {
 		cfg_handle = chain_CreateFileA(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, OPEN_ALWAYS, dwFlagsAndAttributes, hTemplateFile);
 		return cfg_handle;
 	}

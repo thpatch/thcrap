@@ -197,7 +197,7 @@ HANDLE WINAPI thbgm_CreateFileA(
 		lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
 	);
-	if(PathMatchSpecU(PathFindFileNameU(lpFileName), "*bgm*.dat")) {
+	if(PathMatchSpecExU(PathFindFileNameU(lpFileName), "*bgm*.dat", PMSF_NORMAL) == S_OK) {
 		thbgm_handles.emplace_back(ret);
 		bgmmod_debugf("CreateFileA(%s) -> %p\n", lpFileName, ret);
 	}
@@ -218,7 +218,7 @@ HANDLE WINAPI thbgm_CreateFileW(
 		lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
 		dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile
 	);
-	if (PathMatchSpecW(PathFindFileNameW(lpFileName), L"*bgm*.dat")) {
+	if (PathMatchSpecExW(PathFindFileNameW(lpFileName), L"*bgm*.dat", PMSF_NORMAL) == S_OK) {
 		thbgm_handles.emplace_back(ret);
 		bgmmod_debugf("CreateFileW(%S) -> %p\n", lpFileName, ret);
 	}

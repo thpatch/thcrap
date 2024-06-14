@@ -106,7 +106,7 @@ static DWORD WINAPI SearchThread(void *param_)
 				return 0;
 			try {
 				if (ent.is_regular_file()
-					&& PathMatchSpecW(ent.path().c_str(), L"*.exe")
+					&& PathMatchSpecExW(ent.path().c_str(), L"*.exe", PMSF_NORMAL) == S_OK
 					&& ent.file_size() >= state->size_min
 					&& ent.file_size() <= state->size_max)
 				{

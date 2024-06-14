@@ -329,6 +329,16 @@ inline void str_ascii_replace(char* str, const char from, const char to)
 	} while (c);
 }
 
+inline void wstr_ascii_replace(wchar_t* str, const wchar_t from, const wchar_t to)
+{
+	wchar_t c;
+	do {
+		c = *str;
+		if (c == from) *str = to;
+		++str;
+	} while (c);
+}
+
 // Changes directory slashes in [str] to '/'.
 TH_DEPRECATED_EXPORT void (str_slash_normalize)(char *str);
 
@@ -337,6 +347,10 @@ inline void str_slash_normalize_inline(char* str) {
 }
 
 #define str_slash_normalize(str) str_slash_normalize_inline(str)
+
+inline void wstr_slash_normalize(wchar_t* str) {
+	wstr_ascii_replace(str, L'\\', L'/');
+}
 
 /**
   * Usually, the normal version with Unix-style forward slashes should be
@@ -358,6 +372,10 @@ inline void str_slash_normalize_win_inline(char* str) {
 }
 
 #define str_slash_normalize_win(str) str_slash_normalize_win_inline(str)
+
+inline void wstr_slash_normalize_win(wchar_t* str) {
+	wstr_ascii_replace(str, L'/', L'\\');
+}
 
 // Counts the number of digits in [number]
 TH_DEPRECATED_EXPORT unsigned int (str_num_digits)(int number);

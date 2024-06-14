@@ -13,11 +13,11 @@
 
 struct patchhook_t
 {
-	const char *wildcard;
+	const wchar_t *wildcard;
 	func_patch_t patch_func;
 	func_patch_size_t patch_size_func;
 
-	constexpr patchhook_t(const char* wildcard, func_patch_t patch_func, func_patch_size_t patch_size_func)
+	constexpr patchhook_t(const wchar_t* wildcard, func_patch_t patch_func, func_patch_size_t patch_size_func)
 		: wildcard(wildcard),
 		patch_func(patch_func),
 		patch_size_func(patch_size_func) {}
@@ -218,7 +218,7 @@ int patch_file_blacklisted(const patch_t *patch_info, const char *fn)
 {
 	if unexpected(patch_info->ignore) {
 		for (size_t i = 0; patch_info->ignore[i]; i++) {
-			if (PathMatchSpecU(fn, patch_info->ignore[i])) {
+			if (PathMatchSpecExU(fn, patch_info->ignore[i], PMSF_NORMAL) == S_OK) {
 				return 1;
 			}
 		}
@@ -589,14 +589,15 @@ int patch_rel_to_abs(patch_t *patch_info, const char *base_path)
 
 void patchhook_register(const char *wildcard, func_patch_t patch_func, func_patch_size_t patch_size_func)
 {
-	char *wildcard_normalized = strdup(wildcard);
-	str_slash_normalize(wildcard_normalized);
+	wchar_t* wildcard_w = (wchar_t*)utf8_to_utf16(wildcard);
+	wstr_slash_normalize(wildcard_w);
+
 
 	// No checks whether [patch_func] or [patch_size_func] are null
 	// pointers here! Some game support code might only want to hook
 	// [patch_size_func] to e.g. conveniently run some generic, non-
 	// file-related code as early as possible.
-	patchhooks.emplace_back(wildcard_normalized, patch_func, patch_size_func);
+	patchhooks.emplace_back(wildcard_w, patch_func, patch_size_func);
 }
 
 patchhook_t *patchhooks_build(const char *fn)
@@ -604,14 +605,15 @@ patchhook_t *patchhooks_build(const char *fn)
 	if unexpected(!fn) {
 		return NULL;
 	}
-	STRDUP_VLA(char, fn_normalized, fn);
-	str_slash_normalize(fn_normalized);
+	WCHAR_T_DEC(fn);
+	WCHAR_T_CONV(fn);
+	wstr_slash_normalize(fn_w);
 
 	patchhook_t *hooks = (patchhook_t *)malloc((patchhooks.size() + 1) * sizeof(patchhook_t));
-	patchhook_t *last = std::copy_if(patchhooks.begin(), patchhooks.end(), hooks, [fn_normalized](const patchhook_t& hook) {
-		return PathMatchSpecU(fn_normalized, hook.wildcard);
+	patchhook_t *last = std::copy_if(patchhooks.begin(), patchhooks.end(), hooks, [fn_w](const patchhook_t& hook) {
+		return PathMatchSpecExW(fn_w, hook.wildcard, PMSF_NORMAL) == S_OK;
 	});
-	VLA_FREE(fn_normalized);
+	WCHAR_T_FREE(fn);
 	last->wildcard = nullptr;
 
 	if (hooks[0].wildcard == nullptr) {

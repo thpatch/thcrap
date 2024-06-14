@@ -11,7 +11,7 @@
 #include "vfs.h"
 
 struct jsonvfs_handler_t {
-	const char* out_pattern;
+	const wchar_t* out_pattern;
 	std::vector<std::string> in_fns;
 	jsonvfs_generator_t *gen;
 };
@@ -20,63 +20,72 @@ static std::vector<jsonvfs_handler_t> vfs_handlers;
 
 void jsonvfs_add(const char* out_pattern, const std::vector<std::string>& in_fns, jsonvfs_generator_t *gen)
 {
-	char* str = strdup(out_pattern);
-	str_slash_normalize(str);
 	for (auto& s : in_fns) {
 		jsondata_add(s.c_str());
 	}
+	wchar_t* str = (wchar_t*)utf8_to_utf16(out_pattern);
+	wstr_slash_normalize(str);
 	vfs_handlers.push_back({ str, in_fns, gen });
 }
 
 void jsonvfs_game_add(const char* out_pattern, const std::vector<std::string>& in_fns, jsonvfs_generator_t *gen)
 {
 	jsonvfs_handler_t& handler = vfs_handlers.emplace_back();
-	char* str;
 
-	str = fn_for_game(out_pattern);
+	char* str = fn_for_game(out_pattern);
 	str_slash_normalize(str);
-	handler.out_pattern = str;
+	handler.out_pattern = (wchar_t*)utf8_to_utf16(str);
+	free(str);
+
+	handler.gen = gen;
 
 	for (auto& s : in_fns) {
-		str = fn_for_game(s.c_str());
-		handler.in_fns.emplace_back(str);
-		jsondata_add(str);
-		free(str);
+		char* fn = fn_for_game(s.c_str());
+		handler.in_fns.emplace_back(fn);
+		jsondata_add(fn);
+		free(fn);
 	}
-	handler.gen = gen;
 }
 
 json_t *jsonvfs_get(const char* fn, size_t* size)
 {
 	json_t *obj = NULL;
 	size_t total_size = 0;
-	
-	size_t fn_len = strlen(fn);
-	VLA(char, fn_normalized, fn_len + 1);
-	for (size_t i = 0; i < fn_len + 1; ++i) {
-		char c = fn[i];
-		fn_normalized[i] = c != '\\' ? c : '/';
-	}
-	std::string_view fn_view{ fn_normalized, fn_len };
-	for (auto& handler : vfs_handlers) {
-		if (PathMatchSpecU(fn_normalized, handler.out_pattern)) {
-			std::unordered_map<std::string_view, json_t *> in_data;
-			for (auto& s : handler.in_fns) {
-				in_data[s] = jsondata_get(s.c_str());
-			}
 
-			size_t cur_size = 0;
-			json_t *new_obj = handler.gen(in_data, fn_view, cur_size);
-			total_size += cur_size;
-			obj = json_object_merge(obj, new_obj);
+	if (!vfs_handlers.empty()) {
+
+		size_t fn_len = strlen(fn);
+		VLA(char, fn_normalized, fn_len + 1);
+		for (size_t i = 0; i < fn_len + 1; ++i) {
+			char c = fn[i];
+			fn_normalized[i] = c != '\\' ? c : '/';
 		}
+		std::string_view fn_view{ fn_normalized, fn_len };
+
+		VLA(wchar_t, fn_normalized_w, fn_len + 1);
+		StringToUTF16(fn_normalized_w, fn_normalized, fn_len + 1);
+
+		for (auto& handler : vfs_handlers) {
+			if (PathMatchSpecExW(fn_normalized_w, handler.out_pattern, PMSF_NORMAL) == S_OK) {
+				std::unordered_map<std::string_view, json_t *> in_data;
+				for (auto& s : handler.in_fns) {
+					in_data[s] = jsondata_get(s.c_str());
+				}
+
+				size_t cur_size = 0;
+				json_t *new_obj = handler.gen(in_data, fn_view, cur_size);
+				total_size += cur_size;
+				obj = json_object_merge(obj, new_obj);
+			}
+		}
+		VLA_FREE(fn_normalized);
+		VLA_FREE(fn_normalized_w);
 	}
 
 	if (size) {
 		*size = total_size;
 	}
 
-	VLA_FREE(fn_normalized);
 	return obj;
 }
 
