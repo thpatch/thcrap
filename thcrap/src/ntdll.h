@@ -295,8 +295,8 @@ extern "C++" {
 #define read_teb_member(member) read_teb_value<decltype(TEB::member),offsetof(TEB,member)>()
 #define write_teb_member(member, data) write_teb_value<decltype(TEB::member),offsetof(TEB,member)>(data)
 
-template<typename T, size_t offset>
-static inline auto read_teb_value() {
+template<typename T, size_t offset, typename R = std::conditional_t<sizeof(T) == sizeof(uint8_t) || sizeof(T) == sizeof(uint16_t) || sizeof(T) == sizeof(uint32_t) || sizeof(T) == sizeof(uint64_t), T, T&>>
+static inline R read_teb_value() {
 	if constexpr (sizeof(T) == sizeof(uint8_t)) {
 		uint8_t temp = read_teb_byte(offset);
 		return *(T*)&temp;

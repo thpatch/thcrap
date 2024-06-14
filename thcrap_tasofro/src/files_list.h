@@ -17,7 +17,7 @@
 struct Th135File : public TasofroFile
 {
 	// XOR key
-	DWORD key[4];
+	DWORD key[4] = {};
 };
 
 extern "C" {

@@ -235,6 +235,7 @@ EXPORTS
 	; Patch files
 	; -----------
 	file_stream
+	file_stream_size
 	file_stream_read
 	file_read
 	file_write

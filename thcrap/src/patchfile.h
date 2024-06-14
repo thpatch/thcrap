@@ -100,29 +100,32 @@ typedef struct
 } patch_t;
 
 // Parses and error checks patch options from game_id.js
-void patch_opts_from_json(json_t *opts);
+THCRAP_API void patch_opts_from_json(json_t *opts);
 
 
-patch_value_type_t TH_FASTCALL patch_parse_type(const char* type);
+THCRAP_API patch_value_type_t TH_FASTCALL patch_parse_type(const char* type);
 
-bool TH_FASTCALL patch_opt_from_raw(patch_value_type_t type, const char* name, void* value);
+THCRAP_API bool TH_FASTCALL patch_opt_from_raw(patch_value_type_t type, const char* name, void* value);
 
 void patch_opts_clear_all();
 
 // Obtains the value of a patch option
-patch_val_t* patch_opt_get(const char *name);
+THCRAP_API patch_val_t* patch_opt_get(const char *name);
 
-patch_val_t* patch_opt_get_len(const char* name, size_t length);
+THCRAP_API patch_val_t* patch_opt_get_len(const char* name, size_t length);
 
 // Opens the file [fn] for read operations. Just a lightweight wrapper around
 // CreateFile(): Returns INVALID_HANDLE_VALUE on failure, and the caller must
 // call CloseHandle() on the returned value.
-THCRAP_API HANDLE file_stream(const char *fn);
+TH_CALLER_CLOSE_HANDLE THCRAP_API HANDLE file_stream(const char *fn);
+
+THCRAP_API size_t file_stream_size(HANDLE stream);
 
 // Reads the given file [stream] into a newly created buffer and optionally
 // returns its [file_size]. If given, [file_size] is guaranteed to be set
 // to 0 on failure. The returned buffer has to be free()d by the caller!
-void* file_stream_read(HANDLE stream, size_t *file_size);
+// Closes [stream] after reading.
+TH_CALLER_FREE THCRAP_API void* file_stream_read(HANDLE stream, size_t *file_size);
 
 // Combines file_stream() and file_stream_read().
 TH_DEPRECATED_EXPORT void* (file_read)(const char *fn, size_t *file_size);

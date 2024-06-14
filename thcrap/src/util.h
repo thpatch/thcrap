@@ -14,6 +14,7 @@
 #define TH_CALLER_FREE TH_CALLER_CLEANUP(free)
 #define TH_CALLER_DELETE TH_CALLER_CLEANUP(delete)
 #define TH_CALLER_DELETEA TH_CALLER_CLEANUP(delete[])
+#define TH_CALLER_CLOSE_HANDLE TH_CALLER_CLEANUP(CloseHandle)
 #define TH_CHECK_RET TH_NODISCARD_REASON("Return value must be checked to determine validity of other outputs!")
 
 #define TH_DEPRECATED_EXPORT TH_DEPRECATED_REASON("Exported function is only kept for backwards compatibility") THCRAP_API

@@ -38,11 +38,10 @@ size_t get_bmp_font_size(const char *fn, json_t *patch, size_t)
 
 	memcpy(fn_buf + fn_len, ".bin", sizeof(".bin"));
 
-	size_t bin_size;
-	void *bin_data = stack_game_file_resolve(fn_buf, &bin_size);
-	if (bin_data) {
-		free(bin_data);
-		size += bin_size;
+	HANDLE stream = stack_game_file_stream(fn_buf);
+	if (stream != INVALID_HANDLE_VALUE) {
+		size += file_stream_size(stream);
+		CloseHandle(stream);
 	}
 
 	VLA_FREE(fn_buf);
@@ -68,15 +67,16 @@ void add_json_file(char *chars_list, int& chars_list_count, json_t *file)
 	}
 	else if (json_is_string(file)) {
 		const char *str = json_string_value(file);
-		WCHAR_T_DEC(str);
-		WCHAR_T_CONV(str);
-		for (int i = 0; str_w[i]; i++) {
-			if (!chars_list[str_w[i]]) {
-				chars_list[str_w[i]] = 1;
-				chars_list_count++;
-			}
+		size_t str_len = json_string_length(file) + 1;
+		VLA(wchar_t, str_w, str_len);
+		int wchar_count = StringToUTF16(str_w, str, str_len) - 1;
+		wchar_t* str_w_read = str_w;
+		while (wchar_count-- > 0) {
+			wchar_t c = *str_w_read++;
+			chars_list_count += !chars_list[c];
+			chars_list[c] = true;
 		}
-		WCHAR_T_FREE(str);
+		VLA_FREE(str_w);
 	}
 	json_decref(file);
 }
@@ -104,20 +104,28 @@ static void add_files_in_directory(char *chars_list, int& chars_list_count, std:
 
 	do
 	{
-		if (strcmp(ffd.cFileName, ".") == 0 || strcmp(ffd.cFileName, "..") == 0) {
+		if (ffd.cFileName[0] == '.' && (
+				ffd.cFileName[1] == '\0' ||
+				(ffd.cFileName[1] == '.' && ffd.cFileName[2] == '\0')
+			)
+		) {
 			// Do nothing
 		}
 		else if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
 			if (recurse) {
-				std::string dirname = basedir + "\\" + ffd.cFileName;
+				std::string dirname = basedir + '\\' + ffd.cFileName;
 				add_files_in_directory(chars_list, chars_list_count, dirname, recurse);
 			}
 		}
-		else if (strcmp(PathFindExtensionA(ffd.cFileName), ".js") == 0 ||
-				 strcmp(PathFindExtensionA(ffd.cFileName), ".jdiff") == 0) {
-			std::string filename = basedir + "\\" + ffd.cFileName;
-			log_printf(" + %s\n", filename.c_str());
-			add_json_file(chars_list, chars_list_count, filename);
+		else {
+			char* extension = PathFindExtensionA(ffd.cFileName);
+			if (strcmp(extension, ".js") == 0 ||
+				strcmp(extension, ".jdiff") == 0
+			) {
+				std::string filename = basedir + '\\' + ffd.cFileName;
+				log_printf(" + %s\n", filename.c_str());
+				add_json_file(chars_list, chars_list_count, filename);
+			}
 		}
 	} while (FindNextFile(hFind, &ffd));
 
@@ -185,14 +193,14 @@ int fill_chars_list_from_files(char *chars_list, json_t *files)
 		if (!fn) {
 			// Do nothing
 		}
-		else if (strcmp(fn, "*") == 0) {
+		else if (fn[0] == '*' && fn[1] == '\0') {
 			log_print("(Font) Searching in every js file for characters...\n");
 			stack_foreach_cpp([&](const patch_t *patch) {
 				if (patch->archive) {
 					add_files_in_directory(chars_list, chars_list_count, patch->archive, false);
 					const char *game = runconfig_game_get();
 					if (game) {
-						add_files_in_directory(chars_list, chars_list_count, std::string(patch->archive) + "\\" + game, true);
+						add_files_in_directory(chars_list, chars_list_count, std::string(patch->archive) + '\\' + game, true);
 					}
 				}
 			});

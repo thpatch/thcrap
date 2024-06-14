@@ -149,12 +149,13 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 json_t* stack_json_resolve(const char *fn, size_t *file_size)
 {
 	json_t *ret = NULL;
-	char **chain = resolve_chain(fn);
-	if(chain && chain[0]) {
-		log_printf("(JSON) Resolving %s... ", fn);
-		ret = stack_json_resolve_chain(chain, file_size);
+	if (char** chain = resolve_chain(fn)) {
+		if (chain[0]) {
+			log_printf("(JSON) Resolving %s... ", fn);
+			ret = stack_json_resolve_chain(chain, file_size);
+		}
+		chain_free(chain);
 	}
-	chain_free(chain);
 	return ret;
 }
 
@@ -200,12 +201,13 @@ char* stack_fn_resolve_chain(char **chain)
 HANDLE stack_game_file_stream(const char *fn)
 {
 	HANDLE ret = INVALID_HANDLE_VALUE;
-	char **chain = resolve_chain_game(fn);
-	if (chain && chain[0]) {
-		log_printf("(Data) Resolving %s... ", chain[0]);
-		ret = stack_file_resolve_chain(chain);
+	if (char** chain = resolve_chain_game(fn)) {
+		if (chain[0]) {
+			log_printf("(Data) Resolving %s... ", chain[0]);
+			ret = stack_file_resolve_chain(chain);
+		}
+		chain_free(chain);
 	}
-	chain_free(chain);
 	return ret;
 }
 

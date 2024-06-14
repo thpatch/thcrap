@@ -16,6 +16,11 @@ struct patchhook_t
 	const char *wildcard;
 	func_patch_t patch_func;
 	func_patch_size_t patch_size_func;
+
+	constexpr patchhook_t(const char* wildcard, func_patch_t patch_func, func_patch_size_t patch_size_func)
+		: wildcard(wildcard),
+		patch_func(patch_func),
+		patch_size_func(patch_size_func) {}
 };
 
 std::vector<patchhook_t> patchhooks;
@@ -26,6 +31,16 @@ HANDLE file_stream(const char *fn)
 		fn, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 	);
+}
+
+size_t file_stream_size(HANDLE stream) {
+#ifndef TH_X64
+	return GetFileSize(stream, NULL);
+#else
+	DWORD ret_high;
+	size_t ret = GetFileSize(stream, &ret_high);
+	return ret | (size_t)ret_high << 32;
+#endif
 }
 
 void* file_stream_read(HANDLE stream, size_t *file_size_out)
@@ -581,7 +596,7 @@ void patchhook_register(const char *wildcard, func_patch_t patch_func, func_patc
 	// pointers here! Some game support code might only want to hook
 	// [patch_size_func] to e.g. conveniently run some generic, non-
 	// file-related code as early as possible.
-	patchhooks.emplace_back(patchhook_t{ wildcard_normalized, patch_func, patch_size_func });
+	patchhooks.emplace_back(wildcard_normalized, patch_func, patch_size_func);
 }
 
 patchhook_t *patchhooks_build(const char *fn)
@@ -596,8 +611,8 @@ patchhook_t *patchhooks_build(const char *fn)
 	patchhook_t *last = std::copy_if(patchhooks.begin(), patchhooks.end(), hooks, [fn_normalized](const patchhook_t& hook) {
 		return PathMatchSpecU(fn_normalized, hook.wildcard);
 	});
-	last->wildcard = nullptr;
 	VLA_FREE(fn_normalized);
+	last->wildcard = nullptr;
 
 	if (hooks[0].wildcard == nullptr) {
 		free(hooks);
@@ -620,8 +635,8 @@ json_t *patchhooks_load_diff(const patchhook_t *hook_array, const char *fn, size
 	if (size) {
 		*size = 0;
 		for (size_t i = 0; hook_array[i].wildcard; i++) {
-			if (hook_array[i].patch_size_func) {
-				*size += hook_array[i].patch_size_func(fn, patch, diff_size);
+			if (auto func = hook_array[i].patch_size_func) {
+				*size += func(fn, patch, diff_size);
 			}
 			else {
 				*size += diff_size;
@@ -634,23 +649,23 @@ json_t *patchhooks_load_diff(const patchhook_t *hook_array, const char *fn, size
 
 int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
-	int ret;
-
 	// We don't check [patch] here - hooks should be run even if there is no
 	// dedicated patch file.
-	if(!file_inout) {
+	if unexpected(!file_inout) {
 		return -1;
 	}
-	ret = 0;
-	for (size_t i = 0; hook_array && hook_array[i].wildcard; i++) {
-		func_patch_t func = hook_array[i].patch_func;
-		if(func) {
-			if (func(file_inout, size_out, size_in, fn, patch) > 0) {
-				const char *patched_files_dump = runconfig_patched_files_dump_get();
-				if (patched_files_dump) {
-					DumpDatFile(patched_files_dump, fn, file_inout, size_out);
+	int ret = 0;
+	if (hook_array) {
+		for (size_t i = 0; hook_array[i].wildcard; i++) {
+			func_patch_t func = hook_array[i].patch_func;
+			if (func) {
+				if (func(file_inout, size_out, size_in, fn, patch) > 0) {
+					const char *patched_files_dump = runconfig_patched_files_dump_get();
+					if unexpected(patched_files_dump) {
+						DumpDatFile(patched_files_dump, fn, file_inout, size_out);
+					}
+					ret = 1;
 				}
-				ret = 1;
 			}
 		}
 	}

@@ -342,7 +342,6 @@ extern "C" int BP_th105_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 	}
 	TasofroFile& fr = it->second;
 
-	ReadFileStack *stack = (ReadFileStack*)(regs->esp + sizeof(void*));
 	int ret = fr.replace_ReadFile(regs, game_xor, game_xor);
 
 	LeaveCriticalSection(&cs);
