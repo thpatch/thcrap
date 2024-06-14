@@ -13,6 +13,9 @@
 
 ICrypt* ICrypt::instance = nullptr;
 
+#define ASSUME_OVERALLOCATED_BUFFERS 1
+#define USE_UNROLLED_CRYPT_LOOPS 1
+
 DWORD CryptTh135::cryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key)
 {
 	if (FileSize) {
@@ -39,7 +42,7 @@ DWORD CryptTh135::cryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD
 
 void CryptTh135::uncryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH_RESTRICT Key)
 {
-	this->cryptBlock(Data, FileSize, Key);
+	this->cryptBlock(Data, AlignUpToMultipleOf2(FileSize, 16), Key);
 }
 
 // Normalized Hash
@@ -65,8 +68,6 @@ DWORD CryptTh135::SpecialFNVHash(const char *begin, const char *end, DWORD initH
 
 void CryptTh135::convertKey(DWORD*)
 {}
-
-#define USE_UNROLLED_CRYPT_LOOPS 1
 
 static constexpr int8_t sse_mask_array[] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
@@ -153,15 +154,15 @@ DWORD cryptBlockInternal(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWORD *TH
 					TH_UNREACHABLE;
 				case 3:
 					temp = cur_data[2];
-					cur_data[2] = Aux >> 16;
+					cur_data[2] = (BYTE)(Aux >> 16);
 					Aux ^= (temp ^ key_byte_ptr[2]) << 16;
 				case 2:
 					temp = cur_data[1];
-					cur_data[1] = Aux >> 8;
+					cur_data[1] = (BYTE)(Aux >> 8);
 					Aux ^= (temp ^ key_byte_ptr[1]) << 8;
 				case 1:
 					temp = cur_data[0];
-					cur_data[0] = Aux;
+					cur_data[0] = (BYTE)Aux;
 					Aux ^= temp ^ key_byte_ptr[0];
 			}
 		}
@@ -201,21 +202,26 @@ void CryptTh145::uncryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWOR
 {
 	
 	if (FileSize) {
+#if !ASSUME_OVERALLOCATED_BUFFERS
 		DWORD aux = Key[0];
-		size_t i = 0;
 		if (FileSize >= 16) {
+#else
+
+		FileSize = AlignUpToMultipleOf2(FileSize, 16);
+#endif
 			__m128 key_wide = _mm_loadu_ps((float*)Key);
 			__m128 aux_wide = key_wide;
 			BYTE *TH_RESTRICT data_end = Data + FileSize - 16;
 			do {
 				__m128 temp = _mm_loadu_ps((float*)Data);
-				aux_wide = _mm_shuffle_ps(_mm_movelh_ps(aux_wide, temp), temp, 0x98);
-				__m128 xor_data = key_wide;
-				_mm_storeu_ps((float*)Data, _mm_xor_ps(_mm_xor_ps(xor_data, temp), aux_wide));
+				_mm_storeu_ps((float*)Data, _mm_xor_ps(_mm_xor_ps(key_wide, temp), _mm_shuffle_ps(_mm_movelh_ps(aux_wide, temp), temp, 0x98)));
 				*(__m128i*)&aux_wide = _mm_srli_si128(*(__m128i*)&temp, 12);
 			} while ((Data += 16) <= data_end);
+
+#if !ASSUME_OVERALLOCATED_BUFFERS
 			aux = _mm_cvtsi128_si32(*(__m128i*)&aux_wide);
 		}
+
 #if USE_UNROLLED_CRYPT_LOOPS
 		const BYTE *TH_RESTRICT key_byte_ptr = (const BYTE *TH_RESTRICT)Key;
 		if (size_t dwords_width_remaining = FileSize & 0b1100) {
@@ -265,6 +271,7 @@ void CryptTh145::uncryptBlock(BYTE *TH_RESTRICT Data, DWORD FileSize, const DWOR
 				aux |= temp << 24;
 			} while (--remaining);
 		}
+#endif
 #endif
 	}
 }

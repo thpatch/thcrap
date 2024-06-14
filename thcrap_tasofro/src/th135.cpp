@@ -59,19 +59,18 @@ int th135_init()
 	}
 	else {
 		jsonvfs_game_add("data/csv/story/*/stage*.csv.jdiff",					{ "spells.js" }, spell_story_generator);
-		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						{ "spellcomments.js" });
-		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						{ "spells.js" });
+		jsonvfs_game_add_map("data/csv/Item*.csv.jdiff",						{ "spellcomments.js", "spells.js" });
 	}
 
 	char *bgm_pattern_fn = fn_for_game("data/bgm/bgm.csv.jdiff");
 	char *musiccmt_fn = fn_for_game("musiccmt.js");
 	jsonvfs_add(bgm_pattern_fn, { "themes.js", musiccmt_fn }, bgm_generator);
-	SAFE_FREE(musiccmt_fn);
-	SAFE_FREE(bgm_pattern_fn);
+	free(musiccmt_fn);
+	free(bgm_pattern_fn);
 	if (game_id >= TH155) {
 		char *staffroll_fn = fn_for_game("data/system/ed/staffroll.csv.jdiff");
 		jsonvfs_add_map(staffroll_fn, { "themes.js" });
-		SAFE_FREE(staffroll_fn);
+		free(staffroll_fn);
 	}
 
 	return 0;
@@ -179,7 +178,7 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 bool th135_init_fr(Th135File *fr, const char *path) {
 	size_t path_len = strlen(path) + 1;
 	VLA(wchar_t, path_w, path_len);
-	size_t path_w_len = (size_t)StringToUTF16(path_w, path, path_len);
+	size_t path_w_len = (size_t)StringToUTF16(path_w, path, path_len) - 1;
 	std::filesystem::path fs_path = std::filesystem::path(path_w, path_w + path_w_len);
 	bool ret = th135_init_fr(fr, fs_path);
 	VLA_FREE(path_w);
@@ -249,19 +248,16 @@ extern "C" int BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
 {
 	ReadFileStack *stack = (ReadFileStack*)(regs->esp + sizeof(void*));
 
-	Th135File* fr;
-	{
-		std::lock_guard lock(openFilesMutex);
-		auto fr_iterator = openFiles.find(stack->hFile);
-		if (fr_iterator == openFiles.end()) {
-			return 1;
-		}
-		fr = fr_iterator->second;
+	std::lock_guard lock(openFilesMutex);
+	auto fr_iterator = openFiles.find(stack->hFile);
+	if (fr_iterator == openFiles.end()) {
+		return 1;
 	}
+	Th135File* fr = fr_iterator->second;
 
 	return fr->replace_ReadFile(regs,
-		[fr](TasofroFile*, BYTE *buffer, DWORD size) { ICrypt::instance->uncryptBlock(buffer, size, fr->key); },
-		[fr](TasofroFile*, BYTE *buffer, DWORD size) { ICrypt::instance->cryptBlock(buffer, size, fr->key); }
+		[](TasofroFile* fr, BYTE *buffer, size_t size) { ICrypt::instance->uncryptBlock(buffer, size, ((Th135File*)fr)->key); },
+		[](TasofroFile* fr, BYTE *buffer, size_t size) { ICrypt::instance->cryptBlock(buffer, size, ((Th135File*)fr)->key); }
 	);
 }
 

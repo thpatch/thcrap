@@ -90,7 +90,12 @@ struct AVPackageReader
 	void *unk_30;
 };
 
-static std::map<AVPackageReader*, TasofroFile> open_files;
+struct Th175File : public TasofroFile {
+	uint32_t file_offset;
+	uint32_t file_size;
+};
+
+static std::map<AVPackageReader*, Th175File> open_files;
 std::mutex open_files_mutex;
 thread_local AVPackageReader *current_reader = nullptr;
 
@@ -103,8 +108,8 @@ extern "C" int BP_th175_open_file(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
-	std::scoped_lock<std::mutex> lock(open_files_mutex);
-	TasofroFile& fr = open_files[reader];
+	std::lock_guard<std::mutex> lock(open_files_mutex);
+	Th175File& fr = open_files[reader];
 
 	fr.init(file_name);
 	if (!fr.need_replace()) {
@@ -126,12 +131,12 @@ void do_partial_xor(uint8_t* dst, uint8_t* src, size_t size)
 
 // More readable version of the decrypt code.
 // This one also doesn't require the input buffer size to be divisible by 4
-uint32_t do_decrypt_step(uint32_t key)
+uint32_t do_decrypt_step(int32_t key)
 {
 	int64_t a = key * 0x5E4789C9ll;
-	uint32_t b = (a >> 0x2E) + (a >> 0x3F);
+	uint32_t b = (a >> 0x2E) + ((uint64_t)a >> 0x3F);
 	uint32_t ret = (key - b * 0xADC8) * 0xBC8F + b * 0xFFFFF2B9;
-	if ((int32_t)ret <= 0) {
+	if ((int32_t)ret < 0) {
 		ret += 0x7FFFFFFF;
 	}
 	return ret;
@@ -179,26 +184,29 @@ extern "C" int BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 	AVPackageReader *reader = current_reader;
 	current_reader = nullptr;
 
-	std::scoped_lock<std::mutex> lock(open_files_mutex);
+	std::lock_guard<std::mutex> lock(open_files_mutex);
 	auto it = open_files.find(reader);
 	if (it == open_files.end()) {
 		return 1;
 	}
 
+	it->second.file_offset = it->first->file_offset;
+	it->second.file_size = it->first->file_size;
+	
 	return it->second.replace_ReadFile(regs,
-		[&it](TasofroFile *fr, BYTE *buffer, DWORD size) {
+		[](TasofroFile *fr, BYTE *buffer, size_t size) {
 			// Make sure we use the old size, which is part of the xor
 			if (fr->pre_json_size > size) {
 				return;
 			}
-			th175_crypt_file(buffer, fr->pre_json_size, it->second.offset);
+			th175_crypt_file(buffer, fr->pre_json_size, fr->offset);
 		},
-		[&it](TasofroFile *fr, BYTE *buffer, DWORD size) {
+		[](TasofroFile *fr, BYTE *buffer, size_t size) {
 			// Make sure we use the game reader's size, which will be used when the game decrypts its file
-			if (it->first->file_size > size) {
+			if (((Th175File*)fr)->file_size > size) {
 				return;
 			}
-			th175_crypt_file(buffer, static_cast<size_t>(it->first->file_size), it->first->file_offset);
+			th175_crypt_file(buffer, static_cast<size_t>(((Th175File*)fr)->file_size), ((Th175File*)fr)->file_offset);
 		}
 	);
 }
@@ -207,7 +215,7 @@ extern "C" int BP_th175_close_file(x86_reg_t *regs, json_t *bp_info)
 {
 	AVPackageReader *reader = (AVPackageReader*)json_object_get_immediate(bp_info, regs, "file_reader");
 
-	std::scoped_lock<std::mutex> lock(open_files_mutex);
+	std::lock_guard<std::mutex> lock(open_files_mutex);
 	auto it = open_files.find(reader);
 	if (it == open_files.end()) {
 		return 1;
