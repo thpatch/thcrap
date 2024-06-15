@@ -18,10 +18,6 @@ extern "C++" {
 #include <string_view>
 #include <type_traits>
 
-#pragma warning(push)
-// MSVC is imagining things
-#pragma warning(disable : 4305)
-
 template<typename T, bool null_terminate = true, typename S = void, std::enable_if_t<std::is_same_v<S, std::basic_string<T>> || std::is_same_v<S, std::basic_string_view<T>>, bool> = true, typename ... StrsT>
 static constexpr TH_FORCEINLINE T* build_str(T* buffer, const S& cur_str, StrsT&&... next_strs);
 template<typename T, bool null_terminate = true, typename P = void, typename L = void, std::enable_if_t<std::is_pointer_v<P> && std::is_same_v<std::remove_cv_t<std::remove_pointer_t<P>>, T> && std::is_integral_v<L> && !std::is_same_v<L, T>, bool> = true, typename ... StrsT>
@@ -41,7 +37,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, const S& cur_str, L cur_
         buffer[i] = cur_str.data()[i];
     }
     buffer += cur_len;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return build_str<T, null_terminate>(buffer, std::forward<StrsT>(next_strs)...);
     } else {
         if constexpr (null_terminate) {
@@ -58,7 +54,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, const S& cur_str, StrsT&
         buffer[i] = cur_str.data()[i];
     }
     buffer += cur_len;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return build_str<T, null_terminate>(buffer, std::forward<StrsT>(next_strs)...);
     } else {
         if constexpr (null_terminate) {
@@ -73,7 +69,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, P cur_str, L cur_len, St
         buffer[i] = cur_str[i];
     }
     buffer += cur_len;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return build_str<T, null_terminate>(buffer, std::forward<StrsT>(next_strs)...);
     } else {
         if constexpr (null_terminate) {
@@ -84,7 +80,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, P cur_str, L cur_len, St
 }
 template<typename T, bool null_terminate, typename P, std::enable_if_t<std::is_pointer_v<P> && std::is_same_v<std::remove_cv_t<std::remove_pointer_t<P>>, T>, bool>, typename ... StrsT>
 static constexpr TH_FORCEINLINE T* build_str(T* buffer, P cur_str, StrsT&&... next_strs) {
-    size_t length;
+    size_t length = 0;
     if constexpr (std::is_same_v<T, char>) {
         length = strlen(cur_str);
     } else if constexpr (std::is_same_v<T, wchar_t>) {
@@ -94,7 +90,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, P cur_str, StrsT&&... ne
         buffer[i] = cur_str[i];
     }
     buffer += length;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return build_str<T, null_terminate>(buffer, std::forward<StrsT>(next_strs)...);
     } else {
         if constexpr (null_terminate) {
@@ -110,7 +106,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, const T(&cur_str)[N], L 
         buffer[i] = cur_str[i];
     }
     buffer += cur_len;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return build_str<T, null_terminate>(buffer, std::forward<StrsT>(next_strs)...);
     } else {
         if constexpr (null_terminate) {
@@ -127,7 +123,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, const T(&cur_str)[N], St
         buffer[i] = cur_str[i];
     }
     buffer += N - 1;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return build_str<T, null_terminate>(buffer, std::forward<StrsT>(next_strs)...);
     } else {
         if constexpr (null_terminate) {
@@ -139,7 +135,7 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, const T(&cur_str)[N], St
 template<typename T, bool null_terminate, typename ... StrsT>
 static constexpr TH_FORCEINLINE T* build_str(T* buffer, T cur_char, StrsT&&... next_strs) {
     *buffer++ = cur_char;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return build_str<T, null_terminate>(buffer, std::forward<StrsT>(next_strs)...);
     } else {
         if constexpr (null_terminate) {
@@ -162,7 +158,7 @@ static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, T cur_c
 template<typename T, typename S, typename L, std::enable_if_t<(std::is_same_v<S, std::basic_string<T>> || std::is_same_v<S, std::basic_string_view<T>>) && std::is_integral_v<L> && !std::is_same_v<L, T>, bool>, typename ... StrsT>
 static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const S& cur_str, L cur_len, StrsT&&... next_strs) {
     length += cur_len;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return alloc_str_calc_len<T>(length, std::forward<StrsT>(next_strs)...);
     } else {
         return length;
@@ -171,7 +167,7 @@ static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const S
 template<typename T, typename S, std::enable_if_t<std::is_same_v<S, std::basic_string<T>> || std::is_same_v<S, std::basic_string_view<T>>, bool>, typename ... StrsT>
 static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const S& cur_str, StrsT&&... next_strs) {
     length += cur_str.length();
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return alloc_str_calc_len<T>(length, std::forward<StrsT>(next_strs)...);
     } else {
         return length;
@@ -180,7 +176,7 @@ static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const S
 template<typename T, typename P, typename L, std::enable_if_t<std::is_pointer_v<P> && std::is_same_v<std::remove_cv_t<std::remove_pointer_t<P>>, T> && std::is_integral_v<L> && !std::is_same_v<L, T>, bool>, typename ... StrsT>
 static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, P cur_str, L cur_len, StrsT&&... next_strs) {
     length += cur_len;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return alloc_str_calc_len<T>(length, std::forward<StrsT>(next_strs)...);
     } else {
         return length;
@@ -189,7 +185,7 @@ static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, P cur_s
 template<typename T, size_t N, typename L, std::enable_if_t<std::is_integral_v<L> && !std::is_same_v<L, T>, bool>, typename ... StrsT>
 static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const T(&cur_str)[N], L cur_len, StrsT&&... next_strs) {
     length += cur_len;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return alloc_str_calc_len<T>(length, std::forward<StrsT>(next_strs)...);
     } else {
         return length;
@@ -198,7 +194,7 @@ static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const T
 template<typename T, size_t N, typename ... StrsT>
 static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const T(&cur_str)[N], StrsT&&... next_strs) {
     length += N - 1; // Assume this is coming from a string literal
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return alloc_str_calc_len<T>(length, std::forward<StrsT>(next_strs)...);
     } else {
         return length;
@@ -207,7 +203,7 @@ static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, const T
 template<typename T, typename ... StrsT>
 static constexpr TH_FORCEINLINE size_t alloc_str_calc_len(size_t length, T cur_char, StrsT&&... next_strs) {
     ++length;
-    if constexpr (sizeof...(StrsT)) {
+    if constexpr ((bool)sizeof...(StrsT)) {
         return alloc_str_calc_len<T>(length, std::forward<StrsT>(next_strs)...);
     } else {
         return length;
@@ -378,6 +374,5 @@ TH_CALLER_FREE static constexpr TH_FORCEINLINE T* alloc_str(StrsT&&... strs) {
     VLA(type, name, name##_len); \
     (void)sprintf(name, (format), __VA_ARGS__)
 
-#pragma warning(pop)
 }
 #endif

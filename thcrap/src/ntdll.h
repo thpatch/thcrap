@@ -13,8 +13,12 @@
 typedef LONG NTSTATUS;
 typedef LONG_PTR KPRIORITY;
 
+#ifndef STATUS_SUCCESS
 #define STATUS_SUCCESS ((NTSTATUS)0L)
+#endif
+#ifndef STATUS_INVALID_INFO_CLASS
 #define STATUS_INVALID_INFO_CLASS ((NTSTATUS)0xC0000003L)
+#endif
 
 // Tests whether or not a handle represents a "datafile" library load
 #define LDR_IS_DATAFILE(x)              (((ULONG_PTR)(x)) &  (ULONG_PTR)1)

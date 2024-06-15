@@ -61,7 +61,7 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 	}
 
 	// Got AppID?
-	if (!appid.empty()) {
+	if (appid.empty()) {
 		return;
 	}
 
