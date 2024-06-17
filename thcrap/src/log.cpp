@@ -105,16 +105,16 @@ static void log_print_real(const char* str, uint32_t n, bool is_n) {
 	if unexpected(console_open) {
 		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
 	}
-	if (log_file) {
-		WriteFile(log_file, str, n, &byteRet, NULL);
+	if (HANDLE file = log_file) {
+		WriteFile(file, str, n, &byteRet, NULL);
 	}
 	if (!is_n) {
-		if (log_print_hook) {
-			log_print_hook(str);
+		if (auto func = log_print_hook) {
+			func(str);
 		}
 	} else {
-		if (log_nprint_hook) {
-			log_nprint_hook(str, n);
+		if (auto func = log_nprint_hook) {
+			func(str, n);
 		}
 	}
 }
@@ -125,7 +125,7 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 		if (log_queue.empty()) {
 			log_is_empty = true;
 			ReleaseSRWLockExclusive(&queue_srwlock);
-			while (log_is_empty) Sleep(0);
+			while (log_is_empty) Sleep(10);
 		} else {
 			log_string_t log_str = std::move(log_queue.front());
 			log_queue.pop();
