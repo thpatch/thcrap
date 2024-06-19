@@ -10,7 +10,7 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
 	switch (msg)
 	{
-	case WM_CREATE:
+	case WM_CREATE:;
 		CREATESTRUCTW* create_params = (CREATESTRUCTW*)lParam;
 		install_message = (LPWSTR)create_params->lpCreateParams;
 		break;

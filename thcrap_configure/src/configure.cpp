@@ -20,7 +20,7 @@ int file_write_error(const char *fn)
 		fn
 	);
 	if (!error_nag) {
-		log_printf("Writing is likely to fail for all further files as well.\n");
+		log_print("Writing is likely to fail for all further files as well.\n");
 		error_nag = 1;
 	}
 	return console_ask_yn("Continue configuration anyway?") == 'y';
@@ -49,7 +49,7 @@ void self_restart()
 	memset(&sa, 0, sizeof(sa));
 	memset(&pi, 0, sizeof(pi));
 	sa.cb = sizeof(sa);
-	CreateProcess(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
+	CreateProcessU(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
 	CloseHandle(pi.hProcess);
 	CloseHandle(pi.hThread);
 }
@@ -237,7 +237,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	}
 
 	console_prepare_prompt();
-	log_printf(_A(
+	log_print(_A(
 		"==========================================\n"
 		"Touhou Community Reliant Automatic Patcher - Patch configuration tool\n"
 		"==========================================\n"
@@ -249,7 +249,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		"\n"
 	));
 	if (thcrap_update_module()) {
-		log_printf(_A(
+		log_print(_A(
 			"The configuration process has four steps:\n"
 			"\n"
 			"\t\t1. Selecting patches\n"
@@ -265,7 +265,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		);
 	}
 	else {
-		log_printf(_A(
+		log_print(_A(
 			"The configuration process has two steps:\n"
 			"\n"
 			"\t\t1. Selecting patches\n"
@@ -291,13 +291,13 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	CreateDirectoryU("repos", NULL);
 	repo_list = RepoDiscover_wrapper(start_repo);
 	if (!repo_list || !repo_list[0]) {
-		log_printf(_A("No patch repositories available...\n"));
+		log_print(_A("No patch repositories available...\n"));
 		pause();
 		goto end;
 	}
 	sel_stack = SelectPatchStack(repo_list);
 	if (!sel_stack.empty()) {
-		log_printf(_A("Downloading game-independent data...\n"));
+		log_print(_A("Downloading game-independent data...\n"));
 		stack_update_wrapper(update_filter_global_wrapper, NULL, progress_callback, &state);
 		state.files.clear();
 
@@ -324,8 +324,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	run_cfg_str = json_dumps(new_cfg, JSON_INDENT(2) | JSON_SORT_KEYS);
 	if (!file_write_text(run_cfg_fn_js.c_str(), run_cfg_str)) {
 		log_printf(_A("\n\nThe following run configuration has been written to %s:\n"), run_cfg_fn_js.c_str());
-		log_printf(run_cfg_str);
-		log_printf("\n\n");
+		log_print(run_cfg_str);
+		log_print("\n\n");
 		pause();
 	}
 	else if (!file_write_error(run_cfg_fn_js.c_str())) {
@@ -345,11 +345,13 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		}
 	}
 
-	char **filter = games_json_to_array(games);
-	log_printf(_A("\nDownloading data specific to the located games...\n"));
-	stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, &state);
-	state.files.clear();
-	strings_array_free(filter);
+	{
+		char **filter = games_json_to_array(games);
+		log_print(_A("\nDownloading data specific to the located games...\n"));
+		stack_update_wrapper(update_filter_games_wrapper, filter, progress_callback, &state);
+		state.files.clear();
+		strings_array_free(filter);
+	}
 	log_printf(_A(
 		"\n"
 		"\n"

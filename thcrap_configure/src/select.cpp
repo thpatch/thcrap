@@ -130,7 +130,7 @@ int AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
 // Returns the number of patches removed.
 int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 {
-	auto& match = [patch_id](const patch_desc_t& desc) {
+	auto match = [patch_id](const patch_desc_t& desc) {
 		return strcmp(desc.patch_id, patch_id) == 0;
 	};
 

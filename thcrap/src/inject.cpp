@@ -152,16 +152,16 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	size_t dll_dir_total_size = 0;
 	if (dll_dir) {
 		dll_dir_size = (wcslen(dll_dir) + 1) * sizeof(wchar_t);
-		dll_dir_total_size = AlignUpToMultipleOf2(dll_dir_size, alignof(void*));
+		dll_dir_total_size = AlignUpToMultipleOf2(dll_dir_size, (intptr_t)alignof(void*));
 	}
 
 	const size_t dll_fn_size = (wcslen(dll_fn) + 1) * sizeof(wchar_t);
-	const size_t dll_fn_total_size = AlignUpToMultipleOf2(dll_fn_size, alignof(void*));
+	const size_t dll_fn_total_size = AlignUpToMultipleOf2(dll_fn_size, (intptr_t)alignof(void*));
 
 	const size_t func_name_size = strlen(func_name) + 1;
-	const size_t func_name_total_size = AlignUpToMultipleOf2(func_name_size, alignof(void*));
+	const size_t func_name_total_size = AlignUpToMultipleOf2(func_name_size, (intptr_t)alignof(void*));
 
-	const size_t param_total_size = AlignUpToMultipleOf2(param_size, alignof(void*));
+	const size_t param_total_size = AlignUpToMultipleOf2(param_size, (intptr_t)alignof(void*));
 
 	const size_t grand_total_size = dll_dir_total_size + dll_fn_total_size + func_name_total_size + param_total_size + inject_size;
 

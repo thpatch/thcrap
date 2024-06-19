@@ -394,7 +394,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
                 continue;
             }
 
-            ScopedJson config = json_load_file_report(path.u8string().c_str());
+            ScopedJson config = json_load_file_report((const char*)path.u8string().c_str());
 	    	if (!*config) {
 	    		continue;
 	    	}
@@ -407,7 +407,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
                     log_printf("Error loading %s/patch.js\n", json_object_get_string(patch_info, "archive"));
                     continue;
                 }
-	    		patch_rel_to_abs(&patch, path.generic_u8string().c_str());
+	    		patch_rel_to_abs(&patch, (const char*)path.generic_u8string().c_str());
 	    		if (patch.archive && !std::any_of(patches.begin(), patches.end(), [&patch](const patch_t *it) {
 	    				return strcmp(patch.archive, it->archive) != 0;
 	    			})) {

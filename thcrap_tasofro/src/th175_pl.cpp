@@ -11,7 +11,7 @@
 #include "thcrap_tasofro.h"
 #include "mediawiki.h"
 
-static const char *STAGE_NAME_COMMAND = u8",ステージ見出し,";
+static const char *STAGE_NAME_COMMAND = (const char*)u8",ステージ見出し,";
 
 static void copy_line(const char*& file_in, const char *file_in_end, char*& file_out)
 {

@@ -436,7 +436,7 @@ static void log_print_windows_error_message(LPEXCEPTION_RECORD lpER) {
 		switch (lpER->ExceptionCode) {
 			case EXCEPTION_IN_PAGE_ERROR:
 			case STATUS_ACCESS_VIOLATION: {
-				static constexpr char* access_types[] = {
+				static constexpr const char* access_types[] = {
 					/*EXCEPTION_READ_FAULT*/	"read",
 					/*EXCEPTION_WRITE_FAULT*/	"written",
 					NULL, NULL, NULL, NULL, NULL, NULL,
@@ -969,13 +969,27 @@ void manual_stack_walk(uintptr_t current_esp) {
 	}
 }
 
+#ifndef STATUS_NOT_IMPLEMENTED
 #define STATUS_NOT_IMPLEMENTED				((DWORD)0xC0000002L)
+#endif
+#ifndef STATUS_INVALID_LOCK_SEQUENCE
 #define STATUS_INVALID_LOCK_SEQUENCE		((DWORD)0xC000001EL)
+#endif
+#ifndef STATUS_BAD_STACK
 #define STATUS_BAD_STACK					((DWORD)0xC0000028L)
+#endif
+#ifndef STATUS_INVALID_UNWIND_TARGET
 #define STATUS_INVALID_UNWIND_TARGET		((DWORD)0xC0000029L)
+#endif
+#ifndef STATUS_BAD_FUNCTION_TABLE
 #define STATUS_BAD_FUNCTION_TABLE			((DWORD)0xC00000FFL)
+#endif
+#ifndef STATUS_DATATYPE_MISALIGNMENT_ERROR
 #define STATUS_DATATYPE_MISALIGNMENT_ERROR	((DWORD)0xC00002C5L)
+#endif
+#ifndef STATUS_HEAP_CORRUPTION
 #define STATUS_HEAP_CORRUPTION				((DWORD)0xC0000374L)
+#endif
 
 LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI)
 {

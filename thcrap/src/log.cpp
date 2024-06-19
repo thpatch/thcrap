@@ -9,6 +9,7 @@
 
 #include "thcrap.h"
 #include <queue>
+#include <array>
 
 // -------
 // Globals
@@ -348,6 +349,23 @@ std::nullptr_t logger_t::errorf(const char *format, ...) const
 }
 /// ------------------
 
+#if CPP20
+static auto line = []() consteval {
+	constexpr char8_t dash_char[] = u8"―";
+	constexpr char project_name[] = "Touhou Community Reliant Automatic Patcher";
+	constexpr char logfile_str[] = " logfile";
+	constexpr size_t bytes_per_dash = sizeof(dash_char) - 1;
+	constexpr size_t width = sizeof(project_name) - 1 + sizeof(logfile_str) - 1;
+	std::array<char8_t, bytes_per_dash * width + 1> ret = {};
+	for (size_t i = 0; i < width; ++i) {
+		for (size_t j = 0; j < bytes_per_dash; ++j) {
+			ret[i * bytes_per_dash + j] = dash_char[j];
+		}
+	}
+	return ret;
+}();
+#endif
+
 void log_init(int console)
 {
 	CreateDirectoryU("logs", NULL);
@@ -359,6 +377,7 @@ void log_init(int console)
 	log_file = CreateFileU(LOG, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_DELETE, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 	if(log_file) {
 
+#if !CPP20
 		constexpr std::string_view DashUChar = u8"―";
 
 		const size_t line_len = (strlen(PROJECT_NAME) + strlen(" logfile")) * DashUChar.length();
@@ -368,13 +387,14 @@ void log_init(int console)
 		for (size_t i = 0; i < line_len; i += DashUChar.length()) {
 			memcpy(&line[i], DashUChar.data(), DashUChar.length());
 		}
+#endif
 
 		log_printf(
 			"%s\n"
 			"%s logfile\n"
 			"Branch: %s\n"
 			"Version: %s\n"
-			, line
+			, &line[0]
 			, PROJECT_NAME
 			, PROJECT_BRANCH
 			, PROJECT_VERSION_STRING
@@ -501,10 +521,12 @@ void log_init(int console)
 			}
 		}
 
-		log_printf("%s\n\n", line);		
+		log_printf("%s\n\n", &line[0]);
 		
 		FlushFileBuffers(log_file);
+#if !CPP20
 		VLA_FREE(line);
+#endif
 	}
 	if (console) {
 		OpenConsole();

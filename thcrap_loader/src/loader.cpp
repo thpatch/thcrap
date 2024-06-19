@@ -14,7 +14,7 @@
 #include <filesystem>
 #include <thcrap_update_wrapper.h>
 
-const char *EXE_HELP =
+const char EXE_HELP[] =
 	"The executable can either be a game ID which is then looked up in "
 	"games.js, or simply the relative or absolute path to an .exe file.\n"
 	"It can either be given as a command line parameter, or through the "
@@ -46,22 +46,22 @@ const char* game_lookup(const json_t *games_js, const char *game, const char *ba
 
 json_t *load_config_from_file(const char *rel_start, json_t *run_cfg, const char *config_path)
 {
-	std::string run_cfg_fn;
+	const char* run_cfg_fn;
 
 	if (PathIsRelativeU(config_path)) {
 		if (strchr(config_path, '\\')) {
-			run_cfg_fn = std::string(rel_start) + config_path;
+			run_cfg_fn = alloc_str(rel_start, config_path, "yeet");
 		}
 		else {
-			run_cfg_fn = (std::filesystem::current_path() / "config" / config_path).u8string();
+			run_cfg_fn = alloc_str<char>((std::filesystem::current_path() / "config" / config_path).u8string());
 		}
 	}
 	else {
-		run_cfg_fn = config_path;
+		run_cfg_fn = strdup(config_path);
 	}
 
-	log_printf("Loading run configuration %s... ", run_cfg_fn.c_str());
-	json_t *new_run_cfg = json_load_file_report(run_cfg_fn.c_str());
+	log_printf("Loading run configuration %s... ", run_cfg_fn);
+	json_t *new_run_cfg = json_load_file_report(run_cfg_fn);
 	log_print(new_run_cfg != nullptr ? "found\n" : "not found\n");
 
 	if (!run_cfg) {
@@ -70,7 +70,8 @@ json_t *load_config_from_file(const char *rel_start, json_t *run_cfg, const char
 	else if (new_run_cfg) {
 		run_cfg = json_object_merge(run_cfg, new_run_cfg);
 	}
-	json_array_append_new(json_object_get_create(run_cfg, "runcfg_fn", JSON_ARRAY), json_string(run_cfg_fn.c_str()));
+	json_array_append_new(json_object_get_create(run_cfg, "runcfg_fn", JSON_ARRAY), json_string(run_cfg_fn));
+	free((void*)run_cfg_fn);
 	return run_cfg;
 }
 
@@ -87,7 +88,7 @@ json_t *load_config_from_string(json_t *run_cfg, const char *config_string)
 		run_cfg = json_object_merge(run_cfg, new_run_cfg);
 	}
 	json_array_append_new(json_object_get_create(run_cfg, "runcfg_fn", JSON_ARRAY), json_string(
-		(std::string("stdin:") + config_string).c_str()
+		("stdin:"s + config_string).c_str()
 	));
 	return run_cfg;
 }
@@ -101,7 +102,7 @@ char *find_exe_from_cfg(const char *rel_start, json_t *run_cfg, json_t *games_js
 	if (!new_exe_fn) {
 		const char *game = json_object_get_string(run_cfg, "game");
 		if (game) {
-			new_exe_fn = game_lookup(games_js, game, std::filesystem::current_path().u8string().c_str());
+			new_exe_fn = game_lookup(games_js, game, (const char*)std::filesystem::current_path().u8string().c_str());
 		}
 	}
 	if (new_exe_fn) {
@@ -111,8 +112,7 @@ char *find_exe_from_cfg(const char *rel_start, json_t *run_cfg, json_t *games_js
 			PathAppendU(cfg_exe_fn, new_exe_fn);
 		}
 		else {
-			cfg_exe_fn = (char*)malloc(strlen(new_exe_fn) + 1);
-			strcpy(cfg_exe_fn, new_exe_fn);
+			cfg_exe_fn = strdup(new_exe_fn);
 		}
 	}
 
