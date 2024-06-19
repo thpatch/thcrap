@@ -104,6 +104,15 @@
 #if __cplusplus >= 202002L
 #define CPP20 1
 #endif
+#if __cplusplus > 202002L && defined(_MSC_VER)
+#define CPP20LATEST 1
+#endif
+#if __cplusplus >= 202302L
+#define CPP23 1
+#endif
+#if __cplusplus > 202302L && defined(_MSC_VER)
+#define CPP23LATEST 1
+#endif
 #endif
 
 // - Attribute Detection
