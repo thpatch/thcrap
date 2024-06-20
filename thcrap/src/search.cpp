@@ -291,22 +291,27 @@ static std::wstring GetValueFromKey(HKEY key, LPCWSTR subkey, LPCWSTR valueName)
 
 	do {
 		value.resize(valueSize);
+		valueSize *= sizeof(WCHAR);
 		ret = RegQueryValueExW(hSub, valueName, 0, &type, (LPBYTE)value.data(), &valueSize);
+		valueSize /= sizeof(WCHAR);
 	} while (ret == ERROR_MORE_DATA);
 	RegCloseKey(hSub);
 	if (ret != ERROR_SUCCESS || type != REG_SZ) {
 		return L"";
 	}
 
+	if (value[valueSize - 1] == '\0') {
+		valueSize--;
+	}
 	return std::wstring(value.data(), valueSize);
 }
 
 static bool FilterOnKey(HKEY key, LPCWSTR subkey)
 {
-	std::wstring displayName = GetValueFromKey(key, subkey, L"DisplayName");
+	std::wstring publisher = GetValueFromKey(key, subkey, L"Publisher");
 
-	return displayName.compare(0, wcslen(L"東方"), L"東方") == 0
-		|| displayName.compare(0, wcslen(L"弾幕アマノジャク"), L"弾幕アマノジャク") == 0;
+	return publisher == L"上海アリス幻樂団"
+		|| publisher == L"黄昏フロンティア";
 }
 
 static std::vector<wchar_t*> FindInstalledGamesDir()
