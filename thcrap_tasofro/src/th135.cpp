@@ -155,21 +155,32 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 		path = path.lexically_relative(std::filesystem::current_path());
 	}
 
-	if (th135_init_fr_inner(fr, (const char*)path.generic_u8string().c_str())) {
+#if !CPP20
+	std::string path_str = path.generic_u8string();
+#else
+	std::u8string path_str = path.generic_u8string();
+#endif
+
+	if (th135_init_fr_inner(fr, (const char*)path_str.c_str())) {
 		return true;
 	}
 
 	// If the game loads a DDS file and we have no corresponding DDS file,
 	// try to replace it with a PNG file (the game will deal with it)
-	if (path.extension() == ".dds") {
-		path.replace_extension(".png");
-		const char* path_str = (const char*)path.generic_u8string().c_str();
+	size_t final_dot = path_str.find_last_of('.');
+	if (
+		final_dot != decltype(path_str)::npos &&
+		!path_str.compare(final_dot, 4, "dds\0"sv)
+	) {
+		path_str.replace(path_str.length() - strlen("dds"), strlen("dds"), "png"sv);
+
+		const char* path_ptr = (const char*)path_str.c_str();
 
 		if unexpected(runconfig_dat_dump_get()) {
-			register_utf8_filename(path_str);
+			register_utf8_filename(path_ptr);
 		}
 
-		return th135_init_fr_inner(fr, path_str);
+		return th135_init_fr_inner(fr, path_ptr);
 	}
 
 	return false;
