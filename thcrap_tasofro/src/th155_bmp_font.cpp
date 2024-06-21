@@ -14,7 +14,10 @@
 #include <libs/135tk/bmpfont/bmpfont_create.h>
 
 // Increment this number to force a bmpfont cache refresh
-static const int cache_version = 2;
+static const size_t cache_version = 3;
+
+static constexpr size_t MAX_CHARS = 65536;
+static constexpr size_t PACKED_CHARS = MAX_CHARS / 4;
 
 size_t get_bmp_font_size(const char *fn, json_t *patch, size_t)
 {
@@ -23,20 +26,18 @@ size_t get_bmp_font_size(const char *fn, json_t *patch, size_t)
 		return 64 * 1024 * 1024;
 	}
 
-	size_t size = 0;
-
 	size_t fn_len = strlen(fn);
-	VLA(char, fn_buf, fn_len + 5);
-	memcpy(fn_buf, fn, fn_len);
-	memcpy(fn_buf + fn_len, ".png", sizeof(".png"));
+	BUILD_VLA_STR(char, fn_buf, fn, fn_len, ".png");
 
 	uint32_t width, height;
 	bool IHDR_read = png_image_get_IHDR(fn_buf, &width, &height, nullptr);
+
+	size_t size = 0;
 	if (IHDR_read) {
 		size += sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height;
 	}
 
-	memcpy(fn_buf + fn_len, ".bin", sizeof(".bin"));
+	*(uint32_t*)&fn_buf[fn_len] = TextInt('.', 'b', 'i', 'n');
 
 	HANDLE stream = stack_game_file_stream(fn_buf);
 	if (stream != INVALID_HANDLE_VALUE) {
@@ -49,91 +50,88 @@ size_t get_bmp_font_size(const char *fn, json_t *patch, size_t)
 	return size;
 }
 
-void add_json_file(char *chars_list, int& chars_list_count, json_t *file)
+void add_json_file(char *TH_RESTRICT chars_list, json_t *file)
 {
 	if (json_is_object(file)) {
 		json_t *it;
 		json_object_foreach_value(file, it) {
-			json_incref(it);
-			add_json_file(chars_list, chars_list_count, it);
+			add_json_file(chars_list, it);
 		}
 	}
 	else if (json_is_array(file)) {
 		json_t *it;
 		json_array_foreach_scoped(size_t, i, file, it) {
-			json_incref(it);
-			add_json_file(chars_list, chars_list_count, it);
+			add_json_file(chars_list, it);
 		}
 	}
 	else if (json_is_string(file)) {
 		const char *str = json_string_value(file);
 		size_t str_len = json_string_length(file) + 1;
 		VLA(wchar_t, str_w, str_len);
-		int wchar_count = StringToUTF16(str_w, str, str_len) - 1;
-		wchar_t* str_w_read = str_w;
-		while (wchar_count-- > 0) {
-			wchar_t c = *str_w_read++;
-			chars_list_count += !chars_list[c];
-			chars_list[c] = true;
+		int convert_count = StringToUTF16(str_w, str, str_len) - 1;
+		if (convert_count > 0) {
+			wchar_t* str_w_read = str_w;
+			size_t wchar_count = convert_count;
+			do {
+				uint32_t c = *str_w_read++;
+				chars_list[c] = true;
+			} while (--wchar_count);
 		}
 		VLA_FREE(str_w);
 	}
-	json_decref(file);
 }
 
-static void add_json_file(char *chars_list, int& chars_list_count, const std::string& path)
+static void add_json_file(char *TH_RESTRICT chars_list, const char* path)
 {
 	size_t file_size;
-	char *file_buffer = (char*)file_read(path.c_str(), &file_size);
-	if (!file_buffer) {
-		return;
+	char *file_buffer = (char*)file_read(path, &file_size);
+	if (file_buffer) {
+		json_t* file = json_loadb(file_buffer, file_size, 0, nullptr);
+		free(file_buffer);
+		add_json_file(chars_list, file);
+		json_decref_fast(file);
 	}
-
-	add_json_file(chars_list, chars_list_count, json_loadb(file_buffer, file_size, 0, nullptr));
-	free(file_buffer);
 }
 
-static void add_files_in_directory(char *chars_list, int& chars_list_count, std::string basedir, bool recurse)
+static void add_files_in_directory(char *TH_RESTRICT chars_list, const std::string& basedir, bool recurse)
 {
 	std::string pattern = basedir + "\\*";
 	WIN32_FIND_DATAA ffd;
-	HANDLE hFind = FindFirstFile(pattern.c_str(), &ffd);
-	if (hFind == INVALID_HANDLE_VALUE) {
-		return;
-	}
+	HANDLE hFind = FindFirstFileU(pattern.c_str(), &ffd);
 
-	do
-	{
-		if (ffd.cFileName[0] == '.' && (
-				ffd.cFileName[1] == '\0' ||
-				(ffd.cFileName[1] == '.' && ffd.cFileName[2] == '\0')
-			)
-		) {
-			// Do nothing
-		}
-		else if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-			if (recurse) {
-				std::string dirname = basedir + '\\' + ffd.cFileName;
-				add_files_in_directory(chars_list, chars_list_count, dirname, recurse);
-			}
-		}
-		else {
-			char* extension = PathFindExtensionA(ffd.cFileName);
-			if (strcmp(extension, ".js") == 0 ||
-				strcmp(extension, ".jdiff") == 0
+	if (hFind != INVALID_HANDLE_VALUE) {
+
+		do {
+			// These sorts of integer comparisons are safe here because
+			// the buffer is known to be part of a larger struct
+			if (*(uint16_t*)ffd.cFileName == TextInt('.', '\0') ||
+				(*(uint32_t*)ffd.cFileName & 0xFFFFFF) == TextInt('.', '.', '\0')
 			) {
-				std::string filename = basedir + '\\' + ffd.cFileName;
-				log_printf(" + %s\n", filename.c_str());
-				add_json_file(chars_list, chars_list_count, filename);
+				// Do nothing
 			}
-		}
-	} while (FindNextFile(hFind, &ffd));
+			else if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+				if (recurse) {
+					add_files_in_directory(chars_list, basedir + '\\' + ffd.cFileName, true);
+				}
+			}
+			else {
+				char* extension = PathFindExtensionA(ffd.cFileName);
+				if (*(uint32_t*)extension == TextInt('.', 'j', 's', '\0') ||
+					*(uint32_t*)extension == TextInt('.', 'j', 'd', 'i') && (*(uint32_t*)(extension + 4) & 0xFFFFFF) == TextInt('f', 'f', '\0')
+				) {
+					std::string filename = basedir + '\\' + ffd.cFileName;
+					log_printf(" + %s\n", filename.c_str());
+					add_json_file(chars_list, filename.c_str());
+				}
+			}
+		} while (FindNextFileU(hFind, &ffd));
 
-	FindClose(hFind);
+		FindClose(hFind);
+	}
 }
 
 // Add the characters of the original font - we will need them if we display unpatched text.
-int fill_chars_list_from_font(char *chars_list, const void *file_inout, size_t size_in)
+void fill_chars_list_from_font(char *TH_RESTRICT chars_list, const void *file_inout, size_t size_in)
 {
 	struct Metadata
 	{
@@ -142,51 +140,85 @@ int fill_chars_list_from_font(char *chars_list, const void *file_inout, size_t s
 	};
 	static_assert(sizeof(Metadata) == 4);
 
-	if (size_in < sizeof(BITMAPFILEHEADER)) {
-		return 0;
+	if unexpected(size_in < sizeof(BITMAPFILEHEADER)) {
+		return ;
 	}
 	const BITMAPFILEHEADER *bpFile = (const BITMAPFILEHEADER*)file_inout;
 
-	if (size_in < bpFile->bfSize + sizeof(Metadata)) {
-		return 0;
+	if unexpected(size_in < bpFile->bfSize + sizeof(Metadata)) {
+		return ;
 	}
 	const Metadata *metadata = (const Metadata*)((const BYTE*)file_inout + bpFile->bfSize);
 
-	if (size_in < bpFile->bfSize + sizeof(Metadata) + (metadata->nb_chars * 2)) {
-		return 0;
-	}
-	char *chars = (char*)(metadata + 1);
-	int chars_list_count = 0;
-
-	for (int i = 0; i < metadata->nb_chars; i++) {
-		char cstr[2];
-		WCHAR wstr[3];
-		if (chars[i * 2 + 1] != 0)
-		{
-			cstr[0] = chars[i * 2 + 1];
-			cstr[1] = chars[i * 2];
-		}
-		else
-		{
-			cstr[0] = chars[i * 2];
-			cstr[1] = 0;
-		}
-		MultiByteToWideChar(932, 0, cstr, 2, wstr, 3);
-
-		if (!chars_list[wstr[0]]) {
-			chars_list[wstr[0]] = 1;
-			chars_list_count++;
-		}
+	if unexpected(size_in < bpFile->bfSize + sizeof(Metadata) + (metadata->nb_chars * 2)) {
+		return ;
 	}
 
-	return chars_list_count;
+	const uint16_t *chars = (const uint16_t*)(metadata + 1);
+
+	if (size_t i = metadata->nb_chars) {
+
+		do {
+			uint32_t temp = *chars++;
+			if (temp > UINT8_MAX) {
+				temp = _rotl16(temp, 8);
+			}
+			uint32_t cstr = temp;
+
+			WCHAR wstr[3];
+			MultiByteToWideChar(932, 0, (LPCSTR)&cstr, 2, wstr, 3);
+
+			uint32_t c = wstr[0];
+			chars_list[c] = true;
+		} while (--i);
+	}
 }
 
-// Add all the characters that we could possibly want to display.
-int fill_chars_list_from_files(char *chars_list, json_t *files)
-{
-	int chars_list_count = 0;
+alignas(16) static char ALL_FILES_CHARS_LIST[MAX_CHARS] = {};
+static bool all_files_list_initialized = false;
 
+// This was previously a lambda, but MSVC is stupid
+// when giving lambdas calling conventions
+void TH_CDECL fill_chars_list_from_all_files_impl(const patch_t* patch, void*) {
+	std::string path = patch->archive;
+	add_files_in_directory(ALL_FILES_CHARS_LIST, path, false);
+	std::string_view game = runconfig_game_get_view();
+	if (!game.empty()) {
+		add_files_in_directory(ALL_FILES_CHARS_LIST, (path += '\\') += game, true);
+	}
+}
+
+void fill_chars_list_from_all_files(char *TH_RESTRICT chars_list) {
+	if unexpected(!all_files_list_initialized) {
+		log_print("(Font) Searching in every js file for characters...\n");
+		stack_foreach(fill_chars_list_from_all_files_impl, NULL);
+		all_files_list_initialized = true;
+	}
+	for (size_t i = 0; i < MAX_CHARS; ++i) {
+		chars_list[i] |= ALL_FILES_CHARS_LIST[i];
+	}
+}
+
+// In case this ever needs to be repatch compatible, uncomment this.
+// Currently the code only ever gets run during startup.
+/*
+extern "C" TH_EXPORT void bmpfont_mod_repatch(json_t* files_changed) {
+	const char *fn;
+	json_object_foreach_key(files_changed, fn) {
+		char* extension = PathFindExtensionA(fn);
+		if (strcmp(extension, ".js") == 0 ||
+			strcmp(extension, ".jdiff") == 0
+		) {
+			all_files_list_initialized = false;
+			break;
+		}
+	}
+}
+*/
+
+// Add all the characters that we could possibly want to display.
+void fill_chars_list_from_files(char *TH_RESTRICT chars_list, json_t *files)
+{
 	json_t *it;
 	json_flex_array_foreach_scoped(size_t, i, files, it) {
 		const char *fn = json_string_value(it);
@@ -194,98 +226,120 @@ int fill_chars_list_from_files(char *chars_list, json_t *files)
 			// Do nothing
 		}
 		else if (fn[0] == '*' && fn[1] == '\0') {
-			log_print("(Font) Searching in every js file for characters...\n");
-			stack_foreach_cpp([&](const patch_t *patch) {
-				if (patch->archive) {
-					add_files_in_directory(chars_list, chars_list_count, patch->archive, false);
-					const char *game = runconfig_game_get();
-					if (game) {
-						add_files_in_directory(chars_list, chars_list_count, std::string(patch->archive) + '\\' + game, true);
-					}
-				}
-			});
+			fill_chars_list_from_all_files(chars_list);
 		}
 		else {
-			add_json_file(chars_list, chars_list_count, stack_json_resolve(fn, nullptr));
+			json_t* json_file = stack_json_resolve(fn, nullptr);
+			add_json_file(chars_list, json_file);
+			json_decref_fast(json_file);
 		}
 	}
-
-	return chars_list_count;
 }
 
 // Returns the number of elements set to true in the list
-int fill_chars_list(char *chars_list, void *file_inout, size_t size_in, json_t *files)
+void fill_chars_list(char *TH_RESTRICT chars_list, void *file_inout, size_t size_in, json_t *files)
 {
-	int chars_list_count  = fill_chars_list_from_font(chars_list, file_inout, size_in);
-	chars_list_count     += fill_chars_list_from_files(chars_list, files);
-	return chars_list_count;
+	fill_chars_list_from_font(chars_list, file_inout, size_in);
+	fill_chars_list_from_files(chars_list, files);
 }
 
-void bmpfont_update_cache(std::string fn, char *chars_list, int chars_count, BYTE *buffer, size_t buffer_size, json_t *patch)
+void bmpfont_update_cache(const char* fn, char *TH_RESTRICT chars_list, size_t chars_count, BYTE *buffer, size_t buffer_size, json_t *patch)
 {
 	json_t *cache_patch = json_object();
 	json_object_set_new(cache_patch, "cache_version", json_integer(cache_version));
 	json_object_set(cache_patch, "patch", patch);
 	json_object_set_new(cache_patch, "chars_count", json_integer(chars_count));
-	json_t *chars_list_json = json_array();
-	for (WCHAR i = 0; i < 65535; i++) {
-		json_array_append_new(chars_list_json, json_boolean(chars_list[i]));
+
+	// Convert chars_list to a string of packed bits
+	__m128i text_conv = _mm_set_epi8('0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0');
+	for (size_t i = 0; i < PACKED_CHARS; i += 16) {
+		__m128i A = _mm_loadu_si128((__m128i*)(chars_list + i * 4));
+		__m128i B = _mm_loadu_si128((__m128i*)(chars_list + i * 4 + 16));
+		B = _mm_add_epi8(B, B);
+		B = _mm_add_epi8(B, A);
+		A = _mm_loadu_si128((__m128i*)(chars_list + i * 4 + 32));
+		A = _mm_slli_epi16(A, 2);
+		A = _mm_add_epi8(A, B);
+		B = _mm_loadu_si128((__m128i*)(chars_list + i * 4 + 48));
+		B = _mm_slli_epi16(B, 3);
+		B = _mm_add_epi8(B, A);
+		B = _mm_add_epi8(B, text_conv);
+		_mm_storeu_si128((__m128i*)(chars_list + i), B);
 	}
-	json_object_set(cache_patch, "chars_list", chars_list_json);
-	chars_list_json = json_decref_safe(chars_list_json);
+	json_object_set_new(cache_patch, "chars_list", json_stringn_nocheck(chars_list, PACKED_CHARS));
+	
 
-	std::string full_path;
-	{
-		std::string fn_jdiff = fn + ".jdiff";
-		char **chain = resolve_chain_game(fn_jdiff.c_str());
-		char *c_full_path = stack_fn_resolve_chain(chain);
-		chain_free(chain);
-		full_path.assign(c_full_path, strlen(c_full_path) - strlen(".jdiff")); // Remove ".jdiff"
-		free(c_full_path);
-	}
+	std::string path = fn;
+	path += ".jdiff";
 
-	full_path += ".cache";
-	file_write(full_path.c_str(), buffer, buffer_size);
+	char **chain = resolve_chain_game(path.c_str());
+	char *c_full_path = stack_fn_resolve_chain(chain);
+	chain_free(chain);
+	path.assign(c_full_path, strlen(c_full_path) - strlen("jdiff")); // Remove "jdiff"
+	free(c_full_path);
 
-	full_path += ".jdiff";
-	FILE *fp = fopen_u(full_path.c_str(), "w");
-	json_dumpf(cache_patch, fp, JSON_INDENT(2));
+	path += "cache";
+	file_write(path.c_str(), buffer, buffer_size);
+
+	path += 'j';
+	FILE *fp = fopen_u(path.c_str(), "wb");
+	json_dumpf(cache_patch, fp, JSON_INDENT(2) | JSON_COMPACT);
 	fclose(fp);
 
-	json_decref(cache_patch);
+	json_decref_fast(cache_patch);
 }
 
-BYTE *read_bmpfont_from_cache(std::string fn, char *chars_list, int chars_count, json_t *patch, size_t *file_size)
+BYTE *read_bmpfont_from_cache(const char* fn, char *TH_RESTRICT chars_list, size_t chars_count, json_t *patch, size_t *file_size)
 {
-	std::string cache_patch_fn = fn + ".cache.jdiff";
-	json_t *cache_patch = stack_game_json_resolve(cache_patch_fn.c_str(), nullptr);
-	if (!cache_patch) {
-		return nullptr;
-	}
+	size_t fn_len = strlen(fn);
+	BUILD_VLA_STR(char, fn_buf, fn, fn_len, ".cachej");
 
-	if (json_equal(patch, json_object_get(cache_patch, "patch")) == 0) {
-		json_decref(cache_patch);
-		return nullptr;
-	}
+	json_t *cache_patch = stack_game_json_resolve(fn_buf, NULL);
+	if (cache_patch) {
+		if (cache_version == json_integer_value(json_object_get(cache_patch, "cache_version")) &&
+			chars_count == json_integer_value(json_object_get(cache_patch, "chars_count")) &&
+			json_equal(patch, json_object_get(cache_patch, "patch"))
+		) {
+			json_t *chars_list_cache = json_object_get(cache_patch, "chars_list");
+			if (chars_list_cache &&
+				json_string_length(chars_list_cache) == PACKED_CHARS
+			) {
+				const char* cached_chars_list = json_string_value(chars_list_cache);
 
-	if (chars_count   != json_integer_value(json_object_get(cache_patch, "chars_count")) ||
-		cache_version != json_integer_value(json_object_get(cache_patch, "cache_version"))) {
-		json_decref(cache_patch);
-		return nullptr;
-	}
-	json_t *chars_list_cache = json_object_get(cache_patch, "chars_list");
-	for (WCHAR i = 0; i < 65535; i++) {
-		if (chars_list[i] != json_boolean_value(json_array_get(chars_list_cache, i))) {
-			json_decref(chars_list_cache);
-			json_decref(cache_patch);
-			return nullptr;
+				// Convert chars_list to a string of packed bits
+				// for comparing with the previously saved list
+				__m128i text_conv = _mm_set_epi8('0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0');
+				for (size_t i = 0; i < PACKED_CHARS; i += 16) {
+					__m128i A = _mm_loadu_si128((__m128i*)(chars_list + i * 4));
+					__m128i B = _mm_loadu_si128((__m128i*)(chars_list + i * 4 + 16));
+					B = _mm_add_epi8(B, B);
+					B = _mm_add_epi8(B, A);
+					A = _mm_loadu_si128((__m128i*)(chars_list + i * 4 + 32));
+					A = _mm_slli_epi16(A, 2);
+					A = _mm_add_epi8(A, B);
+					B = _mm_loadu_si128((__m128i*)(chars_list + i * 4 + 48));
+					B = _mm_slli_epi16(B, 3);
+					B = _mm_add_epi8(B, A);
+					B = _mm_add_epi8(B, text_conv);
+					if unexpected(_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((__m128i*)(cached_chars_list + i)), B)) != 0xFFFF) {
+						goto fail;
+					}
+				}
+
+				json_decref_fast(cache_patch);
+
+				// Remove the 'j' from the end of the filename
+				fn_buf[fn_len + strlen(".cache")] = '\0';
+				BYTE* ret = (BYTE*)stack_game_file_resolve(fn_buf, file_size);
+				VLA_FREE(fn_buf);
+				return ret;
+			}
 		}
+fail:
+		json_decref_fast(cache_patch);
 	}
-	json_decref(chars_list_cache);
-	json_decref(cache_patch);
-
-	std::string cache_fn = fn + ".cache";
-	return (BYTE*)stack_game_file_resolve(cache_fn.c_str(), file_size);
+	VLA_FREE(fn_buf);
+	return nullptr;
 }
 
 int bmpfont_add_option_int(void *bmpfont, const char *name, int value)
@@ -305,9 +359,9 @@ int bmpfont_add_option_color(void *bmpfont, const char *name, json_t *value)
 	return bmpfont_add_option(bmpfont, name, s_value);
 }
 
-bool generate_bitmap_font(void *bmpfont, char *chars_list, json_t *patch, BYTE **buffer, size_t *buffer_size)
+bool generate_bitmap_font(void *bmpfont, char *TH_RESTRICT chars_list, json_t *patch, BYTE **buffer, size_t *buffer_size)
 {
-	if (bmpfont == nullptr) {
+	if unexpected(bmpfont == nullptr) {
 		return false;
 	}
 
@@ -320,7 +374,7 @@ bool generate_bitmap_font(void *bmpfont, char *chars_list, json_t *patch, BYTE *
 	// Plugin
 	const char *thcrap_dir = runconfig_thcrap_dir_get();
 	const char *plugin     = json_object_get_string(patch, "plugin");
-	if (plugin == nullptr) {
+	if unexpected(plugin == nullptr) {
 		log_print("[Bmpfont] Jdiff file must have a 'plugin' entry\n");
 		return false;
 	}
@@ -373,31 +427,34 @@ bool generate_bitmap_font(void *bmpfont, char *chars_list, json_t *patch, BYTE *
 	ret &= bmpfont_add_option(       bmpfont, "--format", "packed_rgba");
 	ret &= bmpfont_add_option_binary(bmpfont, "--out-buffer", buffer, sizeof(BYTE*));
 	ret &= bmpfont_add_option_binary(bmpfont, "--out-size", buffer_size, sizeof(size_t));
-	ret &= bmpfont_add_option_binary(bmpfont, "--chars-list", chars_list, 65536 * sizeof(char));
+	ret &= bmpfont_add_option_binary(bmpfont, "--chars-list", chars_list, sizeof(char[MAX_CHARS]));
 
-	if (!ret) {
+	if unexpected(!ret) {
 		return false;
 	}
 
 	ret = bmpfont_run(bmpfont);
 	free(font_file);
 
-	if (!ret) {
-		return false;
-	}
-	return true;
+	return (bool)ret;
 }
 
 int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char *fn, json_t *patch)
 {
 	if (patch) {
 		// List all the characters to include in out font
-		char *chars_list = (char*)malloc(sizeof(char[65536]));
-		for (size_t i = 0; i < 65536; i++) {
-			chars_list[i] = 0;
+		char *chars_list = (char*)malloc(sizeof(char[MAX_CHARS]));
+
+		memset(chars_list, 0, sizeof(char[MAX_CHARS]));
+
+		fill_chars_list(chars_list, file_inout, size_in, json_object_get(patch, "chars_source"));
+
+		// MSVC vectorizes this, which is more efficient than passing
+		// around a count variable while filling the chars_list
+		size_t chars_count = 0;
+		for (size_t i = 0; i < MAX_CHARS; ++i) {
+			chars_count += (uint8_t)chars_list[i];
 		}
-		int chars_count = 0;
-		chars_count = fill_chars_list(chars_list, file_inout, size_in, json_object_get(patch, "chars_source"));
 
 		// Create the bitmap font
 		size_t buffer_size;
@@ -406,16 +463,18 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 		if (buffer == nullptr) {
 			bmpfont = bmpfont_init();
 			if (generate_bitmap_font(bmpfont, chars_list, patch, &buffer, &buffer_size)) {
+				// chars list is no longer valid after this function call
+				// since it gets modified to a text based format
 				bmpfont_update_cache(fn, chars_list, chars_count, buffer, buffer_size, patch);
 			}
 		}
 		free(chars_list);
-		if (!buffer) {
+		if unexpected(!buffer) {
 			log_print("Bitmap font creation failed\n");
 			bmpfont_free(bmpfont);
 			return -1;
 		}
-		if (buffer_size > size_out) {
+		if unexpected(buffer_size > size_out) {
 			log_print("Bitmap font too big\n");
 			if (bmpfont) {
 				bmpfont_free(bmpfont);
@@ -441,16 +500,14 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 	BYTE *bpData = (BYTE*)(bpInfo + 1);
 
 	size_t fn_len = strlen(fn);
-	VLA(char, fn_buf, fn_len + 5);
-	memcpy(fn_buf, fn, fn_len);
-	memcpy(fn_buf + fn_len, ".png", sizeof(".png"));
+	BUILD_VLA_STR(char, fn_buf, fn, fn_len, ".png");
 
 	uint32_t width, height;
 	uint8_t bpp;
 	BYTE** row_pointers = png_image_read(fn_buf, &width, &height, &bpp, false);
 
 	if (row_pointers) {
-		if (!row_pointers || size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height) {
+		if unexpected(!row_pointers || size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height) {
 			VLA_FREE(fn_buf);
 			log_print("Destination buffer too small!\n");
 			free(row_pointers);
@@ -475,22 +532,22 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 		bpInfo->biClrUsed = 0;
 		bpInfo->biClrImportant = 0;
 
-		for (unsigned int h = 0; h < height; h++) {
-			for (unsigned int w = 0; w < width; w++) {
-				bpData[h * width + w] = row_pointers[height - h - 1][w];
+		for (size_t h = 0; h < height; h++) {
+			for (size_t w = 0; w < width; w++) {
+				*bpData++ = row_pointers[height - h - 1][w];
 			}
 		}
 		free(row_pointers);
 	}
 
-	memcpy(fn_buf + fn_len, ".bin", sizeof(".bin"));
+	*(uint32_t*)&fn_buf[fn_len] = TextInt('.', 'b', 'i', 'n');
 
 	size_t bin_size;
 	void *bin_data = stack_game_file_resolve(fn_buf, &bin_size);
 	VLA_FREE(fn_buf);
 
 	if (bin_data) {
-		if (size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + bpInfo->biWidth * 4 * bpInfo->biHeight + bin_size) {
+		if unexpected(size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + bpInfo->biWidth * 4 * bpInfo->biHeight + bin_size) {
 			log_print("Destination buffer too small!\n");
 			free(bin_data);
 			return -1;

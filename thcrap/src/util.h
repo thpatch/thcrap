@@ -19,7 +19,7 @@
 
 #define TH_DEPRECATED_EXPORT TH_DEPRECATED_REASON("Exported function is only kept for backwards compatibility") THCRAP_API
 
-#define BoolStr(Boolean) (Boolean ? "true" : "false")
+#define BoolStr(Boolean) ((Boolean) ? "true" : "false")
 
 #define member_size(type, member) sizeof(((type *)0)->member)
 

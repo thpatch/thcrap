@@ -230,7 +230,7 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 
 void stack_show_missing(void)
 {
-	std::list<const patch_t*> rem_arcs;
+	std::vector<const patch_t*> rem_arcs;
 
 	for (const patch_t& patch : stack) {
 		if(patch.archive && !PathFileExists(patch.archive)) {
@@ -242,7 +242,7 @@ void stack_show_missing(void)
 		std::string rem_arcs_str;
 
 		for (const patch_t* it : rem_arcs) {
-			rem_arcs_str += std::string("\t") + it->archive + "\n";
+			rem_arcs_str += "\t"s + it->archive + '\n';
 		}
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 			"Some patches in your configuration could not be found:\n"
@@ -271,7 +271,9 @@ extern "C" TH_EXPORT void motd_mod_post_init(void)
 
 void stack_add_patch_from_json(json_t *patch)
 {
-	stack.push_back(patch_init(json_object_get_string(patch, "archive"), patch, stack.size() + 1));
+	if (const char* archive_path = json_object_get_string(patch, "archive")) {
+		stack.push_back(patch_init(archive_path, patch, stack.size() + 1));
+	}
 }
 
 void stack_add_patch(patch_t *patch)
@@ -325,11 +327,18 @@ void stack_print()
 	log_print("\n");
 
 	for (const patch_t& patch : stack) {
-		log_printf("\n"
-				   "[%zu] %s:\n", patch.level, patch.id);
-		log_printf("  archive: %s\n", patch.archive);
-		log_printf("  title: %s\n", patch.title);
-		log_printf("  update: %s\n", BoolStr(patch.update));
+
+		log_printf(
+			"\n"
+			"[%zu] %s:\n"
+			"  archive: %s\n"
+			"  title: %s\n"
+			"  update: %s\n"
+			, patch.level, patch.id
+			, patch.archive
+			, patch.title
+			, BoolStr(patch.update)
+		);
 
 		bool print_ignores = patch.ignore != NULL;
 		log_print(print_ignores ?
