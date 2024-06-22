@@ -216,6 +216,8 @@ THCRAP_API json_t *json5_loadb(const void *buffer, size_t size, char **error);
 // indirect UTF-8 filename support and nice error reporting.
 THCRAP_API json_t* json_load_file_report(const char *json_fn);
 
+json_t* json_load_file_report_size(const char* json_fn, size_t* size);
+
 // log_print for json_dump
 THCRAP_API void json_dump_log(const json_t *json, size_t flags);
 

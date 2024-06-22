@@ -275,18 +275,11 @@ json_t* json_object_get_keys_sorted(const json_t *object)
 	if(object) {
 		size_t size = json_object_size(object);
 		VLA(const char*, keys, size);
-		size_t i;
-		void *iter = json_object_iter((json_t *)object);
 
-		if(!keys) {
-			return NULL;
-		}
-
-		i = 0;
-		while(iter) {
-			keys[i] = json_object_iter_key(iter);
-			iter = json_object_iter_next((json_t *)object, iter);
-			i++;
+		size_t i = 0;
+		const char* key;
+		json_object_foreach_key((json_t*)object, key) {
+			keys[i++] = key;
 		}
 
 		qsort((void*)keys, size, sizeof(const char *), object_key_compare_keys);
@@ -384,72 +377,88 @@ json_t *json5_loadb(const void *buffer, size_t size, char **error)
 	return jansson;
 }
 
-json_t* json_load_file_report(const char *json_fn)
+static constexpr uint8_t utf8_bom[] = { 0xef, 0xbb, 0xbf };
+static constexpr uint8_t utf16le_bom[] = { 0xff, 0xfe };
+
+template<size_t bom_len>
+static inline bool skip_bom(uint8_t*& json_buffer, size_t& json_size, const uint8_t(&bom)[bom_len]) {
+	if (json_size > bom_len &&
+		*(uint16_t*)json_buffer == TextInt(bom[0], bom[1])
+	) {
+		if constexpr (bom_len == 3) {
+			if ((uint8_t)json_buffer[2] != bom[2]) {
+				return false;
+			}
+		}
+		json_buffer += bom_len;
+		json_size += bom_len;
+		return true;
+	}
+	return false;
+}
+
+json_t* json_load_file_report_size(const char *json_fn, size_t* size_out)
 {
-	size_t json_size;
-	const unsigned char utf8_bom[] = { 0xef, 0xbb, 0xbf };
-	const unsigned char utf16le_bom[] = { 0xff, 0xfe };
-	char *converted_buffer = nullptr;
-	char *error = nullptr;
-	json_t *ret;
+	if (!size_out) size_out = (size_t*)&size_out;
+
 	int msgbox_ret;
-	void* file_buffer;
-	char *json_buffer;
 
-start:
-	msgbox_ret = 0;
-	file_buffer = file_read(json_fn, &json_size);
-	json_buffer = (char*)file_buffer;
+	do {
+		msgbox_ret = 0;
 
-	if (!json_buffer || !json_size) {
-		return NULL;
-	}
+		size_t json_size;
+		uint8_t* json_buffer = (uint8_t*)file_read(json_fn, &json_size);
 
-	auto skip_bom = [&json_buffer, &json_size](const unsigned char *bom, size_t bom_len) {
-		if (json_size > bom_len && !memcmp(json_buffer, bom, bom_len)) {
-			json_buffer += bom_len;
-			json_size -= bom_len;
-			return true;
+		if unexpected(!json_buffer || !json_size) {
+			break;
 		}
-		return false;
-	};
 
-	if (!skip_bom(utf8_bom, sizeof(utf8_bom))) {
-		// Convert UTF-16LE to UTF-8.
-		// NULL bytes do not count as significant whitespace in JSON, so
-		// they can indeed be used in the absence of a BOM. (In fact, the
-		// JSON RFC 4627 Chapter 3 explicitly mentions this possibility.)
-		if (
-			skip_bom(utf16le_bom, sizeof(utf16le_bom))
-			|| (json_size > 2 && json_buffer[1] == '\0')
+		if (!skip_bom(json_buffer, json_size, utf8_bom)) {
+			// Convert UTF-16LE to UTF-8.
+			// NULL bytes do not count as significant whitespace in JSON, so
+			// they can indeed be used in the absence of a BOM. (In fact, the
+			// JSON RFC 4627 Chapter 3 explicitly mentions this possibility.)
+			if (
+				skip_bom(json_buffer, json_size, utf16le_bom) ||
+				(json_size > 2 && json_buffer[1] == '\0')
 			) {
-			auto converted_len = json_size * UTF8_MUL;
-			converted_buffer = (char *)malloc(converted_len);
-			json_size = WideCharToMultiByte(
-				CP_UTF8, 0, (const wchar_t *)json_buffer, json_size / 2,
-				converted_buffer, converted_len, NULL, NULL
-			);
-			json_buffer = converted_buffer;
+				size_t converted_len = json_size * UTF8_MUL;
+				uint8_t* converted_buffer = (uint8_t*)malloc(converted_len);
+				json_size = WideCharToMultiByte(
+					CP_UTF8, 0, (const wchar_t*)json_buffer, json_size / 2,
+					(char*)converted_buffer, converted_len, NULL, NULL
+				);
+				free(json_buffer);
+				json_buffer = converted_buffer;
+			}
 		}
-	}
-	ret = json5_loadb(json_buffer, json_size, &error);
-	if (!ret) {
+
+		char* error;
+		json_t* ret = json5_loadb(json_buffer, json_size, &error);
+
+		free(json_buffer);
+
+		if (ret) {
+			*size_out = json_size;
+			return ret;
+		}
+
 		msgbox_ret = log_mboxf(NULL, MB_RETRYCANCEL | MB_ICONSTOP,
 			"JSON parsing error: %s\n"
 			"\n"
 			"(%s)",
 			error, json_fn
 		);
-	}
-	SAFE_FREE(converted_buffer);
-	SAFE_FREE(file_buffer);
-	SAFE_FREE(error);
+		free(error);
 
-	if (msgbox_ret == IDRETRY) {
-		goto start;
-	}
+	} while (msgbox_ret == IDRETRY);
 
-	return ret;
+	*size_out = 0;
+	return NULL;
+}
+
+json_t* json_load_file_report(const char *json_fn) {
+	return json_load_file_report_size(json_fn, NULL);
 }
 
 void json_dump_log(const json_t *json, size_t flags)

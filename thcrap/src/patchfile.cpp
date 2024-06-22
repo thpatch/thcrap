@@ -260,28 +260,17 @@ int patch_file_store(const patch_t *patch_info, const char *fn, const void *file
 
 json_t* patch_json_load(const patch_t *patch_info, const char *fn, size_t *file_size)
 {
-	if unexpected(patch_file_blacklisted(patch_info, fn)) {
-		if (file_size) {
-			*file_size = 0;
+	if (!patch_file_blacklisted(patch_info, fn)) {
+		if (char *_fn = fn_for_patch(patch_info, fn)) {
+			json_t* file_json = json_load_file_report_size(_fn, file_size);
+			free(_fn);
+			return file_json;
 		}
-		return NULL;
 	}
-	json_t *file_json = NULL;
-	if (char *_fn = fn_for_patch(patch_info, fn)) {
-		file_json = json_load_file_report(_fn);
-		if (file_size) {
-			HANDLE fn_stream = file_stream(_fn);
-			if (fn_stream != INVALID_HANDLE_VALUE) {
-				*file_size = GetFileSize(fn_stream, NULL);
-				CloseHandle(fn_stream);
-			}
-			else {
-				*file_size = 0;
-			}
-		}
-		free(_fn);
+	if (file_size) {
+		*file_size = 0;
 	}
-	return file_json;
+	return NULL;
 }
 
 size_t patch_json_merge(json_t **json_inout, const patch_t *patch_info, const char *fn)
