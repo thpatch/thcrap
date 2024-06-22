@@ -161,7 +161,7 @@ void log_print(const char *str) {
 	log_push(str, (uint32_t)strlen(str), false);
 }
 
-void log_vprintf(const char *format, va_list va) {
+inline void log_vprintf(const char *format, va_list va) {
 	va_list va2;
 	va_copy(va2, va);
 	const int total_size = vsnprintf(NULL, 0, format, va2);

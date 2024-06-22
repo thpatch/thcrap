@@ -17,10 +17,10 @@ static std::vector<patch_t> stack;
 TH_CALLER_CLEANUP(chain_free)
 static char **resolve_chain_default(const char *fn)
 {
-	if (!fn) {
+	if unexpected(!fn) {
 		return nullptr;
 	}
-	char **chain = (char**)malloc(3 * sizeof(char *));
+	char **chain = (char**)malloc(sizeof(char*[3]));
 	chain[0] = strdup(fn);
 	chain[1] = fn_for_build(fn);
 	chain[2] = nullptr;

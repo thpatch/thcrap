@@ -256,7 +256,7 @@ TH_CALLER_FREE char* json_object_get_string_copy(const json_t *object, const cha
 json_t* json_object_merge(json_t *old_obj, json_t *new_obj)
 {
 	if (!json_object_update_recursive(old_obj, new_obj)) {
-		json_decref(new_obj);
+		json_decref_fast(new_obj);
 		return old_obj;
 	}
 	else {

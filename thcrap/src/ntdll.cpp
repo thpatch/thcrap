@@ -37,7 +37,7 @@ RtlNtStatusToDosErrorPtr RtlNtStatusToDosError = &RtlNtStatusToDosErrorShim;
 #endif
 
 static void resolve_nt_funcs() {
-	const HMODULE ntdll_module = (HMODULE)GetModuleHandleA("ntdll.dll");
+	const HMODULE ntdll_module = (HMODULE)GetModuleHandleW(L"ntdll.dll");
 	NtQueryInformationProcess = (NtQueryInformationProcessPtr)GetProcAddress(ntdll_module, "NtQueryInformationProcess");
 #if TH_X64
 	NtAllocateVirtualMemory = (NtAllocateVirtualMemoryPtr)GetProcAddress(ntdll_module, "NtAllocateVirtualMemory");

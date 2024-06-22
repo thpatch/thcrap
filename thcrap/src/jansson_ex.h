@@ -43,6 +43,7 @@ static inline json_t* json_decref_safe_inline(json_t* json) {
 }
 
 #define json_decref_safe(json) json_decref_safe_inline(json)
+#define json_decref_fast(json) json_decref_safe_inline(json)
 
 /**
   * Unfortunately, JSON doesn't support native hexadecimal values.

@@ -292,7 +292,7 @@ size_t patch_json_merge(json_t **json_inout, const patch_t *patch_info, const ch
 		if(json_new) {
 			patch_print_fn(patch_info, fn);
 			if (!json_object_update_recursive(*json_inout, json_new)) {
-				json_decref(json_new);
+				json_delete(json_new);
 			}
 			else {
 				*json_inout = json_new;

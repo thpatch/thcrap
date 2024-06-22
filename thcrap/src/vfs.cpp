@@ -68,8 +68,8 @@ json_t *jsonvfs_get(const char* fn, size_t* size)
 		for (auto& handler : vfs_handlers) {
 			if (PathMatchSpecExW(fn_normalized_w, handler.out_pattern, PMSF_NORMAL) == S_OK) {
 				std::unordered_map<std::string_view, json_t *> in_data;
-				for (auto& s : handler.in_fns) {
-					in_data[s] = jsondata_get(s.c_str());
+				for (auto& in_fn : handler.in_fns) {
+					in_data[in_fn] = jsondata_get(in_fn.c_str());
 				}
 
 				size_t cur_size = 0;
@@ -153,11 +153,7 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 
 static json_t *map_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
 {
-	if (in_data.empty()) {
-		return NULL;
-	}
-
-	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 6)) + ".map";
+	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 5)) + "map";
 	json_t *map = stack_json_resolve(map_fn.c_str(), &out_size);
 	if (map) {
 		return json_map_patch(map, in_data.begin()->second);
