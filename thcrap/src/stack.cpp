@@ -116,20 +116,24 @@ bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, s
 	}
 }
 
-json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
-{
-	json_t *ret = NULL;
-	
+template<bool print, bool include_vfs>
+static TH_FORCEINLINE json_t* stack_json_resolve_chain_impl(char** chain, size_t* file_size) {
+	json_t* ret = NULL;
+
 	size_t json_size = 0;
 
-	for (size_t n = 0; chain[n]; n++) {
-		const char *const fn = chain[n];
-		size_t size = 0;
-		json_t *json_new = jsonvfs_get(fn, &size);
-		if (json_new) {
-			ret = json_object_merge(ret, json_new);
-			log_printf("\n+ vfs:%s", fn);
-			json_size += size;
+	if constexpr (include_vfs) {
+		for (size_t n = 0; chain[n]; n++) {
+			const char *const fn = chain[n];
+			size_t size = 0;
+			json_t *json_new = jsonvfs_get(fn, &size);
+			if (json_new) {
+				ret = json_object_merge(ret, json_new);
+				if constexpr (print) {
+					log_printf("\n+ vfs:%s", fn);
+				}
+				json_size += size;
+			}
 		}
 	}
 
@@ -139,24 +143,42 @@ json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
 		json_size += patch_json_merge(&ret, sci.patch_info, sci.fn);
 	}
 
-	log_print(ret ? "\n" : "not found\n");
-	if(file_size) {
+	if constexpr (print) {
+		log_print(ret ? "\n" : "not found\n");
+	}
+	if (file_size) {
 		*file_size = json_size;
 	}
 	return ret;
 }
 
-json_t* stack_json_resolve(const char *fn, size_t *file_size)
-{
+template<bool print, bool include_vfs>
+static TH_FORCEINLINE json_t* stack_json_resolve_impl(const char* fn, size_t* file_size) {
 	json_t *ret = NULL;
 	if (char** chain = resolve_chain(fn)) {
 		if (chain[0]) {
-			log_printf("(JSON) Resolving %s... ", fn);
-			ret = stack_json_resolve_chain(chain, file_size);
+			if constexpr (print) {
+				log_printf("(JSON) Resolving %s... ", fn);
+			}
+			ret = stack_json_resolve_chain_impl<print, include_vfs>(chain, file_size);
 		}
 		chain_free(chain);
 	}
 	return ret;
+}
+
+json_t* stack_json_resolve_chain(char **chain, size_t *file_size)
+{
+	return stack_json_resolve_chain_impl<true, true>(chain, file_size);
+}
+
+json_t* stack_json_resolve(const char *fn, size_t *file_size)
+{
+	return stack_json_resolve_impl<true, true>(fn, file_size);
+}
+
+json_t* stack_json_resolve_vfs(const char* fn, size_t* file_size) {
+	return stack_json_resolve_impl<false, false>(fn, file_size);
 }
 
 HANDLE stack_file_resolve_chain(char **chain)

@@ -93,26 +93,19 @@ json_t *jsonvfs_get(const char* fn, size_t* size)
 
 static json_t *json_map_resolve(json_t *obj, const char *path)
 {
-	if (!path || !path[0]) {
+	if unexpected(!path) {
 		return NULL;
 	}
-
-	char *dup = strdup(path);
-	char *cur = dup;
-	char *next;
-	while ((next = strchr(dup, '.'))) {
-		*next = '\0';
-		next++;
-		obj = json_object_get(obj, cur);
-		if (!obj) {
-			free(dup);
-			return NULL;
+	for (const char* cur_start = path;; ++path) {
+		switch (char c = *path) {
+			case '.': case '\0':
+				obj = json_object_getn(obj, cur_start, PtrDiffStrlen(path, cur_start));
+				if (!obj || !c) {
+					return obj;
+				}
+				cur_start = path + 1;
 		}
-		cur = next;
 	}
-	obj = json_object_get(obj, cur);
-	free(dup);
-	return obj;
 }
 
 static json_t *json_map_patch(json_t *map, json_t *in)
@@ -154,7 +147,7 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 static json_t *map_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
 {
 	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 5)) + "map";
-	json_t *map = stack_json_resolve(map_fn.c_str(), &out_size);
+	json_t *map = stack_json_resolve_vfs(map_fn.c_str(), &out_size);
 	if (map) {
 		return json_map_patch(map, in_data.begin()->second);
 	}

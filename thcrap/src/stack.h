@@ -68,6 +68,8 @@ THCRAP_API json_t* stack_json_resolve_chain(char **chain, size_t *file_size);
 // Uses the current patch stack
 THCRAP_API json_t* stack_json_resolve(const char *fn, size_t *file_size);
 
+json_t* stack_json_resolve_vfs(const char* fn, size_t* file_size);
+
 // Generic file resolver. Returns a stream of the file matching the [chain]
 // with the highest priority inside the patch stack, or INVALID_HANDLE_VALUE
 // if there is no such file in the stack.

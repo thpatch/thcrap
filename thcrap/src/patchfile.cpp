@@ -276,11 +276,13 @@ json_t* patch_json_load(const patch_t *patch_info, const char *fn, size_t *file_
 size_t patch_json_merge(json_t **json_inout, const patch_t *patch_info, const char *fn)
 {
 	size_t file_size = 0;
-	if(fn && json_inout) {
+	if (fn && json_inout) {
 		json_t *json_new = patch_json_load(patch_info, fn, &file_size);
-		if(json_new) {
+		if (json_new) {
 			patch_print_fn(patch_info, fn);
 			if (!json_object_update_recursive(*json_inout, json_new)) {
+				// This is safe to call because there can
+				// only be a single reference to json_new
 				json_delete(json_new);
 			}
 			else {
