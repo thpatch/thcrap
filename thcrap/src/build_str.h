@@ -187,8 +187,9 @@ template<typename T, bool null_terminate = true, typename C = T, std::enable_if_
 static constexpr TH_FORCEINLINE T* build_str(T* buffer, C cur_char, StrsT&&... next_strs);
 template<typename T, bool null_terminate = true, typename S = void, typename C = S::value_type, typename L = void, std::enable_if_t<is_compatible_char_type_v<T, C> && is_cpp_string_like_v<S, C> && std::is_integral_v<L> && !is_char_type_v<L>, bool> = true, typename ... StrsT>
 static constexpr TH_FORCEINLINE T* build_str(T* buffer, const S& cur_str, L cur_len, StrsT&&... next_strs) {
+    const C* cur_str_ptr = cur_str.data();
     for (size_t i = 0; i < cur_len; ++i) {
-        buffer[i] = (T)cur_str.data()[i];
+        buffer[i] = (T)cur_str_ptr[i];
     }
     buffer += cur_len;
     if constexpr ((bool)sizeof...(StrsT)) {
@@ -203,8 +204,9 @@ static constexpr TH_FORCEINLINE T* build_str(T* buffer, const S& cur_str, L cur_
 template<typename T, bool null_terminate, typename S, typename C, std::enable_if_t<is_compatible_char_type_v<T, C> && is_cpp_string_like_v<S, C>, bool>, typename ... StrsT>
 static constexpr TH_FORCEINLINE T* build_str(T* buffer, const S& cur_str, StrsT&&... next_strs) {
     size_t cur_len = cur_str.length();
+    const C* cur_str_ptr = cur_str.data();
     for (size_t i = 0; i < cur_len; ++i) {
-        buffer[i] = (T)cur_str.data()[i];
+        buffer[i] = (T)cur_str_ptr[i];
     }
     buffer += cur_len;
     if constexpr ((bool)sizeof...(StrsT)) {
