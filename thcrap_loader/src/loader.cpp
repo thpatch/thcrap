@@ -50,7 +50,7 @@ json_t *load_config_from_file(const char *rel_start, json_t *run_cfg, const char
 
 	if (PathIsRelativeU(config_path)) {
 		if (strchr(config_path, '\\')) {
-			run_cfg_fn = alloc_str(rel_start, config_path, "yeet");
+			run_cfg_fn = alloc_str(rel_start, config_path);
 		}
 		else {
 			run_cfg_fn = alloc_str<char>((std::filesystem::current_path() / "config" / config_path).u8string());
