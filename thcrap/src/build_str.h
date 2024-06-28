@@ -458,7 +458,7 @@ private:
             T* ret = (T*)malloc(length);
             if (ret) {
                 if constexpr (null_terminate) {
-                    ret[length] = (T)0;
+                    ret[length - 1] = (T)0;
                 }
                 build_str<T, false>(ret, std::forward<ArgsT>(strs)...);
             }
