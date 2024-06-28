@@ -253,10 +253,11 @@ if [ "$BETA" == 1 ]; then
 else
     GITHUB_PRERELEASE=false
 fi
+GIT_TAG=$(date -d "$DATE" +%Y-%m-%d)
 upload_url=$(\
     jq -n \
         --arg msg "$(cat commit_github.txt)" \
-        --arg date "$(date -d "$DATE" +%Y-%m-%d)" \
+        --arg date "$GIT_TAG" \
         --argjson prerelease $GITHUB_PRERELEASE \
         '{ "tag_name": $date, "name": $date, "body": $msg, "prerelease": $prerelease }' | \
     curl -s 'https://api.github.com/repos/thpatch/thcrap/releases' \
@@ -264,12 +265,36 @@ upload_url=$(\
     jq -r .upload_url | sed -e 's/{.*}//')
 if [ "$upload_url" == "null" ]; then echo "Releasing on GitHub failed."; fi
 
-ret=$(curl -s "$upload_url?name=thcrap.zip" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/zip' --data-binary @thcrap.zip | jq -r '.state')
-if [ "$ret" != "uploaded" ]; then echo "thcrap.zip upload on GitHub failed."; fi
-ret=$(curl -s "$upload_url?name=thcrap.zip.sig" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/octet-stream' --data-binary @thcrap.zip.sig | jq -r '.state')
-if [ "$ret" != "uploaded" ]; then echo "thcrap.zip.sig upload on GitHub failed."; fi
-ret=$(curl -s "$upload_url?name=thcrap_symbols.zip" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/zip' --data-binary @thcrap_symbols.zip | jq -r '.state')
-if [ "$ret" != "uploaded" ]; then echo "thcrap_symbols.zip upload on GitHub failed."; fi
+function upload_files_to_github()
+{
+	ret=$(curl -s "$upload_url?name=thcrap.zip" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/zip' --data-binary @thcrap.zip | jq -r '.state')
+	if [ "$ret" != "uploaded" ]; then echo "thcrap.zip upload on GitHub failed."; fi
+	ret=$(curl -s "$upload_url?name=thcrap.zip.sig" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/octet-stream' --data-binary @thcrap.zip.sig | jq -r '.state')
+	if [ "$ret" != "uploaded" ]; then echo "thcrap.zip.sig upload on GitHub failed."; fi
+	ret=$(curl -s "$upload_url?name=thcrap_symbols.zip" -Lu "$GITHUB_LOGIN:$GITHUB_TOKEN" -H 'Content-Type: application/zip' --data-binary @thcrap_symbols.zip | jq -r '.state')
+	if [ "$ret" != "uploaded" ]; then echo "thcrap_symbols.zip upload on GitHub failed."; fi
+}
+upload_files_to_github
+
+function test_github_upload()
+{
+	echo "Testing if the release was uploaded properly..."
+	wget "https://github.com/thpatch/thcrap/releases/download/$GIT_TAG/thcrap.zip" -O thcrap_github.zip || return 1
+	wget "https://github.com/thpatch/thcrap/releases/download/$GIT_TAG/thcrap.zip.sig" -O thcrap_github.zip.sig || return 1
+	diff -q thcrap.zip thcrap_github.zip || return 1
+	diff -q thcrap.zip.sig thcrap_github.zip.sig || return 1
+	rm thcrap_github.zip thcrap_github.zip.sig
+	return 0
+}
+if ! test_github_upload; then
+	# The 2nd upload_files_to_github call freezes.
+	# echo "WARNING: upload failed. Trying again..."
+	# upload_files_to_github
+	# if ! test_github_upload; then
+		explorer.exe .
+		confirm "ERROR: Github upload failed twice. Please upload the release manually and then press y."
+	# fi
+fi
 
 if [ "$BETA" != 1 ]; then
     # Push update
