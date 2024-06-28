@@ -54,11 +54,11 @@ static inline constexpr bool is_compatible_char_type_v = is_compatible_char_type
 // Special template to check if two string views are compatible
 // since otherwise detecting this is a pain.
 
-template<typename T, typename V, typename C = void*, bool = is_compatible_char_type_v<T, C>>
+template<typename T, typename V, typename = void>
 struct is_compatible_string_view : std::false_type {};
 
-template<typename T, typename C>
-struct is_compatible_string_view<T, std::basic_string_view<C>, typename std::basic_string_view<C>::value_type, true> : std::true_type {};
+template<typename T, typename V>
+struct is_compatible_string_view<T, V, std::void_t<typename V::value_type>> : std::conditional_t<is_compatible_char_type_v<T, typename V::value_type> && std::is_same_v<V, std::basic_string_view<typename V::value_type>>, std::true_type, std::false_type> {};
 
 template<typename T, typename V>
 static inline constexpr bool is_compatible_string_view_v = is_compatible_string_view<T, V>::value;
@@ -430,7 +430,7 @@ private:
                 // avoid a dangling reference when returning.
                 return build_vla_data_impl3(
                     std::forward<std::conditional_t<
-                        is_compatible_string_view_v<T, ArgsT>,
+                        is_compatible_string_view_v<T, std::remove_reference_t<ArgsT>>,
                         std::remove_reference_t<ArgsT>,
                         std::reference_wrapper<std::remove_reference_t<ArgsT>>
                     >>(strs)...

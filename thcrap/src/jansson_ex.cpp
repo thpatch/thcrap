@@ -404,14 +404,15 @@ json_t* json_load_file_report_size(const char *json_fn, size_t* size_out)
 	int msgbox_ret;
 
 	do {
-		msgbox_ret = 0;
 
 		size_t json_size;
-		uint8_t* json_buffer = (uint8_t*)file_read(json_fn, &json_size);
+		uint8_t* heap_buffer = (uint8_t*)file_read(json_fn, &json_size);
 
-		if unexpected(!json_buffer || !json_size) {
+		if unexpected(!heap_buffer || !json_size) {
 			break;
 		}
+
+		uint8_t* json_buffer = heap_buffer;
 
 		if (!skip_bom(json_buffer, json_size, utf8_bom)) {
 			// Convert UTF-16LE to UTF-8.
@@ -428,15 +429,15 @@ json_t* json_load_file_report_size(const char *json_fn, size_t* size_out)
 					CP_UTF8, 0, (const wchar_t*)json_buffer, json_size / 2,
 					(char*)converted_buffer, converted_len, NULL, NULL
 				);
-				free(json_buffer);
-				json_buffer = converted_buffer;
+				free(heap_buffer);
+				heap_buffer = json_buffer = converted_buffer;
 			}
 		}
 
 		char* error;
 		json_t* ret = json5_loadb(json_buffer, json_size, &error);
 
-		free(json_buffer);
+		free(heap_buffer);
 
 		if (ret) {
 			*size_out = json_size;

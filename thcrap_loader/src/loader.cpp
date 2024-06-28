@@ -53,7 +53,7 @@ json_t *load_config_from_file(const char *rel_start, json_t *run_cfg, const char
 			run_cfg_fn = alloc_str(rel_start, config_path);
 		}
 		else {
-			run_cfg_fn = alloc_str<char>((std::filesystem::current_path() / "config" / config_path).u8string());
+			run_cfg_fn = alloc_str<char>(std::filesystem::current_path().u8string(), "\\config\\", config_path);
 		}
 	}
 	else {
