@@ -37,6 +37,9 @@
   <PropertyGroup>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup>
+    <SigningCertPath>$(SolutionDir)cert.pfx</SigningCertPath>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(SolutionDir)libs\external_deps\include\;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -60,8 +63,8 @@
     <BuildDependsOn>$(BuildDependsOn);SignBuild</BuildDependsOn>
   </PropertyGroup>
   <Target Name="SignBuild" Condition="'$(ConfigurationType)'!='StaticLibrary' And '$(SkipSign)'!='true'">
-    <Exec Condition="Exists('$(SolutionDir)cert.pfx')" Command='signtool sign /v /f "$(SolutionDir)cert.pfx" /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"' />
-    <Warning Condition="!Exists('$(SolutionDir)cert.pfx')" Text="$(SolutionDir)cert.pfx not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.%0APlease see README.md for instructions on how to generate this file." />
+    <Exec Condition="Exists('$(SigningCertPath)')" Command='signtool sign /v /f "$(SigningCertPath)" /d "$(ProjectTitle)" /du "$(ProjectURL)" "$(TargetPath)"' />
+    <Message Condition="!Exists('$(SigningCertPath)')" Importance="high" Text="$(SigningCertPath) not found. Binaries won't be digitally signed, and thcrap won't be able to automatically update itself.%0APlease see README.md for instructions on how to generate this file." />
   </Target>
   <PropertyGroup>
     <GASPath>$(SolutionDir)libs\external_deps\</GASPath>
