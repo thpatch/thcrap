@@ -27,13 +27,14 @@
     <ThcrapVersionY>9999</ThcrapVersionY>
     <ThcrapVersionM>99</ThcrapVersionM>
     <ThcrapVersionD>99</ThcrapVersionD>
+    <ThcrapProjectBranch>stable</ThcrapProjectBranch>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_CRT_RAND_S=1;THCRAP_EXPORTS;THCRAP_ALLOW_INTERNAL_APIS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_RAND_S=1;THCRAP_EXPORTS;THCRAP_ALLOW_INTERNAL_APIS;PROJECT_VERSION_Y=$(ThcrapVersionY);PROJECT_VERSION_M=$(ThcrapVersionM);PROJECT_VERSION_D=$(ThcrapVersionD);BUILD_PROJECT_BRANCH="$(ThcrapProjectBranch)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(SolutionDir)libs/json5pp/;$(SolutionDir)libs/include/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
