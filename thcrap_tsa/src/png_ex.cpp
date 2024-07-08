@@ -70,7 +70,8 @@ int png_image_resize(
 	new_buf = (png_bytep)realloc(image.buf, new_size);
 	if(new_buf) {
 		image.buf = new_buf;
-		ZeroMemory(image.buf + prev_size, new_size - prev_size);
+		if(new_size > prev_size)
+			ZeroMemory(image.buf + prev_size, new_size - prev_size);
 
 		// If the width has changed, we need to move all rows
 		// in the image, going from bottom to top.
