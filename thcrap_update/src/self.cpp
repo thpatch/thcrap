@@ -15,7 +15,7 @@
 
 #define TEMP_FN_LEN 41
 
-constexpr char SELF_SERVER[] = "http://thcrap.thpatch.net/";
+constexpr char SELF_SERVER[] = "https://thcrap.thpatch.net/";
 constexpr char NETPATHS_FN[] = "thcrap_update.js";
 constexpr char PREFIX_BACKUP[] = "thcrap_old_%s";
 constexpr char PREFIX_NEW[] = "thcrap_new_";
