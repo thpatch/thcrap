@@ -140,6 +140,13 @@ struct Th145AVFileReader // Inherits from AVPackageReader
 std::unordered_map<HANDLE, Th135File*> openFiles;
 std::mutex openFilesMutex;
 
+#define AoCF_PROFILING 0
+
+#if AoCF_PROFILING
+size_t file_count = 0;
+LARGE_INTEGER qpc_start;
+#endif
+
 static inline bool th135_init_fr_inner(Th135File* fr, const char* path) {
 	fr->init(path);
 	if (fr->need_replace()) {
@@ -199,6 +206,11 @@ bool th135_init_fr(Th135File *fr, const char *path) {
 template<typename T>
 int th135_openFileCommon(const char *filename, T *file)
 {
+#if AoCF_PROFILING
+	if unexpected(!file_count++) {
+		QueryPerformanceCounter(&qpc_start);
+	}
+#endif
 	Th135File *fr = new Th135File();
 	if (!th135_init_fr(fr, filename)) {
 		delete fr;
@@ -257,6 +269,27 @@ extern "C" int BP_th145_openFile(x86_reg_t * regs, json_t * bp_info)
 
 extern "C" int BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
 {
+#if AoCF_PROFILING
+	defer(
+		// The initial file loading code for AoCF parses
+		// exactly 610 files before reaching the main menu,
+		// so this can be used to roughly measure how much
+		// time is getting used just by the file replacement code.
+		if unexpected(file_count == 610) {
+			LARGE_INTEGER qpc_end;
+			QueryPerformanceCounter(&qpc_end);
+			LARGE_INTEGER perf_freq;
+			QueryPerformanceFrequency(&perf_freq);
+			double time = (double)(qpc_end.QuadPart - qpc_start.QuadPart) / perf_freq.QuadPart;
+			log_printf(
+				"---------------------------\n"
+				"File startup completed in %f seconds\n"
+				"---------------------------\n"
+				, time
+			);
+		}
+	);
+#endif
 	ReadFileStack *stack = (ReadFileStack*)(regs->esp + sizeof(void*));
 
 	std::lock_guard lock(openFilesMutex);
