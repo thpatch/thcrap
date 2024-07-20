@@ -177,9 +177,9 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 	size_t final_dot = path_str.find_last_of('.');
 	if (
 		final_dot != decltype(path_str)::npos &&
-		!path_str.compare(final_dot, 4, "dds\0"sv)
+		!path_str.compare(final_dot + 1, 4, u8"dds\0"sv)
 	) {
-		path_str.replace(path_str.length() - strlen("dds"), strlen("dds"), "png"sv);
+		path_str.replace(path_str.length() - 3, 3, u8"png"sv);
 
 		const char* path_ptr = (const char*)path_str.c_str();
 
