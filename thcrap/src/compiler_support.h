@@ -246,13 +246,13 @@
 
 // - [[nodiscard]] Equivalent Attributes
 #if CPP20 || __has_cpp_attribute(nodiscard) >= 201907L
-#define TH_NODISCARD [[nodicard]]
+#define TH_NODISCARD [[nodiscard]]
 #define TH_NODISCARD_REASON(reason) [[nodiscard(reason)]]
 #elif CPP17 || __has_cpp_attribute(nodiscard) >= 201603L
-#define TH_NODISCARD [[nodicard]]
+#define TH_NODISCARD [[nodiscard]]
 #define TH_NODISCARD_REASON(reason) [[nodiscard]]
 #elif __has_c_attribute(nodiscard) >= 202003L
-#define TH_NODISCARD [[nodicard]]
+#define TH_NODISCARD [[nodiscard]]
 #define TH_NODISCARD_REASON(reason) [[nodiscard(reason)]]
 #elif __has_attribute(warn_unused_result)
 #define TH_NODISCARD __attribute__((warn_unused_result))
