@@ -167,8 +167,9 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 #else
 	std::u8string path_str = path.generic_u8string();
 #endif
+	char* path_ptr = (char*)path_str.c_str();
 
-	if (th135_init_fr_inner(fr, (const char*)path_str.c_str())) {
+	if (th135_init_fr_inner(fr, path_ptr)) {
 		return true;
 	}
 
@@ -176,12 +177,11 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 	// try to replace it with a PNG file (the game will deal with it)
 	size_t final_dot = path_str.find_last_of('.');
 	if (
-		final_dot != decltype(path_str)::npos &&
-		!path_str.compare(final_dot + 1, 4, u8"dds\0"sv)
+		final_dot == path_str.length() - 4 &&
+		*(uint32_t*)&path_ptr[final_dot + 1] == TextInt('d', 'd', 's', '\0')
 	) {
-		path_str.replace(path_str.length() - 3, 3, u8"png"sv);
-
-		const char* path_ptr = (const char*)path_str.c_str();
+		// This write is safe because the string length is known and doesn't change
+		*(uint32_t*)&path_ptr[final_dot + 1] = TextInt('p', 'n', 'g', '\0');
 
 		if unexpected(runconfig_dat_dump_get()) {
 			register_utf8_filename(path_ptr);
