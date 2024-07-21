@@ -149,7 +149,12 @@ static json_t *map_generator(std::unordered_map<std::string_view, json_t*>& in_d
 	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 5)) + "map";
 	json_t *map = stack_json_resolve_vfs(map_fn.c_str(), &out_size);
 	if (map) {
-		return json_map_patch(map, in_data.begin()->second);
+		json_t *patch_full = nullptr;
+		for (auto& it : in_data) {
+			json_t *patch = json_map_patch(map, it.second);
+			patch_full = json_object_merge(patch_full, patch);
+		}
+		return patch_full;
 	}
 	return NULL;
 	

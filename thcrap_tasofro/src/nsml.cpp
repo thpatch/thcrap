@@ -119,7 +119,7 @@ int nsml_init()
 		char *spells_th123 = fn_for_game("spells.js");
 		char *spellcomments_th123 = fn_for_game("spellcomments.js");
 		jsonvfs_add_map(pattern_spell, { spells_th123, "th105/spells.js"});
-		jsonvfs_add_map(pattern_story, { spells_th123, "th105/spellcomments.js" });
+		jsonvfs_add_map(pattern_story, { spells_th123, "th105/spells.js" });
 		jsonvfs_add(pattern_spell, { spellcomments_th123, "th105/spellcomments.js" }, th105_spellcomment_generator);
 		SAFE_FREE(pattern_spell);
 		SAFE_FREE(pattern_story);
