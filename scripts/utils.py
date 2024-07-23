@@ -8,6 +8,10 @@
 """Utility functions shared among all the scripts."""
 
 from collections import OrderedDict
+try:
+    import json5 as jsonloader
+except:
+    import json as jsonloader
 import json
 import os
 
@@ -27,7 +31,7 @@ json_dump_params = {
 # Default parameters for JSON input and output
 def json_load(fn, json_kwargs=json_load_params):
     with open(fn, 'r', encoding='utf-8') as file:
-        return json.load(file, **json_kwargs)
+        return jsonloader.load(file, **json_kwargs)
 
 
 def json_store(fn, obj, dirs=[''], json_kwargs=json_dump_params):
