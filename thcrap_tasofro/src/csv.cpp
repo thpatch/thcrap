@@ -197,14 +197,15 @@ json_t* th105_spellcomment_generator(std::unordered_map<std::string_view, json_t
 	}
 	std::string_view character(out_fn.data() + character_begin, character_end - character_begin);
 
-	// in_data should have only one element
-	json_t *spellcomments = in_data.begin()->second;
-	const char *key;
-	json_t *value;
-	json_object_foreach(spellcomments, key, value) {
-		if (strncmp(key, character.data(), character.size()) == 0) {
-			const char *id = key + character.size() + 1;
-			json_object_set_new(patch, id, th105_spellcomment_pack_lines(value));
+	for (auto& it : in_data) {
+		json_t *spellcomments = it.second;
+		const char *key;
+		json_t *value;
+		json_object_foreach(spellcomments, key, value) {
+			if (strncmp(key, character.data(), character.size()) == 0) {
+				const char *id = key + character.size() + 1;
+				json_object_set_new(patch, id, th105_spellcomment_pack_lines(value));
+			}
 		}
 	}
 
