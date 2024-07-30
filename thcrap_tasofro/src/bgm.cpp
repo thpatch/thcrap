@@ -13,7 +13,7 @@
 #include "bgm.h"
 #include <algorithm>
 
-json_t* bgm_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
+json_t* bgm_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
 	const char *spell_col = nullptr;
 	const char *comment_col = nullptr;
@@ -26,17 +26,12 @@ json_t* bgm_generator(std::unordered_map<std::string_view, json_t*>& in_data, st
 	}
 
 	// Find themes.js and musiccmt.js in the input files list
+	json_t* themes = in_data.find("themes.js");
 	char* musiccmt_fn = fn_for_game("musiccmt.js");
-	auto themes_it = in_data.find("themes.js");
-	auto musiccmt_it = in_data.find(musiccmt_fn);
-	SAFE_FREE(musiccmt_fn);
-	if (themes_it == in_data.end() && musiccmt_it == in_data.end()) {
+	json_t* musiccmt = in_data.find(musiccmt_fn);
+	free(musiccmt_fn);
+	if (!themes && !musiccmt) {
 		return NULL;
-	}
-	json_t *themes = themes_it->second;
-	json_t *musiccmt = nullptr;
-	if (musiccmt_it != in_data.end()) {
-		musiccmt = musiccmt_it->second;
 	}
 
 	json_t *ret = json_object();

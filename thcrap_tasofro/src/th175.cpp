@@ -19,13 +19,13 @@ const MwDefinition mwdef_th175_stage_title =
 	{ "\\\\R[", "|", "]", MwDefinition::Ruby::Order::BottomThenTop }, // ruby
 };
 
-static json_t *jsonvfs_copy_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
+static json_t *jsonvfs_copy_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
 	if (in_data.empty()) {
 		return NULL;
 	}
 
-	return json_incref(in_data.begin()->second);
+	return json_incref(in_data[0]);
 }
 
 int th175_init()
@@ -39,7 +39,7 @@ int th175_init()
 
 	char *music_pattern_fn = fn_for_game("data/script/music.json.jdiff");
 	jsonvfs_add_map(music_pattern_fn, { "themes.js" });
-	SAFE_FREE(music_pattern_fn);
+	free(music_pattern_fn);
 
 	// Flandre easy route
 	jsonvfs_game_add("data/event/script/flandre_stage4_easy.pl.jdiff",     { "data/event/script/flandre_stage4_normal.pl.jdiff" },     jsonvfs_copy_generator);

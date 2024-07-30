@@ -12,7 +12,7 @@
 #include <vfs.h>
 #include "spellcards_generator.h"
 
-json_t* spell_story_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
+json_t* spell_story_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
 	// Extract the player and spell id from the file name
 	const char *out_fn_ptr = strchr(out_fn.data(), '/');
@@ -37,13 +37,12 @@ json_t* spell_story_generator(std::unordered_map<std::string_view, json_t*>& in_
 
 	// Find spells.js in the input files list
 	char* spells_fn = fn_for_game("spells.js");
-	auto spells_it = in_data.find(spells_fn);
-	SAFE_FREE(spells_fn);
-	if (spells_it == in_data.end()) {
+	json_t* spells = in_data.find(spells_fn);
+	free(spells_fn);
+	if (!spells) {
 		VLA_FREE(character_name);
 		return NULL;
 	}
-	json_t *spells = spells_it->second;
 
 	// Get the max stage id.
 	const char *key;
@@ -115,7 +114,7 @@ json_t* spell_story_generator(std::unordered_map<std::string_view, json_t*>& in_
 	return ret;
 }
 
-json_t* spell_player_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
+json_t* spell_player_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
 	// Extract the player and spell id from the file name
 	const char *out_fn_ptr = strchr(out_fn.data(), '/');
@@ -140,13 +139,12 @@ json_t* spell_player_generator(std::unordered_map<std::string_view, json_t*>& in
 
 	// Find spells.js in the input files list
 	char* spells_fn = fn_for_game("spells.js");
-	auto spells_it = in_data.find(spells_fn);
-	SAFE_FREE(spells_fn);
-	if (spells_it == in_data.end()) {
+	json_t* spells = in_data.find(spells_fn);
+	free(spells_fn);
+	if (!spells) {
 		VLA_FREE(character_name);
 		return NULL;
 	}
-	json_t *spells = spells_it->second;
 
 	// Build the json object from the spellcards list.
 	json_t *ret = json_object();
@@ -186,7 +184,7 @@ json_t* spell_player_generator(std::unordered_map<std::string_view, json_t*>& in
 	return ret;
 }
 
-json_t* spell_char_select_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
+json_t* spell_char_select_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
 	// Extract the player and spell id from the file name
 	const char *out_fn_ptr = strchr(out_fn.data(), '/');
@@ -203,12 +201,11 @@ json_t* spell_char_select_generator(std::unordered_map<std::string_view, json_t*
 
 	// Find spells.js in the input files list
 	char* spells_fn = fn_for_game("spells.js");
-	auto spells_it = in_data.find(spells_fn);
-	SAFE_FREE(spells_fn);
-	if (spells_it == in_data.end()) {
+	json_t* spells = in_data.find(spells_fn);
+	free(spells_fn);
+	if (!spells) {
 		return NULL;
 	}
-	json_t *spells = spells_it->second;
 
 	// Search the spellcard in the spellcards list.
 	json_t *spell_translation = NULL;

@@ -12,39 +12,53 @@
 
 struct jsonvfs_handler_t {
 	const wchar_t* out_pattern;
-	std::vector<std::string> in_fns;
+	jsonvfs_files in_fns;
 	jsonvfs_generator_t *gen;
+
+	jsonvfs_handler_t(const wchar_t* out_pattern, const std::vector<std::string_view>& in_fns, jsonvfs_generator_t* gen)
+		: out_pattern(out_pattern), in_fns(in_fns), gen(gen)
+	{}
+
+	jsonvfs_handler_t(const wchar_t* out_pattern, char** strs, size_t count, jsonvfs_generator_t* gen)
+		: out_pattern(out_pattern), in_fns(strs, count), gen(gen)
+	{}
 };
 
 static std::vector<jsonvfs_handler_t> vfs_handlers;
 
-void jsonvfs_add(const char* out_pattern, const std::vector<std::string>& in_fns, jsonvfs_generator_t *gen)
+void jsonvfs_add(const char* out_pattern, const std::vector<std::string_view>& in_fns, jsonvfs_generator_t *gen)
 {
 	for (auto& s : in_fns) {
-		jsondata_add(s.c_str());
+		jsondata_add(s.data());
 	}
-	wchar_t* str = (wchar_t*)utf8_to_utf16(out_pattern);
-	wstr_slash_normalize(str);
-	vfs_handlers.push_back({ str, in_fns, gen });
+	wchar_t* wstr = (wchar_t*)utf8_to_utf16(out_pattern);
+	wstr_slash_normalize(wstr);
+	vfs_handlers.emplace_back( wstr, in_fns, gen );
 }
 
-void jsonvfs_game_add(const char* out_pattern, const std::vector<std::string>& in_fns, jsonvfs_generator_t *gen)
+void jsonvfs_game_add(const char* out_pattern, const std::vector<std::string_view>& in_fns, jsonvfs_generator_t *gen)
 {
-	jsonvfs_handler_t& handler = vfs_handlers.emplace_back();
-
 	char* str = fn_for_game(out_pattern);
 	str_slash_normalize(str);
-	handler.out_pattern = (wchar_t*)utf8_to_utf16(str);
+	wchar_t* wstr = (wchar_t*)utf8_to_utf16(str);
 	free(str);
 
-	handler.gen = gen;
+	size_t count = in_fns.size();
+	VLA(char*, fns_for_game, count);
 
-	for (auto& s : in_fns) {
-		char* fn = fn_for_game(s.c_str());
-		handler.in_fns.emplace_back(fn);
+	for (size_t i = 0; i < count; ++i) {
+		char* fn = fn_for_game(in_fns[i].data());
+		fns_for_game[i] = fn;
 		jsondata_add(fn);
-		free(fn);
 	}
+
+	vfs_handlers.emplace_back( wstr, fns_for_game, count, gen );
+
+	for (size_t i = 0; i < count; ++i) {
+		free(fns_for_game[i]);
+	}
+
+	VLA_FREE(fns_for_game);
 }
 
 json_t *jsonvfs_get(const char* fn, size_t* size)
@@ -65,15 +79,15 @@ json_t *jsonvfs_get(const char* fn, size_t* size)
 		VLA(wchar_t, fn_normalized_w, fn_len + 1);
 		StringToUTF16(fn_normalized_w, fn_normalized, fn_len + 1);
 
+		jsonvfs_map* vfs_map = (jsonvfs_map*)_alloca(sizeof(jsonvfs_map) + sizeof(json_t*) * jsonvfs_files::max_count);
+
 		for (auto& handler : vfs_handlers) {
 			if (PathMatchSpecExW(fn_normalized_w, handler.out_pattern, PMSF_NORMAL) == S_OK) {
-				std::unordered_map<std::string_view, json_t *> in_data;
-				for (auto& in_fn : handler.in_fns) {
-					in_data[in_fn] = jsondata_get(in_fn.c_str());
-				}
+
+				new (vfs_map) jsonvfs_map(handler.in_fns);
 
 				size_t cur_size = 0;
-				json_t *new_obj = handler.gen(in_data, fn_view, cur_size);
+				json_t *new_obj = handler.gen(*vfs_map, fn_view, cur_size);
 				total_size += cur_size;
 				obj = json_object_merge(obj, new_obj);
 			}
@@ -144,14 +158,14 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 	return ret;
 }
 
-static json_t *map_generator(std::unordered_map<std::string_view, json_t*>& in_data, std::string_view out_fn, size_t& out_size)
+static json_t *map_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
 	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 5)) + "map";
 	json_t *map = stack_json_resolve_vfs(map_fn.c_str(), &out_size);
 	if (map) {
 		json_t *patch_full = nullptr;
-		for (auto& it : in_data) {
-			json_t *patch = json_map_patch(map, it.second);
+		for (auto i : in_data) {
+			json_t *patch = json_map_patch(map, in_data[i]);
 			patch_full = json_object_merge(patch_full, patch);
 		}
 		return patch_full;
@@ -160,12 +174,12 @@ static json_t *map_generator(std::unordered_map<std::string_view, json_t*>& in_d
 	
 }
 
-void jsonvfs_add_map(const char* out_pattern, const std::vector<std::string>& in_fns)
+void jsonvfs_add_map(const char* out_pattern, const std::vector<std::string_view>& in_fns)
 {
 	jsonvfs_add(out_pattern, in_fns, map_generator);
 }
 
-void jsonvfs_game_add_map(const char* out_pattern, const std::vector<std::string>& in_fns)
+void jsonvfs_game_add_map(const char* out_pattern, const std::vector<std::string_view>& in_fns)
 {
 	jsonvfs_game_add(out_pattern, in_fns, map_generator);
 }

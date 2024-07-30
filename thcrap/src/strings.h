@@ -77,3 +77,81 @@ THCRAP_API const char* strings_strcat(const size_t slot, const char *src);
 // don't yet have any specific use cases.
 THCRAP_API const char* strings_replace(const size_t slot, const char *src, const char *dst);
 /// ------------------
+
+#if __cplusplus
+
+extern "C++" {
+
+template<typename T = void>
+struct fixed_string_list {
+
+	size_t count;
+	char** strs;
+
+	static inline constexpr size_t NOT_FOUND = size_t_neg_one;
+
+	fixed_string_list() = default;
+
+	void update_max_count(size_t count) {}
+
+	void initialize(const std::vector<std::string_view>& strs_in) {
+		size_t count = this->count = strs_in.size();
+		if constexpr (!std::is_same_v<T, void>) {
+			((T*)this)->update_max_count(count);
+		}
+		size_t buffer = 0;
+		for (const auto& str : strs_in) {
+			buffer += str.length() + 1;
+		}
+		char** strs = this->strs = (char**)malloc(count * sizeof(char*) + buffer);
+		char* str_raw = (char*)&strs[count];
+		for (const auto& str : strs_in) {
+			*strs++ = str_raw;
+			size_t length = str.length() + 1;
+			memcpy(str_raw, str.data(), length);
+			str_raw += length;
+		}
+	}
+
+	void initialize(char** strs_in, size_t count) {
+		this->count = count;
+		if constexpr (!std::is_same_v<T, void>) {
+			((T*)this)->update_max_count(count);
+		}
+		size_t buffer = 0;
+		for (size_t i = 0; i < count; ++i) {
+			buffer += strlen(strs_in[i]) + 1;
+		}
+		char** strs = this->strs = (char**)malloc(count * sizeof(char*) + buffer);
+		char* str_raw = (char*)&strs[count];
+		for (size_t i = 0; i < count; ++i) {
+			strs[i] = str_raw;
+			size_t length = strlen(strs_in[i]) + 1;
+			memcpy(str_raw, strs_in[i], length);
+			str_raw += length;
+		}
+	}
+
+	fixed_string_list(const std::vector<std::string_view>& strs) {
+		this->initialize(strs);
+	}
+
+	fixed_string_list(char** strs, size_t count) {
+		this->initialize(strs, count);
+	}
+
+	size_t find(std::string_view str) const {
+		size_t count = this->count;
+		char** strs = this->strs;
+		for (size_t i = 0; i < count; ++i) {
+			if (str == strs[i]) {
+				return i;
+			}
+		}
+		return NOT_FOUND;
+	}
+};
+
+}
+
+#endif

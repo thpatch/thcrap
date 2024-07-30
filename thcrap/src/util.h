@@ -167,6 +167,8 @@ static size_t TH_FORCEINLINE strtouz(const char* str, char** str_end, int base) 
 #endif
 }
 
+#define size_t_neg_one (~(size_t)0)
+
 int _vasprintf(char** buffer_ret, const char* format, va_list va);
 int _asprintf(char** buffer_ret, const char* format, ...);
 
