@@ -125,6 +125,16 @@ inline bool eval_hackpoint_addr(hackpoint_addr_t* hackpoint_addr, uintptr_t* out
 	return false;
 }
 
+TH_FORCEINLINE bool hackpoint_ignored(json_t* in) {
+	DisableCodecaveNotFoundWarning(true);
+	const bool ret = (
+		json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
+		!json_object_get_eval_bool_default(in, "enable", true, JEVAL_DEFAULT)
+	);
+	DisableCodecaveNotFoundWarning(false);
+	return ret;
+}
+
 // Returns NULL only if parsing should be aborted.
 // Declared noinline since float values aren't used
 // frequently and otherwise binhack_calc_size/binhack_render
@@ -952,6 +962,13 @@ size_t code_string_calc_size(const char* code_str) {
 	}
 }
 
+TH_FORCEINLINE size_t code_string_validate_size(const char* code_str) {
+	DisableCodecaveNotFoundWarning(true);
+	const size_t ret = code_string_calc_size(code_str);
+	DisableCodecaveNotFoundWarning(false);
+	return ret;
+}
+
 int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char* code_str, HMODULE hMod) {
 
 // Dang compatibility things
@@ -1200,8 +1217,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
-		!json_object_get_eval_bool_default(in, "enable", true, JEVAL_DEFAULT)) {
+	if (hackpoint_ignored(in)) {
 		log_printf("binhack %s: ignored\n", name);
 		return false;
 	}
@@ -1213,7 +1229,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 		return false;
 	}
 
-	size_t code_size = code_string_calc_size(code);
+	size_t code_size = code_string_validate_size(code);
 	if (!code_size) {
 		free((void*)code); // free the code string since it's not needed
 		return false;
@@ -1236,7 +1252,7 @@ bool binhack_from_json(const char *name, json_t *in, binhack_t *out)
 
 	out->expected = NULL;
 	if (const char* expected = json_object_get_concat_string_array(in, "expected")) { // Allocates a string that must be freed if non-null
-		size_t expected_size = code_string_calc_size(expected);
+		size_t expected_size = code_string_validate_size(expected);
 		if (expected_size == code_size) {
 			out->expected = expected;
 		}
@@ -1423,8 +1439,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 	size_t align_val = 16;
 
 	if (json_is_object(in)) {
-		if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
-			!json_object_get_eval_bool_default(in, "enable", true, JEVAL_DEFAULT)) {
+		if (hackpoint_ignored(in)) {
 			log_printf("codecave %s: ignored\n", name);
 			return false;
 		}
@@ -1557,9 +1572,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 
 	// Validate codecave size early
 	if (code) {
-		DisableCodecaveNotFoundWarning(true);
-		const size_t code_size = code_string_calc_size(code);
-		DisableCodecaveNotFoundWarning(false);
+		size_t code_size = code_string_validate_size(code);
 		if (!code_size && !size_val) {
 			log_printf("codecave %s with size 0 ignored\n", name);
 			free((void*)code); // free the code string since it's not needed

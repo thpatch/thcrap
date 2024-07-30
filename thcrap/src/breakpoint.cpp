@@ -192,8 +192,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 		return false;
 	}
 
-	if (json_object_get_eval_bool_default(in, "ignore", false, JEVAL_DEFAULT) ||
-		!json_object_get_eval_bool_default(in, "enable", true, JEVAL_DEFAULT)) {
+	if (hackpoint_ignored(in)) {
 		log_printf("breakpoint %s: ignored\n", name);
 		return false;
 	}
@@ -256,7 +255,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 
 	out->expected = NULL;
 	if (const char* expected = json_object_get_concat_string_array(in, "expected")) { // Allocates a string that must be freed if non-null
-		size_t expected_size = code_string_calc_size(expected);
+		size_t expected_size = code_string_validate_size(expected);
 		if (expected_size == cavesize) {
 			out->expected = expected;
 		}

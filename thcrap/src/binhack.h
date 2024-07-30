@@ -126,8 +126,14 @@ typedef struct {
 // Shared error message for nonexistent functions.
 void hackpoints_error_function_not_found(const char *func_name);
 
+bool hackpoint_ignored(json_t* in);
+
 // Calculate the length in bytes of [code_str], the string representation of a binary hack
 THCRAP_API size_t code_string_calc_size(const char* code_str);
+
+// Identical to code_string_calc_size but doesn't
+// print "codecave not found" warnings.
+size_t code_string_validate_size(const char* code_str);
 
 // Renders [code_str], the string representation of a binary hack,
 // into the byte array [output_buffer]. [target_addr] is used as
