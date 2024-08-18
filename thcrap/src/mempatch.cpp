@@ -10,8 +10,47 @@
 #include "thcrap.h"
 
 struct detour_func_map_t {
-	std::unordered_map<std::string_view, UINT_PTR> funcs;
+	std::unordered_map<std::string_view, uintptr_t> funcs;
 	bool disable = false;
+
+	void add_func(const char* func_name, void* func) {
+		const char* name = strdup(func_name);
+		if (!this->funcs.try_emplace(name, (uintptr_t)func).second) {
+			free((void*)name);
+		}
+	}
+
+	void add_func(const char* func_name, void* func, void** old_ptr) {
+
+		const char* name = strdup(func_name);
+
+		auto emplace_result = this->funcs.try_emplace(name, (uintptr_t)func);
+
+		if (!emplace_result.second) {
+			free((void*)name);
+
+			void* chain_ptr = (void*)emplace_result.first->second;
+
+			if unexpected(!chain_ptr) {
+				// Detour is disabled
+				return;
+			}
+
+			if (chain_ptr != func) {
+				emplace_result.first->second = (uintptr_t)func;
+				if (old_ptr) {
+					*old_ptr = chain_ptr;
+				}
+			}
+		}
+	}
+
+	void disable_func(const char* func_name) {
+		const char* name = strdup(func_name);
+		if (!this->funcs.try_emplace(name, (uintptr_t)NULL).second) {
+			free((void*)name);
+		}
+	}
 };
 
 static std::unordered_map<std::string_view, detour_func_map_t> detours;
@@ -157,33 +196,22 @@ detour_func_map_t& detour_get_create(const char *dll_name)
 	return ret.first->second;
 }
 
-int detour_chain(const char *dll_name, int return_old_ptrs, ...)
+int detour_chain(const char *dll_name, int flags, ...)
 {
+#define return_old_ptrs (flags & 1)
+
 	int ret = 0;
 	detour_func_map_t& dll = detour_get_create(dll_name);
 	if (!dll.disable) {
-		const char* func_name = NULL;
 		va_list va;
-		va_start(va, return_old_ptrs);
-		while ((func_name = va_arg(va, const char*))) {
+		va_start(va, flags);
+		while (const char* func_name = va_arg(va, const char*)) {
 
-			const void* func_ptr = va_arg(va, const void*);
+			void* func_ptr = va_arg(va, void*);
 
-			FARPROC* old_ptr = return_old_ptrs ? va_arg(va, FARPROC*) : NULL;
+			void** old_ptr = return_old_ptrs ? va_arg(va, void**) : NULL;
 
-			if (dll.funcs.count(func_name) && !dll.funcs[func_name]) {
-				continue;
-			}
-
-			if (FARPROC chain_ptr;
-				old_ptr
-				&& (chain_ptr = (FARPROC)dll.funcs[func_name])
-				&& (chain_ptr != func_ptr)
-				) {
-				*old_ptr = chain_ptr;
-			}
-
-			dll.funcs[func_name] = (UINT_PTR)func_ptr;
+			dll.add_func(func_name, func_ptr, old_ptr);
 		}
 		va_end(va);
 	}
@@ -200,11 +228,9 @@ int detour_chain_w32u8(const w32u8_dll_t *dll)
 	detour_func_map_t& detours_dll = detour_get_create(dll->name);
 	pair = dll->funcs;
 	while(pair && pair->ansi_name && pair->utf8_ptr) {
-		if (const char* func_name = strdup(pair->ansi_name);
-			!detours_dll.funcs.try_emplace(func_name, (UINT_PTR)pair->utf8_ptr).second)
-		{
-			free((void*)func_name);
-		}
+
+		detours_dll.add_func(pair->ansi_name, (void*)pair->utf8_ptr);
+
 		pair++;
 	}
 	return 0;
@@ -214,7 +240,7 @@ void detour_disable(const char* dll_name, const char* func_name)
 {
 	detour_func_map_t& dll = detour_get_create(dll_name);
 	if (func_name) {
-		dll.funcs[func_name] = NULL;
+		dll.disable_func(func_name);
 	}
 	else {
 		dll.disable = true;
@@ -267,8 +293,8 @@ int iat_detour_apply(HMODULE hMod)
 					);
 				}
 			}
-			free(dll_name);
 		}
+		free(dll_name);
 		pImpDesc++;
 	}
 	return ret;

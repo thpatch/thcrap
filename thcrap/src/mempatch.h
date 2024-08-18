@@ -98,21 +98,22 @@ void detour_disable(const char* dll_name, const char* func_name);
 #define W32U8_DETOUR_CHAIN_DEF(func) \
 	static func##A_type *chain_##func##U = func##U;
 
+#define DETOUR_CHAIN_RETURN_OLD_POINTERS 1
 /**
   * Inserts a new hook for a number of functions in [dll_name] at the
   * beginning of their respective detour chains. For each function,
-  * 3 or 2 (if return_old_ptrs == 0) additional parameters of the form
+  * 3 or 2 (if (flags & 1) == 0) additional parameters of the form
   *
   *	"exported name", new_func_ptr, (&old_func_ptr,)
   *	"exported name", new_func_ptr, (&old_func_ptr,)
   *	...,
   *
   * are consumed.
-  * If [return_old_ptrs] is nonzero, [old_func_ptr] is set to the next
+  * If ([flags] & 1) is nonzero, [old_func_ptr] is set to the next
   * function pointer in the chain, or left unchanged if no hook was
   * registered before.
   */
-THCRAP_API int detour_chain(const char *dll_name, int return_old_ptrs, ...);
+THCRAP_API int detour_chain(const char *dll_name, int flags, ...);
 /**
   * detour_chain() for the function pair list of a single DLL returned by
   * win32_utf8. Does obviously not return any pointers to functions that may
