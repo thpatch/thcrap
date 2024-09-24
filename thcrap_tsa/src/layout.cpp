@@ -771,12 +771,12 @@ int layout_mod_init(HMODULE hMod)
 		(ret = json_object_get_eval_bool(
 			runconfig_json_get(),
 			"ruby_shift_debug",
-			&ruby_shift_debug, 0)) != JEVAL_SUCCESS
+			&ruby_shift_debug, JEVAL_DEFAULT)) != JEVAL_SUCCESS && ret != JEVAL_NULL_PTR
 		) {
 		return ret;
 	}
 	Layout_Tabs = json_array();
-	return ret;
+	return 0;
 }
 
 void layout_mod_detour(void)
