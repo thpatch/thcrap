@@ -65,6 +65,9 @@ int th135_init()
 	char *bgm_pattern_fn = fn_for_game("data/bgm/bgm.csv.jdiff");
 	char *musiccmt_fn = fn_for_game("musiccmt.js");
 	jsonvfs_add(bgm_pattern_fn, { "themes.js", musiccmt_fn }, bgm_generator);
+	if (game_id == TH135) {
+		jsonvfs_add_map(bgm_pattern_fn, { "stringdefs.js" });
+	}
 	free(musiccmt_fn);
 	free(bgm_pattern_fn);
 	if (game_id >= TH155) {
