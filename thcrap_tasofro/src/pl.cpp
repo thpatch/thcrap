@@ -606,6 +606,15 @@ void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>&, co
 			text.erase(break_pos, 2);
 		}
 	}
+	if (game_id == TH155) {
+		// In th155 endings, pauses only work when they are at the end of a line.
+		// So we must split the line into 2 if we want to insert a pause.
+		size_t break_pos = 0;
+		while ((break_pos = text.find("@\\n", break_pos)) != std::string::npos) {
+			text.replace(break_pos, 3, "@\n");
+			break_pos += 2;
+		}
+	}
 	this->fields[0] += text;
 }
 
