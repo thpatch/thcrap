@@ -151,7 +151,7 @@ void TasofroFile::replace_ReadFile_init(ReadFileStack *stack,
 		decrypt(this, (BYTE*)game_buffer, pre_json_size);
 
 		if unexpected(dat_dump) {
-			DumpDatFile(dat_dump, this->name, game_buffer, pre_json_size);
+			DumpDatFile(dat_dump, this->name, game_buffer, pre_json_size, false);
 		}
 		// If there are hooks and no replacement file
 		// then just pass the original file to the

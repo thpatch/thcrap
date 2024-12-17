@@ -137,14 +137,14 @@ int BP_file_load(x86_reg_t *regs, json_t *bp_info)
 }
 
 // Cool function name.
-int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size)
+int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size, bool overwrite_existing)
 {
 	if unexpected(!buffer || !name) {
 		return -1;
 	}
 
 	BUILD_VLA_STR(char, fn, dir, "/", name);
-	if (!PathFileExistsU(fn)) {
+	if (overwrite_existing || !PathFileExistsU(fn)) {
 		file_write(fn, buffer, size);
 	}
 	VLA_FREE(fn);
@@ -171,7 +171,7 @@ int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 	}
 	dat_dump = runconfig_dat_dump_get();
 	if(dat_dump) {
-		DumpDatFile(dat_dump, fr->name, fr->game_buffer, fr->pre_json_size);
+		DumpDatFile(dat_dump, fr->name, fr->game_buffer, fr->pre_json_size, false);
 	}
 
 	file_rep_hooks_run(fr);

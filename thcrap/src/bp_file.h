@@ -146,7 +146,7 @@ TH_IMPORT int BP_file_size(x86_reg_t *regs, json_t *bp_info);
 THCRAP_BREAKPOINT_API int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
 // Cool function name.
-THCRAP_API int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size);
+THCRAP_API int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size, bool overwrite_existing);
 
 int bp_file_init(void);
 void bp_file_mod_thread_exit(void);
