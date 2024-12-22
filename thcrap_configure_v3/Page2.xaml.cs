@@ -59,33 +59,18 @@ namespace thcrap_configure_v3
                 return patches[0].Id.Substring("lang_".Length);
         }
 
-        private void GoToAdvanced()
+        private void TabChanged(object sender, SelectionChangedEventArgs e)
         {
-            Advanced.configMaxLength = 248 - (Environment.CurrentDirectory.Length + "\\config\\.js".Length);
-            Advanced.SetInitialPatch(Simple.GetSelectedRepoPatch()[0]);
+            if ((sender as TabControl).SelectedContent == Advanced)
+            {
+                Advanced.SetInitialPatch(Simple.GetSelectedRepoPatch()[0]);
 
-            Simple.Visibility = Visibility.Collapsed;
-            SimpleText.Visibility = Visibility.Collapsed;
-            Advanced.Visibility = Visibility.Visible;
-            AdvancedText.Visibility = Visibility.Visible;
-            mode = Mode.Advanced;
-        }
-
-        private void GoToSimple()
-        {
-            Advanced.Visibility = Visibility.Collapsed;
-            AdvancedText.Visibility = Visibility.Collapsed;
-            Simple.Visibility = Visibility.Visible;
-            SimpleText.Visibility = Visibility.Visible;
-            mode = Mode.Simple;
-        }
-
-        private void ChangeMode(object sender, MouseButtonEventArgs e)
-        {
-            if (mode == Mode.Simple)
-                GoToAdvanced();
+                mode = Mode.Advanced;
+            }
             else
-                GoToSimple();
+            {
+                mode = Mode.Simple;
+            }
         }
     }
 }

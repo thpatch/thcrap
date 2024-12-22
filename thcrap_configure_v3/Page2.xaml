@@ -6,12 +6,12 @@
              xmlns:local="clr-namespace:thcrap_configure_v3"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
-    <DockPanel>
-        <Grid DockPanel.Dock="Bottom" Cursor="Hand" MouseUp="ChangeMode">
-            <TextBlock Foreground="Blue" TextDecorations="Underline" x:Name="SimpleText">Advanced mode...</TextBlock>
-            <TextBlock Foreground="Blue" TextDecorations="Underline" x:Name="AdvancedText" Visibility="Collapsed">Simple mode...</TextBlock>
-        </Grid>
-        <local:Page2_simple x:Name="Simple" />
-        <local:Page2_advanced x:Name="Advanced" Visibility="Collapsed" />
-    </DockPanel>
+    <TabControl SelectionChanged="TabChanged">
+        <TabItem Header="Language patches">
+            <local:Page2_simple x:Name="Simple" Margin="6" />
+        </TabItem>
+        <TabItem Header="All patches" Name="tab_AllPatches">
+            <local:Page2_advanced x:Name="Advanced" Margin="6" />
+        </TabItem>
+    </TabControl>
 </UserControl>

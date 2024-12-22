@@ -11,7 +11,7 @@
         <ItemsControl x:Name="UserLanguagePatches">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <RadioButton GroupName="patch" IsChecked="{Binding IsChecked}">
+                    <RadioButton GroupName="patch" IsChecked="{Binding IsChecked}" Margin="0,0,0,2">
                         <TextBlock Text="{Binding patch.Title}" />
                     </RadioButton>
                 </DataTemplate>

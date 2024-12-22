@@ -24,7 +24,7 @@ namespace thcrap_configure_v3
     public partial class Page2_advanced : UserControl
     {
         private int isUnedited = 1;
-        public int configMaxLength = 0;
+        private int configMaxLength = 0;
 
         private void ResetConfigName()
         {
@@ -292,6 +292,10 @@ If you select multiple patches that all modify the same thing, lower patches wil
             if (isUnedited > 0)
             {
                 isUnedited--;
+            }
+            if (configMaxLength == 0)
+            {
+                configMaxLength = 248 - (Environment.CurrentDirectory.Length + "\\config\\.js".Length);
             }
             if (ConfigName.Text.Length > configMaxLength)
             {
