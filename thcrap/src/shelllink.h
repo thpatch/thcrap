@@ -19,6 +19,7 @@ enum ShortcutsDestination
 
 enum ShortcutsType
 {
+	SHTYPE_AUTO = 0,
 	SHTYPE_SHORTCUT = 1,
 	SHTYPE_WRAPPER_ABSPATH = 2,
 	SHTYPE_WRAPPER_RELPATH = 3,

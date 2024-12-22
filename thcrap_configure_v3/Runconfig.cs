@@ -35,6 +35,18 @@ namespace thcrap_configure_v3
     }
     class GlobalConfig
     {
+        private const long configDestinationMask = 0xFFFF;
+        private const int configTypeOffset = 16;
+
+        [Flags]
+        public enum ShortcutDestinations
+        {
+            Desktop = 1,
+            StartMenu = 2,
+            GamesFolder = 4,
+            ThcrapFolder = 8,
+        }
+
         public bool background_updates   { get; set; }
         public long time_between_updates { get; set; }
         public bool update_at_exit       { get; set; }
@@ -42,33 +54,44 @@ namespace thcrap_configure_v3
         public bool console              { get; set; }
         public long exception_detail     { get; set; }
         public long codepage             { get; set; }
-        public long default_shortcut_destinations { get; set; }
+        public ShortcutDestinations default_shortcut_destinations { get; set; }
+        public ThcrapDll.ShortcutsType shortcuts_type { get; set; }
 
         public GlobalConfig()
         {
-            background_updates            = ThcrapDll.globalconfig_get_boolean("background_updates", false);
-            time_between_updates          = ThcrapDll.globalconfig_get_integer("time_between_updates", 5);
-            update_at_exit                = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
-            update_others                 = ThcrapDll.globalconfig_get_boolean("update_others", true);
-            console                       = ThcrapDll.globalconfig_get_boolean("console", false);
-            exception_detail              = ThcrapDll.globalconfig_get_integer("exception_detail", 1);
-            codepage                      = ThcrapDll.globalconfig_get_integer("codepage", 932);
-            default_shortcut_destinations = ThcrapDll.globalconfig_get_integer("default_shortcut_destinations",
-                (long)(Page5.ShortcutDestinations.Desktop | Page5.ShortcutDestinations.StartMenu));
+            background_updates   = ThcrapDll.globalconfig_get_boolean("background_updates", false);
+            time_between_updates = ThcrapDll.globalconfig_get_integer("time_between_updates", 5);
+            update_at_exit       = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
+            update_others        = ThcrapDll.globalconfig_get_boolean("update_others", true);
+            console              = ThcrapDll.globalconfig_get_boolean("console", false);
+            exception_detail     = ThcrapDll.globalconfig_get_integer("exception_detail", 1);
+            codepage             = ThcrapDll.globalconfig_get_integer("codepage", 932);
+
+            long _default_shortcut_destinations = ThcrapDll.globalconfig_get_integer("default_shortcut_destinations",
+                (long)(ShortcutDestinations.Desktop | ShortcutDestinations.StartMenu));
+            default_shortcut_destinations = (ShortcutDestinations)(_default_shortcut_destinations & configDestinationMask);
+            shortcuts_type = (ThcrapDll.ShortcutsType)(_default_shortcut_destinations >> configTypeOffset);
+            if (shortcuts_type != ThcrapDll.ShortcutsType.SHTYPE_AUTO &&
+                shortcuts_type != ThcrapDll.ShortcutsType.SHTYPE_SHORTCUT &&
+                shortcuts_type != ThcrapDll.ShortcutsType.SHTYPE_WRAPPER_ABSPATH &&
+                shortcuts_type != ThcrapDll.ShortcutsType.SHTYPE_WRAPPER_RELPATH)
+                shortcuts_type = ThcrapDll.ShortcutsType.SHTYPE_SHORTCUT;
         }
         public void Save()
         {
             if (!Directory.Exists("config"))
                 Directory.CreateDirectory("config");
 
-             ThcrapDll.globalconfig_set_boolean("background_updates", background_updates);
-             ThcrapDll.globalconfig_set_integer("time_between_updates", time_between_updates);
-             ThcrapDll.globalconfig_set_boolean("update_at_exit", update_at_exit);
-             ThcrapDll.globalconfig_set_boolean("update_others", update_others);
-             ThcrapDll.globalconfig_set_boolean("console", console);
-             ThcrapDll.globalconfig_set_integer("exception_detail", exception_detail);
-             ThcrapDll.globalconfig_set_integer("default_shortcut_destinations", (long)default_shortcut_destinations);
-             ThcrapDll.globalconfig_set_integer("codepage", codepage);
+            ThcrapDll.globalconfig_set_boolean("background_updates", background_updates);
+            ThcrapDll.globalconfig_set_integer("time_between_updates", time_between_updates);
+            ThcrapDll.globalconfig_set_boolean("update_at_exit", update_at_exit);
+            ThcrapDll.globalconfig_set_boolean("update_others", update_others);
+            ThcrapDll.globalconfig_set_boolean("console", console);
+            ThcrapDll.globalconfig_set_integer("exception_detail", exception_detail);
+            ThcrapDll.globalconfig_set_integer("codepage", codepage);
+
+            long _default_shortcut_destinations = (long)default_shortcut_destinations | ((long)shortcuts_type << configTypeOffset);
+            ThcrapDll.globalconfig_set_integer("default_shortcut_destinations", _default_shortcut_destinations);
         }
     }
 }

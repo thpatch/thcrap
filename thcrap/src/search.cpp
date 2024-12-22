@@ -30,6 +30,44 @@ struct search_thread_param
 
 static bool searchCancelled = false;
 
+template<typename T>
+static size_t iter_size(T begin, T end)
+{
+    size_t size = 0;
+    while (begin != end) {
+        size++;
+        begin++;
+    }
+    return size;
+}
+
+// If thcrap and the game are likely to be moved together, we want a relative path,
+// otherwise we want an absolute path.
+char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::path self)
+{
+    if (!self.is_absolute()) {
+        self = std::filesystem::absolute(self);
+    }
+    if (!target.is_absolute()) {
+        target = std::filesystem::absolute(target);
+    }
+
+    if (target.root_path() != self.root_path()) {
+        return strdup(target.u8string().c_str());
+    }
+
+    auto [self_diff, target_diff] = std::mismatch(self.begin(), self.end(), target.begin(), target.end());
+    // These numbers were decided arbitrarly by making a list of path examples that seemed
+    // to make sense and looking at which values they need.
+    // These examples are available in the unit tests.
+    if (iter_size(self_diff, self.end()) <= 3 && iter_size(target_diff, target.end()) <= 2) {
+        return strdup(target.lexically_relative(self).u8string().c_str());
+    }
+    else {
+        return strdup(target.u8string().c_str());
+    }
+}
+
 static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 {
 	int ret = 0;
@@ -71,7 +109,7 @@ static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 			}
 
 			game_search_result result = std::move(*ver);
-			result.path = strdup(exe_fn.c_str());
+			result.path = SearchDecideStoredPathForm(ent.path(), std::filesystem::current_path());
 			result.description = strdup(description.c_str());
 			identify_free(ver);
 

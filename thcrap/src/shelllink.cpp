@@ -278,6 +278,9 @@ std::filesystem::path get_link_dir(ShortcutsDestination destination, const std::
 std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
 {
 	auto icon_path = std::filesystem::u8path(icon_path_);
+	if (!icon_path.is_absolute()) {
+		icon_path = std::filesystem::absolute(icon_path);
+	}
 
 	if (icon_path.filename() != "vpatch.exe")
 		return icon_path;
@@ -298,6 +301,35 @@ std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
 	return icon_path;
 }
 
+ShortcutsType DecideAutoShortcutType(ShortcutsDestination destination, const std::filesystem::path& link_dir, const std::filesystem::path& thcrap_dir_relative)
+{
+	if (destination == SHDESTINATION_DESKTOP || destination == SHDESTINATION_START_MENU) {
+		// Assume thcrap and the shortcut are in completely different emplacements.
+		// Both are unlikely to be moved.
+		if (OS_is_wine()) {
+			// Wine doesn't work really well with shortcuts
+			return SHTYPE_WRAPPER_ABSPATH;
+		}
+		return SHTYPE_SHORTCUT;
+	}
+	else if (destination == SHDESTINATION_THCRAP_DIR || destination == SHDESTINATION_GAMES_DIRECTORY) {
+		// SHDESTINATION_THCRAP_DIR:
+		// The shortcuts are part of thcrap, and if thcrap is moved, the shortcuts
+		// will be moved with it.
+		// Unless the user wants to move the generated shortcuts. But we can't know
+		// what the user will do at this point, so we have to make a choice, and this
+		// one seems better than trying to be smart and unpredictable.
+
+		// SHDESTINATION_GAMES_DIRECTORY:
+		// The shortcuts are part of the games. If the games move and thcrap doesn't move,
+		// then the games' paths in games.js become broken.
+		// So we can assume that these shortcuts will always be moved with thcrap, and making
+		// them relative makes more sense and helps with portable installations.
+		return SHTYPE_WRAPPER_RELPATH;
+	}
+	TH_UNREACHABLE;
+}
+
 int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination, ShortcutsType shortcut_type)
 {
 	LPCWSTR loader_exe = L"thcrap_loader" DEBUG_OR_RELEASE_W L".exe";
@@ -305,18 +337,15 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 	auto self_path = thcrap_dir / L"bin" / loader_exe;
 	auto link_dir = get_link_dir(destination, thcrap_dir);
 	int ret = 0;
+	// Yay, COM.
+	HRESULT com_init_succeeded = E_FAIL;
 
-	if (shortcut_type != SHTYPE_SHORTCUT &&
+	if (shortcut_type != SHTYPE_AUTO &&
+		shortcut_type != SHTYPE_SHORTCUT &&
 		shortcut_type != SHTYPE_WRAPPER_ABSPATH &&
 		shortcut_type != SHTYPE_WRAPPER_RELPATH) {
 		log_print("Error creating shortcuts: invalid parameter for shortcut_type. Please report this error to the developpers.\n");
 		return 1;
-	}
-
-	// Yay, COM.
-	HRESULT com_init_succeded = E_FAIL;
-	if (shortcut_type == SHTYPE_SHORTCUT) {
-		com_init_succeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 	}
 
 	log_printf("Creating shortcuts");
@@ -334,16 +363,24 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 		auto link_args_w = std::make_unique<wchar_t[]>(link_args.length() + 1);
 		StringToUTF16(link_args_w.get(), link_args.c_str(), -1);
 
-		if (shortcut_type == SHTYPE_SHORTCUT) {
+		ShortcutsType local_shortcut_type = shortcut_type;
+		if (local_shortcut_type == SHTYPE_AUTO) {
+			local_shortcut_type = DecideAutoShortcutType(destination, link_dir, thcrap_dir);
+		}
+
+		if (local_shortcut_type == SHTYPE_SHORTCUT) {
+			if (com_init_succeeded == E_FAIL) {
+				com_init_succeeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+			}
 			link_path.replace_extension("lnk");
 			if (CreateLink(link_path, self_path, link_args_w.get(), thcrap_dir, icon_path)) {
 				ret = 1;
 			}
 		}
-		else if (shortcut_type == SHTYPE_WRAPPER_ABSPATH || shortcut_type == SHTYPE_WRAPPER_RELPATH) {
+		else if (local_shortcut_type == SHTYPE_WRAPPER_ABSPATH || local_shortcut_type == SHTYPE_WRAPPER_RELPATH) {
 			link_path.replace_extension("exe");
 			auto exe_args = std::wstring(loader_exe) + L" " + link_args_w.get();
-			if (!CreateWrapper(link_path, thcrap_dir, loader_exe, exe_args, icon_path, shortcut_type)) {
+			if (!CreateWrapper(link_path, thcrap_dir, loader_exe, exe_args, icon_path, local_shortcut_type)) {
 				ret = 1;
 			}
 		}
@@ -359,7 +396,7 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 		}
 	}
 
-	if (com_init_succeded == S_OK) {
+	if (com_init_succeeded == S_OK) {
 		CoUninitialize();
 	}
 	return ret;

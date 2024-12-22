@@ -340,7 +340,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	if (console_ask_yn(_A("Create shortcuts? (required for first run)")) != 'n') {
 		gamesArray = games_js_to_array(games);
-		if (CreateShortcuts(run_cfg_fn.c_str(), gamesArray, SHDESTINATION_THCRAP_DIR, SHTYPE_SHORTCUT) != 0) {
+		if (CreateShortcuts(run_cfg_fn.c_str(), gamesArray, SHDESTINATION_THCRAP_DIR, SHTYPE_AUTO) != 0) {
 			goto end;
 		}
 	}

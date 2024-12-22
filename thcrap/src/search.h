@@ -65,3 +65,17 @@ THCRAP_API void SearchForGames_cancel();
 
 // Free the return of SearchForGames
 THCRAP_API void SearchForGames_free(game_search_result *games);
+
+#ifdef __cplusplus
+
+namespace std
+{
+	namespace filesystem
+	{
+		class path;
+	};
+};
+
+// Exported for testing only
+char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::path self);
+#endif

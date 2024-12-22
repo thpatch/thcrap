@@ -313,6 +313,7 @@ EXPORTS
 	SearchForGamesInstalled
 	SearchForGames_cancel
 	SearchForGames_free
+	SearchDecideStoredPathForm
 
 	; Shortcuts
 	; ---------

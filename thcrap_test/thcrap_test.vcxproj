@@ -55,6 +55,7 @@
     <ClCompile Include="src\runconfig.cpp" />
     <ClCompile Include="src\patchfile.cpp" />
     <ClCompile Include="src\plugin.cpp" />
+    <ClCompile Include="src\search.cpp" />
     <ClCompile Include="src\search_for_games.cpp" />
     <ClCompile Include="src\stack.cpp" />
     <ClCompile Include="src\thcrap_tasofro_pl_ed.cpp" />
