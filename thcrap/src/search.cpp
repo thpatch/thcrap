@@ -53,7 +53,7 @@ char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::
     }
 
     if (target.root_path() != self.root_path()) {
-        return strdup(target.u8string().c_str());
+        return strdup(target.generic_u8string().c_str());
     }
 
     auto [self_diff, target_diff] = std::mismatch(self.begin(), self.end(), target.begin(), target.end());
@@ -61,10 +61,10 @@ char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::
     // to make sense and looking at which values they need.
     // These examples are available in the unit tests.
     if (iter_size(self_diff, self.end()) <= 3 && iter_size(target_diff, target.end()) <= 2) {
-        return strdup(target.lexically_relative(self).u8string().c_str());
+        return strdup(target.lexically_relative(self).generic_u8string().c_str());
     }
     else {
-        return strdup(target.u8string().c_str());
+        return strdup(target.generic_u8string().c_str());
     }
 }
 

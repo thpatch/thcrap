@@ -75,7 +75,7 @@ TEST_F(SearchForGamesTest, TestSearchNormalFile)
 
     game_search_result *found = SearchForGames(dirlist, nullptr);
     ASSERT_NE(found, nullptr);
-    EXPECT_STREQ(found[0].path, "testdir\\abc.exe");
+    EXPECT_STREQ(found[0].path, "testdir/abc.exe");
     EXPECT_STREQ(found[0].id, "th_abc");
     EXPECT_STREQ(found[0].build, "v1.00");
     EXPECT_STREQ(found[0].description, "v1.00 (original)");
