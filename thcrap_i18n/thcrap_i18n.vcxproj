@@ -35,6 +35,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_i18n.def</ModuleDefinitionFile>
+      <AdditionalDependencies>thcrap$(Suffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
       <PreprocessorDefinitions>THCRAP_ALLOW_INTERNAL_APIS;%(PreprocessorDefinitions)</PreprocessorDefinitions>

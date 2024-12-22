@@ -39,7 +39,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>jansson$(Suffix).lib;shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="'$(Platform)'=='x64'">thcrap_x64_injector$(DebugSuffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile Condition="'$(Platform)'!='x64'">thcrap_x86.def</ModuleDefinitionFile>
       <ModuleDefinitionFile Condition="'$(Platform)'=='x64'">thcrap_x64.def</ModuleDefinitionFile>

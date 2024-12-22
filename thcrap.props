@@ -19,7 +19,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)libs/;$(SolutionDir)thcrap/src/;$(SolutionDir)libs/win32_utf8/;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>win32_utf8$(Suffix).lib;jansson$(Suffix).lib;zdll-ng$(Suffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>win32_utf8$(Suffix).lib;zdll-ng$(Suffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
 </Project>
