@@ -22,7 +22,7 @@
                 <LineBreak />
                 Click Next to continue, or click "Configure Settings" to change settings.   
             </TextBlock>
-             <Button Content="Configure Settings" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="SettingsWindow_Open" />
+             <Button Content="Configure Settings" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="SettingsWindow_Open" Padding="3,2" />
                 <TextBlock Name="VersionText" HorizontalAlignment="Right" VerticalAlignment="Bottom"></TextBlock>
             </Grid>
         </xctk:WizardPage>

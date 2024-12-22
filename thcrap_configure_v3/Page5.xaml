@@ -12,9 +12,18 @@
         <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxStartMenu" IsChecked="True">In the Start menu</CheckBox>
         <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxGamesFolder">In the games' folder</CheckBox>
         <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxThcrapFolder">In the thcrap folder</CheckBox>
-        <StackPanel Margin="0,7,0,0" Orientation="Horizontal" x:Name="warningPanel" Visibility="Hidden">
+        <StackPanel Margin="0,7,0,0" Orientation="Horizontal" x:Name="warningPanel" Visibility="Collapsed">
             <Image x:Name="warningImage" Margin="0,0,7,0" Height="14" />
             <TextBlock>You need shortcuts to run the patched games! <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="NoShortcutsMoreDetails">More details...</TextBlock></TextBlock>
+        </StackPanel>
+        <StackPanel Margin="0,7,0,0" Orientation="Horizontal" x:Name="shortcutTypePanel" Visibility="Hidden">
+            <TextBlock Margin="0,0,7,0">Shortcut type: </TextBlock>
+            <ComboBox x:Name="shortcutType">
+                <ComboBoxItem>Choose automatically (default)</ComboBoxItem>
+                <ComboBoxItem>Shortcut</ComboBoxItem>
+                <ComboBoxItem>Wrapper with absolute path</ComboBoxItem>
+                <ComboBoxItem>Wrapper with realtive path</ComboBoxItem>
+            </ComboBox>
         </StackPanel>
     </StackPanel>
 </UserControl>

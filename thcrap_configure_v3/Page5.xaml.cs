@@ -15,6 +15,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using ShortcutDestinations = thcrap_configure_v3.GlobalConfig.ShortcutDestinations;
 
 namespace thcrap_configure_v3
 {
@@ -42,12 +43,18 @@ namespace thcrap_configure_v3
             if (config == null)
             {
                 config = new GlobalConfig();
-                GlobalConfig.ShortcutDestinations dest = config.default_shortcut_destinations;
+                ShortcutDestinations dest = config.default_shortcut_destinations;
 
-                checkboxDesktop.IsChecked      = dest.HasFlag(GlobalConfig.ShortcutDestinations.Desktop);
-                checkboxStartMenu.IsChecked    = dest.HasFlag(GlobalConfig.ShortcutDestinations.StartMenu);
-                checkboxGamesFolder.IsChecked  = dest.HasFlag(GlobalConfig.ShortcutDestinations.GamesFolder);
-                checkboxThcrapFolder.IsChecked = dest.HasFlag(GlobalConfig.ShortcutDestinations.ThcrapFolder);
+                checkboxDesktop.IsChecked      = dest.HasFlag(ShortcutDestinations.Desktop);
+                checkboxStartMenu.IsChecked    = dest.HasFlag(ShortcutDestinations.StartMenu);
+                checkboxGamesFolder.IsChecked  = dest.HasFlag(ShortcutDestinations.GamesFolder);
+                checkboxThcrapFolder.IsChecked = dest.HasFlag(ShortcutDestinations.ThcrapFolder);
+            }
+
+            if (config.developer_mode)
+            {
+                shortcutTypePanel.Visibility = Visibility.Visible;
+                shortcutType.SelectedIndex = (int)config.shortcuts_type;
             }
         }
 
@@ -61,7 +68,7 @@ namespace thcrap_configure_v3
 
             if (checkboxDesktop.IsChecked == true || checkboxStartMenu.IsChecked == true ||
                 checkboxGamesFolder.IsChecked == true || checkboxThcrapFolder.IsChecked == true || isUTLPresent == true)
-                warningPanel.Visibility = Visibility.Hidden;
+                warningPanel.Visibility = Visibility.Collapsed;
             else
                 warningPanel.Visibility = Visibility.Visible;
         }
@@ -90,10 +97,14 @@ namespace thcrap_configure_v3
         public void Leave(string configName, IEnumerable<ThcrapDll.games_js_entry> games)
         {
             config.default_shortcut_destinations =
-                (checkboxDesktop.IsChecked      == true ? GlobalConfig.ShortcutDestinations.Desktop      : 0) |
-                (checkboxStartMenu.IsChecked    == true ? GlobalConfig.ShortcutDestinations.StartMenu    : 0) |
-                (checkboxGamesFolder.IsChecked  == true ? GlobalConfig.ShortcutDestinations.GamesFolder  : 0) |
-                (checkboxThcrapFolder.IsChecked == true ? GlobalConfig.ShortcutDestinations.ThcrapFolder : 0);
+                (checkboxDesktop.IsChecked      == true ? ShortcutDestinations.Desktop      : 0) |
+                (checkboxStartMenu.IsChecked    == true ? ShortcutDestinations.StartMenu    : 0) |
+                (checkboxGamesFolder.IsChecked  == true ? ShortcutDestinations.GamesFolder  : 0) |
+                (checkboxThcrapFolder.IsChecked == true ? ShortcutDestinations.ThcrapFolder : 0);
+            if (config.developer_mode)
+            {
+                config.shortcuts_type = (ThcrapDll.ShortcutsType)shortcutType.SelectedIndex;
+            }
             config.Save();
 
             if (checkboxDesktop.IsChecked == true)

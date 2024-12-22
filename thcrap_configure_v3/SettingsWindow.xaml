@@ -22,6 +22,7 @@
 
             <StackPanel Margin="0,10,0,0">
                 <Label Content="Advanced" />
+                <CheckBox Name="developer_mode" Content="Developer mode"/>
                 <CheckBox Name="console" Content="Enable the log console"/>
                 <CheckBox Name="use_wininet" Content="Use WinInet"/>
                 <Grid Margin="0,5,0,0">

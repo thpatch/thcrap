@@ -54,6 +54,7 @@ namespace thcrap_configure_v3
         public bool console              { get; set; }
         public long exception_detail     { get; set; }
         public long codepage             { get; set; }
+        public bool developer_mode       { get; set; }
         public ShortcutDestinations default_shortcut_destinations { get; set; }
         public ThcrapDll.ShortcutsType shortcuts_type { get; set; }
 
@@ -66,6 +67,7 @@ namespace thcrap_configure_v3
             console              = ThcrapDll.globalconfig_get_boolean("console", false);
             exception_detail     = ThcrapDll.globalconfig_get_integer("exception_detail", 1);
             codepage             = ThcrapDll.globalconfig_get_integer("codepage", 932);
+            developer_mode       = ThcrapDll.globalconfig_get_boolean("developer_mode", false);
 
             long _default_shortcut_destinations = ThcrapDll.globalconfig_get_integer("default_shortcut_destinations",
                 (long)(ShortcutDestinations.Desktop | ShortcutDestinations.StartMenu));
@@ -89,6 +91,7 @@ namespace thcrap_configure_v3
             ThcrapDll.globalconfig_set_boolean("console", console);
             ThcrapDll.globalconfig_set_integer("exception_detail", exception_detail);
             ThcrapDll.globalconfig_set_integer("codepage", codepage);
+            ThcrapDll.globalconfig_set_boolean("developer_mode", developer_mode);
 
             long _default_shortcut_destinations = (long)default_shortcut_destinations | ((long)shortcuts_type << configTypeOffset);
             ThcrapDll.globalconfig_set_integer("default_shortcut_destinations", _default_shortcut_destinations);
