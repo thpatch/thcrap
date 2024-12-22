@@ -104,10 +104,10 @@ namespace thcrap_configure_v3
             if (janssonObj == IntPtr.Zero)
                 return default;
 
-            uint bufferSize = ThcrapJanssonDll.json_dumpb(janssonObj, IntPtr.Zero, 0, 0);
+            uint bufferSize = ThcrapDll.json_dumpb(janssonObj, IntPtr.Zero, 0, 0);
             IntPtr bufferPtr = Marshal.AllocHGlobal((int)bufferSize);
-            ThcrapJanssonDll.json_dumpb(janssonObj, bufferPtr, bufferSize, 0);
-            ThcrapJanssonDll.json_delete(janssonObj);
+            ThcrapDll.json_dumpb(janssonObj, bufferPtr, bufferSize, 0);
+            ThcrapDll.json_delete(janssonObj);
 
             byte[] bufferArray = new byte[bufferSize];
             Marshal.Copy(bufferPtr, bufferArray, 0, (int)bufferSize);
@@ -359,11 +359,6 @@ namespace thcrap_configure_v3
         public static extern int update_filter_games_wrapper(
             [MarshalAs(UnmanagedType.CustomMarshaler, MarshalTypeRef = typeof(ThcrapHelper.UTF8StringMarshaler))] string fn,
             IntPtr games);
-    }
-
-    class ThcrapJanssonDll
-    {
-        public const string DLL = ThcrapDll.THCRAP_DLL_PATH + "jansson" + ThcrapDll.DEBUG_OR_RELEASE + ".dll";
         [DllImport(DLL, CallingConvention = CallingConvention.Cdecl)]
         public static extern uint json_dumpb(IntPtr /* json_t * */ json, IntPtr /* char* */ buffer, uint size, uint flags);
         // Not part of the public jansson API, but json_decref is defined as an inline function
