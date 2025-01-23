@@ -250,7 +250,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 				"\n"
 				"\thttp://support.microsoft.com/kb/2533623/";
 			const size_t injectError1_len = _scwprintf(injectError1Format, dll_fn) + 1;
-			wchar_t *const injectError1 = (wchar_t*)malloc(injectError1_len);
+			wchar_t *const injectError1 = (wchar_t*)malloc(injectError1_len * 2);
 			swprintf(injectError1, injectError1_len, injectError1Format, dll_fn);
 			MessageBoxW(0, injectError1, L"Error", MB_ICONERROR);
 			free(injectError1);
