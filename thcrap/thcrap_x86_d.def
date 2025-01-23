@@ -1,0 +1,529 @@
+EXPORTS
+	; SHARED EXPORTS FOR 32 BIT AND 64 BIT
+
+	; Binary hacks
+	; -------------
+	is_valid_hex
+	hex_value
+	binhack_from_json
+	binhacks_apply
+	codecave_from_json
+	codecaves_apply
+	code_string_calc_size
+	code_string_render
+	add_constpool
+	add_constpool_raw_pointer
+
+	binhack_calc_size=code_string_calc_size
+	binhack_render=code_string_render
+
+	; Expression parsing
+	; ----------------
+	get_patch_value
+	eval_expr
+
+	; File breakpoints
+	; ----------------
+	file_rep_init
+	file_rep_clear
+
+	fr_tls_get
+
+	BP_file_load
+	BP_file_name=BP_file_load
+	BP_file_size=BP_file_load
+	BP_file_buffer
+	BP_file_loaded
+	DumpDatFile
+
+	; Breakpoints
+	; -----------
+	reg
+	json_register_pointer
+	json_pointer_value
+	json_immediate_value
+	json_typed_value
+	json_object_get_register
+	json_object_get_pointer
+	json_object_get_immediate
+	json_object_get_typed
+	breakpoint_cave_exec_flag
+	breakpoint_cave_exec_flag_eval
+	breakpoint_from_json
+	breakpoints_apply
+
+	; Win32 dialogs
+	; -------------
+	dialog_mod_detour
+
+	; Globals
+	; -------
+	PROJECT_NAME DATA
+	PROJECT_NAME_SHORT DATA
+	PROJECT_URL DATA
+	PROJECT_VERSION DATA
+	PROJECT_VERSION_STRING DATA
+	PROJECT_BRANCH DATA
+	runconfig_load
+	runconfig_load_from_file
+	runconfig_free
+	runconfig_print
+	runconfig_json_get
+	runconfig_thcrap_dir_get
+	runconfig_thcrap_dir_get_view
+	runconfig_thcrap_dir_set
+	runconfig_runcfg_fn_get
+	runconfig_game_get
+	runconfig_game_get_view
+	runconfig_build_get
+	runconfig_build_get_view
+	runconfig_build_set
+	runconfig_cmdline_get
+	runconfig_title_get
+	runconfig_update_url_get
+	runconfig_dat_dump_get
+	runconfig_patched_files_dump_get
+	runconfig_loader_pid_get
+	runconfig_loader_pid_set
+	runconfig_latest_check
+	runconfig_latest_get
+	runconfig_stage_count
+	runconfig_stage_apply
+	globalconfig_init
+	globalconfig_get_boolean
+	globalconfig_set_boolean
+	globalconfig_get_integer
+	globalconfig_set_integer
+	globalconfig_get_string
+	globalconfig_set_string
+	globalconfig_release
+	thcrap_alloc
+	thcrap_free
+
+	; Initialization
+	; --------------
+	identify
+	identify_by_hash
+	identify_by_size
+	identify_free
+
+	thcrap_detour
+	thcrap_init
+	exception_load_config
+
+	BP_init_next_stage
+	BP_runtime_apply_stage_by_name
+	BP_runtime_apply_stage_by_address
+	;BP_runtime_apply_stage_by_number
+	;BP_runtime_apply_stage_by_expr
+
+	; Injection
+	; ---------
+	entry_from_context
+
+	ThreadWaitUntil
+	WaitUntilEntryPoint
+
+	; Yes, these are necessary for injection chaining...
+	inject_LoadLibraryU
+	inject_LoadLibraryW
+	; ... and for the loader.
+	inject_CreateProcessU
+	inject_CreateProcessW
+
+	inject_mod_detour
+	thcrap_inject_into_running
+	thcrap_inject_into_new
+
+	; Jansson forwards
+	jansson_version_str=jansson_d.jansson_version_str
+	json_array=jansson_d.json_array
+	json_array_append_new=jansson_d.json_array_append_new
+	json_array_clear=jansson_d.json_array_clear
+	json_array_extend=jansson_d.json_array_extend
+	json_array_get=jansson_d.json_array_get
+	json_array_insert_new=jansson_d.json_array_insert_new
+	json_array_remove=jansson_d.json_array_remove
+	json_array_set_new=jansson_d.json_array_set_new
+	json_array_size=jansson_d.json_array_size
+	json_copy=jansson_d.json_copy
+	json_deep_copy=jansson_d.json_deep_copy
+	json_delete=jansson_d.json_delete
+	json_dump_callback=jansson_d.json_dump_callback
+	json_dump_file=jansson_d.json_dump_file
+	json_dumpb=jansson_d.json_dumpb
+	json_dumpf=jansson_d.json_dumpf
+	json_dumpfd=jansson_d.json_dumpfd
+	json_dumps=jansson_d.json_dumps
+	json_equal=jansson_d.json_equal
+	json_false=jansson_d.json_false
+	json_get_alloc_funcs=jansson_d.json_get_alloc_funcs
+	json_integer=jansson_d.json_integer
+	json_integer_set=jansson_d.json_integer_set
+	json_integer_value=jansson_d.json_integer_value
+	json_load_callback=jansson_d.json_load_callback
+	json_load_file=jansson_d.json_load_file
+	json_loadb=jansson_d.json_loadb
+	json_loadf=jansson_d.json_loadf
+	json_loadfd=jansson_d.json_loadfd
+	json_loads=jansson_d.json_loads
+	json_null=jansson_d.json_null
+	json_number_value=jansson_d.json_number_value
+	json_object=jansson_d.json_object
+	json_object_clear=jansson_d.json_object_clear
+	json_object_del=jansson_d.json_object_del
+	json_object_deln=jansson_d.json_object_deln
+	json_object_get=jansson_d.json_object_get
+	json_object_getn=jansson_d.json_object_getn
+	json_object_iter=jansson_d.json_object_iter
+	json_object_iter_at=jansson_d.json_object_iter_at
+	json_object_iter_key=jansson_d.json_object_iter_key
+	json_object_iter_key_len=jansson_d.json_object_iter_key_len
+	json_object_iter_next=jansson_d.json_object_iter_next
+	json_object_iter_set_new=jansson_d.json_object_iter_set_new
+	json_object_iter_value=jansson_d.json_object_iter_value
+	json_object_key_to_iter=jansson_d.json_object_key_to_iter
+	json_object_seed=jansson_d.json_object_seed
+	json_object_set_new=jansson_d.json_object_set_new
+	json_object_set_new_nocheck=jansson_d.json_object_set_new_nocheck
+	json_object_setn_new=jansson_d.json_object_setn_new
+	json_object_setn_new_nocheck=jansson_d.json_object_setn_new_nocheck
+	json_object_size=jansson_d.json_object_size
+	json_object_update=jansson_d.json_object_update
+	json_object_update_existing=jansson_d.json_object_update_existing
+	json_object_update_missing=jansson_d.json_object_update_missing
+	json_object_update_recursive=jansson_d.json_object_update_recursive
+	json_pack=jansson_d.json_pack
+	json_pack_ex=jansson_d.json_pack_ex
+	json_real=jansson_d.json_real
+	json_real_set=jansson_d.json_real_set
+	json_real_value=jansson_d.json_real_value
+	json_sprintf=jansson_d.json_sprintf
+	json_string=jansson_d.json_string
+	json_string_length=jansson_d.json_string_length
+	json_string_nocheck=jansson_d.json_string_nocheck
+	json_string_set=jansson_d.json_string_set
+	json_string_set_nocheck=jansson_d.json_string_set_nocheck
+	json_string_setn=jansson_d.json_string_setn
+	json_string_setn_nocheck=jansson_d.json_string_setn_nocheck
+	json_string_value=jansson_d.json_string_value
+	json_stringn=jansson_d.json_stringn
+	json_stringn_nocheck=jansson_d.json_stringn_nocheck
+	json_true=jansson_d.json_true
+	json_unpack=jansson_d.json_unpack
+	json_unpack_ex=jansson_d.json_unpack_ex
+	json_vpack_ex=jansson_d.json_vpack_ex
+	json_vsprintf=jansson_d.json_vsprintf
+	json_vunpack_ex=jansson_d.json_vunpack_ex
+
+	; JSON extensions
+	; ---------------
+	json_decref_safe
+	json_hex_value
+	json_concat_string_array
+	json_array_set_expand
+	json_array_set_new_expand
+	json_array_get_hex
+	json_array_get_string
+	json_array_get_string_safe
+	json_flex_array_size
+	json_flex_array_get
+	json_flex_array_get_string_safe
+	json_object_get_create
+	json_object_numkey_get
+	json_object_get_string
+	json_object_get_string_copy
+	json_object_get_hex
+	json_object_merge
+	json_object_get_keys_sorted
+	json_object_get_concat_string_array
+	json_object_get_string_array_copy
+	json_string_copy
+	json_concat_string_array
+	json5_loadb
+	json_load_file_report
+	json_dump_log
+
+	json_string_expression_value
+	json_eval_bool
+	json_eval_int
+	json_eval_real
+	json_eval_number
+	json_eval_addr=json_eval_int
+	json_object_get_eval_bool
+	json_object_get_eval_int
+	json_object_get_eval_real
+	json_object_get_eval_number
+	json_object_get_eval_addr=json_object_get_eval_int
+	json_eval_bool_default
+	json_eval_int_default
+	json_eval_real_default
+	json_eval_number_default
+	json_eval_addr_default=json_eval_int_default
+	json_object_get_eval_bool_default
+	json_object_get_eval_int_default
+	json_object_get_eval_real_default
+	json_object_get_eval_number_default
+	json_object_get_eval_addr_default=json_object_get_eval_int_default
+
+	; JSON data storage
+	; -----------------
+	jsondata_add
+	jsondata_game_add
+	jsondata_get
+	jsondata_game_get
+	jsondata_mod_repatch
+
+	; Fonts and charsets
+	; ------------------
+	font_has_character
+	font_create_for_character
+
+	; Logging
+	; -------
+	lasterror_str_for
+	lasterror_str
+
+	log_set_hook
+	log_print
+	log_nprint
+	log_vprintf
+	log_printf
+	log_flush
+	log_mbox
+	log_vmboxf
+	log_mboxf
+	log_mbox_set_owner
+	log_init
+	log_exit
+
+	log_async DATA
+
+	; Memory patching
+	; ---------------
+	VirtualCheckRegion
+	VirtualCheckCode
+
+	; Detouring
+	; ---------
+	detour_chain
+	detour_chain_w32u8
+	detour_top
+	iat_detour_apply
+
+	vtable_detour
+
+	; Patch files
+	; -----------
+	file_stream
+	file_stream_size
+	file_stream_read
+	file_read
+	file_write
+
+	fn_for_game
+	fn_for_build
+	fn_for_patch
+	patch_print_fn
+
+	dir_create_for_fn
+
+	patch_file_exists
+	patch_file_blacklisted
+	patch_file_stream
+	patch_file_load
+	patch_json_load
+	patch_json_merge
+	patch_file_store
+	patch_json_store
+	patch_file_delete
+
+	patch_init
+	patch_to_runconfig_json
+	patch_free
+	patch_build
+	patch_rel_to_abs
+	patch_dep_to_desc
+
+	patch_parse_type
+	patch_opts_from_json
+	patch_opt_from_raw
+	patch_opt_get
+	patch_opt_get_len
+
+	; Hooks
+	; -----
+	patchhook_register
+	patchhooks_build
+	patchhooks_run
+
+	; Plugins
+	; -------
+	func_get
+	func_get_len
+	func_add
+	func_remove
+	plugins_load
+	plugins_close
+	mod_func_remove
+	patch_func_run_all
+	patch_func_remove
+	BP_patch_func_run_all
+
+	; Detour promotion
+	; ----------------
+	promote_mod_init
+
+	; Hot-repatching
+	; --------------
+	repatch_mod_init
+	repatch_mod_exit
+
+	; Repository handling
+	; -------------------
+	RepoLoadJson
+	RepoLoad
+	RepoWrite
+	RepoLocalNext
+	RepoGetLocalFN
+	RepoFree
+
+	; Search on disk
+	; --------------
+	SearchForGames
+	SearchForGamesInstalled
+	SearchForGames_cancel
+	SearchForGames_free
+	SearchDecideStoredPathForm
+
+	; Shortcuts
+	; ---------
+	CreateShortcuts
+	GetIconGroupResourceId
+
+	; Stack
+	; -----
+	resolve_chain
+	resolve_chain_game
+	chain_free
+	set_resolve_chain
+	set_resolve_chain_game
+	stack_chain_iterate
+
+	stack_json_resolve_chain
+	stack_json_resolve
+	stack_file_resolve_chain
+	stack_fn_resolve_chain
+	stack_game_file_stream
+	stack_game_file_resolve
+	stack_game_json_resolve
+
+	stack_show_missing
+
+	stack_add_patch
+	stack_add_patch_from_json
+	stack_remove_patch
+	stack_get_size
+	stack_foreach
+	stack_foreach_cpp
+	stack_remove_if_unneeded
+	stack_check_if_unneeded
+	stack_free
+
+	; Hardcoded string translation
+	; ----------------------------
+	strings_id
+	strings_get
+	strings_lookup
+	strings_va_lookup
+	strings_storage_get
+	strings_sprintf
+	strings_vsprintf
+	strings_vsprintf_msvcrt14
+	strings_strclr
+	strings_strcat
+	strings_replace
+
+	strings_mod_init
+	strings_mod_detour
+	strings_mod_repatch
+	strings_mod_exit
+	BP_strings_lookup
+
+	; Dictionary based string translation
+	; -----------------------------------
+	BP_dict_translate
+	dict_mod_init
+
+	; Strings array
+	; -------------
+	strings_array_create
+	strings_array_add
+	strings_array_size
+	strings_array_create_and_fill
+	strings_array_free
+
+	; Text display
+	; ------------
+	textdisp_mod_init
+	textdisp_mod_detour
+
+	; Random utility functions
+	; ------------------------
+	str_ascii_replace
+	str_slash_normalize
+	str_slash_normalize_win
+	str_num_digits
+	str_num_base
+	str_hexdate_format
+	_asprintf
+	_vasprintf
+
+	; thcrap_update wrapper functions
+	; -------------------------------
+	thcrap_update_module
+
+	update_filter_global_wrapper
+	update_filter_games_wrapper
+	stack_update_wrapper
+	loader_update_with_UI_wrapper
+	RepoDiscover_wrapper
+	update_notify_thcrap_wrapper
+	patch_bootstrap_wrapper
+	thcrap_update_exit_wrapper
+
+	; Virtual file system
+	; -------------------
+	jsonvfs_add
+	jsonvfs_game_add
+	jsonvfs_add_map
+	jsonvfs_game_add_map
+	jsonvfs_get
+
+	; Win32 detours
+	; -------------
+	win32_detour
+
+	; ZIP
+	; ---
+	zip_list
+	zip_list_empty
+	zip_comment
+	zip_file_load
+	zip_file_unzip
+	zip_open
+	zip_close
+
+	; 32 BIT ONLY EXPORTS
+
+	; JSON extensions
+	; ---------------
+	json_eval_int64
+	json_object_get_eval_int64
+	json_eval_int64_default
+	json_object_get_eval_int64_default
+	VirtualAllocLowEx=kernel32.VirtualAllocEx
+	VirtualAllocLow=kernel32.VirtualAlloc
+	VirtualFreeLowEx=kernel32.VirtualFreeEx
+	VirtualFreeLow=kernel32.VirtualFree
+	@str_to_addr_impl@8

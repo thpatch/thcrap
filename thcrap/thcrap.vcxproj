@@ -41,8 +41,10 @@
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>jansson$(Suffix).lib;shlwapi.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies Condition="'$(Platform)'=='x64'">thcrap_x64_injector$(DebugSuffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile Condition="'$(Platform)'!='x64'">thcrap_x86.def</ModuleDefinitionFile>
-      <ModuleDefinitionFile Condition="'$(Platform)'=='x64'">thcrap_x64.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile Condition="'$(Platform)'!='x64' And $(UseDebugLibraries)!=true">thcrap_x86.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile Condition="'$(Platform)'=='x64' And $(UseDebugLibraries)!=true">thcrap_x64.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile Condition="'$(Platform)'!='x64' And $(UseDebugLibraries)==true">thcrap_x86_d.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile Condition="'$(Platform)'=='x64' And $(UseDebugLibraries)==true">thcrap_x64_d.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -135,7 +137,9 @@
 	<GAS Condition="'$(Platform)'!='x64'" Include="src\str_to_addr.asm" />
     <GAS Condition="'$(Platform)'=='x64'" Include="src\bp_entry_64.asm" />
 	<GAS Condition="'$(Platform)'=='x64'" Include="src\str_to_addr_64.asm" />
-    <None Condition="'$(Platform)'!='x64'" Include="thcrap_x86.def" />
-    <None Condition="'$(Platform)'=='x64'" Include="thcrap_x64.def" />
+    <None Condition="'$(Platform)'!='x64' And $(UseDebugLibraries)!=true" Include="thcrap_x86.def" />
+    <None Condition="'$(Platform)'=='x64' And $(UseDebugLibraries)!=true" Include="thcrap_x64.def" />
+    <None Condition="'$(Platform)'!='x64' And $(UseDebugLibraries)==true" Include="thcrap_x86_d.def" />
+    <None Condition="'$(Platform)'=='x64' And $(UseDebugLibraries)==true" Include="thcrap_x64_d.def" />
   </ItemGroup>
 </Project>
