@@ -117,9 +117,9 @@ static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 
 			if (use_vpatch) {
 #if !CPP20
-				std::string vpatch_path = vpatch_fn.generic_u8string();
+				std::string vpatch_path = SearchDecideStoredPathForm(vpatch_fn, std::filesystem::current_path());
 #else
-				std::u8string vpatch_path = vpatch_fn.generic_u8string();
+				std::u8string vpatch_path = SearchDecideStoredPathForm(vpatch_fn, std::filesystem::current_path());
 #endif
 				if (std::none_of(state.found.begin(), state.found.end(), [vpatch_path](const game_search_result& it) {
 #if !CPP20
