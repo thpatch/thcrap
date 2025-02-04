@@ -229,6 +229,12 @@ cd thcrap
 cd ..
 python3 ./git_thcrap/scripts/release_sign.py -k cert.pem thcrap.zip
 
+if [ thcrap.zip -nt thcrap.zip.sig ]; then
+    echo "Error: thcrap.zip is more recent than thcrap.zip.sig"
+    ls -l thcrap.zip thcrap.zip.sig
+    confirm "Continue anyway? (not recommended)"
+fi
+
 rm -f thcrap_symbols.zip
 cd git_thcrap/bin
 7z a ../../thcrap_symbols.zip *
