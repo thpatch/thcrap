@@ -321,25 +321,9 @@ namespace thcrap_configure_v3
                 SearchButtonEverywhere.IsEnabled = true;
             }
         }
-        private async void Search(string root, bool useAutoBehavior = false)
+
+        private async void HandleGameSearchResult(IntPtr foundPtr, bool gamesListWasEmpty)
         {
-            bool gamesListWasEmpty = this.games.Count == 0;
-            foreach (var it in this.games)
-                it.SetNew(false);
-
-            SetSearching(true);
-            IntPtr foundPtr;
-            if (useAutoBehavior)
-            {
-                foundPtr = await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null));
-            }
-            else
-            {
-                foundPtr = await Task.Run(() => ThcrapDll.SearchForGames(new string[] { root, null }, null));
-            }
-
-            SetSearching(false);
-
             var found = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr);
 
             foreach (var it in found)
@@ -362,6 +346,29 @@ namespace thcrap_configure_v3
             }
 
             ThcrapDll.SearchForGames_free(foundPtr);
+        }
+
+        private async void Search(string root, bool useAutoBehavior = false)
+        {
+            bool gamesListWasEmpty = this.games.Count == 0;
+            foreach (var it in this.games)
+                it.SetNew(false);
+
+            SetSearching(true);
+            if (useAutoBehavior)
+            {
+                HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null)), gamesListWasEmpty);
+                var dirInfo = new DirectoryInfo(".");
+                if (dirInfo.Parent != null)
+                {
+                    HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGames(new string[] { dirInfo.Parent.FullName, null }, null)), gamesListWasEmpty);
+                }
+            }
+            else
+            {
+                HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGames(new string[] { root, null }, null)), gamesListWasEmpty);
+            }
+            SetSearching(false);
 
             if (!gamesListWasEmpty)
                 GamesScroll.ScrollToBottom();
