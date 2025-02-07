@@ -79,7 +79,7 @@ private:
 				json_array_append_new(*files_list_json, json_string(path_u));
 				free(path_u);
 			}
-			json_dump_file(*files_list_json, (const char*)this->fileslist_path.generic_u8string().c_str(), JSON_INDENT(2));
+			json_dump_file(*files_list_json, (const char*)this->fileslist_path.u8string().c_str(), JSON_INDENT(2));
 		}
 	}
 

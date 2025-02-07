@@ -45,7 +45,13 @@ static size_t iter_size(T begin, T end)
 // otherwise we want an absolute path.
 char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::path self)
 {
-    if (!self.is_absolute()) {
+	auto ret = [](const std::filesystem::path& path) {
+		char *return_value = strdup(path.u8string().c_str());
+		str_slash_normalize(return_value);
+		return return_value;
+	};
+
+	if (!self.is_absolute()) {
         self = std::filesystem::absolute(self);
     }
     if (!target.is_absolute()) {
@@ -53,7 +59,7 @@ char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::
     }
 
     if (target.root_path() != self.root_path()) {
-        return strdup(target.generic_u8string().c_str());
+        return ret(target);
     }
 
     auto [self_diff, target_diff] = std::mismatch(self.begin(), self.end(), target.begin(), target.end());
@@ -61,10 +67,10 @@ char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::
     // to make sense and looking at which values they need.
     // These examples are available in the unit tests.
     if (iter_size(self_diff, self.end()) <= 3 && iter_size(target_diff, target.end()) <= 2) {
-        return strdup(target.lexically_relative(self).generic_u8string().c_str());
+        return ret(target.lexically_relative(self));
     }
     else {
-        return strdup(target.generic_u8string().c_str());
+        return ret(target);
     }
 }
 
@@ -74,9 +80,9 @@ static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 	game_version *ver = identify_by_size((size_t)ent.file_size(), state.versions);
 	if(ver) {
 #if !CPP20
-		std::string exe_fn = ent.path().generic_u8string();
+		std::string exe_fn = ent.path().u8string();
 #else
-		std::u8string exe_fn = ent.path().generic_u8string();
+		std::u8string exe_fn = ent.path().u8string();
 #endif
 		size_t file_size = (size_t)ent.file_size();
 		identify_free(ver);

@@ -166,9 +166,9 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 	}
 
 #if !CPP20
-	std::string path_str = path.generic_u8string();
+	std::string path_str = path.u8string();
 #else
-	std::u8string path_str = path.generic_u8string();
+	std::u8string path_str = path.u8string();
 #endif
 	char* path_ptr = (char*)path_str.c_str();
 

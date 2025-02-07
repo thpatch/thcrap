@@ -345,12 +345,18 @@ inline void wstr_ascii_replace(wchar_t* str, const wchar_t from, const wchar_t t
 TH_DEPRECATED_EXPORT void (str_slash_normalize)(char *str);
 
 inline void str_slash_normalize_inline(char* str) {
+	if (strncmp(str, "\\\\", 2) == 0) {
+		str += 2;
+	}
 	str_ascii_replace(str, '\\', '/');
 }
 
 #define str_slash_normalize(str) str_slash_normalize_inline(str)
 
 inline void wstr_slash_normalize(wchar_t* str) {
+	if (wcsncmp(str, L"\\\\", 2) == 0) {
+		str += 2;
+	}
 	wstr_ascii_replace(str, L'\\', L'/');
 }
 
