@@ -328,30 +328,44 @@ void SearchForGames_free(game_search_result *games)
 	free(games);
 }
 
-static bool FilterOnSubkeyName(LPCWSTR subkeyName)
+static bool isInnoSetupWithUUID(LPCWSTR subkeyName)
 {
-	return wcsncmp(subkeyName, L"Steam App ", wcslen(L"Steam App ")) == 0;
+	if (subkeyName[0] != '{') {
+		return false;
+	}
+	LPCWSTR end = wcschr(subkeyName, L'}');
+	if (!end) {
+		return false;
+	}
+	end++;
+	return wcscmp(end, L"_is1") == 0;
 }
 
-static std::wstring GetValueFromKey(HKEY key, LPCWSTR subkey, LPCWSTR valueName)
+static bool FilterOnSubkeyName(LPCWSTR subkeyName)
+{
+	return wcsncmp(subkeyName, L"Steam App ", wcslen(L"Steam App ")) == 0 // Steam game
+		|| wcsncmp(subkeyName, L"東方", wcslen(L"東方")) == 0 // Official installers (TSA, since th10)
+		|| wcscmp(subkeyName, L"ダブルスポイラー_is1") == 0 // Official installer for th125
+		|| wcscmp(subkeyName, L"妖精大戦争_is1") == 0 // Official installer for th128
+		|| wcscmp(subkeyName, L"弾幕アマノジャク_is1") == 0 // Official installer for th143
+		|| wcscmp(subkeyName, L"バレットフィリア達の闇市場_is1") == 0 // Official installer for th185 (I can't check but it should be that if it follows the same pattern as the others)
+		|| isInnoSetupWithUUID(subkeyName) // Might be a Tasofro official installer (at least th105, th123, th135 and th145 follow this format)
+		;
+}
+
+static std::wstring GetValueFromKey(HKEY hKey, LPCWSTR valueName)
 {
 	LSTATUS ret;
 	std::vector<WCHAR> value;
 	DWORD valueSize = 64;
-	HKEY hSub;
 	DWORD type = 0;
-
-	if (RegOpenKeyExW(key, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &hSub)) {
-		return L"";
-	}
 
 	do {
 		value.resize(valueSize);
 		valueSize *= sizeof(WCHAR);
-		ret = RegQueryValueExW(hSub, valueName, 0, &type, (LPBYTE)value.data(), &valueSize);
+		ret = RegQueryValueExW(hKey, valueName, 0, &type, (LPBYTE)value.data(), &valueSize);
 		valueSize /= sizeof(WCHAR);
 	} while (ret == ERROR_MORE_DATA);
-	RegCloseKey(hSub);
 	if (ret != ERROR_SUCCESS || type != REG_SZ) {
 		return L"";
 	}
@@ -362,81 +376,219 @@ static std::wstring GetValueFromKey(HKEY key, LPCWSTR subkey, LPCWSTR valueName)
 	return std::wstring(value.data(), valueSize);
 }
 
-static bool FilterOnKey(HKEY key, LPCWSTR subkey)
+static std::wstring GetValueFromSubkey(HKEY hKey, LPCWSTR subkey, LPCWSTR valueName)
 {
-	std::wstring publisher = GetValueFromKey(key, subkey, L"Publisher");
+	HKEY hSubkey;
 
-	return publisher == L"上海アリス幻樂団"
-		|| publisher == L"黄昏フロンティア";
+	if (RegOpenKeyExW(hKey, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &hSubkey)) {
+		return false;
+	}
+	defer(RegCloseKey(hSubkey));
+	return GetValueFromKey(hSubkey, valueName);
 }
 
-static std::vector<wchar_t*> FindInstalledGamesDir()
+static bool FilterOnValue(HKEY parentKey, LPCWSTR keyName)
 {
-	log_printf("Loading games from registry...");
+	HKEY hKey;
 
-	LSTATUS ret;
-	HKEY hUninstallKey;
+	if (RegOpenKeyExW(parentKey, keyName, 0, KEY_READ | KEY_WOW64_64KEY, &hKey)) {
+		return false;
+	}
+	defer(RegCloseKey(hKey));
 
-	ret = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
-		L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall",
-		0,
-		KEY_READ | KEY_WOW64_64KEY,
-		&hUninstallKey);
-	if (ret != ERROR_SUCCESS)
+	// For Steam and Tasofro official installers
+	std::wstring publisher = GetValueFromKey(hKey, L"Publisher");
+	if (!publisher.empty()) {
+		return publisher == L"上海アリス幻樂団"
+			|| publisher == L"黄昏フロンティア";
+	}
+
+	// TSA official installers don't fill the Publisher field, but they all fill this field instead
+	std::wstring iconGroup = GetValueFromKey(hKey, L"Inno Setup: Icon Group");
+	if (!iconGroup.empty()) {
+		return iconGroup.compare(0, wcslen(L"上海アリス幻樂団"), L"上海アリス幻樂団") == 0;
+	}
+
+	return false;
+}
+
+class Reg3264Iterator
+{
+private:
+	const LPCWSTR keyName;
+
+	bool mainRegistryOpened = false;
+	bool wow64RegistryOpened = false;
+
+	HKEY hKey = nullptr;
+	DWORD cSubKeys;
+	DWORD nCurrentSubKeyPos;
+
+	DWORD cbMaxSubKeyLen = 0;
+	std::unique_ptr<WCHAR[]> subkeyName;
+
+public:
+	Reg3264Iterator(LPCWSTR keyName)
+		: keyName(keyName)
 	{
-		log_printf(" failed (RerOpenKeyEx error %d)\n", ret);
-		return {};
+		BOOL isWow64;
+		IsWow64Process(GetCurrentProcess(), &isWow64);
+		if (!isWow64) {
+			// Mark it as opened so that we don't try to open it later
+			wow64RegistryOpened = true;
+		}
 	}
 
-	DWORD    cSubKeys;                 // number of subkeys
-	DWORD    cbMaxSubKeyLen;           // longest subkey size
-
-	RegQueryInfoKeyW(
-		hUninstallKey,   // key handle
-		nullptr,         // buffer for class name
-		nullptr,         // size of class string
-		nullptr,         // reserved
-		&cSubKeys,       // number of subkeys
-		&cbMaxSubKeyLen, // longest subkey size
-		nullptr,         // longest class string
-		nullptr,         // number of values for this key
-		nullptr,         // longest value name
-		nullptr,         // longest value data
-		nullptr,         // security descriptor
-		nullptr);        // last write time
-
-	if (!cSubKeys) {
-		log_print(" no installed programs found.\n");
-		RegCloseKey(hUninstallKey);
-		return {};
+	~Reg3264Iterator()
+	{
+		RegCloseKey(this->hKey);
 	}
-	log_print("\n");
 
-	std::vector<wchar_t*> dirlist;
-	auto subkeyName = std::make_unique<WCHAR[]>(cbMaxSubKeyLen + 1);
+	bool openNextKey()
+	{
+		const char *regName = "";
+		LSTATUS ret;
+		DWORD cbMaxSubKeyLen;
 
-	for (DWORD i = 0; i < cSubKeys; i++) {
+		if (mainRegistryOpened && wow64RegistryOpened) {
+			return false;
+		}
+
+		if (!mainRegistryOpened) {
+			ret = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+				keyName,
+				0,
+				KEY_READ | KEY_WOW64_64KEY,
+				&hKey);
+			mainRegistryOpened = true;
+			regName = "main";
+		}
+		else {
+			ret = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+				keyName,
+				0,
+				KEY_READ | KEY_WOW64_32KEY,
+				&hKey);
+			wow64RegistryOpened = true;
+			regName = "wow64";
+		}
+		if (ret != ERROR_SUCCESS) {
+			log_printf("Error opening %s registry key (RegOpenKeyEx error %d)\n", regName, ret);
+			return false;
+		}
+
+		RegQueryInfoKeyW(
+			hKey,
+			nullptr, nullptr, nullptr,
+			&cSubKeys,       // number of subkeys
+			&cbMaxSubKeyLen, // longest subkey size
+			nullptr, nullptr, nullptr, nullptr, nullptr, nullptr);
+
+		if (cSubKeys == 0) {
+			log_printf("%s registry: no installed programs found.\n", regName);
+			return false;
+		}
+
+		if (cbMaxSubKeyLen > this->cbMaxSubKeyLen) {
+			subkeyName = std::make_unique<WCHAR[]>(cbMaxSubKeyLen + 1);
+			this->cbMaxSubKeyLen = cbMaxSubKeyLen;
+		}
+		nCurrentSubKeyPos = 0;
+
+		return true;
+	}
+
+	LPCWSTR next()
+	{
+		if (nCurrentSubKeyPos == cSubKeys) {
+			if (!openNextKey()) {
+				return nullptr;
+			}
+		}
+
 		DWORD cchName = cbMaxSubKeyLen + 1;
-		ret = RegEnumKeyEx(hUninstallKey, i,
+		LSTATUS ret = RegEnumKeyEx(hKey, nCurrentSubKeyPos,
 			subkeyName.get(),
 			&cchName,
 			nullptr,
 			nullptr,
 			nullptr,
 			nullptr);
-		if (ret != ERROR_SUCCESS || !FilterOnSubkeyName(subkeyName.get())) {
-			continue;
+		nCurrentSubKeyPos++;
+		if (ret != ERROR_SUCCESS) {
+			return next();
 		}
 
-		if (!FilterOnKey(hUninstallKey, subkeyName.get())) {
-			continue;
-		}
-		std::wstring location = GetValueFromKey(hUninstallKey, subkeyName.get(), L"InstallLocation");
-		log_printf("Found %S at %S\n", subkeyName.get(), location.c_str());
-		dirlist.push_back(wcsdup(location.c_str()));
+		return subkeyName.get();
 	}
 
-	RegCloseKey(hUninstallKey);
+	HKEY getRegHandle()
+	{
+		return hKey;
+	}
+};
+
+static void FindInstalledGamesDirFromRegistry(std::vector<wchar_t*>& dirlist /* out */)
+{
+	log_printf("Loading games from registry... ");
+
+	Reg3264Iterator uninstallKeysIt(L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
+	if (!uninstallKeysIt.openNextKey()) {
+		return;
+	}
+	log_print("\n");
+
+	while (LPCWSTR subkeyName = uninstallKeysIt.next()) {
+		if (!FilterOnSubkeyName(subkeyName)) {
+			continue;
+		}
+
+		if (!FilterOnValue(uninstallKeysIt.getRegHandle(), subkeyName)) {
+			continue;
+		}
+		std::wstring location = GetValueFromSubkey(uninstallKeysIt.getRegHandle(), subkeyName, L"InstallLocation");
+		log_print("Found ");
+		log_printw(subkeyName);
+		log_print(" at ");
+		log_printw(location.c_str());
+		log_print("\n");
+		dirlist.push_back(wcsdup(location.c_str()));
+	}
+}
+
+static void FindInstalledGamesDirFromDefaultPaths(std::vector<wchar_t*>& dirlist /* out */)
+{
+	// Older games don't register themselves in the registry, try their default paths
+	log_printf("Loading games from default paths...\n");
+
+	WCHAR programFilesBuffer[MAX_PATH + 1];
+	SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILESX86, nullptr, SHGFP_TYPE_CURRENT, programFilesBuffer);
+	std::wstring programFiles = programFilesBuffer;
+	const std::wstring defaultPaths[] = {
+		L"C:\\Program Files\\東方紅魔郷", // th06
+		programFiles + L"\\東方妖々夢", // th07
+		programFiles + L"\\東方萃夢想", // th075
+		programFiles + L"\\東方永夜抄", // th08
+		programFiles + L"\\東方花映塚", // th09
+		programFiles + L"\\東方文花帖", // th095
+		L""
+	};
+
+	for (size_t i = 0; !defaultPaths[i].empty(); i++) {
+		if (PathIsDirectoryW(defaultPaths[i].c_str())) {
+			log_print("Found ");
+			log_printw(defaultPaths[i].c_str());
+			log_print("\n");
+			dirlist.push_back(wcsdup(defaultPaths[i].c_str()));
+		}
+	}
+}
+
+static std::vector<wchar_t*> FindInstalledGamesDir()
+{
+	std::vector<wchar_t*> dirlist;
+	FindInstalledGamesDirFromRegistry(dirlist);
+	FindInstalledGamesDirFromDefaultPaths(dirlist);
 	return dirlist;
 }
 

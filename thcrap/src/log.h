@@ -28,6 +28,7 @@ THCRAP_API void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(
 /// ---------------
 // Basic
 THCRAP_API void log_print(const char *text);
+THCRAP_API void log_printw(const wchar_t *text);
 // Specific length
 THCRAP_API void log_nprint(const char *text, size_t n);
 // Formatted

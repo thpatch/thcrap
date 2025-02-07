@@ -161,6 +161,13 @@ void log_print(const char *str) {
 	log_push(str, (uint32_t)strlen(str), false);
 }
 
+void log_printw(const wchar_t *wstr) {
+	size_t buffer_size = (wcslen(wstr) + 1) * UTF8_MUL;
+	VLA(char, str, buffer_size);
+	StringToUTF8(str, wstr, buffer_size);
+	log_print(str);
+}
+
 inline void log_vprintf(const char *format, va_list va) {
 	va_list va2;
 	va_copy(va2, va);
