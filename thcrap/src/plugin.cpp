@@ -53,6 +53,7 @@ extern float __cdecl __libm_sse2_acosf(float);
 extern double __cdecl __libm_sse2_atan(double);
 extern float __cdecl __libm_sse2_atanf(float);
 extern double __cdecl __libm_sse2_atan2(double);
+extern __m128 __cdecl __libm_sse2_sincosf_(float);
 
 extern int64_t __cdecl _ftol(long double);
 extern int64_t __cdecl _ftol2(long double);
@@ -203,6 +204,7 @@ static std::unordered_map<std::string_view, uintptr_t> funcs = {
 	{ "th_CIacos", (uintptr_t)&_CIacos }, { "th_acos_sse2", (uintptr_t)&__libm_sse2_acos }, { "th_acosf_sse2", (uintptr_t)&__libm_sse2_acosf },
 	{ "th_CIatan", (uintptr_t)&_CIatan }, { "th_atan_sse2", (uintptr_t)&__libm_sse2_atan }, { "th_atanf_sse2", (uintptr_t)&__libm_sse2_atanf },
 	{ "th_CIatan2", (uintptr_t)&_CIatan2 }, { "th_atan2_sse2", (uintptr_t)&__libm_sse2_atan2 },
+	{ "th_sincosf_sse2", (uintptr_t)&__libm_sse2_sincosf_ },
 
 	// 64 bit integer helpers
 	{ "th_allmul", (uintptr_t)&_allmul },
