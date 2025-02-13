@@ -50,9 +50,11 @@ size_t TasofroFile::init_game_file_size(size_t game_file_size)
 	if (game_file_size > this->pre_json_size) {
 		// The original file is bigger than our replacement file,
 		// we might need a bigger buffer.
+		size_t previous_size = this->pre_json_size;
 		this->pre_json_size = game_file_size;
 		if (this->rep_buffer) {
 			this->rep_buffer = realloc(this->rep_buffer, POST_JSON_SIZE(this));
+			memset((char*)this->rep_buffer + previous_size, 0, POST_JSON_SIZE(this) - previous_size);
 		}
 	}
 	return POST_JSON_SIZE(this);
