@@ -264,12 +264,14 @@ int installDotNET(LPWSTR ApplicationPath) {
 			return 1;
 		}
 		net_install_message = L"Installing some required files, please wait...";
+		break;
 	case NeedsUpdate:
 		if (isWine) {
 			NETShowWineError(n_OutOfDate);
 			return 1;
 		}
 		net_install_message = L"Updating some required files, please wait...";
+		break;
 	case IsNotInstallable:
 		return 1;
 	}
