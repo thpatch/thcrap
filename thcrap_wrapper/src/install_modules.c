@@ -92,23 +92,23 @@ static void NETShowWineError(WineNetError_t reason) {
 		wineMessage =
 			L"It seems you are using Wine and Wine Mono is installed\n"
 			L"Unfortunately, Wine Mono does not work with thcrap\n"
-			L"Please use the bundled script to install .NET Framework 4.6.1\n"
-			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet461.sh\")";
+			L"Please use the bundled script to install .NET Framework 4.8.0\n"
+			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet480.sh\")";
 		break;
 	case n_NotInstalled:
 		wineMessage =
-			L"It seems you are using Wine and .NET Framework 4.6.1 is not installed\n"
-			L".NET Framework 4.6.1 or higher is required to setup thcrap\n"
-			L"Please use the bundled script to install .NET Framework 4.6.1\n"
-			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet461.sh\")";
+			L"It seems you are using Wine and .NET Framework 4.8.0 is not installed\n"
+			L".NET Framework 4.8.0 or higher is required to setup thcrap\n"
+			L"Please use the bundled script to install .NET Framework 4.8.0\n"
+			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet480.sh\")";
 		break;
 	case n_OutOfDate:
 		wineMessage =
 			L"It seems you are using Wine and .NET Framework is installed\n"
-			L"Unfortunately, the installed version is older than 4.6.1\n"
+			L"Unfortunately, the installed version is older than 4.8.0\n"
 			L"Please create a new wineprefix and use the bundled script\n"
-			L"to install .NET Framework 4.6.1\n"
-			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet461.sh\")";
+			L"to install .NET Framework 4.8.0\n"
+			L"(the script is located in the \"bin/scripts\" folder and called \"install_dotnet480.sh\")";
 		break;
 	}
 
@@ -163,7 +163,7 @@ static InstallStatus_t CheckDotNETStatus(DWORD isWine) {
 
 		if (status != ERROR_SUCCESS || reg_type != REG_DWORD)
 			NETStatus = NotInstalled;
-		else if (key_data < 0x6040E)
+		else if (key_data < 0x80EB1)
 			NETStatus = NeedsUpdate;
 		else
 			NETStatus = IsCurrent;
@@ -207,7 +207,7 @@ DWORD WINAPI NETDownloadThread(LPVOID lpParam) {
 	if (!download_single_file)
 		ExitThread(HttpLibLoadError);
 
-	HttpStatus res = download_single_file("https://download.microsoft.com/download/E/4/1/E4173890-A24A-4936-9FC9-AF930FE3FA40/NDP461-KB3102436-x86-x64-AllOS-ENU.exe", "NDP461-Installer.exe");
+	HttpStatus res = download_single_file("https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe", "NDP480-Installer.exe");
 
 	FreeLibrary(hUpdate);
 
@@ -221,27 +221,27 @@ int NETDownloadCheckError(HttpStatus reason) {
 		return 0;
 	case HttpLibLoadError:
 		errorMessage =
-			L"Failed to download .NET Framework 4.6.1\n"
+			L"Failed to download .NET Framework 4.8.0\n"
 			L"Corrupt or outdated thcrap installation";
 		break;
 	case HttpCancelled:
 		errorMessage =
-			L"Failed to download .NET Framework 4.6.1\n"
+			L"Failed to download .NET Framework 4.8.0\n"
 			L"An error occurred with the download process";
 		break;
 	case HttpClientError:
 		errorMessage =
-			L"Failed to download .NET Framework 4.6.1\n"
+			L"Failed to download .NET Framework 4.8.0\n"
 			L"The file wasn't found on Microsoft's server";
 		break;
 	case HttpServerError:
 		errorMessage =
-			L"Failed to download .NET Framework 4.6.1\n"
+			L"Failed to download .NET Framework 4.8.0\n"
 			L"An unknown error ocurred with Microsoft's server";
 		break;
 	case HttpSystemError:
 		errorMessage =
-			L"Failed to download .NET Framework 4.6.1\n"
+			L"Failed to download .NET Framework 4.8.0\n"
 			L"No internet or not enough system memory";
 		break;
 	}
@@ -285,7 +285,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 		winver.dwOSVersionInfoSize = sizeof(winver);
 		RtlGetVersion(&winver);
 		if (winver.dwMajorVersion < 6) {
-			MessageBoxW(NULL, L"Your Windows version is too old for .NET 4.6.1", L".Touhou Community Reliant Automatic Patcher", MB_ICONERROR | MB_OK);
+			MessageBoxW(NULL, L"Your Windows version is too old for .NET 4.8.0", L".Touhou Community Reliant Automatic Patcher", MB_ICONERROR | MB_OK);
 			return 1;
 		}
 	}
@@ -339,11 +339,11 @@ int installDotNET(LPWSTR ApplicationPath) {
 	wchar_t current_dir[MAX_PATH];
 	GetCurrentDirectoryW(MAX_PATH, current_dir);
 
-	LPWSTR NETInstaller = my_alloc(my_wcslen(current_dir) + my_wcslen(L"\\NDP461-Installer.exe") + 1, sizeof(wchar_t));
+	LPWSTR NETInstaller = my_alloc(my_wcslen(current_dir) + my_wcslen(L"\\NDP480-Installer.exe") + 1, sizeof(wchar_t));
 	LPWSTR p = NETInstaller;
 
 	p = my_strcpy(p, current_dir);
-	p = my_strcpy(p, L"\\NDP461-Installer.exe");
+	p = my_strcpy(p, L"\\NDP480-Installer.exe");
 
 	hwnd = createInstallPopup(net_install_message);
 
@@ -383,7 +383,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 		}
 	}
 
-	DeleteFileW(L"NDP461-Installer.exe");
+	DeleteFileW(L"NDP480-Installer.exe");
 
 	return 0;
 }

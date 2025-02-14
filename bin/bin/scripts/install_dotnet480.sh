@@ -53,9 +53,8 @@ fi
 winetricks dotnet40
 wineserver -w
 wine winecfg -v win7
-$DOWNLOAD_ 'https://download.microsoft.com/download/E/4/1/E4173890-A24A-4936-9FC9-AF930FE3FA40/NDP461-KB3102436-x86-x64-AllOS-ENU.exe'
-wine NDP461-KB3102436-x86-x64-AllOS-ENU.exe /passive
+$DOWNLOAD_ 'https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe'
+wine ndp48-x86-x64-allos-enu.exe /passive
 wineserver -w
-rm NDP461-KB3102436-x86-x64-AllOS-ENU.exe
-clear
-echo "Successfully installed .NET Framework 4.6.1"
+rm ndp48-x86-x64-allos-enu.exe
+echo "Successfully installed .NET Framework 4.8.0"
