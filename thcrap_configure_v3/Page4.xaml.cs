@@ -322,7 +322,7 @@ namespace thcrap_configure_v3
             }
         }
 
-        private async void HandleGameSearchResult(IntPtr foundPtr, bool gamesListWasEmpty)
+        private async Task HandleGameSearchResult(IntPtr foundPtr, bool gamesListWasEmpty)
         {
             var found = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr);
 
@@ -357,16 +357,16 @@ namespace thcrap_configure_v3
             SetSearching(true);
             if (useAutoBehavior)
             {
-                HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null)), gamesListWasEmpty);
+                await HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null)), gamesListWasEmpty);
                 var dirInfo = new DirectoryInfo(".");
                 if (dirInfo.Parent != null)
                 {
-                    HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGames(new string[] { dirInfo.Parent.FullName, null }, null)), gamesListWasEmpty);
+                    await HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGames(new string[] { dirInfo.Parent.FullName, null }, null)), gamesListWasEmpty);
                 }
             }
             else
             {
-                HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGames(new string[] { root, null }, null)), gamesListWasEmpty);
+                await HandleGameSearchResult (await Task.Run(() => ThcrapDll.SearchForGames(new string[] { root, null }, null)), gamesListWasEmpty);
             }
             SetSearching(false);
 
