@@ -3,6 +3,7 @@
 #include <atomic>
 
 #pragma section("lock",read,write,shared)
+#pragma comment(linker, "/SECTION:lock,RWS")
 __declspec(allocate("lock"))
 std::atomic<HANDLE> waiting_on_pid;
 __declspec(allocate("lock"))

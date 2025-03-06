@@ -510,8 +510,14 @@ extern "C++" {
 #define TH_VECTORCALL __attribute__((vectorcall))
 #elif __has_attribute(sseregparm)
 #define TH_VECTORCALL __attribute__((sseregparm))
-#elif MSVC_COMPAT || CLANG_COMPAT || ICC_COMPAT
+#elif CLANG_COMPAT || ICC_COMPAT
 #define TH_VECTORCALL __vectorcall
+#elif MSVC_COMPAT
+#if !defined(_M_IX86_FP) || _M_IX86_FP > 1
+#define TH_VECTORCALL __vectorcall
+#else
+#define TH_VECTORCALL TH_FASTCALL
+#endif
 #else
 #define TH_VECTORCALL
 #endif
