@@ -1,10 +1,10 @@
 <UserControl x:Class="thcrap_configure_v3.Page2_advanced"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:local="clr-namespace:thcrap_configure_v3"
-      mc:Ignorable="d" 
+      mc:Ignorable="d"
       d:DesignHeight="450" d:DesignWidth="800">
 
     <Grid>
@@ -16,8 +16,25 @@
         </Grid.ColumnDefinitions>
         <DockPanel Grid.Column="0">
             <DockPanel DockPanel.Dock="Top">
-                <TextBlock Text="Quick filter: " />
-                <TextBox TextChanged="QuickFilterChanged"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox
+                        Name="QuickFilterTextBox"
+                        Text="Search here..."
+                        Grid.Column="0"
+                        Foreground="Gray"
+                        GotFocus="QuickFilter_OnGotFocus"
+                        LostFocus="QuickFilter_OnLostFocus"
+                        TextChanged="QuickFilterChanged"/>
+                    <Button Name="SearchButton"
+                            Grid.Column="1"
+                            Width="20px"
+                            Background="Transparent"
+                            Click="SearchButton_OnClick">🔎</Button>
+                </Grid>
             </DockPanel>
             <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,0,0">
                 <TreeView.Resources>
