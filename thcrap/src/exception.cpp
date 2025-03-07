@@ -322,11 +322,21 @@ static void log_print_context(CONTEXT* ctx)
 		if (exception_detail_level & ThExceptionDetailLevel::Debug) {
 			log_printf(
 				"\n"
-				"DB0: 0x%p DB1: 0x%p DB2: 0x%p DB3: 0x%p\n"
-				"DB6: 0x%p DB7: 0x%p\n"
+				"DR0: 0x%p DR1: 0x%p DR2: 0x%p DR3: 0x%p\n"
+				"DR6: 0x%p DR7: 0x%p\n"
 				, ctx->Dr0, ctx->Dr1, ctx->Dr2, ctx->Dr3
 				, ctx->Dr6, ctx->Dr7
 			);
+#ifdef TH_X64
+			if (ctx->Dr7 & 0x100) {
+				log_printf(
+					"Branch from: 0x%p\n"
+					"Branch to:   0x%p\n"
+					, ctx->LastExceptionFromRip
+					, ctx->LastExceptionToRip
+				);
+			}
+#endif
 		}
 	}
 }
