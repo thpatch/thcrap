@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -31,6 +32,7 @@ namespace thcrap_configure_v3
     /// </summary>
     public partial class Page4 : UserControl
     {
+        private Timer autoHideTimer;
         class ThXX_js
         {
             public string title { get; set; }
@@ -288,13 +290,14 @@ namespace thcrap_configure_v3
         {
             this.wizardPage = wizardPage;
             this.games = await LoadGamesJs();
+            NoNewGamesFound.Visibility = Visibility.Collapsed;
 
             GamesControl.ItemsSource = games;
             Refresh();
 
             if (games.Count == 0)
             {
-                await Search(null, true);
+                await Search(null, true, true);
             }
         }
 
@@ -322,9 +325,10 @@ namespace thcrap_configure_v3
             }
         }
 
-        private async Task HandleGameSearchResult(IntPtr foundPtr, bool gamesListWasEmpty)
+        private async Task<bool> HandleGameSearchResult(IntPtr foundPtr, bool gamesListWasEmpty)
         {
             var found = ThcrapHelper.ParseNullTerminatedStructArray<ThcrapDll.game_search_result>(foundPtr);
+            var newGameWasFound = false;
 
             foreach (var it in found)
             {
@@ -337,6 +341,7 @@ namespace thcrap_configure_v3
                     if (!gamesListWasEmpty)
                         game.SetNew(true);
                     this.games.Add(game);
+                    newGameWasFound = true;
                 }
                 else
                 {
@@ -346,29 +351,64 @@ namespace thcrap_configure_v3
             }
 
             ThcrapDll.SearchForGames_free(foundPtr);
+            return newGameWasFound;
         }
 
-        private async Task Search(string root, bool useAutoBehavior = false)
+        private async Task Search(string root, bool useAutoBehavior = false, bool firstSearch = false)
         {
+            NoNewGamesFound.Visibility = Visibility.Collapsed;
+
+            // Make sure Timer object is properly disposed
+            if (autoHideTimer != null)
+            {
+                autoHideTimer.Dispose();
+                autoHideTimer = null;
+            }
+
             bool gamesListWasEmpty = this.games.Count == 0;
+            bool newGameWasFound = false;
             foreach (var it in this.games)
                 it.SetNew(false);
 
             SetSearching(true);
             if (useAutoBehavior)
             {
-                await HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null)), gamesListWasEmpty);
+                newGameWasFound = await HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGamesInstalled(null)), gamesListWasEmpty);
                 var dirInfo = new DirectoryInfo(".");
                 if (dirInfo.Parent != null)
                 {
-                    await HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGames(new string[] { dirInfo.Parent.FullName, null }, null)), gamesListWasEmpty);
+                    newGameWasFound = await HandleGameSearchResult(await Task.Run(() => ThcrapDll.SearchForGames(
+                        new string[] { dirInfo.Parent.FullName, null }, null)), gamesListWasEmpty);
                 }
             }
             else
             {
-                await HandleGameSearchResult (await Task.Run(() => ThcrapDll.SearchForGames(new string[] { root, null }, null)), gamesListWasEmpty);
+                newGameWasFound = await HandleGameSearchResult (await Task.Run(() => ThcrapDll.SearchForGames(
+                    new string[] { root, null }, null)), gamesListWasEmpty);
             }
             SetSearching(false);
+
+            // Show no games were found banner and hide it after a set time
+            if (!newGameWasFound && !firstSearch)
+            {
+                NoNewGamesAutoHideProgress.Value = 100;
+                NoNewGamesFound.Visibility = Visibility.Visible;
+
+                // Update the progress bar slowly going down then collapse message
+                autoHideTimer = new Timer(new TimerCallback((object state) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        NoNewGamesAutoHideProgress.Value--;
+                        if (NoNewGamesAutoHideProgress.Value != 0) return;
+
+                        // Collapse the message, since progress bar has reached 0
+                        NoNewGamesFound.Visibility = Visibility.Collapsed;
+                        autoHideTimer?.Dispose();
+                        autoHideTimer = null;
+                    });
+                }), null, 1, 30);
+            }
 
             if (!gamesListWasEmpty)
                 GamesScroll.ScrollToBottom();
