@@ -14,11 +14,11 @@
 #include <time.h>
 #include <process.h>
 
-#if TH_X86
 extern "C" {
 // None of these signatures are accurate,
 // but it makes the names match so that
 // the linker can find the functions
+#if TH_X86
 extern int64_t __cdecl _CIfmod(long double, long double);
 extern long double __cdecl _CIexp(long double);
 extern long double __cdecl _CIlog(long double);
@@ -53,11 +53,18 @@ extern float __cdecl __libm_sse2_acosf(float);
 extern double __cdecl __libm_sse2_atan(double);
 extern float __cdecl __libm_sse2_atanf(float);
 extern double __cdecl __libm_sse2_atan2(double);
-extern __m128 __cdecl __libm_sse2_sincosf_(float);
 
 extern int64_t __cdecl _ftol(long double);
 extern int64_t __cdecl _ftol2(long double);
 extern int32_t __cdecl _ftol2_sse(long double);
+extern uint32_t __cdecl _ftoui3(float);
+extern int64_t __cdecl _ftol3(float);
+extern uint64_t __cdecl _ftoul3(float);
+extern double __cdecl _ltod3(int64_t);
+extern double __cdecl _ultod3(uint64_t);
+extern uint32_t __cdecl _dtoui3(double);
+extern int64_t __cdecl _dtol3(double);
+extern uint64_t __cdecl _dtoul3(double);
 
 extern int64_t __cdecl _allmul(int64_t, int64_t);
 extern int64_t __cdecl _alldiv(int64_t, int64_t);
@@ -69,8 +76,10 @@ extern uint64_t __cdecl _aulldvrm(uint64_t, uint64_t);
 extern int64_t __cdecl _allshl(int64_t, uint8_t);
 extern int64_t __cdecl _allshr(int64_t, uint8_t);
 extern uint64_t __cdecl _aullshr(uint64_t, uint8_t);
-}
 #endif
+extern __m128 __cdecl __libm_sse2_sincos_(double);
+extern __m128 __cdecl __libm_sse2_sincosf_(float);
+}
 
 using math_1arg_ptr = double(__cdecl*)(double);
 using math_2arg_ptr = double(__cdecl*)(double, double);
@@ -191,6 +200,8 @@ static std::unordered_map<std::string_view, uintptr_t> funcs = {
 	// Various compiler intrinsics
 	// to help with porting code
 	{ "th_ftol", (uintptr_t)&_ftol }, { "th_ftol2", (uintptr_t)&_ftol2 }, { "th_ftol2_sse", (uintptr_t)&_ftol2_sse },
+	{ "th_ftol3", (uintptr_t)&_ftol3 }, { "th_ftoul3", (uintptr_t)&_ftoul3 }, { "th_ftoui3", (uintptr_t)&_ftoui3 },
+	{ "th_dtol3", (uintptr_t)&_dtol3 }, { "th_dtoul3", (uintptr_t)&_dtoul3 }, { "th_dtoui3", (uintptr_t)&_dtoui3 },
 	{ "th_CIfmod", (uintptr_t)&_CIfmod },
 	{ "th_CIexp", (uintptr_t)&_CIexp }, { "th_exp_sse2", (uintptr_t)&__libm_sse2_exp }, { "th_expf_sse2", (uintptr_t)&__libm_sse2_expf },
 	{ "th_CIlog", (uintptr_t)&_CIlog }, { "th_log_sse2", (uintptr_t)&__libm_sse2_log }, { "th_logf_sse2", (uintptr_t)&__libm_sse2_logf },
@@ -204,14 +215,15 @@ static std::unordered_map<std::string_view, uintptr_t> funcs = {
 	{ "th_CIacos", (uintptr_t)&_CIacos }, { "th_acos_sse2", (uintptr_t)&__libm_sse2_acos }, { "th_acosf_sse2", (uintptr_t)&__libm_sse2_acosf },
 	{ "th_CIatan", (uintptr_t)&_CIatan }, { "th_atan_sse2", (uintptr_t)&__libm_sse2_atan }, { "th_atanf_sse2", (uintptr_t)&__libm_sse2_atanf },
 	{ "th_CIatan2", (uintptr_t)&_CIatan2 }, { "th_atan2_sse2", (uintptr_t)&__libm_sse2_atan2 },
-	{ "th_sincosf_sse2", (uintptr_t)&__libm_sse2_sincosf_ },
 
 	// 64 bit integer helpers
+	{ "th_ltod3", (uintptr_t)&_ltod3 }, { "th_ultod3", (uintptr_t)&_ultod3 },
 	{ "th_allmul", (uintptr_t)&_allmul },
 	{ "th_alldiv", (uintptr_t)&_alldiv }, { "th_allrem", (uintptr_t)&_allrem }, { "th_alldvrm", (uintptr_t)&_alldvrm },
 	{ "th_aulldiv", (uintptr_t)&_aulldiv }, { "th_aullrem", (uintptr_t)&_aullrem }, { "th_aulldvrm", (uintptr_t)&_aulldvrm },
 	{ "th_allshl", (uintptr_t)&_allshl }, { "th_allshr", (uintptr_t)&_allshr }, { "th_aullshr", (uintptr_t)&_aullshr },
 #endif
+	{ "th_sincos_sse2", (uintptr_t)&__libm_sse2_sincos_ }, { "th_sincosf_sse2", (uintptr_t)&__libm_sse2_sincosf_ },
 
 	// Utility functions
 	{ "th_qsort", (uintptr_t)&qsort },
