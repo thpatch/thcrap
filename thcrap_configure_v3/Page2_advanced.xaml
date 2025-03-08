@@ -21,10 +21,17 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+
                     <TextBox
                         Name="QuickFilterTextBox"
                         Grid.Column="0"
-                        TextChanged="QuickFilterChanged"/>
+                        Margin="0"
+                        VerticalAlignment="Stretch"
+                        HorizontalAlignment="Stretch"
+                        Padding="0"
+                        BorderThickness="1,1,0,1"
+                        TextChanged="QuickFilterChanged" />
+
                     <TextBlock
                         Name="Placeholder"
                         Text="Search here…"
@@ -32,12 +39,35 @@
                         Margin="5,1,0,0"
                         IsHitTestVisible="False"
                         FontStyle="Italic"
-                        Foreground="Gray"/>
+                        Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+
                     <Button Name="SearchButton"
                             Grid.Column="1"
-                            Width="20px"
+                            Width="20"
+                            Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor,
+                                AncestorType={x:Type Grid}},
+                                Path=ActualHeight}"
                             Background="Transparent"
-                            Click="SearchButton_OnClick">🔎</Button>
+                            BorderThickness="0,1,1,1"
+                            Padding="0"
+                            Margin="0"
+                            VerticalAlignment="Stretch"
+                            Click="SearchButton_OnClick">
+                        🔎
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+                                <Style.Triggers>
+                                    <!-- Trigger to watch the TextBox's IsKeyboardFocusWithin state -->
+                                    <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=QuickFilterTextBox}" Value="True">
+                                        <!-- I have no idea which SystemColor is correct, most of them seem to be a different blue -->
+                                        <Setter Property="BorderBrush" Value="DodgerBlue"
+                                        />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </Grid>
             </DockPanel>
             <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,0,0">
