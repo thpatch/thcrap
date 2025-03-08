@@ -342,7 +342,7 @@ void ascii_repatch()
 	auto strings_set = [&stringdefs] (const char *id, const std::string& str) {
 		json_object_set_new(stringdefs, id, json_stringn(str.c_str(), str.size()));
 	};
-	auto right_pad = [] (const stringref_t& strref, int padchars) {
+	auto right_pad = [] (const stringref_t& strref, ssize_t padchars) {
 		auto str = std::string(strref.data(), strref.length());
 		if(padchars <= 0) {
 			return str;

@@ -538,10 +538,9 @@ void log_init(int console)
 	if (console) {
 		OpenConsole();
 	}
-	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
+	uint32_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
 	size_t full_fn_len = cur_dir_len + sizeof(LOG);
 	VLA(char, full_fn, full_fn_len);
-	defer(VLA_FREE(full_fn));
 	GetCurrentDirectoryU(cur_dir_len, full_fn);
 	full_fn[cur_dir_len - 1] = '/';
 	full_fn[cur_dir_len] = '\0';
@@ -566,13 +565,16 @@ void log_init(int console)
 			auto pExitProcess = ((void (TH_STDCALL*)(UINT))detour_top(
 				"kernel32.dll", "ExitProcess", (FARPROC)thcrap_ExitProcess
 			));
+			VLA_FREE(full_fn);
 			pExitProcess(-1);
+			TH_UNREACHABLE;
 		}
 	}
 	if (log_async) {
 		log_thread_handle = CreateThread(0, 0, log_thread, NULL, 0, NULL);
 		async_enabled = true;
 	}
+	VLA_FREE(full_fn);
 }
 
 void log_exit(void) {

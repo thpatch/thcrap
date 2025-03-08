@@ -427,7 +427,7 @@ TH_CALLER_FREE static char* get_windows_error_message(DWORD ExceptionCode) {
 			message_entry = (MESSAGE_RESOURCE_ENTRY*)((uintptr_t)message_entry + message_entry->Length);
 		}
 		bool message_is_utf16 = (message_entry->Flags == MESSAGE_RESOURCE_UNICODE);
-		size_t message_length = (message_entry->Length - offsetof(MESSAGE_RESOURCE_ENTRY, Text)) >> (uint8_t)message_is_utf16;
+		uint32_t message_length = (message_entry->Length - offsetof(MESSAGE_RESOURCE_ENTRY, Text)) >> (uint8_t)message_is_utf16;
 		message_text = (char*)malloc(message_length);
 		if (!message_is_utf16) {
 			memcpy(message_text, message_entry->Text, message_length);

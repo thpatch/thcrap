@@ -427,7 +427,13 @@ static size_t zip_dir_end_prepare(zip_dir_end_t *dir_end, zip_t *zip)
 				// Load the archive comment.
 				// Yeah, it's stylistically questionable to shove in this functionality
 				// here, but I'm *really* not in the mood for another round of checks...
+#if TH_X86
 				SetFilePointer(zip->hArc, end_pos + ZDE_SIZE, NULL, FILE_BEGIN);
+#else
+				LARGE_INTEGER move;
+				move.QuadPart = end_pos + ZDE_SIZE;
+				SetFilePointerEx(zip->hArc, move, NULL, FILE_BEGIN);
+#endif
 				zip->cmt_len = end->cmt_len;
 				if(end->cmt_len) {
 					zip->cmt = (BYTE *)malloc(end->cmt_len);

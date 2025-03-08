@@ -382,7 +382,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 	if (PathIsRelativeU(patch_path)) {
 		// Add the current directory to the patch archive field
 		const size_t patch_len = strlen(patch_path) + 1; // Includes + 1 for path separator
-		const size_t dir_len = GetCurrentDirectoryU(0, NULL); // Includes null terminator
+		const uint32_t dir_len = GetCurrentDirectoryU(0, NULL); // Includes null terminator
 		char *full_patch_path = patch.archive = (char *)malloc(patch_len + dir_len);
 		GetCurrentDirectoryU(dir_len, full_patch_path);
 		full_patch_path += dir_len;
@@ -551,10 +551,10 @@ int patch_rel_to_abs(patch_t *patch_info, const char *base_path)
 			abs_archive = strdup_size(base_path, abs_archive_len);
 		}
 		else {
-			size_t base_path_len = GetCurrentDirectoryU(0, NULL) + strlen(base_path) + 1;
-			size_t abs_archive_len = base_path_len + archive_len;
+			uint32_t base_path_len = GetCurrentDirectoryU(0, NULL);
+			size_t abs_archive_len = base_path_len + strlen(base_path) + 1 + archive_len;
 			abs_archive = (char*)malloc(abs_archive_len);
-			GetCurrentDirectoryU(abs_archive_len, abs_archive);
+			GetCurrentDirectoryU(base_path_len, abs_archive);
 			PathAppendA(abs_archive, base_path);
 		}
 		str_slash_normalize_win(abs_archive);

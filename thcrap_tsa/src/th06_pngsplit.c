@@ -66,7 +66,7 @@ int pngsplit_alloc_data(pngsplit_png_t *png)
 	if (!png || png->width == 0 || png->height == 0) {
 		return -1;
 	}
-	int rowbytes = png_get_rowbytes(png->png, png->info);
+	size_t rowbytes = png_get_rowbytes(png->png, png->info);
 	png->data = malloc(rowbytes * png->height);
 	png->row_pointers = malloc(sizeof(png_bytep) * png->height);
 	if (!png->data || !png->row_pointers) {

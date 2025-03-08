@@ -1,4 +1,5 @@
 #include "thcrap_wrapper.h"
+#include <stdbool.h>
 
 // TODO: Get these dynamically from the bundled installer
 #define SuppliedCRTVersionMajor		14u
@@ -115,7 +116,7 @@ static void NETShowWineError(WineNetError_t reason) {
 	MessageBoxW(NULL, wineMessage, L"Touhou Community Reliant Automatic Patcher", MB_ICONERROR | MB_OK);
 }
 
-static InstallStatus_t CheckDotNETStatus(DWORD isWine) {
+static InstallStatus_t CheckDotNETStatus(bool isWine) {
 	HKEY key;
 	LSTATUS status;
 
@@ -253,7 +254,7 @@ int installDotNET(LPWSTR ApplicationPath) {
 	LPWSTR net_install_message = L"";
 
 	HMODULE hNTDLL = GetModuleHandleW(L"ntdll.dll");
-	DWORD isWine = (DWORD)GetProcAddress(hNTDLL, "wine_get_version");
+	bool isWine = GetProcAddress(hNTDLL, "wine_get_version") != NULL;
 
 	switch (CheckDotNETStatus(isWine)) {
 	case IsCurrent:

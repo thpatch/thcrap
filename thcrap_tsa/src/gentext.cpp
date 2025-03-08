@@ -55,21 +55,20 @@ int BP_gentext(x86_reg_t *regs, json_t *bp_info)
 		gc->file = jsondata_game_get(file);
 	}
 	if(ids) {
-		const size_t value_len = DECIMAL_DIGITS_BOUND(size_t);
+		constexpr size_t value_len = DECIMAL_DIGITS_BOUND(size_t);
 		size_t key_new_len = value_len * json_flex_array_size(ids) + 1;
 		VLA(char, key_new, key_new_len);
 		char *p = key_new;
 		json_t *id;
 		json_flex_array_foreach_scoped(size_t, i, ids, id) {
-			char id_str[value_len + 1];
-			const char *q = id_str;
+			char id_str[value_len + 2];
 			size_t id_val = json_immediate_value(id, regs);
-			snprintf(id_str, sizeof(id_str), "%d", id_val);
+			sprintf(id_str, "%zd", id_val);
+			const char *q = id_str;
 			if(i > 0) {
 				*p++ = '_';
 			}
-			while(*p++ = *q++);
-			p--;
+			while ((*p = *q++)) ++p;
 		}
 		gentext_cache_key_set(gc, key_new, key_new_len);
 		VLA_FREE(key_new);

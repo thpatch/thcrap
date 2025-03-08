@@ -101,7 +101,7 @@ BYTE **png_image_read(const char *fn, uint32_t *width, uint32_t *height, uint8_t
 		png_set_gray_to_rgb(png_ptr);
 	png_read_update_info(png_ptr, info_ptr);
 
-	uint32_t rowbytes = png_get_rowbytes(png_ptr, info_ptr);
+	size_t rowbytes = png_get_rowbytes(png_ptr, info_ptr);
 	BYTE **row_pointers = (BYTE**)malloc(sizeof(BYTE*) * *height + rowbytes * *height);
 	BYTE* image_data = ((BYTE*)row_pointers) + sizeof(BYTE*) * *height;
 	for (uint32_t i = 0; i < *height; i++)

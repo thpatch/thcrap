@@ -114,7 +114,7 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 				int_spell_id_real = json_immediate_value(spell_id_real, regs);
 			}
 			if (spell_rank) {
-				int rank = json_immediate_value(spell_rank, regs);
+				size_t rank = json_immediate_value(spell_rank, regs);
 				int_spell_id = int_spell_id_real - rank;
 			}
 
@@ -182,8 +182,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 
 		size_t cmt_key_str_len = strlen("comment_") + 16 + 1;
 		VLA(char, cmt_key_str, cmt_key_str_len);
-		defer({ VLA_FREE(cmt_key_str); });
-		sprintf(cmt_key_str, "comment_%u", comment_num);
+		sprintf(cmt_key_str, "comment_%zu", comment_num);
 
 		// Count down from the real number to the given number
 		// until we find something
@@ -193,9 +192,11 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 			json_cmt = json_object_get(json_cmt, cmt_key_str);
 			if (json_is_array(json_cmt)) {
 				*str = json_array_get_string_safe(json_cmt, line_num);
+				VLA_FREE(cmt_key_str);
 				return breakpoint_cave_exec_flag(bp_info);
 			}
 		}
+		VLA_FREE(cmt_key_str);
 	}
 	return 1;
 }

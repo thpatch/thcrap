@@ -222,7 +222,7 @@ bool CreateWrapper(
 
 std::filesystem::path GetThcrapDir()
 {
-	size_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
+	uint32_t self_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
 	VLA(char, self_fn, self_fn_len);
 
 	GetModuleFileNameU(NULL, self_fn, self_fn_len);

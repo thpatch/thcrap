@@ -374,7 +374,15 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 	}
 
 	FARPROC ret = NULL;
+#if TH_X86
 	DWORD ordinal = (DWORD)lpProcName;
+#else
+	DWORD ordinal = 0xFFFFFFFF;
+	if ((uintptr_t)lpProcName <= 0xFFFF) {
+#pragma warning(suppress : 4302 4311)
+		ordinal = (DWORD)lpProcName;
+	}
+#endif
 
 	DWORD* func_ptrs = (DWORD*)buffer;
 	DWORD* name_ptrs = (DWORD*)&buffer[func_ptrs_size];
@@ -385,7 +393,7 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 		ReadProcessMemory(hProcess, name_indices_pos, name_indices, name_indices_size, NULL)
 	) {
 		for (size_t i = 0; i < ExportDesc.NumberOfFunctions && !ret; i++) {
-			size_t name_ptr = 0;
+			uint32_t name_ptr = 0;
 			for(size_t j = 0; j < ExportDesc.NumberOfNames; j++) {
 				if (name_indices[j] == i) {
 					name_ptr = name_ptrs[j];

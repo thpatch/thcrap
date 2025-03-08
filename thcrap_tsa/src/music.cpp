@@ -21,7 +21,7 @@ const char* music_title_get(size_t track)
 		json_t *themes = jsondata_get("themes.js");
 		size_t key_len = strlen(game) + 1 + 2 + str_num_digits(track) + 1;
 		VLA(char, key, key_len);
-		sprintf(key, "%s_%02u", game, track);
+		sprintf(key, "%s_%02zu", game, track);
 		ret = json_object_get_string(themes, key);
 		VLA_FREE(key);
 	}

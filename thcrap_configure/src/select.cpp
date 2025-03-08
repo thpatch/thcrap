@@ -190,7 +190,7 @@ int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_
 			}
 			++list_count;
 			con_clickable(std::to_wstring(list_count),
-				to_utf16(stringf(" [%2d] %-20s %s", list_count, patch.patch_id, patch.title)));
+				to_utf16(stringf(" [%2zu] %-20s %s", list_count, patch.patch_id, patch.title)));
 		}
 	}
 	if(!print_header) {

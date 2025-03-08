@@ -61,8 +61,14 @@ typedef return_type (calling_convention* name)
 
 /// Pointers
 /// --------
+#if TH_X64
+typedef int64_t ssize_t;
+#else
+typedef int32_t ssize_t;
+#endif
+
 #define AlignUpToMultipleOf(val, mul) ((val) - ((val) % (mul)) + (mul))
-#define AlignUpToMultipleOf2(val, mul) (((val) + (mul) - 1) & -(mul))
+#define AlignUpToMultipleOf2(val, mul) (((val) + (mul) - 1) & -(ssize_t)(mul))
 
 #define dword_align(val) (size_t)AlignUpToMultipleOf2((size_t)(val), 4)
 #define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))
@@ -386,9 +392,9 @@ inline void wstr_slash_normalize_win(wchar_t* str) {
 }
 
 // Counts the number of digits in [number]
-TH_DEPRECATED_EXPORT unsigned int (str_num_digits)(int number);
+TH_DEPRECATED_EXPORT unsigned int (str_num_digits)(ssize_t number);
 
-inline unsigned int str_num_digits_inline(int number) {
+inline unsigned int str_num_digits_inline(ssize_t number) {
 	unsigned int digits = 0;
 	if (number < 0) {
 		digits = 1; // remove this line if '-' counts as a digit
@@ -416,9 +422,9 @@ TH_DEPRECATED_EXPORT void (str_hexdate_format)(char buffer[11], uint32_t date);
 
 inline void str_hexdate_format_inline(char buffer[11], uint32_t date) {
 	sprintf(buffer, "%04x-%02x-%02x",
-		(date & 0xffff0000) >> 16,
-		(date & 0x0000ff00) >> 8,
-		(date & 0x000000ff)
+		date >> 16,
+		(date >> 8) & 0xFF,
+		date & 0xFF
 	);
 }
 

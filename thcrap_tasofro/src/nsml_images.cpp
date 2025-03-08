@@ -14,8 +14,7 @@
 
 size_t get_image_data_size(const char *fn, bool fill_alpha_for_24bpp)
 {
-	VLA(char, fn_png, strlen(fn) + 1);
-	strcpy(fn_png, fn);
+	STRDUP_VLA(char, fn_png, fn);
 	strcpy(PathFindExtensionA(fn_png), ".png");
 
 	uint32_t width, height, rowbytes;
@@ -47,8 +46,7 @@ size_t get_cv2_size(const char *fn, json_t*, size_t)
 int patch_cv2(void *file_inout, size_t size_out, size_t, const char *fn, json_t*)
 {
 	BYTE *file_out = (BYTE*)file_inout;
-	VLA(char, fn_png, strlen(fn) + 1);
-	strcpy(fn_png, fn);
+	STRDUP_VLA(char, fn_png, fn);
 	strcpy(PathFindExtensionA(fn_png), ".png");
 
 	uint32_t width, height;
@@ -72,8 +70,8 @@ int patch_cv2(void *file_inout, size_t size_out, size_t, const char *fn, json_t*
 	header[1] = height;
 	header[2] = width;
 	header[3] = 0;
-	for (unsigned int h = 0; h < height; h++) {
-		for (unsigned int w = 0; w < width; w++) {
+	for (size_t h = 0; h < height; h++) {
+		for (size_t w = 0; w < width; w++) {
 			file_out[17 + h * width * 4 + w * 4 + 0] = row_pointers[h][w * bpp / 8 + 2];
 			file_out[17 + h * width * 4 + w * 4 + 1] = row_pointers[h][w * bpp / 8 + 1];
 			file_out[17 + h * width * 4 + w * 4 + 2] = row_pointers[h][w * bpp / 8 + 0];
@@ -118,7 +116,7 @@ int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, 
 	DWORD nb_files = *(DWORD*)(file_in + 4);
 	file_in += 8; size_in -= 8;
 
-	int file_changed = 0;
+	bool file_changed = false;
 	for (DWORD i = 0; i < nb_files; i++) {
 		if (size_in < 4) {
 			return 0;
@@ -148,7 +146,7 @@ int patch_dat_for_png(void *file_inout, size_t, size_t size_in, const char *fn, 
 			desc->y = 0;
 			desc->w = width;
 			desc->h = height;
-			file_changed = 1;
+			file_changed = true;
 		}
 		file_in += sizeof(DatDesc); size_in -= sizeof(DatDesc);
 	}
@@ -162,8 +160,7 @@ size_t get_bmp_size(const char *fn, json_t*, size_t)
 
 int patch_bmp(void *file_inout, size_t size_out, size_t, const char *fn, json_t*)
 {
-	VLA(char, fn_png, strlen(fn) + 1);
-	strcpy(fn_png, fn);
+	STRDUP_VLA(char, fn_png, fn);
 	strcpy(PathFindExtensionA(fn_png), ".png");
 
 	uint32_t width, height, rowbytes;
@@ -206,9 +203,9 @@ int patch_bmp(void *file_inout, size_t size_out, size_t, const char *fn, json_t*
 	bpInfo->biClrUsed = 0;
 	bpInfo->biClrImportant = 0;
 
-	for (unsigned int h = 0; h < height; h++) {
-		unsigned int pos = 0;
-		for (unsigned int w = 0; w < width; w++) {
+	for (size_t h = 0; h < height; h++) {
+		size_t pos = 0;
+		for (size_t w = 0; w < width; w++) {
 			bpData[h * rowbytes + pos + 0] = row_pointers[height - h - 1][w * bpp / 8 + 2];
 			bpData[h * rowbytes + pos + 1] = row_pointers[height - h - 1][w * bpp / 8 + 1];
 			bpData[h * rowbytes + pos + 2] = row_pointers[height - h - 1][w * bpp / 8 + 0];

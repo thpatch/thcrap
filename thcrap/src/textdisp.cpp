@@ -415,9 +415,9 @@ void patch_fonts_load(const patch_t *patch_info)
 
 		if(font_buffer) {
 			DWORD ret;
-			log_printf("(Font) Loading %s (%d bytes)...\n", patch_info->fonts[i], font_size);
+			log_printf("(Font) Loading %s (%zu bytes)...\n", patch_info->fonts[i], font_size);
 			AddFontMemResourceEx(font_buffer, font_size, NULL, &ret);
-			SAFE_FREE(font_buffer);
+			free(font_buffer);
 			/**
 			  * "However, when the process goes away, the system will unload the fonts
 			  * even if the process did not call RemoveFontMemResource."

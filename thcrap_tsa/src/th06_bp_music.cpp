@@ -18,7 +18,6 @@ int BP_th06_music_title_in_game(x86_reg_t *regs, json_t *bp_info)
 	// Parameters
 	// ----------
 	size_t *stage = (size_t*)json_object_get_register(bp_info, regs, "stage");
-	int offset = json_object_get_hex(bp_info, "offset");
 	const char **str = (const char**)json_object_get_register(bp_info, regs, "str");
 	// ----------
 
@@ -26,6 +25,7 @@ int BP_th06_music_title_in_game(x86_reg_t *regs, json_t *bp_info)
 		track = *stage * 2;
 	}
 	if (str && *str) {
+		size_t offset = json_object_get_hex(bp_info, "offset");
 		music_title_print(str, NULL, track + offset, track + offset);
 	}
 	return 1;

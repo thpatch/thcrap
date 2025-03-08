@@ -29,7 +29,7 @@ bgm_fmt_t* bgm_fmt = nullptr;
 // thbgm_mods[]. Only finds a track that starts exactly at [offset]; to
 // support TH13-style "trance" seeks, see the `bgmmod_tranceseek_byte_offset`
 // breakpoint.
-template<typename F> int _bgm_find(F condition)
+template<typename F> ssize_t _bgm_find(F condition)
 {
 	assert(bgm_fmt);
 	auto track = bgm_fmt;
@@ -42,7 +42,7 @@ template<typename F> int _bgm_find(F condition)
 	return -1;
 }
 
-int bgm_find(uint32_t offset)
+ssize_t bgm_find(size_t offset)
 {
 	return _bgm_find([offset] (const bgm_fmt_t &track) {
 		return offset == track.track_offset;
@@ -290,7 +290,7 @@ DWORD WINAPI thbgm_SetFilePointer(
 	}
 
 	// Make sure to always consume the trance seek offset!
-	auto track_pos = lDistanceToMove - tranceseek_offset;
+	size_t track_pos = lDistanceToMove - tranceseek_offset;
 	tranceseek_offset = 0;
 
 	// When pausing ≥TH11, those games retrieve the current BGM file
@@ -312,10 +312,10 @@ DWORD WINAPI thbgm_SetFilePointer(
 	auto *modtrack = thbgm_modtrack_for_current_bgmid();
 	if(modtrack != nullptr) {
 		const auto &fmt = bgm_fmt[thbgm_cur_bgmid];
-		auto cur_thbgm_pos = fmt.track_offset + thbgm_modtrack_bytes_read;
+		size_t cur_thbgm_pos = fmt.track_offset + thbgm_modtrack_bytes_read;
 		if(is_tell) {
 			seekblock = true;
-			return cur_thbgm_pos;
+			return (DWORD)cur_thbgm_pos;
 		} else if(
 			dwMoveMethod == FILE_BEGIN
 			&& lDistanceToMove == cur_thbgm_pos

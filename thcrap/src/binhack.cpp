@@ -1017,6 +1017,10 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 						val.d = (double)val.z;
 						break;
 					case PVT_LONGDOUBLE:
+						// A cast can't be added to suppress this warning on x64
+						// without interfering with the custom LongDouble80 type
+						// conversions on 32 bit builds.
+#pragma warning(suppress : 4244)
 						val.ld = /*(LongDouble80)*/val.z;
 						break;
 				}

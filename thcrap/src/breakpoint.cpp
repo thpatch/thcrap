@@ -173,12 +173,12 @@ patch_val_t json_object_get_typed(json_t *object, x86_reg_t *regs, const char *k
 	return json_typed_value(json_object_get(object, key), regs, type);
 }
 
-int breakpoint_cave_exec_flag(json_t *bp_info)
+size_t breakpoint_cave_exec_flag(json_t *bp_info)
 {
 	return json_eval_int_default(json_object_get(bp_info, "cave_exec"), 1, JEVAL_DEFAULT);
 }
 
-int breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info) {
+size_t breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info) {
 	json_t* cave_exec = json_object_get(bp_info, "cave_exec");
 	if (cave_exec) {
 		return json_immediate_value(cave_exec, regs);
@@ -210,6 +210,12 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 				log_printf("breakpoint %s: cavesize too small to implement breakpoint\n", name);
 				return false;
 			}
+#if TH_X64
+			if (cavesize > UINT32_MAX) {
+				log_printf("breakpoint %s: cavesize too large\n", name);
+				return false;
+			}
+#endif
 	}
 
 	hackpoint_addr_t* addrs = hackpoint_addrs_from_json(json_object_get(in, "addr"));
@@ -251,7 +257,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 	}
 
 	out->name = strdup(name);
-	out->cavesize = cavesize;
+	out->cavesize = (uint32_t)cavesize;
 
 	out->expected = NULL;
 	if (const char* expected = json_object_get_concat_string_array(in, "expected")) { // Allocates a string that must be freed if non-null
@@ -260,7 +266,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 			out->expected = expected;
 		}
 		else {
-			log_printf("breakpoint %s: different sizes for expected and cavesize (%zu != %zu), verification will be skipped\n", name, expected_size, cavesize);
+			log_printf("breakpoint %s: different sizes for expected and cavesize (%zu != %u), verification will be skipped\n", name, expected_size, cavesize);
 			free((void*)expected); // Expected won't be used, so it can be freed
 		}
 	}
@@ -274,7 +280,7 @@ bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t *out) {
 	return true;
 }
 
-static inline void TH_FASTCALL cave_fix(uint8_t* sourcecave, uint8_t* bp_addr, size_t sourcecave_size)
+static inline void TH_FASTCALL cave_fix(uint8_t* sourcecave, uint8_t* bp_addr, uint32_t sourcecave_size)
 {
 	/// Return Jump
 	/// ------------------
@@ -284,7 +290,7 @@ static inline void TH_FASTCALL cave_fix(uint8_t* sourcecave, uint8_t* bp_addr, s
 	*(uint32_t*)&sourcecave[sourcecave_size + CALL_OP_LEN] = cave_dist;
 #else
 	*(uint32_t*)&sourcecave[sourcecave_size] = x86_JMP_NEAR_ABSPTR;
-	add_constpool_raw_pointer((uintptr_t)(bp_addr + CALL_LEN), (uintptr_t)&sourcecave[sourcecave_size + CALL_OP_LEN]);
+	add_constpool_raw_pointer((uintptr_t)(bp_addr + CALL_LEN), (uintptr_t)&sourcecave[(size_t)sourcecave_size + CALL_OP_LEN]);
 #endif
 
 	/// Fix relative stuff
@@ -301,12 +307,12 @@ static inline void TH_FASTCALL cave_fix(uint8_t* sourcecave, uint8_t* bp_addr, s
 		log_printf("fixing rel offset 0x%X to 0x%X... \n", offset_old, offset_new);
 #else
 		int32_t offset_old = *(int32_t*)(sourcecave + CALL_REL_OP_LEN);
-		int32_t offset_new = sourcecave_size - CALL_REL_OP_LEN + CALL_LEN;
+		int32_t offset_new = (int32_t)(sourcecave_size - CALL_REL_OP_LEN + CALL_LEN);
 
 		*(int32_t*)(sourcecave + CALL_REL_OP_LEN) = offset_new;
 
-		*(uint32_t*)&sourcecave[sourcecave_size + CALL_LEN] = x86_JMP_NEAR_ABSPTR;
-		add_constpool_raw_pointer((uintptr_t)(bp_addr + CALL_REL_LEN + offset_old), (uintptr_t)&sourcecave[sourcecave_size + CALL_LEN + CALL_OP_LEN]);
+		*(uint32_t*)&sourcecave[(size_t)sourcecave_size + CALL_LEN] = x86_JMP_NEAR_ABSPTR;
+		add_constpool_raw_pointer((uintptr_t)(bp_addr + CALL_REL_LEN + offset_old), (uintptr_t)&sourcecave[(size_t)sourcecave_size + CALL_LEN + CALL_OP_LEN]);
 
 		log_printf("fixing rel offset 0x%X... \n", offset_old);
 #endif
@@ -582,7 +588,7 @@ size_t breakpoints_apply(breakpoint_t *breakpoints, size_t bp_count, HMODULE hMo
 		if (breakpoint_total_size[i]) {
 			const breakpoint_t *const cur = &breakpoints[i];
 
-			const size_t cavesize = cur->cavesize;
+			const uint32_t cavesize = cur->cavesize;
 
 			bool use_expected = (cur->expected != NULL);
 

@@ -85,8 +85,7 @@ typedef void(*EncryptionFunc_t)(uint8_t *data, size_t data_len);
 
 void simple_xor(uint8_t *data, size_t data_len, const uint8_t param)
 {
-	size_t i;
-	for(i = 0; i < data_len; i++) {
+	for(size_t i = 0; i < data_len; i++) {
 		data[i] ^= param;
 	}
 }
@@ -99,9 +98,8 @@ void util_xor(
 	unsigned char step2
 )
 {
-	size_t i;
-	for(i = 0; i < data_len; i++) {
-		const int ip = i - 1;
+	for(size_t i = 0; i < data_len; i++) {
+		const size_t ip = i - 1;
 		data[i] ^= key + i * step + (ip * ip + ip) / 2 * step2;
 	}
 }
@@ -568,7 +566,7 @@ int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 	size_t entry_count;
 	uint32_t *entry_offsets_out;
 	uint32_t *entry_offsets_in;
-	uint32_t entry_offset_size;
+	size_t entry_offset_size;
 
 	patch_msg_state_t state = {format, font_dialog_id()};
 
@@ -641,8 +639,7 @@ int patch_msg(void *file_inout, size_t size_out, size_t size_in, json_t *patch, 
 			// First command of a new entry.
 			// Get entry object from the diff file,
 			// and assign the correct offset to the output buffer.
-			size_t i;
-			for(i = 0; i < entry_count; ++i) {
+			for(size_t i = 0; i < entry_count; ++i) {
 				if(offset_in == entry_offsets_in[i * format->entry_offset_mul]) {
 					state.entry = i;
 					state.diff_entry = json_object_numkey_get(patch, state.entry);

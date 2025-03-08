@@ -125,7 +125,7 @@ int LoadFileNameList(const char* FileName)
 	char FilePath[MAX_PATH] = { 0 };
 	while (fgets(FilePath, MAX_PATH, fp))
 	{
-		int tlen = strlen(FilePath);
+		size_t tlen = strlen(FilePath);
 		while (tlen && FilePath[tlen - 1] == '\n') FilePath[--tlen] = 0;
 		register_filename(FilePath);
 	}

@@ -29,20 +29,19 @@ static const game_search_result* ChooseLocation(game_search_result *locs, size_t
 
 		ret = &locs[pos_begin];
 	} else if(num_versions > 1) {
-		size_t i = 0;
 		size_t loc_num;
 
-		log_printf("Found %d versions of %s:\n\n", num_versions, id.c_str());
+		log_printf("Found %zu versions of %s:\n\n", num_versions, id.c_str());
 
 		for (size_t i = 0; pos_begin + i < pos_end; i++) {
 			con_clickable(std::to_wstring(i + 1),
-				to_utf16(stringf(" [%2d] %s: %s", i + 1, locs[pos_begin + i].path, locs[pos_begin + i].description)));
+				to_utf16(stringf(" [%2zu] %s: %s", i + 1, locs[pos_begin + i].path, locs[pos_begin + i].description)));
 		}
 		printf("\n");
 		do {
 			con_printf("Pick a version to run the patch on: (1 - %u):\n", num_versions);
 
-			if (swscanf(console_read().c_str(), L"%u", &loc_num) != 1)
+			if (swscanf(console_read().c_str(), L"%zu", &loc_num) != 1)
 				loc_num = 0;
 		} while (loc_num < 1 || loc_num > num_versions);
 

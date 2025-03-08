@@ -19,7 +19,7 @@ void (str_slash_normalize_win)(char *str)
 	str_slash_normalize_win_inline(str);
 }
 
-unsigned int (str_num_digits)(int number)
+unsigned int (str_num_digits)(ssize_t number)
 {
 	return str_num_digits_inline(number);
 }

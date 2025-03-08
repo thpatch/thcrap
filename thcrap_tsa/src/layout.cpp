@@ -369,13 +369,13 @@ int layout_parse_font(LOGFONT &lf, const json_t *token)
 }
 
 // Returns the number of tab commands parsed.
-int layout_parse_tabs(layout_state_t *lay, const json_t *token)
+size_t layout_parse_tabs(layout_state_t *lay, const json_t *token)
 {
 	size_t tabs_count = json_array_size(Layout_Tabs);
 	size_t tab_end; // Absolute x-end position of the current tab
 	const json_t *cmd_json = json_array_get(token, 0);
 	const char *cmd = json_string_value(cmd_json);
-	int ret = json_string_length(cmd_json);
+	size_t ret = json_string_length(cmd_json);
 	const json_t *p2 = json_array_get(token, 2);
 	if(p2) {
 		const char *p2_str = json_string_value(p2);
@@ -408,7 +408,7 @@ int layout_parse_tabs(layout_state_t *lay, const json_t *token)
 				tab_end = lay->cur_w;
 				while(str_obj = json_array_get(token, j++)) {
 					size_t new_w = GetTextExtentBase(lay->hdc, str_obj);
-					tab_end = max(new_w, tab_end);
+					tab_end = __max(new_w, tab_end);
 				}
 				tab_end += lay->cur_x;
 				json_array_set_new_expand(Layout_Tabs, lay->cur_tab, json_integer(tab_end));
@@ -733,9 +733,9 @@ int widest_string(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	json_t *font_id_obj = json_object_get(bp_info, "font_id");
 	json_t *strs = json_object_get(bp_info, "strs");
-	int correction_summand = json_object_get_immediate(bp_info, regs, "correction_summand");
+	size_t correction_summand = json_object_get_immediate(bp_info, regs, "correction_summand");
 	// ----------
-	int final_w = 0;
+	size_t final_w = 0;
 	size_t font_id;
 	json_t *val;
 
@@ -745,11 +745,11 @@ int widest_string(x86_reg_t *regs, json_t *bp_info)
 	json_flex_array_foreach_scoped(size_t, i, strs, val) {
 		const char *str = (const char*)json_immediate_value(val, regs);
 		assert(str);
-		int w = GetTextExtentForFontID(str, font_id) * 2;
-		final_w = max(final_w, w);
+		size_t w = GetTextExtentForFontID(str, font_id) * 2;
+		final_w = __max(final_w, w);
 	}
 	final_w += correction_summand;
-	return max(final_w, 0);
+	return __max(final_w, 0);
 }
 
 #define WIDEST_STRING(name, type) \

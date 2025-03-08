@@ -41,9 +41,6 @@ typedef struct {
 	// Name of the breakpoint
 	const char *name;
 
-	// Size of the original code sliced out at [addr].
-	size_t cavesize;
-
 	// Expected code at the breakpoint address
 	const char *expected;
 
@@ -57,6 +54,9 @@ typedef struct {
 	// Address as string from run configuration
 	// Address where the breakpoint is written
 	hackpoint_addr_t *addr;
+
+	// Size of the original code sliced out at [addr].
+	uint32_t cavesize;
 
 	uint16_t stack_adjust;
 	uint8_t state_flags;
@@ -115,10 +115,10 @@ THCRAP_API bool breakpoint_from_json(const char *name, json_t *in, breakpoint_t 
 // Should be used as the return value for a breakpoint function after it made
 // changes to a register which could require original code to be skipped
 // (since that code might overwrite the modified data otherwise).
-THCRAP_API int breakpoint_cave_exec_flag(json_t *bp_info);
+THCRAP_API size_t breakpoint_cave_exec_flag(json_t *bp_info);
 
 // Same as above but will evaluate expressions
-THCRAP_API int breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info);
+THCRAP_API size_t breakpoint_cave_exec_flag_eval(x86_reg_t* regs, json_t* bp_info);
 
 // Sets up all breakpoints in [breakpoints], and returns the number of
 // breakpoints that could not be applied. [hMod] is used as the base

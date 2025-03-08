@@ -24,7 +24,7 @@
  * }
  */
 
-static int32_t mission_furi_a = -2;
+static ssize_t mission_furi_a = -2;
 static size_t laststage, lastscene, lastchara;
 
 int BP_mission(x86_reg_t *regs, json_t *bp_info)
@@ -56,7 +56,7 @@ int BP_mission(x86_reg_t *regs, json_t *bp_info)
 
 	json_t *missions = jsondata_game_get("missions.js");
 	char mission_key_str[16*3 + 2 + 1];
-	sprintf(mission_key_str, "%u_%u_%u", chara, stage, scene);
+	sprintf(mission_key_str, "%zu_%zu_%zu", chara, stage, scene);
 	json_t *mission = json_object_get(missions, mission_key_str);
 
 	if (!mission) {
@@ -66,10 +66,10 @@ int BP_mission(x86_reg_t *regs, json_t *bp_info)
 	// return the lines
 	json_t *lines = json_object_get(mission, "lines");
 	if (!lines || line >= json_array_size(lines)) {
-		regs->eax = (size_t)" ";
+		regs->ax_ptr = (uintptr_t)" ";
 	}
 	else{
-		regs->eax = (size_t)json_array_get_string(lines, line);
+		regs->ax_ptr = (uintptr_t)json_array_get_string(lines, line);
 	}
 
 	// return one function higher
@@ -92,7 +92,7 @@ int BP_mission_check_furi_a(x86_reg_t *regs, json_t *bp_info)
 	// prepare furi_a
 	json_t *missions = jsondata_game_get("missions.js");
 	char mission_key_str[16 * 3 + 2 + 1];
-	sprintf(mission_key_str, "%u_%u_%u", lastchara, laststage, lastscene);
+	sprintf(mission_key_str, "%zu_%zu_%zu", lastchara, laststage, lastscene);
 	json_t *mission = json_object_get(missions, mission_key_str);
 	if (!mission) {
 		mission_furi_a = -2;
