@@ -23,12 +23,16 @@
                     </Grid.ColumnDefinitions>
                     <TextBox
                         Name="QuickFilterTextBox"
-                        Text="Search here..."
                         Grid.Column="0"
-                        Foreground="Gray"
-                        GotFocus="QuickFilter_OnGotFocus"
-                        LostFocus="QuickFilter_OnLostFocus"
                         TextChanged="QuickFilterChanged"/>
+                    <TextBlock
+                        Name="Placeholder"
+                        Text="Search here…"
+                        Grid.Column="0"
+                        Margin="5,1,0,0"
+                        IsHitTestVisible="False"
+                        FontStyle="Italic"
+                        Foreground="Gray"/>
                     <Button Name="SearchButton"
                             Grid.Column="1"
                             Width="20px"

@@ -28,8 +28,6 @@ namespace thcrap_configure_v3
         private int isUnedited = 1;
         private int configMaxLength = 0;
 
-        private const string SearchCueBanner = "Search here...";
-
         private void ResetConfigName()
         {
             ConfigName.Text = "";
@@ -314,59 +312,26 @@ If you select multiple patches that all modify the same thing, lower patches wil
             var filter = textbox.Text.ToLower();
 
 
-            if (!filter.Contains(SearchCueBanner.ToLower()))
+            if (filter.Length > 0)
             {
-                if (AvailablePatches?.ItemsSource is IEnumerable<Repo> repos)
-                {
-                    foreach (Repo repo in repos)
-                        repo.SetVisibility(repo.UpdateFilter(filter));
-                }
-            }
-
-            if (filter.Contains(SearchCueBanner.ToLower()) && textbox.Text.Length > SearchCueBanner.Length)
-            {
-                textbox.Text = textbox.Text.Replace(SearchCueBanner, string.Empty);
-                textbox.Foreground = new SolidColorBrush(Colors.Black);
-                textbox.CaretIndex = textbox.Text.Length;
+                Placeholder.Visibility = Visibility.Hidden;
                 SearchButton.Content = '\u274c'; // cross mark
             }
-            else if (filter.Length == 0)
+            else
             {
-                textbox.Text = SearchCueBanner;
-                textbox.Foreground = new SolidColorBrush(Colors.Gray);
-                textbox.CaretIndex = 0;
+                Placeholder.Visibility = Visibility.Visible;
                 SearchButton.Content = "\ud83d\udd0e"; // magnifying glass
             }
-        }
-
-        private void QuickFilter_OnGotFocus(object sender, RoutedEventArgs e)
-        {
-            if (sender is TextBox textBox && textBox.Text.Contains(SearchCueBanner))
+            if (AvailablePatches?.ItemsSource is IEnumerable<Repo> repos)
             {
-                textBox.Text = textBox.Text.Replace(SearchCueBanner, string.Empty);
-                textBox.Foreground = new SolidColorBrush(Colors.Black);
-                // SearchButton.Content = '\u274c'; // cross mark
+                foreach (Repo repo in repos)
+                    repo.SetVisibility(repo.UpdateFilter(filter));
             }
-
-        }
-
-        private void QuickFilter_OnLostFocus(object sender, RoutedEventArgs e)
-        {
-            if (sender is TextBox textBox && string.IsNullOrWhiteSpace(textBox.Text))
-            {
-                textBox.Text = SearchCueBanner;
-                textBox.Foreground = new SolidColorBrush(Colors.Gray);
-                // SearchButton.Content = "\ud83d\udd0e"; // magnifying glass
-            }
-
         }
 
         private void SearchButton_OnClick(object sender, RoutedEventArgs e)
         {
-            if (QuickFilterTextBox.Text.Contains(SearchCueBanner)) return;
-            QuickFilterTextBox.Text = SearchCueBanner;
-            QuickFilterTextBox.Foreground = new SolidColorBrush(Colors.Gray);
-            SearchButton.Content = "\ud83d\udd0e"; // magnifying glass
+            QuickFilterTextBox.Text = "";
             QuickFilterTextBox.Focus();
         }
     }
