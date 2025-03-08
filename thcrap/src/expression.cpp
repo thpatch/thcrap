@@ -53,22 +53,25 @@ union WinVersion_t {
 
 static const char* wine_version = NULL;
 struct CPUID_Data_t {
-	BOOL OSIsX64 = false;
+	size_t xsave_max_size = 512; // Default to returning the FXSAVE buffer size incase XSAVE isn't present
 	WinVersion_t WindowsVersion = { 0 };
 	FamilyData_t FamilyData = { 0 };
-	ManufacturerID Manufacturer = Unknown;
 	// TODO: Core count detection for omitting LOCK?
 	// Hopefully 64 bytes is a reasonable default for anything ancient enough not to report this
 	uint32_t cache_line_size = 64;
 	// TODO: Add some builtin code options for generating fxsave/xsave patterns
 	uint32_t xsave_mask_low = 0;
 	uint32_t xsave_mask_high = 0;
-	size_t xsave_max_size = 512; // Default to returning the FXSAVE buffer size incase XSAVE isn't present
+	uint32_t vector_feature_mask = 0;
+	ManufacturerID Manufacturer = Unknown;
+	uint8_t avx10_version = 0;
+	uint8_t vector_width = 0;
 	bool xsave_restores_fpu_errors = true; // Intel doesn't have this flag or any way of disabling this AFAIK, so default to true
 	// TODO: Figure out how to deal with Intel's Alder Lake BS
 	// Apparently individual cores have unique CPUID values,
 	// but that hasn't mattered before since all cores have been the same.
 	bool hybrid_architecture = false;
+	bool OSIsX64 = false;
 	struct {
 		bool HasTSC = false;
 		bool HasCMPXCHG8 = false;
@@ -160,7 +163,6 @@ struct CPUID_Data_t {
 		bool HasAMXCOMPLEX = false;
 		bool HasAVXVNNIINT16 = false;
 		bool HasPREFETCHI = false;
-		bool HasAVX10 = false;
 		bool HasAPXF = false;
 		bool HasXSAVEOPT = false;
 		bool HasXSAVEC = false;
@@ -191,7 +193,7 @@ struct CPUID_Data_t {
 		if (auto IsWow64ProcessVar = (decltype(&IsWow64Process))GetProcAddress(GetModuleHandleA("Kernel32.dll"), "IsWow64Process")) {
 			BOOL IsX64;
 			if (IsWow64ProcessVar(GetCurrentProcess(), &IsX64)) {
-				this->OSIsX64 = IsX64;
+				this->OSIsX64 = IsX64 == TRUE;
 			}
 		}
 
@@ -313,8 +315,14 @@ struct CPUID_Data_t {
 						HasAMXCOMPLEX	= bittest32(data[3], 8);
 						HasAVXVNNIINT16 = bittest32(data[3], 10);
 						HasPREFETCHI	= bittest32(data[3], 14);
-						HasAVX10		= bittest32(data[3], 19);
 						HasAPXF			= bittest32(data[3], 21);
+						if (bittest32(data[3], 19)) { // HasAVX10
+							__cpuidex(data, 36, 0);
+							avx10_version = (uint8_t)data[2];
+							vector_width = bittest32(data[2], 18) ? VECW_512 :
+										   bittest32(data[2], 17) ? VECW_256 :
+										   VECW_128;
+						}
 					case 0:;
 				}
 			case 6: case 5: case 4: case 3: case 2:
@@ -437,6 +445,59 @@ struct CPUID_Data_t {
 					FamilyData = family_data_out;
 				}
 			case 0:;
+		}
+		switch (avx10_version) {
+			default: // case 2:
+				vector_feature_mask = VECT_MMX | VECT_SSE | VECT_SSE2 | VECT_SSE3 |
+									  VECT_SSSE3 | VECT_SSE41 | VECT_SSE42 | VECT_AVX |
+									  VECT_AVX2 | VECT_AVX512A | VECT_AVX512B | VECT_AVX512C |
+									  VECT_AVX512D | VECT_AVX101 | VECT_AVX102;
+				break;
+			case 1:
+				vector_feature_mask = VECT_MMX | VECT_SSE | VECT_SSE2 | VECT_SSE3 |
+									  VECT_SSSE3 | VECT_SSE41 | VECT_SSE42 | VECT_AVX |
+									  VECT_AVX2 | VECT_AVX512A | VECT_AVX512B | VECT_AVX512C |
+									  VECT_AVX512D | VECT_AVX101;
+				break;
+			case 0:
+				uint32_t vector_features = 0;
+				if (HasAVX512F && HasAVX512CD) {
+					vector_features |= VECT_AVX512A;
+					if (HasAVX512VL && HasAVX512DQ && HasAVX512BW) {
+						vector_features |= VECT_AVX512B;
+						if (HasAVX512IFMA && HasAVX512VBMI) {
+							vector_features |= VECT_AVX512C;
+							if (HasAVX512VPOPCNTDQ && HasAVX512VNNI && HasAVX512VBMI2 && HasAVX512BITALG) {
+								vector_features |= VECT_AVX512D;
+							}
+						}
+					}
+				}
+				vector_features |= HasAVX2 << 11;
+				vector_features |= HasXOP << 10;
+				vector_features |= HasAVX << 9;
+				vector_features |= HasSSE42 << 8;
+				vector_features |= HasSSE41 << 7;
+				vector_features |= HasSSE4A << 6;
+				vector_features |= HasSSSE3 << 5;
+				vector_features |= HasSSE3 << 4;
+				vector_features |= HasSSE2 << 3;
+				vector_features |= HasSSE << 2;
+				vector_features |= Has3DNOW << 1;
+				vector_features |= (uint32_t)HasMMX;
+				vector_feature_mask = vector_features;
+				if (vector_features >= VECT_AVX512A) {
+					vector_width = VECW_512;
+				}
+				else if (vector_features >= VECT_AVX) {
+					vector_width = VECW_256;
+				}
+				else if (vector_features >= VECT_SSE) {
+					vector_width = VECW_128;
+				}
+				else if (vector_features >= VECT_MMX) {
+					vector_width = VECW_64;
+				}
 		}
 	}
 };
@@ -1147,7 +1208,7 @@ static inline const patch_val_t* GetOptionValue(const char* name, size_t name_le
 static inline const uint32_t GetPatchTestValue(const char* name, size_t name_length) {
 	ExpressionLogging("PatchTest: \"%.*s\"\n", name_length, name);
 	const patch_val_t* const patch_test = patch_opt_get_len(name, name_length);
-#pragma warning(suppress : 4302) // Casting the pointer to int only happens when it's known to be 0
+#pragma warning(suppress : 4302 4311) // Casting the pointer to int only happens when it's known to be 0
 	return patch_test ? patch_test->i : (uint32_t)patch_test; // Returns 0 if patch_test is NULL
 }
 
@@ -1206,7 +1267,8 @@ static TH_NOINLINE size_t GetCPUFeatureTest(const char* name, size_t name_length
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 8:
-			if		(strnicmp(name, "xsaveopt", name_length) == 0) return CPUID_Data.HasXSAVEOPT;
+			if		(strnicmp(name, "vecwidth", name_length) == 0) return CPUID_Data.vector_width;
+			else if (strnicmp(name, "xsaveopt", name_length) == 0) return CPUID_Data.HasXSAVEOPT;
 			else if	(strnicmp(name, "fsgsbase", name_length) == 0) return CPUID_Data.HasFSGSBASE;
 			else if	(strnicmp(name, "cmpxchg8", name_length) == 0) return CPUID_Data.HasCMPXCHG8;
 			else if (strnicmp(name, "avx512vl", name_length) == 0) return CPUID_Data.HasAVX512VL;
@@ -1262,7 +1324,7 @@ static TH_NOINLINE size_t GetCPUFeatureTest(const char* name, size_t name_length
 			else if (strnicmp(name, "sse42", name_length) == 0) return CPUID_Data.HasSSE42;
 			else if (strnicmp(name, "sse4a", name_length) == 0) return CPUID_Data.HasSSE4A;
 			else if (strnicmp(name, "movbe", name_length) == 0) return CPUID_Data.HasMOVBE;
-			else if (strnicmp(name, "avx10", name_length) == 0) return CPUID_Data.HasAVX10;
+			else if (strnicmp(name, "avx10", name_length) == 0) return CPUID_Data.avx10_version;
 			else if (strnicmp(name, "xsave", name_length) == 0) return CPUID_Data.HasXSAVE;
 			else if (strnicmp(name, "shstk", name_length) == 0) return CPUID_Data.HasSHSTK;
 			else if (strnicmp(name, "model", name_length) == 0) return CPUID_Data.FamilyData.raw;
@@ -1301,6 +1363,7 @@ static TH_NOINLINE size_t GetCPUFeatureTest(const char* name, size_t name_length
 			break;
 		case 3:
 			if		(strnicmp(name, "amd", name_length) == 0) return CPUID_Data.Manufacturer == AMD;
+			else if (strnicmp(name, "vec", name_length) == 0) return CPUID_Data.vector_feature_mask;
 			else if (strnicmp(name, "avx", name_length) == 0) return CPUID_Data.HasAVX;
 			else if (strnicmp(name, "fma", name_length) == 0) return CPUID_Data.HasFMA;
 			else if (strnicmp(name, "bmi", name_length) == 0) return CPUID_Data.HasBMI1;

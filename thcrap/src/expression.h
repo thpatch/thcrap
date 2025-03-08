@@ -71,6 +71,7 @@ typedef struct {
 	};
 #endif
 	union {
+		uintptr_t di_ptr;
 #ifdef TH_X64
 		uint64_t rdi;
 		uint8_t dil;
@@ -79,6 +80,7 @@ typedef struct {
 		uint16_t di;
 	};
 	union {
+		uintptr_t si_ptr;
 #ifdef TH_X64
 		uint64_t rsi;
 		uint8_t sil;
@@ -87,6 +89,7 @@ typedef struct {
 		uint16_t si;
 	};
 	union {
+		uintptr_t bp_ptr;
 #ifdef TH_X64
 		uint64_t rbp;
 		uint8_t bpl;
@@ -95,6 +98,7 @@ typedef struct {
 		uint16_t bp;
 	};
 	union {
+		uintptr_t sp_ptr;
 #ifdef TH_X64
 		uint64_t rsp;
 		uint8_t spl;
@@ -103,6 +107,7 @@ typedef struct {
 		uint16_t sp;
 	};
 	union {
+		uintptr_t bx_ptr;
 #ifdef TH_X64
 		uint64_t rbx;
 #endif
@@ -114,6 +119,7 @@ typedef struct {
 		};
 	};
 	union {
+		uintptr_t dx_ptr;
 #ifdef TH_X64
 		uint64_t rdx;
 #endif
@@ -125,6 +131,7 @@ typedef struct {
 		};
 	};
 	union {
+		uintptr_t cx_ptr;
 #ifdef TH_X64
 		uint64_t rcx;
 #endif
@@ -136,6 +143,7 @@ typedef struct {
 		};
 	};
 	union {
+		uintptr_t ax_ptr;
 #ifdef TH_X64
 		uint64_t rax;
 #endif
@@ -238,11 +246,44 @@ typedef union {
 // [rel_source] is the address used when computing a relative value.
 THCRAP_API const char* get_patch_value(const char* expr, patch_val_t* out, x86_reg_t* regs, uintptr_t rel_source, HMODULE hMod);
 
+typedef enum {
+	VECT_NONE		= 0,
+	VECT_MMX		= 1 << 0,
+	VECT_3DNOW		= 1 << 1,
+	VECT_SSE		= 1 << 2,
+	VECT_SSE2		= 1 << 3,
+	VECT_SSE3		= 1 << 4,
+	VECT_SSSE3		= 1 << 5,
+	VECT_SSE4A		= 1 << 6,
+	VECT_SSE41		= 1 << 7,
+	VECT_SSE42		= 1 << 8,
+	VECT_AVX		= 1 << 9,
+	VECT_XOP		= 1 << 10,
+	VECT_AVX2		= 1 << 11,
+	VECT_AVX512A	= 1 << 12, // F, CD
+	VECT_AVX512B	= 1 << 13, // VL, DQ, BW
+	VECT_AVX512C	= 1 << 14, // IFMA, VBMI
+	VECT_AVX512D	= 1 << 15, // VPOPCNTDQ, VNNI, VBMI2, BITALG
+	VECT_AVX101		= 1 << 16,
+	VECT_AVX102		= 1 << 17
+} vector_tier_t;
+
+typedef enum {
+	VECW_NONE = 0,
+	VECW_64 = 1,
+	VECW_128 = 2,
+	VECW_256 = 3,
+	VECW_512 = 4
+} vector_width_t;
+
 bool CPU_Supports_SHA(void);
 bool CPU_FDP_ErrorOnly(void);
 bool CPU_FCS_FDS_Deprecated(void);
 THCRAP_API bool OS_is_wine(void);
 bool CPU_Supports_LMLSAHF(void);
+
+// Returns a mask of the vector features enabled on the CPU
+THCRAP_API vector_tier_t CPU_Vector_Features();
 
 void DisableCodecaveNotFoundWarning(bool state);
 
