@@ -158,7 +158,7 @@ std::string TasofroPl::ALine::toString() const
 	for (size_t i = 0; i < this->fields.size(); i++) {
 		str += this->fields[i];
 		if (i < this->fields.size() - 1) {
-			str += ",";
+			str += ',';
 		}
 	}
 	str += this->comment;
@@ -193,9 +193,7 @@ std::string TasofroPl::ALine::unquote(const std::string& in) const
 
 std::string TasofroPl::ALine::quote(const std::string& in) const
 {
-	std::string out;
-
-	out = '"';
+	std::string out("\""sv);
 	for (size_t i = 0; i < in.size(); i++) {
 		if (in[i] == '"') {
 			// If we're at the beginning of the line, the game engine will confuse our escaping with the surrounding quotes.
@@ -203,7 +201,7 @@ std::string TasofroPl::ALine::quote(const std::string& in) const
 			if (i == 0) {
 				out += ' ';
 			}
-			out += "\"\"";
+			out += "\"\""sv;
 		}
 		else {
 			out += in[i];
@@ -254,7 +252,7 @@ const std::string& TasofroPl::Label::get() const
 void TasofroPl::Label::set(const std::string& label)
 {
 	this->label = label;
-	this->fields[0] = std::string(":") + label;
+	this->fields[0] = ":"s + label;
 }
 
 
@@ -363,13 +361,13 @@ void TasofroPl::AText::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 	this->is_first_balloon = true;
 
 	if (this->fields[0].length() >= 2 && this->fields[0].compare(this->fields[0].length() - 2, 2, "\\.") == 0)
-		this->last_char = "\\.";
+		this->last_char = "\\."sv;
 	else if (this->fields[0].length() >= 1 && (this->fields[0].back() == '\\' || this->fields[0].back() == '@'))
 		this->last_char = this->fields[0].back();
 
 	this->_patchInit(file, file_it);
 
-	this->fields[0] = "";
+	this->fields[0].clear();
 	json_t *json_line;
 	json_array_foreach_scoped(size_t, json_line_num, patch, json_line) {
 		if (this->parseCommand(patch, json_line_num) == true) {
@@ -441,11 +439,9 @@ void TasofroPl::EndingText::_patchExit(std::list<ALine*>& file, std::list<ALine*
 
 
 
-bool TasofroPl::AText::parseCommand(json_t *patch, int json_line_num)
+bool TasofroPl::AText::parseCommand(json_t *patch, size_t json_line_num)
 {
-	const char *line;
-
-	line = json_array_get_string(patch, json_line_num);
+	const char *line = json_array_get_string(patch, json_line_num);
 	if (strncmp(line, "<balloon", 8) == 0) {
 		const char *balloon_end = strchr(line + 9, '>');
 		if (line[8] == '$' && balloon_end && *balloon_end) {
@@ -466,8 +462,9 @@ bool TasofroPl::AText::parseCommand(json_t *patch, int json_line_num)
 	}
 
 	if (this->nb_lines == 0) {
-		unsigned int i;
-		for (i = json_line_num + 1; i < json_array_size(patch); i++) {
+		size_t array_size = json_array_size(patch);
+		size_t i = json_line_num;
+		while (++i < array_size) {
 			line = json_array_get_string(patch, i);
 			if (strncmp(line, "<balloon", 8) == 0) {
 				break;
@@ -476,17 +473,13 @@ bool TasofroPl::AText::parseCommand(json_t *patch, int json_line_num)
 		this->nb_lines = i - json_line_num;
 
 		// Try to see if we are in the last balloon.
-		this->is_last_balloon = false;
-		unsigned int j;
-		for (j = i + 1; j < json_array_size(patch); j++) {
-			line = json_array_get_string(patch, j);
+		while (++i < array_size) {
+			line = json_array_get_string(patch, i);
 			if (strncmp(line, "<balloon", 8) != 0) {
 				break;
 			}
 		}
-		if (j >= json_array_size(patch)) {
-			this->is_last_balloon = true;
-		}
+		this->is_last_balloon = i == array_size;
 
 		// If the balloon is too small for our text to fit, expand it automatically.
 		if (this->nb_lines > 1 && balloon_size == "05x2") {
@@ -504,7 +497,7 @@ bool TasofroPl::StoryText::parseCommand(json_t *patch, int json_line_num)
 {
 	bool ret = this->AText::parseCommand(patch, json_line_num);
 	if (ret == false) {
-		this->balloonName += "_1_1";
+		this->balloonName += "_1_1"sv;
 		this->balloonName[6] = this->cur_line + '0';
 		this->balloonName[8] = this->nb_lines + '0';
 	}
@@ -533,7 +526,7 @@ void TasofroPl::Th155_110StoryText::beginLine(std::list<ALine*>& file, const std
 	if (this->is_first_balloon == false && this->cur_line == 1) {
 		this->fields[0] = this->quote(this->fields[0]);
 		file.insert(it, new Th155_110StoryText(this->fields));
-		this->fields[0] = "";
+		this->fields[0].clear();
 	}
 }
 
@@ -542,15 +535,15 @@ void TasofroPl::EndingText::beginLine(std::list<ALine*>& file, const std::list<A
 	if (this->is_first_balloon == false && this->cur_line == 1) {
 		this->fields[0] = this->quote(this->fields[0]);
 		file.insert(it, new EndingText(this->fields));
-		this->fields[0] = "";
+		this->fields[0].clear();
 	}
 
 	if (this->is_staffroll) {
 		if (game_id >= TH145 && this->is_last_balloon) {
-			this->last_char = "";
+			this->last_char.clear();
 		}
 		else {
-			this->last_char = "\\";
+			this->last_char = '\\';
 		}
 	}
 }
@@ -559,7 +552,7 @@ void TasofroPl::WinText::beginLine(std::list<ALine*>& file, const std::list<ALin
 {
 	if (this->is_first_balloon == false && this->cur_line == 1) {
 		file.insert(it, new WinText(this->fields));
-		this->fields[0] = "";
+		this->fields[0].clear();
 	}
 }
 
@@ -571,7 +564,7 @@ void TasofroPl::AText::patchLine(const char *text, std::list<ALine*>& file, cons
 			formattedText += this->last_char;
 		}
 		else if (this->is_last_balloon == false) {
-			formattedText += "\\";
+			formattedText += '\\';
 		}
 	}
 
@@ -589,7 +582,7 @@ void TasofroPl::StoryText::_patchLine(std::string& text, std::list<ALine*>& file
 void TasofroPl::Th155StoryText::_patchLine(std::string& text, std::list<ALine*>&, const std::list<ALine*>::iterator&)
 {
 	if (this->cur_line != this->nb_lines) {
-		text += "\\n";
+		text += "\\n"sv;
 	}
 	this->fields[0] += text;
 	this->fields[1] = this->balloonName;
@@ -598,7 +591,7 @@ void TasofroPl::Th155StoryText::_patchLine(std::string& text, std::list<ALine*>&
 void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>&, const std::list<ALine*>::iterator&)
 {
 	if (this->cur_line != this->nb_lines) {
-		text += "\\n";
+		text += "\\n"sv;
 	}
 	if (this->is_staffroll) {
 		size_t break_pos;
@@ -621,7 +614,7 @@ void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>&, co
 void TasofroPl::WinText::_patchLine(std::string& text, std::list<ALine*>&, const std::list<ALine*>::iterator&)
 {
 	if (this->cur_line != this->nb_lines) {
-		text += "\\n";
+		text += "\\n"sv;
 	}
 	this->fields[0] += text;
 	this->fields[1] = this->balloonName;
@@ -679,20 +672,20 @@ static bool storyLineIsFinished(TasofroPl::ALine& line)
 
 static void stickStoryLines(std::list<TasofroPl::ALine*>& lines)
 {
-	for (std::list<TasofroPl::ALine*>::iterator it = lines.begin(); it != lines.end(); ++it) {
+	for (auto it = lines.begin(); it != lines.end(); ++it) {
 		if ((*it)->getType() == TasofroPl::TEXT) {
 			while (storyLineIsFinished(**it) == false) {
-				std::list<TasofroPl::ALine*>::iterator next = it;
+				auto next = it;
 				++next;
 				if (next == lines.end()) {
 					break;
 				}
 				if ((*next)->getType() == TasofroPl::TEXT) {
-					(**it)[0] += "\n" + (**next)[0];
+					(**it)[0] += '\n' + (**next)[0];
 					lines.erase(next);
 				}
 				else if ((*next)->getType() == TasofroPl::EMPTY) {
-					(**it)[0] += "\n";
+					(**it)[0] += '\n';
 					lines.erase(next);
 				}
 				else {

@@ -76,8 +76,8 @@ static int deflate_bytes(BYTE* file_in, size_t size_in, BYTE* file_out, size_t* 
 
 std::string patch_ruby(std::string str)
 {
-	const std::string ruby_begin = "{{ruby|";
-	const std::string ruby_end = "}}";
+	constexpr auto ruby_begin = "{{ruby|"sv;
+	constexpr auto ruby_end = "}}"sv;
 
 	std::string::iterator pattern_begin;
 	std::string::iterator pattern_end;
@@ -87,9 +87,9 @@ std::string patch_ruby(std::string str)
 			break;
 		}
 
-		std::string rep = "\\R[";
+		std::string rep("\\R["sv);
 		rep.append(pattern_begin + ruby_begin.length(), pattern_end);
-		rep += "]";
+		rep += ']';
 
 		pattern_end += ruby_end.length();
 		str.replace(pattern_begin, pattern_end, rep.begin(), rep.end());
@@ -175,7 +175,7 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 				json_t *it;
 				json_array_foreach_scoped(size_t, i, patch_col, it) {
 					if (add_eol) {
-						line[col] += "\n";
+						line[col] += '\n';
 					}
 					if (json_is_string(it)) {
 						line[col] += patch_ruby(json_string_value(it));

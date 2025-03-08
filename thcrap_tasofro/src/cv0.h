@@ -75,11 +75,11 @@ namespace TasofroCv0
 		std::string content;
 
 		// Patcher state
-		int cur_line;
-		int nb_lines;
+		uint32_t cur_line;
+		uint32_t nb_lines;
 
 		// Functions used by the patcher
-		bool parseCommand(json_t *patch, int json_line_num, int textbox_size);
+		bool parseCommand(json_t *patch, size_t json_line_num, uint32_t textbox_size);
 		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
 		void patchLine(const char *text);
 		void endLine();
@@ -91,7 +91,7 @@ namespace TasofroCv0
 
 		LineType getType() const;
 		std::string toString() const;
-		void patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, int textbox_size, json_t *patch);
+		void patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, uint32_t textbox_size, json_t *patch);
 
 		static Text* read(const char*& file, size_t& size);
 	};

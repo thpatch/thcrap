@@ -106,12 +106,12 @@ namespace TasofroPl
 		bool is_first_balloon;
 		bool is_last_balloon;
 
-		int cur_line;
-		int nb_lines;
+		uint32_t cur_line;
+		uint32_t nb_lines;
 
 		virtual void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) = 0;
 		// Functions used by the patcher
-		virtual bool parseCommand(json_t *patch, int json_line_num);
+		virtual bool parseCommand(json_t *patch, size_t json_line_num);
 		virtual void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it) = 0;
 		void patchLine(const char *text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
 		virtual void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it) = 0;

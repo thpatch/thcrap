@@ -14,23 +14,23 @@
 #include "thcrap_tasofro.h"
 #include "tfcs.h"
 
-static int next_line(char *in, size_t size_in, char *out, int copy)
+static size_t next_line(const char *in, size_t size_in, char *out)
 {
 	size_t i = 0;
 
 	while (i < size_in && in[i] && in[i] != ',' && in[i] != '\r' && in[i] != '\n') {
 		if (in[i] == '"') {
-			if (copy) { out[i] = in[i]; }
+			if (out) { out[i] = in[i]; }
 			i++;
 			while (i < size_in && in[i] && (in[i] != '"' || in[i + 1] == '"')) {
-				if (copy) { out[i] = in[i]; }
+				if (out) { out[i] = in[i]; }
 				i++;
 			}
-			if (copy) { out[i] = in[i]; }
+			if (out) { out[i] = in[i]; }
 			i++;
 		}
 		else {
-			if (copy) { out[i] = in[i]; }
+			if (out) { out[i] = in[i]; }
 			i++;
 		}
 	}
@@ -86,16 +86,15 @@ int patch_csv(void *file_inout, size_t size_out, size_t size_in, const char*, js
 	size_t j = 0;
 	while (i < size_in && file_in[i]) {
 		if (!json_is_object(patch_row) || !json_is_string(patch_col = json_object_numkey_get(patch_row, col))) {
-			int n = next_line(file_in + i, size_in - i, file_out + j, 1);
+			size_t n = next_line(file_in + i, size_in - i, file_out + j);
 			i += n;
 			j += n;
 		}
 		else {
 			const char* field = json_string_value(patch_col);
-			int k;
 			file_out[j] = '"';
 			j++;
-			for (k = 0; field[k]; j++, k++) {
+			for (size_t k = 0; field[k]; j++, k++) {
 				if (field[k] == '"') {
 					file_out[j] = '"';
 					j++;
@@ -104,7 +103,7 @@ int patch_csv(void *file_inout, size_t size_out, size_t size_in, const char*, js
 			}
 			file_out[j] = '"';
 			j++;
-			i += next_line(file_in + i, size_in - i, NULL, 0);
+			i += next_line(file_in + i, size_in - i, NULL);
 		}
 		if (file_in[i] == ',') {
 			file_out[j] = file_in[i];
@@ -128,7 +127,7 @@ int patch_csv(void *file_inout, size_t size_out, size_t size_in, const char*, js
 		}
 	}
 	if (j > size_out) {
-		log_printf("WARNING: buffer overflow in tasofro CSV patching (wrote %d bytes in a %d buffer)!\n", j, size_out);
+		log_printf("WARNING: buffer overflow in tasofro CSV patching (wrote %zu bytes in a %zu buffer)!\n", j, size_out);
 	}
 	json_decref(patch_row);
 
@@ -164,12 +163,12 @@ static json_t *th105_spellcomment_pack_lines(json_t *spell)
 	json_t *line;
 	json_array_foreach_scoped(size_t, i, lines, line) {
 		if (!first) {
-			out += "<br>";
+			out += "<br>"sv;
 		}
 		else {
 			first = false;
 		}
-		out += json_string_value(line);
+		out.append(json_string_value(line), json_string_length(line));
 	}
 
 	json_t *out_obj = json_object();
@@ -184,15 +183,15 @@ json_t* th105_spellcomment_generator(const jsonvfs_map& in_data, std::string_vie
 	json_object_set_new(out, "by_id", patch);
 
 	const unsigned int character_name_pos = 4; // "game_id/data/csv/*/spellcard.cv1.jdiff"
-	std::string::size_type character_begin = 0;
+	std::string_view::size_type character_begin = 0;
 	for (size_t i = 0; i < character_name_pos - 1; i++) {
 		character_begin = out_fn.find('/', character_begin);
-		if (character_begin != std::string::npos) {
+		if (character_begin != std::string_view::npos) {
 			character_begin++;
 		}
 	}
-	std::string::size_type character_end = out_fn.find('/', character_begin);
-	if (character_end == std::string::npos) {
+	std::string_view::size_type character_end = out_fn.find('/', character_begin);
+	if (character_end == std::string_view::npos) {
 		log_printf("th105_spellcomment_generator: character name not found in %s\n", out_fn.data());
 		return nullptr;
 	}

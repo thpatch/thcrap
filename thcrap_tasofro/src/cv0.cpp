@@ -107,7 +107,7 @@ std::string TasofroCv0::ALine::escape(const std::string& in) const
 
 	for (size_t i = 0; i < in.size(); i++) {
 		if (in[i] == ',') {
-			out += "\\,";
+			out += "\\,"sv;
 		}
 		else {
 			out += in[i];
@@ -166,7 +166,7 @@ TasofroCv0::Text* TasofroCv0::Text::read(const char*& file, size_t& size)
 	Text* line = new Text();
 	line->content = ALine::readLine(file, size);
 	while (guessLineType(file, size) == TEXT) {
-		line->content += "\n" + ALine::readLine(file, size);
+		line->content += '\n' + ALine::readLine(file, size);
 		size_t i = line->content.length() - 1;
 		while (i > 0 && (line->content[i] == '\r' || line->content[i] == '\n')) {
 			i--;
@@ -184,12 +184,12 @@ std::string TasofroCv0::Text::toString() const
 	return content;
 }
 
-void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, int textbox_size, json_t *patch)
+void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it, uint32_t textbox_size, json_t *patch)
 {
 	this->cur_line = 1;
 	this->nb_lines = 0;
 
-	this->content = "";
+	this->content.clear();
 	json_t *json_line;
 	json_array_foreach_scoped(size_t, json_line_num, patch, json_line) {
 		if (this->parseCommand(patch, json_line_num, textbox_size) == true) {
@@ -206,11 +206,9 @@ void TasofroCv0::Text::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 
 
 
-bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num, int textbox_size)
+bool TasofroCv0::Text::parseCommand(json_t *patch, size_t json_line_num, uint32_t textbox_size)
 {
-	const char *line;
-
-	line = json_array_get_string(patch, json_line_num);
+	const char* line = json_array_get_string(patch, json_line_num);
 	if (strcmp(line, "<balloon>") == 0) {
 		this->cur_line = 1;
 		this->nb_lines = 0;
@@ -218,8 +216,9 @@ bool TasofroCv0::Text::parseCommand(json_t *patch, int json_line_num, int textbo
 	}
 
 	if (this->nb_lines == 0) {
-		unsigned int i;
-		for (i = json_line_num + 1; i < json_array_size(patch); i++) {
+		size_t max_i = json_array_size(patch);
+		size_t i = json_line_num;
+		while (++i < max_i) {
 			line = json_array_get_string(patch, i);
 			if (strcmp(line, "<balloon>") == 0) {
 				break;
@@ -243,7 +242,7 @@ void TasofroCv0::Text::beginLine(std::list<ALine*>& file, const std::list<ALine*
 	if (this->cur_line == 1) {
 		this->content = this->escape(this->content);
 		file.insert(it, new Text(this->content));
-		this->content = "";
+		this->content.clear();
 	}
 }
 
@@ -251,10 +250,10 @@ void TasofroCv0::Text::patchLine(const char *text)
 {
 	std::string formattedText = text;
 	if (this->cur_line != this->nb_lines) {
-		formattedText += "\n";
+		formattedText += '\n';
 	}
 	else if (formattedText.length() == 0 || (formattedText[formattedText.length() - 1] != '@' && formattedText[formattedText.length() - 1] != '\\')) {
-		formattedText += "\\\n";
+		formattedText += "\\\n"sv;
 	}
 
 	this->content += formattedText;
@@ -307,7 +306,7 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, js
 
 	size_t balloon_number = 1;
 	int textbox_size = 3;
-	for (std::list<TasofroCv0::ALine*>::iterator it = lines.begin(); it != lines.end(); ++it) {
+	for (auto it = lines.begin(); it != lines.end(); ++it) {
 		TasofroCv0::ALine *line = *it;
 		if (line->getType() == TasofroCv0::COMMAND && textbox_size != 4 && line->toString().compare(0, 3, "CG:") == 0) {
 			textbox_size = 4;
@@ -383,11 +382,11 @@ extern "C" int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
 	char *string = (char*)json_object_get_immediate(bp_info, regs, "string");
 	if (string[0] == '\\' && string[1] == ',') {
 		// Erase the backslash
-		int i;
-		for (i = 0; string[i + 1] && string[i + 1] != '\n'; i++) {
+		size_t i = 0;
+		do {
 			string[i] = string[i + 1];
-		}
-		string[i] = string[i + 1];
+			++i;
+		} while (string[i] && string[i] != '\n');
 		// Ensure the test will fail
 		regs->eax = 0;
 		regs->ecx = 0;
