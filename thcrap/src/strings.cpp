@@ -463,7 +463,7 @@ TH_EXPORT void strings_mod_detour(void)
 		"MessageBoxA", strings_MessageBoxA, &chain_MessageBoxU,
 		NULL
 	);
-	detour_chain("kernel32.dll", 2,
+	detour_chain("kernel32.dll", 1,
 		"FindFirstFileA", strings_FindFirstFileA, &chain_FindFirstFileU,
 		"CreateFileA", strings_CreateFileA, &chain_CreateFileU,
 		NULL
