@@ -52,7 +52,7 @@ void*** TH_STDCALL d3ddd_Direct3DCreate(
 	return ret;
 }
 
-int d3d_device_detour(
+size_t d3d_device_detour(
 	const char* dll_name, const char* func_name,
 	Direct3DCreate_type *c_new, Direct3DCreate_type **c_orig,
 	std::vector<vtable_detour_t> &detours, 

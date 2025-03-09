@@ -123,8 +123,8 @@ char *find_exe_from_cfg(const char *rel_start, json_t *run_cfg, json_t *games_js
 
 int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 {
-	size_t rel_start_len = GetCurrentDirectoryU(0, NULL);
-	VLA(char, rel_start, (rel_start_len + 1));
+	uint32_t rel_start_len = GetCurrentDirectoryU(0, NULL) + 1;
+	VLA(char, rel_start, rel_start_len);
 	GetCurrentDirectoryU(rel_start_len, rel_start);
 	PathAddBackslashU(rel_start);
 
@@ -189,10 +189,11 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	// Load games.js
 	{
-		size_t games_js_fn_len = GetCurrentDirectoryU(0, NULL) + 1 + strlen("config\\games.js") + 1;
+		uint32_t games_js_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
+		size_t games_js_fn_len = games_js_dir_len + strlen("config\\games.js") + 1;
 		VLA(char, games_js_fn, games_js_fn_len);
 
-		GetCurrentDirectoryU(games_js_fn_len, games_js_fn);
+		GetCurrentDirectoryU(games_js_dir_len, games_js_fn);
 		PathAddBackslashA(games_js_fn);
 		strcat(games_js_fn, "config\\games.js");
 		games_js = json_load_file_report(games_js_fn);

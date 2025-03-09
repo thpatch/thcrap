@@ -16,7 +16,7 @@ extern "C" {
 #include <algorithm>
 #include <vector>
 
-#pragma comment(lib, "thcrap_bgmmod" DEBUG_OR_RELEASE)
+#pragma comment(lib, "thcrap_bgmmod" FILE_SUFFIX)
 
 constexpr stringref_t LOOPMOD_FN = "loops.js";
 
@@ -49,7 +49,7 @@ ssize_t bgm_find(size_t offset)
 	});
 }
 
-int bgm_find(stringref_t fn)
+ssize_t bgm_find(stringref_t fn)
 {
 	assert(bgm_fmt);
 	if(fn.length() > sizeof(bgm_fmt->fn)) {
@@ -113,7 +113,7 @@ std::vector<HANDLE> thbgm_handles;
 std::unique_ptr<std::unique_ptr<track_t>[]> thbgm_mods;
 // Index into both [thbgm_mods] and the bgm_fmt_t array.
 // Negative if no track is playing.
-int thbgm_cur_bgmid = -1;
+ssize_t thbgm_cur_bgmid = -1;
 size_t thbgm_modtrack_bytes_read = 0;
 
 static auto chain_CreateFileA = CreateFileU;

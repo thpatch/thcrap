@@ -768,7 +768,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 
 	// Update the thcrap engine
 	log_print("Looking for thcrap updates...\n");
-	size_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
+	uint32_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
 	VLA(char, cur_dir, cur_dir_len);
 	GetCurrentDirectoryU(cur_dir_len, cur_dir);
 	runconfig_thcrap_dir_set(cur_dir);

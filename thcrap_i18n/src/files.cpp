@@ -45,7 +45,7 @@ bool i18n_init_path()
 }
 static wchar_t *i18n_make_path(const char *subdir, const char *file)
 {
-	int len = wcslen(i18n_dir) + (subdir ? 1 + strlen(subdir) : 0) + 1 + strlen(file) + 5 + 1;
+	size_t len = wcslen(i18n_dir) + (subdir ? 1 + strlen(subdir) : 0) + 1 + strlen(file) + 5 + 1;
 	wchar_t *buf = new wchar_t[len];
 	if (subdir) {
 		wsprintf(buf, L"%s\\%S\\%S.json", i18n_dir, subdir, file);

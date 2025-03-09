@@ -147,7 +147,7 @@ size_t BP_mission_printf_hook(x86_reg_t *regs, json_t *bp_info)
 
 	if (mission_furi_a < -1) return 1; // don't change if -2
 
-	*(int32_t*)(regs->esp + 4 + 12) = mission_furi_a;
+	*(int32_t*)(regs->esp + 4 + 12) = (int32_t)mission_furi_a;
 	regs->edi = 0; // disable stetching, because it looks ugly on non-japanese strings
 	mission_furi_a = -2; // reset
 

@@ -208,7 +208,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	patch_sel_stack_t sel_stack;
 	json_t *new_cfg = json_pack("{s[]}", "patches");
 
-	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
+	uint32_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
 	json_t *games = NULL;
 	games_js_entry *gamesArray = nullptr;
@@ -228,7 +228,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	log_init(globalconfig_get_boolean("console", false));
 	console_init();
 
-	GetCurrentDirectory(cur_dir_len, cur_dir);
+	GetCurrentDirectoryU(cur_dir_len, cur_dir);
 	PathAddBackslashA(cur_dir);
 	str_slash_normalize(cur_dir);
 

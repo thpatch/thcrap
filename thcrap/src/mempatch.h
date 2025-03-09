@@ -142,7 +142,7 @@ typedef struct {
 //                      previous value
 // • *old_func != NULL: Do nothing
 // Returns the number of functions detoured.
-THCRAP_API int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count);
+THCRAP_API size_t vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count);
 
 // Returns a pointer to the first function in a specific detour chain, or
 // [fallback] if no hook has been registered so far.

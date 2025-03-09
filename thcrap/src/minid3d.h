@@ -43,7 +43,10 @@ typedef IUnknown IDirect3D;
 typedef IUnknown IDirect3DDevice;
 // This is just a DWORD token value in Direct3D 8, so let's not make it an
 // IUnknown and not tempt anyone to try calling Release() on this.
-typedef DWORD IDirect3DStateBlock;
+//
+// NOTE: This value is being cast directly to pointers below,
+// so it's *probably* a QWORD on x64. This needs to be verified though.
+typedef DWORD_PTR IDirect3DStateBlock;
 typedef IUnknown IDirect3DSurface;
 typedef IUnknown IDirect3DSwapChain;
 typedef IUnknown IDirect3DTexture;
@@ -501,7 +504,7 @@ inline HRESULT d3dd_ApplyStateBlock(d3d_version_t ver, d3dd8_ApplyStateBlock_(FU
 	return
 		(ver == D3D8) ? (*(ft8***)that)[54](d3dd8_ApplyStateBlock_(VARNAMES)) :
 		(ver == D3D9) ? (*(ft9***) pSB)[ 5](d3dsb9_Apply_(VARNAMES)) :
-		((FARPROC)NULL)();
+		(HRESULT)((FARPROC)NULL)();
 }
 
 inline HRESULT d3dd_CaptureStateBlock(d3d_version_t ver, d3dd8_CaptureStateBlock_(FULLDEC))
@@ -511,7 +514,7 @@ inline HRESULT d3dd_CaptureStateBlock(d3d_version_t ver, d3dd8_CaptureStateBlock
 	return
 		(ver == D3D8) ? (*(ft8***)that)[55](d3dd8_CaptureStateBlock_(VARNAMES)) :
 		(ver == D3D9) ? (*(ft9***)pSB)[4](d3dsb9_Capture_(VARNAMES)) :
-		((FARPROC)NULL)();
+		(HRESULT)((FARPROC)NULL)();
 }
 
 inline HRESULT d3dd_DeleteStateBlock(d3d_version_t ver, d3dd8_DeleteStateBlock_(FULLDEC))
@@ -520,7 +523,7 @@ inline HRESULT d3dd_DeleteStateBlock(d3d_version_t ver, d3dd8_DeleteStateBlock_(
 	return
 		(ver == D3D8) ? (*(ft8***)that)[56](d3dd8_DeleteStateBlock_(VARNAMES)) :
 		(ver == D3D9) ? ((IUnknown*)pSB)->Release() :
-		((FARPROC)NULL)();
+		(HRESULT)((FARPROC)NULL)();
 }
 
 MINID3D_VTABLE_FUNC_DEF(HRESULT, d3dd_SetRenderState, 50, 57)

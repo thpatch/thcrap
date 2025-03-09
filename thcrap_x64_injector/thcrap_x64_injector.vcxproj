@@ -17,12 +17,14 @@
   <PropertyGroup>
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseBitsSuffix>false</UseBitsSuffix>
+    <LinkBaseLibs>false</LinkBaseLibs>
   </PropertyGroup>
   <ImportGroup Label="PropertySheets">
     <Import Project="$(SolutionDir)\thcrap.props" />
   </ImportGroup>
   <ItemDefinitionGroup>
     <Link>
+      <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_x64_injector.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>

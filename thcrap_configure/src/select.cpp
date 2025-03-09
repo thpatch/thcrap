@@ -96,9 +96,9 @@ std::string SearchPatch(repo_t **repo_list, const char *orig_repo_id, const patc
 // Adds a patch and, recursively, all of its required dependencies. These are
 // resolved first on the repository the patch originated, then globally.
 // Returns the number of missing dependencies.
-int AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
+size_t AddPatch(patch_sel_stack_t& sel_stack, repo_t **repo_list, patch_desc_t sel)
 {
-	int ret = 0;
+	size_t ret = 0;
 	const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
 	patch_t patch_info = patch_bootstrap_wrapper(&sel, repo);
 	patch_t patch_full = patch_init(patch_info.archive, nullptr, 0);
@@ -165,7 +165,7 @@ int RemovePatch(patch_sel_stack_t& sel_stack, const char *patch_id)
 // Prints all patches of [repo_js] that are not part of the [sel_stack],
 // filling [list_order] with the order they appear in.
 // Returns the final array size of [list_order].
-int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_sel_stack_t& sel_stack)
+size_t RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_sel_stack_t& sel_stack)
 {
 	size_t list_count = list_order.size();
 	bool print_header = true;
@@ -199,7 +199,7 @@ int RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, patch_
 	return list_count;
 }
 
-int PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, patch_sel_stack_t& sel_stack)
+size_t PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, patch_sel_stack_t& sel_stack)
 {
 	size_t list_count = list_order.size();
 
@@ -223,11 +223,11 @@ int PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, pat
 	for (patch_desc_t& sel : sel_stack) {
 		const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
 		const repo_patch_t *patch = find_patch_in_repo(repo, sel.patch_id);
-		std::string full_id = std::string(sel.repo_id) + "/" + sel.patch_id;
+		std::string full_id = std::string(sel.repo_id) + '/' + sel.patch_id;
 
 		++list_count;
 		con_clickable(std::to_wstring(list_count),
-			to_utf16(stringf("  %2d. %-20s %s", list_count, full_id.c_str(), patch->title)));
+			to_utf16(stringf("  %2zu. %-20s %s", list_count, full_id.c_str(), patch->title)));
 
 		list_order.push_back(sel);
 	}
@@ -269,7 +269,7 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 	size_t patches_count = 0;
 
 	if(!repo_list[0]) {
-		log_printf("\nNo repositories available -.-\n");
+		log_print("\nNo repositories available -.-\n");
 		goto end;
 	}
 	// Sort patches
@@ -277,7 +277,7 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 		patches_count += repo_sort_patches(repo_list[i]);
 	}
 	if(patches_count == 0) {
-		log_printf("\nNo patches available -.-\n");
+		log_print("\nNo patches available -.-\n");
 		goto end;
 	}
 
@@ -293,10 +293,10 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 		cls(0);
         console_prepare_prompt();
 
-		log_printf("-----------------\n");
-		log_printf("Selecting patches\n");
-		log_printf("-----------------\n");
-		log_printf(
+		log_print(
+			"-----------------\n"
+			"Selecting patches\n"
+			"-----------------\n"
 			"\n"
 			"\n"
 		);
@@ -314,13 +314,13 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 			list_pick = 0;
 			if(stack_size) {
                 con_printf(
-					"(1 - %u to add more, %u - %u to remove from the stack, ENTER to confirm):\n",
+					"(1 - %zu to add more, %zu - %zu to remove from the stack, ENTER to confirm):\n",
 					stack_offset, stack_offset + 1, list_count);
 			} else {
-				con_printf("Pick a patch (1 - %u):\n", list_count);
+				con_printf("Pick a patch (1 - %zu):\n", list_count);
 			}
 			std::wstring buf = console_read();
-			swscanf(buf.c_str(), L"%u", &list_pick);
+			swscanf(buf.c_str(), L"%zu", &list_pick);
 			still_picking = buf[0] != '\0';
 		} while((list_pick < 0 || list_pick > list_count) && still_picking);
 
@@ -335,13 +335,12 @@ patch_sel_stack_t SelectPatchStack(repo_t **repo_list)
 		list_pick--;
 		patch_desc_t sel = list_order[list_pick];
 		if(list_pick < stack_offset) {
-			int ret;
 			log_printf("Resolving dependencies for %s/%s...\n", sel.repo_id, sel.patch_id);
-			ret = AddPatch(sel_stack, repo_list, sel);
+			size_t ret = AddPatch(sel_stack, repo_list, sel);
 			if(ret) {
 				log_printf(
 					"\n"
-					"%d unmet dependencies. This configuration will most likely not work correctly!\n",
+					"%zu unmet dependencies. This configuration will most likely not work correctly!\n",
 					ret
 				);
 				pause();

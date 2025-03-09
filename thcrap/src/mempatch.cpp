@@ -312,7 +312,7 @@ FARPROC detour_top(const char *dll_name, const char *func_name, FARPROC fallback
 	return ret;
 }
 
-int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
+size_t vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
 {
 	assert(vtable);
 	assert(det);
@@ -322,7 +322,7 @@ int vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count)
 	}
 
 	DWORD old_prot;
-	int replaced = 0;
+	size_t replaced = 0;
 	size_t i;
 
 	// VirtualProtect() is infamously slow, so...

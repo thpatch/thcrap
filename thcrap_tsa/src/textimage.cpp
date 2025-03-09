@@ -57,7 +57,7 @@ struct textimage_t {
 	/// Configuration
 	/// =============
 	const char *fn; // Will point into the runconfig
-	unsigned int priority;
+	size_t priority;
 	uint32_t texture_slot;
 	uint32_t sprite_slot;
 	uint32_t sprite_w;
@@ -88,7 +88,7 @@ struct textimage_t {
 	static textimage_t* create(
 		const char *slotstr,
 		uint32_t sprite_slot,
-		unsigned int priority,
+		size_t priority,
 		json_t *desc,
 		textimage_t *lower
 	);
@@ -416,7 +416,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 textimage_t* textimage_t::create(
 	const char *slotstr,
 	uint32_t sprite_slot,
-	unsigned int priority,
+	size_t priority,
 	json_t *desc,
 	textimage_t *lower
 )
@@ -429,7 +429,7 @@ textimage_t* textimage_t::create(
 	}
 	if(!fn) {
 		return textimage_log.errorf(
-			"%s[%u]: \"filename\" must be a string", slotstr, priority
+			"%s[%zu]: \"filename\" must be a string", slotstr, priority
 		);
 	}
 
@@ -636,7 +636,7 @@ size_t BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
 				break;
 			default:
 				textimage_log.errorf(
-					"%s[%u]: Must be either a JSON object to (re-)define this text image, or a JSON true to reload it",
+					"%s[%zu]: Must be either a JSON object to (re-)define this text image, or a JSON true to reload it",
 					slotstr, priority
 				);
 				break;

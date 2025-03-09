@@ -37,9 +37,9 @@ static const game_search_result* ChooseLocation(game_search_result *locs, size_t
 			con_clickable(std::to_wstring(i + 1),
 				to_utf16(stringf(" [%2zu] %s: %s", i + 1, locs[pos_begin + i].path, locs[pos_begin + i].description)));
 		}
-		printf("\n");
+		putchar('\n');
 		do {
-			con_printf("Pick a version to run the patch on: (1 - %u):\n", num_versions);
+			con_printf("Pick a version to run the patch on: (1 - %zu):\n", num_versions);
 
 			if (swscanf(console_read().c_str(), L"%zu", &loc_num) != 1)
 				loc_num = 0;
@@ -56,7 +56,7 @@ static const game_search_result* ChooseLocation(game_search_result *locs, size_t
 // BFFM_SETSELECTION a second time.
 // https://connect.microsoft.com/VisualStudio/feedback/details/518103/bffm-setselection-does-not-work-with-shbrowseforfolder-on-windows-7
 typedef struct {
-	ITEMIDLIST *path;
+	LPITEMIDLIST path;
 	int attempts;
 } initial_path_t;
 
@@ -97,7 +97,7 @@ struct ComRAII {
 
 static int SelectFolderVista(HWND owner, PIDLIST_ABSOLUTE initial_path, PIDLIST_ABSOLUTE& pidl, const wchar_t* window_title) {
 	// Those two functions are absent in XP, so we have to load them dynamically
-	HMODULE shell32 = GetModuleHandle(L"Shell32.dll");
+	HMODULE shell32 = GetModuleHandleW(L"Shell32.dll");
 	auto pSHCreateItemFromIDList = (HRESULT(WINAPI *)(PCIDLIST_ABSOLUTE, REFIID, void**))GetProcAddress(shell32, "SHCreateItemFromIDList");
 	auto pSHGetIDListFromObject = (HRESULT(WINAPI *)(IUnknown*, PIDLIST_ABSOLUTE*))GetProcAddress(shell32, "SHGetIDListFromObject");
 	if (!pSHCreateItemFromIDList || !pSHGetIDListFromObject)
@@ -207,14 +207,13 @@ games_js_entry *games_js_to_array(json_t *games_js)
 json_t* ConfigureLocateGames(const char *games_js_path)
 {
 	json_t *games;
-	int repeat = 0;
 
 	cls(0);
 
-	log_printf("--------------\n");
-	log_printf("Locating games\n");
-	log_printf("--------------\n");
-	log_printf(
+	log_print(
+		"--------------\n"
+		"Locating games\n"
+		"--------------\n"
 		"\n"
 		"\n"
 	);
@@ -223,7 +222,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	if(json_object_size(games) != 0) {
 		log_printf("You already have a %s with the following contents:\n\n", games_js_fn);
 		json_dump_log(games, JSON_INDENT(2) | JSON_SORT_KEYS);
-		log_printf(
+		log_print(
 			"\n"
 			"\n"
 			"Patch data will be downloaded or updated for all the games listed.\n"
@@ -232,7 +231,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		con_clickable(L"a", L"\t* (A)dd new games to this list and keep existing ones?");
 		con_clickable(L"r", L"\t* Clear this list and (r)escan?");
 		con_clickable(L"k", L"\t* (K)eep this list and continue?");
-		log_printf("\n");
+		log_print("\n");
 		char ret = Ask<3>(nullptr, { 'a', 'r', 'k' | DEFAULT_ANSWER });
 		if(ret == 'k') {
 			return games;
@@ -283,6 +282,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 	// while we're at it.
 	SHParseDisplayNameU(games_js_path, NULL, &initial_path, 0, NULL);
 	CoInitialize(NULL);
+	bool repeat;
 	do {
 		wchar_t search_path_w[MAX_PATH] = {0};
 		game_search_result *found = nullptr;
@@ -294,11 +294,12 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 		}
 
 		std::string search_path = to_utf8(search_path_w);
-		repeat = 0;
+		repeat = false;
 		log_printf(
-			"Searching games%s%s... this may take a while...\n\n",
-			search_path[0] ? " in " : " on the entire system",
-			search_path[0] ? search_path.c_str(): ""
+			search_path[0]
+				? "Searching games in %s... this may take a while...\n\n"
+				: "Searching games on the entire system... this may take a while...\n\n",
+			search_path.c_str()
 		);
 		console_print_percent(-1);
 
@@ -316,7 +317,7 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			for (size_t i = 0; found[i].id; ) {
 				const game_search_result *loc = ChooseLocation(found, i);
 				json_object_set_new(games, loc->id, json_string(loc->path));
-				printf("\n");
+				putchar('\n');
 			}
 
 			SetCurrentDirectory(games_js_path);
@@ -324,9 +325,12 @@ json_t* ConfigureLocateGames(const char *games_js_path)
 			games = sort_json(games);
 			games_js_str = json_dumps(games, JSON_INDENT(2));
 			if(!file_write_text(games_js_fn, games_js_str)) {
-				log_printf("The following game locations have been identified and written to %s:\n", games_js_fn);
-				log_printf(games_js_str);
-				log_printf("\n");
+				log_printf(
+					"The following game locations have been identified and written to %s:\n"
+					"%s\n"
+					, games_js_fn
+					, games_js_str
+				);
 			} else if(!file_write_error(games_js_fn)) {
 				games = json_decref_safe(games);
 			}

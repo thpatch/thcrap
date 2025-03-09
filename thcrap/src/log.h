@@ -45,9 +45,13 @@ THCRAP_API void log_printf(const char *format, ...);
 #ifdef _MSC_VER
 # define log_func_printf(format, ...) \
 	log_printf("[" __FUNCTION__ "]: " format, ##__VA_ARGS__)
+# define log_func_print(...) \
+	log_print("[" __FUNCTION__ "]: " ##__VA_ARGS__)
 #else
 # define log_func_printf(format, ...) \
 	log_printf("[%s]: " format, __func__, ##__VA_ARGS__)
+# define log_func_print(...) \
+	log_printf("[%s]: " ##__VA_ARGS__ , __func__)
 #endif
 
 // Flush the log file

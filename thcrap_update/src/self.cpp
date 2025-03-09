@@ -235,7 +235,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 	{
 		// CryptQueryObject() forces us to use the W version, but only
 		// our U version can calculate the length of the string, so...
-		size_t self_fn_len = GetModuleFileNameU(self_mod, NULL, 0) + 1;
+		uint32_t self_fn_len = GetModuleFileNameU(self_mod, NULL, 0) + 1;
 		VLA(wchar_t, self_fn, self_fn_len * UTF8_MUL);
 		VLA(char, self_fn_utf8, self_fn_len);
 		GetModuleFileNameU(self_mod, self_fn_utf8, self_fn_len);
@@ -288,7 +288,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT *context)
 		ret = *context ? 0 : GetLastError();
 		SAFE_FREE(signer_info);
 	}
-	log_printf(ret ? "not found\n" : "OK\n");
+	log_print(ret ? "not found\n" : "OK\n");
 end:
 	CertCloseStore(hStore, 0);
 	CryptMsgClose(hMsg);
@@ -357,7 +357,7 @@ static int self_verify_buffer(
 		));
 	}
 	if(ret) {
-		log_printf("invalid Base64 string\n");
+		log_print("invalid Base64 string\n");
 		goto end;
 	}
 	// Reverse the signature...
@@ -369,12 +369,12 @@ static int self_verify_buffer(
 	}
 	ret = W32_ERR_WRAP(CryptCreateHash(hCryptProv, hash_alg, 0, 0, hHash));
 	if(ret) {
-		log_printf("couldn't create hash object\n");
+		log_print("couldn't create hash object\n");
 		goto end;
 	}
 	ret = W32_ERR_WRAP(CryptHashData(*hHash, (BYTE*)file_buf, file_len, 0));
 	if(ret) {
-		log_printf("couldn't hash the file data?!?\n");
+		log_print("couldn't hash the file data?!?\n");
 		goto end;
 	}
 
@@ -382,7 +382,7 @@ static int self_verify_buffer(
 		*hHash, sig_buf, sig_len, hPubKey, NULL, 0
 	));
 
-	log_printf(ret ? "invalid\n" : "valid\n");
+	log_print(ret ? "invalid\n" : "valid\n");
 end:
 	SAFE_FREE(sig_buf);
 	return ret;
@@ -422,7 +422,7 @@ static self_result_t self_verify(
 	if(!zip_buf || !zip_len || !json_is_string(sig_sig) || !context || !sig_alg) {
 		return SELF_NO_SIG;
 	}
-	log_printf("Verifying archive signature... ");
+	log_print("Verifying archive signature... ");
 	if(!hash_alg) {
 		log_func_printf("Unsupported hash algorithm ('%s')!\n", sig_alg);
 		return SELF_NO_SIG;
@@ -431,7 +431,7 @@ static self_result_t self_verify(
 		hCryptProv, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
 		&context->pCertInfo->SubjectPublicKeyInfo, &hPubKey
 	))) {
-		log_func_printf("Invalid public key!\n");
+		log_func_print("Invalid public key!\n");
 		return SELF_NO_PUBLIC_KEY;
 	}
 	return self_verify_buffer(
@@ -476,7 +476,7 @@ static self_result_t self_replace(zip_t *zip)
 		// We don't error-check CreateDirectory(), as that might return
 		// ERROR_ALREADY_EXISTS when directories are created recursively.
 		// If this fails, writing should fail too.
-		log_printf("Replacing engine...\n");
+		log_print("Replacing engine...\n");
 		CreateDirectoryU(backup_dir, NULL);
 		// TODO: Can these be changed to not pass a return value
 		// to the foreach macros? It ends up invoking the function
@@ -527,7 +527,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 		return SELF_NO_UPDATE;
 	}
 
-	auto latest_version = json_object_get_hex(branch_json, "version");
+	uint32_t latest_version = (uint32_t)json_object_get_hex(branch_json, "version");
 	if (!latest_version) {
 		return SELF_NO_TARGET_VERSION;
 	}
@@ -541,7 +541,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	const char* version_key;
 	const json_t* value;
 	const char* netpath = nullptr;
-	auto target_version = latest_version;
+	uint32_t target_version = latest_version;
 	json_object_foreach_fast(branch_json, version_key, value) {
 		errno = 0;
 		uint32_t milestone = strtoul(version_key, NULL, 16);
@@ -572,15 +572,15 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	smartdlg_state_t window;
 	defer(smartdlg_close(&window));
 
-	size_t cur_dir_len = GetCurrentDirectory(0, NULL) + 1;
+	uint32_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
 
 	VLA(char, cur_dir, cur_dir_len);
 	defer(VLA_FREE(cur_dir));
 
-	GetCurrentDirectory(cur_dir_len, cur_dir);
+	GetCurrentDirectoryU(cur_dir_len, cur_dir);
 
-	SetCurrentDirectory(thcrap_dir);
-	defer(SetCurrentDirectory(cur_dir));
+	SetCurrentDirectoryU(thcrap_dir);
+	defer(SetCurrentDirectoryU(cur_dir));
 
 	if(W32_ERR_WRAP(CryptAcquireContext(
 		&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
