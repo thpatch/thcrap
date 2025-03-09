@@ -538,8 +538,8 @@ void log_init(int console)
 	if (console) {
 		OpenConsole();
 	}
-	uint32_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
-	size_t full_fn_len = cur_dir_len + sizeof(LOG);
+	DWORD cur_dir_len = GetCurrentDirectoryU(0, nullptr);
+	size_t full_fn_len = (size_t)cur_dir_len + sizeof(LOG);
 	VLA(char, full_fn, full_fn_len);
 	GetCurrentDirectoryU(cur_dir_len, full_fn);
 	full_fn[cur_dir_len - 1] = '/';

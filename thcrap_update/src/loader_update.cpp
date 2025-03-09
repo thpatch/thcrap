@@ -152,9 +152,9 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
 		case HWND_BUTTON_DISABLE_UPDATES:
 			if (HIWORD(wParam) == BN_CLICKED) {
-				int len = GetCurrentDirectory(0, NULL);
-				VLA(char, current_directory, len + 1);
-				GetCurrentDirectory(len + 1, current_directory);
+				DWORD len = GetCurrentDirectoryU(0, NULL);
+				VLA(char, current_directory, len);
+				GetCurrentDirectoryU(len, current_directory);
 				if (log_mboxf(NULL, MB_YESNO, "Do you really want to completely disable updates?\n\n"
 					"If you want to enable them again, you will need to run\n"
 					"%s\\thcrap_enable_updates.bat\n"
@@ -768,10 +768,11 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 
 	// Update the thcrap engine
 	log_print("Looking for thcrap updates...\n");
-	uint32_t cur_dir_len = GetCurrentDirectoryU(0, nullptr);
+	DWORD cur_dir_len = GetCurrentDirectoryU(0, nullptr);
 	VLA(char, cur_dir, cur_dir_len);
 	GetCurrentDirectoryU(cur_dir_len, cur_dir);
 	runconfig_thcrap_dir_set(cur_dir);
+	VLA_FREE(cur_dir);
 	if (update_notify_thcrap() == SELF_OK && state.game_started == false) {
 		// Re-run an up-to-date loader
 		LPSTR commandLine = GetCommandLine();
@@ -787,9 +788,10 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		CloseHandle(pi.hThread);
 		goto end;
 	}
-	log_print("thcrap is up to date.\n");
-
-	log_print("Updating patches with global filter (don't download game-specific files)...\n");
+	log_print(
+		"thcrap is up to date.\n"
+		"Updating patches with global filter (don't download game-specific files)...\n"
+	);
 	loader_update_progress_init(&state, STATE_CORE_UPDATE);
 	stack_update(update_filter_global, NULL, loader_update_progress_callback, &state);
 	log_print("Stack update done.\n");
@@ -850,6 +852,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 						log_print("Stack update done.\n");
 					}
 				}
+				// Is this necessary? Just reading an int should be atomic anyway
 				EnterCriticalSection(&state.cs);
 				time_between_updates = state.time_between_updates;
 				LeaveCriticalSection(&state.cs);
@@ -879,13 +882,15 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 					log_print("update button clicked, running update.\n");
 			}
 			else if (wait_ret == WAIT_OBJECT_0 + 2) {
-				log_print("Update requested by wrapper patch\n");
+				log_print(
+					"Update requested by wrapper patch\n"
+					"Updating patches with game-specific filter...\n"
+				);
+				loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
 				const char* filter[] = {
 					game_id_other,
 					nullptr
 				};
-				log_print("Updating patches with game-specific filter...\n");
-				loader_update_progress_init(&state, STATE_PATCHES_UPDATE);
 				stack_update(update_filter_games, filter, loader_update_progress_callback, &state);
 				log_print("Stack update done.\n");
 				SetEvent(state.event_update_finished);

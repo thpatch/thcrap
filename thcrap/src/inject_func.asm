@@ -9,7 +9,7 @@
 	// we need to change the current directory to the one given as parameter
 	wchar_t* dll_dir_ptr = dll_dir;
 	if(dll_dir_ptr) {
-		size_t cur_dir_len = GetCurrentDirectoryW(0, NULL) + 1;
+		size_t cur_dir_len = GetCurrentDirectoryW(0, NULL);
 		VLA(wchar_t, cur_dir, cur_dir_len);
 		GetCurrentDirectoryW(cur_dir, cur_dir_len);
 		SetCurrentDirectoryW(dll_dir);
@@ -68,7 +68,7 @@ _inject_dlldirptr:
 _inject_GetCurrentDirectoryWptr:
 	mov		esi, 0xDEADBEEF
 	call	esi /* Call GetCurrentDirectoryW */
-	lea		ebx, [eax + eax + 5] /* Calculate byte size of directory buffer. */
+	lea		ebx, [eax + eax + 3] /* Calculate byte size of directory buffer. */
 	and		ebx, 0xFFFFFFFC /* Also do some DWORD boundary alignment. */
 	sub		esp, ebx /* Allocate a suitable buffer on stack. */
 	push	esp

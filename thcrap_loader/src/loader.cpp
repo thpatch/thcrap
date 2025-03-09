@@ -123,8 +123,8 @@ char *find_exe_from_cfg(const char *rel_start, json_t *run_cfg, json_t *games_js
 
 int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 {
-	uint32_t rel_start_len = GetCurrentDirectoryU(0, NULL) + 1;
-	VLA(char, rel_start, rel_start_len);
+	DWORD rel_start_len = GetCurrentDirectoryU(0, NULL);
+	VLA(char, rel_start, (size_t)rel_start_len + 1);
 	GetCurrentDirectoryU(rel_start_len, rel_start);
 	PathAddBackslashU(rel_start);
 
@@ -165,7 +165,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		log_printf("%s\n", it.c_str());
 	}
 	if (!update_finalize_ret) {
-		return 1;
+		ret = 1;
+		goto ret;
 	}
 
 	if(argc < 2) {
@@ -189,8 +190,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	// Load games.js
 	{
-		uint32_t games_js_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
-		size_t games_js_fn_len = games_js_dir_len + strlen("config\\games.js") + 1;
+		DWORD games_js_dir_len = GetCurrentDirectoryU(0, NULL);
+		size_t games_js_fn_len = (size_t)games_js_dir_len + 1 + strlen("config\\games.js") + 1;
 		VLA(char, games_js_fn, games_js_fn_len);
 
 		GetCurrentDirectoryU(games_js_dir_len, games_js_fn);
@@ -276,5 +277,7 @@ end:
 	json_decref(run_cfg);
 	runconfig_free();
 	globalconfig_release();
+ret:
+	VLA_FREE(rel_start);
 	return ret;
 }

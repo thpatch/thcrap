@@ -287,7 +287,7 @@ int thcrap_init(const char *run_cfg)
 	QueryPerformanceCounter(&begin_time); // Always succeeds since XP
 
 	DWORD exe_fn_len = GetModuleFileNameU(NULL, NULL, 0) + 1;
-	DWORD game_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
+	DWORD game_dir_len = GetCurrentDirectoryU(0, NULL);
 	VLA(char, exe_fn, exe_fn_len);
 	VLA(char, game_dir, game_dir_len);
 

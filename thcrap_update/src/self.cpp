@@ -572,7 +572,7 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	smartdlg_state_t window;
 	defer(smartdlg_close(&window));
 
-	uint32_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
+	DWORD cur_dir_len = GetCurrentDirectoryU(0, NULL);
 
 	VLA(char, cur_dir, cur_dir_len);
 	defer(VLA_FREE(cur_dir));

@@ -208,8 +208,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	patch_sel_stack_t sel_stack;
 	json_t *new_cfg = json_pack("{s[]}", "patches");
 
-	uint32_t cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
-	VLA(char, cur_dir, cur_dir_len);
+	DWORD cur_dir_len = GetCurrentDirectoryU(0, NULL);
+	VLA(char, cur_dir, (size_t)cur_dir_len + 1);
 	json_t *games = NULL;
 	games_js_entry *gamesArray = nullptr;
 
