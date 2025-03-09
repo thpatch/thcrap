@@ -14,7 +14,7 @@
 
 static json_t *cur_patch = nullptr;
 
-extern "C" int BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_detour_plugin(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

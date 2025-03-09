@@ -435,7 +435,7 @@ HANDLE WINAPI strings_CreateFileA(
 	);
 }
 
-extern "C" int BP_strings_lookup(x86_reg_t * regs, json_t * bp_info)
+extern "C" size_t BP_strings_lookup(x86_reg_t * regs, json_t * bp_info)
 {
 	const char **string = (const char**)json_object_get_pointer(bp_info, regs, "str");
 #if 0

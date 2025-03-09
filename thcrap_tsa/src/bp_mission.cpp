@@ -27,7 +27,7 @@
 static ssize_t mission_furi_a = -2;
 static size_t laststage, lastscene, lastchara;
 
-int BP_mission(x86_reg_t *regs, json_t *bp_info)
+size_t BP_mission(x86_reg_t *regs, json_t *bp_info)
 {
 	// This breakpoint is supposed to replace mission string decryption proc in th95 and th125.
 	// For th095, the function is stdcall, and takes (char* text, int line, int stage, int scene) as arguments
@@ -77,12 +77,12 @@ int BP_mission(x86_reg_t *regs, json_t *bp_info)
 	return 0;
 }
 
-int BP_mission_check_furi_a(x86_reg_t *regs, json_t *bp_info)
+size_t BP_mission_check_furi_a(x86_reg_t *regs, json_t *bp_info)
 {
 	// This breakpoint is supposed to replace code which compares furi_a to zero (i.e. cmp [blah], 0)
 	// The comparision is done for jl, so only CF and SF need to be changed
 
-	// We also use this oppertunity to prepare furi_a for BP_mission_printf_hook
+	// We also use this opportunity to prepare furi_a for BP_mission_printf_hook
 
 	// Parameters
 	// ----------
@@ -133,7 +133,7 @@ int BP_mission_check_furi_a(x86_reg_t *regs, json_t *bp_info)
 	return 0;
 }
 
-int BP_mission_printf_hook(x86_reg_t *regs, json_t *bp_info)
+size_t BP_mission_printf_hook(x86_reg_t *regs, json_t *bp_info)
 {
 	// This breakpoint is supposed to hook the beggining of a printf-like function in th125 (45F8B0).
 	// esi is an object containing some of the rendering parameters (e.g. whether to draw outline)

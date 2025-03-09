@@ -71,7 +71,7 @@ THCRAP_INTERNAL_API int thcrap_init_binary(size_t stage_num, HMODULE module);
   * ------------------------
   *	None
   */
-THCRAP_BREAKPOINT_API int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API size_t BP_init_next_stage(x86_reg_t *regs, json_t *bp_info);
 
 // If the target process terminates using ExitProcess(), any active threads
 // will have most likely already been terminated before DLL_PROCESS_DETACH is

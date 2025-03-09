@@ -41,7 +41,7 @@ static std::string spell_id_params_to_string(std::vector<patch_val_t>& spell_id_
 	return str_spell_id;
 }
 
-int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
+size_t BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -132,7 +132,7 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
+size_t BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -162,7 +162,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
+size_t BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -201,7 +201,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int BP_spell_owner(x86_reg_t *regs, json_t *bp_info)
+size_t BP_spell_owner(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -232,7 +232,7 @@ int BP_spell_owner(x86_reg_t *regs, json_t *bp_info)
 
 char th185_spell_id[8] = {};
 
-int BP_th185_spell_id(x86_reg_t* regs, json_t* bp_info) {
+size_t BP_th185_spell_id(x86_reg_t* regs, json_t* bp_info) {
 	*th185_spell_id = 0;
 	const char* sub_name = (char*)json_object_get_immediate(bp_info, regs, "sub_name");
 	if (strcmp(sub_name, "Boss01tBossCard1") == 0) {
@@ -256,7 +256,7 @@ int BP_th185_spell_id(x86_reg_t* regs, json_t* bp_info) {
 	return breakpoint_cave_exec_flag(bp_info);
 }
 
-int BP_th185_spell_name(x86_reg_t* regs, json_t* bp_info) {
+size_t BP_th185_spell_name(x86_reg_t* regs, json_t* bp_info) {
 	if (*th185_spell_id) {
 		json_t* spell_name = json_object_get(jsondata_game_get("spells.js"), th185_spell_id);
 		if (json_is_string(spell_name))

@@ -65,7 +65,7 @@ void fr_tls_free(file_rep_t *fr);
   * ------------------------
   *	None
   */
-THCRAP_BREAKPOINT_API int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API size_t BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Collects all necessary file replacement parameters, then writes a
@@ -122,12 +122,12 @@ THCRAP_BREAKPOINT_API int BP_file_buffer(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_file_buffer
   */
-THCRAP_BREAKPOINT_API int BP_file_load(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API size_t BP_file_load(x86_reg_t *regs, json_t *bp_info);
 
 // These have been merged into BP_file_load() and are only kept for backwards
 // compatibility.
-TH_IMPORT int BP_file_name(x86_reg_t *regs, json_t *bp_info);
-TH_IMPORT int BP_file_size(x86_reg_t *regs, json_t *bp_info);
+TH_IMPORT size_t BP_file_name(x86_reg_t *regs, json_t *bp_info);
+TH_IMPORT size_t BP_file_size(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Placed at a position where a complete file is loaded into a single block
@@ -143,7 +143,7 @@ TH_IMPORT int BP_file_size(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_file_buffer
   */
-THCRAP_BREAKPOINT_API int BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
+THCRAP_BREAKPOINT_API size_t BP_file_loaded(x86_reg_t *regs, json_t *bp_info);
 
 // Cool function name.
 THCRAP_API int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size, bool overwrite_existing);

@@ -43,7 +43,7 @@ th06_pngsplit_t pngsplit_state;
 void *pngsplit_rep_buffer;
 void *pngsplit_png = NULL;
 
-int BP_th06_file_name(x86_reg_t *regs, json_t *bp_info)
+size_t BP_th06_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -62,7 +62,7 @@ int BP_th06_file_name(x86_reg_t *regs, json_t *bp_info)
 	return BP_file_name(regs, bp_info);
 }
 
-int BP_th06_file_size(x86_reg_t *regs, json_t *bp_info)
+size_t BP_th06_file_size(x86_reg_t *regs, json_t *bp_info)
 {
 	if (pngsplit_state != TH06_PNGSPLIT_NONE) {
 		// Ensure we'll have enough space for the patched PNG file
@@ -80,7 +80,7 @@ int BP_th06_file_size(x86_reg_t *regs, json_t *bp_info)
 	return BP_file_size(regs, bp_info);
 }
 
-int BP_th06_file_load(x86_reg_t *regs, json_t *bp_info)
+size_t BP_th06_file_load(x86_reg_t *regs, json_t *bp_info)
 {
 	if (pngsplit_state == TH06_PNGSPLIT_ALPHA) {
 		file_rep_t *fr = fr_tls_get();
@@ -108,7 +108,7 @@ int BP_th06_file_load(x86_reg_t *regs, json_t *bp_info)
 	return BP_file_load(regs, bp_info);
 }
 
-int BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
+size_t BP_th06_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
 	if (pngsplit_state == TH06_PNGSPLIT_RGB || pngsplit_state == TH06_PNGSPLIT_ALPHA) {
 		file_rep_t *fr = fr_tls_get();

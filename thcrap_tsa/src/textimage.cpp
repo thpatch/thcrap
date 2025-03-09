@@ -539,7 +539,7 @@ sprite_runtime_t* sprite_runtime_get(const char *slotstr)
 
 /// Breakpoints
 /// ===========
-int BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
+size_t BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 {
 #ifdef _DEBUG
 	// Sanity checks...
@@ -580,7 +580,7 @@ int BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 	return BP_textimage_load(regs, bp_info);
 }
 
-int BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
+size_t BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
 {
 	if(!Initialized) {
 		return 1;
@@ -682,7 +682,7 @@ int BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int BP_textimage_set(x86_reg_t *regs, json_t *bp_info)
+size_t BP_textimage_set(x86_reg_t *regs, json_t *bp_info)
 {
 	if(!Initialized) {
 		return 1;
@@ -710,7 +710,7 @@ int BP_textimage_set(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info)
+size_t BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info)
 {
 	if(!Initialized) {
 		return 1;

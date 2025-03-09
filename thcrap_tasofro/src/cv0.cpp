@@ -368,7 +368,7 @@ int patch_cv0(void *file_inout, size_t size_out, size_t size_in, const char*, js
   * ------------------------
   *	None
   */
-extern "C" int BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th105_cv0_escape_comma(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

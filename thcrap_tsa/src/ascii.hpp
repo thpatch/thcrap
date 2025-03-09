@@ -61,4 +61,4 @@ extern "C" int TH_STDCALL ascii_vpatchf(
  * ------------------------
  *	None
  */
-extern "C" TH_EXPORT int BP_ascii_params(x86_reg_t *regs, json_t *bp_info);
+extern "C" TH_EXPORT size_t BP_ascii_params(x86_reg_t *regs, json_t *bp_info);

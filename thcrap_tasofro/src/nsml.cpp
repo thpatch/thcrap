@@ -188,7 +188,7 @@ struct CPackageFileReader
 	BYTE xor_key;
 };
 
-extern "C" int BP_nsml_CPackageFileReader_openFile(x86_reg_t *regs, json_t * bp_info)
+extern "C" size_t BP_nsml_CPackageFileReader_openFile(x86_reg_t *regs, json_t * bp_info)
 {
 	// Parameters
 	// ----------
@@ -219,7 +219,7 @@ extern "C" int BP_nsml_CPackageFileReader_openFile(x86_reg_t *regs, json_t * bp_
 	return 1;
 }
 
-extern "C" int BP_nsml_CPackageFileReader_readFile(x86_reg_t *regs, json_t*)
+extern "C" size_t BP_nsml_CPackageFileReader_readFile(x86_reg_t *regs, json_t*)
 {
 	TasofroFile *fr = TasofroFile::tls_get();
 	if (!fr) {
@@ -229,7 +229,7 @@ extern "C" int BP_nsml_CPackageFileReader_readFile(x86_reg_t *regs, json_t*)
 	return fr->replace_ReadFile(regs, game_xor, game_xor);
 }
 
-extern "C" int BP_nsml_CFileReader_closeFile(x86_reg_t *regs, json_t*)
+extern "C" size_t BP_nsml_CFileReader_closeFile(x86_reg_t *regs, json_t*)
 {
 	TasofroFile *fr = TasofroFile::tls_get();
 
@@ -252,7 +252,7 @@ struct MegamariFile
 	DWORD unk4; // Always 0x465
 };
 
-extern "C" int BP_megamari_openFile(x86_reg_t * regs, json_t * bp_info)
+extern "C" size_t BP_megamari_openFile(x86_reg_t * regs, json_t * bp_info)
 {
 	// Parameters
 	// ----------
@@ -292,7 +292,7 @@ extern "C" int BP_megamari_openFile(x86_reg_t * regs, json_t * bp_info)
 
 // In th105, relying on the last open file doesn't work. So we'll use the file object instead.
 std::map<void*, TasofroFile> th105_open_files_list;
-extern "C" int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -324,7 +324,7 @@ extern "C" int BP_th105_open_file(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-extern "C" int BP_th105_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th105_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -348,7 +348,7 @@ extern "C" int BP_th105_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 	return ret;
 }
 
-extern "C" int BP_th105_close_file(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th105_close_file(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -373,7 +373,7 @@ extern "C" int BP_th105_close_file(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-extern "C" int BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th105_font_spacing(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

@@ -11,9 +11,9 @@
 #include <bp_file.h>
 #include "thcrap_tsa.h"
 
-int BP_th06_music_title_in_game(x86_reg_t *regs, json_t *bp_info)
+static size_t track = 0;
+size_t BP_th06_music_title_in_game(x86_reg_t *regs, json_t *bp_info)
 {
-	static size_t track = 0;
 
 	// Parameters
 	// ----------

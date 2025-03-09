@@ -80,7 +80,7 @@ int th135_init()
 }
 
 
-extern "C" int BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 {
 	if unexpected(runconfig_dat_dump_get()) {
 		if (const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name")) {
@@ -207,7 +207,7 @@ bool th135_init_fr(Th135File *fr, const char *path) {
 }
 
 template<typename T>
-int th135_openFileCommon(const char *filename, T *file)
+size_t th135_openFileCommon(const char *filename, T *file)
 {
 #if AoCF_PROFILING
 	if unexpected(!file_count++) {
@@ -237,7 +237,7 @@ int th135_openFileCommon(const char *filename, T *file)
 	return 1;
 }
 
-extern "C" int BP_th135_openFile(x86_reg_t * regs, json_t * bp_info)
+extern "C" size_t BP_th135_openFile(x86_reg_t * regs, json_t * bp_info)
 {
 	// Parameters
 	// ----------
@@ -251,12 +251,12 @@ extern "C" int BP_th135_openFile(x86_reg_t * regs, json_t * bp_info)
 	if (!filename || !file)
 		return 1;
 
-	int ret = th135_openFileCommon(filename, file);
+	size_t ret = th135_openFileCommon(filename, file);
 	filename = 0;
 	return ret;
 }
 
-extern "C" int BP_th145_openFile(x86_reg_t * regs, json_t * bp_info)
+extern "C" size_t BP_th145_openFile(x86_reg_t * regs, json_t * bp_info)
 {
 	// Parameters
 	// ----------
@@ -270,7 +270,7 @@ extern "C" int BP_th145_openFile(x86_reg_t * regs, json_t * bp_info)
 	return th135_openFileCommon(filename, file);
 }
 
-extern "C" int BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
+extern "C" size_t BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
 {
 #if AoCF_PROFILING
 	defer(

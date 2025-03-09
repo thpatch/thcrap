@@ -32,7 +32,7 @@ public: \
 
 #undef PARAM
 
-	int update(x86_reg_t *regs, json_t *bp_info)
+	size_t update(x86_reg_t *regs, json_t *bp_info)
 	{
 		auto l = ascii_log.prefixed("`ascii_params`: ");
 
@@ -331,7 +331,7 @@ extern "C" int TH_STDCALL ascii_vpatchf(
 	return putfunc(params.ClassPtr(), pos, single_str);
 }
 
-extern "C" TH_EXPORT int BP_ascii_params(x86_reg_t *regs, json_t *bp_info)
+extern "C" TH_EXPORT size_t BP_ascii_params(x86_reg_t *regs, json_t *bp_info)
 {
 	return params.update(regs, bp_info);
 }

@@ -62,7 +62,7 @@ const char** BP_music_params(x86_reg_t *regs, json_t *bp_info)
 	return (const char**)json_object_get_pointer(bp_info, regs, "str");
 }
 
-int BP_music_title(x86_reg_t *regs, json_t *bp_info)
+size_t BP_music_title(x86_reg_t *regs, json_t *bp_info)
 {
 	const char **str = BP_music_params(regs, bp_info);
 	const char *format_id = json_object_get_string(bp_info, "format_id");
@@ -70,7 +70,7 @@ int BP_music_title(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
+size_t BP_music_cmt(x86_reg_t *regs, json_t *bp_info)
 {
 	static size_t cache_cmt_line = 0;
 

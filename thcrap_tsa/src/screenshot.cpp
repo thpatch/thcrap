@@ -133,7 +133,7 @@ extern "C" TH_EXPORT void screenshot_mod_detour(void) {
 }
 
 #include <minid3d.h>
-extern "C" TH_EXPORT int BP_th06_screenshot(x86_reg_t* regs, json_t* bp_info) {
+extern "C" TH_EXPORT size_t BP_th06_screenshot(x86_reg_t* regs, json_t* bp_info) {
 	auto snapshot_open = []() -> HANDLE {
 		wchar_t dir[] = L"snapshot/th000.png";
 		HANDLE hFile = INVALID_HANDLE_VALUE;

@@ -91,8 +91,8 @@ size_t ruby_offset_half(
  * ------------------------
  *	None
 */
-TH_EXPORT int BP_widest_string(x86_reg_t *regs, json_t *bp_info);
-TH_EXPORT int BP_widest_string_f(x86_reg_t *regs, json_t *bp_info);
+TH_EXPORT size_t BP_widest_string(x86_reg_t *regs, json_t *bp_info);
+TH_EXPORT size_t BP_widest_string_f(x86_reg_t *regs, json_t *bp_info);
 
 int layout_mod_init(HMODULE hMod);
 void layout_mod_detour(void);

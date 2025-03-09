@@ -1,7 +1,7 @@
 #include <thcrap.h>
 #include <jansson_ex.h>
 
-extern "C" int BP_dict_translate(x86_reg_t* regs, json_t* bp_info) {
+extern "C" size_t BP_dict_translate(x86_reg_t* regs, json_t* bp_info) {
 	const char** str = (const char**)json_object_get_pointer(bp_info, regs, "str");
 	if (!str || !*str) {
 		return 1;

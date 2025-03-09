@@ -40,7 +40,7 @@ int gentext_cache_key_set(gentext_cache_t *gc, const char *key, size_t key_len)
 	return 0;
 }
 
-int BP_gentext(x86_reg_t *regs, json_t *bp_info)
+size_t BP_gentext(x86_reg_t *regs, json_t *bp_info)
 {
 	gentext_cache_t *gc = gc_tls_get();
 

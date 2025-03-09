@@ -58,7 +58,7 @@ THREAD_LOCAL(file_rep_t, fr_tls, NULL, file_rep_clear);
 
 /// Replace a file loaded entirely in memory
 /// ----------------------------------------
-int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
+size_t BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
 	if unexpected(fr->disable) {
@@ -75,7 +75,7 @@ int BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 	return 1;
 }
 
-int BP_file_load(x86_reg_t *regs, json_t *bp_info)
+size_t BP_file_load(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
 	if unexpected(fr->disable) {
@@ -152,7 +152,7 @@ int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t si
 	return 0;
 }
 
-int BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
+size_t BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
 	if unexpected(fr->disable) {

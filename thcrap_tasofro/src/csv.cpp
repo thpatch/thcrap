@@ -239,7 +239,7 @@ json_t* th105_spellcomment_generator(const jsonvfs_map& in_data, std::string_vie
   * ------------------------
   *	None
   */
-extern "C" int BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th105_fix_csv_parser(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

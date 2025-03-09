@@ -105,7 +105,7 @@ bp_entry0_funcptr:
 	movRAXQ	0x0000000000000000
 	call	rax
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	jz		skip_ret_set0
 bp_entry0_caveptr:
 	movRCXQ 0x0000000000000000
@@ -131,7 +131,7 @@ bp_entry0s_funcptr:
 	movRAXQ	0x0000000000000000
 	call	rax
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	pop		rax
 	popa_except_rax
 	jnz		ret_set0s
@@ -166,7 +166,7 @@ bp_entry1_funcptr:
 	movRAXQ	0x0000000000000000
 	call	rax
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	jz		skip_ret_set1
 bp_entry1_caveptr:
 	movRCXQ 0x0000000000000000
@@ -192,7 +192,7 @@ bp_entry1s_funcptr:
 	movRAXQ	0x0000000000000000
 	call	rax
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	pop		rax
 	popa_except_rax
 	push	rax
@@ -228,7 +228,7 @@ bp_entry2_funcptr:
 	call	rax
 	fxrstor64	[rsp+0x20]
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	jz		skip_ret_set2
 bp_entry2_caveptr:
 	movRCXQ 0x0000000000000000
@@ -256,7 +256,7 @@ bp_entry2s_funcptr:
 	call	rax
 	fxrstor64	[rsp+0x20]
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	pop		rax
 	popa_except_rax
 	jnz		ret_set2s
@@ -294,7 +294,7 @@ bp_entry3_funcptr:
 	call	rax
 	fxrstor64	[rsp+0x20]
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	jz		skip_ret_set3
 bp_entry3_caveptr:
 	movRCXQ 0x0000000000000000
@@ -322,7 +322,7 @@ bp_entry3s_funcptr:
 	call	rax
 	fxrstor64	[rsp+0x20]
 	mov		rsp, rbp
-	test	eax, eax
+	test	rax, rax
 	pop		rax
 	popa_except_rax
 	push	rax

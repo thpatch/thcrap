@@ -113,7 +113,7 @@ int game_is_trial(void);
  * ------------------------
  *	None
  */
-TH_EXPORT int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info);
+TH_EXPORT size_t BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info);
 /// -----------
 
 /// ------
@@ -144,7 +144,7 @@ TH_EXPORT int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info)
   * ------------------------
   *	None
   */
-int BP_spell_id(x86_reg_t *regs, json_t *bp_info);
+size_t BP_spell_id(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Writes a translated spell card title.
@@ -164,7 +164,7 @@ int BP_spell_id(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_spell_id
   */
-int BP_spell_name(x86_reg_t *regs, json_t *bp_info);
+size_t BP_spell_name(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Writes a single translated spell comment line.
@@ -193,7 +193,7 @@ int BP_spell_name(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_spell_id
   */
-int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
+size_t BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
 
 /**
 * Writes a translated spell card owner name.
@@ -213,7 +213,7 @@ int BP_spell_comment_line(x86_reg_t *regs, json_t *bp_info);
 * ------------------------
 *	BP_spell_id
 */
-int BP_spell_owner(x86_reg_t *regs, json_t *bp_info);
+size_t BP_spell_owner(x86_reg_t *regs, json_t *bp_info);
 
 void spells_mod_init(void);
 void spells_mod_exit(void);
@@ -256,7 +256,7 @@ const char** BP_music_params(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_music_params
   */
-int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
+size_t BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
 
 /**
   * Music comment patching.
@@ -275,7 +275,7 @@ int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
   * ------------------------
   *	BP_music_params
   */
-int BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
+size_t BP_music_cmt(x86_reg_t *regs, json_t *bp_info);
 
 void music_mod_init(void);
 void music_mod_exit(void);

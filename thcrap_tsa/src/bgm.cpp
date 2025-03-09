@@ -161,7 +161,7 @@ track_t* thbgm_modtrack_for_current_bgmid()
 // there previously weren't any.
 size_t tranceseek_offset;
 
-int BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info)
+size_t BP_bgmmod_tranceseek_byte_offset(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

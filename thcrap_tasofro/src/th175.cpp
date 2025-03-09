@@ -99,7 +99,7 @@ static std::map<AVPackageReader*, Th175File> open_files;
 std::mutex open_files_mutex;
 thread_local AVPackageReader *current_reader = nullptr;
 
-extern "C" int BP_th175_open_file(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th175_open_file(x86_reg_t *regs, json_t *bp_info)
 {
 	const char *file_name = (const char*)json_object_get_immediate(bp_info, regs, "file_name");
 	AVPackageReader *reader = (AVPackageReader*)json_object_get_immediate(bp_info, regs, "file_reader");
@@ -170,13 +170,13 @@ void th175_crypt_file(uint8_t* buffer, size_t size, size_t offset_in_file)
 	assert(bytes_processed == size);
 }
 
-extern "C" int BP_th175_prepareReadFile(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th175_prepareReadFile(x86_reg_t *regs, json_t *bp_info)
 {
 	current_reader = (AVPackageReader*)json_object_get_immediate(bp_info, regs, "package_reader");
 	return 1;
 }
 
-extern "C" int BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 {
 	if (current_reader == nullptr) {
 		return 1;
@@ -211,7 +211,7 @@ extern "C" int BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 	);
 }
 
-extern "C" int BP_th175_close_file(x86_reg_t *regs, json_t *bp_info)
+extern "C" size_t BP_th175_close_file(x86_reg_t *regs, json_t *bp_info)
 {
 	AVPackageReader *reader = (AVPackageReader*)json_object_get_immediate(bp_info, regs, "file_reader");
 

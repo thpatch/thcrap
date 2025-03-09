@@ -372,7 +372,7 @@ int thcrap_init(const char *run_cfg)
 	return ret;
 }
 
-int BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
+size_t BP_init_next_stage(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------

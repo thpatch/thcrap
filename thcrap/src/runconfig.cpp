@@ -94,6 +94,11 @@ HackpointMemoryName locate_address_in_stage_pages(void* FindAddress) {
 		if (PageIsValidAndContainsAddress(stage.breakpoint_pages[1], address)) {
 			return { "Breakpoint Callcave", (size_t)(address - stage.breakpoint_pages[1].address), i };
 		}
+		/*
+		if (PageIsValidAndContainsAddress(stage.constpool_page, address)) {
+			return { "Constpool", (size_t)(address - stage.constpool_page.address), i };
+		}
+		*/
 	}
 	return { NULL, 0, 0 };
 #undef PageIsValidAndContainsAddress
@@ -150,7 +155,7 @@ static void runconfig_stage_load(json_t *stage_json)
 	}
 }
 
-extern "C" int BP_runtime_apply_stage_by_name(x86_reg_t *regs, json_t *bp_info) {
+extern "C" size_t BP_runtime_apply_stage_by_name(x86_reg_t *regs, json_t *bp_info) {
 
 	// Use stage_name to lookup which hackpoints to apply
 	if (const char* stage_name = (char*)json_object_get_immediate(bp_info, regs, "stage_name")) {
@@ -165,7 +170,7 @@ extern "C" int BP_runtime_apply_stage_by_name(x86_reg_t *regs, json_t *bp_info) 
 	return 1;
 }
 
-extern "C" int BP_runtime_apply_stage_by_address(x86_reg_t *regs, json_t *bp_info) {
+extern "C" size_t BP_runtime_apply_stage_by_address(x86_reg_t *regs, json_t *bp_info) {
 	if (void* address_from_module = (void*)json_object_get_immediate(bp_info, regs, "address_expr")) {
 		HMODULE module_base_addr;
 		if (GetModuleHandleExA(
@@ -192,7 +197,7 @@ extern "C" int BP_runtime_apply_stage_by_address(x86_reg_t *regs, json_t *bp_inf
 // These variants don't seem useful immediately,
 // but they're here just in case.
 /*
-int BP_runtime_apply_stage_by_number(x86_reg_t *regs, json_t *bp_info) {
+size_t BP_runtime_apply_stage_by_number(x86_reg_t *regs, json_t *bp_info) {
 	if (size_t lookup_value = json_object_get_immediate(bp_info, regs, "lookup_value")) {
 		json_t* stage_list = json_object_get(bp_info, "stages_list");
 		if (json_t* stage_data = json_object_numkey_get(stage_list, (json_int_t)lookup_value)) {
@@ -205,7 +210,7 @@ int BP_runtime_apply_stage_by_number(x86_reg_t *regs, json_t *bp_info) {
 	return 1;
 }
 
-int BP_runtime_apply_stage_by_expr(x86_reg_t *regs, json_t *bp_info) {
+size_t BP_runtime_apply_stage_by_expr(x86_reg_t *regs, json_t *bp_info) {
 	if (size_t lookup_value = json_object_get_immediate(bp_info, regs, "lookup_expr")) {
 		json_t* stage_list = json_object_get(bp_info, "stages_list");
 		json_t* stage_data;

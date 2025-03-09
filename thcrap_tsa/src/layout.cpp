@@ -171,7 +171,7 @@ char *strchr_backwards(char *str, char c)
   * even if a parameter starts with an ASCII digit, while its use at the end
   * allows ASCII commas inside the parameters.
   */
-int BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
+size_t BP_ruby_offset(x86_reg_t *regs, json_t *bp_info)
 {
 	// Parameters
 	// ----------
@@ -753,7 +753,7 @@ int widest_string(x86_reg_t *regs, json_t *bp_info)
 }
 
 #define WIDEST_STRING(name, type) \
-	int BP_##name##(x86_reg_t *regs, json_t *bp_info) \
+	size_t BP_##name##(x86_reg_t *regs, json_t *bp_info) \
 	{ \
 		type *width = (type *)json_object_get_pointer(bp_info, regs, "width"); \
 		assert(width); \
