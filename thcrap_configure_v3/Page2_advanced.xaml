@@ -92,14 +92,21 @@
                         </TextBlock>
                     </HierarchicalDataTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+RepoPatch}">
-                        <TextBlock>
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} ({1})">
-                                    <Binding Path="SourcePatch.Title" />
-                                    <Binding Path="SourcePatch.Id" />
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal">
+                            <Button
+                                Margin="0,0,5,0"
+                                Click="AvailablePatchesMoveRight" Tag="{Binding}">
+                                    <Image Source="/img/arrow_right.png" Margin="4" Height="10"/>
+                            </Button>
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0} ({1})">
+                                        <Binding Path="SourcePatch.Title" />
+                                        <Binding Path="SourcePatch.Id" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
             </TreeView>
@@ -126,15 +133,26 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock>
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} ({1}/{2})">
-                                    <Binding Path="SourcePatch.Title" />
-                                    <Binding Path="SourcePatch.Repo.Id" />
-                                    <Binding Path="SourcePatch.Id" />
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Click="SelectedPatchesMoveLeft" Tag="{Binding}">
+                                <Image Source="/img/arrow_left.png" Margin="4" Height="10" />
+                            </Button>
+                            <Button Click="SelectedPatch_MoveUp" Tag="{Binding}" Margin="5,0">
+                                <Image Source="/img/arrow_up.png" Margin="4" Height="10" />
+                            </Button>
+                            <Button Click="SelectedPatch_MoveDown" Tag="{Binding}" Margin="0,0, 5, 0">
+                                <Image Source="/img/arrow_down.png" Margin="4" Height="10" />
+                            </Button>
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0} ({1}/{2})">
+                                        <Binding Path="SourcePatch.Title" />
+                                        <Binding Path="SourcePatch.Repo.Id" />
+                                        <Binding Path="SourcePatch.Id" />
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
