@@ -7,6 +7,26 @@
       mc:Ignorable="d"
       d:DesignHeight="450" d:DesignWidth="800">
 
+    <UserControl.Resources>
+        <!-- Define the reusable HoverVisibleButtonStyle -->
+        <Style x:Key="HoverVisibleButtonStyle" TargetType="Button">
+            <Setter Property="Visibility" Value="Hidden" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="2 0" />
+            <Style.Triggers>
+                <!-- Trigger to show Button when the parent StackPanel is hovered -->
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <!-- Trigger to show the Button when the Button itself is hovered -->
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -92,13 +112,18 @@
                         </TextBlock>
                     </HierarchicalDataTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+RepoPatch}">
-                        <StackPanel Orientation="Horizontal">
-                            <Button
-                                Margin="0,0,5,0"
-                                Click="AvailablePatchesMoveRight" Tag="{Binding}">
-                                    <Image Source="/img/arrow_right.png" Margin="4" Height="10"/>
-                            </Button>
-                            <TextBlock>
+                        <Grid Background="Transparent">
+                            <!--Setting the background to transparent, makes the whole area of the grid hit-test,
+                             not just the visible elements -->
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Grid.Column="0"
+                                Grid.ColumnSpan="2">
                                 <TextBlock.Text>
                                     <MultiBinding StringFormat="{}{0} ({1})">
                                         <Binding Path="SourcePatch.Title" />
@@ -106,7 +131,16 @@
                                     </MultiBinding>
                                 </TextBlock.Text>
                             </TextBlock>
-                        </StackPanel>
+                            <!-- In a Grid later defined elements are on the top -->
+                            <Button
+                                Grid.Column="0"
+                                Margin="0"
+                                Click="AvailablePatchesMoveRight"
+                                Tag="{Binding}"
+                                Style="{StaticResource HoverVisibleButtonStyle}">
+                                    <Image Source="/img/arrow_right.png" Margin="4" Height="10"/>
+                            </Button>
+                        </Grid>
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
             </TreeView>
@@ -133,17 +167,18 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Click="SelectedPatchesMoveLeft" Tag="{Binding}">
-                                <Image Source="/img/arrow_left.png" Margin="4" Height="10" />
-                            </Button>
-                            <Button Click="SelectedPatch_MoveUp" Tag="{Binding}" Margin="5,0">
-                                <Image Source="/img/arrow_up.png" Margin="4" Height="10" />
-                            </Button>
-                            <Button Click="SelectedPatch_MoveDown" Tag="{Binding}" Margin="0,0, 5, 0">
-                                <Image Source="/img/arrow_down.png" Margin="4" Height="10" />
-                            </Button>
-                            <TextBlock>
+                        <Grid Background="Transparent">
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Grid.Column="0"
+                                Grid.ColumnSpan="4">
                                 <TextBlock.Text>
                                     <MultiBinding StringFormat="{}{0} ({1}/{2})">
                                         <Binding Path="SourcePatch.Title" />
@@ -152,7 +187,30 @@
                                     </MultiBinding>
                                 </TextBlock.Text>
                             </TextBlock>
-                        </StackPanel>
+
+
+                            <Button Click="SelectedPatchesMoveLeft"
+                                    Grid.Column="0"
+                                    Tag="{Binding}"
+                                    Margin="0"
+                                    Style="{StaticResource HoverVisibleButtonStyle}">
+                                <Image Source="/img/arrow_left.png" Margin="4" Height="10" />
+                            </Button>
+                            <Button Click="SelectedPatch_MoveUp"
+                                    Grid.Column="1"
+                                    Tag="{Binding}"
+                                    Margin="5,0"
+                                    Style="{StaticResource HoverVisibleButtonStyle}">
+                                <Image Source="/img/arrow_up.png" Margin="4" Height="10" />
+                            </Button>
+                            <Button Click="SelectedPatch_MoveDown"
+                                    Grid.Column="2"
+                                    Tag="{Binding}"
+                                    Margin="0,0, 5, 0"
+                                    Style="{StaticResource HoverVisibleButtonStyle}">
+                                <Image Source="/img/arrow_down.png" Margin="4" Height="10" />
+                            </Button>
+                        </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
