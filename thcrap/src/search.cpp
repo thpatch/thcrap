@@ -43,7 +43,7 @@ static size_t iter_size(T begin, T end)
 
 // If thcrap and the game are likely to be moved together, we want a relative path,
 // otherwise we want an absolute path.
-char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::path self)
+TH_CALLER_FREE char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::path self)
 {
 	auto ret = [](const std::filesystem::path& path) {
 		char *return_value = strdup(path.u8string().c_str());
@@ -110,7 +110,7 @@ static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 			std::string description;
 			if (ver->build || ver->variety) {
 				if (ver->build)                 description += ver->build;
-				if (ver->build && ver->variety) description += " ";
+				if (ver->build && ver->variety) description += ' ';
 				if (ver->variety)               description += ver->variety;
 			}
 
@@ -228,17 +228,18 @@ bool compare_search_results(const game_search_result& a, const game_search_resul
 	return false;
 }
 
+#define VERSIONS_JS_FN "versions" VERSIONS_SUFFIX ".js"
+
 game_search_result* SearchForGames(const wchar_t **dir, const games_js_entry *games_in)
 {
 	search_state_t state;
-	const char *versions_js_fn = "versions" VERSIONS_SUFFIX ".js";
 
-	state.versions = stack_json_resolve(versions_js_fn, NULL);
+	state.versions = stack_json_resolve(VERSIONS_JS_FN, NULL);
 	if(!state.versions) {
-		log_printf(
-			"ERROR: No version definition file (%s) found!\n"
+		log_print(
+			"ERROR: No version definition file (" VERSIONS_JS_FN ") found!\n"
 			"Seems as if base_tsa didn't download correctly.\n"
-			"Try deleting the thpatch directory and running this program again.\n", versions_js_fn
+			"Try deleting the thpatch directory and running this program again.\n"
 		);
 		return NULL;
 	}
@@ -246,20 +247,20 @@ game_search_result* SearchForGames(const wchar_t **dir, const games_js_entry *ga
 	// Get file size limits
 	json_t *sizes = json_object_get(state.versions, "sizes");
 	// Error...
-	state.size_min = -1;
+	state.size_min = SIZE_MAX;
 	state.size_max = 0;
 	const char *key;
 	json_object_foreach_key(sizes, key) {
 		size_t cur_size = atoi(key);
 
-		if (cur_size < state.size_min)
-			state.size_min = cur_size;
-		if (cur_size > state.size_max)
-			state.size_max = cur_size;
+		state.size_min = (std::min)(cur_size, state.size_min);
+		state.size_max = (std::max)(cur_size, state.size_max);
 	}
 
-	for (int i = 0; games_in && games_in[i].id; i++) {
-		state.previously_known_games.insert(games_in[i].id);
+	if (games_in) {
+		for (size_t i = 0; games_in[i].id; ++i) {
+			state.previously_known_games.insert(games_in[i].id);
+		}
 	}
 
 	searchCancelled = false;
@@ -302,11 +303,11 @@ game_search_result* SearchForGames(const wchar_t **dir, const games_js_entry *ga
 
 	std::sort(state.found.begin(), state.found.end(), compare_search_results);
 	game_search_result *ret = (game_search_result*)malloc((state.found.size() + 1) * sizeof(game_search_result));
-	size_t i;
-	for (i = 0; i < state.found.size(); i++) {
+	size_t found_count = state.found.size();
+	for (size_t i = 0; i < found_count; ++i) {
 		ret[i] = state.found[i];
 	}
-	memset(&ret[i], 0, sizeof(game_search_result));
+	ret[found_count] = {};
 	return ret;
 }
 
@@ -330,7 +331,7 @@ void SearchForGames_free(game_search_result *games)
 
 static bool isInnoSetupWithUUID(LPCWSTR subkeyName)
 {
-	if (subkeyName[0] != '{') {
+	if (subkeyName[0] != L'{') {
 		return false;
 	}
 	LPCWSTR end = wcschr(subkeyName, L'}');
@@ -370,7 +371,7 @@ static std::wstring GetValueFromKey(HKEY hKey, LPCWSTR valueName)
 		return L"";
 	}
 
-	if (value[valueSize - 1] == '\0') {
+	if (value[valueSize - 1] == L'\0') {
 		valueSize--;
 	}
 	return std::wstring(value.data(), valueSize);
@@ -507,7 +508,7 @@ public:
 		}
 
 		DWORD cchName = cbMaxSubKeyLen + 1;
-		LSTATUS ret = RegEnumKeyEx(hKey, nCurrentSubKeyPos,
+		LSTATUS ret = RegEnumKeyExW(hKey, nCurrentSubKeyPos,
 			subkeyName.get(),
 			&cchName,
 			nullptr,
@@ -530,7 +531,7 @@ public:
 
 static void FindInstalledGamesDirFromRegistry(std::vector<wchar_t*>& dirlist /* out */)
 {
-	log_printf("Loading games from registry... ");
+	log_print("Loading games from registry... ");
 
 	Reg3264Iterator uninstallKeysIt(L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall");
 	if (!uninstallKeysIt.openNextKey()) {
@@ -559,7 +560,7 @@ static void FindInstalledGamesDirFromRegistry(std::vector<wchar_t*>& dirlist /* 
 static void FindInstalledGamesDirFromDefaultPaths(std::vector<wchar_t*>& dirlist /* out */)
 {
 	// Older games don't register themselves in the registry, try their default paths
-	log_printf("Loading games from default paths...\n");
+	log_print("Loading games from default paths...\n");
 
 	WCHAR programFilesBuffer[MAX_PATH + 1];
 	SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILESX86, nullptr, SHGFP_TYPE_CURRENT, programFilesBuffer);

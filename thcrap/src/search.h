@@ -24,7 +24,7 @@ typedef struct game_search_result
 	char *description;
 
 #ifdef __cplusplus
-	game_search_result()
+	constexpr game_search_result()
 		: path(nullptr), id(nullptr), build(nullptr), description(nullptr)
 	{}
 
@@ -77,5 +77,6 @@ namespace std
 };
 
 // Exported for testing only
-char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::path self);
+TH_CALLER_FREE
+THCRAP_INTERNAL_API char *SearchDecideStoredPathForm(std::filesystem::path target, std::filesystem::path self);
 #endif
