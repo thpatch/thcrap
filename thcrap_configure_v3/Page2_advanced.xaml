@@ -46,6 +46,15 @@
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="TextTrimming" Value="WordEllipsis" />
         </Style>
+        <Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="TextDecorations" Value="Underline" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0 0 0 3"/>
+        </Style>
     </UserControl.Resources>
 
 
@@ -65,8 +74,20 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" MaxHeight="22" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        Grid.ColumnSpan="3"
+                        Grid.Row="0"
+                        Text="Available Patches" Style="{StaticResource HeaderTextBlockStyle}" />
+
                     <Button
                         Grid.Column="0"
+                        Grid.Row="1"
                         Click="SelectedPatch_Help"
                         Content="?"
                         VerticalAlignment="Stretch"
@@ -75,6 +96,7 @@
 
                     <TextBox
                         Name="QuickFilterTextBox"
+                        Grid.Row="1"
                         Grid.Column="1"
                         Margin="0"
                         VerticalAlignment="Stretch"
@@ -84,6 +106,7 @@
                         TextChanged="QuickFilterChanged" />
 
                     <TextBlock
+                        Grid.Row="1"
                         Name="Placeholder"
                         Text="Search here…"
                         Grid.Column="1"
@@ -93,11 +116,9 @@
                         Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
 
                     <Button Name="SearchButton"
+                            Grid.Row="1"
                             Grid.Column="2"
                             Width="20"
-                            Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor,
-                                AncestorType={x:Type Grid}},
-                                Path=ActualHeight}"
                             Background="Transparent"
                             BorderThickness="0,1,1,1"
                             Padding="0"
@@ -122,10 +143,6 @@
             </DockPanel>
             <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,2,0">
                 <TreeView.Resources>
-                    <Style TargetType="TreeViewItem">
-                        <Setter Property="IsExpanded" Value="True" />
-                        <Setter Property="Visibility" Value="{Binding VisibilityInTree}" />
-                    </Style>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}" ItemsSource="{Binding Patches}">
                         <HierarchicalDataTemplate.ItemContainerStyle>
                             <Style TargetType="TreeViewItem">
@@ -192,6 +209,21 @@
             </TreeView>
         </DockPanel>
         <DockPanel Grid.Column="2">
+            <DockPanel Dock="Top" Margin="2 0 0 0">
+                <StackPanel Orientation="Vertical">
+                <TextBlock
+                    Text="Selected Patches"
+                    Style="{StaticResource HeaderTextBlockStyle}" />
+                <TextBlock
+                    Text="Patches apply from bottom-up. Meaning higher patches overwrite lower ones."
+                    Margin="3"
+                    FontSize="10"
+                    Foreground="Gray"
+                    TextWrapping="Wrap"
+                    TextAlignment="Center"
+                    Height="22"/>
+                </StackPanel>
+            </DockPanel>
             <DockPanel DockPanel.Dock="Bottom" Margin="2 0 0 0">
                 <TextBlock Text="Config name: " />
                 <TextBox x:Name="ConfigName" TextChanged="ConfigNameChanged"/>
