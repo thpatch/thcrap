@@ -215,7 +215,7 @@
                     Text="Selected Patches"
                     Style="{StaticResource HeaderTextBlockStyle}" />
                 <TextBlock
-                    Text="Patches apply from bottom-up. Meaning higher patches overwrite lower ones."
+                    Text="Patches apply from top-to-bottom. Meaning lower patches overwrite higher ones."
                     Margin="3"
                     FontSize="10"
                     Foreground="Gray"
