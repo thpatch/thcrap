@@ -7,6 +7,57 @@
       mc:Ignorable="d"
       d:DesignHeight="450" d:DesignWidth="800">
 
+    <UserControl.Resources>
+        <!-- Define the reusable HoverVisibleButtonStyle -->
+        <Style x:Key="HoverVisibleButtonStyle" TargetType="Button">
+                    <Setter Property="Visibility" Value="Hidden" />
+                    <Setter Property="VerticalAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="2,0" />
+                    <Setter Property="Background" Value="White" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}">
+                                    <ContentPresenter
+                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                        <!-- Trigger to show Button when the parent Grid is hovered -->
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <!-- Trigger to show Button when the Button itself is hovered -->
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="DodgerBlue" />
+                            <Setter Property="Background" Value="White" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+        <Style x:Key="TextBlockCommonStyle" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="TextTrimming" Value="WordEllipsis" />
+        </Style>
+        <Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="TextDecorations" Value="Underline" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="0 0 0 3"/>
+        </Style>
+    </UserControl.Resources>
+
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -15,15 +66,27 @@
             <ColumnDefinition Width="auto" />
         </Grid.ColumnDefinitions>
         <DockPanel Grid.Column="0">
-            <DockPanel DockPanel.Dock="Top">
+            <DockPanel DockPanel.Dock="Top" Margin="0 0 2 0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" MaxHeight="22" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        Grid.ColumnSpan="2"
+                        Grid.Row="0"
+                        Text="Available Patches" Style="{StaticResource HeaderTextBlockStyle}" />
+
                     <TextBox
                         Name="QuickFilterTextBox"
+                        Grid.Row="1"
                         Grid.Column="0"
                         Margin="0"
                         VerticalAlignment="Stretch"
@@ -33,27 +96,25 @@
                         TextChanged="QuickFilterChanged" />
 
                     <TextBlock
+                        Grid.Row="1"
+                        Grid.Column="0"
                         Name="Placeholder"
                         Text="Search here…"
-                        Grid.Column="0"
                         Margin="5,1,0,0"
                         IsHitTestVisible="False"
                         FontStyle="Italic"
                         Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
 
                     <Button Name="SearchButton"
+                            Grid.Row="1"
                             Grid.Column="1"
                             Width="20"
-                            Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor,
-                                AncestorType={x:Type Grid}},
-                                Path=ActualHeight}"
                             Background="Transparent"
                             BorderThickness="0,1,1,1"
                             Padding="0"
-                            Margin="0"
                             VerticalAlignment="Stretch"
-                            Click="SearchButton_OnClick">
-                        🔎
+                            Click="SearchButton_OnClick"
+                            Content="🔎">
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
@@ -70,12 +131,8 @@
                     </Button>
                 </Grid>
             </DockPanel>
-            <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,0,0">
+            <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,2,0">
                 <TreeView.Resources>
-                    <Style TargetType="TreeViewItem">
-                        <Setter Property="IsExpanded" Value="True" />
-                        <Setter Property="Visibility" Value="{Binding VisibilityInTree}" />
-                    </Style>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}" ItemsSource="{Binding Patches}">
                         <HierarchicalDataTemplate.ItemContainerStyle>
                             <Style TargetType="TreeViewItem">
@@ -92,61 +149,206 @@
                         </TextBlock>
                     </HierarchicalDataTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+RepoPatch}">
-                        <TextBlock>
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} ({1})">
-                                    <Binding Path="SourcePatch.Title" />
+                        <Grid Background="Transparent">
+                            <!--Setting the background to transparent, makes the whole area of the grid hit-test,
+                             not just the visible elements -->
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock
+                                Grid.Column="0"
+                                Margin="0 0 3 0"
+                                Padding="0"
+                                Style="{StaticResource TextBlockCommonStyle}"
+                                Width="55"
+                                Height="18">
+                                <TextBlock.Text>
                                     <Binding Path="SourcePatch.Id" />
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <Border
+                                Grid.Column="1"
+                                Padding="0"
+                                Margin="0"
+                                BorderThickness="1,0,0,0"
+                                BorderBrush="LightGray">
+                                <TextBlock
+                                    Margin="3 0 0 0"
+                                    Style="{StaticResource TextBlockCommonStyle}"
+                                    MaxHeight="18">
+                                    <TextBlock.Text>
+                                        <Binding Path="SourcePatch.Title" />
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
+                            <!-- In a Grid later defined elements are on the top -->
+                            <Button
+                                Grid.Column="0"
+                                Margin="0"
+                                Click="AvailablePatchesMoveRight"
+                                Tag="{Binding}"
+                                Style="{StaticResource HoverVisibleButtonStyle}"
+                                Content="🡺">
+                            </Button>
+                        </Grid>
                     </HierarchicalDataTemplate>
                 </TreeView.Resources>
             </TreeView>
         </DockPanel>
-        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0">
-            <Button Margin="0,0,0,12" Click="AvailablePatchesMoveRight">
-                <Image Source="/img/arrow_right.png" Margin="4" Height="10"/>
-            </Button>
-            <Button Click="SelectedPatchesMoveLeft">
-                <Image Source="/img/arrow_left.png" Margin="4" Height="10" />
-            </Button>
-        </StackPanel>
         <DockPanel Grid.Column="2">
-            <DockPanel DockPanel.Dock="Bottom">
+            <DockPanel Dock="Top" Margin="2 0 0 0">
+                <StackPanel Orientation="Vertical">
+                <TextBlock
+                    Text="Selected Patches"
+                    Style="{StaticResource HeaderTextBlockStyle}" />
+                <TextBlock
+                    Text="Patches apply from top-to-bottom. Meaning lower patches overwrite higher ones."
+                    Margin="2"
+                    FontSize="10"
+                    Foreground="Gray"
+                    TextWrapping="NoWrap"
+                    TextAlignment="Center"
+                    Height="22"/>
+                </StackPanel>
+            </DockPanel>
+            <DockPanel DockPanel.Dock="Bottom" Margin="2 0 0 0">
                 <TextBlock Text="Config name: " />
                 <TextBox x:Name="ConfigName" TextChanged="ConfigNameChanged"/>
             </DockPanel>
-            <ListBox x:Name="SelectedPatches" Margin="0,0,0,7">
+            <ListBox x:Name="SelectedPatches"
+                     Margin="2,0,0,7"
+                     Background="White"
+                     Foreground="Black">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="White" />
+                        <Setter Property="Foreground" Value="Black" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                         <EventSetter Event="MouseDoubleClick" Handler="SelectedPatch_DoubleClick" />
                         <EventSetter Event="KeyUp" Handler="SelectedPatch_KeyUp" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="0">
+                                        <ContentPresenter HorizontalAlignment="Stretch"
+                                                          VerticalAlignment="Center"
+                                                          ContentSource="Content" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="White" />
+                                <Setter Property="Foreground" Value="Black" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="White" />
+                                <Setter Property="Foreground" Value="Black" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                        </Style.Triggers>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <TextBlock>
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="{}{0} ({1}/{2})">
-                                    <Binding Path="SourcePatch.Title" />
+                        <Grid Background="Transparent">
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Border
+                               Grid.Column="2"
+                               Grid.Row="0"
+                               Grid.RowSpan="2"
+                               Padding="0 5"
+                               Margin="0"
+                               BorderThickness="1,0,0,0"
+                               BorderBrush="LightGray">
+                               <TextBlock
+                                   Padding="0"
+                                   Margin="3,0,0,0"
+                                   MaxWidth="270"
+                                   MaxHeight="40"
+                                   Style="{StaticResource TextBlockCommonStyle}">
+                                   <TextBlock.Text>
+                                       <Binding Path="SourcePatch.Title" />
+                                   </TextBlock.Text>
+                               </TextBlock>
+                            </Border>
+
+                            <TextBlock
+                                Grid.Column="0"
+                                Grid.ColumnSpan="2"
+                                Grid.Row="0"
+                                Padding="0"
+                                Margin="2 0 3 0"
+                                TextAlignment="Center"
+                                Style="{StaticResource TextBlockCommonStyle}"
+                                Width="55"
+                                MaxHeight="20">
+                                <TextBlock.Text>
                                     <Binding Path="SourcePatch.Repo.Id" />
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <TextBlock
+                                Grid.Column="0"
+                                Grid.ColumnSpan="2"
+                                Grid.Row="1"
+                                Padding="0"
+                                Margin="2 0 3 0"
+                                TextAlignment="Center"
+                                Style="{StaticResource TextBlockCommonStyle}"
+                                Width="55"
+                                MaxHeight="20">
+                                <TextBlock.Text>
                                     <Binding Path="SourcePatch.Id" />
-                                </MultiBinding>
-                            </TextBlock.Text>
-                        </TextBlock>
+                                </TextBlock.Text>
+                            </TextBlock>
+
+                            <Button Click="SelectedPatchesMoveLeft"
+                                    Grid.Column="0"
+                                    Grid.Row="0"
+                                    Grid.RowSpan="2"
+                                    Tag="{Binding}"
+                                    Margin="0"
+                                    Style="{StaticResource HoverVisibleButtonStyle}"
+                                    Content="🡸">
+                            </Button>
+                            <Button Click="SelectedPatch_MoveUp"
+                                    Grid.Column="1"
+                                    Grid.Row="0"
+                                    Tag="{Binding}"
+                                    Margin="0"
+                                    Style="{StaticResource HoverVisibleButtonStyle}"
+                                    Content="🡹">
+                            </Button>
+                            <Button Click="SelectedPatch_MoveDown"
+                                    Grid.Column="1"
+                                    Grid.Row="1"
+                                    Tag="{Binding}"
+                                    Margin="0"
+                                    Style="{StaticResource HoverVisibleButtonStyle}"
+                                    Content="🡻">
+                            </Button>
+                        </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
         </DockPanel>
-        <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="12,0,0,0">
-            <Button Click="SelectedPatch_MoveUp" Margin="0,0,0,12">
-                <Image Source="/img/arrow_up.png" Margin="4" Height="10" />
-            </Button>
-            <Button Click="SelectedPatch_MoveDown">
-                <Image Source="/img/arrow_down.png" Margin="4" Height="10" />
-            </Button>
-        </StackPanel>
-        <Button Click="SelectedPatch_Help" Content="?" Grid.Column="3" VerticalAlignment="Top" HorizontalAlignment="Right" Height="22" Width="22" />
     </Grid>
 </UserControl>

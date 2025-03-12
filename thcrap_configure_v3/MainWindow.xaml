@@ -20,7 +20,7 @@
                 If you prefer to use the old version of this tool, click
                 <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="RunThcrapConfigure">here</TextBlock>.<LineBreak />
                 <LineBreak />
-                Click Next to continue, or click "Configure Settings" to change settings.   
+                Click Next to continue, or click "Configure Settings" to change settings.
             </TextBlock>
              <Button Content="Configure Settings" HorizontalAlignment="Left" VerticalAlignment="Bottom" Click="SettingsWindow_Open" Padding="3,2" />
                 <TextBlock Name="VersionText" HorizontalAlignment="Right" VerticalAlignment="Bottom"></TextBlock>
@@ -37,7 +37,8 @@
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="Page2" PageType="Interior"
                          PreviousPage="{Binding ElementName=IntroPage}"
-                         Title="Choose the patch you want">
+                         Title="Choose the patch you want"
+                         Description="Different patches can change the same dialogue (translation), graphic, sound, etc... of the game.">
             <local:Page2 x:Name="Page2Content" />
         </xctk:WizardPage>
         <xctk:WizardPage x:Name="Page3" PageType="Interior"
