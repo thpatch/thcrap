@@ -35,16 +35,25 @@
             <ColumnDefinition Width="auto" />
         </Grid.ColumnDefinitions>
         <DockPanel Grid.Column="0">
-            <DockPanel DockPanel.Dock="Top">
+            <DockPanel DockPanel.Dock="Top" Margin="0 0 2 0">
                 <Grid>
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
+                    <Button
+                        Grid.Column="0"
+                        Click="SelectedPatch_Help"
+                        Content="?"
+                        VerticalAlignment="Stretch"
+                        Height="22" Width="22"
+                        Margin="0 0 2 0"/>
+
                     <TextBox
                         Name="QuickFilterTextBox"
-                        Grid.Column="0"
+                        Grid.Column="1"
                         Margin="0"
                         VerticalAlignment="Stretch"
                         HorizontalAlignment="Stretch"
@@ -55,14 +64,14 @@
                     <TextBlock
                         Name="Placeholder"
                         Text="Search here…"
-                        Grid.Column="0"
+                        Grid.Column="1"
                         Margin="5,1,0,0"
                         IsHitTestVisible="False"
                         FontStyle="Italic"
                         Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
 
                     <Button Name="SearchButton"
-                            Grid.Column="1"
+                            Grid.Column="2"
                             Width="20"
                             Height="{Binding RelativeSource={RelativeSource Mode=FindAncestor,
                                 AncestorType={x:Type Grid}},
@@ -70,10 +79,9 @@
                             Background="Transparent"
                             BorderThickness="0,1,1,1"
                             Padding="0"
-                            Margin="0"
                             VerticalAlignment="Stretch"
-                            Click="SearchButton_OnClick">
-                        🔎
+                            Click="SearchButton_OnClick"
+                            Content="🔎">
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
@@ -90,7 +98,7 @@
                     </Button>
                 </Grid>
             </DockPanel>
-            <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,0,0">
+            <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,2,0">
                 <TreeView.Resources>
                     <Style TargetType="TreeViewItem">
                         <Setter Property="IsExpanded" Value="True" />
@@ -145,20 +153,12 @@
                 </TreeView.Resources>
             </TreeView>
         </DockPanel>
-        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0">
-            <Button Margin="0,0,0,12" Click="AvailablePatchesMoveRight">
-                <Image Source="/img/arrow_right.png" Margin="4" Height="10"/>
-            </Button>
-            <Button Click="SelectedPatchesMoveLeft">
-                <Image Source="/img/arrow_left.png" Margin="4" Height="10" />
-            </Button>
-        </StackPanel>
         <DockPanel Grid.Column="2">
-            <DockPanel DockPanel.Dock="Bottom">
+            <DockPanel DockPanel.Dock="Bottom" Margin="2 0 0 0">
                 <TextBlock Text="Config name: " />
                 <TextBox x:Name="ConfigName" TextChanged="ConfigNameChanged"/>
             </DockPanel>
-            <ListBox x:Name="SelectedPatches" Margin="0,0,0,7">
+            <ListBox x:Name="SelectedPatches" Margin="2,0,0,7">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <EventSetter Event="MouseDoubleClick" Handler="SelectedPatch_DoubleClick" />
@@ -215,14 +215,5 @@
                 </ListBox.ItemTemplate>
             </ListBox>
         </DockPanel>
-        <StackPanel Grid.Column="3" VerticalAlignment="Center" Margin="12,0,0,0">
-            <Button Click="SelectedPatch_MoveUp" Margin="0,0,0,12">
-                <Image Source="/img/arrow_up.png" Margin="4" Height="10" />
-            </Button>
-            <Button Click="SelectedPatch_MoveDown">
-                <Image Source="/img/arrow_down.png" Margin="4" Height="10" />
-            </Button>
-        </StackPanel>
-        <Button Click="SelectedPatch_Help" Content="?" Grid.Column="3" VerticalAlignment="Top" HorizontalAlignment="Right" Height="22" Width="22" />
     </Grid>
 </UserControl>
