@@ -172,11 +172,5 @@
       <Version>8.0.5</Version>
     </PackageReference>
   </ItemGroup>
-  <ItemGroup>
-    <Resource Include="img\arrow_down.png" />
-    <Resource Include="img\arrow_left.png" />
-    <Resource Include="img\arrow_right.png" />
-    <Resource Include="img\arrow_up.png" />
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

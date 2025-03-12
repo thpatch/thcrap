@@ -10,20 +10,36 @@
     <UserControl.Resources>
         <!-- Define the reusable HoverVisibleButtonStyle -->
         <Style x:Key="HoverVisibleButtonStyle" TargetType="Button">
-            <Setter Property="Visibility" Value="Hidden" />
-            <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="Padding" Value="2 0" />
-            <Style.Triggers>
-                <!-- Trigger to show Button when the parent StackPanel is hovered -->
-                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-                <!-- Trigger to show the Button when the Button itself is hovered -->
-                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True">
-                    <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+                    <Setter Property="Visibility" Value="Hidden" />
+                    <Setter Property="VerticalAlignment" Value="Stretch" />
+                    <Setter Property="Padding" Value="2,0" />
+                    <Setter Property="Background" Value="White" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="BorderBrush" Value="Transparent" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="{TemplateBinding Background}">
+                                    <ContentPresenter
+                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                </Border>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                    <Style.Triggers>
+                        <!-- Trigger to show Button when the parent Grid is hovered -->
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                        <!-- Trigger to show Button when the Button itself is hovered -->
+                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Setter Property="Foreground" Value="DodgerBlue" />
+                            <Setter Property="Background" Value="White" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
     </UserControl.Resources>
 
 
@@ -145,8 +161,8 @@
                                 Margin="0"
                                 Click="AvailablePatchesMoveRight"
                                 Tag="{Binding}"
-                                Style="{StaticResource HoverVisibleButtonStyle}">
-                                    <Image Source="/img/arrow_right.png" Margin="4" Height="10"/>
+                                Style="{StaticResource HoverVisibleButtonStyle}"
+                                Content="🡺">
                             </Button>
                         </Grid>
                     </HierarchicalDataTemplate>
@@ -158,11 +174,42 @@
                 <TextBlock Text="Config name: " />
                 <TextBox x:Name="ConfigName" TextChanged="ConfigNameChanged"/>
             </DockPanel>
-            <ListBox x:Name="SelectedPatches" Margin="2,0,0,7">
+            <ListBox x:Name="SelectedPatches"
+                     Margin="2,0,0,7"
+                     Background="White"
+                     Foreground="Black">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="White" />
+                        <Setter Property="Foreground" Value="Black" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                         <EventSetter Event="MouseDoubleClick" Handler="SelectedPatch_DoubleClick" />
                         <EventSetter Event="KeyUp" Handler="SelectedPatch_KeyUp" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="0">
+                                        <ContentPresenter HorizontalAlignment="Stretch"
+                                                          VerticalAlignment="Center"
+                                                          ContentSource="Content" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background" Value="White" />
+                                <Setter Property="Foreground" Value="Black" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="White" />
+                                <Setter Property="Foreground" Value="Black" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                            </Trigger>
+                        </Style.Triggers>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
@@ -193,22 +240,22 @@
                                     Grid.Column="0"
                                     Tag="{Binding}"
                                     Margin="0"
-                                    Style="{StaticResource HoverVisibleButtonStyle}">
-                                <Image Source="/img/arrow_left.png" Margin="4" Height="10" />
+                                    Style="{StaticResource HoverVisibleButtonStyle}"
+                                    Content="🡸">
                             </Button>
                             <Button Click="SelectedPatch_MoveUp"
                                     Grid.Column="1"
                                     Tag="{Binding}"
                                     Margin="5,0"
-                                    Style="{StaticResource HoverVisibleButtonStyle}">
-                                <Image Source="/img/arrow_up.png" Margin="4" Height="10" />
+                                    Style="{StaticResource HoverVisibleButtonStyle}"
+                                    Content="🡹">
                             </Button>
                             <Button Click="SelectedPatch_MoveDown"
                                     Grid.Column="2"
                                     Tag="{Binding}"
                                     Margin="0,0, 5, 0"
-                                    Style="{StaticResource HoverVisibleButtonStyle}">
-                                <Image Source="/img/arrow_down.png" Margin="4" Height="10" />
+                                    Style="{StaticResource HoverVisibleButtonStyle}"
+                                    Content="🡻">
                             </Button>
                         </Grid>
                     </DataTemplate>
