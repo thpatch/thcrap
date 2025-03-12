@@ -40,6 +40,12 @@
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
+        <Style x:Key="TextBlockCommonStyle" TargetType="TextBlock">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="TextTrimming" Value="WordEllipsis" />
+        </Style>
     </UserControl.Resources>
 
 
@@ -147,14 +153,30 @@
 
                             <TextBlock
                                 Grid.Column="0"
-                                Grid.ColumnSpan="2">
+                                Margin="0 0 3 0"
+                                Padding="0"
+                                Style="{StaticResource TextBlockCommonStyle}"
+                                Width="55"
+                                Height="18">
                                 <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0} ({1})">
-                                        <Binding Path="SourcePatch.Title" />
-                                        <Binding Path="SourcePatch.Id" />
-                                    </MultiBinding>
+                                    <Binding Path="SourcePatch.Id" />
                                 </TextBlock.Text>
                             </TextBlock>
+                            <Border
+                                Grid.Column="1"
+                                Padding="0"
+                                Margin="0"
+                                BorderThickness="1,0,0,0"
+                                BorderBrush="LightGray">
+                                <TextBlock
+                                    Margin="3 0 0 0"
+                                    Style="{StaticResource TextBlockCommonStyle}"
+                                    MaxHeight="18">
+                                    <TextBlock.Text>
+                                        <Binding Path="SourcePatch.Title" />
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </Border>
                             <!-- In a Grid later defined elements are on the top -->
                             <Button
                                 Grid.Column="0"
@@ -238,12 +260,9 @@
                                <TextBlock
                                    Padding="0"
                                    Margin="3,0,0,0"
-                                   TextWrapping="Wrap"
                                    MaxWidth="270"
                                    MaxHeight="40"
-                                   VerticalAlignment="Stretch"
-                                   HorizontalAlignment="Left"
-                                   TextTrimming="WordEllipsis">
+                                   Style="{StaticResource TextBlockCommonStyle}">
                                    <TextBlock.Text>
                                        <Binding Path="SourcePatch.Title" />
                                    </TextBlock.Text>
@@ -256,11 +275,8 @@
                                 Grid.Row="0"
                                 Padding="0"
                                 Margin="2 0 3 0"
-                                VerticalAlignment="Stretch"
-                                HorizontalAlignment="Stretch"
-                                TextWrapping="NoWrap"
-                                TextTrimming="CharacterEllipsis"
                                 TextAlignment="Center"
+                                Style="{StaticResource TextBlockCommonStyle}"
                                 Width="55">
                                 <TextBlock.Text>
                                     <Binding Path="SourcePatch.Repo.Id" />
@@ -272,11 +288,8 @@
                                 Grid.Row="1"
                                 Padding="0"
                                 Margin="2 0 3 0"
-                                VerticalAlignment="Stretch"
-                                HorizontalAlignment="Stretch"
-                                TextWrapping="NoWrap"
-                                TextTrimming="CharacterEllipsis"
                                 TextAlignment="Center"
+                                Style="{StaticResource TextBlockCommonStyle}"
                                 Width="55">
                                 <TextBlock.Text>
                                     <Binding Path="SourcePatch.Id" />
