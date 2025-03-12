@@ -217,9 +217,9 @@
                         <Grid Background="Transparent" Margin="0 2 2 2">
 
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
                             <Grid.RowDefinitions>
@@ -227,53 +227,64 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                           <TextBlock
-                                Grid.Column="0"
-                                Grid.Row="0"
-                                Grid.RowSpan="2"
-                                Padding="0"
-                                Margin="3,0,0,0"
-                                TextWrapping="Wrap"
-                                MaxWidth="290"
-                                MaxHeight="40"
-                                VerticalAlignment="Stretch"
-                                HorizontalAlignment="Left"
-                                TextTrimming="WordEllipsis">
-                                <TextBlock.Text>
-                                    <Binding Path="SourcePatch.Title" />
-                                </TextBlock.Text>
-                           </TextBlock>
+                            <Border
+                               Grid.Column="2"
+                               Grid.Row="0"
+                               Grid.RowSpan="2"
+                               Padding="0"
+                               Margin="0"
+                               BorderThickness="1,0,0,0"
+                               BorderBrush="LightGray">
+                               <TextBlock
+                                   Padding="0"
+                                   Margin="3,0,0,0"
+                                   TextWrapping="Wrap"
+                                   MaxWidth="270"
+                                   MaxHeight="40"
+                                   VerticalAlignment="Stretch"
+                                   HorizontalAlignment="Left"
+                                   TextTrimming="WordEllipsis">
+                                   <TextBlock.Text>
+                                       <Binding Path="SourcePatch.Title" />
+                                   </TextBlock.Text>
+                               </TextBlock>
+                            </Border>
 
                             <TextBlock
-                                Grid.Column="1"
+                                Grid.Column="0"
                                 Grid.ColumnSpan="2"
                                 Grid.Row="0"
                                 Padding="0"
-                                Margin="0"
+                                Margin="2 0 3 0"
                                 VerticalAlignment="Stretch"
-                                HorizontalAlignment="Right">
+                                HorizontalAlignment="Stretch"
+                                TextWrapping="NoWrap"
+                                TextTrimming="CharacterEllipsis"
+                                TextAlignment="Center"
+                                Width="55">
                                 <TextBlock.Text>
                                     <Binding Path="SourcePatch.Repo.Id" />
                                 </TextBlock.Text>
                             </TextBlock>
                             <TextBlock
-                                Grid.Column="1"
+                                Grid.Column="0"
                                 Grid.ColumnSpan="2"
                                 Grid.Row="1"
                                 Padding="0"
-                                Margin="0"
+                                Margin="2 0 3 0"
                                 VerticalAlignment="Stretch"
-                                HorizontalAlignment="Right"
+                                HorizontalAlignment="Stretch"
                                 TextWrapping="NoWrap"
                                 TextTrimming="CharacterEllipsis"
-                                MaxWidth="55">
+                                TextAlignment="Center"
+                                Width="55">
                                 <TextBlock.Text>
                                     <Binding Path="SourcePatch.Id" />
                                 </TextBlock.Text>
                             </TextBlock>
 
                             <Button Click="SelectedPatchesMoveLeft"
-                                    Grid.Column="1"
+                                    Grid.Column="0"
                                     Grid.Row="0"
                                     Grid.RowSpan="2"
                                     Tag="{Binding}"
@@ -282,7 +293,7 @@
                                     Content="🡸">
                             </Button>
                             <Button Click="SelectedPatch_MoveUp"
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     Grid.Row="0"
                                     Tag="{Binding}"
                                     Margin="0"
@@ -290,7 +301,7 @@
                                     Content="🡹">
                             </Button>
                             <Button Click="SelectedPatch_MoveDown"
-                                    Grid.Column="2"
+                                    Grid.Column="1"
                                     Grid.Row="1"
                                     Tag="{Binding}"
                                     Margin="0"
