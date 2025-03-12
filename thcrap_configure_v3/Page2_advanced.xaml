@@ -69,7 +69,6 @@
             <DockPanel DockPanel.Dock="Top" Margin="0 0 2 0">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -81,23 +80,14 @@
 
                     <TextBlock
                         Grid.Column="0"
-                        Grid.ColumnSpan="3"
+                        Grid.ColumnSpan="2"
                         Grid.Row="0"
                         Text="Available Patches" Style="{StaticResource HeaderTextBlockStyle}" />
-
-                    <Button
-                        Grid.Column="0"
-                        Grid.Row="1"
-                        Click="SelectedPatch_Help"
-                        Content="?"
-                        VerticalAlignment="Stretch"
-                        Height="22" Width="22"
-                        Margin="0 0 2 0"/>
 
                     <TextBox
                         Name="QuickFilterTextBox"
                         Grid.Row="1"
-                        Grid.Column="1"
+                        Grid.Column="0"
                         Margin="0"
                         VerticalAlignment="Stretch"
                         HorizontalAlignment="Stretch"
@@ -107,9 +97,9 @@
 
                     <TextBlock
                         Grid.Row="1"
+                        Grid.Column="0"
                         Name="Placeholder"
                         Text="Search here…"
-                        Grid.Column="1"
                         Margin="5,1,0,0"
                         IsHitTestVisible="False"
                         FontStyle="Italic"
@@ -117,7 +107,7 @@
 
                     <Button Name="SearchButton"
                             Grid.Row="1"
-                            Grid.Column="2"
+                            Grid.Column="1"
                             Width="20"
                             Background="Transparent"
                             BorderThickness="0,1,1,1"
@@ -216,10 +206,10 @@
                     Style="{StaticResource HeaderTextBlockStyle}" />
                 <TextBlock
                     Text="Patches apply from top-to-bottom. Meaning lower patches overwrite higher ones."
-                    Margin="3"
+                    Margin="2"
                     FontSize="10"
                     Foreground="Gray"
-                    TextWrapping="Wrap"
+                    TextWrapping="NoWrap"
                     TextAlignment="Center"
                     Height="22"/>
                 </StackPanel>
