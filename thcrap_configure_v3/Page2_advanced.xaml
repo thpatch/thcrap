@@ -214,46 +214,86 @@
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <Grid Background="Transparent">
+                        <Grid Background="Transparent" Margin="0 2 2 2">
 
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                           <TextBlock
                                 Grid.Column="0"
-                                Grid.ColumnSpan="4">
+                                Grid.Row="0"
+                                Grid.RowSpan="2"
+                                Padding="0"
+                                Margin="3,0,0,0"
+                                TextWrapping="Wrap"
+                                MaxWidth="290"
+                                MaxHeight="40"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Left"
+                                TextTrimming="WordEllipsis">
                                 <TextBlock.Text>
-                                    <MultiBinding StringFormat="{}{0} ({1}/{2})">
-                                        <Binding Path="SourcePatch.Title" />
-                                        <Binding Path="SourcePatch.Repo.Id" />
-                                        <Binding Path="SourcePatch.Id" />
-                                    </MultiBinding>
+                                    <Binding Path="SourcePatch.Title" />
+                                </TextBlock.Text>
+                           </TextBlock>
+
+                            <TextBlock
+                                Grid.Column="1"
+                                Grid.ColumnSpan="2"
+                                Grid.Row="0"
+                                Padding="0"
+                                Margin="0"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Right">
+                                <TextBlock.Text>
+                                    <Binding Path="SourcePatch.Repo.Id" />
+                                </TextBlock.Text>
+                            </TextBlock>
+                            <TextBlock
+                                Grid.Column="1"
+                                Grid.ColumnSpan="2"
+                                Grid.Row="1"
+                                Padding="0"
+                                Margin="0"
+                                VerticalAlignment="Stretch"
+                                HorizontalAlignment="Right"
+                                TextWrapping="NoWrap"
+                                TextTrimming="CharacterEllipsis"
+                                MaxWidth="55">
+                                <TextBlock.Text>
+                                    <Binding Path="SourcePatch.Id" />
                                 </TextBlock.Text>
                             </TextBlock>
 
-
                             <Button Click="SelectedPatchesMoveLeft"
-                                    Grid.Column="0"
+                                    Grid.Column="1"
+                                    Grid.Row="0"
+                                    Grid.RowSpan="2"
                                     Tag="{Binding}"
                                     Margin="0"
                                     Style="{StaticResource HoverVisibleButtonStyle}"
                                     Content="🡸">
                             </Button>
                             <Button Click="SelectedPatch_MoveUp"
-                                    Grid.Column="1"
+                                    Grid.Column="2"
+                                    Grid.Row="0"
                                     Tag="{Binding}"
-                                    Margin="5,0"
+                                    Margin="0"
                                     Style="{StaticResource HoverVisibleButtonStyle}"
                                     Content="🡹">
                             </Button>
                             <Button Click="SelectedPatch_MoveDown"
                                     Grid.Column="2"
+                                    Grid.Row="1"
                                     Tag="{Binding}"
-                                    Margin="0,0, 5, 0"
+                                    Margin="0"
                                     Style="{StaticResource HoverVisibleButtonStyle}"
                                     Content="🡻">
                             </Button>
