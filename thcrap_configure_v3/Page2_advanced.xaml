@@ -5,21 +5,24 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:thcrap_configure_v3"
              mc:Ignorable="d"
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="450" d:DesignWidth="800"
+             UseLayoutRounding="True">
 
     <UserControl.Resources>
         <!-- Define the reusable HoverVisibleButtonStyle -->
         <Style x:Key="HoverVisibleButtonStyle" TargetType="Button">
             <Setter Property="Visibility" Value="Hidden" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
-            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0,0" />
+            <Setter Property="Margin" Value="0" />
             <Setter Property="Background" Value="White" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="BorderBrush" Value="Transparent" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="0" SnapsToDevicePixels="True">
                             <ContentPresenter
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
@@ -153,7 +156,7 @@
                         </TextBlock>
                     </HierarchicalDataTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+RepoPatch}">
-                        <Grid Background="Transparent">
+                        <Grid Background="Transparent" Margin="0" SnapsToDevicePixels="True">
                             <!--Setting the background to transparent, makes the whole area of the grid hit-test,
                              not just the visible elements -->
 
@@ -191,11 +194,13 @@
                             <!-- In a Grid later defined elements are on the top -->
                             <Button
                                 Grid.Column="0"
-                                Margin="0"
+                                Padding="0"
+                                Margin="-1 0 0 0"
                                 Click="AvailablePatchesMoveRight"
                                 Tag="{Binding}"
                                 Style="{StaticResource HoverVisibleButtonStyle}"
-                                Content="🡺">
+                                Content="🡺"
+                                SnapsToDevicePixels="True">
                             </Button>
                         </Grid>
                     </HierarchicalDataTemplate>
