@@ -49,6 +49,7 @@
             <Setter Property="VerticalAlignment" Value="Stretch" />
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="TextTrimming" Value="WordEllipsis" />
+            <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=Text}" />
         </Style>
         <Style x:Key="HeaderTextBlockStyle" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="Bold" />
@@ -146,7 +147,7 @@
                                 <Setter Property="Visibility" Value="{Binding VisibilityInTree}" />
                             </Style>
                         </HierarchicalDataTemplate.ItemContainerStyle>
-                        <TextBlock>
+                        <TextBlock Style="{StaticResource TextBlockCommonStyle}">
                             <TextBlock.Text>
                                 <MultiBinding StringFormat="{}{0} ({1})">
                                     <Binding Path="SourceRepo.Title" />
@@ -198,6 +199,7 @@
                                 Margin="-1 0 0 0"
                                 Click="AvailablePatchesMoveRight"
                                 Tag="{Binding}"
+                                ToolTip="{Binding SourcePatch.Id}"
                                 Style="{StaticResource HoverVisibleButtonStyle}"
                                 Content="🡺"
                                 SnapsToDevicePixels="True">
