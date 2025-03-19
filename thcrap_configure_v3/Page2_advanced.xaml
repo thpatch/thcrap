@@ -1,45 +1,46 @@
 <UserControl x:Class="thcrap_configure_v3.Page2_advanced"
-      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-      xmlns:local="clr-namespace:thcrap_configure_v3"
-      mc:Ignorable="d"
-      d:DesignHeight="450" d:DesignWidth="800">
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:thcrap_configure_v3"
+             mc:Ignorable="d"
+             d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Resources>
         <!-- Define the reusable HoverVisibleButtonStyle -->
         <Style x:Key="HoverVisibleButtonStyle" TargetType="Button">
-                    <Setter Property="Visibility" Value="Hidden" />
-                    <Setter Property="VerticalAlignment" Value="Stretch" />
-                    <Setter Property="Padding" Value="2,0" />
+            <Setter Property="Visibility" Value="Hidden" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <!-- Trigger to show Button when the parent Grid is hovered -->
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}"
+                             Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <!-- Trigger to show Button when the Button itself is hovered -->
+                <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                    <Setter Property="Foreground" Value="DodgerBlue" />
                     <Setter Property="Background" Value="White" />
-                    <Setter Property="BorderThickness" Value="0" />
-                    <Setter Property="BorderBrush" Value="Transparent" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="Button">
-                                <Border Background="{TemplateBinding Background}">
-                                    <ContentPresenter
-                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
-                                </Border>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                    <Style.Triggers>
-                        <!-- Trigger to show Button when the parent Grid is hovered -->
-                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
-                            <Setter Property="Visibility" Value="Visible" />
-                        </DataTrigger>
-                        <!-- Trigger to show Button when the Button itself is hovered -->
-                        <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}" Value="True">
-                            <Setter Property="Visibility" Value="Visible" />
-                            <Setter Property="Foreground" Value="DodgerBlue" />
-                            <Setter Property="Background" Value="White" />
-                        </DataTrigger>
-                    </Style.Triggers>
-                </Style>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="TextBlockCommonStyle" TargetType="TextBlock">
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
@@ -53,7 +54,7 @@
             <Setter Property="TextAlignment" Value="Center" />
             <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="VerticalAlignment" Value="Center" />
-            <Setter Property="Margin" Value="0 0 0 3"/>
+            <Setter Property="Margin" Value="0 0 0 3" />
         </Style>
     </UserControl.Resources>
 
@@ -103,7 +104,7 @@
                         Margin="5,1,0,0"
                         IsHitTestVisible="False"
                         FontStyle="Italic"
-                        Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+                        Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
 
                     <Button Name="SearchButton"
                             Grid.Row="1"
@@ -117,13 +118,15 @@
                             Content="🔎">
                         <Button.Style>
                             <Style TargetType="Button">
-                                <Setter Property="BorderBrush" Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"/>
+                                <Setter Property="BorderBrush"
+                                        Value="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}" />
                                 <Style.Triggers>
                                     <!-- Trigger to watch the TextBox's IsKeyboardFocusWithin state -->
-                                    <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=QuickFilterTextBox}" Value="True">
+                                    <DataTrigger
+                                        Binding="{Binding IsKeyboardFocusWithin, ElementName=QuickFilterTextBox}"
+                                        Value="True">
                                         <!-- I have no idea which SystemColor is correct, most of them seem to be a different blue -->
-                                        <Setter Property="BorderBrush" Value="DodgerBlue"
-                                        />
+                                        <Setter Property="BorderBrush" Value="DodgerBlue" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -131,9 +134,10 @@
                     </Button>
                 </Grid>
             </DockPanel>
-            <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick"  Margin="0,7,2,0">
+            <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick" Margin="0,7,2,0">
                 <TreeView.Resources>
-                    <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}" ItemsSource="{Binding Patches}">
+                    <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}"
+                                              ItemsSource="{Binding Patches}">
                         <HierarchicalDataTemplate.ItemContainerStyle>
                             <Style TargetType="TreeViewItem">
                                 <Setter Property="Visibility" Value="{Binding VisibilityInTree}" />
@@ -201,22 +205,22 @@
         <DockPanel Grid.Column="2">
             <DockPanel Dock="Top" Margin="2 0 0 0">
                 <StackPanel Orientation="Vertical">
-                <TextBlock
-                    Text="Selected Patches"
-                    Style="{StaticResource HeaderTextBlockStyle}" />
-                <TextBlock
-                    Text="Patches apply from top-to-bottom. Meaning lower patches overwrite higher ones."
-                    Margin="2"
-                    FontSize="10"
-                    Foreground="Gray"
-                    TextWrapping="NoWrap"
-                    TextAlignment="Center"
-                    Height="22"/>
+                    <TextBlock
+                        Text="Selected Patches"
+                        Style="{StaticResource HeaderTextBlockStyle}" />
+                    <TextBlock
+                        Text="Patches apply from top-to-bottom. Meaning lower patches overwrite higher ones."
+                        Margin="2"
+                        FontSize="10"
+                        Foreground="Gray"
+                        TextWrapping="NoWrap"
+                        TextAlignment="Center"
+                        Height="22" />
                 </StackPanel>
             </DockPanel>
             <DockPanel DockPanel.Dock="Bottom" Margin="2 0 0 0">
                 <TextBlock Text="Config name: " />
-                <TextBox x:Name="ConfigName" TextChanged="ConfigNameChanged"/>
+                <TextBox x:Name="ConfigName" TextChanged="ConfigNameChanged" />
             </DockPanel>
             <ListBox x:Name="SelectedPatches"
                      Margin="2,0,0,7"
@@ -224,11 +228,46 @@
                      Foreground="Black">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
+                        <!-- Default appearance -->
                         <Setter Property="Background" Value="White" />
                         <Setter Property="Foreground" Value="Black" />
                         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                         <EventSetter Event="MouseDoubleClick" Handler="SelectedPatch_DoubleClick" />
                         <EventSetter Event="KeyUp" Handler="SelectedPatch_KeyUp" />
+
+                        <!-- Custom ControlTemplate defining the visual structure -->
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border Name="Bd"
+                                            Background="{TemplateBinding Background}"
+                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                            BorderThickness="0">
+                                        <ContentPresenter HorizontalAlignment="Stretch"
+                                                          VerticalAlignment="Center"
+                                                          ContentSource="Content" />
+                                    </Border>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                        <Style.Triggers>
+                            <!-- Trigger for MouseOver -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <!-- Transparent Check -->
+                                <Setter Property="Background"
+                                        Value="{DynamicResource {x:Static SystemColors.ControlBrushKey}}" />
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+                            </Trigger>
+
+                            <!-- Trigger for Selected -->
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter Property="Background"
+                                        Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}" />
+                                <Setter Property="Foreground"
+                                        Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}" />
+                            </Trigger>
+                        </Style.Triggers>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
@@ -247,23 +286,23 @@
                             </Grid.RowDefinitions>
 
                             <Border
-                               Grid.Column="2"
-                               Grid.Row="0"
-                               Grid.RowSpan="2"
-                               Padding="0 5"
-                               Margin="0"
-                               BorderThickness="1,0,0,0"
-                               BorderBrush="LightGray">
-                               <TextBlock
-                                   Padding="0"
-                                   Margin="3,0,0,0"
-                                   MaxWidth="270"
-                                   MaxHeight="40"
-                                   Style="{StaticResource TextBlockCommonStyle}">
-                                   <TextBlock.Text>
-                                       <Binding Path="SourcePatch.Title" />
-                                   </TextBlock.Text>
-                               </TextBlock>
+                                Grid.Column="2"
+                                Grid.Row="0"
+                                Grid.RowSpan="2"
+                                Padding="0 5"
+                                Margin="0"
+                                BorderThickness="1,0,0,0"
+                                BorderBrush="LightGray">
+                                <TextBlock
+                                    Padding="0"
+                                    Margin="3,0,0,0"
+                                    MaxWidth="270"
+                                    MaxHeight="40"
+                                    Style="{StaticResource TextBlockCommonStyle}">
+                                    <TextBlock.Text>
+                                        <Binding Path="SourcePatch.Title" />
+                                    </TextBlock.Text>
+                                </TextBlock>
                             </Border>
 
                             <TextBlock
@@ -273,6 +312,7 @@
                                 Padding="0"
                                 Margin="2 0 3 0"
                                 TextAlignment="Center"
+                                VerticalAlignment="Bottom"
                                 Style="{StaticResource TextBlockCommonStyle}"
                                 Width="55"
                                 MaxHeight="20">
@@ -287,6 +327,7 @@
                                 Padding="0"
                                 Margin="2 0 3 0"
                                 TextAlignment="Center"
+                                VerticalAlignment="Top"
                                 Style="{StaticResource TextBlockCommonStyle}"
                                 Width="55"
                                 MaxHeight="20">
