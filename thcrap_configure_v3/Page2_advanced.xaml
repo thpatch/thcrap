@@ -139,6 +139,11 @@
                 </Grid>
             </DockPanel>
             <TreeView x:Name="AvailablePatches" MouseDoubleClick="AvailablePatchDoubleClick" Margin="0,7,2,0">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="True" />
+                    </Style>
+                </TreeView.ItemContainerStyle>
                 <TreeView.Resources>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+Repo}"
                                               ItemsSource="{Binding Patches}">
