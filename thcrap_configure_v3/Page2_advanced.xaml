@@ -9,7 +9,7 @@
              UseLayoutRounding="True">
 
     <UserControl.Resources>
-        <!-- Define the reusable HoverVisibleButtonStyle -->
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <Style x:Key="HoverVisibleButtonStyle" TargetType="Button">
             <Setter Property="Visibility" Value="Hidden" />
             <Setter Property="VerticalAlignment" Value="Stretch" />
@@ -22,7 +22,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" BorderThickness="0" SnapsToDevicePixels="True">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="0"
+                                SnapsToDevicePixels="True">
                             <ContentPresenter
                                 HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                 VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
@@ -358,21 +359,113 @@
                                     Style="{StaticResource HoverVisibleButtonStyle}"
                                     Content="🡸">
                             </Button>
-                            <Button Click="SelectedPatch_MoveUp"
+                            <Button x:Name="UpButton"
+                                    Click="SelectedPatch_MoveUp"
                                     Grid.Column="1"
                                     Grid.Row="0"
                                     Tag="{Binding}"
-                                    Margin="0"
-                                    Style="{StaticResource HoverVisibleButtonStyle}"
                                     Content="🡹">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Hidden" />
+                                        <Setter Property="VerticalAlignment" Value="Stretch" />
+                                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0,0" />
+                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Background" Value="White" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            BorderThickness="0" SnapsToDevicePixels="True">
+                                                        <ContentPresenter
+                                                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+
+                                        <Style.Triggers>
+                                            <!-- Regular Hover style -->
+                                            <DataTrigger
+                                                Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}"
+                                                Value="True">
+                                                <Setter Property="Foreground" Value="DodgerBlue" />
+                                                <Setter Property="Background" Value="White" />
+                                            </DataTrigger>
+
+                                            <!-- Visibility condition -->
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <!-- Hover Over Parent Grid -->
+                                                    <Condition
+                                                        Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}"
+                                                        Value="True" />
+                                                    <!-- IsNotFirst condition -->
+                                                    <Condition Binding="{Binding IsNotFirst}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
                             </Button>
-                            <Button Click="SelectedPatch_MoveDown"
+                            <Button x:Name="DownButton"
+                                    Click="SelectedPatch_MoveDown"
                                     Grid.Column="1"
                                     Grid.Row="1"
                                     Tag="{Binding}"
-                                    Margin="0"
-                                    Style="{StaticResource HoverVisibleButtonStyle}"
                                     Content="🡻">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Hidden" />
+                                        <Setter Property="VerticalAlignment" Value="Stretch" />
+                                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                        <Setter Property="Padding" Value="0,0" />
+                                        <Setter Property="Margin" Value="0" />
+                                        <Setter Property="Background" Value="White" />
+                                        <Setter Property="BorderThickness" Value="0" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            BorderThickness="0" SnapsToDevicePixels="True">
+                                                        <ContentPresenter
+                                                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+
+                                        <Style.Triggers>
+                                            <!-- Regular Hover style -->
+                                            <DataTrigger
+                                                Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}"
+                                                Value="True">
+                                                <Setter Property="Foreground" Value="DodgerBlue" />
+                                                <Setter Property="Background" Value="White" />
+                                            </DataTrigger>
+
+                                            <!-- Visibility condition -->
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <!-- Hover Over Parent Grid -->
+                                                    <Condition
+                                                        Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=Grid}}"
+                                                        Value="True" />
+                                                    <!-- IsNotLast condition -->
+                                                    <Condition Binding="{Binding IsNotLast}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
                             </Button>
                         </Grid>
                     </DataTemplate>
