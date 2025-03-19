@@ -13,5 +13,8 @@
         <TabItem Header="All patches" Name="tab_AllPatches">
             <local:Page2_advanced x:Name="Advanced" Margin="6" />
         </TabItem>
+        <TabItem Header="Patch editor" Name="tab_PatchEditor">
+            <local:Page2_PatchEditor x:Name="PatchEditor" Margin="6" />
+        </TabItem>
     </TabControl>
 </UserControl>

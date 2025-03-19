@@ -67,6 +67,9 @@
     <Compile Include="Page2.xaml.cs">
       <DependentUpon>Page2.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Page2_PatchEditor.xaml.cs">
+      <DependentUpon>Page2_PatchEditor.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Page2_simple.xaml.cs">
       <DependentUpon>Page2_simple.xaml</DependentUpon>
     </Compile>
@@ -103,6 +106,10 @@
     <Page Include="Page2.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Page2_PatchEditor.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="Page2_simple.xaml">
       <SubType>Designer</SubType>

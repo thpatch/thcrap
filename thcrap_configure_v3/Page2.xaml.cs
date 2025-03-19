@@ -72,5 +72,13 @@ namespace thcrap_configure_v3
                 mode = Mode.Simple;
             }
         }
+
+        private Visibility showPatchEditor
+        {
+            get
+            {
+                return GlobalConfig.get().developer_mode ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
     }
 }
