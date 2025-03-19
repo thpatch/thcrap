@@ -229,31 +229,6 @@
                         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
                         <EventSetter Event="MouseDoubleClick" Handler="SelectedPatch_DoubleClick" />
                         <EventSetter Event="KeyUp" Handler="SelectedPatch_KeyUp" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ListBoxItem">
-                                    <Border Background="{TemplateBinding Background}"
-                                            BorderBrush="{TemplateBinding BorderBrush}"
-                                            BorderThickness="0">
-                                        <ContentPresenter HorizontalAlignment="Stretch"
-                                                          VerticalAlignment="Center"
-                                                          ContentSource="Content" />
-                                    </Border>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                        <Style.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter Property="Background" Value="White" />
-                                <Setter Property="Foreground" Value="Black" />
-                                <Setter Property="BorderBrush" Value="Transparent" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="White" />
-                                <Setter Property="Foreground" Value="Black" />
-                                <Setter Property="BorderBrush" Value="Transparent" />
-                            </Trigger>
-                        </Style.Triggers>
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
