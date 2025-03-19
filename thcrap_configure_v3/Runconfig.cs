@@ -47,24 +47,36 @@ namespace thcrap_configure_v3
             ThcrapFolder = 8,
         }
 
+        private static GlobalConfig instance = null;
+        public static GlobalConfig get()
+        {
+            if (instance == null)
+            {
+                instance = new GlobalConfig();
+            }
+            return instance;
+        }
+
         public bool background_updates   { get; set; }
         public long time_between_updates { get; set; }
         public bool update_at_exit       { get; set; }
         public bool update_others        { get; set; }
         public bool console              { get; set; }
+        public bool use_wininet          { get; set; }
         public long exception_detail     { get; set; }
         public long codepage             { get; set; }
         public bool developer_mode       { get; set; }
         public ShortcutDestinations default_shortcut_destinations { get; set; }
         public ThcrapDll.ShortcutsType shortcuts_type { get; set; }
 
-        public GlobalConfig()
+        private GlobalConfig()
         {
             background_updates   = ThcrapDll.globalconfig_get_boolean("background_updates", false);
             time_between_updates = ThcrapDll.globalconfig_get_integer("time_between_updates", 5);
             update_at_exit       = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
             update_others        = ThcrapDll.globalconfig_get_boolean("update_others", true);
             console              = ThcrapDll.globalconfig_get_boolean("console", false);
+            use_wininet          = ThcrapDll.globalconfig_get_boolean("use_wininet", false);
             exception_detail     = ThcrapDll.globalconfig_get_integer("exception_detail", 1);
             codepage             = ThcrapDll.globalconfig_get_integer("codepage", 932);
             developer_mode       = ThcrapDll.globalconfig_get_boolean("developer_mode", false);
@@ -89,6 +101,7 @@ namespace thcrap_configure_v3
             ThcrapDll.globalconfig_set_boolean("update_at_exit", update_at_exit);
             ThcrapDll.globalconfig_set_boolean("update_others", update_others);
             ThcrapDll.globalconfig_set_boolean("console", console);
+            ThcrapDll.globalconfig_set_boolean("use_wininet", use_wininet);
             ThcrapDll.globalconfig_set_integer("exception_detail", exception_detail);
             ThcrapDll.globalconfig_set_integer("codepage", codepage);
             ThcrapDll.globalconfig_set_boolean("developer_mode", developer_mode);

@@ -42,7 +42,7 @@ namespace thcrap_configure_v3
 
             if (config == null)
             {
-                config = new GlobalConfig();
+                config = GlobalConfig.get();
                 ShortcutDestinations dest = config.default_shortcut_destinations;
 
                 checkboxDesktop.IsChecked      = dest.HasFlag(ShortcutDestinations.Desktop);

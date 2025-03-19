@@ -17,18 +17,19 @@ namespace thcrap_configure_v3
 
         void WindowOpened(object sender, RoutedEventArgs e)
         {
-            background_updates.IsChecked = ThcrapDll.globalconfig_get_boolean("background_updates", false);
-            update_others.IsChecked = ThcrapDll.globalconfig_get_boolean("update_others", true);
-            update_at_exit.IsChecked = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
-            time_between_updates.Text = ThcrapDll.globalconfig_get_integer("time_between_updates", 5).ToString();
+            GlobalConfig config = GlobalConfig.get();
+            background_updates.IsChecked = config.background_updates;
+            update_others.IsChecked = config.update_others;
+            update_at_exit.IsChecked = config.update_at_exit;
+            time_between_updates.Text = config.time_between_updates.ToString();
 
-            developer_mode.IsChecked = ThcrapDll.globalconfig_get_boolean("developer_mode", false);
-            console.IsChecked = ThcrapDll.globalconfig_get_boolean("console", false);
-            use_wininet.IsChecked = ThcrapDll.globalconfig_get_boolean("use_wininet", false);
-            codepage.Text = ThcrapDll.globalconfig_get_integer("codepage", 932).ToString();
+            developer_mode.IsChecked = config.developer_mode;
+            console.IsChecked = config.console;
+            use_wininet.IsChecked = config.use_wininet;
+            codepage.Text = config.codepage.ToString();
 
             {
-                long exceptionDetail = ThcrapDll.globalconfig_get_integer("exception_detail", 932);
+                long exceptionDetail = config.exception_detail;
 
                 if ((exceptionDetail & 1) > 0)
                 {
@@ -107,15 +108,16 @@ namespace thcrap_configure_v3
 
         private void Settings_Save(object sender, RoutedEventArgs e)
         {
-            ThcrapDll.globalconfig_set_boolean("background_updates", background_updates.IsChecked == true);
-            ThcrapDll.globalconfig_set_boolean("update_others", update_others.IsChecked == true);
-            ThcrapDll.globalconfig_set_boolean("update_at_exit", update_at_exit.IsChecked == true);
-            ThcrapDll.globalconfig_set_integer("time_between_updates", Int32.Parse(time_between_updates.Text));
+            GlobalConfig config = GlobalConfig.get();
+            config.background_updates = background_updates.IsChecked == true;
+            config.update_others = update_others.IsChecked == true;
+            config.update_at_exit = update_at_exit.IsChecked == true;
+            config.time_between_updates = Int32.Parse(time_between_updates.Text);
 
-            ThcrapDll.globalconfig_set_boolean("developer_mode", developer_mode.IsChecked == true);
-            ThcrapDll.globalconfig_set_boolean("console", console.IsChecked == true);
-            ThcrapDll.globalconfig_set_boolean("use_wininet", use_wininet.IsChecked == true);
-            ThcrapDll.globalconfig_set_integer("codepage", Int32.Parse(codepage.Text));
+            config.developer_mode = developer_mode.IsChecked == true;
+            config.console = console.IsChecked == true;
+            config.use_wininet = use_wininet.IsChecked == true;
+            config.codepage = Int32.Parse(codepage.Text);
 
             {
                 int exceptionDetail = 0;
@@ -152,8 +154,9 @@ namespace thcrap_configure_v3
                 {
                     exceptionDetail |= 1 << 7;
                 }
-                ThcrapDll.globalconfig_set_integer("exception_detail", exceptionDetail);
+                config.exception_detail = exceptionDetail;
             }
+            config.Save();
 
             isClosedWithX = false;
             this.Close();
