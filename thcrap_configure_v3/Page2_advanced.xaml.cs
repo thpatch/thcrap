@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.IO;
 using System.Text;
@@ -75,6 +76,47 @@ namespace thcrap_configure_v3
             public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
             private bool isSelected = false;
             private bool isVisibleWithSearch = true;
+            private bool _isFirst;
+            private bool _isLast;
+
+
+            public bool IsFirst
+            {
+                get => _isFirst;
+                set
+                {
+                    if (_isFirst != value)
+                    {
+                        _isFirst = value;
+                        OnPropertyChanged(nameof(IsFirst));
+                        OnPropertyChanged(nameof(IsNotFirst)); // Notify when IsFirst changes
+                    }
+                }
+            }
+
+            public bool IsLast
+            {
+                get => _isLast;
+                set
+                {
+                    if (_isLast != value)
+                    {
+                        _isLast = value;
+                        OnPropertyChanged(nameof(IsLast));
+                        OnPropertyChanged(nameof(IsNotLast)); // Notify when IsLast changes
+                    }
+                }
+            }
+
+            // New properties for inverted logic
+            public bool IsNotFirst => !IsFirst;
+            public bool IsNotLast => !IsLast;
+
+            protected virtual void OnPropertyChanged(string propertyName)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+
 
             public RepoPatch(thcrap_configure_v3.RepoPatch patch)
             {
@@ -187,6 +229,16 @@ namespace thcrap_configure_v3
             AddToConfigName(patch.SourcePatch.Id);
             patch.Select(true);
             selectedPatches.Add(patch);
+            UpdateFirstAndLastFlags();
+        }
+
+        private void UpdateFirstAndLastFlags()
+        {
+            for (var i = 0; i < selectedPatches.Count; i++)
+            {
+                selectedPatches[i].IsFirst = (i == 0);
+                selectedPatches[i].IsLast = (i == selectedPatches.Count - 1);
+            }
         }
 
         private void AvailablePatchDoubleClick(object sender, MouseButtonEventArgs e)
@@ -238,6 +290,7 @@ namespace thcrap_configure_v3
             selectedPatches.Remove(patch);
             patch.Select(false);
             RemoveFromConfigName(patch.SourcePatch.Id);
+            UpdateFirstAndLastFlags();
         }
 
         private void SelectedPatch_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -302,6 +355,7 @@ namespace thcrap_configure_v3
                 return;
 
             selectedPatches.Move(idx, idx - 1);
+            UpdateFirstAndLastFlags();
         }
 
         private void SelectedPatch_MoveDown(object sender, RoutedEventArgs e)
@@ -323,6 +377,7 @@ namespace thcrap_configure_v3
                 return;
 
             selectedPatches.Move(idx, idx + 1);
+            UpdateFirstAndLastFlags();
         }
 
         public void ConfigNameChanged(object sender, TextChangedEventArgs e)
