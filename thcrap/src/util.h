@@ -69,6 +69,8 @@ typedef int32_t ssize_t;
 
 #define AlignUpToMultipleOf(val, mul) ((val) - ((val) % (mul)) + (mul))
 #define AlignUpToMultipleOf2(val, mul) (((val) + (mul) - 1) & -(ssize_t)(mul))
+#define AlignDownToMultipleOf(val, mul) ((val) - (val) % (mul))
+#define AlignDownToMultipleOf2(val, mul) ((val) & -(ssize_t)(mul))
 
 #define dword_align(val) (size_t)AlignUpToMultipleOf2((size_t)(val), 4)
 #define ptr_dword_align(val) (BYTE*)dword_align((uintptr_t)(val))

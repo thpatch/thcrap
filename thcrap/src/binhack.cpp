@@ -420,7 +420,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 
 		size_t render_index;
 		if (aligned_value_size <= constpool_memory_size) {
-			size_t render_index_end = constpool_memory_size - aligned_value_size;
+			size_t render_index_end = AlignDownToMultipleOf2(constpool_memory_size, key.alignment);
 			render_index = 0;
 			switch (per_element_size) {
 				default:
