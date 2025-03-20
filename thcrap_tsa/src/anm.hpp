@@ -32,7 +32,7 @@ struct sprite_local_t {
 	png_uint_32 w;
 	png_uint_32 h;
 
-	sprite_local_t(
+	inline constexpr sprite_local_t(
 		BlitFunc_t blitmode,
 		png_uint_32 x, png_uint_32 y, png_uint_32 w, png_uint_32 h
 	)
@@ -210,11 +210,16 @@ struct script_param_change_t {
 	uint16_t param_addr;
 	const char *code;
 	size_t code_size;
+
+	inline constexpr script_param_change_t(unsigned int line, uint16_t param_addr, const char* code, size_t code_size)
+		: line(line), param_addr(param_addr), code(code), code_size(code_size) {}
 };
 
 struct script_time_change_t {
 	unsigned int line;
 	uint16_t time;
+
+	inline constexpr script_time_change_t(unsigned int line, uint16_t time) : line(line), time(time) {}
 };
 
 class script_t {

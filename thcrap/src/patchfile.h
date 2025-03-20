@@ -178,7 +178,7 @@ THCRAP_API int patch_file_blacklisted(const patch_t *patch_info, const char *fn)
 // Loads the file [fn] from [patch_info].
 // Used analogous to file_stream() and file_stream_read().
 THCRAP_API HANDLE patch_file_stream(const patch_t *patch_info, const char *fn);
-THCRAP_API void* patch_file_load(const patch_t *patch_info, const char *fn, size_t *file_size);
+TH_CALLER_FREE THCRAP_API void* patch_file_load(const patch_t *patch_info, const char *fn, size_t *file_size);
 
 // Loads the JSON file [fn] from [patch_info].
 // If given, [file_size] receives the size of the input file.

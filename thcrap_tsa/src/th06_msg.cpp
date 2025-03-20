@@ -424,7 +424,7 @@ void box_end(patch_msg_state_t *state)
 			state->line_widths[i] = 0;
 		}
 		// text.anm limit
-		box_len = min(box_len, 512);
+		box_len = __min(box_len, 512);
 
 		// Padding. TODO: Derive from text.anm,
 		// once we have an ANM spec patcher?

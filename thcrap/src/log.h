@@ -38,8 +38,10 @@ THCRAP_API void log_printf(const char *format, ...);
 // Using __noop makes the compiler check the validity of the
 // macro contents for syntax errors without actually compiling them.
 # define log_debugf(...) TH_EVAL_NOOP(__VA_ARGS__)
+# define log_debug(...) TH_EVAL_NOOP(__VA_ARGS__)
 #else
 # define log_debugf(...) log_printf(__VA_ARGS__)
+# define log_debug(...) log_print(__VA_ARGS__)
 #endif
 
 #ifdef _MSC_VER

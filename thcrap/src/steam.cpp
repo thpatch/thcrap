@@ -76,7 +76,6 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 	// Got steam_api.dll?
 
 	BUILD_VLA_STR(char, dll_fn, runconfig_thcrap_dir_get_view(), STEAM_API_DLL_PATH);
-	defer(VLA_FREE(dll_fn));
 	
 	hSteamAPI = LoadLibraryExU(dll_fn, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 	if(!hSteamAPI) {
@@ -84,24 +83,26 @@ extern "C" TH_EXPORT void steam_mod_post_init(void)
 			"[Steam] Couldn't load %s (%s), no integration possible\n",
 			dll_fn, lasterror_str()
 		);
-		return;
+		goto end;
 	}
 
 	STEAM_GET_PROC_ADDRESS(Init);
 	STEAM_GET_PROC_ADDRESS(Shutdown);
 	if(!SteamAPI_Init || !SteamAPI_Shutdown) {
 		log_printf("[Steam] %s corrupt, no integration possible\n", dll_fn);
-		return;
+		goto end;
 	}
 	
 	SetEnvironmentVariableU("SteamAppId", appid.c_str());
 	if(!SteamAPI_Init()) {
 		// TODO: Figure out why?
 		log_printf("[Steam] Initialization for AppID %s failed\n", appid.c_str());
-		return;
+		goto end;
 	}
 
 	log_printf("[Steam] Initialized for AppID %s\n", appid.c_str());
+end:
+	VLA_FREE(dll_fn);
 }
 
 extern "C" TH_EXPORT void steam_mod_exit(void)

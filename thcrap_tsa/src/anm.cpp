@@ -32,7 +32,7 @@ struct AnmGdiplus {
 	bool havePngEncoder = false;
 
 	void GetPNGEncoderCLSID(void);
-	uint8_t* Decode(const uint8_t* data, size_t len, size_t* width, size_t* height);
+	uint8_t* Decode(const uint8_t* data, size_t len, size_t* width, size_t* height) const;
 	std::pair<uint8_t*, size_t> Encode(uint8_t* data, size_t width, size_t height, size_t stride);
 
 	AnmGdiplus() {
@@ -47,7 +47,6 @@ struct AnmGdiplus {
 };
 
 void AnmGdiplus::GetPNGEncoderCLSID(void) {
-	static const wchar_t formatPNG[] = L"image/png";
 
 	UINT  num = 0;          // number of image encoders
 	UINT  size = 0;         // size of the image encoder array in bytes
@@ -56,12 +55,12 @@ void AnmGdiplus::GetPNGEncoderCLSID(void) {
 	if (size == 0)
 		return;
 
-	auto* pImageCodecInfo = (Gdiplus::ImageCodecInfo*)(malloc(size));
+	auto* pImageCodecInfo = (Gdiplus::ImageCodecInfo*)malloc(size);
 	Gdiplus::GetImageEncoders(num, size, pImageCodecInfo);
 
 	for (UINT j = 0; j < num; ++j)
 	{
-		if (wcscmp(pImageCodecInfo[j].MimeType, formatPNG) == 0)
+		if (wcscmp(pImageCodecInfo[j].MimeType, L"image/png") == 0)
 		{
 			this->pngClsid = pImageCodecInfo[j].Clsid;
 			this->havePngEncoder = true;
@@ -71,54 +70,39 @@ void AnmGdiplus::GetPNGEncoderCLSID(void) {
 	free(pImageCodecInfo);
 }
 
-uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size_t* height) {
+uint8_t* AnmGdiplus::Decode(const uint8_t* data, size_t len, size_t* width, size_t* height) const {
 	uint8_t* out = NULL;
+	if (IStream* stream = SHCreateMemStream((const BYTE*)data, len)) {
+		if (Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(stream)) {
+			UINT w = bitmap->GetWidth();
+			UINT h = bitmap->GetHeight();
+			Gdiplus::Rect r(0, 0, w, h);
+			Gdiplus::BitmapData bmdata;
 
-	IStream* stream = SHCreateMemStream((const BYTE*)data, len);
-	if (!stream) {
-		return out;
+			if (bitmap->LockBits(&r, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bmdata) == Gdiplus::Ok) {
+				*width = w;
+				*height = h;
+
+				out = (uint8_t*)malloc(w * h * 4);
+
+				char* p = (char*)bmdata.Scan0;
+				char* q = (char*)out;
+				for (size_t y = 0; y < h; y++) {
+					memcpy(q, p, w * 4);
+					p += bmdata.Stride;
+					q += w * 4;
+				}
+
+				bitmap->UnlockBits(&bmdata);
+			}
+			delete bitmap;
+		}
+		stream->Release();
 	}
-	defer(stream->Release());
-
-	Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(stream);
-	if (!bitmap) {
-		return out;
-	}
-	defer(delete bitmap);
-
-	UINT w = bitmap->GetWidth();
-	UINT h = bitmap->GetHeight();
-	Gdiplus::Rect r(0, 0, w, h);
-	Gdiplus::BitmapData bmdata;
-
-	if (bitmap->LockBits(&r, Gdiplus::ImageLockModeRead, PixelFormat32bppARGB, &bmdata)
-		!= Gdiplus::Ok) {
-		return out;
-	}
-	defer(bitmap->UnlockBits(&bmdata));
-
-	out = (uint8_t*)malloc(w * h * 4);
-
-	char* p = (char*)bmdata.Scan0;
-	char* q = (char*)out;
-	for (size_t y = 0; y < h; y++) {
-		memcpy(q, p, w * 4);
-		p += bmdata.Stride;
-		q += w * 4;
-	}
-	*width = w;
-	*height = h;
-
 	return out;
 }
 
 std::pair<uint8_t*, size_t> AnmGdiplus::Encode(uint8_t* data, size_t width, size_t height, size_t stride) {
-	CLSID* encClsid = &this->pngClsid;
-
-	if (!encClsid) {
-		return { nullptr, 0 };
-	}
-
 	Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(width, height, stride, PixelFormat32bppARGB, data);
 	if (!bitmap) {
 		return { nullptr, 0 };
@@ -131,7 +115,7 @@ std::pair<uint8_t*, size_t> AnmGdiplus::Encode(uint8_t* data, size_t width, size
 	}
 	defer(stream->Release());
 
-	auto res = bitmap->Save(stream, encClsid);
+	auto res = bitmap->Save(stream, &this->pngClsid);
 	if (res != Gdiplus::Ok) {
 		return { nullptr, 0 };
 	}
@@ -174,9 +158,8 @@ void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_
 	// flaw in the blending algorithm, which may decrease the alpha value even if
 	// both target and replacement pixels are fully opaque.
 	// (This also seems to be what the default composition mode in GIMP does.)
-	unsigned int i;
 	if(format == FORMAT_BGRA8888) {
-		for(i = 0; i < pixels; ++i, dst += 4, rep += 4) {
+		for(size_t i = 0; i < pixels; ++i, dst += 4, rep += 4) {
 			const int new_alpha = dst[3] + rep[3];
 			const int dst_alpha = 0xff - rep[3];
 
@@ -186,7 +169,7 @@ void blit_blend(png_byte *dst, const png_byte *rep, unsigned int pixels, format_
 			dst[3] = MIN(new_alpha, 0xff);
 		}
 	} else if(format == FORMAT_ARGB4444) {
-		for(i = 0; i < pixels; ++i, dst += 2, rep += 2) {
+		for(size_t i = 0; i < pixels; ++i, dst += 2, rep += 2) {
 			const unsigned char rep_a = (rep[1] & 0xf0) >> 4;
 			const unsigned char rep_r = (rep[1] & 0x0f) >> 0;
 			const unsigned char rep_g = (rep[0] & 0xf0) >> 4;
@@ -257,21 +240,21 @@ void anm_entry_t::transform_and_add_sprite(const sprite_t &s_orig, BlitFunc_t bl
 	}
 	if(split_w > 0 && split_h > 0) {
 		// Upper-left split
-		sprites.emplace_back(sprite_local_t{ blitmode,
-			0, 0, (png_uint_32)split_w, (png_uint_32)split_h,
-		});
+		sprites.emplace_back(blitmode,
+			0, 0, (png_uint_32)split_w, (png_uint_32)split_h
+		);
 	}
 	if(split_w > 0) {
 		// Lower-left split
-		sprites.emplace_back(sprite_local_t{ blitmode,
-			0, s_lower_right.y, (png_uint_32)split_w, s_lower_right.h,
-		});
+		sprites.emplace_back(blitmode,
+			0, s_lower_right.y, (png_uint_32)split_w, s_lower_right.h
+		);
 	}
 	if(split_h > 0) {
 		// Upper-right split
-		sprites.emplace_back(sprite_local_t{ blitmode,
-			s_lower_right.x, 0, s_lower_right.w, (png_uint_32)split_h,
-		});
+		sprites.emplace_back(blitmode,
+			s_lower_right.x, 0, s_lower_right.w, (png_uint_32)split_h
+		);
 	}
 	sprites.emplace_back(s_lower_right);
 }
@@ -324,13 +307,12 @@ png_byte format_alpha_max(format_t format)
 size_t format_alpha_sum(png_bytep data, unsigned int pixels, format_t format)
 {
 	size_t ret = 0;
-	unsigned int i;
 	if(format == FORMAT_BGRA8888) {
-		for(i = 0; i < pixels; ++i, data += 4) {
+		for(size_t i = 0; i < pixels; ++i, data += 4) {
 			ret += data[3];
 		}
 	} else if(format == FORMAT_ARGB4444) {
-		for(i = 0; i < pixels; ++i, data += 2) {
+		for(size_t i = 0; i < pixels; ++i, data += 2) {
 			ret += (data[1] & 0xf0) >> 4;
 		}
 	}
@@ -339,12 +321,11 @@ size_t format_alpha_sum(png_bytep data, unsigned int pixels, format_t format)
 
 void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 {
-	unsigned int i;
 	png_bytep in = data;
 
 	if(format == FORMAT_ARGB4444) {
 		png_bytep out = data;
-		for(i = 0; i < pixels; ++i, in += 4, out += 2) {
+		for(size_t i = 0; i < pixels; ++i, in += 4, out += 2) {
 			// I don't see the point in doing any "rounding" here. Let's rather focus on
 			// writing understandable code independent of endianness assumptions.
 			const unsigned char b = in[0] >> 4;
@@ -357,7 +338,7 @@ void format_from_bgra(png_bytep data, unsigned int pixels, format_t format)
 		}
 	} else if(format == FORMAT_RGB565) {
 		png_uint_16p out16 = (png_uint_16p)data;
-		for(i = 0; i < pixels; ++i, in += 4, ++out16) {
+		for(size_t i = 0; i < pixels; ++i, in += 4, ++out16) {
 			const unsigned char b = in[0] >> 3;
 			const unsigned char g = in[1] >> 2;
 			const unsigned char r = in[2] >> 3;
@@ -378,7 +359,7 @@ int sprite_patch_set(
 	const png_image_ex &image
 )
 {
-	ZeroMemory(&sp, sizeof(sp));
+	sp = {};
 
 	// Note that we don't use the PNG_IMAGE_* macros here - the actual bit depth
 	// after format_from_bgra() may no longer be equal to the one in the PNG header.
@@ -429,9 +410,8 @@ sprite_alpha_t sprite_alpha_analyze(
 		return SPRITE_ALPHA_OPAQUE;
 	} else {
 		sprite_alpha_t ret = SPRITE_ALPHA_FULL;
-		png_uint_32 row;
 		png_bytep p = buf;
-		for(row = 0; row < h; row++) {
+		for(png_uint_32 row = 0; row < h; row++) {
 			size_t sum = format_alpha_sum(p, w, format);
 			if(sum == 0x00 && ret != SPRITE_ALPHA_OPAQUE) {
 				ret = SPRITE_ALPHA_EMPTY;
@@ -460,10 +440,9 @@ int sprite_blit(const sprite_patch_t &sp, const BlitFunc_t func)
 {
 	assert(func);
 
-	png_uint_32 row;
 	png_bytep dst_p = sp.dst_buf;
 	png_bytep rep_p = sp.rep_buf;
-	for(row = 0; row < sp.copy_h; row++) {
+	for(png_uint_32 row = 0; row < sp.copy_h; row++) {
 		func(dst_p, rep_p, sp.copy_w, sp.format);
 		dst_p += sp.dst_stride;
 		rep_p += sp.rep_stride;
@@ -508,7 +487,7 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 			}
 		}
 	}
-	constexpr stringref_t MODE_DESC_FMT = "\n\n• \"%s\": %s";
+	constexpr std::string_view MODE_DESC_FMT = "\n\n• \"%s\": %s"sv;
 	size_t modes_len = 0;
 	for(const auto &mode : BLITMODES) {
 		modes_len += MODE_DESC_FMT.length() + mode.name.length() + mode.desc.length();
@@ -524,12 +503,12 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 	int ctx_len = vsnprintf(NULL, 0, context, va);
 	VLA(char, ctx, ctx_len + 1);
 	vsprintf(ctx, context, va);
+	va_end(va);
 	header_mod_log.errorf(
 		"%s: Invalid blitting mode. Must be one of the following:%s",
 		ctx, modes
 	);
 	VLA_FREE(ctx);
-	va_end(va);
 	VLA_FREE(modes);
 	return Option<BlitFunc_t>{};
 }
@@ -541,7 +520,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 #define FAIL(context, text, ...) \
 	scripts = nullptr; \
 	header_mod_log.errorf( \
-		"{\"entries\"{\"%u\": {\"scripts\": {\"%d\"" context "}}}}: " text "%s", \
+		"{\"entries\"{\"%zu\": {\"scripts\": {\"%d\"" context "}}}}: " text "%s", \
 		num, ret.script_num, ##__VA_ARGS__, \
 		"\nIgnoring remaining script modifications for this entry..." \
 	); \
@@ -562,7 +541,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 	} else if(line_i >= (ret.script.num_instrs - deletions_count)) { \
 		FAIL( \
 			context, \
-			"Line number %u out of range, script only has %u instructions after %u deletions.", \
+			"Line number %u out of range, script only has %zu instructions after %zu deletions.", \
 			##__VA_ARGS__, \
 			(unsigned int)line_i, \
 			ret.script.num_instrs - deletions_count, \
@@ -587,7 +566,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 	if(deletions_j && !json_is_array(deletions_j) && !json_is_integer(deletions_j)) {
 		FAIL(": {\"deletions\"}", "Must be a flexible JSON array of integers.");
 	}
-	auto deletions_count = json_flex_array_size(deletions_j);
+	size_t deletions_count = json_flex_array_size(deletions_j);
 	ret.deletions.reserve(deletions_count);
 
 	auto changes_j = json_object_get(mod_j, "changes");
@@ -595,18 +574,18 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		FAIL(": {\"changes\"}", "Must be a JSON object.");
 	}
 
-	for(decltype(deletions_count) i = 0; i < deletions_count; i++) {
+	for(size_t i = 0; i < deletions_count; i++) {
 		auto line_j = json_flex_array_get(deletions_j, i);
 		auto line_i = json_integer_value(line_j);
 		if(!json_is_integer(line_j) || line_i < 0) {
-			FAIL(": {\"deletions\"[%u]}", "Must be a positive JSON integer.", i);
+			FAIL(": {\"deletions\"[%zu]}", "Must be a positive JSON integer.", i);
 		}
-		CHECK_LINE_NUMBER(": {\"deletions\"[%u]}", i);
+		CHECK_LINE_NUMBER(": {\"deletions\"[%zu]}", i);
 		auto line = (unsigned int)line_i;
 		for(const auto &l : ret.deletions) {
 			if(l == line) {
 				FAIL(
-					": {\"deletions\"[%u]}",
+					": {\"deletions\"[%zu]}",
 					"Duplicate deletion of line %u.",
 					i, l
 				);
@@ -615,7 +594,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		ret.deletions.emplace_back(line);
 	}
 	// Make the line numbers relative to the previous deletion
-	for(decltype(deletions_count) i = 1; i < deletions_count; i++) {
+	for(size_t i = 1; i < deletions_count; i++) {
 		ret.deletions[i] -= i;
 	}
 
@@ -638,7 +617,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		}
 		char *endptr = nullptr;
 
-		auto line = strtol(key, &endptr, 10);
+		long line = strtoul(key, &endptr, 10);
 		if(endptr != key_sep || line < 0) {
 			return fail_key_syntax();
 		}
@@ -653,17 +632,17 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 					key, INT16_MIN, INT16_MAX
 				);
 			}
-			ret.time_changes.emplace_back(script_time_change_t{
+			ret.time_changes.emplace_back(
 				(unsigned int)(line_i - deletions_count), (uint16_t)time
-			});
+			);
 		} else {
-			auto addr = strtol(key_sep + 1, &endptr, 10);
+			long addr = strtoul(key_sep + 1, &endptr, 10);
 			if(endptr == (key_sep + 1) || endptr[0] != '\0' || addr < 0) {
 				return fail_key_syntax();
 			}
 
-			auto code = json_string_value(val_j);
-			auto code_size = binhack_calc_size(code);
+			const char* code = json_string_value(val_j);
+			size_t code_size = binhack_calc_size(code);
 			if(!code || !code_size) {
 				FAIL(
 					": {\"changes\": {\"%s\"}", "Must be a binary hack string.",
@@ -671,18 +650,18 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 				);
 			}
 
-			auto param_length = ((ret.script).*(ret.script.param_length_of))(line_i);
+			uint16_t param_length = ((ret.script).*(ret.script.param_length_of))(line_i);
 			if((size_t)addr > (param_length - code_size)) {
 				FAIL(
 					": {\"changes\": {\"%s\"}",
-					"Address %u + binary hack of length %u exceeds the parameter length of line %u (%u).",
+					"Address %u + binary hack of length %zu exceeds the parameter length of line %u (%u).",
 					key, addr, code_size, line, param_length
 				);
 			}
 
-			ret.param_changes.emplace_back(script_param_change_t{
+			ret.param_changes.emplace_back(
 				(unsigned int)(line_i - deletions_count), (uint16_t)addr, code, code_size
-			});
+			);
 		}
 	}
 	return ret;
@@ -699,7 +678,7 @@ void script_mods_t::apply_orig()
 
 	for(size_t i = 0; i < deletions.size(); i++) {
 		decltype(i) line = deletions[i];
-		LOG("Deleting line %u", line + i);
+		LOG("Deleting line %zu", line + i);
 		((script).*(script.delete_line))(line);
 	}
 	for(size_t i = 0; i < param_changes.size(); i++) {
@@ -710,7 +689,7 @@ void script_mods_t::apply_orig()
 		assert(code_string_render(code, 0, pc.code, 0) == 0);
 
 		LOG(
-			"Changing parameter data at offset %u on line %u",
+			"Changing parameter data at offset %u on line %zu",
 			pc.param_addr, deletions.size() + pc.line
 		);
 		((script).*(script.apply_param_change))(
@@ -719,7 +698,7 @@ void script_mods_t::apply_orig()
 		VLA_FREE(code);
 	}
 	for(const auto &tc : time_changes) {
-		LOG("Changing time on line %u", deletions.size() + tc.line);
+		LOG("Changing time on line %zu", deletions.size() + tc.line);
 		((script).*(script.apply_time_change))(tc);
 	}
 
@@ -738,7 +717,7 @@ entry_mods_t header_mods_t::entry_mods()
 #define FAIL(context, text) \
 	entries = nullptr; \
 	header_mod_log.errorf( \
-		"\"entries\"{\"%u\"%s}: %s%s", ret.num, context, text, \
+		"\"entries\"{\"%zu\"%s}: %s%s", ret.num, context, text, \
 		"\nIgnoring remaining entry modifications for this file..." \
 	); \
 	return ret;
@@ -761,7 +740,7 @@ entry_mods_t header_mods_t::entry_mods()
 	// Blitting mode
 	auto blitmode_j = json_object_get(mod_j, "blitmode");
 	ret.blitmode = blitmode_parse(
-		blitmode_j, "\"entries\"{\"%u\": {\"blitmode\"}}", ret.num
+		blitmode_j, "\"entries\"{\"%zu\": {\"blitmode\"}}", ret.num
 	);
 
 	// Scripts
@@ -780,7 +759,7 @@ void entry_mods_t::apply_ourdata(anm_entry_t &entry)
 {
 	if(name) {
 		log_printf(
-			"(Header) Entry #%u: %s → %s\n",
+			"(Header) Entry #%zu: %s → %s\n",
 			num, entry.name, name
 		);
 		entry.name = name;
@@ -799,7 +778,7 @@ sprite_mods_t header_mods_t::sprite_mods()
 #define FAIL(context, text, ...) \
 	sprites = nullptr; \
 	header_mod_log.errorf( \
-		"\"sprites\"{\"%u\"%s}: " text "%s", \
+		"\"sprites\"{\"%zu\"%s}: " text "%s", \
 		ret.num, context, ##__VA_ARGS__, \
 		"\nIgnoring remaining sprite mods for this file..." \
 	);
@@ -825,13 +804,13 @@ sprite_mods_t header_mods_t::sprite_mods()
 		}
 		auto blitmode_j = json_object_get(mod_j, "blitmode");
 		ret.blitmode = blitmode_parse(
-			blitmode_j, "\"sprites\"{\"%u\": {\"blitmode\"}}", ret.num
+			blitmode_j, "\"sprites\"{\"%zu\": {\"blitmode\"}}", ret.num
 		);
 	} else if(json_is_array(mod_j)) {
 		bounds_parse("", mod_j);
 	} else if(json_is_string(mod_j)) {
 		ret.blitmode = blitmode_parse(
-			mod_j, "\"sprites\"{\"%u\"}", ret.num
+			mod_j, "\"sprites\"{\"%zu\"}", ret.num
 		);
 	} else if(mod_j) {
 		FAIL("", "Invalid data type. See anm.hpp for documentation on ANM header patching.");
@@ -847,7 +826,7 @@ void sprite_mods_t::apply_orig(sprite_t &orig)
 	if(bounds.is_some()) {
 		const auto &b = bounds.unwrap();
 		log_printf(
-			"(Header) Sprite #%u: [%.0f, %.0f, %.0f, %.0f] → [%.0f, %.0f, %.0f, %.0f]\n",
+			"(Header) Sprite #%zu: [%.0f, %.0f, %.0f, %.0f] → [%.0f, %.0f, %.0f, %.0f]\n",
 			num,
 			orig.x, orig.y, orig.w, orig.h,
 			   b.x,    b.y,    b.w,    b.h
@@ -1089,15 +1068,13 @@ void anm_entry_clear(anm_entry_t &entry)
 
 int patch_png_load_for_thtx(png_image_ex &image, const patch_t *patch_info, const char *fn, format_t format)
 {
-	void *file_buffer = NULL;
-	size_t file_size;
-
 	SAFE_FREE(image.buf);
 	png_image_free(&image.img);
 	ZeroMemory(&image.img, sizeof(png_image));
 	image.img.version = PNG_IMAGE_VERSION;
 
-	file_buffer = patch_file_load(patch_info, fn, &file_size);
+	size_t file_size;
+	void* file_buffer = patch_file_load(patch_info, fn, &file_size);
 	if(!file_buffer) {
 		return 2;
 	}
@@ -1113,7 +1090,7 @@ int patch_png_load_for_thtx(png_image_ex &image, const patch_t *patch_info, cons
 			}
 		}
 	}
-	SAFE_FREE(file_buffer);
+	free(file_buffer);
 	if(image.buf) {
 		unsigned int pixels = image.img.width * image.img.height;
 		format_from_bgra(image.buf, pixels, format);
@@ -1155,10 +1132,10 @@ int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprite
 		entry_num,
 		img_path.extension().u8string().c_str()
 	);
-	defer(SAFE_FREE(thtk_fn));
 
 	int ret = 0;
-	auto iterate_png = [&](char** chain) {
+	auto iterate_png = [&](const char* filename) {
+		char** chain = resolve_chain_game(filename);
 		stack_chain_iterate_t sci;
 		sci.fn = NULL;
 		log_printf("(PNG) Resolving %s... ", chain[0]);
@@ -1172,13 +1149,14 @@ int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprite
 	};
 
 	if (thtk_fn) {
-		iterate_png(resolve_chain_game(thtk_fn));
+		iterate_png(thtk_fn);
+		free(thtk_fn);
 		if (ret) {
 			return ret;
 		}
 	}
 
-	iterate_png(resolve_chain_game(patch.name));
+	iterate_png(patch.name);
 	return ret;
 }
 
@@ -1327,7 +1305,7 @@ next_no_thtx:
 	png_image_clear(png);
 	free(file_in);
 
-	log_debugf("-------------\n");
+	log_debug("-------------\n");
 	return 1;
 }
 

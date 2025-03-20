@@ -143,7 +143,7 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 
 	size_t longest_codec_len = 0;
 	for(const auto &codec : CODECS) {
-		longest_codec_len = max(longest_codec_len, codec.ext.length());
+		longest_codec_len = __max(longest_codec_len, codec.ext.length());
 	}
 
 	const stringref_t game = runconfig_game_get();
@@ -155,7 +155,6 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 		game.length() + 1 + basename.length() + LOOP_INFIX.length() + longest_codec_len + 1;
 
 	VLA(char, mod_fn, mod_fn_len);
-	defer({ VLA_FREE(mod_fn); });
 
 	char *mod_fn_p = mod_fn;
 	if(game.data()) {
@@ -214,10 +213,12 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 				SAFE_FREE(chain_entry);
 			}
 
+			VLA_FREE(mod_fn);
 			return pcm_open(codec.open, std::move(intro), std::move(loop));
 		}
 	}
 	log_print("not found\n");
+	VLA_FREE(mod_fn);
 	return nullptr;
 }
 /// ---------------------
