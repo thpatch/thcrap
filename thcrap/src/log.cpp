@@ -328,34 +328,6 @@ static void OpenConsole(void)
 	console_open = true;
 }
 
-/// Per-module loggers
-/// ------------------
-std::nullptr_t logger_t::verrorf(const char *format, va_list va) const
-{
-	va_list va2;
-	va_copy(va2, va);
-	const int total_size = vsnprintf(NULL, 0, format, va2);
-	va_end(va2);
-	if (total_size > 0) {
-		VLA(char, formatted_str, total_size + 1 + prefix.length());
-		memcpy(formatted_str, prefix.data(), prefix.length());
-		vsprintf(formatted_str + prefix.length(), format, va);
-		log_mbox(err_caption, MB_OK | MB_ICONERROR, formatted_str);
-		VLA_FREE(formatted_str);
-	}
-	return nullptr;
-}
-
-std::nullptr_t logger_t::errorf(const char *format, ...) const
-{
-	va_list va;
-	va_start(va, format);
-	auto ret = verrorf(format, va);
-	va_end(va);
-	return ret;
-}
-/// ------------------
-
 #if CPP20
 static auto line = []() consteval {
 	constexpr char8_t dash_char[] = u8"―";

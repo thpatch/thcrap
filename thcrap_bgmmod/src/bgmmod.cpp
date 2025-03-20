@@ -101,7 +101,7 @@ std::unique_ptr<track_pcm_t> pcm_open(
 			return nullptr;
 		}
 		if(intro_sgm->pcmf != loop_sgm->pcmf) {
-			bgmmod_log.errorf(
+			BGMMOD_ERROR(
 				"PCM format mismatch between intro and loop parts!\n"
 				"• Intro: %s\n"
 				"• Loop: %s",
@@ -222,8 +222,3 @@ std::unique_ptr<track_t> stack_bgm_resolve(const stringref_t &basename)
 	return nullptr;
 }
 /// ---------------------
-
-/// Error reporting and debugging
-/// -----------------------------
-logger_t bgmmod_log("BGM modding error");
-/// -----------------------------

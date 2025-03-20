@@ -11,7 +11,8 @@
 #include "thcrap_tsa.h"
 #include "ascii.hpp"
 
-logger_t ascii_log("ASCII patching error");
+#define ASCII_BASE_ERROR(prefix, ...) log_error_mboxf("ASCII patching error", prefix __VA_ARGS__)
+#define ASCII_ERROR(...) ASCII_BASE_ERROR("" TH_OPT_COMMA(__VA_ARGS__))
 
 class ascii_params_t {
 #define PARAM(type, name, zerovalue) \
@@ -21,7 +22,7 @@ public: \
 	type name() \
 	{ \
 		if(_##name == zerovalue) { \
-			ascii_log.errorf("%s not given, crashing...", #name); \
+			ASCII_ERROR("%s not given, crashing...", #name); \
 		} \
 		return _##name; \
 	}
@@ -34,14 +35,14 @@ public: \
 
 	size_t update(x86_reg_t *regs, json_t *bp_info)
 	{
-		auto l = ascii_log.prefixed("`ascii_params`: ");
+#define ASCII_PARAMS_ERROR(...) ASCII_BASE_ERROR("`ascii_params`: ", __VA_ARGS__)
 
 		auto update_ptr = [&] (void **ptr, const char *var) {
 			auto j = json_object_get(bp_info, var);
 			if(j) {
 				auto ret = json_immediate_value(j, regs);
 				if(!ret) {
-					l.errorf("%s is zero", var);
+					ASCII_PARAMS_ERROR("%s is zero", var);
 					return false;
 				}
 				*ptr = (void*)ret;
@@ -64,7 +65,7 @@ public: \
 		} else if(json_is_integer(j)) {
 			_CharWidth = (float)json_integer_value(j);
 		} else if(j) {
-			l.errorf("\"CharWidth\" must be a JSON real or integer");
+			ASCII_PARAMS_ERROR("\"CharWidth\" must be a JSON real or integer");
 		}
 
 		update_ptr(&_ClassPtr, "ClassPtr")
@@ -174,7 +175,6 @@ int ascii_vpatchf_th06(
 
 		auto stage_fmt = strings_get_fallback({ "th06_ascii_centered_stage_format", "STAGE %d" });
 		VLA(char, buf, stage_fmt.length() + SCORE_LEN + 1);
-		defer({ VLA_FREE(buf); });
 
 		sprintf(buf, stage_fmt.data(), stage_id);
 		pos.x = ascii_align_right(SPLIT_POINT, buf);
@@ -182,7 +182,9 @@ int ascii_vpatchf_th06(
 
 		sprintf(buf, "%.10d", score);
 		pos.x = SPLIT_POINT + (2 * ascii_char_width());
-		return putfunc(ClassPtr, pos, buf);
+		auto ret = putfunc(ClassPtr, pos, buf);
+		VLA_FREE(buf);
+		return ret;
 	}
 	// Result format - print name and the (bracketed stage) separately,
 	// and scale the score to always fit into 9 digits
@@ -220,7 +222,6 @@ int ascii_vpatchf_th06(
 		}
 
 		VLA(char, regular_rank_id, TH06_ASCII_PREFIX.length() + rank.length() + 1);
-		defer({ VLA_FREE(regular_rank_id); });
 
 		auto p = regular_rank_id;
 		p = stringref_copy_advance_dst(p, TH06_ASCII_PREFIX);
@@ -228,7 +229,9 @@ int ascii_vpatchf_th06(
 
 		auto str = strings_get_fallback({ regular_rank_id, fallback });
 		pos.x = ascii_align_right(398.0f, str.data());
-		return putfunc(ClassPtr, pos, str.data());
+		auto ret = putfunc(ClassPtr, pos, str.data());
+		VLA_FREE(regular_rank_id);
+		return ret;
 	}
 	/// ----------------------------------------------------------
 
@@ -401,8 +404,8 @@ void ascii_repatch()
 		strings_set("th165_ascii_replay_save_empty", fmt);
 
 		fmt.replace(0, number_save.size(), number_padded);
-		fmt.insert(number_padded.size() + NAME_AND_DATE_EMPTY.size(), "--:--  ");
-		fmt += "  ---%%";
+		fmt.insert(number_padded.size() + NAME_AND_DATE_EMPTY.size(), "--:--  "sv);
+		fmt += "  ---%%"sv;
 		strings_set("th165_ascii_replay_number_empty", fmt);
 
 		fmt.replace(0, number_padded.size(), user_padded);
@@ -410,14 +413,14 @@ void ascii_repatch()
 
 		// Regular format
 		fmt = number_save + NAME_AND_DATE;
-		fmt += "%" + std::to_string(day_width_max) + "s-%d";
+		fmt += '%' + std::to_string(day_width_max) + "s - % d";
 		strings_set("th165_ascii_replay_save", fmt);
 
 		fmt.replace(0, number_save.size(), number_padded);
-		fmt.insert(number_padded.size() + NAME_AND_DATE.size(), "%.2d:%.2d  ");
+		fmt.insert(number_padded.size() + NAME_AND_DATE.size(), "%.2d:%.2d  "sv);
 		// 2-digit slowdown percentages aren't aligned correctly in the
 		// original game, actually.
-		fmt += " %4.1f%%";
+		fmt += " %4.1f%%"sv;
 		strings_set("th165_ascii_replay_number", fmt);
 
 		fmt.replace(0, number_padded.size(), username_padded);

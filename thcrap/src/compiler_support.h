@@ -115,6 +115,21 @@
 #endif
 #endif
 
+// - Support for eliminating commas on empty variadic macros
+// MSVC will just automatically ignore commas before va args
+// sometimes, but other compilers use an explicit extension.
+// Intellisense *really* doesn't like this sometimes, but
+// the compiler accepts it without warnings.
+#if C23 || CPP20
+#define TH_OPT_COMMA(...) __VA_OPT__(,) __VA_ARGS__
+#elif GCC_COMPAT
+#define TH_OPT_COMMA(...) , ##__VA_ARGS__
+#elif MSVC_COMPAT
+#define TH_OPT_COMMA(...) , __VA_ARGS__
+#else
+#define TH_OPT_COMMA(...) , ##__VA_ARGS__
+#endif
+
 // - Attribute Detection
 // Intentionally doesn't use C/C++ version macros
 // to take advantage of compilers that define attribute

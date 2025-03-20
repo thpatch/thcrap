@@ -487,7 +487,7 @@ int patch_fmt(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 					p = strncpy_advance_dst(p, desc.str, desc.len);
 				}
 
-				bgmmod_log.errorf(
+				BGMMOD_ERROR(
 					"Format error in BGM mod for %s.\n"
 					"Modded BGM is %s, but the game only supports:\n"
 					"%s",
@@ -539,12 +539,12 @@ int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 
 	auto fn_base_len = strchr(fn, '.') - fn;
 	VLA(char, fn_base, fn_base_len + 1);
-	defer( VLA_FREE(fn_base) );
 	memcpy(fn_base, fn, fn_base_len);
 	fn_base[fn_base_len] = '\0';
 	patch = json_object_get(jsondata_game_get(LOOPMOD_FN.data()), fn_base);
 
 	if(!json_is_object(patch)) {
+		VLA_FREE(fn_base);
 		return false;
 	}
 
@@ -560,6 +560,7 @@ int patch_pos(void *file_inout, size_t size_out, size_t size_in, const char *fn,
 	if(loop_end) {
 		pos->loop_end = (uint32_t)json_integer_value(loop_end);
 	}
+	VLA_FREE(fn_base);
 	return true;
 }
 /// =====

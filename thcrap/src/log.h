@@ -71,38 +71,10 @@ THCRAP_API int log_vmboxf(const char *caption, const UINT type, const char *form
 THCRAP_API int log_mboxf(const char *caption, const UINT type, const char *format, ...);
 // Set the owner hwnd for the log_mbox* functions
 THCRAP_API void log_mbox_set_owner(HWND hwnd);
+
+#define log_error_mbox(caption, text) log_mbox(caption, MB_OK | MB_ICONERROR, text)
+#define log_error_mboxf(caption, ...) log_mboxf(caption, MB_OK | MB_ICONERROR, __VA_ARGS__)
 /// -------------
-
-/// Per-module loggers
-/// ------------------
-#ifdef __cplusplus
-extern "C++" {
-
-class logger_t {
-	const char *err_caption;
-	std::string_view prefix;
-
-	constexpr logger_t(const char* err_caption, std::string_view prefix)
-		: err_caption(err_caption), prefix(prefix) {
-	}
-
-public:
-	THCRAP_API virtual std::nullptr_t verrorf(const char *text, va_list va) const;
-	THCRAP_API virtual std::nullptr_t errorf(const char *text, ...) const;
-
-	// Returns a new logger that prepends [prefix] to all messages.
-	constexpr logger_t prefixed(const char *prefix) const {
-		return logger_t(err_caption, prefix);
-	}
-
-	constexpr logger_t(const char *err_caption)
-		: err_caption(err_caption), prefix({"", 0}) {
-	}
-};
-
-}
-#endif
-/// ------------------
 
 THCRAP_INTERNAL_API void log_init(int console);
 THCRAP_INTERNAL_API void log_exit(void);

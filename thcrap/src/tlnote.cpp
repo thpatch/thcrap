@@ -37,7 +37,7 @@
 
 /// Error reporting and debugging
 /// -----------------------------
-logger_t tlnote_log("TL note error");
+#define TLNOTE_ERROR(...) log_error_mboxf("TL note error", __VA_ARGS__)
 /// -----------------------------
 
 /// Structures
@@ -83,7 +83,7 @@ void font_delete(HFONT font)
 THCRAP_API bool tlnote_env_render_t::reference_resolution_set(const vector2_t &newval)
 {
 	if(newval.x <= 0 || newval.y <= 0) {
-		tlnote_log.errorf(
+		TLNOTE_ERROR(
 			"Reference resolution must be positive and nonzero, got %f×%f",
 			newval.x, newval.y
 		);
@@ -115,7 +115,7 @@ THCRAP_API bool tlnote_env_t::region_size_set(const vector2_t &newval)
 	if(
 		newval.x <= 0 || newval.y <= 0 || newval.x >= rr.x || newval.y >= rr.y
 	) {
-		tlnote_log.errorf(
+		TLNOTE_ERROR(
 			"Region size must be nonzero and smaller than the reference resolution (%f×%f), got %f×%f",
 			rr.x, rr.y, newval.x, newval.y
 		);
@@ -139,7 +139,7 @@ THCRAP_API xywh_t tlnote_env_t::scale_to(const vector2_t &resolution, const xywh
 bool tlnote_env_from_runconfig(tlnote_env_t &env)
 {
 	auto fail = [] (const char *context, const char *err) {
-		tlnote_log.errorf("{\"tlnotes\": {\"%s\"}}: %s", context, err);
+		TLNOTE_ERROR("{\"tlnotes\": {\"%s\"}}: %s", context, err);
 		return false;
 	};
 
@@ -289,7 +289,7 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 	SelectObject(hDC, render_env.font());
 
 	RECT gdi_rect = { 0, 0, (LONG)render_env.region_w(), 0 };
-	DrawText(hDC,
+	DrawTextU(hDC,
 		formatted_note.data(), formatted_note.length(),
 		&gdi_rect, DT_CALCRECT | DT_WORDBREAK | DT_CENTER
 	);
@@ -322,13 +322,13 @@ IDirect3DTexture* tlnote_rendered_t::render(d3d_version_t ver, IDirect3DDevice *
 	SetBkColor(hDC, 0x000000);
 	SetBkMode(hDC, TRANSPARENT);
 
-	DrawText(hDC,
+	DrawTextU(hDC,
 		formatted_note.data(), formatted_note.length(),
 		&gdi_rect, DT_WORDBREAK | DT_CENTER
 	);
 
 	BITMAP bmp;
-	GetObject(hBitmap, sizeof(bmp), &bmp);
+	GetObjectW(hBitmap, sizeof(bmp), &bmp);
 
 	const auto &outline_radius = render_env.outline_radius;
 	tex_w = gdi_rect.right + (outline_radius * 2);
@@ -766,7 +766,7 @@ THCRAP_API void tlnote_show(const tlnote_t tlnote)
 		assert(index < (int32_t)rendered.size());
 		assert(byte_len >= 1 && byte_len <= 4);
 	} else {
-		tlnote_log.errorf("Illegal TL note type? (U+%04X)", tlnote.str->type);
+		TLNOTE_ERROR("Illegal TL note type? (U+%04X)", tlnote.str->type);
 		return;
 	}
 	id_active = index;
@@ -784,7 +784,7 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 	for(size_t i = 0; i < text.length(); i++) {
 		if(*p == TLNOTE_INLINE) {
 			if(sepchar_ptr) {
-				tlnote_log.errorf(
+				TLNOTE_ERROR(
 					"Duplicate TL note separator character (U+%04X) in\n\n%s",
 					*p, text
 				);
@@ -794,7 +794,7 @@ THCRAP_API tlnote_split_t tlnote_find(stringref_t text, bool inline_only)
 			}
 		} else if(*p == TLNOTE_INDEX) {
 			auto fail = [text] () -> tlnote_split_t {
-				tlnote_log.errorf(
+				TLNOTE_ERROR(
 					"U+%04X is reserved for internal TL note handling:\n\n%s",
 					TLNOTE_INDEX, text
 				);

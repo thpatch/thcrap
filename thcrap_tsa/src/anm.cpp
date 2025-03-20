@@ -472,7 +472,7 @@ int sprite_patch(const sprite_patch_t &sp)
 
 /// ANM header patching
 /// -------------------
-logger_t header_mod_log("ANM header patching error");
+#define HEADER_MOD_ERROR(...) log_error_mboxf("ANM header patching error", __VA_ARGS__)
 
 Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 {
@@ -504,7 +504,7 @@ Option<BlitFunc_t> blitmode_parse(json_t *blitmode_j, const char *context, ...)
 	VLA(char, ctx, ctx_len + 1);
 	vsprintf(ctx, context, va);
 	va_end(va);
-	header_mod_log.errorf(
+	HEADER_MOD_ERROR(
 		"%s: Invalid blitting mode. Must be one of the following:%s",
 		ctx, modes
 	);
@@ -519,10 +519,9 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 
 #define FAIL(context, text, ...) \
 	scripts = nullptr; \
-	header_mod_log.errorf( \
-		"{\"entries\"{\"%zu\": {\"scripts\": {\"%d\"" context "}}}}: " text "%s", \
-		num, ret.script_num, ##__VA_ARGS__, \
-		"\nIgnoring remaining script modifications for this entry..." \
+	HEADER_MOD_ERROR( \
+		"{\"entries\"{\"%zu\": {\"scripts\": {\"%d\"" context "}}}}: " text "\nIgnoring remaining script modifications for this entry...", \
+		num, ret.script_num TH_OPT_COMMA(__VA_ARGS__) \
 	); \
 	return ret;
 
@@ -531,7 +530,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		FAIL( \
 			context, \
 			"Line number %u out of range, script only has %u instructions.", \
-			##__VA_ARGS__, (unsigned int)line_i, ret.script.num_instrs \
+			__VA_ARGS__, (unsigned int)line_i, ret.script.num_instrs \
 		) \
 	}
 
@@ -542,7 +541,7 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 		FAIL( \
 			context, \
 			"Line number %u out of range, script only has %zu instructions after %zu deletions.", \
-			##__VA_ARGS__, \
+			__VA_ARGS__, \
 			(unsigned int)line_i, \
 			ret.script.num_instrs - deletions_count, \
 			deletions_count \
@@ -628,8 +627,8 @@ script_mods_t entry_mods_t::script_mods(uint8_t *in, anm_offset_t &offset, uint3
 			auto time = json_integer_value(val_j);
 			if(!json_is_integer(val_j) || (time < INT16_MIN) || (time > INT16_MAX)) {
 				FAIL(
-					": {\"changes\": {\"%s\"}", "Time must be a signed 16-bit integer, between %d and %d.",
-					key, INT16_MIN, INT16_MAX
+					": {\"changes\": {\"%s\"}", "Time must be a signed 16-bit integer, between -32767 and 32767.",
+					key
 				);
 			}
 			ret.time_changes.emplace_back(
@@ -716,9 +715,8 @@ entry_mods_t header_mods_t::entry_mods()
 
 #define FAIL(context, text) \
 	entries = nullptr; \
-	header_mod_log.errorf( \
-		"\"entries\"{\"%zu\"%s}: %s%s", ret.num, context, text, \
-		"\nIgnoring remaining entry modifications for this file..." \
+	HEADER_MOD_ERROR( \
+		"\"entries\"{\"%zu\"" context "}: " text "\nIgnoring remaining entry modifications for this file...", ret.num \
 	); \
 	return ret;
 
@@ -777,37 +775,31 @@ sprite_mods_t header_mods_t::sprite_mods()
 
 #define FAIL(context, text, ...) \
 	sprites = nullptr; \
-	header_mod_log.errorf( \
-		"\"sprites\"{\"%zu\"%s}: " text "%s", \
-		ret.num, context, ##__VA_ARGS__, \
-		"\nIgnoring remaining sprite mods for this file..." \
+	HEADER_MOD_ERROR( \
+		"\"sprites\"{\"%zu\"" context "}: " text "\nIgnoring remaining sprite mods for this file...", \
+		ret.num TH_OPT_COMMA(__VA_ARGS__) \
 	);
 
-#define RETURN_FAIL(context, text, ...) \
-	FAIL(context, text, ##__VA_ARGS__); \
-	return false;
-
-	auto bounds_parse = [&](const char *context, const json_t *bounds_j) {
-		auto rect = json_xywh_value(bounds_j);
-		if(!rect.err.empty()) {
-			RETURN_FAIL(context, "(Bounds) %s", rect.err.c_str());
-		}
-		ret.bounds = rect.v;
-		return true;
-	};
+#define BOUNDS_PARSE(context, bounds_j) \
+	if(auto rect = json_xywh_value(bounds_j); !rect.err.empty()) { \
+		FAIL(context, "(Bounds) %s", rect.err.c_str()); \
+	} \
+	else { \
+		ret.bounds = rect.v; \
+	}
 
 	auto mod_j = json_object_numkey_get(sprites, ret.num);
 	if(json_is_object(mod_j)) {
 		auto bounds_j = json_object_get(mod_j, "bounds");
 		if(bounds_j) {
-			bounds_parse(": {\"bounds\"}", bounds_j);
+			BOUNDS_PARSE(": {\"bounds\"}", bounds_j);
 		}
 		auto blitmode_j = json_object_get(mod_j, "blitmode");
 		ret.blitmode = blitmode_parse(
 			blitmode_j, "\"sprites\"{\"%zu\": {\"blitmode\"}}", ret.num
 		);
 	} else if(json_is_array(mod_j)) {
-		bounds_parse("", mod_j);
+		BOUNDS_PARSE("", mod_j);
 	} else if(json_is_string(mod_j)) {
 		ret.blitmode = blitmode_parse(
 			mod_j, "\"sprites\"{\"%zu\"}", ret.num
@@ -817,7 +809,6 @@ sprite_mods_t header_mods_t::sprite_mods()
 	}
 	return ret;
 
-#undef RETURN_FAIL
 #undef FAIL
 }
 
@@ -843,7 +834,8 @@ header_mods_t::header_mods_t(json_t *patch)
 	auto object_get = [this, patch] (const char *key) -> json_t* {
 		auto ret = json_object_get(patch, key);
 		if(ret && !json_is_object(ret)) {
-			return header_mod_log.errorf("\"%s\" must be a JSON object.", key);
+			HEADER_MOD_ERROR("\"%s\" must be a JSON object.", key);
+			return NULL;
 		}
 		return ret;
 	};

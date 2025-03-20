@@ -16,7 +16,7 @@
 #pragma comment(lib, "libogg" FILE_SUFFIX)
 #pragma comment(lib, "libvorbis" FILE_SUFFIX)
 
-auto vorbis_l = bgmmod_format_log("Ogg Vorbis");
+#define VORBIS_ERROR(...) BGMMOD_BASE_ERROR("Ogg Vorbis ", __VA_ARGS__)
 
 /// Callbacks
 /// ---------
@@ -87,7 +87,7 @@ size_t vorbis_part_t::part_decode_single(void *buf, size_t size)
 {
 	auto ret = ov_read(&vf, (char *)buf, size, 0, 2, 1, nullptr);
 	if(ret < 0) {
-		vorbis_l.errorf(
+		VORBIS_ERROR(
 			"Error %d at sample %lld: %s",
 			ret, ov_pcm_tell(&vf), ov_strerror(ret)
 		);
@@ -112,7 +112,7 @@ std::unique_ptr<pcm_part_t> vorbis_open(HANDLE &&stream)
 	OggVorbis_File vf = { 0 };
 
 	auto fail = [&] (int ret) {
-		vorbis_l.errorf("%s", ov_strerror(ret));
+		VORBIS_ERROR("%s", ov_strerror(ret));
 		ov_clear(&vf);
 		return nullptr;
 	};

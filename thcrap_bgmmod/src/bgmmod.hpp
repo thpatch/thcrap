@@ -184,11 +184,9 @@ namespace mmio
 
 /// Error reporting and debugging
 /// -----------------------------
-extern logger_t bgmmod_log;
+#define BGMMOD_BASE_ERROR(prefix, ...) log_error_mboxf("BGM modding error", prefix __VA_ARGS__)
+#define BGMMOD_ERROR(...) BGMMOD_BASE_ERROR("", __VA_ARGS__)
 
 #define bgmmod_debugf(text, ...) \
 	log_debugf("[BGM] " text, ##__VA_ARGS__)
-// TODO: Filename?
-#define bgmmod_format_log(format) \
-	bgmmod_log.prefixed("(" format ") ")
 /// -----------------------------

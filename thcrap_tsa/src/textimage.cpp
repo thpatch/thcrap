@@ -20,7 +20,7 @@
 
 /// Errors
 /// ======
-logger_t textimage_log("Text image error");
+#define TEXTIMAGE_ERROR(...) log_error_mboxf("Text image error", __VA_ARGS__)
 
 #define SLOTSTR_ERROR "Must parse into a sprite slot or a known image file name"
 /// ======
@@ -293,7 +293,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 	}
 
 	if(!sr.active_ti && TextureSlots[texture_slot] != nullptr) {
-		textimage_log.errorf("Texture slot %u is controlled by the game", texture_slot);
+		TEXTIMAGE_ERROR("Texture slot %u is controlled by the game", texture_slot);
 	}
 
 	auto release_and_fallback = [&] (HRESULT ret) {
@@ -337,7 +337,7 @@ HRESULT textimage_t::reload(bool fallback_on_failure)
 		|| (srcinfo.Width % sprite_w) != 0
 		|| (srcinfo.Height % sprite_h) != 0
 	) {
-		textimage_log.errorf("%s: "
+		TEXTIMAGE_ERROR("%s: "
 			"Image size must be a multiple of %u×%u, got %u×%u",
 			fn, sprite_w, sprite_h, srcinfo.Width, srcinfo.Height
 		);
@@ -428,9 +428,10 @@ textimage_t* textimage_t::create(
 		fn_len = json_string_length(filename_json);
 	}
 	if(!fn) {
-		return textimage_log.errorf(
+		TEXTIMAGE_ERROR(
 			"%s[%zu]: \"filename\" must be a string", slotstr, priority
 		);
+		return NULL;
 	}
 
 	auto check_val = [desc, fn] (const char *val, uint32_t ge_than) {
@@ -438,7 +439,7 @@ textimage_t* textimage_t::create(
 		auto v = json_integer_value(j);
 		bool valid = json_is_integer(j) && v >= ge_than && v < UINT32_MAX;
 		if(!valid) {
-			textimage_log.errorf(
+			TEXTIMAGE_ERROR(
 				"%s: \"%s\" must be an unsigned 32-bit integer%s",
 				fn, val, ge_than >= 1 ? " greater than zero" : ""
 			);
@@ -460,12 +461,14 @@ textimage_t* textimage_t::create(
 	if(script_j) {
 		const char* script_str = json_concat_string_array(script_j, "script"); // Allocates a string that must be freed
 		if(!script_str) {
-			return textimage_log.errorf("%s: \"script\" should be a code string", fn);
+			TEXTIMAGE_ERROR("%s: \"script\" should be a code string", fn);
+			return NULL;
 		}
 		size_t script_len = code_string_calc_size(script_str);
 		if(script_len == 0) {
 			free((void*)script_str); // free the string since it's not needed
-			return textimage_log.errorf("%s: Error rendering \"script\" into binary", fn);
+			TEXTIMAGE_ERROR("%s: Error rendering \"script\" into binary", fn);
+			return NULL;
 		}
 		script_buf = new unsigned char[script_len];
 		code_string_render(script_buf, 0, script_str, 0);
@@ -518,7 +521,7 @@ sprite_slot_t sprite_slot_t::parse(const char *slotstr)
 		ret.slot = ret.image->sprite_slot;
 		return ret;
 	}
-	textimage_log.errorf("\"%s\": " SLOTSTR_ERROR, slotstr);
+	TEXTIMAGE_ERROR("\"%s\": " SLOTSTR_ERROR, slotstr);
 	return ret;
 }
 
@@ -552,7 +555,7 @@ size_t BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 #endif
 
 	if(sprite_spec_size() == 0) {
-		textimage_log.errorf("Text images are not supported for this game.");
+		TEXTIMAGE_ERROR("Text images are not supported for this game.");
 		return 1;
 	}
 
@@ -562,7 +565,7 @@ size_t BP_textimage_init(x86_reg_t *regs, json_t *bp_info)
 #define P(var) \
 		*(size_t*)&var = json_object_get_immediate(bp_info, regs, #var); \
 		if(var == nullptr) { \
-			textimage_log.errorf("`textimage_init`: \"" #var "\" is zero"); \
+			TEXTIMAGE_ERROR("`textimage_init`: \"" #var "\" is zero"); \
 			Initialized = false; \
 		}
 
@@ -635,7 +638,7 @@ size_t BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
 				}
 				break;
 			default:
-				textimage_log.errorf(
+				TEXTIMAGE_ERROR(
 					"%s[%zu]: Must be either a JSON object to (re-)define this text image, or a JSON true to reload it",
 					slotstr, priority
 				);
@@ -661,7 +664,7 @@ size_t BP_textimage_load(x86_reg_t *regs, json_t *bp_info)
 			for(size_t i = 0; i < group_size; i++) {
 				auto slotstr = json_array_get_string(group_j, i);
 				if(!slotstr) {
-					textimage_log.errorf("\"groups\"[%u][%u]: " SLOTSTR_ERROR, group_num, i);
+					TEXTIMAGE_ERROR("\"groups\"[%zu][%zu]: " SLOTSTR_ERROR, group_num, i);
 					return;
 				}
 				auto sr = sprite_runtime_get(slotstr);
@@ -691,7 +694,7 @@ size_t BP_textimage_set(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	auto sprites = json_object_get(bp_info, "sprites");
 	if(!json_is_object(sprites)) {
-		textimage_log.errorf("`textimage_set`: "
+		TEXTIMAGE_ERROR("`textimage_set`: "
 			"\"sprites\" must be a JSON object mapping slotstrings to sprite numbers"
 		);
 		return 1;
@@ -719,7 +722,7 @@ size_t BP_textimage_is_active(x86_reg_t *regs, json_t *bp_info)
 	// ----------
 	auto slots = json_object_get(bp_info, "slots");
 	if(!json_is_array(slots) && !json_is_string(slots)) {
-		textimage_log.errorf("`textimage_is_active`: "
+		TEXTIMAGE_ERROR("`textimage_is_active`: "
 			"\"slots\" must be a flexible array of slotstrings"
 		);
 		return 1;
