@@ -80,4 +80,4 @@ THCRAP_BREAKPOINT_API size_t BP_init_next_stage(x86_reg_t *regs, json_t *bp_info
 // http://blogs.msdn.com/b/oldnewthing/archive/2007/05/03/2383346.aspx.)
 // As a result, we have to detour this function to properly shut down any
 // threads created by thcrap plugins or modules before calling ExitProcess().
-TH_NORETURN void WINAPI thcrap_ExitProcess(UINT uExitCode);
+TH_NORETURN VOID WINAPI thcrap_ExitProcess(UINT uExitCode);

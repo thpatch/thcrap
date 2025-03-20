@@ -125,14 +125,14 @@ protected:
 	T val;
 
 public:
-	Option(T val) : valid(true), val(val) {}
+	Option(const T& val) : valid(true), val(val) {}
 	Option() : valid(false) {}
 
-	bool is_none() {
+	bool is_none() const {
 		return !valid;
 	}
 
-	bool is_some() {
+	bool is_some() const {
 		return valid;
 	}
 

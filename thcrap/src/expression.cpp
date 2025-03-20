@@ -524,6 +524,10 @@ bool CPU_Supports_LMLSAHF(void) {
 	return CPUID_Data.HasLMLSAHF;
 }
 
+vector_tier_t CPU_Vector_Features() {
+	return (vector_tier_t)CPUID_Data.vector_feature_mask;
+}
+
 #define WarnOnce(warning) do {\
 	static bool AlreadyDisplayedWarning = false;\
 	if (!AlreadyDisplayedWarning) { \

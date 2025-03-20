@@ -348,10 +348,10 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 		return 1;
 	}
 
-	log_printf("Creating shortcuts");
+	log_print("Creating shortcuts");
 
 	for (size_t i = 0; games[i].id; i++) {
-		log_printf(".");
+		log_print(".");
 
 		if (destination == SHDESTINATION_GAMES_DIRECTORY) {
 			link_dir = std::filesystem::absolute(std::filesystem::u8path(games[i].path)).remove_filename();

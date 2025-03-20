@@ -23,7 +23,7 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 
 // If the current value in [ptr] equals [Prev], copies [len] bytes from [ptr] to [CpyBuf]
 // and then writes [len] bytes from [New] to [ptr].
-// Returns true on success, false on failure.
+// Returns [CpyBuf] on success, NULL on failure.
 void* PatchRegionCopySrc(void *ptr, const void *Prev, const void *New, void *CpyBuf, size_t len);
 
 /// Import Address Table patching

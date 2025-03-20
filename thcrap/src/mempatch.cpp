@@ -100,11 +100,11 @@ int PatchRegionEx(HANDLE hProcess, void *ptr, const void *Prev, const void *New,
 {
 	MEMORY_BASIC_INFORMATION mbi;
 	DWORD oldProt;
-	VLA(BYTE, old_val, len);
 	SIZE_T byte_ret;
 
 	VirtualQueryEx(hProcess, ptr, &mbi, sizeof(MEMORY_BASIC_INFORMATION));
 	VirtualProtectEx(hProcess, mbi.BaseAddress, mbi.RegionSize, PAGE_READWRITE, &oldProt);
+	VLA(BYTE, old_val, len);
 	ReadProcessMemory(hProcess, ptr, old_val, len, &byte_ret);
 	if(Prev ? !memcmp(old_val, Prev, len) : 1) {
 		WriteProcessMemory(hProcess, ptr, New, len, &byte_ret);
@@ -321,23 +321,21 @@ size_t vtable_detour(void **vtable, const vtable_detour_t *det, size_t det_count
 		return 0;
 	}
 
-	DWORD old_prot;
-	size_t replaced = 0;
-	size_t i;
-
 	// VirtualProtect() is infamously slow, so...
-	size_t lowest = (size_t)-1;
+	size_t lowest = SIZE_MAX;
 	size_t highest = 0;
 
-	for(i = 0; i < det_count; i++) {
+	for(size_t i = 0; i < det_count; i++) {
 		lowest = MIN(lowest, det[i].index);
 		highest = MAX(highest, det[i].index);
 	}
 
 	size_t bytes_to_lock = ((highest + 1) - lowest) * sizeof(void*);
 
+	DWORD old_prot;
 	VirtualProtect(vtable + lowest, bytes_to_lock, PAGE_READWRITE, &old_prot);
-	for(i = 0; i < det_count; i++) {
+	size_t replaced = 0;
+	for(size_t i = 0; i < det_count; i++) {
 		auto& cur = det[i];
 
 		bool replace =

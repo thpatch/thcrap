@@ -260,7 +260,7 @@ void stack_show_missing(void)
 		}
 	}
 
-	if(rem_arcs.size() > 0) {
+	if(!rem_arcs.empty()) {
 		std::string rem_arcs_str;
 
 		for (const patch_t* it : rem_arcs) {
@@ -269,8 +269,7 @@ void stack_show_missing(void)
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 			"Some patches in your configuration could not be found:\n"
 			"\n"
-			"%s"
-			"\n"
+			"%s" // No extra newline here since there's an extra newline at the end of rem_arcs_str
 			"Please reconfigure your patch stack - either by running the configuration tool, "
 			"or by simply editing your run configuration file (%s).",
 			rem_arcs_str.c_str(), runconfig_runcfg_fn_get()
@@ -416,7 +415,7 @@ int stack_check_if_unneeded(const char *patch_id)
 
 		if (build && !game_found) {
 			// <game>.<build>.js
-			std::string js = game + "." + build + ".js";
+			std::string js = game + '.' + build + ".js";
 			game_found |= patch_file_exists(&patch, js.c_str());
 		}
 	}

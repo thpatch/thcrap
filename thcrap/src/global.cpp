@@ -110,7 +110,7 @@ int globalconfig_set_string(const char* key, const char *value)
 void globalconfig_release(void)
 {
 	json_decref(global_cfg);
-	global_cfg = json_incref(NULL);
+	global_cfg = NULL;
 }
 
 void* TH_CDECL thcrap_alloc(size_t size) {

@@ -397,6 +397,7 @@ int plugins_load(const char *dir)
 		WIN32_FIND_DATAA w32fd;
 		HANDLE hFind = FindFirstFileU(dll_path, &w32fd);
 		if (hFind == INVALID_HANDLE_VALUE) {
+			free(dll_path);
 			return 1;
 		}
 		do {
