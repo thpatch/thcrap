@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.IO;
 using System.Text;
@@ -33,6 +34,7 @@ namespace thcrap_configure_v3
             ConfigName.Text = "";
             isUnedited = 1;
         }
+
         private void AddToConfigName(string patchName)
         {
             if (isUnedited > 0)
@@ -48,6 +50,7 @@ namespace thcrap_configure_v3
                 }
             }
         }
+
         private void RemoveFromConfigName(string patchName)
         {
             if (isUnedited <= 0)
@@ -73,6 +76,48 @@ namespace thcrap_configure_v3
             public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
             private bool isSelected = false;
             private bool isVisibleWithSearch = true;
+            private bool _isFirst;
+            private bool _isLast;
+
+
+            public bool IsFirst
+            {
+                get => _isFirst;
+                set
+                {
+                    if (_isFirst != value)
+                    {
+                        _isFirst = value;
+                        OnPropertyChanged(nameof(IsFirst));
+                        OnPropertyChanged(nameof(IsNotFirst)); // Notify when IsFirst changes
+                    }
+                }
+            }
+
+            public bool IsLast
+            {
+                get => _isLast;
+                set
+                {
+                    if (_isLast != value)
+                    {
+                        _isLast = value;
+                        OnPropertyChanged(nameof(IsLast));
+                        OnPropertyChanged(nameof(IsNotLast)); // Notify when IsLast changes
+                    }
+                }
+            }
+
+            // New properties for inverted logic
+            public bool IsNotFirst => !IsFirst;
+            public bool IsNotLast => !IsLast;
+
+            protected virtual void OnPropertyChanged(string propertyName)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            }
+
+
             public RepoPatch(thcrap_configure_v3.RepoPatch patch)
             {
                 SourcePatch = patch;
@@ -80,29 +125,32 @@ namespace thcrap_configure_v3
 
             public Visibility VisibilityInTree
             {
-                get
-                {
-                    return isVisibleWithSearch && !isSelected ? Visibility.Visible : Visibility.Collapsed;
-                }
+                get { return isVisibleWithSearch && !isSelected ? Visibility.Visible : Visibility.Collapsed; }
             }
+
             public bool IsSelected() => isSelected;
+
             public void Select(bool newState)
             {
                 isSelected = newState;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
             }
+
             public bool UpdateVisibilityWithSearch(string filter)
             {
                 bool newIsVisible;
 
-                newIsVisible = SourcePatch.Id.ToLower().Contains(filter) || SourcePatch.Title.ToLower().Contains(filter);
+                newIsVisible = SourcePatch.Id.ToLower().Contains(filter) ||
+                               SourcePatch.Title.ToLower().Contains(filter);
                 if (newIsVisible != isVisibleWithSearch)
                 {
                     isVisibleWithSearch = newIsVisible;
                     PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(VisibilityInTree)));
                 }
+
                 return newIsVisible;
             }
+
             public void SetVisibilityWithSearch()
             {
                 isVisibleWithSearch = true;
@@ -126,10 +174,7 @@ namespace thcrap_configure_v3
 
             public Visibility VisibilityInTree
             {
-                get
-                {
-                    return isVisible ? Visibility.Visible : Visibility.Collapsed;
-                }
+                get { return isVisible ? Visibility.Visible : Visibility.Collapsed; }
             }
 
             public void SetVisibility(bool v)
@@ -140,7 +185,8 @@ namespace thcrap_configure_v3
 
             public bool UpdateFilter(string filter)
             {
-                bool selfMatch = SourceRepo.Id.ToLower().Contains(filter) || SourceRepo.Title.ToLower().Contains(filter);
+                bool selfMatch = SourceRepo.Id.ToLower().Contains(filter) ||
+                                 SourceRepo.Title.ToLower().Contains(filter);
                 bool patchesVisible = false;
                 foreach (RepoPatch patch in Patches)
                 {
@@ -155,6 +201,7 @@ namespace thcrap_configure_v3
                             patchesVisible = true;
                     }
                 }
+
                 return patchesVisible;
             }
 
@@ -174,13 +221,24 @@ namespace thcrap_configure_v3
             SelectedPatches.ItemsSource = selectedPatches;
         }
 
-        public List<thcrap_configure_v3.RepoPatch> GetSelectedRepoPatch() => selectedPatches.ToList().ConvertAll((RepoPatch patch) => patch.SourcePatch);
+        public List<thcrap_configure_v3.RepoPatch> GetSelectedRepoPatch() =>
+            selectedPatches.ToList().ConvertAll((RepoPatch patch) => patch.SourcePatch);
 
         private void SelectPatch(RepoPatch patch)
         {
             AddToConfigName(patch.SourcePatch.Id);
             patch.Select(true);
             selectedPatches.Add(patch);
+            UpdateFirstAndLastFlags();
+        }
+
+        private void UpdateFirstAndLastFlags()
+        {
+            for (var i = 0; i < selectedPatches.Count; i++)
+            {
+                selectedPatches[i].IsFirst = (i == 0);
+                selectedPatches[i].IsLast = (i == selectedPatches.Count - 1);
+            }
         }
 
         private void AvailablePatchDoubleClick(object sender, MouseButtonEventArgs e)
@@ -196,11 +254,20 @@ namespace thcrap_configure_v3
 
         private void AvailablePatchesMoveRight(object sender, RoutedEventArgs e)
         {
-            if (!(AvailablePatches.SelectedItem is RepoPatch patch))
+            RepoPatch selectedPatch = null;
+            if (sender is Button button && button.Tag is RepoPatch patch)
+            {
+                selectedPatch = patch;
+            }
+            else if (AvailablePatches.SelectedItem is RepoPatch patch2 && !patch2.IsSelected())
+            {
+                selectedPatch = patch2;
+            }
+
+            if (selectedPatch == null)
                 return;
 
-            if (!patch.IsSelected())
-                SelectPatch(patch);
+            SelectPatch(selectedPatch);
         }
 
         public void SetInitialPatch(thcrap_configure_v3.RepoPatch patchDescription)
@@ -223,6 +290,7 @@ namespace thcrap_configure_v3
             selectedPatches.Remove(patch);
             patch.Select(false);
             RemoveFromConfigName(patch.SourcePatch.Id);
+            UpdateFirstAndLastFlags();
         }
 
         private void SelectedPatch_DoubleClick(object sender, MouseButtonEventArgs e)
@@ -252,53 +320,78 @@ namespace thcrap_configure_v3
 
         private void SelectedPatchesMoveLeft(object sender, RoutedEventArgs e)
         {
-            if (!(SelectedPatches.SelectedItem is RepoPatch patch))
-                return;
+            RepoPatch selectedPatch;
 
-            UnselectPatch(patch);
+            if (sender is Button button && button.Tag is RepoPatch patch)
+            {
+                selectedPatch = patch;
+            }
+            else
+            {
+                if (!(SelectedPatches.SelectedItem is RepoPatch patch2))
+                    return;
+                selectedPatch = patch2;
+            }
+
+            UnselectPatch(selectedPatch);
         }
 
         private void SelectedPatch_MoveUp(object sender, RoutedEventArgs e)
         {
-            if (!(SelectedPatches.SelectedItem is RepoPatch patch))
-                return;
+            RepoPatch selectedPatch;
+            if (sender is Button button && button.Tag is RepoPatch patch)
+            {
+                selectedPatch = patch;
+            }
+            else
+            {
+                if (!(SelectedPatches.SelectedItem is RepoPatch patch2))
+                    return;
+                selectedPatch = patch2;
+            }
 
-            int idx = selectedPatches.IndexOf(patch);
+            int idx = selectedPatches.IndexOf(selectedPatch);
             if (idx <= 0)
                 return;
 
             selectedPatches.Move(idx, idx - 1);
+            UpdateFirstAndLastFlags();
         }
 
         private void SelectedPatch_MoveDown(object sender, RoutedEventArgs e)
         {
-            if (!(SelectedPatches.SelectedItem is RepoPatch patch))
-                return;
+            RepoPatch selectedPatch;
+            if (sender is Button button && button.Tag is RepoPatch patch)
+            {
+                selectedPatch = patch;
+            }
+            else
+            {
+                if (!(SelectedPatches.SelectedItem is RepoPatch patch2))
+                    return;
+                selectedPatch = patch2;
+            }
 
-            int idx = selectedPatches.IndexOf(patch);
+            int idx = selectedPatches.IndexOf(selectedPatch);
             if (idx >= selectedPatches.Count - 1)
                 return;
 
             selectedPatches.Move(idx, idx + 1);
+            UpdateFirstAndLastFlags();
         }
-        private void SelectedPatch_Help(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show(
-@"Different patches can change the same graphic, sound, dialouge, etc... of the game
 
-If you select multiple patches that all modify the same thing, lower patches will overwrite the modifications of the patches above them",
-                "Information", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
         public void ConfigNameChanged(object sender, TextChangedEventArgs e)
         {
             if (isUnedited > 0)
             {
                 isUnedited--;
             }
+
             if (configMaxLength == 0)
             {
                 configMaxLength = 248 - (Environment.CurrentDirectory.Length + "\\config\\.js".Length);
             }
+
             if (ConfigName.Text.Length > configMaxLength)
             {
                 ConfigName.Text = ConfigName.Text.Substring(0, configMaxLength);
@@ -322,6 +415,7 @@ If you select multiple patches that all modify the same thing, lower patches wil
                 Placeholder.Visibility = Visibility.Visible;
                 SearchButton.Content = "\ud83d\udd0e"; // magnifying glass
             }
+
             if (AvailablePatches?.ItemsSource is IEnumerable<Repo> repos)
             {
                 foreach (Repo repo in repos)
