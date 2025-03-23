@@ -128,6 +128,10 @@
                 <Button Margin="0,0,0,3">Copy dependencies from "All patches" tab</Button>
                 <Button>Save patch on your computer</Button>
             </StackPanel>
+            <!--
+            TODO use LibGit2sharp for git stuff (already included in the project)
+            Doc at https://github.com/libgit2/libgit2sharp/wiki/LibGit2Sharp-Hitchhiker%27s-Guide-to-Git
+            -->
             <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,20,6,0">
                 <DockPanel Margin="0,0,0,3">
                     <TextBlock DockPanel.Dock="Left" Margin="0,0,3,0">Github URL:</TextBlock>
