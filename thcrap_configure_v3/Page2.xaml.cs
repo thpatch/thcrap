@@ -51,6 +51,7 @@ namespace thcrap_configure_v3
         {
             Simple.SetRepoList(repoList);
             Advanced.SetRepoList(repoList);
+            PatchEditor.Init();
         }
 
         private List<RepoPatch> patches;
