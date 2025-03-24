@@ -120,7 +120,8 @@
                             Padding="0"
                             VerticalAlignment="Stretch"
                             Click="SearchButton_OnClick"
-                            Content="🔎">
+                            Content="{Binding SearchEmoji}"
+                            FontFamily="{Binding EmojiWebdingsFontFamily}">
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="BorderBrush"
@@ -208,8 +209,9 @@
                                 Tag="{Binding}"
                                 ToolTip="{Binding SourcePatch.Id}"
                                 Style="{StaticResource HoverVisibleButtonStyle}"
-                                Content="🡺"
-                                SnapsToDevicePixels="True">
+                                Content="{Binding RightArrow}"
+                                SnapsToDevicePixels="True"
+                                FontFamily="{Binding EmojiWingingds3FontFamily}">
                             </Button>
                         </Grid>
                     </HierarchicalDataTemplate>
@@ -357,14 +359,16 @@
                                     Tag="{Binding}"
                                     Margin="0"
                                     Style="{StaticResource HoverVisibleButtonStyle}"
-                                    Content="🡸">
+                                    Content="{Binding LeftArrow}"
+                                    FontFamily="{Binding EmojiWingingds3FontFamily}">
                             </Button>
                             <Button x:Name="UpButton"
                                     Click="SelectedPatch_MoveUp"
                                     Grid.Column="1"
                                     Grid.Row="0"
                                     Tag="{Binding}"
-                                    Content="🡹">
+                                    Content="{Binding UpArrow}"
+                                    FontFamily="{Binding EmojiWingingds3FontFamily}">
                                 <Button.Style>
                                     <Style TargetType="Button">
                                         <Setter Property="Visibility" Value="Hidden" />
@@ -418,7 +422,8 @@
                                     Grid.Column="1"
                                     Grid.Row="1"
                                     Tag="{Binding}"
-                                    Content="🡻">
+                                    Content="{Binding DownArrow}"
+                                    FontFamily="{Binding EmojiWingingds3FontFamily}">
                                 <Button.Style>
                                     <Style TargetType="Button">
                                         <Setter Property="Visibility" Value="Hidden" />

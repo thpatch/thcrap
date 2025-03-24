@@ -24,8 +24,14 @@ namespace thcrap_configure_v3
     /// <summary>
     /// Interaction logic for Page2_advanced.xaml
     /// </summary>
-    public partial class Page2_advanced : UserControl
+    public partial class Page2_advanced : UserControl, INotifyPropertyChanged
     {
+        public event PropertyChangedEventHandler PropertyChanged;
+        public string SearchEmoji => Environment.OSVersion.Version.Major >= 10 ? "\ud83d\udd0e" : "L";
+        public string SearchCrossEmoji => Environment.OSVersion.Version.Major >= 10 ? "\u274c" : "r";
+
+        public FontFamily EmojiWebdingsFontFamily => Environment.OSVersion.Version.Major >= 10 ? FontFamily : new FontFamily("Webdings");
+
         private int isUnedited = 1;
         private int configMaxLength = 0;
 
@@ -74,11 +80,17 @@ namespace thcrap_configure_v3
         public class RepoPatch : INotifyPropertyChanged
         {
             public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
+
+            public string RightArrow => Environment.OSVersion.Version.Major >= 10 ? "\ud83e\udc7a" : "è";
+            public string LeftArrow => Environment.OSVersion.Version.Major >= 10 ? "\ud83e\udc78" : "ç";
+            public string UpArrow => Environment.OSVersion.Version.Major >= 10 ? "\ud83e\udc79" : "é";
+            public string DownArrow => Environment.OSVersion.Version.Major >= 10 ? "\ud83e\udc7b" : "ê";
+            public FontFamily EmojiWingingds3FontFamily => Environment.OSVersion.Version.Major >= 10 ? SystemFonts.MessageFontFamily : new FontFamily("Wingdings 3");
+
             private bool isSelected = false;
             private bool isVisibleWithSearch = true;
             private bool _isFirst;
             private bool _isLast;
-
 
             public bool IsFirst
             {
@@ -164,6 +176,9 @@ namespace thcrap_configure_v3
         {
             public thcrap_configure_v3.Repo SourceRepo { get; private set; }
             public List<RepoPatch> Patches { get; private set; }
+
+
+
             private bool isVisible = true;
 
             public Repo(thcrap_configure_v3.Repo repo)
@@ -213,6 +228,7 @@ namespace thcrap_configure_v3
         public Page2_advanced()
         {
             InitializeComponent();
+            this.DataContext = this;
         }
 
         public void SetRepoList(List<thcrap_configure_v3.Repo> repoList)
@@ -408,12 +424,12 @@ namespace thcrap_configure_v3
             if (filter.Length > 0)
             {
                 Placeholder.Visibility = Visibility.Hidden;
-                SearchButton.Content = '\u274c'; // cross mark
+                SearchButton.Content = SearchCrossEmoji;
             }
             else
             {
                 Placeholder.Visibility = Visibility.Visible;
-                SearchButton.Content = "\ud83d\udd0e"; // magnifying glass
+                SearchButton.Content = SearchEmoji;
             }
 
             if (AvailablePatches?.ItemsSource is IEnumerable<Repo> repos)
