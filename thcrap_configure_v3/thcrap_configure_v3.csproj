@@ -40,9 +40,6 @@
   <PropertyGroup>
     <ApplicationIcon>$(SolutionDir)\gfx\abstractcactus\icon_01.ico</ApplicationIcon>
   </PropertyGroup>
-  <PropertyGroup />
-  <PropertyGroup />
-  <PropertyGroup />
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
