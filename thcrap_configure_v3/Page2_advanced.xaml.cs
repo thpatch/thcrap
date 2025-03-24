@@ -177,8 +177,6 @@ namespace thcrap_configure_v3
             public thcrap_configure_v3.Repo SourceRepo { get; private set; }
             public List<RepoPatch> Patches { get; private set; }
 
-
-
             private bool isVisible = true;
 
             public Repo(thcrap_configure_v3.Repo repo)
