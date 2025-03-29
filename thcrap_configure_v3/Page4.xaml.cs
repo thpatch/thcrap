@@ -50,6 +50,7 @@ namespace thcrap_configure_v3
                         _contextMenu = new List<Control>();
                         _contextMenu.AddRange(Paths.Select(path =>
                         {
+                            // TODO MenuItem wird nicht mehr unterstützt. Verwenden Sie stattdessen ToolStripMenuItem. Weitere Informationen finden Sie unter: https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
                             var itemPath = new MenuItem()
                             {
                                 Header = path,
@@ -62,6 +63,7 @@ namespace thcrap_configure_v3
 
                         _contextMenu.Add(new Separator());
 
+                        // TODO MenuItem wird nicht mehr unterstützt. Verwenden Sie stattdessen ToolStripMenuItem. Weitere Informationen finden Sie unter: https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
                         var itemRemove = new MenuItem()
                         {
                             Header = "Remove from this list",
@@ -74,10 +76,12 @@ namespace thcrap_configure_v3
 
             private void SelectPath(object sender, RoutedEventArgs e)
             {
+                // TODO MenuItem wird nicht mehr unterstützt. Verwenden Sie stattdessen ToolStripMenuItem. Weitere Informationen finden Sie unter: https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
                 var newMenu = sender as MenuItem;
 
                 foreach (var control in _contextMenu)
                 {
+                    // TODO MenuItem wird nicht mehr unterstützt. Verwenden Sie stattdessen ToolStripMenuItem. Weitere Informationen finden Sie unter: https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
                     if (control is MenuItem menu && menu.IsCheckable && menu != newMenu)
                         menu.IsChecked = false;
                 }
@@ -505,7 +509,8 @@ namespace thcrap_configure_v3
                 if (!isContextMenuOpen)
                 {
                     // Add handler to detect when the ContextMenu closes
-                    source.ContextMenu.AddHandler(ContextMenu.ClosedEvent, new RoutedEventHandler(ContextMenu_Closed), true);
+                    // TODO ContextMenu wird nicht mehr unterstützt. Verwenden Sie stattdessen ContextMenuStrip. Weitere Informationen finden Sie unter: https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
+                                        source.ContextMenu.AddHandler(ContextMenu.ClosedEvent, new RoutedEventHandler(ContextMenu_Closed), true);
                     // If there is a drop-down assigned to this button, then position and display it
                     source.ContextMenu.PlacementTarget = source;
                     source.ContextMenu.Placement = PlacementMode.Bottom;
@@ -524,9 +529,11 @@ namespace thcrap_configure_v3
         void ContextMenu_Closed(object sender, RoutedEventArgs e)
         {
             isContextMenuOpen = false;
+            // TODO ContextMenu wird nicht mehr unterstützt. Verwenden Sie stattdessen ContextMenuStrip. Weitere Informationen finden Sie unter: https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
             var contextMenu = sender as ContextMenu;
             if (contextMenu != null)
             {
+                // TODO ContextMenu wird nicht mehr unterstützt. Verwenden Sie stattdessen ContextMenuStrip. Weitere Informationen finden Sie unter: https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
                 contextMenu.RemoveHandler(ContextMenu.ClosedEvent, new RoutedEventHandler(ContextMenu_Closed));
             }
         }
