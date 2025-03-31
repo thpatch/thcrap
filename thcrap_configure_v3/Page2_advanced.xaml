@@ -165,7 +165,7 @@
                         </TextBlock>
                     </HierarchicalDataTemplate>
                     <HierarchicalDataTemplate DataType="{x:Type local:Page2_advanced+RepoPatch}">
-                        <Grid Background="Transparent" Margin="0" SnapsToDevicePixels="True">
+                        <Grid Background="Transparent" Margin="-15 0 0 0" SnapsToDevicePixels="True">
                             <!--Setting the background to transparent, makes the whole area of the grid hit-test,
                              not just the visible elements -->
 
