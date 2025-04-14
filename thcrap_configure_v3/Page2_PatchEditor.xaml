@@ -149,11 +149,7 @@
                 <Button Margin="0,0,0,3">Copy dependencies from "All patches" tab</Button>
                 <Button>Save patch on your computer</Button>
             </StackPanel>
-            <!--
-            TODO use LibGit2sharp for git stuff (already included in the project)
-            Doc at https://github.com/libgit2/libgit2sharp/wiki/LibGit2Sharp-Hitchhiker%27s-Guide-to-Git
-            -->
-            <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,20,6,0">
+            <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,20,6,0" DataContext="{Binding ElementName=ComboBoxRepos, Path=SelectedItem}">
                 <DockPanel Margin="0,0,0,3">
                     <TextBlock DockPanel.Dock="Left" Margin="0,0,3,0">Github URL:</TextBlock>
                     <TextBox></TextBox>
@@ -163,7 +159,16 @@
                     <TextBlock Margin="0,0,3,0" Foreground="red">KO</TextBlock>
                     <Button>Connect</Button>
                 </StackPanel>
-                <TextBlock Margin="0,0,0,3">Status: 0 files added, 0 files removed, 0 files changed</TextBlock>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                    <TextBlock Margin="0,0,3,0">Status:</TextBlock>
+                    <Grid>
+                        <TextBlock Visibility="{Binding Path=git.VisibleIfStatusIsGood}">0 files added, 0 files removed, 0 files changed</TextBlock>
+                        <TextBlock Visibility="{Binding Path=git.VisibleIfStatusHasError}">error of merge conflict detected, please fix it manually</TextBlock>
+                        <TextBlock Visibility="{Binding Path=git.VisibleIfEmpty}">no git repo initialized</TextBlock>
+                        <TextBlock Visibility="{Binding Path=git.VisibleIfNotInitialized}">unknown</TextBlock>
+                    </Grid>
+                    <Button Margin="3,0,0,0" Click="RefreshRepoStatus">Refresh</Button>
+                </StackPanel>
                 <Button>Push changes to Github</Button>
             </StackPanel>
         </Grid>

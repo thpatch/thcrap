@@ -85,6 +85,7 @@
     <Compile Include="Page5.xaml.cs">
       <DependentUpon>Page5.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Page2_PatchEditor_Git.cs" />
     <Compile Include="Repo.cs" />
     <Compile Include="Runconfig.cs" />
     <Compile Include="SettingsWindow.xaml.cs">
