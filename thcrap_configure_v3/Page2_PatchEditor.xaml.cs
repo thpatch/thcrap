@@ -109,12 +109,12 @@ namespace thcrap_configure_v3
             public List<string> servers;
             public List<Patch> patches { get; set; }
 
+            public Git git { get; set; }
+
             public string IdOrNewText => id ?? "New...";
 
             private JObject json;
             private string path;
-
-            public bool HasLocalGit() => path != null ? Directory.Exists(path + "/.git") : false;
 
             private Repo(string path)
             {
@@ -152,6 +152,8 @@ namespace thcrap_configure_v3
                 }
                 this.patches.Sort((x, y) => x.id.CompareTo(y.id));
                 this.patches.Add(new Patch());
+
+                this.git = Git.Open(path);
             }
             // Empty repo, used to create a new repo
             private Repo()
@@ -203,7 +205,7 @@ namespace thcrap_configure_v3
             ComboBoxRepos.ItemsSource = repos;
             foreach (var repo in repos)
             {
-                if (repo.HasLocalGit() // If the user has a folder with a .git, it's likely a repo they're working on
+                if (repo.git.IsValid // If the user has a folder with a .git, it's likely a repo they're working on
                     || repo.id == null) // We reached our "New..." item at the end of the list, pick that one
                 {
                     ComboBoxRepos.SelectedItem = repo;
@@ -216,6 +218,12 @@ namespace thcrap_configure_v3
         {
             var patches = ComboBoxPatches.ItemsSource as IEnumerable<Patch>;
             ComboBoxPatches.SelectedItem = patches.First();
+        }
+
+        private void RefreshRepoStatus(object sender, RoutedEventArgs e)
+        {
+            var repo = ComboBoxRepos.SelectedItem as Repo;
+            repo.git.RefreshStatus();
         }
     }
 }
