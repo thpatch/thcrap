@@ -1,5 +1,6 @@
 using LibGit2Sharp;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,8 +11,13 @@ namespace thcrap_configure_v3
     {
         // Empty git class that provides no-op functions for all functions.
         // Use in place of a GitImpl object when operating on a folder without git initialized.
-        private class Git
+        private class Git : INotifyPropertyChanged
         {
+            public event PropertyChangedEventHandler PropertyChanged;
+            protected void OnPropertyChanged(string name = null)
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+            }
             public class StatusResult
             {
                 public List<string> filesAdded = new List<string>();
@@ -105,11 +111,16 @@ namespace thcrap_configure_v3
                             break;
                     }
                 }
-                return null;
+                return result;
             }
             public override void RefreshStatus()
             {
                 Status = GetStatus();
+                OnPropertyChanged(nameof(Status));
+                OnPropertyChanged(nameof(VisibleIfNotInitialized));
+                OnPropertyChanged(nameof(VisibleIfEmpty));
+                OnPropertyChanged(nameof(VisibleIfStatusIsGood));
+                OnPropertyChanged(nameof(VisibleIfStatusHasError));
             }
             public override bool IsValid => true;
         }
