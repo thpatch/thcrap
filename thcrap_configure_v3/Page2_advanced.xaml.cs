@@ -24,9 +24,8 @@ namespace thcrap_configure_v3
     /// <summary>
     /// Interaction logic for Page2_advanced.xaml
     /// </summary>
-    public partial class Page2_advanced : UserControl, INotifyPropertyChanged
+    public partial class Page2_advanced : UserControl
     {
-        public event PropertyChangedEventHandler PropertyChanged;
         public string SearchEmoji => Environment.OSVersion.Version.Major >= 10 ? "\ud83d\udd0e" : "L";
         public string SearchCrossEmoji => Environment.OSVersion.Version.Major >= 10 ? "\u274c" : "r";
 
