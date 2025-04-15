@@ -30,6 +30,10 @@ namespace thcrap_configure_v3
                 public List<string> filesToRemove = new List<string>();
 
                 public bool hasError = false;
+
+                public int NbFilesAdded   => filesAdded.Count;
+                public int NbFilesChanged => filesChanged.Count;
+                public int NbFilesRemoved => filesRemoved.Count;
             }
 
             public static Git Open(string path)

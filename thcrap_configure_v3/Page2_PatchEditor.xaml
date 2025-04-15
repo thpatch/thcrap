@@ -162,10 +162,17 @@
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                     <TextBlock Margin="0,0,3,0">Status:</TextBlock>
                     <Grid>
-                        <TextBlock Visibility="{Binding Path=git.VisibleIfStatusIsGood}">0 files added, 0 files removed, 0 files changed</TextBlock>
-                        <TextBlock Visibility="{Binding Path=git.VisibleIfStatusHasError}">error of merge conflict detected, please fix it manually</TextBlock>
-                        <TextBlock Visibility="{Binding Path=git.VisibleIfEmpty}">no git repo initialized</TextBlock>
-                        <TextBlock Visibility="{Binding Path=git.VisibleIfNotInitialized}">unknown</TextBlock>
+                        <StackPanel Visibility="{Binding Path=git.VisibleIfStatusIsGood}" Orientation="Horizontal">
+                            <TextBlock Margin="0,0,3,0" Foreground="Green" Text="{Binding Path=git.Status.NbFilesAdded, FallbackValue=0}" />
+                            <TextBlock Margin="0,0,3,0" Foreground="Green">files added, </TextBlock>
+                            <TextBlock Margin="0,0,3,0" Foreground="Red" Text="{Binding Path=git.Status.NbFilesRemoved, FallbackValue=0}" />
+                            <TextBlock Margin="0,0,3,0" Foreground="Red">files removed,</TextBlock>
+                            <TextBlock Margin="0,0,3,0" Foreground="Orange" Text="{Binding Path=git.Status.NbFilesChanged, FallbackValue=0}" />
+                            <TextBlock Margin="0,0,3,0" Foreground="Orange">files changed</TextBlock>
+                        </StackPanel>
+                        <TextBlock Visibility="{Binding Path=git.VisibleIfStatusHasError, FallbackValue=Collapsed}">error of merge conflict detected, please fix it manually</TextBlock>
+                        <TextBlock Visibility="{Binding Path=git.VisibleIfEmpty, FallbackValue=Collapsed}">no git repo initialized</TextBlock>
+                        <TextBlock Visibility="{Binding Path=git.VisibleIfNotInitialized, FallbackValue=Collapsed}">unknown</TextBlock>
                     </Grid>
                     <Button Margin="3,0,0,0" Click="RefreshRepoStatus">Refresh</Button>
                 </StackPanel>
