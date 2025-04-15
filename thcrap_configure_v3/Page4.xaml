@@ -48,69 +48,69 @@
                 <TextBlock Margin="2,1">Cancel search</TextBlock>
             </Button>
         </Grid>
-        <StackPanel>
-            <StackPanel x:Name="NoNewGamesFound"
-                        Visibility="Visible"
-                        Background="LightCoral"
-                        VerticalAlignment="Center"
-                        Margin="0, 7">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                    <TextBlock FontWeight="Bold"
-                               Padding="0, 7, 7, 7"
-                               FontSize="20"
-                               Foreground="Red"
-                    >
-                        <TextBlock.Text>
-                            ⮾
-                        </TextBlock.Text>
-                    </TextBlock>
-                    <TextBlock TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
-                    >
-                        <TextBlock.Text>
-                            No new games found (︶︹︺)
-                        </TextBlock.Text>
-                    </TextBlock>
-                </StackPanel>
-                <ProgressBar
-                    x:Name="NoNewGamesAutoHideProgress"
-                    Value="0"
-                    Foreground="#FFB00606"
-                />
-            </StackPanel>
-            <ScrollViewer x:Name="GamesScroll">
-                <ItemsControl x:Name="GamesControl" Margin="0,0,10,1">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border BorderThickness="0.5" Background="#FFF" BorderBrush="#000" Margin="0,7,0,0">
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Width="20" Margin="7">
-                                        <behaviors:Interaction.Behaviors>
-                                            <local:Page4DropDownButtonBehavior />
-                                        </behaviors:Interaction.Behaviors>
-                                        <Button.Content>
-                                            ...
-                                        </Button.Content>
-                                        <Button.ContextMenu>
-                                            <ContextMenu ItemsSource="{Binding ContextMenu}" />
-                                        </Button.ContextMenu>
-                                    </Button>
-                                    <CheckBox VerticalContentAlignment="Center" Margin="9,2,2,2" IsChecked="{Binding IsSelected}" Checked="GameSelectionChanged" Unchecked="GameSelectionChanged" >
-                                        <StackPanel Orientation="Horizontal">
-                                            <Image Margin="5,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
-                                            <StackPanel Margin="7,0,0,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock FontSize="14" FontWeight="Bold" Text="{Binding Name}" />
-                                                    <TextBlock Margin="7,0,0,0" FontSize="9" Foreground="Blue" Visibility="{Binding NewVisibility}">New!</TextBlock>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </CheckBox>
-                                </DockPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
-        </StackPanel>
+		<ScrollViewer x:Name="GamesScroll">
+			<StackPanel>
+				<StackPanel x:Name="NoNewGamesFound"
+                            Visibility="Visible"
+                            Background="LightCoral"
+                            VerticalAlignment="Center"
+                            Margin="0, 7">
+					<StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+						<TextBlock FontWeight="Bold"
+                                   Padding="0, 7, 7, 7"
+                                   FontSize="20"
+                                   Foreground="Red"
+                        >
+							<TextBlock.Text>
+								⮾
+							</TextBlock.Text>
+						</TextBlock>
+						<TextBlock TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        >
+							<TextBlock.Text>
+								No new games found (︶︹︺)
+							</TextBlock.Text>
+						</TextBlock>
+					</StackPanel>
+					<ProgressBar
+                        x:Name="NoNewGamesAutoHideProgress"
+                        Value="0"
+                        Foreground="#FFB00606"
+                    />
+				</StackPanel>
+				<ItemsControl x:Name="GamesControl" Margin="0,0,10,1">
+					<ItemsControl.ItemTemplate>
+						<DataTemplate>
+							<Border BorderThickness="0.5" Background="#FFF" BorderBrush="#000" Margin="0,7,0,0">
+								<DockPanel>
+									<Button DockPanel.Dock="Right" Width="20" Margin="7">
+										<behaviors:Interaction.Behaviors>
+											<local:Page4DropDownButtonBehavior />
+										</behaviors:Interaction.Behaviors>
+										<Button.Content>
+											...
+										</Button.Content>
+										<Button.ContextMenu>
+											<ContextMenu ItemsSource="{Binding ContextMenu}" />
+										</Button.ContextMenu>
+									</Button>
+									<CheckBox VerticalContentAlignment="Center" Margin="9,2,2,2" IsChecked="{Binding IsSelected}" Checked="GameSelectionChanged" Unchecked="GameSelectionChanged" >
+										<StackPanel Orientation="Horizontal">
+											<Image Margin="5,0,0,0" Source="{Binding GameIcon}" VerticalAlignment="Center" Height="20" />
+											<StackPanel Margin="7,0,0,0">
+												<StackPanel Orientation="Horizontal">
+													<TextBlock FontSize="14" FontWeight="Bold" Text="{Binding Name}" />
+													<TextBlock Margin="7,0,0,0" FontSize="9" Foreground="Blue" Visibility="{Binding NewVisibility}">New!</TextBlock>
+												</StackPanel>
+											</StackPanel>
+										</StackPanel>
+									</CheckBox>
+								</DockPanel>
+							</Border>
+						</DataTemplate>
+					</ItemsControl.ItemTemplate>
+				</ItemsControl>
+			</StackPanel>
+		</ScrollViewer>
     </DockPanel>
 </UserControl>
