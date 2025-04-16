@@ -11,6 +11,7 @@
         <StackPanel>
             <StackPanel>
                 <Label Content="Updating"/>
+				<CheckBox Name="auto_updates" Content="Toggle automatic updates" Checked="AutoUpdates_Checked" Unchecked="AutoUpdates_Unchecked"/>
                 <CheckBox Name="background_updates" Content="Enable background updates when a game is running" Checked="BackgroundUpdates_Checked" Unchecked="BackgroundUpdates_Unchecked"/>
                 <CheckBox Name="update_at_exit" Content="Update game files after the game exits"/>
                 <CheckBox Name="update_others" Content="Update other games" IsEnabled="False"/>

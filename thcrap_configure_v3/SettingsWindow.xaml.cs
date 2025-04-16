@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,6 +19,7 @@ namespace thcrap_configure_v3
         void WindowOpened(object sender, RoutedEventArgs e)
         {
             GlobalConfig config = GlobalConfig.get();
+            auto_updates.IsChecked = File.Exists("bin\\thcrap_update.dll");
             background_updates.IsChecked = config.background_updates;
             update_others.IsChecked = config.update_others;
             update_at_exit.IsChecked = config.update_at_exit;
@@ -94,6 +96,32 @@ namespace thcrap_configure_v3
         {
             e.Handled = NumbersOnlyRegex.IsMatch(e.Text);
         }
+
+        void AutoUpdates_Checked(object sender, RoutedEventArgs e)
+        {
+            UpdateDLL("bin\\thcrap_update_disabled.dll", "bin\\thcrap_update.dll");
+        }
+
+        void AutoUpdates_Unchecked(object sender, RoutedEventArgs e)
+        {
+            UpdateDLL("bin\\thcrap_update.dll", "bin\\thcrap_update_disabled.dll");
+        }
+
+        private void UpdateDLL(string source, string destination)
+        {
+            try
+            {
+                if (File.Exists(source))
+                {
+                    File.Move(source, destination);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to toggle automatic updates:\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         void BackgroundUpdates_Checked(object sender, RoutedEventArgs e)
         {
             update_others.IsEnabled = true;
