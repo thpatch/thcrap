@@ -19,7 +19,7 @@
         </ItemsControl>
         <RadioButton x:Name="AllLanguagesRadio" GroupName="patch">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Margin="0,0,0,0">Other language:</TextBlock>
+                <TextBlock Margin="0,0,7,0">Other language:</TextBlock>
                 <ComboBox x:Name="AllLanguages" SelectionChanged="AllLanguages_SelectionChanged">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
