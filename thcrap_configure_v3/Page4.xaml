@@ -6,7 +6,7 @@
              xmlns:behaviors="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:local="clr-namespace:thcrap_configure_v3"
              mc:Ignorable="d"
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="460" d:DesignWidth="800">
     <DockPanel>
         <TextBlock x:Name="AddGamesNotice" DockPanel.Dock="Top" Margin="0,0,0,7">Now, it's time to add games</TextBlock>
         <Grid DockPanel.Dock="Bottom" Margin="0,7,0,0">

@@ -1,17 +1,25 @@
 <UserControl x:Class="thcrap_configure_v3.Page2"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:thcrap_configure_v3"
-             mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <TabControl SelectionChanged="TabChanged">
-        <TabItem Header="Language patches">
-            <local:Page2_simple x:Name="Simple" Margin="6" />
-        </TabItem>
-        <TabItem Header="All patches" Name="tab_AllPatches">
-            <local:Page2_advanced x:Name="Advanced" Margin="6" />
-        </TabItem>
-    </TabControl>
+             mc:Ignorable="d"
+             d:DesignHeight="460" d:DesignWidth="800">
+
+	<DockPanel>
+		<TextBlock x:Name="warnMessage" DockPanel.Dock="Bottom"
+                   Margin="0" Foreground="Red"
+                   Text="WARNING: Automatic updates are turned OFF. You will NOT receive new patches."
+                   Visibility="Collapsed" FontWeight="Bold"/>
+
+		<TabControl SelectionChanged="TabChanged">
+			<TabItem Header="Language patches">
+				<local:Page2_simple x:Name="Simple" Margin="6" />
+			</TabItem>
+			<TabItem Header="All patches" Name="tab_AllPatches">
+				<local:Page2_advanced x:Name="Advanced" Margin="6" />
+			</TabItem>
+		</TabControl>
+	</DockPanel>
 </UserControl>

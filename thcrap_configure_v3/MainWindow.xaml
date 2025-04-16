@@ -6,7 +6,7 @@
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:local="clr-namespace:thcrap_configure_v3"
         mc:Ignorable="d"
-        Title="Thcrap configuration tool" Height="450" Width="800"
+        Title="Thcrap configuration tool" Height="460" Width="800"
         Loaded="Window_Loaded">
     <xctk:Wizard Name="wizard"
                  FinishButtonClosesWindow="True"
