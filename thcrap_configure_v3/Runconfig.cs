@@ -57,6 +57,7 @@ namespace thcrap_configure_v3
             return instance;
         }
 
+        public bool auto_updates         { get; set; }
         public bool background_updates   { get; set; }
         public long time_between_updates { get; set; }
         public bool update_at_exit       { get; set; }

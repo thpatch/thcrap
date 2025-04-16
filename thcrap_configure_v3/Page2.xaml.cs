@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.IO;
 
 namespace thcrap_configure_v3
 {
@@ -31,6 +32,18 @@ namespace thcrap_configure_v3
         public Page2()
         {
             InitializeComponent();
+            this.Loaded += Page2_Loaded;
+        }
+
+        private void Page2_Loaded(object sender, RoutedEventArgs e)
+        {
+            toggleWarning();
+        }
+
+        public void toggleWarning()
+        {
+            bool updatesEnabled = File.Exists("bin\\thcrap_update.dll");
+            warnMessage.Visibility = updatesEnabled ? Visibility.Collapsed : Visibility.Visible;
         }
 
         public void SetRepoList(List<Repo> repoList)

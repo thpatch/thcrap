@@ -11,6 +11,9 @@ namespace thcrap_configure_v3
     {
         public MainWindow mainWindow;
         public bool isClosedWithX = true;
+        private string updateDLL = "bin\\thcrap_update.dll";
+        private string updateDLLDisabled = "bin\\thcrap_update_disabled.dll";
+        private bool autoUpdateChoice;
         public SettingsWindow()
         {
             InitializeComponent();
@@ -19,7 +22,9 @@ namespace thcrap_configure_v3
         void WindowOpened(object sender, RoutedEventArgs e)
         {
             GlobalConfig config = GlobalConfig.get();
-            auto_updates.IsChecked = File.Exists("bin\\thcrap_update.dll");
+            bool updatesEnabled = File.Exists(updateDLL);
+            autoUpdateChoice = updatesEnabled;
+            auto_updates.IsChecked = updatesEnabled;
             background_updates.IsChecked = config.background_updates;
             update_others.IsChecked = config.update_others;
             update_at_exit.IsChecked = config.update_at_exit;
@@ -29,6 +34,16 @@ namespace thcrap_configure_v3
             console.IsChecked = config.console;
             use_wininet.IsChecked = config.use_wininet;
             codepage.Text = config.codepage.ToString();
+
+            if (File.Exists(updateDLL) && File.Exists(updateDLLDisabled)) // Clean up if both DLLs exist at the same time, prefer enabled
+            {
+                try
+                {
+                    File.Delete(updateDLLDisabled);
+                    ThcrapDll.globalconfig_set_boolean("auto_updates", true);
+                }
+                catch { }
+            }
 
             {
                 long exceptionDetail = config.exception_detail;
@@ -97,29 +112,21 @@ namespace thcrap_configure_v3
             e.Handled = NumbersOnlyRegex.IsMatch(e.Text);
         }
 
-        void AutoUpdates_Checked(object sender, RoutedEventArgs e)
-        {
-            UpdateDLL("bin\\thcrap_update_disabled.dll", "bin\\thcrap_update.dll");
-        }
-
-        void AutoUpdates_Unchecked(object sender, RoutedEventArgs e)
-        {
-            UpdateDLL("bin\\thcrap_update.dll", "bin\\thcrap_update_disabled.dll");
-        }
-
-        private void UpdateDLL(string source, string destination)
+        private void RenameDLL(string source, string destination)
         {
             try
             {
+                if(File.Exists(destination))
+                {
+                    File.Delete(destination);
+                }
+
                 if (File.Exists(source))
                 {
                     File.Move(source, destination);
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Failed to toggle automatic updates:\n" + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            catch{ }
         }
 
         void BackgroundUpdates_Checked(object sender, RoutedEventArgs e)
@@ -146,6 +153,19 @@ namespace thcrap_configure_v3
             config.console = console.IsChecked == true;
             config.use_wininet = use_wininet.IsChecked == true;
             config.codepage = Int32.Parse(codepage.Text);
+
+            bool newAutoUpdatesEnabled = auto_updates.IsChecked == true;
+            if (newAutoUpdatesEnabled != autoUpdateChoice)
+            {
+                if (newAutoUpdatesEnabled)
+                {
+                    RenameDLL(updateDLLDisabled, updateDLL);
+                }
+                else
+                {
+                    RenameDLL(updateDLL, updateDLLDisabled);
+                }
+            }
 
             {
                 int exceptionDetail = 0;

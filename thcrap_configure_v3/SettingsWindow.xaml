@@ -5,13 +5,13 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:thcrap_configure_v3"
         mc:Ignorable="d"
-        Title="thcrap Settings" Height="450" Width="800"
+        Title="thcrap Settings" Height="460" Width="800"
         Loaded="WindowOpened">
     <Grid Margin="10,0,0,0">
         <StackPanel>
             <StackPanel>
                 <Label Content="Updating"/>
-				<CheckBox Name="auto_updates" Content="Toggle automatic updates" Checked="AutoUpdates_Checked" Unchecked="AutoUpdates_Unchecked"/>
+				<CheckBox Name="auto_updates" Content="Toggle automatic updates"/>
                 <CheckBox Name="background_updates" Content="Enable background updates when a game is running" Checked="BackgroundUpdates_Checked" Unchecked="BackgroundUpdates_Unchecked"/>
                 <CheckBox Name="update_at_exit" Content="Update game files after the game exits"/>
                 <CheckBox Name="update_others" Content="Update other games" IsEnabled="False"/>

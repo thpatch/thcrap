@@ -6,7 +6,7 @@
              xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
              xmlns:local="clr-namespace:thcrap_configure_v3"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="460" d:DesignWidth="800">
     <StackPanel>
         <ItemsControl x:Name="UserLanguagePatches">
             <ItemsControl.ItemTemplate>
@@ -19,7 +19,7 @@
         </ItemsControl>
         <RadioButton x:Name="AllLanguagesRadio" GroupName="patch">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Margin="0,0,7,0">Other language:</TextBlock>
+                <TextBlock Margin="0,0,0,0">Other language:</TextBlock>
                 <ComboBox x:Name="AllLanguages" SelectionChanged="AllLanguages_SelectionChanged">
                     <ComboBox.ItemTemplate>
                         <DataTemplate>
