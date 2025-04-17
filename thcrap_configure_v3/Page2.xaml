@@ -10,8 +10,8 @@
 	<DockPanel>
 		<TextBlock x:Name="warnMessage" DockPanel.Dock="Bottom"
                    Margin="0" Foreground="Red"
-                   Text="WARNING: Automatic updates are turned OFF. You will NOT receive new patches."
-                   Visibility="Collapsed" FontWeight="Bold"/>
+                   Text="WARNING: Automatic updates are turned OFF. Existing patches may be missing some files required for them to work."
+                   Visibility="Collapsed" FontWeight="Bold" TextWrapping="Wrap"/>
 
 		<TabControl SelectionChanged="TabChanged">
 			<TabItem Header="Language patches">

@@ -11,8 +11,8 @@ namespace thcrap_configure_v3
     {
         public MainWindow mainWindow;
         public bool isClosedWithX = true;
-        private string updateDLL = "bin\\thcrap_update.dll";
-        private string updateDLLDisabled = "bin\\thcrap_update_disabled.dll";
+        private string updateDLL = $"bin\\thcrap_update{ThcrapDll.DEBUG_OR_RELEASE}.dll";
+        private string updateDLLDisabled = $"bin\\thcrap_update{ThcrapDll.DEBUG_OR_RELEASE}_disabled.dll";
         private bool autoUpdateChoice;
         public SettingsWindow()
         {
@@ -40,7 +40,6 @@ namespace thcrap_configure_v3
                 try
                 {
                     File.Delete(updateDLLDisabled);
-                    ThcrapDll.globalconfig_set_boolean("auto_updates", true);
                 }
                 catch { }
             }

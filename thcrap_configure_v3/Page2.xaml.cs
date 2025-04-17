@@ -42,7 +42,7 @@ namespace thcrap_configure_v3
 
         public void toggleWarning()
         {
-            bool updatesEnabled = File.Exists("bin\\thcrap_update.dll");
+            bool updatesEnabled = File.Exists($"bin\\thcrap_update{ThcrapDll.DEBUG_OR_RELEASE}.dll");
             warnMessage.Visibility = updatesEnabled ? Visibility.Collapsed : Visibility.Visible;
         }
 
