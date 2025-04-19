@@ -156,15 +156,35 @@ static DWORD WINAPI SearchThread(void *param_)
 	const wchar_t *dir = param->dir;
 	search_state_t *state = param->state;
 	delete param;
+
+	wchar_t tempPath[MAX_PATH];
+	wchar_t windowsPath[MAX_PATH];
+	GetTempPathW(MAX_PATH, tempPath);
+	GetWindowsDirectoryW(windowsPath, MAX_PATH);
+	size_t tempPathLength = wcslen(tempPath);
+	size_t windowsPathLen = wcslen(windowsPath);
+
 	try {
 		for (auto &ent : fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied)) {
 			if (searchCancelled)
 				return 0;
 			try {
-				if (ent.is_regular_file()
-					&& PathMatchSpecExW(ent.path().c_str(), L"*.exe", PMSF_NORMAL) == S_OK
-					&& ent.file_size() >= state->size_min
-					&& ent.file_size() <= state->size_max)
+				if(!ent.is_regular_file())
+					continue;
+
+				const wchar_t* currentPath = ent.path().c_str();
+
+				if ((wcsncmp(currentPath, tempPath, tempPathLength) == 0) ||
+					(wcsncmp(currentPath, windowsPath, windowsPathLen) == 0))
+				{
+					continue;
+				}
+
+				std::uintmax_t size = ent.file_size();
+
+				if (PathMatchSpecExW(currentPath, L"*.exe", PMSF_NORMAL) == S_OK
+					&& size >= state->size_min
+					&& size <= state->size_max)
 				{
 					SearchCheckExe(*state, ent);
 				}
