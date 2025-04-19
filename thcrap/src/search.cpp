@@ -115,7 +115,8 @@ static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 			}
 
 			game_search_result result = std::move(*ver);
-			result.path = SearchDecideStoredPathForm(ent.path(), std::filesystem::current_path());
+			static const auto currentPath = std::filesystem::current_path();
+			result.path = SearchDecideStoredPathForm(ent.path(), currentPath);
 			result.description = strdup(description.c_str());
 			identify_free(ver);
 
@@ -123,9 +124,9 @@ static int SearchCheckExe(search_state_t& state, const fs::directory_entry &ent)
 
 			if (use_vpatch) {
 #if !CPP20
-				std::string vpatch_path = SearchDecideStoredPathForm(vpatch_fn, std::filesystem::current_path());
+				std::string vpatch_path = SearchDecideStoredPathForm(vpatch_fn, currentPath);
 #else
-				std::u8string vpatch_path = SearchDecideStoredPathForm(vpatch_fn, std::filesystem::current_path());
+				std::u8string vpatch_path = SearchDecideStoredPathForm(vpatch_fn, currentPath);
 #endif
 				if (std::none_of(state.found.begin(), state.found.end(), [vpatch_path](const game_search_result& it) {
 #if !CPP20
@@ -162,32 +163,32 @@ static DWORD WINAPI SearchThread(void *param_)
 	GetTempPathW(MAX_PATH, tempPath);
 	GetWindowsDirectoryW(windowsPath, MAX_PATH);
 	size_t tempPathLength = wcslen(tempPath);
-	size_t windowsPathLen = wcslen(windowsPath);
+	size_t windowsPathLength = wcslen(windowsPath);
 
 	try {
-		for (auto &ent : fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied)) {
+		for (auto ent = fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied); ent != fs::recursive_directory_iterator(); ++ent) {
 			if (searchCancelled)
 				return 0;
 			try {
-				if(!ent.is_regular_file())
-					continue;
+				const wchar_t* currentPath = ent->path().c_str();
 
-				const wchar_t* currentPath = ent.path().c_str();
-
+				//If we are in the Temp or Windows directory, don't recurse into it, and skip it
 				if ((wcsncmp(currentPath, tempPath, tempPathLength) == 0) ||
-					(wcsncmp(currentPath, windowsPath, windowsPathLen) == 0))
+					(wcsncmp(currentPath, windowsPath, windowsPathLength) == 0))
 				{
+					ent.disable_recursion_pending();
 					continue;
 				}
 
-				std::uintmax_t size = ent.file_size();
+				if (!ent->is_regular_file())
+					continue;
 
-				if (PathMatchSpecExW(currentPath, L"*.exe", PMSF_NORMAL) == S_OK
-					&& size >= state->size_min
-					&& size <= state->size_max)
-				{
-					SearchCheckExe(*state, ent);
-				}
+				std::uintmax_t size = ent->file_size();
+				if (size < state->size_min || size > state->size_max)
+					continue;
+
+				if (PathMatchSpecExW(currentPath, L"*.exe", PMSF_NORMAL) == S_OK)
+					SearchCheckExe(*state, *ent);
 			}
 			catch (std::system_error &) {}
 		}
