@@ -7,6 +7,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -89,24 +90,119 @@ namespace thcrap_configure_v3
             public string id { get; set; }
             public string title { get; set; }
             public string contact { get; set; }
-            public ServerType serverType { get
+
+            public class Servers : INotifyPropertyChanged
+            {
+                public event PropertyChangedEventHandler PropertyChanged;
+
+                public enum Type
                 {
-                    if (url.StartsWith("https://mirrors.thpatch.net/"))
-                        return ServerType.THPATCH_MIRROR;
-                    else if (url.StartsWith("https://raw.githubusercontent.com/"))
-                        return ServerType.GITHUB_REPO;
-                    else
-                        return ServerType.OTHER;
+                    ARRAY, // More than one URL; we don't allow editing
+                    THPATCH_MIRROR,
+                    GITHUB_REPO,
+                    OTHER
+                }
+
+                private Repo repo;
+                private List<string> servers;
+                public Servers(Repo repo, List<string> servers)
+                {
+                    this.repo = repo;
+                    this.servers = servers;
+                    Refresh();
+                }
+
+                public string Url
+                {
+                    get
+                    {
+                        if (this.servers.Count > 1)
+                            return "<several URLs>";
+                        else if (this.servers.Count > 0)
+                            return this.servers[0];
+                        else
+                            return "";
+                    }
+                    set
+                    {
+                        this.servers = new List<string>() {
+                            value
+                        };
+                        Refresh();
+                    }
+                }
+                private Type _type;
+                public Type type { get => _type; }
+
+                private Regex githubRegex = new Regex("https://raw\\.githubusercontent\\.com/(.*)/(.*)/master/");
+                private Match githubMatch;
+
+                public string GithubUsername { get; set; }
+                public string GithubRepo { get; set; }
+
+                public void RefreshUrlForThpatchMirror()
+                {
+                    Url = $"https://mirrors.thpatch.net/{repo.id}/";
+                }
+                public void RefreshUrlForGithubRepo()
+                {
+                    Url = $"https://raw.githubusercontent.com/{GithubUsername}/{GithubRepo}/master/";
+                }
+
+                public bool IsThpatchMirror
+                {
+                    get => type == Type.THPATCH_MIRROR;
+                    set => RefreshUrlForThpatchMirror();
+                }
+                public bool IsGithubRepo
+                {
+                    get => type == Type.GITHUB_REPO;
+                    set => RefreshUrlForGithubRepo();
+                }
+                public bool IsGithubInputEnabled { get => type == Type.GITHUB_REPO; }
+
+                public bool IsOther
+                {
+                    get => type == Type.OTHER || type == Type.ARRAY;
+                    set
+                    {
+                        _type = Type.OTHER;
+                        Refresh(detectTypeFromUrl: false);
+                    }
+                }
+                public bool IsManualInputEnabled { get => type == Type.OTHER; }
+
+                private void Refresh(bool detectTypeFromUrl = true)
+                {
+                    // TODO: when switching from one repo to another, there seems to be some confusion
+                    // where the new repo sometimes gets the Type of another repo.
+                    // Putting a breakpoint here is a good idea to investigate this.
+                    if (detectTypeFromUrl)
+                    {
+                        githubMatch = githubRegex.Match(Url);
+
+                        if (Url.StartsWith("https://mirrors.thpatch.net/"))
+                            _type = Type.THPATCH_MIRROR;
+                        else if (githubMatch.Success)
+                        {
+                            _type = Type.GITHUB_REPO;
+                            GithubUsername = githubMatch.Groups[1].Value;
+                            GithubRepo = githubMatch.Groups[2].Value;
+                        }
+                        else
+                            _type = Type.OTHER;
+                    }
+
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Url)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsThpatchMirror)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsGithubRepo)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsGithubInputEnabled)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsOther)));
+                    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsManualInputEnabled)));
                 }
             }
-            public string url
-            {
-                get => this.servers.Count > 0 ? this.servers[0] : "";
-                set => this.servers = new List<string>() {
-                        value
-                    };
-            }
-            public List<string> servers;
+            public Servers servers { get; set; }
+
             public List<Patch> patches { get; set; }
 
             public Git git { get; set; }
@@ -124,20 +220,21 @@ namespace thcrap_configure_v3
                 this.title = (string)this.json["title"];
                 this.contact = (string)this.json["contact"];
 
-                this.servers = new List<string>();
+                var serversList = new List<string>();
                 var servers = this.json["servers"];
                 if (servers.Type == JTokenType.Array)
                 {
                     foreach (var server in servers.ToArray())
                     {
-                        this.servers.Add((string)server);
+                        serversList.Add((string)server);
                     }
                 }
                 else
                 {
                     // Assume this is a string, throw if it isn't
-                    this.servers.Add((string)servers);
+                    serversList.Add((string)servers);
                 }
+                this.servers = new Servers(this, serversList);
 
                 this.patches = new List<Patch>();
                 var patches = this.json["patches"];
@@ -224,6 +321,17 @@ namespace thcrap_configure_v3
         {
             var repo = ComboBoxRepos.SelectedItem as Repo;
             repo.git.RefreshStatus();
+        }
+
+        private void RepoIdChanged(object sender, TextChangedEventArgs e)
+        {
+            var repo = ComboBoxRepos.SelectedItem as Repo;
+            repo.servers.RefreshUrlForThpatchMirror();
+        }
+        private void GithubFieldChanged(object sender, TextChangedEventArgs e)
+        {
+            var repo = ComboBoxRepos.SelectedItem as Repo;
+            repo.servers.RefreshUrlForGithubRepo();
         }
     }
 }
