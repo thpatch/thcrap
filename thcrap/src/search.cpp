@@ -187,7 +187,7 @@ static DWORD WINAPI SearchThread(void *param_)
 				if (size < state->size_min || size > state->size_max)
 					continue;
 
-				if (fs::path(currentPath).extension() == L".exe")
+				if (ent->path().extension() == L".exe")
 					SearchCheckExe(*state, *ent);
 			}
 			catch (std::system_error &) {}
