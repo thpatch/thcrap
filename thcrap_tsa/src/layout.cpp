@@ -21,6 +21,7 @@ json_t *Layout_Tabs = NULL;
 static HDC text_dc = NULL;
 /// -----------------------
 static bool ruby_shift_debug = false;
+static HBRUSH debug_fill_brush = NULL;
 
 /// Detour chains
 /// -------------
@@ -615,6 +616,14 @@ void ruby_shift_debug_impl(HDC hdc, int orig_x) {
 	SelectObject(hdc, hPrevObject);
 }
 
+
+void debug_colorfill_impl(HDC hdc) {
+	if TH_UNLIKELY(debug_fill_brush) {
+		RECT drawRect = { 0, 0, GetDeviceCaps(hdc, HORZRES), GetDeviceCaps(hdc, VERTRES) };
+		FillRect(hdc, &drawRect, debug_fill_brush);
+	}
+}
+
 BOOL WINAPI layout_TextOutU(
 	HDC hdc,
 	int orig_x,
@@ -622,6 +631,8 @@ BOOL WINAPI layout_TextOutU(
 	LPCSTR lpString,
 	int c
 ) {
+	debug_colorfill_impl(hdc);
+
 	// Make sure to keep shadow offsets...
 	if(orig_x > (RUBY_OFFSET_DUMMY_FULL / 2)) {
 		orig_x = (orig_x - RUBY_OFFSET_DUMMY_FULL) + ruby_offset_actual;
@@ -643,6 +654,8 @@ BOOL WINAPI layout_TextOutW(
 	LPCWSTR lpString,
 	int c
 ) {
+	debug_colorfill_impl(hdc);
+
 	// Make sure to keep shadow offsets...
 	if (orig_x > (RUBY_OFFSET_DUMMY_FULL / 2)) {
 		orig_x = (orig_x - RUBY_OFFSET_DUMMY_FULL) + ruby_offset_actual;
@@ -766,16 +779,19 @@ WIDEST_STRING(widest_string_f, float);
 
 int layout_mod_init(HMODULE hMod)
 {
-	jeval_error_t ret;
-	if (
-		(ret = json_object_get_eval_bool(
-			runconfig_json_get(),
-			"ruby_shift_debug",
-			&ruby_shift_debug, JEVAL_DEFAULT)) != JEVAL_SUCCESS && ret != JEVAL_NULL_PTR
-		) {
-		return ret;
-	}
 	Layout_Tabs = json_array();
+
+	auto* runcfg = runconfig_json_get();
+	TH_ASSUME(runcfg);
+
+	json_object_get_eval_bool(runcfg, "ruby_shift_debug", &ruby_shift_debug, JEVAL_DEFAULT);
+
+	size_t col;
+	if TH_UNLIKELY(!json_object_get_eval_int(runcfg, "hdc_debug_color", &col, JEVAL_DEFAULT)) {
+		// Truncation to the lower 32 bits in 64 bit mode
+		debug_fill_brush = CreateSolidBrush((COLORREF)col);
+	}
+
 	return 0;
 }
 
@@ -804,6 +820,9 @@ void layout_mod_exit(void)
 	if(text_dc) {
 		DeleteDC(text_dc);
 		text_dc = NULL;
+	}
+	if (debug_fill_brush) {
+		DeleteObject(debug_fill_brush);
 	}
 	for(auto &font : fontcache) {
 		DeleteObject((HGDIOBJ)font.second);
