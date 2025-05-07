@@ -297,6 +297,8 @@ EXPORTS
 	log_mbox_set_owner
 	log_init
 	log_exit
+	
+	BP_log
 
 	log_async DATA
 

@@ -563,3 +563,30 @@ void log_exit(void) {
 		log_file = INVALID_HANDLE_VALUE;
 	}
 }
+
+
+bool BP_log(x86_reg_t* regs, json_t* bp_info) {
+	const char* format = json_object_get_string(bp_info, "format");
+	if TH_UNLIKELY(!format) {
+		return true;
+	}
+
+	auto* args = json_object_get(bp_info, "args");
+	if (!json_is_array(args)) {
+		log_print(format);
+		return true;
+	}
+
+	size_t num_args = json_array_size(args);
+
+	VLA(uint32_t, args_buf, num_args);
+
+	for (size_t i = 0; i < num_args; i++) {
+		args_buf[i] = json_immediate_value(json_array_get(args, i), regs);
+	}
+
+	log_vprintf(format, (va_list)args_buf);
+	VLA_FREE(args_buf);
+
+	return true;
+}

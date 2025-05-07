@@ -297,6 +297,8 @@ EXPORTS
 	log_init
 	log_exit
 
+	BP_log
+
 	log_async DATA
 
 	; Memory patching
