@@ -579,7 +579,7 @@ bool BP_log(x86_reg_t* regs, json_t* bp_info) {
 
 	size_t num_args = json_array_size(args);
 
-	VLA(uint32_t, args_buf, num_args);
+	VLA(uintptr_t, args_buf, num_args);
 
 	for (size_t i = 0; i < num_args; i++) {
 		args_buf[i] = json_immediate_value(json_array_get(args, i), regs);
