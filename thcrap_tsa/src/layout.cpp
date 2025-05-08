@@ -575,18 +575,6 @@ BOOL WINAPI fontcache_DeleteObject(HGDIOBJ obj)
 	return chain_DeleteObject(obj);
 }
 
-HGDIOBJ WINAPI layout_SelectObject(
-	HDC hdc,
-	HGDIOBJ h
-)
-{
-	if(h == GetStockObject(SYSTEM_FONT)) {
-		return GetCurrentObject(hdc, OBJ_FONT);
-	} else {
-		return (HGDIOBJ)chain_SelectObject(hdc, h);
-	}
-}
-
 // Since the games themselves would just multiply the half-size ruby offset
 // with 2, we capture the actual full-size result of the ruby offset division.
 // This admittedly pretty gross hack allows ruby annotations to also be placed
@@ -698,9 +686,9 @@ size_t TH_STDCALL text_extent_full_for_font(const char *str, HFONT font)
 {
 	// TH08 doesn't create the DC prior to the first binhacked call of this.
 	auto dc = layout_CreateCompatibleDC(nullptr);
-	HGDIOBJ prev_font = layout_SelectObject(dc, font);
+	HGDIOBJ prev_font = chain_SelectObject(dc, font);
 	size_t ret = text_extent_full(str);
-	layout_SelectObject(text_dc, prev_font);
+	chain_SelectObject(text_dc, prev_font);
 	return ret;
 }
 
@@ -805,14 +793,16 @@ void layout_mod_detour(void)
 		// continue supporting the legacy "font" runconfig key, as
 		// well as font changes via hardcoded string translation.
 		"CreateFontA", fontcache_CreateFontU, &chain_CreateFontU,
+		"CreateFontW", fontcache_CreateFontW, &chain_CreateFontW,
 
 		"DeleteDC", layout_DeleteDC, NULL,
 		"DeleteObject", fontcache_DeleteObject, &chain_DeleteObject,
-		"SelectObject", layout_SelectObject, &chain_SelectObject,
 		"TextOutA", layout_TextOutU, &chain_TextOutU,
-		"TextOutW", layout_TextOutW, &chain_TextOutU,
+		"TextOutW", layout_TextOutW, &chain_TextOutW,
 		NULL
 	);
+
+	chain_SelectObject = (decltype(SelectObject)*)detour_top("gdi32.dll", "SelectObject", (FARPROC)SelectObject);
 }
 
 void layout_mod_exit(void)

@@ -16,7 +16,102 @@ W32U8_DETOUR_CHAIN_DEF(CreateFont);
 W32U8_DETOUR_CHAIN_DEF(CreateFontIndirectEx);
 auto chain_CreateFontW = CreateFontW;
 auto chain_CreateFontIndirectExW = CreateFontIndirectExW;
+auto chain_SelectObject = SelectObject;
+
+#define CHAIN(f) auto chain_##f = f
+W32U8_DETOUR_CHAIN_DEF(DrawText);
+W32U8_DETOUR_CHAIN_DEF(DrawTextEx);
+W32U8_DETOUR_CHAIN_DEF(ExtTextOut);
+W32U8_DETOUR_CHAIN_DEF(PolyTextOut);
+W32U8_DETOUR_CHAIN_DEF(TabbedTextOut);
+W32U8_DETOUR_CHAIN_DEF(TextOut);
+
+CHAIN(DrawTextW);
+CHAIN(DrawTextExW);
+CHAIN(ExtTextOutW);
+CHAIN(PolyTextOutW);
+CHAIN(TabbedTextOutW);
+CHAIN(TextOutW);
+
 /// -------------
+HFONT hSystemFont = NULL;
+/// -------------
+
+#define CUSTOM_SYSTEM_FONT \
+	do { \
+		if (GetCurrentObject(hdc, OBJ_FONT) == GetStockObject(SYSTEM_FONT)) { \
+			SelectObject(hdc, hSystemFont); \
+		} \
+	} while(0)
+
+int WINAPI textdisp_DrawTextW(HDC hdc, LPWSTR lpchText, int cchText, LPRECT lprc, UINT format) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_DrawTextW(hdc, lpchText, cchText, lprc, format);
+}
+
+int WINAPI textdisp_DrawTextA(HDC hdc, LPSTR lpchText, int cchText, LPRECT lprc, UINT format) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_DrawTextU(hdc, lpchText, cchText, lprc, format);
+}
+
+int WINAPI textdisp_DrawTextExW(HDC hdc, LPWSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_DrawTextExW(hdc, lpchText, cchText, lprc, format, lpdtp);
+}
+
+int WINAPI textdisp_DrawTextExA(HDC hdc, LPSTR lpchText, int cchText, LPRECT lprc, UINT format, LPDRAWTEXTPARAMS lpdtp) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_DrawTextExU(hdc, lpchText, cchText, lprc, format, lpdtp);
+}
+
+BOOL WINAPI textdisp_ExtTextOutW(HDC hdc, int x, int y, UINT options, const RECT * lprect, LPCWSTR lpString, UINT c, const INT* lpDx) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_ExtTextOutW(hdc, x, y, options, lprect, lpString, x, lpDx);
+}
+
+BOOL WINAPI textdisp_ExtTextOutA(HDC hdc, int x, int y, UINT options, const RECT* lprect, LPCSTR lpString, UINT c, const INT* lpDx) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_ExtTextOutU(hdc, x, y, options, lprect, lpString, x, lpDx);
+}
+
+BOOL WINAPI textdisp_PolyTextOutW(HDC hdc, const POLYTEXTW* ppt, int nstrings) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_PolyTextOutW(hdc, ppt, nstrings);
+}
+
+BOOL WINAPI textdisp_PolyTextOutA(HDC hdc, const POLYTEXTA* ppt, int nstrings) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_PolyTextOutU(hdc, ppt, nstrings);
+}
+
+LONG WINAPI textdisp_TabbedTextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int chCount, int nTabPositions, const INT* lpnTabStopPositions, int nTabOrigin) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_TabbedTextOutW(hdc, x, y, lpString, chCount, nTabPositions, lpnTabStopPositions, nTabOrigin);
+}
+
+LONG WINAPI textdisp_TabbedTextOutA(HDC hdc, int x, int y, LPCSTR lpString, int chCount, int nTabPositions, const INT* lpnTabStopPositions, int nTabOrigin) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_TabbedTextOutU(hdc, x, y, lpString, chCount, nTabPositions, lpnTabStopPositions, nTabOrigin);
+}
+
+BOOL WINAPI textdisp_TextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int c) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_TextOutW(hdc, x, y, lpString, c);
+}
+
+BOOL WINAPI textdisp_TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c) {
+	CUSTOM_SYSTEM_FONT;
+	return chain_TextOutU(hdc, x, y, lpString, c);
+}
+
+HGDIOBJ textdisp_SelectObject(HDC hdc, HGDIOBJ h) {
+	if (!h || h == GetStockObject(SYSTEM_FONT)) {
+		return chain_SelectObject(hdc, hSystemFont);
+	}
+	else {
+		return chain_SelectObject(hdc, h);
+	}
+}
 
 /// Quality enum
 /// ------------
@@ -427,6 +522,32 @@ void patch_fonts_load(const patch_t *patch_info)
 	}
 }
 
+void textdisp_load_system_font() {
+	const char* legacy_fontname;
+
+	if (legacy_fontname = json_string_value(strings_get("System"))) {
+		goto checked_legacy_font_name;
+	}
+	if (legacy_fontname = json_object_get_string(runconfig_json_get(), "font")) {
+		goto checked_legacy_font_name;
+	}
+
+checked_legacy_font_name:
+	ENUMLOGFONTEXDVA elfe = {};
+#define lf elfe.elfEnumLogfontEx.elfLogFont
+
+	GetObjectA(GetStockObject(SYSTEM_FONT), sizeof(lf), &lf);
+
+	if (legacy_fontname) {
+		strncpy(lf.lfFaceName, legacy_fontname, sizeof(lf.lfFaceName));
+	}
+
+	fontrules_apply(&lf);
+#undef lf
+
+	hSystemFont = chain_CreateFontIndirectExU(&elfe);
+}
+
 extern "C" {
 
 TH_EXPORT void textdisp_mod_detour(void)
@@ -436,8 +557,26 @@ TH_EXPORT void textdisp_mod_detour(void)
 		"CreateFontIndirectExA", textdisp_CreateFontIndirectExA, &chain_CreateFontIndirectExU,
 		"CreateFontW", textdisp_CreateFontW, &chain_CreateFontW,
 		"CreateFontIndirectExW", textdisp_CreateFontIndirectExW, &chain_CreateFontIndirectExW,
+		"SelectObject", textdisp_SelectObject, &chain_SelectObject,
+
+		"DrawTextW", textdisp_DrawTextW, & chain_DrawTextW,
+		"DrawTextExW", textdisp_DrawTextExW, & chain_DrawTextExW,
+		"ExtTextOutW", textdisp_ExtTextOutW, & chain_ExtTextOutW,
+		"PolyTextOutW", textdisp_PolyTextOutW, & chain_PolyTextOutW,
+		"TabbedTextOutW", textdisp_TabbedTextOutW, & chain_TabbedTextOutW,
+		"TextOutW", textdisp_TextOutW, & chain_TextOutW,
+
+		"DrawTextA", textdisp_DrawTextA, & chain_DrawTextU,
+		"DrawTextExA", textdisp_DrawTextExA, & chain_DrawTextExU,
+		"ExtTextOutA", textdisp_ExtTextOutA, & chain_ExtTextOutU,
+		"PolyTextOutA", textdisp_PolyTextOutA, & chain_PolyTextOutU,
+		"TabbedTextOutA", textdisp_TabbedTextOutA, & chain_TabbedTextOutU,
+		"TextOutA", textdisp_TextOutA, &chain_TextOutU,
+		
 		NULL
 	);
+
+	textdisp_load_system_font();
 }
 
 TH_EXPORT void textdisp_mod_init(void)
