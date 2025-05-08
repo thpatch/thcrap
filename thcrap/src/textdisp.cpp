@@ -104,7 +104,7 @@ BOOL WINAPI textdisp_TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c) {
 	return chain_TextOutU(hdc, x, y, lpString, c);
 }
 
-HGDIOBJ textdisp_SelectObject(HDC hdc, HGDIOBJ h) {
+HGDIOBJ WINAPI textdisp_SelectObject(HDC hdc, HGDIOBJ h) {
 	if (!h || h == GetStockObject(SYSTEM_FONT)) {
 		return chain_SelectObject(hdc, hSystemFont);
 	}
