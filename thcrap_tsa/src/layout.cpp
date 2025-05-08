@@ -704,8 +704,9 @@ size_t TH_STDCALL text_extent_full_for_font(const char *str, HFONT font)
 	return ret;
 }
 
-size_t TH_STDCALL GetTextExtent(const char *str)
+TH_DEPRECATED size_t TH_STDCALL GetTextExtent(const char *str)
 {
+	log_print("WARNING: using deprecated function GetTextExtent\n");
 	return text_extent_full(str) / 2;
 }
 
