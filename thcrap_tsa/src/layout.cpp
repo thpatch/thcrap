@@ -793,7 +793,6 @@ void layout_mod_detour(void)
 		// continue supporting the legacy "font" runconfig key, as
 		// well as font changes via hardcoded string translation.
 		"CreateFontA", fontcache_CreateFontU, &chain_CreateFontU,
-		"CreateFontW", fontcache_CreateFontW, &chain_CreateFontW,
 
 		"DeleteDC", layout_DeleteDC, NULL,
 		"DeleteObject", fontcache_DeleteObject, &chain_DeleteObject,
