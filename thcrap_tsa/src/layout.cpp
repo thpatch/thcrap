@@ -40,10 +40,12 @@ typedef HGDIOBJ WINAPI SelectObject_type(
 
 DETOUR_CHAIN_DEF(CreateCompatibleDC);
 W32U8_DETOUR_CHAIN_DEF(CreateFont);
+W32U8_DETOUR_CHAIN_DEF(GetTextExtentPoint32);
 DETOUR_CHAIN_DEF(DeleteObject);
 DETOUR_CHAIN_DEF(SelectObject);
 W32U8_DETOUR_CHAIN_DEF(TextOut);
 auto chain_TextOutW = TextOutW;
+auto chain_GetTextExtentPoint32W = GetTextExtentPoint32W;
 /// -------------
 
 /// TH06-TH09 font cache
@@ -669,7 +671,7 @@ size_t GetTextExtentBase(HDC hdc, const json_t *str_obj)
 	SIZE size = {0};
 	const char *str = json_string_value(str_obj);
 	const size_t str_len = json_string_length(str_obj);
-	GetTextExtentPoint32(hdc, str, str_len, &size);
+	chain_GetTextExtentPoint32U(hdc, str, str_len, &size);
 	return size.cx;
 }
 
@@ -680,6 +682,40 @@ size_t TH_STDCALL text_extent_full(const char *str)
 	layout_process(&lay, NULL, str, str_len);
 	log_printf("GetTextExtent('%s') = %d\n", str, lay.cur_x / 2);
 	return lay.cur_x;
+}
+
+BOOL layout_GetTextExtentPoint32A(HDC hdc, LPCSTR lpString, int c, LPSIZE psizl) {
+	layout_state_t lay = { hdc };
+
+	BOOL ret1 = chain_GetTextExtentPoint32U(hdc, lpString, c, psizl);
+	if (!ret1) {
+		return FALSE;
+	}
+
+	layout_process(&lay, NULL, lpString, c);
+	psizl->cx = lay.cur_x;
+
+	return TRUE;
+}
+
+BOOL layout_GetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int c, LPSIZE psizl) {
+	BOOL ret1 = chain_GetTextExtentPoint32W(hdc, lpString, c, psizl);
+	if (!ret1) {
+		return FALSE;
+	}
+
+	size_t lpString_len = c * UTF8_MUL + 1;
+	VLA(char, lpString_utf8, lpString_len);
+	size_t lpString_utf8_c = StringToUTF8(lpString_utf8, lpString, lpString_len);
+
+	layout_state_t lay = { hdc };
+	
+	layout_process(&lay, NULL, lpString_utf8, lpString_utf8_c);
+	psizl->cx = lay.cur_x;
+
+	UTF8_FREE(lpString);
+
+	return TRUE;
 }
 
 size_t TH_STDCALL text_extent_full_for_font(const char *str, HFONT font)
@@ -798,6 +834,9 @@ void layout_mod_detour(void)
 		"DeleteObject", fontcache_DeleteObject, &chain_DeleteObject,
 		"TextOutA", layout_TextOutU, &chain_TextOutU,
 		"TextOutW", layout_TextOutW, &chain_TextOutW,
+
+		"GetTextExtentPoint32W", layout_GetTextExtentPoint32W, &chain_GetTextExtentPoint32W,
+		"GetTextExtentPoint32A", layout_GetTextExtentPoint32A, &chain_GetTextExtentPoint32U,
 		NULL
 	);
 

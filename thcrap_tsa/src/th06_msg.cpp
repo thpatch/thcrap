@@ -881,7 +881,7 @@ const msg_format_t END_TH10 = { 2, 1, msg_crypt_th09, {
 
 const msg_format_t* msg_format_for(tsa_game_t game)
 {
-	if(game >= TH19) {
+	if(game == TH19) {
 		return &MSG_TH19;
 	} else if(game >= TH14) {
 		return &MSG_TH14;
