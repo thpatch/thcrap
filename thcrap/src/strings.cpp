@@ -205,10 +205,9 @@ void strings_va_lookup(va_list va, const char* format_in)
 				}
 				// case 'z': case 't': case 'w':; // default:
 			}
-			++format;
 		}
 		CheckFormatStr(format) {
-			switch (*format++) {
+			switch (*format) {
 				case 'p': case 'n': case 'Z':
 				case 'c': case 'C':
 #ifdef TH_X86
