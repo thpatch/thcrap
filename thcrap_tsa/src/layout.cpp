@@ -608,7 +608,7 @@ void ruby_shift_debug_impl(HDC hdc, int orig_x) {
 
 
 void debug_colorfill_impl(HDC hdc) {
-	if TH_UNLIKELY(debug_fill_brush) {
+	if unexpected(debug_fill_brush) {
 		RECT drawRect = { 0, 0, GetDeviceCaps(hdc, HORZRES), GetDeviceCaps(hdc, VERTRES) };
 		FillRect(hdc, &drawRect, debug_fill_brush);
 	}
@@ -812,7 +812,7 @@ int layout_mod_init(HMODULE hMod)
 	json_object_get_eval_bool(runcfg, "ruby_shift_debug", &ruby_shift_debug, JEVAL_DEFAULT);
 
 	size_t col;
-	if TH_UNLIKELY(!json_object_get_eval_int(runcfg, "hdc_debug_color", &col, JEVAL_DEFAULT)) {
+	if unexpected(!json_object_get_eval_int(runcfg, "hdc_debug_color", &col, JEVAL_DEFAULT)) {
 		// Truncation to the lower 32 bits in 64 bit mode
 		debug_fill_brush = CreateSolidBrush((COLORREF)col);
 	}
