@@ -835,8 +835,8 @@ void layout_mod_detour(void)
 		"TextOutA", layout_TextOutU, &chain_TextOutU,
 		"TextOutW", layout_TextOutW, &chain_TextOutW,
 
-		"GetTextExtentPoint32W", layout_GetTextExtentPoint32W, &chain_GetTextExtentPoint32W,
-		"GetTextExtentPoint32A", layout_GetTextExtentPoint32A, &chain_GetTextExtentPoint32U,
+		//"GetTextExtentPoint32W", layout_GetTextExtentPoint32W, &chain_GetTextExtentPoint32W,
+		//"GetTextExtentPoint32A", layout_GetTextExtentPoint32A, &chain_GetTextExtentPoint32U,
 		NULL
 	);
 
