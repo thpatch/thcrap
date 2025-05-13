@@ -79,7 +79,6 @@ namespace thcrap_configure_v3
 
         public class RepoPatch : INotifyPropertyChanged
         {
-            //public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
             public thcrap_cs_lib.RepoPatch SourcePatch { get; set; }
 
             public string RightArrow => Environment.OSVersion.Version.Major >= 10 ? "\ud83e\udc7a" : "è";
