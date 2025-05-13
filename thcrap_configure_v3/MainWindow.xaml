@@ -16,7 +16,7 @@
                          Title="Welcome to thcrap">
             <Grid>
                 <TextBlock>
-                This tool will let you patch your games with thcrap.<LineBreak />
+                This tool will let you patch your games with thcrap. TEST<LineBreak />
                 If you prefer to use the old version of this tool, click
                 <TextBlock Foreground="Blue" TextDecorations="Underline" Cursor="Hand" MouseUp="RunThcrapConfigure">here</TextBlock>.<LineBreak />
                 <LineBreak />

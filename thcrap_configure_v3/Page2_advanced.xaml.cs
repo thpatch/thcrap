@@ -18,6 +18,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using thcrap_cs_lib;
 
 namespace thcrap_configure_v3
 {
@@ -78,7 +79,8 @@ namespace thcrap_configure_v3
 
         public class RepoPatch : INotifyPropertyChanged
         {
-            public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
+            //public thcrap_configure_v3.RepoPatch SourcePatch { get; set; }
+            public thcrap_cs_lib.RepoPatch SourcePatch { get; set; }
 
             public string RightArrow => Environment.OSVersion.Version.Major >= 10 ? "\ud83e\udc7a" : "è";
             public string LeftArrow => Environment.OSVersion.Version.Major >= 10 ? "\ud83e\udc78" : "ç";
@@ -129,7 +131,7 @@ namespace thcrap_configure_v3
             }
 
 
-            public RepoPatch(thcrap_configure_v3.RepoPatch patch)
+            public RepoPatch(thcrap_cs_lib.RepoPatch patch)
             {
                 SourcePatch = patch;
             }
@@ -173,15 +175,15 @@ namespace thcrap_configure_v3
 
         public class Repo : INotifyPropertyChanged
         {
-            public thcrap_configure_v3.Repo SourceRepo { get; private set; }
+            public thcrap_cs_lib.Repo SourceRepo { get; private set; }
             public List<RepoPatch> Patches { get; private set; }
 
             private bool isVisible = true;
 
-            public Repo(thcrap_configure_v3.Repo repo)
+            public Repo(thcrap_cs_lib.Repo repo)
             {
                 SourceRepo = repo;
-                Patches = repo.Patches.ConvertAll((thcrap_configure_v3.RepoPatch patch) => new RepoPatch(patch));
+                Patches = repo.Patches.ConvertAll((thcrap_cs_lib.RepoPatch patch) => new RepoPatch(patch));
             }
 
             public Visibility VisibilityInTree
@@ -228,13 +230,13 @@ namespace thcrap_configure_v3
             this.DataContext = this;
         }
 
-        public void SetRepoList(List<thcrap_configure_v3.Repo> repoList)
+        public void SetRepoList(List<thcrap_cs_lib.Repo> repoList)
         {
-            AvailablePatches.ItemsSource = repoList.ConvertAll((thcrap_configure_v3.Repo repo) => new Repo(repo));
+            AvailablePatches.ItemsSource = repoList.ConvertAll((thcrap_cs_lib.Repo repo) => new Repo(repo));
             SelectedPatches.ItemsSource = selectedPatches;
         }
 
-        public List<thcrap_configure_v3.RepoPatch> GetSelectedRepoPatch() =>
+        public List<thcrap_cs_lib.RepoPatch> GetSelectedRepoPatch() =>
             selectedPatches.ToList().ConvertAll((RepoPatch patch) => patch.SourcePatch);
 
         private void SelectPatch(RepoPatch patch)
@@ -283,7 +285,7 @@ namespace thcrap_configure_v3
             SelectPatch(selectedPatch);
         }
 
-        public void SetInitialPatch(thcrap_configure_v3.RepoPatch patchDescription)
+        public void SetInitialPatch(thcrap_cs_lib.RepoPatch patchDescription)
         {
             if (SelectedPatches.Items.Count > 0)
                 return;

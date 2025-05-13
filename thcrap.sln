@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30621.155
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35825.156 d17.13
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_loader", "thcrap_loader\thcrap_loader.vcxproj", "{2DB35726-8702-4CC8-9394-3D4FFF47F7DD}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -82,6 +82,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "thcrap_configure_v3", "thcrap_configure_v3\thcrap_configure_v3.csproj", "{9CCF40A9-5B3A-4075-BC78-2F1BA211A0A1}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_x64_injector", "thcrap_x64_injector\thcrap_x64_injector.vcxproj", "{44B36439-6351-42F3-8F25-C1B882931BC3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "thcrap_cs_lib", "thcrap_cs_lib\thcrap_cs_lib.csproj", "{9E72079B-A115-40B8-9769-DBD22410A87B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -241,6 +243,14 @@ Global
 		{44B36439-6351-42F3-8F25-C1B882931BC3}.Release|Win32.ActiveCfg = Release|x64
 		{44B36439-6351-42F3-8F25-C1B882931BC3}.Release|x64.ActiveCfg = Release|x64
 		{44B36439-6351-42F3-8F25-C1B882931BC3}.Release|x64.Build.0 = Release|x64
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Debug|Win32.ActiveCfg = Debug|Any CPU
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Debug|Win32.Build.0 = Debug|Any CPU
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Debug|x64.Build.0 = Debug|Any CPU
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Release|Win32.ActiveCfg = Release|Any CPU
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Release|Win32.Build.0 = Release|Any CPU
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Release|x64.ActiveCfg = Release|Any CPU
+		{9E72079B-A115-40B8-9769-DBD22410A87B}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

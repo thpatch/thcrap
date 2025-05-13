@@ -6,9 +6,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace thcrap_configure_v3
+namespace thcrap_cs_lib
 {
-    class ThcrapHelper
+    public class ThcrapHelper
     {
         public class UTF8StringMarshaler : ICustomMarshaler
         {
