@@ -443,6 +443,7 @@ EXPORTS
 	strings_sprintf
 	strings_vsprintf
 	strings_vsprintf_msvcrt14
+	strings_vsnprintf
 	strings_strclr
 	strings_strcat
 	strings_replace

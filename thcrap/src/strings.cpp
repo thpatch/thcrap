@@ -285,6 +285,24 @@ const char* strings_vsprintf(const size_t slot, const char *format, va_list va)
 	return format;
 }
 
+// Only use if the thing being sprinf'ed into is a fixed size buffer that's used all across the engine
+// Try to avoid if the string is used for anything other than showing it on screen!
+int strings_vsnprintf(char* const fixed_size_buffer, size_t buf_len, const char* format, va_list va) {
+	format = strings_lookup(format, NULL);
+
+	if (format) {
+		va_list va2;
+		va_copy(va2, va);
+		strings_va_lookup(va2, format);
+		memset(fixed_size_buffer, 0, buf_len);
+		auto ret = vsnprintf(fixed_size_buffer, buf_len - 1, format, va2);
+		va_end(va2);
+		return ret;
+	}
+
+	return 0;
+}
+
 const char* strings_vsprintf_msvcrt14(const char *format, const size_t slot, va_list va)
 {
 	return strings_vsprintf(slot, format, va);
