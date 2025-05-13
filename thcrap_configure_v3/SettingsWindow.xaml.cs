@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using thcrap_cs_lib;
 
 namespace thcrap_configure_v3
 {

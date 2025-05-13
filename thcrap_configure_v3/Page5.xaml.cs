@@ -15,7 +15,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using ShortcutDestinations = thcrap_configure_v3.GlobalConfig.ShortcutDestinations;
+using thcrap_cs_lib;
+//using ShortcutDestinations = thcrap_configure_v3.GlobalConfig.ShortcutDestinations;
+using ShortcutDestinations = thcrap_cs_lib.GlobalConfig.ShortcutDestinations;
 
 namespace thcrap_configure_v3
 {

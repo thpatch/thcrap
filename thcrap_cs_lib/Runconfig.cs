@@ -6,9 +6,9 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace thcrap_configure_v3
+namespace thcrap_cs_lib
 {
-    class RunconfigPatch
+    public class RunconfigPatch
     {
         public string archive { get; set; }
         public RunconfigPatch(string archive)
@@ -17,7 +17,7 @@ namespace thcrap_configure_v3
         }
     }
 
-    class Runconfig
+    public class Runconfig
     {
         public bool console { get; set; } = false;
         public bool dat_dump { get; set; } = false;
@@ -33,7 +33,7 @@ namespace thcrap_configure_v3
             File.WriteAllText("config/" + config_name + ".js", jsonRunconfig);
         }
     }
-    class GlobalConfig
+    public class GlobalConfig
     {
         private const long configDestinationMask = 0xFFFF;
         private const int configTypeOffset = 16;
@@ -57,30 +57,30 @@ namespace thcrap_configure_v3
             return instance;
         }
 
-        public bool auto_updates         { get; set; }
-        public bool background_updates   { get; set; }
+        public bool auto_updates { get; set; }
+        public bool background_updates { get; set; }
         public long time_between_updates { get; set; }
-        public bool update_at_exit       { get; set; }
-        public bool update_others        { get; set; }
-        public bool console              { get; set; }
-        public bool use_wininet          { get; set; }
-        public long exception_detail     { get; set; }
-        public long codepage             { get; set; }
-        public bool developer_mode       { get; set; }
+        public bool update_at_exit { get; set; }
+        public bool update_others { get; set; }
+        public bool console { get; set; }
+        public bool use_wininet { get; set; }
+        public long exception_detail { get; set; }
+        public long codepage { get; set; }
+        public bool developer_mode { get; set; }
         public ShortcutDestinations default_shortcut_destinations { get; set; }
         public ThcrapDll.ShortcutsType shortcuts_type { get; set; }
 
         private GlobalConfig()
         {
-            background_updates   = ThcrapDll.globalconfig_get_boolean("background_updates", false);
+            background_updates = ThcrapDll.globalconfig_get_boolean("background_updates", false);
             time_between_updates = ThcrapDll.globalconfig_get_integer("time_between_updates", 5);
-            update_at_exit       = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
-            update_others        = ThcrapDll.globalconfig_get_boolean("update_others", true);
-            console              = ThcrapDll.globalconfig_get_boolean("console", false);
-            use_wininet          = ThcrapDll.globalconfig_get_boolean("use_wininet", false);
-            exception_detail     = ThcrapDll.globalconfig_get_integer("exception_detail", 1);
-            codepage             = ThcrapDll.globalconfig_get_integer("codepage", 932);
-            developer_mode       = ThcrapDll.globalconfig_get_boolean("developer_mode", false);
+            update_at_exit = ThcrapDll.globalconfig_get_boolean("update_at_exit", false);
+            update_others = ThcrapDll.globalconfig_get_boolean("update_others", true);
+            console = ThcrapDll.globalconfig_get_boolean("console", false);
+            use_wininet = ThcrapDll.globalconfig_get_boolean("use_wininet", false);
+            exception_detail = ThcrapDll.globalconfig_get_integer("exception_detail", 1);
+            codepage = ThcrapDll.globalconfig_get_integer("codepage", 932);
+            developer_mode = ThcrapDll.globalconfig_get_boolean("developer_mode", false);
 
             long _default_shortcut_destinations = ThcrapDll.globalconfig_get_integer("default_shortcut_destinations",
                 (long)(ShortcutDestinations.Desktop | ShortcutDestinations.StartMenu));
