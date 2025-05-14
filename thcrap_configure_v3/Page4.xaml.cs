@@ -23,6 +23,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using thcrap_cs_lib;
 using Xceed.Wpf.Toolkit;
 
 namespace thcrap_configure_v3
