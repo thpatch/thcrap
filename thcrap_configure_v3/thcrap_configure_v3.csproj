@@ -85,12 +85,9 @@
     <Compile Include="Page5.xaml.cs">
       <DependentUpon>Page5.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Repo.cs" />
-    <Compile Include="Runconfig.cs" />
     <Compile Include="SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ThcrapDll.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -175,6 +172,12 @@
     <PackageReference Include="System.Text.Json">
       <Version>8.0.5</Version>
     </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\thcrap_cs_lib\thcrap_cs_lib.csproj">
+      <Project>{9e72079b-a115-40b8-9769-dbd22410a87b}</Project>
+      <Name>thcrap_cs_lib</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
