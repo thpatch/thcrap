@@ -62,8 +62,29 @@
 
 /// Detour chains
 /// -------------
+
 W32U8_DETOUR_CHAIN_DEF(CreateDialogParam);
 W32U8_DETOUR_CHAIN_DEF(DialogBoxParam);
+
+typedef HWND WINAPI CreateDialogParamW_type(
+	HINSTANCE hInstance,
+	LPCWSTR lpTemplateName,
+	HWND hWndParent,
+	DLGPROC lpDialogFunc,
+	LPARAM dwInitParam
+);
+
+typedef INT_PTR WINAPI DialogBoxParamW_type(
+	HINSTANCE hInstance,
+	LPCWSTR lpTemplateName,
+	HWND hWndParent,
+	DLGPROC lpDialogFunc,
+	LPARAM dwInitParam
+);
+
+DETOUR_CHAIN_DEF(CreateDialogParamW);
+DETOUR_CHAIN_DEF(DialogBoxParamW);
+
 /// -------------
 
 /// Structures
@@ -439,32 +460,19 @@ size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_
 }
 /// -----------------
 
-DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
+DLGTEMPLATE* dialog_translate_internal(LPCSTR lpTemplateName, HGLOBAL hDlg, size_t hDlg_len)
 {
 	void *dlg_out = NULL;
 	json_t *trans = NULL;
 	size_t dlg_name_len;
 	const char *dlg_format = NULL;
-	HRSRC hrsrc;
-	HGLOBAL hDlg;
 	HGLOBAL hDlg_rep = NULL;
-	size_t hDlg_len;
 
-	if(!lpTemplateName) {
+	if (!lpTemplateName || !hDlg) {
 		return NULL;
 	}
 
-	// MAKEINTRESOURCE(5) == RT_DIALOG. (The regular
-	// RT_DIALOG macro is subject to UNICODE.)
-	hrsrc = FindResourceA(hInstance, lpTemplateName, MAKEINTRESOURCEA(5));
-	hDlg = LoadResource(hInstance, hrsrc);
-	hDlg_len = SizeofResource(hInstance, hrsrc);
-
-	if(!hDlg) {
-		return NULL;
-	}
-
-	if(HIWORD(lpTemplateName) != 0) {
+	if(!IS_INTRESOURCE(lpTemplateName)) {
 		dlg_name_len = strlen(lpTemplateName) + 1;
 		dlg_format = "%s%s%s";
 	} else  {
@@ -528,6 +536,62 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 	return (DLGTEMPLATE *)dlg_out;
 }
 
+DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
+{
+	HRSRC hrsrc = NULL;
+	HGLOBAL hDlg = NULL;
+	size_t hDlg_len;
+
+	if(!lpTemplateName) {
+		return NULL;
+	}
+
+	// MAKEINTRESOURCE(5) == RT_DIALOG.
+	hrsrc = FindResourceA(hInstance, lpTemplateName, MAKEINTRESOURCEA(5));
+	hDlg = LoadResource(hInstance, hrsrc);
+	hDlg_len = SizeofResource(hInstance, hrsrc);
+
+	if(!hDlg) {
+		return NULL;
+	}
+
+	return dialog_translate_internal(lpTemplateName, hDlg, hDlg_len);
+}
+
+DLGTEMPLATE* dialog_translatew(HINSTANCE hInstance, LPCWSTR lpTemplateName)
+{
+	HRSRC hrsrc = NULL;
+	HGLOBAL hDlg = NULL;
+	size_t hDlg_len;
+	DLGTEMPLATE *dlg_out = NULL;
+
+	if(!lpTemplateName) {
+		return NULL;
+	}
+
+	// MAKEINTRESOURCE(5) == RT_DIALOG.
+	hrsrc = FindResourceW(hInstance, lpTemplateName, MAKEINTRESOURCEW(5));
+	hDlg = LoadResource(hInstance, hrsrc);
+	hDlg_len = SizeofResource(hInstance, hrsrc);
+
+	if(!hDlg) {
+		return NULL;
+	}
+
+	if (!IS_INTRESOURCE(lpTemplateName)) {
+		UTF8_DEC(lpTemplateName);
+		UTF8_CONV(lpTemplateName);
+		dlg_out = dialog_translate_internal(lpTemplateName_utf8, hDlg, hDlg_len);
+		UTF8_FREE(lpTemplateName);
+	}
+	else {
+		// Pass the integer as-is
+		dlg_out = dialog_translate_internal((LPCSTR)lpTemplateName, hDlg, hDlg_len);
+	}
+
+	return dlg_out;
+}
+
 HWND WINAPI dialog_CreateDialogParamA(
 	HINSTANCE hInstance,
 	LPCSTR lpTemplateName,
@@ -545,6 +609,29 @@ HWND WINAPI dialog_CreateDialogParamA(
 		SAFE_FREE(dlg_trans);
 	} else {
 		ret = chain_CreateDialogParamU(
+			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
+		);
+	}
+	return ret;
+}
+
+HWND WINAPI dialog_CreateDialogParamW(
+	HINSTANCE hInstance,
+	LPCWSTR lpTemplateName,
+	HWND hWndParent,
+	DLGPROC lpDialogFunc,
+	LPARAM dwInitParam
+)
+{
+	HWND ret;
+	DLGTEMPLATE *dlg_trans = dialog_translatew(hInstance, lpTemplateName);
+	if(dlg_trans) {
+		ret = CreateDialogIndirectParamW(
+			hInstance, dlg_trans, hWndParent, lpDialogFunc, dwInitParam
+		);
+		SAFE_FREE(dlg_trans);
+	} else {
+		ret = chain_CreateDialogParamW(
 			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
 		);
 	}
@@ -574,6 +661,29 @@ INT_PTR WINAPI dialog_DialogBoxParamA(
 	return ret;
 }
 
+INT_PTR WINAPI dialog_DialogBoxParamW(
+	HINSTANCE hInstance,
+	LPCWSTR lpTemplateName,
+	HWND hWndParent,
+	DLGPROC lpDialogFunc,
+	LPARAM dwInitParam
+)
+{
+	INT_PTR ret;
+	DLGTEMPLATE *dlg_trans = dialog_translatew(hInstance, lpTemplateName);
+	if(dlg_trans) {
+		ret = DialogBoxIndirectParamW(
+			hInstance, dlg_trans, hWndParent, lpDialogFunc, dwInitParam
+		);
+		SAFE_FREE(dlg_trans);
+	} else {
+		ret = chain_DialogBoxParamW(
+			hInstance, lpTemplateName, hWndParent, lpDialogFunc, dwInitParam
+		);
+	}
+	return ret;
+}
+
 extern "C" {
 
 TH_EXPORT void dialog_mod_detour(void)
@@ -581,6 +691,8 @@ TH_EXPORT void dialog_mod_detour(void)
 	detour_chain("user32.dll", 1,
 		"CreateDialogParamA", dialog_CreateDialogParamA, &chain_CreateDialogParamU,
 		"DialogBoxParamA", dialog_DialogBoxParamA, &chain_DialogBoxParamU,
+		"CreateDialogParamW", dialog_CreateDialogParamW, &chain_CreateDialogParamW,
+		"DialogBoxParamW", dialog_DialogBoxParamW, &chain_DialogBoxParamW,
 		NULL
 	);
 }

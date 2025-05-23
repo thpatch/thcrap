@@ -18,6 +18,7 @@ extern "C" {
 // ("<game>/dialog_[lpTemplateName].bin") to be used instead of the original.
 // Returns a translated DLGTEMPLATE(EX), or NULL if no translation was applied.
 DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName);
+DLGTEMPLATE* dialog_translatew(HINSTANCE hInstance, LPCWSTR lpTemplateName);
 
 #ifdef __cplusplus
 }
