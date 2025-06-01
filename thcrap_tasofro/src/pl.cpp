@@ -493,7 +493,7 @@ bool TasofroPl::AText::parseCommand(json_t *patch, size_t json_line_num)
 	return false;
 }
 
-bool TasofroPl::StoryText::parseCommand(json_t *patch, int json_line_num)
+bool TasofroPl::StoryText::parseCommand(json_t *patch, size_t json_line_num)
 {
 	bool ret = this->AText::parseCommand(patch, json_line_num);
 	if (ret == false) {
@@ -504,7 +504,7 @@ bool TasofroPl::StoryText::parseCommand(json_t *patch, int json_line_num)
 	return ret;
 }
 
-bool TasofroPl::Th155StoryText::parseCommand(json_t *patch, int json_line_num)
+bool TasofroPl::Th155StoryText::parseCommand(json_t *patch, size_t json_line_num)
 {
 	// Overwrite the StoryText overwrite and go back to the standard behavior
 	return this->AText::parseCommand(patch, json_line_num);

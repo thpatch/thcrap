@@ -131,11 +131,11 @@ namespace TasofroPl
 	class StoryText : public AText
 	{
 	protected:
-		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
-		bool parseCommand(json_t *patch, int json_line_num);
-		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
-		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
-		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
+		bool parseCommand(json_t *patch, size_t json_line_num) override;
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
+		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
 
 	public:
 		StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
@@ -145,9 +145,9 @@ namespace TasofroPl
 	class Th155StoryText : public StoryText
 	{
 	protected:
-		bool parseCommand(json_t *patch, int json_line_num);
-		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
-		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+		bool parseCommand(json_t *patch, size_t json_line_num) override;
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
+		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
 
 	public:
 		Th155StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
@@ -157,7 +157,7 @@ namespace TasofroPl
 	class Th155_110StoryText : public Th155StoryText
 	{
 	protected:
-		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
 
 	public:
 		Th155_110StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
@@ -170,11 +170,11 @@ namespace TasofroPl
 		bool is_staffroll;
 
 	protected:
-		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
-		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
-		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
-		void endLine();
-		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
+		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
+		void endLine() override;
+		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
 
 	public:
 		EndingText(const std::vector<std::string>& fields, const std::string& comment = "");
@@ -184,9 +184,9 @@ namespace TasofroPl
 	class WinText : public AText
 	{
 	protected:
-		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
-		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
-		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it);
+		void _patchInit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
+		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
+		void _patchLine(std::string& text, std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
 
 	public:
 		WinText(const std::vector<std::string>& fields, const std::string& comment = "");
