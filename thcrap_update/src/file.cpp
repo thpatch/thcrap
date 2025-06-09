@@ -10,13 +10,21 @@ using namespace std::string_literals;
 File::File(std::list<DownloadUrl>&& urls,
            success_t successCallback,
            failure_t failureCallback,
-           progress_t progressCallback)
-    : status(Status::Todo), urls(urls),
+           progress_t progressCallback,
+		   DownloadCache *cache)
+    : status(Status::Todo), urls(urls), cache(cache),
     userSuccessCallback(successCallback), userFailureCallback(failureCallback), userProgressCallback(progressCallback)
 {
     if (urls.empty()) {
         throw new std::invalid_argument("Input URL list must not be empty");
     }
+}
+
+File::~File()
+{
+	if (this->cache) {
+		delete this->cache;
+	}
 }
 
 size_t File::writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size)
@@ -59,7 +67,8 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
         },
         [this, &url](size_t dlnow, size_t dltotal) {
             return this->progressCallback(url, dlnow, dltotal);
-        }
+        },
+		this->cache
     );
     if (!status) {
         if (status.get() == HttpStatus::ServerError || status.get() == HttpStatus::SystemError) {

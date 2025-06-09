@@ -22,7 +22,8 @@ std::list<DownloadUrl> Downloader::serversListToDownloadUrlList(const std::list<
 }
 
 void Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath,
-                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
+                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback,
+						 DownloadCache *cache)
 {
     std::scoped_lock lock(this->mutex);
 
@@ -31,7 +32,7 @@ void Downloader::addFile(const std::list<std::string>& serversUrl, std::string f
         current_++;
         return successCallback(url, data);
     };
-    std::shared_ptr<File> file = std::make_unique<File>(std::move(urls), successLambda, failureCallback, progressCallback);
+    std::shared_ptr<File> file = std::make_unique<File>(std::move(urls), successLambda, failureCallback, progressCallback, cache);
 
     this->futuresList.push_back(this->pool.enqueue([file]() {
         file->download();
@@ -41,14 +42,15 @@ void Downloader::addFile(const std::list<std::string>& serversUrl, std::string f
 }
 
 void Downloader::addFile(char** serversUrl, std::string filePath,
-                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
+                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback,
+						 DownloadCache *cache)
 {
     std::list<std::string> serversList;
 
     for (size_t i = 0; serversUrl && serversUrl[i]; i++) {
         serversList.push_back(serversUrl[i]);
     }
-    this->addFile(serversList, filePath, successCallback, failureCallback, progressCallback);
+    this->addFile(serversList, filePath, successCallback, failureCallback, progressCallback, cache);
 }
 
 size_t Downloader::current() const

@@ -5,6 +5,7 @@
 #include <list>
 #include <mutex>
 #include <vector>
+#include "download_cache.h"
 #include "download_url.h"
 #include "http_interface.h"
 
@@ -33,6 +34,7 @@ private:
     // different servers.
     // When starting a download, we remove the corresponding URL from the list.
     std::list<DownloadUrl> urls;
+	DownloadCache *cache;
 
     // User-provided callbacks
     success_t userSuccessCallback;
@@ -48,11 +50,13 @@ public:
     File(std::list<DownloadUrl>&& urls,
          success_t successCallback = defaultSuccessFunction,
          failure_t failureCallback = defaultFailureFunction,
-         progress_t progressCallback = defaultProgressFunction);
+         progress_t progressCallback = defaultProgressFunction,
+		 DownloadCache *cache = nullptr);
     File(const File&) = delete;
     File(File&&) = delete;
     File& operator=(const File&) = delete;
     File& operator=(File&&) = delete;
+	~File();
 
     // Start a download thread.
     // The status of the download will be returned in the callbacks given

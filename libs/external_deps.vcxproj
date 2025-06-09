@@ -50,8 +50,8 @@
     <CopyFiles Include="$(InDir)bin\zlib-ng$(Suffix).lib" OutputFolder="$(OutDir)" />
     <CopyFiles Include="$(InDir)bin\zlib-ng$(Suffix).pdb" OutputFolder="$(OutDir)" />
 
-	<CopyFiles Include="$(InDir)bin\libcrypto-1_1$(Suffix).dll" OutputFolder="$(OutDir)" />
-	<CopyFiles Include="$(InDir)bin\libssl-1_1$(Suffix).dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libcrypto-3$(Suffix).dll" OutputFolder="$(OutDir)" />
+	<CopyFiles Include="$(InDir)bin\libssl-3$(Suffix).dll" OutputFolder="$(OutDir)" />
 
 	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).dll" OutputFolder="$(OutDir)" />
 	<CopyFiles Include="$(InDir)bin\libcurl$(Suffix).pdb" OutputFolder="$(OutDir)" />

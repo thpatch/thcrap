@@ -68,7 +68,72 @@ public:
 	const ScopedHInternet& operator=(ScopedHInternet&& src) = delete;
 };
 
-HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
+std::string WininetHandle::setup_headers(DownloadCache *cache)
+{
+	std::string headers;
+	if (!cache) {
+		return "";
+	}
+
+	std::optional<std::string> etag = cache->getEtag();
+	if (etag) {
+		headers += "If-None-Match: ";
+		headers += *etag;
+		headers += "\r\n";
+	}
+
+	std::optional<std::string> lastModifiedDate = cache->getLastModifiedDate();
+	if (lastModifiedDate) {
+		headers += "If-Modified-Since: ";
+		headers += *lastModifiedDate;
+		headers += "\r\n";
+	}
+
+	if (!headers.empty()) {
+		headers += "\r\n\r\n";
+	}
+	return headers;
+}
+
+std::string WininetHandle::read_header(HINTERNET hFile, DWORD header)
+{
+	std::string result;
+	DWORD size = 0;
+
+	HttpQueryInfoA(hFile, header, nullptr, &size, NULL);
+	if (GetLastError() == ERROR_HTTP_HEADER_NOT_FOUND) {
+		return "";
+	}
+	else if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+		// Unknown error. Don't save cache.
+		return "";
+	}
+
+	size++; // The size returned by HttpQueryInfo doesn't incldue the terminating NUL character
+	result.resize(size);
+	if (!HttpQueryInfoA(hFile, header, result.data(), &size, NULL)) {
+		// Unknown error. Don't save cache.
+		return "";
+	}
+	result.resize(size);
+
+	return result;
+}
+
+void WininetHandle::update_cache(HINTERNET hFile, DownloadCache *cache)
+{
+	if (!cache) {
+		return ;
+	}
+
+	std::string etag             = WininetHandle::read_header(hFile, HTTP_QUERY_ETAG);
+	std::string lastModifiedDate = WininetHandle::read_header(hFile, HTTP_QUERY_LAST_MODIFIED);
+
+	cache->setCacheData(!etag.empty() ? etag.c_str() : nullptr,
+		!lastModifiedDate.empty() ? lastModifiedDate.c_str() : nullptr);
+}
+
+HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback, DownloadCache *cache)
 {
 	DWORD byte_ret = sizeof(DWORD);
 	DWORD http_stat = 0;
@@ -81,8 +146,9 @@ HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(
         return HttpStatus::makeSystemError(0, "Wininet is not initialized");
     }
 
+	std::string headers = WininetHandle::setup_headers(cache);
 	ScopedHInternet hFile = InternetOpenUrlA(
-		this->internet, url.c_str(), NULL, 0,
+		this->internet, url.c_str(), !headers.empty() ? headers.c_str() : nullptr, headers.size(),
 		INTERNET_FLAG_RELOAD | INTERNET_FLAG_KEEP_CONNECTION, 0
 	);
 	if (!hFile) {
@@ -115,7 +181,17 @@ HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(
 	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_STATUS_CODE,
 		&http_stat, &byte_ret, 0
 	);
-	if (http_stat != 200) {
+	if (http_stat == 304) {
+		if (!cache) {
+			throw std::logic_error("Got 304 for a non-cached object");
+		}
+		std::vector<uint8_t> data = cache->getCachedFile();
+		progressCallback(data.size(), data.size());
+		writeCallback(data.data(), data.size());
+		WininetHandle::update_cache(hFile, cache);
+		return HttpStatus::makeOk();
+	}
+	else if (http_stat != 200) {
 		return HttpStatus::makeNetworkError(http_stat);
 	}
 
@@ -150,5 +226,6 @@ HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(
 		}
 	}
 
+	WininetHandle::update_cache(hFile, cache);
 	return HttpStatus::makeOk();
 }
