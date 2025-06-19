@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace thcrap_configure_v3
+namespace thcrap_cs_lib
 {
     public class RepoPatch
     {
@@ -108,7 +108,7 @@ namespace thcrap_configure_v3
                 current_repo++;
                 repo_ptr = Marshal.ReadIntPtr(repo_list, current_repo * IntPtr.Size);
             }
-            
+
             ThcrapDll.thcrap_free(repo_list);
             return out_list;
         }
