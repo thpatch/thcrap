@@ -113,24 +113,6 @@ DWORD WINAPI self_window_create_and_run(void *param)
 	NONCLIENTMETRICSW nc_metrics = {};
 	nc_metrics.cbSize = sizeof(nc_metrics);
 
-	RECT progress_rect = { label_rect.left, label_rect.bottom + font_pad, label_rect.right, label_rect.bottom + font_pad + 20 };
-
-	// Create the progress bar
-	state->hProgressBar = CreateWindowExW(
-		0,                    // No extended styles
-		PROGRESS_CLASS,        // Predefined class for progress bar
-		NULL,
-		WS_CHILD | WS_VISIBLE,
-		progress_rect.left,
-		progress_rect.top,
-		progress_rect.right - progress_rect.left,
-		progress_rect.bottom - progress_rect.top,
-		state->hWnd,
-		NULL,
-		hMod,
-		NULL
-	);
-
 	if(SystemParametersInfoW(
 		SPI_GETNONCLIENTMETRICS, sizeof(nc_metrics), &nc_metrics, 0
 	)) {
@@ -172,6 +154,30 @@ DWORD WINAPI self_window_create_and_run(void *param)
 		WS_EX_NOPARENTNOTIFY, "Static", text_final, WS_CHILD | WS_VISIBLE,
 		RECT_EXPAND(label_rect), state->hWnd, NULL, hMod, NULL
 	);
+
+	int progress_width = (wnd_rect.right - wnd_rect.left) - font_pad * 2;
+	RECT progress_rect = {
+		font_pad,
+		label_rect.bottom + font_pad,
+		font_pad + progress_width,
+		label_rect.bottom + font_pad + 20
+	};
+
+	state->hProgressBar = CreateWindowExW(
+		0,
+		PROGRESS_CLASS,
+		NULL,
+		WS_CHILD | WS_VISIBLE,
+		progress_rect.left,
+		progress_rect.top,
+		progress_rect.right - progress_rect.left,
+		progress_rect.bottom - progress_rect.top,
+		state->hWnd,
+		NULL,
+		hMod,
+		NULL
+	);
+	SendMessage(state->hProgressBar, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
 
 	SetWindowLongPtrW(state->hWnd, GWLP_WNDPROC, (LPARAM)smartdlg_proc);
 
@@ -618,7 +624,14 @@ self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(self_server + netpath);
+	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(
+		self_server + netpath,
+		[&window](const DownloadUrl&, size_t file_progress, size_t file_size) -> bool {
+			int percent = (file_size > 0) ? (file_progress * 100) / file_size : 0;
+			SendMessage(window.hProgressBar, PBM_SETPOS, percent, 0);
+			return true; // continue download
+		}
+	);
 	if(!arc_dl_status || arc_dl.empty()) {
 		log_printf("%s%s: %s\n", self_server.c_str(), netpath, arc_dl_status.toString().c_str());
 		return SELF_SERVER_ERROR;

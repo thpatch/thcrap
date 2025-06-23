@@ -25,7 +25,8 @@ constexpr uint32_t DateToVersion(uint32_t y, uint32_t m, uint32_t d)
 const char PROJECT_NAME[] = "Touhou Community Reliant Automatic Patcher";
 const char PROJECT_NAME_SHORT[] = "thcrap";
 const char PROJECT_URL[] = "https://www.thpatch.net/wiki/Touhou_Patch_Center:Download";
-constexpr uint32_t PROJECT_VERSION = DateToVersion(TO_HEX(PROJECT_VERSION_Y), TO_HEX(PROJECT_VERSION_M), TO_HEX(PROJECT_VERSION_D));
+//constexpr uint32_t PROJECT_VERSION = DateToVersion(TO_HEX(PROJECT_VERSION_Y), TO_HEX(PROJECT_VERSION_M), TO_HEX(PROJECT_VERSION_D));
+constexpr uint32_t PROJECT_VERSION = 0x20200101;
 const char PROJECT_VERSION_STRING[] = QUOTE(PROJECT_VERSION_Y) "-" QUOTE(PROJECT_VERSION_M) "-" QUOTE(PROJECT_VERSION_D);
 const char PROJECT_BRANCH[] = BUILD_PROJECT_BRANCH;
 
