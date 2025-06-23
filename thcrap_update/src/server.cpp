@@ -51,7 +51,7 @@ const std::string& Server::getUrl() const
     return this->baseUrl;
 }
 
-std::pair<std::vector<uint8_t>, HttpStatus> Server::downloadFile(const std::string& name)
+std::pair<std::vector<uint8_t>, HttpStatus> Server::downloadFile(const std::string& name, File::progress_t progress)
 {
     std::list<DownloadUrl> urls {
         DownloadUrl(*this, name)
@@ -65,16 +65,17 @@ std::pair<std::vector<uint8_t>, HttpStatus> Server::downloadFile(const std::stri
         },
         [&status](const DownloadUrl&, HttpStatus error) {
             status = error;
-        }
+        },
+        progress
     );
     file.download();
 
     return std::make_pair(std::move(ret), status);
 }
 
-std::pair<ScopedJson, HttpStatus> Server::downloadJsonFile(const std::string& name)
+std::pair<ScopedJson, HttpStatus> Server::downloadJsonFile(const std::string& name, File::progress_t progress)
 {
-    auto [data, status] = this->downloadFile(name);
+    auto [data, status] = this->downloadFile(name, progress);
     if (!status) {
         return std::make_pair(nullptr, status);
     }
@@ -185,14 +186,14 @@ std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
     }
 }
 
-std::pair<std::vector<uint8_t>, HttpStatus> ServerCache::downloadFile(const std::string& url)
+std::pair<std::vector<uint8_t>, HttpStatus> ServerCache::downloadFile(const std::string& url, File::progress_t progress)
 {
     auto [server, path] = this->urlToServer(url);
-    return server.downloadFile(path);
+    return server.downloadFile(path, progress);
 }
 
-std::pair<ScopedJson, HttpStatus> ServerCache::downloadJsonFile(const std::string& url)
+std::pair<ScopedJson, HttpStatus> ServerCache::downloadJsonFile(const std::string& url, File::progress_t progress)
 {
     auto [server, path] = this->urlToServer(url);
-    return server.downloadJsonFile(path);
+    return server.downloadJsonFile(path, progress);
 }

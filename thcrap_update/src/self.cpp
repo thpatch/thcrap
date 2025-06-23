@@ -53,6 +53,7 @@ static char update_version[sizeof("0x20010101")];
 #define RECT_EXPAND(rect) rect.left, rect.top, rect.right, rect.bottom
 
 struct smartdlg_state_t {
+	HWND hProgressBar = NULL;
 	HANDLE event_created = CreateEvent(nullptr, true, false, nullptr);
 	DWORD thread_id;
 	HFONT hFont;
@@ -111,6 +112,24 @@ DWORD WINAPI self_window_create_and_run(void *param)
 
 	NONCLIENTMETRICSW nc_metrics = {};
 	nc_metrics.cbSize = sizeof(nc_metrics);
+
+	RECT progress_rect = { label_rect.left, label_rect.bottom + font_pad, label_rect.right, label_rect.bottom + font_pad + 20 };
+
+	// Create the progress bar
+	state->hProgressBar = CreateWindowExW(
+		0,                    // No extended styles
+		PROGRESS_CLASS,        // Predefined class for progress bar
+		NULL,
+		WS_CHILD | WS_VISIBLE,
+		progress_rect.left,
+		progress_rect.top,
+		progress_rect.right - progress_rect.left,
+		progress_rect.bottom - progress_rect.top,
+		state->hWnd,
+		NULL,
+		hMod,
+		NULL
+	);
 
 	if(SystemParametersInfoW(
 		SPI_GETNONCLIENTMETRICS, sizeof(nc_metrics), &nc_metrics, 0
