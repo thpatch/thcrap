@@ -79,9 +79,9 @@ LRESULT CALLBACK smartdlg_proc(
 	switch (uMsg) {
 	case WM_UPDATE_PROGRESS: {
 		auto state = (smartdlg_state_t*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-		if (state && state->hProgress) {
+		if(state && state->hProgress) {
 			std::lock_guard<std::mutex> lock(state->progress_mutex);
-			if (state->total_size > 0) {
+			if(state->total_size > 0) {
 				int pos = (int)((state->current_progress * 100) / state->total_size);
 				SendMessage(state->hProgress, PBM_SETPOS, pos, 0);
 			}
@@ -104,7 +104,7 @@ void smartdlg_close(smartdlg_state_t *state)
 	if(state->hWnd) {
 		SendMessageW(state->hWnd, WM_CLOSE, 0, 0);
 	}
-	if (state->hFont) {
+	if(state->hFont) {
 		DeleteObject(state->hFont);
 	}
 }
@@ -231,7 +231,7 @@ static char* self_tempname(char *fn, size_t len, const char *prefix)
 {
 	char* p = fn;
 	size_t prefix_len = prefix ? strlen(prefix) : 0;
-	if (fn && len > 8 && prefix && prefix_len < len - 1) {
+	if(fn && len > 8 && prefix && prefix_len < len - 1) {
 		HCRYPTPROV hCryptProv;
 		size_t rnd_num = (len - 1) / 2;
 		VLA(BYTE, rnd, rnd_num);
@@ -241,7 +241,7 @@ static char* self_tempname(char *fn, size_t len, const char *prefix)
 		auto ret = W32_ERR_WRAP(CryptAcquireContext(
 			&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
 		));
-		if (!ret) {
+		if(!ret) {
 			CryptGenRandom(hCryptProv, rnd_num, (BYTE*)rnd);
 		}
 		else {
@@ -273,7 +273,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT* context)
 	DWORD signer_num;
 	DWORD i;
 
-	if (!context || !self_mod) {
+	if(!context || !self_mod) {
 		return -1;
 	}
 	{
@@ -298,14 +298,14 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT* context)
 		VLA_FREE(self_fn_utf8);
 		VLA_FREE(self_fn);
 	}
-	if (ret) {
+	if(ret) {
 		goto end;
 	}
 
 	ret = W32_ERR_WRAP(CryptMsgGetParam(
 		hMsg, CMSG_SIGNER_COUNT_PARAM, 0, &signer_num, &param_len
 	));
-	if (ret) {
+	if(ret) {
 		goto end;
 	}
 	for (i = 0; i < signer_num && !(*context); i++) {
@@ -314,7 +314,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT* context)
 		ret = W32_ERR_WRAP(CryptMsgGetParam(
 			hMsg, CMSG_SIGNER_INFO_PARAM, i, NULL, &param_len
 		));
-		if (ret) {
+		if(ret) {
 			continue;
 		}
 		signer_info = (PCERT_INFO)malloc(param_len);
@@ -323,7 +323,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT* context)
 		ret = W32_ERR_WRAP(CryptMsgGetParam(
 			hMsg, CMSG_SIGNER_CERT_INFO_PARAM, i, signer_info, &param_len
 		));
-		if (ret) {
+		if(ret) {
 			continue;
 		}
 		*context = CertGetSubjectCertificateFromStore(
@@ -351,7 +351,7 @@ char* self_sprint_hash(char* buf, size_t len, HCRYPTHASH hHash)
 		return W32_ERR_WRAP(CryptGetHashParam(hHash, param, buf, len, 0));
 		};
 
-	if (crypt_get_hash_param(HP_HASHSIZE, (BYTE*)&hash_len, &hash_len_len)) {
+	if(crypt_get_hash_param(HP_HASHSIZE, (BYTE*)&hash_len, &hash_len_len)) {
 		return 0;
 	}
 
@@ -359,7 +359,7 @@ char* self_sprint_hash(char* buf, size_t len, HCRYPTHASH hHash)
 	// CryptGetHashParam(), we might as well get the whole hash upfront and
 	// merely truncate the string output.
 	VLA(BYTE, hash_val, hash_len);
-	if (!crypt_get_hash_param(HP_HASHVAL, hash_val, &hash_len)) {
+	if(!crypt_get_hash_param(HP_HASHVAL, hash_val, &hash_len)) {
 		size_t bytes_in_suffix = (len - 1) / 2;
 		size_t copy_len = MIN(bytes_in_suffix, hash_len) & ~1;
 		for (size_t i = 0; i < copy_len; i++) {
@@ -388,19 +388,19 @@ static int self_verify_buffer(
 	BYTE* sig_buf = NULL;
 
 	assert(hHash);
-	if (!file_buf || !file_len || !sig_base64 || !sig_base64_len) {
+	if(!file_buf || !file_len || !sig_base64 || !sig_base64_len) {
 		goto end;
 	}
 	ret = W32_ERR_WRAP(CryptStringToBinaryA(
 		sig_base64, sig_base64_len, CRYPT_STRING_BASE64, NULL, &sig_len, NULL, NULL
 	));
-	if (!ret) {
+	if(!ret) {
 		sig_buf = (BYTE*)malloc(sig_len);
 		ret = W32_ERR_WRAP(CryptStringToBinaryA(
 			sig_base64, sig_base64_len, CRYPT_STRING_BASE64, sig_buf, &sig_len, NULL, NULL
 		));
 	}
-	if (ret) {
+	if(ret) {
 		log_print("invalid Base64 string\n");
 		goto end;
 	}
@@ -412,12 +412,12 @@ static int self_verify_buffer(
 		sig_buf[j] = t;
 	}
 	ret = W32_ERR_WRAP(CryptCreateHash(hCryptProv, hash_alg, 0, 0, hHash));
-	if (ret) {
+	if(ret) {
 		log_print("couldn't create hash object\n");
 		goto end;
 	}
 	ret = W32_ERR_WRAP(CryptHashData(*hHash, (BYTE*)file_buf, file_len, 0));
-	if (ret) {
+	if(ret) {
 		log_print("couldn't hash the file data?!?\n");
 		goto end;
 	}
@@ -434,11 +434,11 @@ end:
 
 static ALG_ID self_alg_from_str(const char* hash)
 {
-	if (hash) {
-		if (!stricmp(hash, "SHA1")) {
+	if(hash) {
+		if(!stricmp(hash, "SHA1")) {
 			return CALG_SHA1;
 		}
-		else if (!stricmp(hash, "SHA256")) {
+		else if(!stricmp(hash, "SHA256")) {
 			return CALG_SHA_256;
 		}
 	}
@@ -464,15 +464,15 @@ static self_result_t self_verify(
 	ALG_ID hash_alg = self_alg_from_str(sig_alg);
 	HCRYPTKEY hPubKey = 0;
 
-	if (!zip_buf || !zip_len || !json_is_string(sig_sig) || !context || !sig_alg) {
+	if(!zip_buf || !zip_len || !json_is_string(sig_sig) || !context || !sig_alg) {
 		return SELF_NO_SIG;
 	}
 	log_print("Verifying archive signature... ");
-	if (!hash_alg) {
+	if(!hash_alg) {
 		log_func_printf("Unsupported hash algorithm ('%s')!\n", sig_alg);
 		return SELF_NO_SIG;
 	}
-	if (W32_ERR_WRAP(CryptImportPublicKeyInfo(
+	if(W32_ERR_WRAP(CryptImportPublicKeyInfo(
 		hCryptProv, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
 		&context->pCertInfo->SubjectPublicKeyInfo, &hPubKey
 	))) {
@@ -500,7 +500,7 @@ static int self_move_to_dir(const char* dst_dir, const char* fn)
 static self_result_t self_replace(zip_t* zip)
 {
 	self_result_t ret = SELF_REPLACE_ERROR;
-	if (zip) {
+	if(zip) {
 		// + 1 for the underscore
 		int prefix_backup_len = snprintf(NULL, 0, PREFIX_BACKUP, PROJECT_VERSION_STRING) + 1 + 1;
 		VLA(char, prefix_backup, prefix_backup_len);
@@ -510,7 +510,7 @@ static self_result_t self_replace(zip_t* zip)
 		size_t i;
 
 		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING);
-		if (!PathFileExistsU(prefix_backup)) {
+		if(!PathFileExistsU(prefix_backup)) {
 			strncpy(backup_dir, prefix_backup, sizeof(backup_dir));
 		}
 		else {
@@ -529,13 +529,13 @@ static self_result_t self_replace(zip_t* zip)
 		// multiple times.
 		json_object_foreach(zip_list(zip), fn, val) {
 			int local_ret = self_move_to_dir(backup_dir, fn);
-			if (
+			if(
 				local_ret == ERROR_FILE_NOT_FOUND
 				|| local_ret == ERROR_PATH_NOT_FOUND
 				) {
 				local_ret = 0;
 			}
-			if (local_ret || zip_file_unzip(zip, fn)) {
+			if(local_ret || zip_file_unzip(zip, fn)) {
 				goto end;
 			}
 		}
@@ -562,23 +562,23 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 
 	self_server = globalconfig_get_string("engine_update_url", SELF_SERVER);
 	auto [netpaths, netpaths_status] = ServerCache::get().downloadJsonFile(self_server + NETPATHS_FN);
-	if (!netpaths_status || !netpaths) {
+	if(!netpaths_status || !netpaths) {
 		log_printf("%s%s: %s\n", self_server.c_str(), NETPATHS_FN, netpaths_status.toString().c_str());
 		return SELF_VERSION_CHECK_ERROR;
 	}
 
 	const char* branch = PROJECT_BRANCH;
 	json_t* branch_json = json_object_get(*netpaths, branch);
-	if (!branch_json) {
+	if(!branch_json) {
 		return SELF_NO_UPDATE;
 	}
 
 	uint32_t latest_version = (uint32_t)json_object_get_hex(branch_json, "version");
-	if (!latest_version) {
+	if(!latest_version) {
 		return SELF_NO_TARGET_VERSION;
 	}
 
-	if (latest_version <= PROJECT_VERSION) {
+	if(latest_version <= PROJECT_VERSION) {
 		return SELF_NO_UPDATE;
 	}
 
@@ -592,24 +592,24 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 		errno = 0;
 		uint32_t milestone = strtoul(version_key, NULL, 16);
 		// Check if the string isn't an hex
-		if (errno > 0 || !milestone) {
+		if(errno > 0 || !milestone) {
 			continue;
 		}
 
-		if (milestone > PROJECT_VERSION && milestone < target_version) {
+		if(milestone > PROJECT_VERSION && milestone < target_version) {
 			netpath = json_string_value(value);
 			target_version = milestone;
 		}
 	}
 
-	if (target_version == latest_version) {
+	if(target_version == latest_version) {
 		netpath = json_object_get_string(branch_json, "latest");
 	}
 
 	// We know for sure which version we need
 	str_hexdate_format(update_version, target_version);
 
-	if (!netpath) {
+	if(!netpath) {
 		// If netpath is still null, branch_json is malformed.
 		return SELF_INVALID_NETPATH;
 	}
@@ -641,7 +641,7 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 			window.total_size = file_size;
 		}
 		// Notify UI thread to update progress bar
-		if (window.hWnd) {
+		if(window.hWnd) {
 			PostMessage(window.hWnd, WM_UPDATE_PROGRESS, 0, 0);
 		}
 		return true;  // Continue download
@@ -651,46 +651,46 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 		self_server + netpath,
 		progress_callback
 	);
-	if (!arc_dl_status || arc_dl.empty()) {
+	if(!arc_dl_status || arc_dl.empty()) {
 		log_printf("%s%s: %s\n", self_server.c_str(), netpath, arc_dl_status.toString().c_str());
 		return SELF_SERVER_ERROR;
 	}
 	snprintf(arc_fn, TEMP_FN_LEN, "thcrap_update_download.zip");
 	auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig");
-	if (!sig_status || !sig) {
+	if(!sig_status || !sig) {
 		log_printf("%s%s%s: %s\n", self_server.c_str(), netpath, ".sig", sig_status.toString().c_str());
 		return SELF_NO_SIG;
 	}
 
-	if (W32_ERR_WRAP(CryptAcquireContext(
+	if(W32_ERR_WRAP(CryptAcquireContext(
 		&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
 	))) {
 		return SELF_NO_PUBLIC_KEY;
 	}
 	defer(CryptReleaseContext(hCryptProv, 0));
 
-	if (self_pubkey_from_signer(&context)) {
+	if(self_pubkey_from_signer(&context)) {
 		return SELF_NO_PUBLIC_KEY;
 	}
 	defer(CertFreeCertificateContext(context));
 
 	ret = self_verify(hCryptProv, &hHash, arc_dl.data(), arc_dl.size(), *sig, context);
 	defer(CryptDestroyHash(hHash));
-	if (ret != SELF_OK) {
+	if(ret != SELF_OK) {
 		return ret;
 	}
 
-	if (file_write(arc_fn, arc_dl.data(), arc_dl.size())) {
+	if(file_write(arc_fn, arc_dl.data(), arc_dl.size())) {
 		return SELF_DISK_ERROR;
 	}
-	if (arc_fn_ptr) {
+	if(arc_fn_ptr) {
 		*arc_fn_ptr = (char*)malloc(TEMP_FN_LEN);
 		memcpy(*arc_fn_ptr, arc_fn, TEMP_FN_LEN);
 	}
 	arc = zip_open(arc_fn);
 	ret = self_replace(arc);
 	zip_close(arc);
-	if (ret != SELF_REPLACE_ERROR) {
+	if(ret != SELF_REPLACE_ERROR) {
 		DeleteFile(arc_fn);
 	}
 	return ret;
