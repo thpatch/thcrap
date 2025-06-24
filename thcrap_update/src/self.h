@@ -24,9 +24,11 @@ typedef enum {
 	SELF_NO_TARGET_VERSION,
 } self_result_t;
 
+#define SELF_UPDATE_OUT_FN "thcrap_update_download.zip"
+
 // Performs an update of the thcrap installation in [thcrap_dir].
-// [arc_fn_ptr] receives the name of the archive downloaded.
-self_result_t self_update(const char *thcrap_dir, char **arc_fn_ptr);
+// The archive is downloaded into SELF_UPDATE_OUT_FN.
+self_result_t self_update(const char *thcrap_dir);
 
 // Returns a string representation of the next version. If no update was
 // attempted or if no info could be retrieved from the server it returns a blank string.
