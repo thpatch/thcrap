@@ -98,10 +98,10 @@ LRESULT CALLBACK smartdlg_proc(
 	return DefDlgProcW(hWnd, uMsg, wParam, lParam);
 }
 
-void smartdlg_close(smartdlg_state_t* state)
+void smartdlg_close(smartdlg_state_t *state)
 {
 	assert(state);
-	if (state->hWnd) {
+	if(state->hWnd) {
 		SendMessageW(state->hWnd, WM_CLOSE, 0, 0);
 	}
 	if (state->hFont) {
@@ -109,13 +109,13 @@ void smartdlg_close(smartdlg_state_t* state)
 	}
 }
 
-DWORD WINAPI self_window_create_and_run(void* param)
+DWORD WINAPI self_window_create_and_run(void *param)
 {
-	const char* TEXT =
+	const char *TEXT =
 		"A new build of the ${project} is being downloaded, please wait...";
 	const size_t TEXT_SLOT = (size_t)TEXT;
-	const char* text_final;
-	auto state = (smartdlg_state_t*)param;
+	const char *text_final;
+	auto state = (smartdlg_state_t *)param;
 
 	assert(state);
 
@@ -139,19 +139,19 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	NONCLIENTMETRICSW nc_metrics = {};
 	nc_metrics.cbSize = sizeof(nc_metrics);
 
-	if (SystemParametersInfoW(
+	if(SystemParametersInfoW(
 		SPI_GETNONCLIENTMETRICS, sizeof(nc_metrics), &nc_metrics, 0
 	)) {
 		int height = nc_metrics.lfMessageFont.lfHeight;
 		state->hFont = CreateFontIndirectW(&nc_metrics.lfMessageFont);
 		font_pad = (height < 0 ? -height : height);
 	}
-	if (!SystemParametersInfoW(SPI_GETWORKAREA, sizeof(RECT), &screen_rect, 0)) {
+	if(!SystemParametersInfoW(SPI_GETWORKAREA, sizeof(RECT), &screen_rect, 0)) {
 		screen_rect.right = GetSystemMetrics(SM_CXSCREEN);
 		screen_rect.bottom = GetSystemMetrics(SM_CYSCREEN);
 	}
 
-	if (state->hFont) {
+	if(state->hFont) {
 		SelectObject(hDC, state->hFont);
 	}
 
@@ -199,7 +199,7 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	SetWindowLongPtrW(state->hWnd, GWLP_WNDPROC, (LPARAM)smartdlg_proc);
 	SetWindowLongPtrW(state->hWnd, GWLP_USERDATA, (LONG_PTR)state);
 
-	if (state->hFont) {
+	if(state->hFont) {
 		SendMessageW(state->hWnd, WM_SETFONT, (WPARAM)state->hFont, 0);
 		SendMessageW(label, WM_SETFONT, (WPARAM)state->hFont, 0);
 	}
@@ -213,8 +213,8 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	MSG msg;
 	BOOL msg_ret;
 
-	while ((msg_ret = GetMessage(&msg, nullptr, 0, 0)) != 0) {
-		if (msg_ret != -1) {
+	while((msg_ret = GetMessage(&msg, nullptr, 0, 0)) != 0) {
+		if(msg_ret != -1) {
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
@@ -227,7 +227,7 @@ DWORD WINAPI self_window_create_and_run(void* param)
 // A superior GetTempFileName. Fills [fn] with [len] / 2 random bytes printed
 // as their hexadecimal representation. Returns a pointer to the final \0 at
 // the end of the file name.
-static char* self_tempname(char* fn, size_t len, const char* prefix)
+static char* self_tempname(char *fn, size_t len, const char *prefix)
 {
 	char* p = fn;
 	size_t prefix_len = prefix ? strlen(prefix) : 0;
