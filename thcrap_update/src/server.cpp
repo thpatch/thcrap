@@ -9,11 +9,13 @@ std::unique_ptr<ServerCache> ServerCache::instance;
 
 BorrowedHttpHandle::BorrowedHttpHandle(std::unique_ptr<IHttpHandle> handle, Server& server)
     : handle(std::move(handle)), server(server)
-{}
+{
+}
 
 BorrowedHttpHandle::BorrowedHttpHandle(BorrowedHttpHandle&& src)
     : handle(std::move(src.handle)), server(src.server)
-{}
+{
+}
 
 BorrowedHttpHandle::~BorrowedHttpHandle()
 {
@@ -53,7 +55,7 @@ const std::string& Server::getUrl() const
 
 std::pair<std::vector<uint8_t>, HttpStatus> Server::downloadFile(const std::string& name, File::progress_t progress)
 {
-    std::list<DownloadUrl> urls {
+    std::list<DownloadUrl> urls{
         DownloadUrl(*this, name)
     };
     std::vector<uint8_t> ret;
@@ -108,7 +110,7 @@ std::unique_ptr<IHttpHandle> ServerCache::defaultHttpHandleFactory()
     static enum {
         WININET_NOT_INITIALIZED = -1,
         WININET_FALSE = 0,
-        WININET_TRUE  = 1,
+        WININET_TRUE = 1,
     } use_wininet = WININET_NOT_INITIALIZED;
 
     if (use_wininet == WININET_NOT_INITIALIZED) {
@@ -130,7 +132,8 @@ std::unique_ptr<IHttpHandle> ServerCache::defaultHttpHandleFactory()
 }
 
 ServerCache::~ServerCache()
-{}
+{
+}
 
 void ServerCache::setHttpHandleFactory(Server::HttpHandleFactory factory)
 {
@@ -178,8 +181,8 @@ std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
         auto it = this->cache.find(origin);
         if (it == this->cache.end()) {
             it = this->cache.emplace(std::piecewise_construct,
-                                     std::forward_as_tuple(origin),
-                                     std::forward_as_tuple(this->httpHandleFactory, origin)).first;
+                std::forward_as_tuple(origin),
+                std::forward_as_tuple(this->httpHandleFactory, origin)).first;
         }
         Server& server = it->second;
         return std::pair<Server&, std::string>(server, path);

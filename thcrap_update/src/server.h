@@ -30,7 +30,7 @@ public:
 class Server
 {
 public:
-    typedef std::function<std::unique_ptr<IHttpHandle> (void)> HttpHandleFactory;
+    typedef std::function<std::unique_ptr<IHttpHandle>(void)> HttpHandleFactory;
 
 private:
     HttpHandleFactory handleFactory;
@@ -55,7 +55,8 @@ public:
     std::pair<std::vector<uint8_t>, HttpStatus> downloadFile(
         const std::string& name,
         File::progress_t progress = File::defaultProgressFunction
-    );    // Download a single json file from this server.
+    );
+    // Download a single json file from this server.
     std::pair<ScopedJson, HttpStatus> downloadJsonFile(const std::string& name, File::progress_t progress = File::defaultProgressFunction);
 
     // Borrow a HttpHandle from the server.

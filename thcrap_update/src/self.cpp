@@ -9,6 +9,8 @@
 
 #include <thcrap.h>
 #include <wincrypt.h>
+#include <commctrl.h>
+#pragma comment(lib, "comctl32.lib")
 #include "update.h"
 #include "server.h"
 #include "self.h"
@@ -52,11 +54,18 @@ static char update_version[sizeof("0x20010101")];
 
 #define RECT_EXPAND(rect) rect.left, rect.top, rect.right, rect.bottom
 
+ // Custom message for updating progress bar from download thread
+#define WM_UPDATE_PROGRESS (WM_USER + 1)
+
 struct smartdlg_state_t {
 	HANDLE event_created = CreateEvent(nullptr, true, false, nullptr);
 	DWORD thread_id;
 	HFONT hFont;
 	HWND hWnd;
+	HWND hProgress;
+	std::mutex progress_mutex;
+	size_t current_progress = 0;
+	size_t total_size = 0;
 
 	~smartdlg_state_t() {
 		CloseHandle(event_created);
@@ -68,6 +77,17 @@ LRESULT CALLBACK smartdlg_proc(
 )
 {
 	switch (uMsg) {
+	case WM_UPDATE_PROGRESS: {
+		auto state = (smartdlg_state_t*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+		if (state && state->hProgress) {
+			std::lock_guard<std::mutex> lock(state->progress_mutex);
+			if (state->total_size > 0) {
+				int pos = (int)((state->current_progress * 100) / state->total_size);
+				SendMessage(state->hProgress, PBM_SETPOS, pos, 0);
+			}
+		}
+		break;
+	}
 	case WM_CLOSE: // Yes, these are not handled by DefDlgProc().
 		DestroyWindow(hWnd);
 		break;
@@ -99,6 +119,12 @@ DWORD WINAPI self_window_create_and_run(void* param)
 
 	assert(state);
 
+	// Initialize common controls for progress bar
+	INITCOMMONCONTROLSEX icex;
+	icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+	icex.dwICC = ICC_PROGRESS_CLASS;
+	InitCommonControlsEx(&icex);
+
 	HMODULE hMod = GetModuleHandle(NULL);
 	HDC hDC = GetDC(0);
 	HWND label = NULL;
@@ -108,6 +134,7 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	RECT wnd_rect = {};
 	RECT label_rect = {};
 	LONG font_pad = 0;
+	const int PROGRESS_HEIGHT = 20;
 
 	NONCLIENTMETRICSW nc_metrics = {};
 	nc_metrics.cbSize = sizeof(nc_metrics);
@@ -137,7 +164,7 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	label_rect.left += font_pad;
 	label_rect.top += font_pad;
 	wnd_rect.right += font_pad * 2;
-	wnd_rect.bottom += font_pad * 2;
+	wnd_rect.bottom += font_pad * 4 + PROGRESS_HEIGHT;
 	AdjustWindowRectEx(&wnd_rect, wnd_style, FALSE, wnd_style_ex);
 	wnd_rect.right -= wnd_rect.left;
 	wnd_rect.bottom -= wnd_rect.top;
@@ -154,7 +181,23 @@ DWORD WINAPI self_window_create_and_run(void* param)
 		RECT_EXPAND(label_rect), state->hWnd, NULL, hMod, NULL
 	);
 
+	// Create progress bar
+	RECT progress_rect = label_rect;
+	progress_rect.top = label_rect.bottom + font_pad;
+	progress_rect.bottom = progress_rect.top + PROGRESS_HEIGHT;
+
+	state->hProgress = CreateWindowExW(
+		0, PROGRESS_CLASSW, NULL,
+		WS_CHILD | WS_VISIBLE | PBS_SMOOTH,
+		RECT_EXPAND(progress_rect),
+		state->hWnd, NULL, hMod, NULL
+	);
+
+	// Set progress bar range
+	SendMessage(state->hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
+
 	SetWindowLongPtrW(state->hWnd, GWLP_WNDPROC, (LPARAM)smartdlg_proc);
+	SetWindowLongPtrW(state->hWnd, GWLP_USERDATA, (LONG_PTR)state);
 
 	if (state->hFont) {
 		SendMessageW(state->hWnd, WM_SETFONT, (WPARAM)state->hFont, 0);
@@ -590,7 +633,24 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 	);
 	WaitForSingleObject(window.event_created, INFINITE);
 
-	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(self_server + netpath);
+	// Progress callback lambda
+	auto progress_callback = [&window](const DownloadUrl&, size_t file_progress, size_t file_size) -> bool {
+		{
+			std::lock_guard<std::mutex> lock(window.progress_mutex);
+			window.current_progress = file_progress;
+			window.total_size = file_size;
+		}
+		// Notify UI thread to update progress bar
+		if (window.hWnd) {
+			PostMessage(window.hWnd, WM_UPDATE_PROGRESS, 0, 0);
+		}
+		return true;  // Continue download
+		};
+
+	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(
+		self_server + netpath,
+		progress_callback
+	);
 	if (!arc_dl_status || arc_dl.empty()) {
 		log_printf("%s%s: %s\n", self_server.c_str(), netpath, arc_dl_status.toString().c_str());
 		return SELF_SERVER_ERROR;
@@ -618,4 +678,3 @@ const char* self_get_target_version()
 {
 	return update_version;
 }
-
