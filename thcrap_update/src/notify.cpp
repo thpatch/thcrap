@@ -127,9 +127,8 @@ int update_notify_thcrap()
 	self_result_t ret = SELF_NO_UPDATE;
 	const char *thcrap_dir = runconfig_thcrap_dir_get();
 	
-	char *arc_fn = NULL;
 	const char *self_msg = NULL;
-	ret = self_update(thcrap_dir, &arc_fn);
+	ret = self_update(thcrap_dir);
 	if (ret == SELF_NO_UPDATE) {
 		return ret;
 	}
@@ -158,7 +157,7 @@ int update_notify_thcrap()
 	strings_replace(SELF_MSG_SLOT, "${build}", self_get_target_version());
 	strings_replace(SELF_MSG_SLOT, "${thcrap_dir}", thcrap_dir);
 	strings_replace(SELF_MSG_SLOT, "${desc_url}", PROJECT_URL);
-	self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", arc_fn);
+	self_msg = strings_replace(SELF_MSG_SLOT, "${arc_fn}", SELF_UPDATE_OUT_FN);
 
 	// Write message
 	// Default is false, and the value is going to be written later anyway. Doing it now would result in a useless IO write
@@ -176,8 +175,6 @@ int update_notify_thcrap()
 
 	// This isn't meant to be used by the user. skip_check_mbox just persists the last vcheck_error
 	globalconfig_set_boolean("skip_check_mbox", vcheck_error);
-	
-	SAFE_FREE(arc_fn);
 	
 	return ret;
 }

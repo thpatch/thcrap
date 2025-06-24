@@ -10,7 +10,6 @@
 #include <thcrap.h>
 #include <wincrypt.h>
 #include <commctrl.h>
-#pragma comment(lib, "comctl32.lib")
 #include "update.h"
 #include "server.h"
 #include "self.h"
@@ -183,8 +182,8 @@ DWORD WINAPI self_window_create_and_run(void* param)
 
 	// Create progress bar
 	RECT progress_rect = label_rect;
-	progress_rect.top = label_rect.bottom + font_pad;
-	progress_rect.bottom = progress_rect.top + PROGRESS_HEIGHT;
+	progress_rect.top = label_rect.top + label_rect.bottom + font_pad;
+	progress_rect.bottom = PROGRESS_HEIGHT;
 
 	state->hProgress = CreateWindowExW(
 		0, PROGRESS_CLASSW, NULL,
@@ -548,11 +547,10 @@ end:
 	return ret;
 }
 
-self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
+self_result_t self_update(const char* thcrap_dir)
 {
 	self_result_t ret;
 	std::string self_server;
-	char arc_fn[TEMP_FN_LEN];
 	zip_t* arc = NULL;
 	PCCERT_CONTEXT context = NULL;
 	HCRYPTPROV hCryptProv = 0;
@@ -655,7 +653,6 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 		log_printf("%s%s: %s\n", self_server.c_str(), netpath, arc_dl_status.toString().c_str());
 		return SELF_SERVER_ERROR;
 	}
-	snprintf(arc_fn, TEMP_FN_LEN, "thcrap_update_download.zip");
 	auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig");
 	if (!sig_status || !sig) {
 		log_printf("%s%s%s: %s\n", self_server.c_str(), netpath, ".sig", sig_status.toString().c_str());
@@ -680,18 +677,14 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 		return ret;
 	}
 
-	if (file_write(arc_fn, arc_dl.data(), arc_dl.size())) {
+	if (file_write(SELF_UPDATE_OUT_FN, arc_dl.data(), arc_dl.size())) {
 		return SELF_DISK_ERROR;
 	}
-	if (arc_fn_ptr) {
-		*arc_fn_ptr = (char*)malloc(TEMP_FN_LEN);
-		memcpy(*arc_fn_ptr, arc_fn, TEMP_FN_LEN);
-	}
-	arc = zip_open(arc_fn);
+	arc = zip_open(SELF_UPDATE_OUT_FN);
 	ret = self_replace(arc);
 	zip_close(arc);
 	if (ret != SELF_REPLACE_ERROR) {
-		DeleteFile(arc_fn);
+		DeleteFile(SELF_UPDATE_OUT_FN);
 	}
 	return ret;
 }
