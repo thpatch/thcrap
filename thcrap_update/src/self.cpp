@@ -656,7 +656,29 @@ self_result_t self_update(const char* thcrap_dir, char** arc_fn_ptr)
 		return SELF_SERVER_ERROR;
 	}
 	snprintf(arc_fn, TEMP_FN_LEN, "thcrap_update_download.zip");
+	auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig");
+	if (!sig_status || !sig) {
+		log_printf("%s%s%s: %s\n", self_server.c_str(), netpath, ".sig", sig_status.toString().c_str());
+		return SELF_NO_SIG;
+	}
 
+	if (W32_ERR_WRAP(CryptAcquireContext(
+		&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
+	))) {
+		return SELF_NO_PUBLIC_KEY;
+	}
+	defer(CryptReleaseContext(hCryptProv, 0));
+
+	if (self_pubkey_from_signer(&context)) {
+		return SELF_NO_PUBLIC_KEY;
+	}
+	defer(CertFreeCertificateContext(context));
+
+	ret = self_verify(hCryptProv, &hHash, arc_dl.data(), arc_dl.size(), *sig, context);
+	defer(CryptDestroyHash(hHash));
+	if (ret != SELF_OK) {
+		return ret;
+	}
 
 	if (file_write(arc_fn, arc_dl.data(), arc_dl.size())) {
 		return SELF_DISK_ERROR;
