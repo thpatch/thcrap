@@ -83,7 +83,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "thcrap_configure_v3", "thcr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "thcrap_x64_injector", "thcrap_x64_injector\thcrap_x64_injector.vcxproj", "{44B36439-6351-42F3-8F25-C1B882931BC3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "thcrap_cs_lib", "thcrap_cs_lib\thcrap_cs_lib.csproj", "{9E72079B-A115-40B8-9769-DBD22410A87B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "thcrap_cs_lib", "libs\thcrap_cs_lib\thcrap_cs_lib.csproj", "{9E72079B-A115-40B8-9769-DBD22410A87B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

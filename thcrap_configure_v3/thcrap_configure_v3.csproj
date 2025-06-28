@@ -174,7 +174,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\thcrap_cs_lib\thcrap_cs_lib.csproj">
+    <ProjectReference Include="..\libs\thcrap_cs_lib\thcrap_cs_lib.csproj">
       <Project>{9e72079b-a115-40b8-9769-dbd22410a87b}</Project>
       <Name>thcrap_cs_lib</Name>
     </ProjectReference>

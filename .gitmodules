@@ -13,3 +13,6 @@
 [submodule "libs/json5pp"]
 	path = libs/json5pp
 	url = https://github.com/thpatch/json5pp.git
+[submodule "libs/thcrap_cs_lib"]
+	path = libs/thcrap_cs_lib
+	url = https://github.com/thpatch/thcrap_cs_lib.git
