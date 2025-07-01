@@ -479,7 +479,7 @@ bool TasofroPl::AText::parseCommand(json_t *patch, size_t json_line_num)
 				break;
 			}
 		}
-		this->is_last_balloon = i == array_size;
+		this->is_last_balloon = i >= array_size;
 
 		// If the balloon is too small for our text to fit, expand it automatically.
 		if (this->nb_lines > 1 && balloon_size == "05x2") {
