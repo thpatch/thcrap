@@ -135,5 +135,11 @@
 			"exist": "thcrap_configure.exe"
 		},
 		"delete": "thcrap_configure.exe"
+    },
+	{
+		"detect": {
+			"exist": "bin\\libcrypto-1_1.dll"
+		},
+		"delete": "bin\\libcrypto-1_1.dll"
     }
 ]

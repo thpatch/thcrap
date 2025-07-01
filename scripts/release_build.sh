@@ -7,10 +7,10 @@ FILES_LIST="bin/act_nut_lib.dll \
     bin/cacert.pem \
     bin/fribidi.dll \
     bin/jansson.dll \
-    bin/libcrypto-1_1.dll \
+    bin/libcrypto-3.dll \
     bin/libcurl.dll \
     bin/libpng16.dll \
-    bin/libssl-1_1.dll \
+    bin/libssl-3.dll \
     bin/Microsoft.Bcl.AsyncInterfaces.dll \
     bin/Microsoft.WindowsAPICodePack.dll \
     bin/Microsoft.WindowsAPICodePack.Shell.dll \
@@ -30,6 +30,7 @@ FILES_LIST="bin/act_nut_lib.dll \
     bin/thcrap_configure.exe \
     bin/thcrap_configure_v3.exe \
     bin/thcrap_configure_v3.exe.config \
+    bin/thcrap_cs_lib.dll \
     bin/thcrap.dll \
     bin/thcrap_i18n.dll \
     bin/thcrap_loader.exe \
