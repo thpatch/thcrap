@@ -147,10 +147,6 @@ void Update::onFilesJsComplete(const patch_t *patch, const std::vector<uint8_t>&
     const char *fn;
     json_t *value;
     json_object_foreach_fast(*remoteFilesJs, fn, value) {
-        if (strcmp(fn, ".http_cache_data") == 0) {
-            // Not a real file, just medatada we stored there
-            continue;
-        }
         json_t *localValue = json_object_get(*localFilesJs, fn);
         // Did someone simply drop a full files.js into a standalone
         // package that doesn't actually come with the files for
@@ -236,23 +232,16 @@ void Update::startPatchUpdate(const patch_t *patch)
     }
 
     this->filesJsDownloader.addFile(patch->servers, "files.js",
-
-        // Success callback
         [this, patch](const DownloadUrl&, std::vector<uint8_t>& data) {
             this->onFilesJsComplete(patch, data);
         },
-
-        // Failure callback
         [patch_id = std::string(patch->id)](const DownloadUrl& url, HttpStatus httpStatus) {
             if (httpStatus.get() == HttpStatus::Cancelled) {
                 // Another file finished before
                 return ;
             }
             log_printf("Downloading files.js from %s failed: %s\n", url.getUrl().c_str(), httpStatus.toString().c_str());
-        },
-
-		File::defaultProgressFunction,
-		new FilesJsDownloadCache(patch)
+        }
     );
 }
 

@@ -70,59 +70,7 @@ static std::string encode_UTF8_url(std::string in)
     return out;
 }
 
-static curl_slist *setup_headers(DownloadCache *cache)
-{
-	if (!cache) {
-		return nullptr;
-	}
-	curl_slist *headers = nullptr;
-
-	std::optional<std::string> etag = cache->getEtag();
-	if (etag) {
-		BUILD_VLA_STR(char, header, "If-None-Match: ", etag->c_str());
-		headers = curl_slist_append(headers, header);
-		VLA_FREE(header);
-	}
-
-	std::optional<std::string> lastModifiedDate = cache->getLastModifiedDate();
-	if (lastModifiedDate) {
-		BUILD_VLA_STR(char, header, "If-Modified-Since: ", lastModifiedDate->c_str());
-		headers = curl_slist_append(headers, header);
-		VLA_FREE(header);
-	}
-
-	return headers;
-}
-
-void update_cache(CURL *curl, DownloadCache *cache)
-{
-	if (!cache) {
-		return ;
-	}
-
-	// The CURL doc says that the header struct is clobbered between
-	// subsequent calls, the strings inside it might also be clobbered
-	// (I don't think they are, but the doc doesn't guarantee it).
-	// Better play it safe and make a copy of the 1st header.
-	std::string etag;
-	const char *lastModifiedDate = nullptr;
-
-	curl_header *header;
-	if (curl_easy_header(curl, "ETag", 0, CURLH_HEADER, -1, &header) == CURLHE_OK) {
-		etag = header->value;
-	}
-
-	if (curl_easy_header(curl, "Last-Modified", 0, CURLH_HEADER, -1, &header) == CURLHE_OK) {
-		lastModifiedDate = header->value;
-		if (lastModifiedDate && !lastModifiedDate[0]) {
-			lastModifiedDate = nullptr;
-		}
-	}
-
-	cache->setCacheData(!etag.empty() ? etag.c_str() : nullptr, lastModifiedDate);
-}
-
-HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback, DownloadCache *cache)
+HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback)
 {
 	curl_easy_setopt(this->curl, CURLOPT_CAINFO, "bin/cacert.pem");
     curl_easy_setopt(this->curl, CURLOPT_FOLLOWLOCATION, 1);
@@ -141,9 +89,6 @@ HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(con
     char errbuf[CURL_ERROR_SIZE];
     curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, errbuf);
     errbuf[0] = 0;
-
-	curl_slist *headers = setup_headers(cache);
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
     std::string url_encoded = encode_UTF8_url(url);
     curl_easy_setopt(this->curl, CURLOPT_URL, url_encoded.c_str());
@@ -172,28 +117,12 @@ HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(con
         }
     }
     curl_easy_setopt(this->curl, CURLOPT_ERRORBUFFER, nullptr);
-    if (headers) {
-        curl_easy_setopt(this->curl, CURLOPT_HTTPHEADER, nullptr);
-        curl_slist_free_all(headers);
-    }
 
     long response_code = 0;
     curl_easy_getinfo(this->curl, CURLINFO_RESPONSE_CODE, &response_code);
-    if (response_code == 200) {
-        update_cache(this->curl, cache);
-        return HttpStatus::makeOk();
-    }
-    else if (response_code == 304) {
-        if (!cache) {
-            throw std::logic_error("Got 304 for a non-cached object");
-        }
-        std::vector<uint8_t> data = cache->getCachedFile();
-        progressCallback(data.size(), data.size());
-        writeCallback(data.data(), data.size());
-        update_cache(this->curl, cache);
-        return HttpStatus::makeOk();
-    }
-    else {
+    if (response_code != 200) {
         return HttpStatus::makeNetworkError(response_code);
     }
+
+    return HttpStatus::makeOk();
 }

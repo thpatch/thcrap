@@ -4,7 +4,6 @@
 #include <string>
 #include <curl/curl.h>
 #include "http_interface.h"
-#include "download_cache.h"
 
 class CurlHandle : public IHttpHandle
 {
@@ -21,5 +20,5 @@ public:
     CurlHandle& operator=(CurlHandle& other) = delete;
     ~CurlHandle();
 
-    HttpStatus download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback, DownloadCache *cache) override;
+    HttpStatus download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)> progressCallback) override;
 };

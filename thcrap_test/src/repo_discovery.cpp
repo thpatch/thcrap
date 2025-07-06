@@ -27,7 +27,7 @@ public:
         files.clear();
     }
 
-    HttpStatus download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)>, DownloadCache*) override
+    HttpStatus download(const std::string& url, std::function<size_t(const uint8_t*, size_t)> writeCallback, std::function<bool(size_t, size_t)>) override
     {
         auto it = files.find(url);
         if (it == files.end()) {

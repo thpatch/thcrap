@@ -6,7 +6,6 @@
 #include <atomic>
 #include <libs/include/ThreadPool.h>
 #include "file.h"
-#include "download_cache.h"
 
 class Downloader
 {
@@ -25,13 +24,11 @@ public:
     void addFile(const std::list<std::string>& servers, std::string filename,
                  File::success_t successCallback = File::defaultSuccessFunction,
                  File::failure_t failureCallback = File::defaultFailureFunction,
-                 File::progress_t progressCallback = File::defaultProgressFunction,
-				 DownloadCache *cache = nullptr);
+                 File::progress_t progressCallback = File::defaultProgressFunction);
     void addFile(char** servers, std::string filename,
                  File::success_t successCallback = File::defaultSuccessFunction,
                  File::failure_t failureCallback = File::defaultFailureFunction,
-                 File::progress_t progressCallback = File::defaultProgressFunction,
-				 DownloadCache *cache = nullptr);
+                 File::progress_t progressCallback = File::defaultProgressFunction);
     size_t current() const;
     size_t total() const;
     void wait();
