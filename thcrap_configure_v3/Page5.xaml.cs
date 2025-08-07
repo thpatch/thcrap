@@ -46,8 +46,8 @@ namespace thcrap_configure_v3
                 config = GlobalConfig.get();
                 ShortcutDestinations dest = config.default_shortcut_destinations;
 
-                checkboxDesktop.IsChecked      = dest.HasFlag(ShortcutDestinations.Desktop);
-                checkboxStartMenu.IsChecked    = dest.HasFlag(ShortcutDestinations.StartMenu);
+                checkboxDesktopGames.IsChecked      = dest.HasFlag(ShortcutDestinations.Desktop);
+                checkboxStartMenuGames.IsChecked    = dest.HasFlag(ShortcutDestinations.StartMenu);
                 checkboxGamesFolder.IsChecked  = dest.HasFlag(ShortcutDestinations.GamesFolder);
                 checkboxThcrapFolder.IsChecked = dest.HasFlag(ShortcutDestinations.ThcrapFolder);
             }
@@ -67,7 +67,7 @@ namespace thcrap_configure_v3
             if (isUTLPresent == null)
                 isUTLPresent = File.Exists("bin\\Universal THCRAP Launcher.exe");
 
-            if (checkboxDesktop.IsChecked == true || checkboxStartMenu.IsChecked == true ||
+            if (checkboxDesktopGames.IsChecked == true || checkboxStartMenuGames.IsChecked == true ||
                 checkboxGamesFolder.IsChecked == true || checkboxThcrapFolder.IsChecked == true || isUTLPresent == true)
                 warningPanel.Visibility = Visibility.Collapsed;
             else
@@ -98,8 +98,8 @@ namespace thcrap_configure_v3
         public void Leave(string configName, IEnumerable<ThcrapDll.games_js_entry> games)
         {
             config.default_shortcut_destinations =
-                (checkboxDesktop.IsChecked      == true ? ShortcutDestinations.Desktop      : 0) |
-                (checkboxStartMenu.IsChecked    == true ? ShortcutDestinations.StartMenu    : 0) |
+                (checkboxDesktopGames.IsChecked      == true ? ShortcutDestinations.Desktop      : 0) |
+                (checkboxStartMenuGames.IsChecked    == true ? ShortcutDestinations.StartMenu    : 0) |
                 (checkboxGamesFolder.IsChecked  == true ? ShortcutDestinations.GamesFolder  : 0) |
                 (checkboxThcrapFolder.IsChecked == true ? ShortcutDestinations.ThcrapFolder : 0);
             if (config.developer_mode)
@@ -108,9 +108,9 @@ namespace thcrap_configure_v3
             }
             config.Save();
 
-            if (checkboxDesktop.IsChecked == true)
+            if (checkboxDesktopGames.IsChecked == true)
                 CreateShortcuts(configName, games, ThcrapDll.ShortcutsDestination.SHDESTINATION_DESKTOP);
-            if (checkboxStartMenu.IsChecked == true)
+            if (checkboxStartMenuGames.IsChecked == true)
                 CreateShortcuts(configName, games, ThcrapDll.ShortcutsDestination.SHDESTINATION_START_MENU);
             if (checkboxGamesFolder.IsChecked == true)
                 CreateShortcuts(configName, games, ThcrapDll.ShortcutsDestination.SHDESTINATION_GAMES_DIRECTORY);

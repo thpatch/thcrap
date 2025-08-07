@@ -8,8 +8,12 @@
              d:DesignHeight="460" d:DesignWidth="800">
     <StackPanel>
         <TextBlock>Create shortcuts:</TextBlock>
-        <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxDesktop" IsChecked="True">On your desktop</CheckBox>
-        <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxStartMenu" IsChecked="True">In the Start menu</CheckBox>
+        <TextBlock Margin="10,7,0,0">On your desktop:</TextBlock>
+        <CheckBox Margin="20,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxDesktopLauncher" IsChecked="True">Add a single shortcut to a launcher</CheckBox>
+        <CheckBox Margin="20,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxDesktopGames">Add one shortcut per game</CheckBox>
+        <TextBlock Margin="10,7,0,0">In the start menu:</TextBlock>
+        <CheckBox Margin="20,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxStartMenuLauncher">Add a single shortcut to a launcher</CheckBox>
+        <CheckBox Margin="20,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxStartMenuGames" IsChecked="True">Add one shortcut per game</CheckBox>
         <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxGamesFolder">In the games' folder</CheckBox>
         <CheckBox Margin="0,7,0,0" Checked="checkbox_Checked" Unchecked="checkbox_Checked" x:Name="checkboxThcrapFolder">In the thcrap folder</CheckBox>
         <StackPanel Margin="0,7,0,0" Orientation="Horizontal" x:Name="warningPanel" Visibility="Collapsed">
