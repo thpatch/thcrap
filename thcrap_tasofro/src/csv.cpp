@@ -126,6 +126,7 @@ int patch_csv(void *file_inout, size_t size_out, size_t size_in, const char*, js
 			patch_row = get_patch_obj_for_row(patch, row, get_row_from_id(patch_by_id, file_in + i, size_in - i));
 		}
 	}
+	file_out[j++] = '\0';
 	if (j > size_out) {
 		log_printf("WARNING: buffer overflow in tasofro CSV patching (wrote %zu bytes in a %zu buffer)!\n", j, size_out);
 	}
@@ -154,7 +155,7 @@ size_t get_csv_size(const char*, json_t*, size_t patch_size)
 	}
 }
 
-static json_t *th105_spellcomment_pack_lines(json_t *spell)
+static json_t *th105_spellcomment_pack_lines(json_t *spell, size_t& out_size)
 {
 	json_t *lines = json_object_get(spell, "comment_1");
 	std::string out;
@@ -173,6 +174,7 @@ static json_t *th105_spellcomment_pack_lines(json_t *spell)
 
 	json_t *out_obj = json_object();
 	json_object_set_new(out_obj, "4", json_string(out.c_str()));
+	out_size += out.length();
 	return out_obj;
 }
 
@@ -204,7 +206,7 @@ json_t* th105_spellcomment_generator(const jsonvfs_map& in_data, std::string_vie
 		json_object_foreach_fast(spellcomments, key, value) {
 			if (strncmp(key, character.data(), character.size()) == 0) {
 				const char *id = key + character.size() + 1;
-				json_object_set_new(patch, id, th105_spellcomment_pack_lines(value));
+				json_object_set_new(patch, id, th105_spellcomment_pack_lines(value, out_size));
 			}
 		}
 	}

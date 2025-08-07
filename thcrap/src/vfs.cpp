@@ -122,21 +122,27 @@ static json_t *json_map_resolve(json_t *obj, const char *path)
 	}
 }
 
-static json_t *json_map_patch(json_t *map, json_t *in)
+static json_t *json_map_patch(json_t *map, json_t *in, size_t *size)
 {
 	json_t *ret;
+	size_t size_out_stack = 0;
+	if (size == nullptr) {
+		size = &size_out_stack;
+	}
+
 	json_t *it;
 	if (json_is_object(map)) {
 		ret = json_object();
 		const char *key;
 		json_object_foreach_fast(map, key, it) {
 			if (json_is_object(it) || json_is_array(it)) {
-				json_object_set_new(ret, key, json_map_patch(it, in));
+				json_object_set_new(ret, key, json_map_patch(it, in, size));
 			}
 			else if (json_is_string(it)) {
 				json_t *rep = json_map_resolve(in, json_string_value(it));
 				if (rep) {
 					json_object_set(ret, key, rep);
+					*size += json_string_length(rep);
 				}
 			}
 		}
@@ -145,12 +151,13 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 		ret = json_array();
 		json_array_foreach_scoped(size_t, i, map, it) {
 			if (json_is_object(it) || json_is_array(it)) {
-				json_array_append_new(ret, json_map_patch(it, in));
+				json_array_append_new(ret, json_map_patch(it, in, size));
 			}
 			else if (json_is_string(it)) {
 				json_t *rep = json_map_resolve(in, json_string_value(it));
 				if (rep) {
 					json_array_append(ret, rep);
+					*size += json_string_length(rep);
 				}
 			}
 		}
@@ -161,12 +168,15 @@ static json_t *json_map_patch(json_t *map, json_t *in)
 static json_t *map_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
 	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 5)) + "map";
-	json_t *map = stack_json_resolve_vfs(map_fn.c_str(), &out_size);
+	json_t *map = stack_json_resolve_vfs(map_fn.c_str(), nullptr);
+	out_size = 0;
 	if (map) {
 		json_t *patch_full = nullptr;
 		for (auto i : in_data) {
-			json_t *patch = json_map_patch(map, in_data[i]);
+			size_t patch_size = 0;
+			json_t *patch = json_map_patch(map, in_data[i], &patch_size);
 			patch_full = json_object_merge(patch_full, patch);
+			out_size += patch_size;
 		}
 		return patch_full;
 	}
