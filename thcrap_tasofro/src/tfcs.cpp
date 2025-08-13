@@ -124,7 +124,40 @@ static void patch_win_message(std::vector<std::string>& line, json_t *patch_row,
 	}
 }
 
-void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
+static void fix_win_file(std::vector<std::string>& line)
+{
+	if (line.size() < 21) {
+		// Invalid, or doesn't have English subtitles
+		return;
+	}
+
+	if (line[0] == "key") {
+		if (line.size() == 21 || line[21].empty()) {
+			line.push_back("message_en1");
+		}
+		if (line.size() == 22) {
+			line.push_back("message_en2");
+		}
+	}
+	else if (line[0] == "type") {
+		if (line.size() == 21 || line[21].empty()) {
+			line.push_back("string");
+		}
+		if (line.size() == 22) {
+			line.push_back("string");
+		}
+	}
+	else {
+		if (line.size() == 21) {
+			line.push_back("");
+		}
+		if (line.size() == 22) {
+			line.push_back("");
+		}
+	}
+}
+
+void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row, bool is_win)
 {
 	// Read input
 	std::vector<std::string> line;
@@ -136,29 +169,32 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 	}
 
 	// Patch as data/win/message/*.csv
-	if (game_id <= TH145) {
-		patch_win_message(line, patch_row, 1,
-			[](std::vector<std::string>& line, TasofroPl::ALine* rep, size_t index) {
-			if (index == 3) {
-				log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
-				return false;
-			}
-			line[1 + 4 * index + 3] = rep->get(0);
-			line[1 + 4 * index + 2] = rep->get(1);
-			return true;
-		});
-	}
-	else {
-		patch_win_message(line, patch_row, 9,
-			[](std::vector<std::string>& line, TasofroPl::ALine* rep, size_t index) {
-			if (index == 3) {
-				log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
-				return false;
-			}
-			line[9 + 4 * index + 3] = rep->get(0);
-			line[9 + 4 * index + 2] = rep->get(1);
-			return true;
-		});
+	if (is_win) {
+		if (game_id <= TH145) {
+			patch_win_message(line, patch_row, 1,
+				[](std::vector<std::string>& line, TasofroPl::ALine* rep, size_t index) {
+					if (index == 3) {
+						log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
+						return false;
+					}
+					line[1 + 4 * index + 3] = rep->get(0);
+					line[1 + 4 * index + 2] = rep->get(1);
+					return true;
+				});
+		}
+		else {
+			fix_win_file(line);
+			patch_win_message(line, patch_row, 9,
+				[](std::vector<std::string>& line, TasofroPl::ALine* rep, size_t index) {
+					if (index == 3) {
+						log_print("TFCS: warning: trying to put more than 3 balloons in a win line.\n");
+						return false;
+					}
+					line[9 + 4 * index + 3] = rep->get(0);
+					line[9 + 4 * index + 2] = rep->get(1);
+					return true;
+				});
+		}
 	}
 
 	// Patch each column independently
@@ -214,6 +250,8 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 		return 0;
 	}
 
+	const bool is_win = strstr(fn, "data\\win\\message\\") != nullptr;
+
 	tfcs_header_t *header;
 
 	// Read TFCS header
@@ -245,8 +283,8 @@ int patch_tfcs(void *file_inout, size_t size_out, size_t size_in, const char *fn
 		*(DWORD*)ptr_out = nb_col; ptr_out += sizeof(DWORD);
 		json_t *patch_row = json_object_numkey_get(patch, row);
 
-		if (patch_row) {
-			patch_line(ptr_in, ptr_out, nb_col, patch_row);
+		if (patch_row || is_win) {
+			patch_line(ptr_in, ptr_out, nb_col, patch_row, is_win);
 		}
 		else {
 			skip_line(ptr_in, ptr_out, nb_col);
