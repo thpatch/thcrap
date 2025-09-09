@@ -138,19 +138,124 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 	}
 }
 
+static bool is_drive_letter(char c) {
+	//65-90 are uppercase, 97-122 are lowercase, UTF-8 characters are all outside the ASCII range of 0-127
+	if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) {
+		return true;
+	}
+	return false;
+}
+
+//Returns the index of the end of the username or, if no match was detected, 0
+static uint32_t get_end_username(const char* str, uint32_t n, int iterator) {
+	
+	if (iterator + 8 > n) {
+		return 0;
+	}
+
+	char* beginning = new char[n + 1 - iterator];
+	memcpy(beginning, str + iterator, n - iterator);
+	const char* endA = strstr(beginning, ":\\Users\\"); //This string only covers Windows-Directories. Not expecting to see a combination of seperators in a system directory.
+	enum DIRECTORY_SEPERATOR {
+		WIN,
+		UNIX
+	};
+	DIRECTORY_SEPERATOR directory_seperator = WIN;
+
+	if (endA == NULL) {
+		char* endA = strstr(beginning, ":/Users/");
+		if (endA != NULL) {
+			directory_seperator = UNIX;
+		}
+		else {
+			return 0;
+		}
+	}
+
+	if (endA == &beginning[1]) { //validates that the drive letter and :\Users\ text is contiguous.
+		uint32_t i = 8;
+		while (endA[i] != '\0' && ((endA[i] != '\\' && directory_seperator == WIN) || (endA[i] != '/' && directory_seperator == UNIX)) && endA[i] != ':') {
+			i++;
+		}
+
+		if ((endA[i] == '\\' && directory_seperator == WIN) || (endA[i] == '/' && directory_seperator == UNIX)) {
+			delete[] beginning;
+			return iterator + i;
+		}
+		else { //iterator + 1 = :, i + 8 is the character after the final '\' in :'\'Users'\'
+			delete[] beginning;
+			return 0;
+		}
+	}
+	else {
+		delete[] beginning;
+		return 0;
+	}
+
+}
+
+// Uses malloc to copy a string, requires free
+static char* duplicate_str(const char* str, uint32_t n) {
+	char* new_str = (char*)malloc(n + 1);
+	new_str[n] = '\0';
+	memcpy(new_str, str, n);
+	return new_str;
+}
+
+static char* strip_username_from_path(const char* str, uint32_t n) {
+	uint32_t minimum_capture_len = 10; //C (Iterator) - 0 // :\Users\_\ - 10 //
+	uint32_t iterator = 0;
+	char* return_str = duplicate_str(str, n);
+	uint32_t current_strlen = n;
+	while (iterator + minimum_capture_len < current_strlen) {
+
+		if (is_drive_letter(return_str[iterator]) && return_str[iterator + 1] == ':') { /* D: will be contiguous but I'm not certain about D:\Users since the '\' character could instead be Yen or Won character which is utf-8  */
+			uint32_t end_username = get_end_username(return_str, current_strlen, iterator);
+			if (end_username > 0) {
+				uint32_t replacement_len = strlen("%userprofile%");
+				uint32_t replaced_len = (end_username - iterator) + 1; //end_username is always > iterator if not -1, adding 1 because they are both index values and not length values
+				current_strlen = current_strlen + (replacement_len - replaced_len);
+				char* new_str = new char[current_strlen + 1];
+				char* substr = "%userprofile%";
+				strncpy(new_str, return_str, iterator);
+				new_str[iterator] = '\0';
+				strcat(new_str, substr);
+				strcat(new_str, return_str + end_username + 1);
+
+				free(return_str); // free before alloc/realloc
+
+
+				return_str = duplicate_str(new_str, current_strlen);
+				delete[] new_str;
+				iterator = iterator + replacement_len;
+
+			}
+		}
+		iterator++;
+	}
+	return return_str;
+}
+
+
+char* prefilter_log(const char* str, uint32_t n) {
+	return strip_username_from_path(str, n);
+}
+
 static void log_push(const char* str, uint32_t n, bool is_n) {
+	char* filtered_log_str = prefilter_log(str, n);
+	uint32_t new_n = strlen(filtered_log_str);
 	if (async_enabled) {
-		char* new_str = (char*)malloc(n + 1);
-		new_str[n] = '\0';
-		memcpy(new_str, str, n);
+		char* new_str = duplicate_str(filtered_log_str, new_n);
 		AcquireSRWLockExclusive(&queue_srwlock);
-		log_queue.emplace(new_str, n, is_n);
+		log_queue.emplace(new_str, new_n, is_n);
 
 		log_is_empty = false;
 		ReleaseSRWLockExclusive(&queue_srwlock);
-	} else {
-		log_print_real(str, n, is_n);
 	}
+	else {
+		log_print_real(filtered_log_str, new_n, is_n);
+	}
+	free(filtered_log_str);
 }
 
 void log_nprint(const char* str, uint32_t n) {

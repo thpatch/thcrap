@@ -34,6 +34,8 @@ THCRAP_API void log_nprint(const char *text, size_t n);
 // Formatted
 THCRAP_API void log_vprintf(const char *format, va_list va);
 THCRAP_API void log_printf(const char *format, ...);
+THCRAP_API char* prefilter_log(const char* str, uint32_t n);
+
 #ifdef NDEBUG
 // Using __noop makes the compiler check the validity of the
 // macro contents for syntax errors without actually compiling them.
