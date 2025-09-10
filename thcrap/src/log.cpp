@@ -139,46 +139,69 @@ static DWORD WINAPI log_thread(LPVOID lpParameter) {
 }
 
 static bool is_drive_letter(char c) {
-	//65-90 are uppercase, 97-122 are lowercase, UTF-8 characters are all outside the ASCII range of 0-127
-	if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) {
+	//UTF-8 characters are all outside the ASCII range of 0-127
+	if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
 		return true;
 	}
 	return false;
 }
 
+static char* test_user_paths(char* beginning, uint32_t* uint) {
+	char* user_directory_names[] = {"Users", "home", "Documents and Settings"};
+	char* seperators = "\\/";
+	int len_seperators = strlen(seperators);
+	for (int i = 0; i < sizeof(user_directory_names) / sizeof(user_directory_names[0]); i++) {
+		for (int j = 0; j < len_seperators; j++) {
+			for (int k = 0; k < len_seperators; k++) {
+				
+				char* temp_str = (char*)malloc(strlen(user_directory_names[i]) + 4); // :,/,/, and \0 are 4 characters.
+				strncpy(temp_str, ":", 1);
+				temp_str[1] = seperators[j];
+				temp_str[2] = '\0';
+				strcat(temp_str, user_directory_names[i]);
+				temp_str[strlen(user_directory_names[i]) + 2] = seperators[k]; //: and seperators[j] are one character each
+				temp_str[strlen(user_directory_names[i]) + 3] = '\0';
+
+				char* end = strstr(beginning, temp_str);
+
+				free(temp_str);
+				if (end != NULL) {
+					*uint = strlen(user_directory_names[i]) + 3; //All user paths presently contain 2 seperators and a ':'
+					return end;
+				}
+			}
+		}
+	}
+
+	return NULL;
+}
+
 //Returns the index of the end of the username or, if no match was detected, 0
 static uint32_t get_end_username(const char* str, uint32_t n, int iterator) {
-	
-	if (iterator + 8 > n) {  //iterator + 1 = :, i + 8 is the character after the final '\' in :'\'Users'\'
+	char* beginning = new char[n + 1 - iterator];
+	memcpy(beginning, str + iterator, n - iterator);
+
+	uint32_t i = 8; //Defaults to :\Users\
+
+	const char* endA = test_user_paths(beginning, &i);
+
+	if (endA == NULL) {
+		delete[] beginning;
 		return 0;
 	}
 
-	char* beginning = new char[n + 1 - iterator];
-	memcpy(beginning, str + iterator, n - iterator);
-	const char* endA = strstr(beginning, ":\\Users\\"); //This string only covers Windows-Directories. Not expecting to see a combination of seperators in a system directory.
-	enum DIRECTORY_SEPERATOR {
-		WIN,
-		UNIX
-	};
-	DIRECTORY_SEPERATOR directory_seperator = WIN;
-
-	if (endA == NULL) {
-		char* endA = strstr(beginning, ":/Users/");
-		if (endA != NULL) {
-			directory_seperator = UNIX;
-		}
-		else {
-			return 0;
-		}
+	if (iterator + i > n) {  //iterator + 1 = :, i + 8 is the character after the final '\' in :'\'Users'\'
+		delete[] beginning;
+		return 0;
 	}
 
 	if (endA == &beginning[1]) { //validates that the drive letter and :\Users\ text is contiguous.
-		uint32_t i = 8;
-		while (endA[i] != '\0' && ((endA[i] != '\\' && directory_seperator == WIN) || (endA[i] != '/' && directory_seperator == UNIX)) && endA[i] != ':') {
+		
+		while (endA[i] != '\0' && endA[i] != '\\' && endA[i] != '/' && endA[i] != ':') {
 			i++;
 		}
 
-		if ((endA[i] == '\\' && directory_seperator == WIN) || (endA[i] == '/' && directory_seperator == UNIX)) {
+		if ((endA[i] == '\\') || (endA[i] == '/' )) {
 			delete[] beginning;
 			return iterator + i;
 		}
@@ -203,7 +226,7 @@ static char* duplicate_str(const char* str, uint32_t n) {
 }
 
 static char* strip_username_from_path(const char* str, uint32_t n) {
-	uint32_t minimum_capture_len = 10; //C (Iterator) - 0 // :\Users\_\ - 10 //
+	uint32_t minimum_capture_len = 9; //Z (Iterator) - 0 // :\home\_\ - 9 //
 	uint32_t iterator = 0;
 	char* return_str = duplicate_str(str, n);
 	uint32_t current_strlen = n;
@@ -223,7 +246,6 @@ static char* strip_username_from_path(const char* str, uint32_t n) {
 				strcat(new_str, return_str + end_username + 1);
 
 				free(return_str); // free before alloc/realloc
-
 
 				return_str = duplicate_str(new_str, current_strlen);
 				delete[] new_str;

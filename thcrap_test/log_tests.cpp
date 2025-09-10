@@ -19,7 +19,12 @@ TEST(log_tests, verify_filters) {
 	test_logs("C:\\Users\\霧雨　魔理沙\\ Starting", "%userprofile%\\ Starting"); //Starting Match
 	test_logs("Middle C:\\Users\\霧雨　魔理沙\\ End", "Middle %userprofile%\\ End"); //Middle Match
 	test_logs("Opening Text: C:\\Users\\霧雨　魔理沙\\Games\\th07.exe End", "Opening Text: %userprofile%\\Games\\th07.exe End"); //Complete Path
-	test_logs("Opening Text: C:\\Users\\霧雨　魔理沙\\Games\\th07.exe Middle Text: C:\\Users\\Hakurei Reimu\\Games\\th06.exe End", "Opening Text: %userprofile%\\Games\\th07.exe Middle Text: %userprofile%\\Games\\th06.exe End"); //Double Match
-	test_logs("Opening Text:\\Users D:\\User\\NotTheUsersFolder C:\\Users\\霧雨　魔理沙\\Games\\th07.exe Middle Text", "Opening Text:\\Users D:\\User\\NotTheUsersFolder %userprofile%\\Games\\th07.exe Middle Text"); //Intentionally obfuscated Match
-
+	test_logs("Opening Text: C:\\Users\\霧雨　魔理沙\\Games\\th07.exe Middle Text: C:\\Users\\Hakurei Reimu\\Games\\th06.exe End",
+		"Opening Text: %userprofile%\\Games\\th07.exe Middle Text: %userprofile%\\Games\\th06.exe End"); //Double Match
+	test_logs("Opening Text:\\Users D:\\User\\NotTheUsersFolder C:\\Users\\霧雨　魔理沙\\Games\\th07.exe Middle Text",
+		"Opening Text:\\Users D:\\User\\NotTheUsersFolder %userprofile%\\Games\\th07.exe Middle Text"); //Intentionally obfuscated Match
+	test_logs("Opening Text: C:/Users\\霧雨　魔理沙/Games\\th07.exe End", "Opening Text: %userprofile%/Games\\th07.exe End"); //Variable seperators
+	test_logs("Opening Text: C:\\Users/霧雨　魔理沙\\Games\\th07.exe End", "Opening Text: %userprofile%\\Games\\th07.exe End"); //Variable seperators 2
+	test_logs("Opening Text: C:/home/霧雨　魔理沙/Games/th07.exe End", "Opening Text: %userprofile%/Games/th07.exe End"); //Wine
+	test_logs("Opening Text: C:\\Documents and Settings/霧雨　魔理沙\\Games\\th07.exe End", "Opening Text: %userprofile%\\Games\\th07.exe End"); //XP
 }
