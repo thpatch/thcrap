@@ -149,7 +149,7 @@ static bool is_drive_letter(char c) {
 //Returns the index of the end of the username or, if no match was detected, 0
 static uint32_t get_end_username(const char* str, uint32_t n, int iterator) {
 	
-	if (iterator + 8 > n) {
+	if (iterator + 8 > n) {  //iterator + 1 = :, i + 8 is the character after the final '\' in :'\'Users'\'
 		return 0;
 	}
 
@@ -182,7 +182,7 @@ static uint32_t get_end_username(const char* str, uint32_t n, int iterator) {
 			delete[] beginning;
 			return iterator + i;
 		}
-		else { //iterator + 1 = :, i + 8 is the character after the final '\' in :'\'Users'\'
+		else {
 			delete[] beginning;
 			return 0;
 		}
@@ -194,7 +194,7 @@ static uint32_t get_end_username(const char* str, uint32_t n, int iterator) {
 
 }
 
-// Uses malloc to copy a string, requires free
+// Uses malloc to copy a string
 static char* duplicate_str(const char* str, uint32_t n) {
 	char* new_str = (char*)malloc(n + 1);
 	new_str[n] = '\0';
@@ -209,7 +209,7 @@ static char* strip_username_from_path(const char* str, uint32_t n) {
 	uint32_t current_strlen = n;
 	while (iterator + minimum_capture_len < current_strlen) {
 
-		if (is_drive_letter(return_str[iterator]) && return_str[iterator + 1] == ':') { /* D: will be contiguous but I'm not certain about D:\Users since the '\' character could instead be Yen or Won character which is utf-8  */
+		if (is_drive_letter(return_str[iterator]) && return_str[iterator + 1] == ':') {
 			uint32_t end_username = get_end_username(return_str, current_strlen, iterator);
 			if (end_username > 0) {
 				uint32_t replacement_len = strlen("%userprofile%");
