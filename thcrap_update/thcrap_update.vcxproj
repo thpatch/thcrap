@@ -40,8 +40,9 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <ModuleDefinitionFile>thcrap_update.def</ModuleDefinitionFile>
-      <AdditionalDependencies>crypt32.lib;shlwapi.lib;comctl32.lib;wininet.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>crypt32.lib;shlwapi.lib;comctl32.lib;wininet.lib;delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalDependencies>thcrap$(Suffix).lib;libcurl$(Suffix).lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalOptions>/DELAYLOAD:wininet.dll %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
