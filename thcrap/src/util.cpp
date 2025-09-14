@@ -101,3 +101,72 @@ int _asprintf(char** buffer_ret, const char* format, ...) {
 	va_end(va);
 	return ret;
 }
+
+bool path_cmp_n(const char* const p1, const char* const p2, size_t n) {
+	for (size_t i = 0; i < n; i++) {
+		if (p1[i] != p2[i]) {
+			if ((p1[i] == '\\' || p1[i] == '/') && (p2[i] == '\\' || p2[i] == '/')) {
+				continue;
+			}
+			return false;
+		}
+	}
+	return true;
+}
+
+static inline bool is_separator(char c) {
+	return c == '/' || c == '\\';
+};
+
+static inline size_t skip_separators(const char* str, size_t str_len, size_t pos) {
+	while (pos < str_len && is_separator(str[pos])) {
+		pos++;
+	}
+	return pos;
+};
+
+const char* find_path_substring(const char* haystack, size_t h_len, const char* needle, size_t n_len, size_t* out_len) {
+	if (haystack == nullptr || needle == nullptr) {
+		return nullptr;
+	}
+
+	// Empty needle matches at position 0 with length 0
+	if (n_len == 0) {
+		return haystack;
+	}
+
+	for (size_t h_pos = 0; h_pos < h_len;) {
+		size_t h_current = h_pos;
+		size_t n_current = 0;
+		size_t match_start = h_pos;
+
+		// Try to match the needle starting at this position
+		while (h_current < h_len && n_current < n_len) {
+			// Handle separator matching
+			if (is_separator(needle[n_current]) && is_separator(haystack[h_current])) {
+				// Both are separators (skip all consecutive separators in both strings)
+				h_current = skip_separators(haystack, h_len, h_current);
+				n_current = skip_separators(needle, n_len, n_current);
+			}
+			else {
+				// Regular (case insensitive) character matching
+				if (tolower(haystack[h_current]) != tolower(needle[n_current])) {
+					break;
+				}
+				h_current++;
+				n_current++;
+			}
+		}
+
+		if (n_current == n_len) {
+			if (out_len)
+				*out_len = h_current - match_start;
+			return haystack + match_start;
+		}
+		else {
+			h_pos = h_current + 1;
+		}
+	}
+
+	return nullptr;
+}

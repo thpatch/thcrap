@@ -272,13 +272,12 @@ end:
 
 void thcrap_detour(HMODULE hProc)
 {
-	DWORD mod_name_len = GetModuleFileNameU(hProc, NULL, 0) + 1;
-	VLA(char, mod_name, mod_name_len);
-	GetModuleFileNameU(hProc, mod_name, mod_name_len);
-	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT, mod_name);
-
+	wchar_t* mod_name = PathFindFileNameW(CurrentPeb()->ProcessParameters->ImagePathName.Buffer);
+	UTF8_DEC(mod_name);
+	UTF8_CONV(mod_name);
+	log_printf("Applying %s detours to %s...\n", PROJECT_NAME_SHORT, mod_name_utf8);
+	UTF8_FREE(mod_name);
 	iat_detour_apply(hProc);
-	VLA_FREE(mod_name);
 }
 
 int thcrap_init(const char *run_cfg)
