@@ -117,7 +117,7 @@ void log_write(const char* str, uint32_t n) {
 	}
 }
 
-void log_write_censored(const char* str, uint32_t n) {
+void log_write_filtered(const char* str, uint32_t n) {
 	const char* p = str;
 
 	uint32_t len_to_use;
@@ -158,7 +158,7 @@ void log_write_censored(const char* str, uint32_t n) {
 			p = p_new + p_new_len;
 		}
 		else {
-		no_censoring_needed:
+		no_filtering_needed:
 			log_write(p, n - (p - str));
 			return;
 		}
@@ -167,7 +167,7 @@ void log_write_censored(const char* str, uint32_t n) {
 
 static void log_print_real(const char* str, uint32_t n, bool is_n) {
 	if (user_home_win) {
-		log_write_censored(str, n);
+		log_write_filtered(str, n);
 	} else {
 		log_write(str, n);
 	}
