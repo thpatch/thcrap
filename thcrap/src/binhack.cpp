@@ -1499,6 +1499,10 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				} else {
 					align_val = 1u;
 				}
+				if unexpected(align_val > 4096) {
+					log_printf("ERROR: invalid alignment specified for codecave %s, must be <=4096\n", name);
+					return false;
+				}
 				TH_FALLTHROUGH;
 			case JEVAL_NULL_PTR:
 				break;
@@ -1624,14 +1628,23 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 	VLA(size_t, codecaves_full_size, codecaves_count);
 
 	// First pass: calc the complete codecave size
+	size_t last_written_index[5]; // Safe to not initialize
 	for (size_t i = 0; i < codecaves_count; ++i) {
-		if (codecaves[i].export_codecave) {
-			++codecave_export_count;
-		}
+		codecave_export_count += codecaves[i].export_codecave;
 		const size_t size = codecaves[i].size + codecave_sep_size_min;
+		const int32_t align = (int32_t)codecaves[i].align;
+		const CodecaveAccessType access = codecaves[i].access_type;
+
 		// This doesn't make good use of padding bytes
-		codecaves_full_size[i] = AlignUpToMultipleOf2(size, (int32_t)codecaves[i].align);
-		codecaves_alloc_size[codecaves[i].access_type] += codecaves_full_size[i];
+		size_t align_offset = codecaves_alloc_size[access] & align - 1;
+		if unexpected(align_offset) {
+			align_offset = align - align_offset;
+			codecaves_full_size[last_written_index[access]] += align_offset;
+		}
+		const size_t full_size = AlignUpToMultipleOf2(size, align);
+		codecaves_full_size[i] = full_size;
+		codecaves_alloc_size[access] += full_size + align_offset;
+		last_written_index[access] = i;
 	}
 
 	for (int i = 0; i < 5; ++i) {
@@ -1646,7 +1659,7 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 				*  here or just the extra padding required after each codecave.
 				*  Apply the same thing to breakpoint sourcecaves.
 				*/
-				//memset(codecave_buf[i], 0xCC, codecaves_total_size[i]);
+				//memset(codecave_buf, 0xCC, codecave_size);
 			}
 			else {
 				//Should probably put an abort error here
