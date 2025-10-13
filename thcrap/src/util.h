@@ -541,6 +541,14 @@ inline int8_t hex_value_inline(char c) {
 
 #define hex_value(c) hex_value_inline(c)
 
+/**
+ * Finds any instance of a filesystem path in any (counted) string
+ * - / and \ are treated as the same
+ * - Repeated path separators are ignore
+ * Returns a pair with position and length
+ */
+const char* find_path_substring(const char* haystack, size_t h_len, const char* needle, size_t n_len, size_t* out_len);
+
 #ifdef __cplusplus
 
 extern "C++" {
