@@ -80,7 +80,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 	}
 
 	case WM_COMMAND:
-		switch LOWORD(wParam) {
+		switch (LOWORD(wParam)) {
 		case HWND_BUTTON_RUN:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				if (state->background_updates == false) {
@@ -102,7 +102,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 		case HWND_CHECKBOX_KEEP_UPDATER:
 			if (HIWORD(wParam) == BN_CLICKED) {
 				BOOL enable_state;
-				if (SendMessage(state->hwnd[HWND_CHECKBOX_KEEP_UPDATER], BM_GETCHECK, 0, 0) == BST_CHECKED) {
+				if (SendMessageW(state->hwnd[HWND_CHECKBOX_KEEP_UPDATER], BM_GETCHECK, 0, 0) == BST_CHECKED) {
 					state->background_updates = true;
 					enable_state = TRUE;
 				}
@@ -130,7 +130,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
 		case HWND_CHECKBOX_UPDATE_AT_EXIT:
 			if (HIWORD(wParam) == BN_CLICKED) {
-				if (SendMessage(state->hwnd[HWND_CHECKBOX_UPDATE_AT_EXIT], BM_GETCHECK, 0, 0) == BST_CHECKED) {
+				if (SendMessageW(state->hwnd[HWND_CHECKBOX_UPDATE_AT_EXIT], BM_GETCHECK, 0, 0) == BST_CHECKED) {
 					state->update_at_exit = true;
 				}
 				else {
@@ -141,7 +141,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 
 		case HWND_CHECKBOX_UPDATE_OTHERS:
 			if (HIWORD(wParam) == BN_CLICKED) {
-				if (SendMessage(state->hwnd[HWND_CHECKBOX_UPDATE_OTHERS], BM_GETCHECK, 0, 0) == BST_CHECKED) {
+				if (SendMessageW(state->hwnd[HWND_CHECKBOX_UPDATE_OTHERS], BM_GETCHECK, 0, 0) == BST_CHECKED) {
 					state->update_others = true;
 				}
 				else {
@@ -160,7 +160,7 @@ static LRESULT CALLBACK loader_update_proc(HWND hWnd, UINT uMsg, WPARAM wParam, 
 					"%s\\thcrap_enable_updates.bat\n"
 					"(this file will be created after you click ok)",
 					current_directory) == IDYES) {
-					MoveFileEx("bin\\thcrap_update" FILE_SUFFIX ".dll", "bin\\thcrap_update_disabled" FILE_SUFFIX ".dll", MOVEFILE_REPLACE_EXISTING);
+					MoveFileExW(L"bin\\thcrap_update" FILE_SUFFIX_W L".dll", L"bin\\thcrap_update_disabled" FILE_SUFFIX_W L".dll", MOVEFILE_REPLACE_EXISTING);
 					static constexpr char bat_file[] =
 						"@echo off\n"
 						"if not exist \"%~dp0\"\\bin\\thcrap_update" FILE_SUFFIX ".dll (\n"
@@ -296,7 +296,7 @@ void progress_bar_set_marquee(loader_update_state_t *state, bool marquee, bool c
 
 HICON get_configure_icon()
 {
-	HMODULE hConfigure = LoadLibraryExW(L"thcrap" DEBUG_OR_RELEASE_W L".exe", NULL, LOAD_LIBRARY_AS_DATAFILE);
+	HMODULE hConfigure = LoadLibraryExW(L"thcrap" FILE_SUFFIX_W L".exe", NULL, LOAD_LIBRARY_AS_DATAFILE);
 	if (!hConfigure) {
 		return NULL;
 	}
@@ -307,7 +307,7 @@ HICON get_configure_icon()
 		return NULL;
 	}
 
-	HICON hIcon = LoadIcon(hConfigure, iconGroupId);
+	HICON hIcon = LoadIconW(hConfigure, iconGroupId);
 	if (!IS_INTRESOURCE(iconGroupId)) {
 		thcrap_free(iconGroupId);
 	}
@@ -320,7 +320,7 @@ HICON get_configure_icon()
 // param should point to a loader_update_state_t object
 DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 {
-	HMODULE hMod = GetModuleHandle(NULL);
+	HMODULE hMod = GetModuleHandleW(NULL);
 	loader_update_state_t *state = (loader_update_state_t*)param;
 
 	INITCOMMONCONTROLSEX icc;
@@ -328,12 +328,11 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	icc.dwICC = ICC_PROGRESS_CLASS;
 	InitCommonControlsEx(&icc);
 
-	WNDCLASSW wndClass;
-	memset(&wndClass, 0, sizeof(wndClass));
+	WNDCLASSW wndClass = {};
 	wndClass.lpfnWndProc = loader_update_proc;
 	wndClass.hInstance = hMod;
 	wndClass.hIcon = get_configure_icon();
-	wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wndClass.hCursor = LoadCursorW(NULL, IDC_ARROW);
 	wndClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wndClass.lpszClassName = L"LoaderUpdateWindow";
 	RegisterClassW(&wndClass);
@@ -392,9 +391,9 @@ DWORD WINAPI loader_update_window_create_and_run(LPVOID param)
 	state->hwnd[HWND_UPDOWN] = CreateWindowW(UPDOWN_CLASSW, NULL,
 		WS_CHILD | WS_VISIBLE | UDS_ALIGNRIGHT | UDS_SETBUDDYINT | UDS_NOTHOUSANDS | UDS_ARROWKEYS | (state->background_updates ? 0 : WS_DISABLED),
 		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, state->hwnd[HWND_MAIN], (HMENU)HWND_UPDOWN, hMod, NULL);
-	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETBUDDY, (WPARAM)state->hwnd[HWND_EDIT_UPDATES_INTERVAL], 0);
-	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
-	SendMessage(state->hwnd[HWND_UPDOWN], UDM_SETRANGE, 0, MAKELPARAM(UD_MAXVAL, 0));
+	SendMessageW(state->hwnd[HWND_UPDOWN], UDM_SETBUDDY, (WPARAM)state->hwnd[HWND_EDIT_UPDATES_INTERVAL], 0);
+	SendMessageW(state->hwnd[HWND_UPDOWN], UDM_SETPOS, 0, state->time_between_updates);
+	SendMessageW(state->hwnd[HWND_UPDOWN], UDM_SETRANGE, 0, MAKELPARAM(UD_MAXVAL, 0));
 	state->hwnd[HWND_CHECKBOX_UPDATE_OTHERS] = CreateWindowW(L"Button", L"Update other games and patches", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
 		5, 195, 480, 18, state->hwnd[HWND_MAIN], (HMENU)HWND_CHECKBOX_UPDATE_OTHERS, hMod, NULL);
 	if (state->update_others) {
@@ -473,7 +472,7 @@ bool loader_update_progress_callback(progress_callback_status_t *status, void *p
                 break;
         }
 		progress_bar_set_marquee(state, false, false);
-		SendMessage(state->hwnd[HWND_PROGRESS], PBM_SETPOS, 0, 0);
+		SendMessageW(state->hwnd[HWND_PROGRESS], PBM_SETPOS, 0, 0);
 		state->files_js_done = true;
     }
 
@@ -488,7 +487,7 @@ bool loader_update_progress_callback(progress_callback_status_t *status, void *p
 			file_time = now;
 		}
 		else if (now - file_time > 5s) {
-			log_printf("[%u/%u] %s: in progress (%ub/%ub)...\n", status->nb_files_downloaded, status->nb_files_total,
+			log_printf("[%zu/%zu] %s: in progress (%zub/%zub)...\n", status->nb_files_downloaded, status->nb_files_total,
 				status->url, status->file_progress, status->file_size);
 			file_time = now;
 		}
@@ -496,17 +495,17 @@ bool loader_update_progress_callback(progress_callback_status_t *status, void *p
 	}
 
 	case GET_OK: {
-		log_printf("[%u/%u] %s/%s: OK (%ub)\n", status->nb_files_downloaded, status->nb_files_total, status->patch->id, status->fn, status->file_size);
-		std::ostringstream ss;
-		ss << status->nb_files_downloaded << "/";
+		log_printf("[%zu/%zu] %s/%s: OK (%zub)\n", status->nb_files_downloaded, status->nb_files_total, status->patch->id, status->fn, status->file_size);
+		std::wostringstream ss;
+		ss << status->nb_files_downloaded << L'/';
 		if (status->nb_files_total != 0) {
 			ss << status->nb_files_total;
-			SendMessage(state->hwnd[HWND_PROGRESS], PBM_SETPOS, status->nb_files_downloaded * 100 / status->nb_files_total, 0);
+			SendMessageW(state->hwnd[HWND_PROGRESS], PBM_SETPOS, status->nb_files_downloaded * 100 / status->nb_files_total, 0);
 		}
 		else {
-			ss << "???";
+			ss << L"???";
 		}
-		SetWindowTextU(state->hwnd[HWND_PROGRESS], ss.str().c_str());
+		SetWindowTextW(state->hwnd[HWND_PROGRESS], ss.str().c_str());
 		break;
 	}
 
@@ -560,7 +559,7 @@ void log_callback(const char* text)
 		else {
 			// LF without CR - add a CR
 			text_crlf.append(text, nl);
-			text_crlf += "\r\n";
+			text_crlf += "\r\n"sv;
 			text = nl + 1;
 		}
 	} while (text != nullptr && text[0] != '\0');
@@ -576,8 +575,8 @@ void log_callback(const char* text)
 void log_ncallback(const char* text, size_t len)
 {
 	VLA(char, ntext, len + 1);
-	memcpy(ntext, text, len);
 	ntext[len] = '\0';
+	memcpy(ntext, text, len);
 	log_callback(ntext);
 	VLA_FREE(ntext);
 }
@@ -586,11 +585,11 @@ const char* game_id_other = NULL;
 
 static DWORD WINAPI update_wrapper_patch(void* param) {
 	auto* state = (loader_update_state_t*)param;
-		
+	
 	std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
 	HANDLE hMail = CreateMailslotW(mailslotName.c_str(), 1024, MAILSLOT_WAIT_FOREVER, NULL);
 	OVERLAPPED overlapped = {};
-	overlapped.hEvent = CreateEvent(nullptr, false, false, nullptr);
+	overlapped.hEvent = CreateEventW(nullptr, false, false, nullptr);
 
 	HANDLE handles[3];
 	handles[0] = state->hThread;
@@ -606,8 +605,10 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 
 		if (json_data_ && (signal == WAIT_OBJECT_0 + 1)) {
 			const wchar_t* event_name = (wchar_t*)utf8_to_utf16(json_object_get_string(json_data_, "event_name"));
-			defer(free((void*)event_name));
-			defer(json_decref(json_data_));
+			defer({
+				free((void*)event_name);
+				json_decref(json_data_);
+			});
 
 			EnableWindow(state->hwnd[HWND_BUTTON_UPDATE], FALSE);
 			if(game_id_other) free((void*)game_id_other);
@@ -629,7 +630,7 @@ static DWORD WINAPI update_wrapper_patch(void* param) {
 					EnableWindow(state->hwnd[HWND_BUTTON_RUN], TRUE);
 				}
 				else {
-					SendMessage(state->hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
+					SendMessageW(state->hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 				}
 			}
 		}
@@ -663,11 +664,11 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	}
 
 	InitializeCriticalSection(&state.cs);
-	state.event_created = CreateEvent(nullptr, true, false, nullptr);
-	state.event_require_update = CreateEvent(nullptr, false, false, nullptr);
-	state.event_wrapper_request_update = CreateEvent(nullptr, false, false, nullptr);
-	state.event_update_finished = CreateEvent(nullptr, false, false, nullptr);
-	state.event_update_wrapper_terminate = CreateEvent(nullptr, false, false, nullptr);
+	state.event_created = CreateEventW(nullptr, true, false, nullptr);
+	state.event_require_update = CreateEventW(nullptr, false, false, nullptr);
+	state.event_wrapper_request_update = CreateEventW(nullptr, false, false, nullptr);
+	state.event_update_finished = CreateEventW(nullptr, false, false, nullptr);
+	state.event_update_wrapper_terminate = CreateEventW(nullptr, false, false, nullptr);
 	state.settings_visible = false;
 	state.game_started = false;
 	state.cancel_update = false;
@@ -681,7 +682,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	state.update_others = globalconfig_get_boolean("update_others", true);
 	
 	SetLastError(0);
-	HANDLE hMap = CreateFileMappingU(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), "thcrap update UI");
+	HANDLE hMap = CreateFileMappingW(INVALID_HANDLE_VALUE, nullptr, PAGE_READWRITE, 0, sizeof(HWND), L"thcrap update UI");
 	bool mapExists = GetLastError() == ERROR_ALREADY_EXISTS;
 	HWND *globalHwnd;
 	if (hMap != nullptr) {
@@ -775,15 +776,13 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	VLA_FREE(cur_dir);
 	if (update_notify_thcrap() == SELF_OK && state.game_started == false) {
 		// Re-run an up-to-date loader
-		LPSTR commandLine = GetCommandLine();
+		LPSTR commandLine = GetCommandLineU();
 		log_printf("Update found! Re-running %s\n", commandLine);
 
-		STARTUPINFOA sa;
-		PROCESS_INFORMATION pi;
-		memset(&sa, 0, sizeof(sa));
-		memset(&pi, 0, sizeof(pi));
+		STARTUPINFOA sa = {};
+		PROCESS_INFORMATION pi = {};
 		sa.cb = sizeof(sa);
-		CreateProcessU(nullptr, commandLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &sa, &pi);
+		CreateProcessU(NULL, commandLine, NULL, NULL, FALSE, 0, NULL, NULL, &sa, &pi);
 		CloseHandle(pi.hProcess);
 		CloseHandle(pi.hThread);
 		goto end;
@@ -862,7 +861,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 				SetWindowTextW(state.hwnd[HWND_LABEL_STATUS], L"Update finished");
 				state.state = STATE_WAITING;
 				progress_bar_set_marquee(&state, false, true);
-				SendMessage(state.hwnd[HWND_PROGRESS], PBM_SETPOS, 100, 0);
+				SendMessageW(state.hwnd[HWND_PROGRESS], PBM_SETPOS, 100, 0);
 
 				// Wait until the next update
 				log_printf("Update finished. Waiting until next update (%d min)... ", time_between_updates);
@@ -902,7 +901,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	}
 	else {
 		log_print("Background updates are disabled. Closing thcrap_loader.\n");
-		SendMessage(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
+		SendMessageW(state.hwnd[HWND_MAIN], WM_CLOSE, 0, 0);
 	}
 	WaitForSingleObject(hWrapperUpdateThread, -1);
 	CloseHandle(hWrapperUpdateThread);
