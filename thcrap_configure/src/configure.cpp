@@ -104,7 +104,7 @@ std::string EnterRunCfgFN(std::string& run_cfg_fn)
 			run_cfg_fn = to_utf8(run_cfg_fn_new);
 		}
 
-		std::string run_cfg_fn_js = run_cfg_fn + ".js";
+		std::string run_cfg_fn_js = run_cfg_fn + ".js"sv;
 		if (PathFileExistsU(run_cfg_fn_js.c_str())) {
 			log_printf("\"%s\" already exists. ", run_cfg_fn_js.c_str());
 			ret = console_ask_yn("Overwrite?") == 'n';
@@ -319,7 +319,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	run_cfg_fn = run_cfg_fn_build(sel_stack);
 	run_cfg_fn = EnterRunCfgFN(run_cfg_fn);
-	run_cfg_fn_js = "config/" + run_cfg_fn + ".js";
+	run_cfg_fn_js = "config/"sv + run_cfg_fn + ".js"sv;
 
 
 	CreateDirectoryU("config", NULL);

@@ -69,7 +69,7 @@ void RepoDiscovery::addServer(std::string url)
     this->downloading++;
 
     std::thread([this, url]() {
-        auto [repo_js, status] = ServerCache::get().downloadJsonFile(url + "repo.js");
+        auto [repo_js, status] = ServerCache::get().downloadJsonFile(url + "repo.js"sv);
         if (status) {
             if (!this->addRepo(repo_js)) {
                 log_printf("%s: invalid repo!\n", url.c_str());

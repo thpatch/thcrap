@@ -325,11 +325,33 @@ template<typename T, size_t N>
 static constexpr inline bool string_view_ends_with(const std::basic_string_view<T>& view, const T(&compare)[N]) {
 	return view.length() >= (N - 1) && !memcmp(view.data() + view.length() - (N - 1), compare, sizeof(T[N - 1]));
 }
+
+// Remove these if we ever support C++26
+template<typename T>
+struct identity { typedef T type; };
+template<typename T>
+using identity_t = typename identity<T>::type;
+template<class CharT, class Traits, class Alloc>
+inline std::basic_string<CharT, Traits, Alloc> operator+(const std::basic_string<CharT, Traits, Alloc>& lhs, identity_t<std::basic_string_view<CharT, Traits>> rhs) {
+	return std::basic_string<CharT, Traits, Alloc>(lhs).append(rhs);
+}
+template<class CharT, class Traits, class Alloc>
+inline std::basic_string<CharT, Traits, Alloc> operator+(identity_t<std::basic_string_view<CharT, Traits>> lhs, const std::basic_string<CharT, Traits, Alloc>& rhs) {
+	return std::basic_string<CharT, Traits, Alloc>(rhs).insert(0, lhs);
+}
+template<class CharT, class Traits, class Alloc>
+inline std::basic_string<CharT, Traits, Alloc> operator+(std::basic_string<CharT, Traits, Alloc>&& lhs, identity_t<std::basic_string_view<CharT, Traits>> rhs) {
+	return std::move(lhs.append(rhs));
+}
+template<class CharT, class Traits, class Alloc>
+inline std::basic_string<CharT, Traits, Alloc> operator+(identity_t<std::basic_string_view<CharT, Traits>> lhs, std::basic_string<CharT, Traits, Alloc>&& rhs) {
+	return std::move(rhs.insert(0, lhs));
+}
 }
 #endif
 
 // Replaces every occurence of the ASCII character [from] in [str] with [to].
-inline void str_ascii_replace(char* str, const char from, const char to)
+TH_FORCEINLINE void str_ascii_replace(char* str, const char from, const char to)
 {
 	char c;
 	do {
@@ -339,7 +361,7 @@ inline void str_ascii_replace(char* str, const char from, const char to)
 	} while (c);
 }
 
-inline void wstr_ascii_replace(wchar_t* str, const wchar_t from, const wchar_t to)
+TH_FORCEINLINE void wstr_ascii_replace(wchar_t* str, const wchar_t from, const wchar_t to)
 {
 	wchar_t c;
 	do {
@@ -352,8 +374,8 @@ inline void wstr_ascii_replace(wchar_t* str, const wchar_t from, const wchar_t t
 // Changes directory slashes in [str] to '/'.
 TH_DEPRECATED_EXPORT void (str_slash_normalize)(char *str);
 
-inline void str_slash_normalize_inline(char* str) {
-	if (strncmp(str, "\\\\", 2) == 0) {
+TH_FORCEINLINE void str_slash_normalize_inline(char* str) {
+	if (str[0] == '\\' && str[1] == '\\') {
 		str += 2;
 	}
 	str_ascii_replace(str, '\\', '/');
@@ -361,8 +383,8 @@ inline void str_slash_normalize_inline(char* str) {
 
 #define str_slash_normalize(str) str_slash_normalize_inline(str)
 
-inline void wstr_slash_normalize(wchar_t* str) {
-	if (wcsncmp(str, L"\\\\", 2) == 0) {
+TH_FORCEINLINE void wstr_slash_normalize(wchar_t* str) {
+	if (str[0] == L'\\' && str[1] == L'\\') {
 		str += 2;
 	}
 	wstr_ascii_replace(str, L'\\', L'/');

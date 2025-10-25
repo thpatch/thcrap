@@ -286,7 +286,7 @@ std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
 		return icon_path;
 
 	auto new_path = icon_path;
-	new_path.replace_filename(std::string(game_id) + ".exe");
+	new_path.replace_filename(std::string(game_id) + ".exe"sv);
 	if (std::filesystem::is_regular_file(new_path))
 		return new_path;
 
@@ -358,8 +358,8 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 		}
 
 		auto icon_path = GetIconPath(games[i].path, games[i].id);
-		auto link_path = link_dir / (std::string(games[i].id) + " (" + run_cfg_fn + ").ext");
-		std::string link_args = std::string(1, '"') + run_cfg_fn + ".js\" " + games[i].id;
+		auto link_path = link_dir / (std::string(games[i].id) + " ("sv + run_cfg_fn + ").ext"sv);
+		std::string link_args = std::string(1, '"') + run_cfg_fn + ".js\" "sv + games[i].id;
 		auto link_args_w = std::make_unique<wchar_t[]>(link_args.length() + 1);
 		StringToUTF16(link_args_w.get(), link_args.c_str(), -1);
 

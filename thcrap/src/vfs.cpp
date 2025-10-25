@@ -167,7 +167,7 @@ static json_t *json_map_patch(json_t *map, json_t *in, size_t *size)
 
 static json_t *map_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_t& out_size)
 {
-	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 5)) + "map";
+	const std::string map_fn = std::string(out_fn.substr(0, out_fn.size() - 5)) + "map"sv;
 	json_t *map = stack_json_resolve_vfs(map_fn.c_str(), nullptr);
 	out_size = 0;
 	if (map) {

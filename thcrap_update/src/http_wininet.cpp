@@ -10,7 +10,7 @@ WininetHandle::WininetHandle()
     // DWORD timeout = 500;
 
     // Format according to RFC 7231, section 5.5.3
-    std::string agent = std::string(PROJECT_NAME_SHORT) + '/' + PROJECT_VERSION_STRING + " (" + windows_version() + ')';
+    std::string agent = std::string(PROJECT_NAME_SHORT) + '/' + PROJECT_VERSION_STRING + " ("sv + windows_version() + ')';
 
     this->internet = InternetOpenU(agent.c_str(), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
     if (this->internet == nullptr) {

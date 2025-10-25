@@ -91,5 +91,5 @@ std::string HttpStatus::toString() const
         return this->text;
     }
 
-    return this->text + " (code " + std::to_string(this->code) + ')';
+    return this->text + " (code "sv + std::to_string(this->code) + ')';
 }

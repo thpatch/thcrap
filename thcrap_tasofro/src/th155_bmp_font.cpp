@@ -95,7 +95,7 @@ static void add_json_file(char *TH_RESTRICT chars_list, const char* path)
 
 static void add_files_in_directory(char *TH_RESTRICT chars_list, const std::string& basedir, bool recurse)
 {
-	std::string pattern = basedir + "\\*";
+	std::string pattern = basedir + "\\*"sv;
 	WIN32_FIND_DATAA ffd;
 	HANDLE hFind = FindFirstFileU(pattern.c_str(), &ffd);
 
@@ -379,9 +379,9 @@ bool generate_bitmap_font(void *bmpfont, char *TH_RESTRICT chars_list, json_t *p
 		return false;
 	}
 	std::string plugin_path = thcrap_dir;
-	plugin_path += "\\bin\\";
+	plugin_path += "\\bin\\"sv;
 	plugin_path += plugin;
-	plugin_path += DEBUG_OR_RELEASE ".dll";
+	plugin_path += FILE_SUFFIX ".dll"sv;
 	ret &= bmpfont_add_option(bmpfont, "--plugin", plugin_path.c_str());
 
 	// Json options

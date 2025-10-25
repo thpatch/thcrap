@@ -626,7 +626,7 @@ self_result_t self_update(const char* thcrap_dir)
 		ret = SELF_SERVER_ERROR;
 	}
 	else {
-		auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig");
+		auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig"sv);
 		if (!sig_status || !sig) {
 			log_printf("%s%s.sig: %s\n", self_server.c_str(), netpath, sig_status.toString().c_str());
 			ret = SELF_NO_SIG;

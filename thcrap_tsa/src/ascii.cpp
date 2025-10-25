@@ -395,8 +395,8 @@ void ascii_repatch()
 		auto user_padded = right_pad(user, replay_col1_len - user.length());
 		auto username_padded = right_pad("%s", replay_col1_len - USERNAME_LEN);
 
-		const std::string NAME_AND_DATE_EMPTY = " ------------ --/--/-- ";
-		const std::string NAME_AND_DATE = " %s %.2d/%.2d/%.2d ";
+		constexpr std::string_view NAME_AND_DATE_EMPTY = " ------------ --/--/-- "sv;
+		constexpr std::string_view NAME_AND_DATE = " %s %.2d/%.2d/%.2d "sv;
 
 		// Empty format
 		auto fmt = number_save + NAME_AND_DATE_EMPTY;
@@ -413,7 +413,7 @@ void ascii_repatch()
 
 		// Regular format
 		fmt = number_save + NAME_AND_DATE;
-		fmt += '%' + std::to_string(day_width_max) + "s - % d";
+		fmt += '%' + std::to_string(day_width_max) + "s - % d"sv;
 		strings_set("th165_ascii_replay_save", fmt);
 
 		fmt.replace(0, number_save.size(), number_padded);
