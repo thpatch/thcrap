@@ -24,11 +24,11 @@ HRESULT CreateLink(
 )
 {
 	HRESULT hres;
-	IShellLink* psl;
+	IShellLinkW* psl;
 
 	// Get a pointer to the IShellLink interface. It is assumed that CoInitialize
 	// has already been called.
-	hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLink, (LPVOID*)&psl);
+	hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (LPVOID*)&psl);
 	if (SUCCEEDED(hres)) {
 		IPersistFile* ppf;
 
@@ -73,7 +73,7 @@ void ReplaceStringTable(HANDLE hUpdate, std::vector<std::wstring> strings)
 		newStringTable.push_back(0);
 	}
 
-	UpdateResourceW(hUpdate, RT_STRING, MAKEINTRESOURCE(1),
+	UpdateResourceW(hUpdate, RT_STRING, MAKEINTRESOURCEW(1),
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), newStringTable.data(), newStringTable.size() * sizeof(wchar_t));
 }
 
@@ -173,9 +173,9 @@ void CopyIconGroup(HANDLE hUpdate, const std::filesystem::path& icon_path)
 		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconGroupData, iconGroupSize);
 
 	for (size_t i = 0; i < groupIconDir->idCount; i++) {
-		auto [iconData, iconSize] = GetResource(hIconExe, MAKEINTRESOURCE(groupIconDirEntries[i].nId), RT_ICON);
+		auto [iconData, iconSize] = GetResource(hIconExe, MAKEINTRESOURCEW(groupIconDirEntries[i].nId), RT_ICON);
 		if (iconData && iconSize) {
-			UpdateResourceW(hUpdate, RT_ICON, MAKEINTRESOURCE(groupIconDirEntries[i].nId),
+			UpdateResourceW(hUpdate, RT_ICON, MAKEINTRESOURCEW(groupIconDirEntries[i].nId),
 				MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconData, iconSize);
 		}
 	}
@@ -203,7 +203,7 @@ bool CreateWrapper(
 		return false;
 	}
 
-	auto target_dir = thcrap_dir / "bin";
+	auto target_dir = thcrap_dir / L"bin";
 	if (shortcut_type == SHTYPE_WRAPPER_RELPATH) {
 		auto link_dir = link_path;
 		link_dir.remove_filename();
@@ -229,7 +229,7 @@ std::filesystem::path GetThcrapDir()
 
 	auto thcrap_dir = std::filesystem::u8path(self_fn);
 	thcrap_dir.remove_filename();
-	thcrap_dir /= "..";
+	thcrap_dir /= L"..";
 	thcrap_dir = thcrap_dir.lexically_normal();
 
 	VLA_FREE(self_fn);
@@ -250,7 +250,7 @@ std::filesystem::path get_link_dir(ShortcutsDestination destination, const std::
 	case SHDESTINATION_DESKTOP: {
 		wchar_t szPath[MAX_PATH];
 		if (SHGetFolderPathW(NULL, CSIDL_DESKTOPDIRECTORY, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
-			return "";
+			return L"";
 		}
 		return szPath;
 	}
@@ -258,11 +258,11 @@ std::filesystem::path get_link_dir(ShortcutsDestination destination, const std::
 	case SHDESTINATION_START_MENU: {
 		wchar_t szPath[MAX_PATH];
 		if (SHGetFolderPathW(NULL, CSIDL_PROGRAMS, NULL, SHGFP_TYPE_CURRENT, szPath) != S_OK) {
-			return "";
+			return L"";
 		}
 
 		std::filesystem::path path = szPath;
-		path /= "thcrap";
+		path /= L"thcrap";
 		if (!std::filesystem::is_directory(path)) {
 			std::filesystem::create_directory(path);
 		}
@@ -271,7 +271,7 @@ std::filesystem::path get_link_dir(ShortcutsDestination destination, const std::
 
 	case SHDESTINATION_GAMES_DIRECTORY:
 		// Will be overwritten later
-		return "";
+		return L"";
 	}
 }
 
@@ -282,7 +282,7 @@ std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
 		icon_path = std::filesystem::absolute(icon_path);
 	}
 
-	if (icon_path.filename() != "vpatch.exe")
+	if (icon_path.filename() != L"vpatch.exe")
 		return icon_path;
 
 	auto new_path = icon_path;
@@ -332,7 +332,7 @@ ShortcutsType DecideAutoShortcutType(ShortcutsDestination destination, const std
 
 int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination, ShortcutsType shortcut_type)
 {
-	LPCWSTR loader_exe = L"thcrap_loader" DEBUG_OR_RELEASE_W L".exe";
+	LPCWSTR loader_exe = L"thcrap_loader" FILE_SUFFIX_W L".exe";
 	auto thcrap_dir = GetThcrapDir();
 	auto self_path = thcrap_dir / L"bin" / loader_exe;
 	auto link_dir = get_link_dir(destination, thcrap_dir);
@@ -359,7 +359,7 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 
 		auto icon_path = GetIconPath(games[i].path, games[i].id);
 		auto link_path = link_dir / (std::string(games[i].id) + " (" + run_cfg_fn + ").ext");
-		std::string link_args = std::string("\"") + run_cfg_fn + ".js\" " + games[i].id;
+		std::string link_args = std::string(1, '"') + run_cfg_fn + ".js\" " + games[i].id;
 		auto link_args_w = std::make_unique<wchar_t[]>(link_args.length() + 1);
 		StringToUTF16(link_args_w.get(), link_args.c_str(), -1);
 
@@ -372,14 +372,14 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 			if (com_init_succeeded == E_FAIL) {
 				com_init_succeeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 			}
-			link_path.replace_extension("lnk");
+			link_path.replace_extension(L"lnk");
 			if (CreateLink(link_path, self_path, link_args_w.get(), thcrap_dir, icon_path)) {
 				ret = 1;
 			}
 		}
 		else if (local_shortcut_type == SHTYPE_WRAPPER_ABSPATH || local_shortcut_type == SHTYPE_WRAPPER_RELPATH) {
-			link_path.replace_extension("exe");
-			auto exe_args = std::wstring(loader_exe) + L" " + link_args_w.get();
+			link_path.replace_extension(L"exe");
+			auto exe_args = std::wstring(loader_exe) + L' ' + link_args_w.get();
 			if (!CreateWrapper(link_path, thcrap_dir, loader_exe, exe_args, icon_path, local_shortcut_type)) {
 				ret = 1;
 			}

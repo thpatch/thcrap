@@ -35,7 +35,7 @@ int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const cha
 			json_t *val;
 			json_flex_array_foreach_scoped(size_t, ind, lines, val) {
 				if (ind > 0) {
-					file_out += "\\n";
+					file_out += "\\n"sv;
 				}
 				const char* str = json_string_value(val);
 				size_t str_length = json_string_length(val);
@@ -49,7 +49,7 @@ int patch_plaintext(void *file_inout, size_t size_out, size_t size_in, const cha
 					file_out += str[i];
 				}
 			}
-			file_out += "\"\r\n";
+			file_out += "\"\r\n"sv;
 		}
 		else {
 			file_out.append(file_in, end_line - file_in);

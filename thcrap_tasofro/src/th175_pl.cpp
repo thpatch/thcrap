@@ -11,7 +11,7 @@
 #include "thcrap_tasofro.h"
 #include "mediawiki.h"
 
-static const char *STAGE_NAME_COMMAND = (const char*)u8",ステージ見出し,";
+static constexpr std::string_view STAGE_NAME_COMMAND = u8",ステージ見出し,";
 
 static void copy_line(const char*& file_in, const char *file_in_end, char*& file_out)
 {
@@ -72,7 +72,7 @@ static void patch_stage_name(const char*& file_in, const char *file_in_end, char
 	std::string rep;
 	json_flex_array_foreach_scoped(size_t, i, rep_obj, value) {
 		if (!rep.empty()) {
-			rep += "\n";
+			rep += '\n';
 		}
 		rep += arabic_convert_bidi(json_string_value(value));
 	}
@@ -86,10 +86,10 @@ static void patch_stage_name(const char*& file_in, const char *file_in_end, char
 	file_in = std::find(file_in, file_in_end, '\n');
 	if (file_in != file_in_end) file_in++;
 
-	strcpy(file_out, STAGE_NAME_COMMAND); file_out += strlen(STAGE_NAME_COMMAND);
+	memcpy(file_out, STAGE_NAME_COMMAND.data(), STAGE_NAME_COMMAND.length()); file_out += STAGE_NAME_COMMAND.length();
 	*file_out = '"'; file_out++;
 	file_out = std::copy(rep.begin(), rep.end(), file_out);
-	strcpy(file_out, "\"\r\n"); file_out += 3;
+	memcpy(file_out, "\"\r\n", 3); file_out += 3;
 }
 
 int patch_th175_pl(void *file_inout, size_t, size_t size_in, const char *, json_t *patch)
@@ -107,7 +107,7 @@ int patch_th175_pl(void *file_inout, size_t, size_t size_in, const char *, json_
 
 	unsigned int line_num = 1;
 	while (file_in < file_in_end) {
-		if (strncmp(file_in, STAGE_NAME_COMMAND, strlen(STAGE_NAME_COMMAND)) == 0) {
+		if (strncmp(file_in, STAGE_NAME_COMMAND.data(), STAGE_NAME_COMMAND.length()) == 0) {
 			patch_stage_name(file_in, file_in_end, file_out, json_object_get(patch, "stagename"));
 			continue;
 		}

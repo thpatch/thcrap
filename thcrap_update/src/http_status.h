@@ -3,6 +3,8 @@
 #include <string>
 #include "thcrap_update_api.h"
 
+using namespace std::literals::string_literals;
+
 class HttpStatus
 {
 public:
@@ -26,7 +28,7 @@ private:
     unsigned int code;
     std::string text;
 
-    HttpStatus(Status status, unsigned int code = 0, std::string text = "");
+    HttpStatus(Status status, unsigned int code = 0, const std::string& text = ""s);
 
 public:
     THCRAP_UPDATE_API ~HttpStatus();
@@ -35,7 +37,7 @@ public:
     static THCRAP_UPDATE_API HttpStatus makeOk();
     static THCRAP_UPDATE_API HttpStatus makeCancelled();
     static THCRAP_UPDATE_API HttpStatus makeNetworkError(unsigned int httpCode);
-    static THCRAP_UPDATE_API HttpStatus makeSystemError(unsigned int systemCode, std::string text);
+    static THCRAP_UPDATE_API HttpStatus makeSystemError(unsigned int systemCode, const std::string& text);
 
     Status get() const;
     operator bool() const;

@@ -19,8 +19,6 @@
 constexpr char SELF_SERVER[] = "https://thcrap.thpatch.net/";
 constexpr char NETPATHS_FN[] = "thcrap_update.js";
 constexpr char PREFIX_BACKUP[] = "thcrap_old_%s";
-constexpr char PREFIX_NEW[] = "thcrap_new_";
-constexpr char EXT_NEW[] = ".zip";
 
 static char update_version[sizeof("0x20010101")];
 
@@ -57,7 +55,7 @@ static char update_version[sizeof("0x20010101")];
 #define WM_UPDATE_PROGRESS (WM_USER + 1)
 
 struct smartdlg_state_t {
-	HANDLE event_created = CreateEvent(nullptr, true, false, nullptr);
+	HANDLE event_created = CreateEventW(nullptr, true, false, nullptr);
 	DWORD thread_id;
 	HFONT hFont;
 	HWND hWnd;
@@ -77,12 +75,12 @@ LRESULT CALLBACK smartdlg_proc(
 {
 	switch (uMsg) {
 	case WM_UPDATE_PROGRESS: {
-		auto state = (smartdlg_state_t*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+		auto state = (smartdlg_state_t*)GetWindowLongPtrW(hWnd, GWLP_USERDATA);
 		if (state && state->hProgress) {
-			std::lock_guard<std::mutex> lock(state->progress_mutex);
+			std::lock_guard lock(state->progress_mutex);
 			if (state->total_size > 0) {
 				int pos = (int)((state->current_progress * 100) / state->total_size);
-				SendMessage(state->hProgress, PBM_SETPOS, pos, 0);
+				SendMessageW(state->hProgress, PBM_SETPOS, pos, 0);
 			}
 		}
 		break;
@@ -108,12 +106,9 @@ void smartdlg_close(smartdlg_state_t* state)
 	}
 }
 
+static constexpr char SELF_UPDATE_TEXT[] = "A new build of the ${project} is being downloaded, please wait...";
 DWORD WINAPI self_window_create_and_run(void* param)
 {
-	const char* TEXT =
-		"A new build of the ${project} is being downloaded, please wait...";
-	const size_t TEXT_SLOT = (size_t)TEXT;
-	const char* text_final;
 	auto state = (smartdlg_state_t*)param;
 
 	assert(state);
@@ -124,11 +119,6 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	icex.dwICC = ICC_PROGRESS_CLASS;
 	InitCommonControlsEx(&icex);
 
-	HMODULE hMod = GetModuleHandle(NULL);
-	HDC hDC = GetDC(0);
-	HWND label = NULL;
-	DWORD wnd_style = WS_BORDER | WS_POPUP | WS_CAPTION;
-	DWORD wnd_style_ex = WS_EX_TOPMOST | WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT | WS_EX_DLGMODALFRAME;
 	RECT screen_rect = {};
 	RECT wnd_rect = {};
 	RECT label_rect = {};
@@ -150,14 +140,18 @@ DWORD WINAPI self_window_create_and_run(void* param)
 		screen_rect.bottom = GetSystemMetrics(SM_CYSCREEN);
 	}
 
+	HDC hDC = GetDC(0);
 	if (state->hFont) {
 		SelectObject(hDC, state->hFont);
 	}
 
-	strings_strcat(TEXT_SLOT, TEXT);
-	text_final = strings_replace(TEXT_SLOT, "${project}", PROJECT_NAME);
+	strings_strcat((size_t)SELF_UPDATE_TEXT, SELF_UPDATE_TEXT);
+	const char* text_final = strings_replace((size_t)SELF_UPDATE_TEXT, "${project}", PROJECT_NAME);
 
-	DrawText(hDC, text_final, -1, &label_rect, DT_CALCRECT);
+	DrawTextU(hDC, text_final, -1, &label_rect, DT_CALCRECT);
+
+	constexpr DWORD wnd_style = WS_BORDER | WS_POPUP | WS_CAPTION;
+	constexpr DWORD wnd_style_ex = WS_EX_TOPMOST | WS_EX_CLIENTEDGE | WS_EX_CONTROLPARENT | WS_EX_DLGMODALFRAME;
 
 	wnd_rect = label_rect;
 	label_rect.left += font_pad;
@@ -170,12 +164,13 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	wnd_rect.left = (screen_rect.right / 2) - (wnd_rect.right / 2);
 	wnd_rect.top = (screen_rect.bottom / 2) - (wnd_rect.bottom / 2);
 
+	HMODULE hMod = GetModuleHandleW(NULL);
 	state->hWnd = CreateWindowExU(
 		wnd_style_ex, (LPSTR)WC_DIALOG, PROJECT_NAME, wnd_style,
 		RECT_EXPAND(wnd_rect), NULL, NULL, hMod, NULL
 	);
 
-	label = CreateWindowExU(
+	HWND label = CreateWindowExU(
 		WS_EX_NOPARENTNOTIFY, "Static", text_final, WS_CHILD | WS_VISIBLE,
 		RECT_EXPAND(label_rect), state->hWnd, NULL, hMod, NULL
 	);
@@ -193,7 +188,7 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	);
 
 	// Set progress bar range
-	SendMessage(state->hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
+	SendMessageW(state->hProgress, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
 
 	SetWindowLongPtrW(state->hWnd, GWLP_WNDPROC, (LPARAM)smartdlg_proc);
 	SetWindowLongPtrW(state->hWnd, GWLP_USERDATA, (LONG_PTR)state);
@@ -208,18 +203,17 @@ DWORD WINAPI self_window_create_and_run(void* param)
 
 	// We must run this in the same thread anyway, so we might as well
 	// combine creation and the message loop into the same function.
-
-	MSG msg;
-	BOOL msg_ret;
-
-	while ((msg_ret = GetMessage(&msg, nullptr, 0, 0)) != 0) {
-		if (msg_ret != -1) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+	for (MSG msg;;) {
+		switch (GetMessageW(&msg, NULL, 0, 0)) {
+			case 0: // WM_QUIT
+				return (DWORD)msg.wParam;
+			default:
+				TranslateMessage(&msg);
+				DispatchMessageW(&msg);
+			case -1:
+				break;
 		}
 	}
-
-	return (DWORD)msg.wParam;
 }
 /// ----------------------------
 
@@ -234,29 +228,27 @@ static char* self_tempname(char* fn, size_t len, const char* prefix)
 		HCRYPTPROV hCryptProv;
 		size_t rnd_num = (len - 1) / 2;
 		VLA(BYTE, rnd, rnd_num);
-		size_t i = 0;
 
 		ZeroMemory(fn, len);
-		auto ret = W32_ERR_WRAP(CryptAcquireContext(
+		if (CryptAcquireContextW(
 			&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
-		));
-		if (!ret) {
+		)) {
 			CryptGenRandom(hCryptProv, rnd_num, (BYTE*)rnd);
+			CryptReleaseContext(hCryptProv, 0);
 		}
 		else {
 			LARGE_INTEGER t;
 			QueryPerformanceCounter(&t);
 			t.HighPart ^= GetCurrentProcessId();
-			for (i = 0; i < rnd_num / sizeof(t); i++) {
+			for (size_t i = 0; i < rnd_num / sizeof(t); i++) {
 				memcpy(rnd + (i * sizeof(t)), &t, sizeof(t));
 			}
 		}
-		for (i = 0; i < rnd_num; i++) {
+		for (size_t i = 0; i < rnd_num; i++) {
 			p += sprintf(p, "%02x", rnd[i]);
 		}
 		memcpy(fn, prefix, prefix_len);
 		VLA_FREE(rnd);
-		CryptReleaseContext(hCryptProv, 0);
 	}
 	return p;
 }
@@ -270,9 +262,8 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT* context)
 	DWORD msg_type = 0;
 	DWORD param_len;
 	DWORD signer_num;
-	DWORD i;
 
-	if (!context || !self_mod) {
+	if unexpected(!context || !self_mod) {
 		return -1;
 	}
 	{
@@ -307,7 +298,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT* context)
 	if (ret) {
 		goto end;
 	}
-	for (i = 0; i < signer_num && !(*context); i++) {
+	for (DWORD i = 0; i < signer_num && !(*context); i++) {
 		PCERT_INFO signer_info = NULL;
 
 		ret = W32_ERR_WRAP(CryptMsgGetParam(
@@ -346,11 +337,8 @@ char* self_sprint_hash(char* buf, size_t len, HCRYPTHASH hHash)
 	char* p = buf;
 	DWORD hash_len = 0;
 	DWORD hash_len_len = sizeof(hash_len);
-	auto crypt_get_hash_param = [&](DWORD param, BYTE* buf, DWORD* len) {
-		return W32_ERR_WRAP(CryptGetHashParam(hHash, param, buf, len, 0));
-		};
 
-	if (crypt_get_hash_param(HP_HASHSIZE, (BYTE*)&hash_len, &hash_len_len)) {
+	if (!CryptGetHashParam(hHash, HP_HASHSIZE, (BYTE*)&hash_len, &hash_len_len, 0)) {
 		return 0;
 	}
 
@@ -358,7 +346,7 @@ char* self_sprint_hash(char* buf, size_t len, HCRYPTHASH hHash)
 	// CryptGetHashParam(), we might as well get the whole hash upfront and
 	// merely truncate the string output.
 	VLA(BYTE, hash_val, hash_len);
-	if (!crypt_get_hash_param(HP_HASHVAL, hash_val, &hash_len)) {
+	if (CryptGetHashParam(hHash, HP_HASHVAL, hash_val, &hash_len, 0)) {
 		size_t bytes_in_suffix = (len - 1) / 2;
 		size_t copy_len = MIN(bytes_in_suffix, hash_len) & ~1;
 		for (size_t i = 0; i < copy_len; i++) {
@@ -382,7 +370,6 @@ static int self_verify_buffer(
 	int ret = -1;
 	const size_t sig_base64_len = json_string_length(sig);
 	const char* sig_base64 = json_string_value(sig);
-	DWORD i, j;
 	DWORD sig_len = 0;
 	BYTE* sig_buf = NULL;
 
@@ -404,11 +391,9 @@ static int self_verify_buffer(
 		goto end;
 	}
 	// Reverse the signature...
-	// (http://www.ruiandrebatista.com/windows-crypto-api-nightmares-rsa-signature-padding-and-byte-order-ramblings)
-	for (i = 0, j = sig_len - 1; i < j; i++, j--) {
-		BYTE t = sig_buf[i];
-		sig_buf[i] = sig_buf[j];
-		sig_buf[j] = t;
+	// (https://web.archive.org/web/20171001004200/http://www.ruiandrebatista.com/windows-crypto-api-nightmares-rsa-signature-padding-and-byte-order-ramblings)
+	for (DWORD i = 0, j = sig_len - 1; i < j; i++, j--) {
+		std::swap(sig_buf[i], sig_buf[j]);
 	}
 	ret = W32_ERR_WRAP(CryptCreateHash(hCryptProv, hash_alg, 0, 0, hHash));
 	if (ret) {
@@ -421,7 +406,7 @@ static int self_verify_buffer(
 		goto end;
 	}
 
-	ret = W32_ERR_WRAP(CryptVerifySignature(
+	ret = W32_ERR_WRAP(CryptVerifySignatureW(
 		*hHash, sig_buf, sig_len, hPubKey, NULL, 0
 	));
 
@@ -460,21 +445,21 @@ static self_result_t self_verify(
 
 	const json_t* sig_sig = json_object_get(sig, "sig");
 	const char* sig_alg = json_object_get_string(sig, "alg");
-	ALG_ID hash_alg = self_alg_from_str(sig_alg);
-	HCRYPTKEY hPubKey = 0;
 
 	if (!zip_buf || !zip_len || !json_is_string(sig_sig) || !context || !sig_alg) {
 		return SELF_NO_SIG;
 	}
 	log_print("Verifying archive signature... ");
+	ALG_ID hash_alg = self_alg_from_str(sig_alg);
 	if (!hash_alg) {
 		log_func_printf("Unsupported hash algorithm ('%s')!\n", sig_alg);
 		return SELF_NO_SIG;
 	}
-	if (W32_ERR_WRAP(CryptImportPublicKeyInfo(
+	HCRYPTKEY hPubKey = 0;
+	if (!CryptImportPublicKeyInfo(
 		hCryptProv, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
 		&context->pCertInfo->SubjectPublicKeyInfo, &hPubKey
-	))) {
+	)) {
 		log_func_print("Invalid public key!\n");
 		return SELF_NO_PUBLIC_KEY;
 	}
@@ -485,13 +470,10 @@ static self_result_t self_verify(
 
 static int self_move_to_dir(const char* dst_dir, const char* fn)
 {
-	int ret;
-	size_t full_fn_len = strlen(dst_dir) + 1 + strlen(fn) + 1;
-	VLA(char, full_fn, full_fn_len);
-	sprintf(full_fn, "%s/%s", dst_dir, fn);
+	BUILD_VLA_STR(char, full_fn, dst_dir, '/', fn);
 	dir_create_for_fn(full_fn);
-	ret = W32_ERR_WRAP(MoveFile(fn, full_fn));
-	RemoveDirectory(fn);
+	int ret = W32_ERR_WRAP(MoveFileU(fn, full_fn));
+	RemoveDirectoryU(fn);
 	VLA_FREE(full_fn);
 	return ret;
 }
@@ -506,7 +488,6 @@ static self_result_t self_replace(zip_t* zip)
 		char backup_dir[TEMP_FN_LEN];
 		const char* fn;
 		json_t* val;
-		size_t i;
 
 		sprintf(prefix_backup, PREFIX_BACKUP, PROJECT_VERSION_STRING);
 		if (!PathFileExistsU(prefix_backup)) {
@@ -523,10 +504,8 @@ static self_result_t self_replace(zip_t* zip)
 		// If this fails, writing should fail too.
 		log_print("Replacing engine...\n");
 		CreateDirectoryU(backup_dir, NULL);
-		// TODO: Can these be changed to not pass a return value
-		// to the foreach macros? It ends up invoking the function
-		// multiple times.
-		json_object_foreach(zip_list(zip), fn, val) {
+		json_t* zipped_files = zip_list(zip);
+		json_object_foreach_key(zipped_files, fn) {
 			int local_ret = self_move_to_dir(backup_dir, fn);
 			if (
 				local_ret == ERROR_FILE_NOT_FOUND
@@ -538,7 +517,8 @@ static self_result_t self_replace(zip_t* zip)
 				goto end;
 			}
 		}
-		json_array_foreach(zip_list_empty(zip), i, val) {
+		json_t* empty_files = zip_list_empty(zip);
+		json_array_foreach_scoped(size_t, i, empty_files, val) {
 			DeleteFileU(json_string_value(val));
 		}
 		ret = SELF_OK;
@@ -550,7 +530,6 @@ end:
 self_result_t self_update(const char* thcrap_dir)
 {
 	self_result_t ret;
-	std::string self_server;
 	zip_t* arc = NULL;
 	PCCERT_CONTEXT context = NULL;
 	HCRYPTPROV hCryptProv = 0;
@@ -558,15 +537,14 @@ self_result_t self_update(const char* thcrap_dir)
 
 	log_print("Checking for engine updates...\n");
 
-	self_server = globalconfig_get_string("engine_update_url", SELF_SERVER);
+	std::string self_server = globalconfig_get_string("engine_update_url", SELF_SERVER);
 	auto [netpaths, netpaths_status] = ServerCache::get().downloadJsonFile(self_server + NETPATHS_FN);
 	if (!netpaths_status || !netpaths) {
 		log_printf("%s%s: %s\n", self_server.c_str(), NETPATHS_FN, netpaths_status.toString().c_str());
 		return SELF_VERSION_CHECK_ERROR;
 	}
 
-	const char* branch = PROJECT_BRANCH;
-	json_t* branch_json = json_object_get(*netpaths, branch);
+	json_t* branch_json = json_object_get(*netpaths, PROJECT_BRANCH);
 	if (!branch_json) {
 		return SELF_NO_UPDATE;
 	}
@@ -614,17 +592,11 @@ self_result_t self_update(const char* thcrap_dir)
 
 	// We are now trying an update
 	smartdlg_state_t window;
-	defer(smartdlg_close(&window));
 
-	DWORD cur_dir_len = GetCurrentDirectoryU(0, NULL);
-
+	DWORD cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
 	VLA(char, cur_dir, cur_dir_len);
-	defer(VLA_FREE(cur_dir));
-
 	GetCurrentDirectoryU(cur_dir_len, cur_dir);
-
 	SetCurrentDirectoryU(thcrap_dir);
-	defer(SetCurrentDirectoryU(cur_dir));
 
 	CreateThread(
 		nullptr, 0, self_window_create_and_run, &window, 0, &window.thread_id
@@ -634,16 +606,16 @@ self_result_t self_update(const char* thcrap_dir)
 	// Progress callback lambda
 	auto progress_callback = [&window](const DownloadUrl&, size_t file_progress, size_t file_size) -> bool {
 		{
-			std::lock_guard<std::mutex> lock(window.progress_mutex);
+			std::lock_guard lock(window.progress_mutex);
 			window.current_progress = file_progress;
 			window.total_size = file_size;
 		}
 		// Notify UI thread to update progress bar
 		if (window.hWnd) {
-			PostMessage(window.hWnd, WM_UPDATE_PROGRESS, 0, 0);
+			PostMessageW(window.hWnd, WM_UPDATE_PROGRESS, 0, 0);
 		}
 		return true;  // Continue download
-		};
+	};
 
 	auto [arc_dl, arc_dl_status] = ServerCache::get().downloadFile(
 		self_server + netpath,
@@ -651,41 +623,47 @@ self_result_t self_update(const char* thcrap_dir)
 	);
 	if (!arc_dl_status || arc_dl.empty()) {
 		log_printf("%s%s: %s\n", self_server.c_str(), netpath, arc_dl_status.toString().c_str());
-		return SELF_SERVER_ERROR;
+		ret = SELF_SERVER_ERROR;
 	}
-	auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig");
-	if (!sig_status || !sig) {
-		log_printf("%s%s%s: %s\n", self_server.c_str(), netpath, ".sig", sig_status.toString().c_str());
-		return SELF_NO_SIG;
+	else {
+		auto [sig, sig_status] = ServerCache::get().downloadJsonFile(self_server + netpath + ".sig");
+		if (!sig_status || !sig) {
+			log_printf("%s%s.sig: %s\n", self_server.c_str(), netpath, sig_status.toString().c_str());
+			ret = SELF_NO_SIG;
+		}
+		else if (!CryptAcquireContextW(
+			&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
+		)) {
+			ret = SELF_NO_PUBLIC_KEY;
+		}
+		else {
+			if (self_pubkey_from_signer(&context)) {
+				ret = SELF_NO_PUBLIC_KEY;
+			}
+			else {
+				ret = self_verify(hCryptProv, &hHash, arc_dl.data(), arc_dl.size(), *sig, context);
+				if (ret == SELF_OK) {
+					if (file_write(SELF_UPDATE_OUT_FN, arc_dl.data(), arc_dl.size())) {
+						ret = SELF_DISK_ERROR;
+					}
+					else {
+						arc = zip_open(SELF_UPDATE_OUT_FN);
+						ret = self_replace(arc);
+						zip_close(arc);
+						if (ret != SELF_REPLACE_ERROR) {
+							DeleteFileU(SELF_UPDATE_OUT_FN);
+						}
+					}
+				}
+				CryptDestroyHash(hHash);
+				CertFreeCertificateContext(context);
+			}
+			CryptReleaseContext(hCryptProv, 0);
+		}
 	}
-
-	if (W32_ERR_WRAP(CryptAcquireContext(
-		&hCryptProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT
-	))) {
-		return SELF_NO_PUBLIC_KEY;
-	}
-	defer(CryptReleaseContext(hCryptProv, 0));
-
-	if (self_pubkey_from_signer(&context)) {
-		return SELF_NO_PUBLIC_KEY;
-	}
-	defer(CertFreeCertificateContext(context));
-
-	ret = self_verify(hCryptProv, &hHash, arc_dl.data(), arc_dl.size(), *sig, context);
-	defer(CryptDestroyHash(hHash));
-	if (ret != SELF_OK) {
-		return ret;
-	}
-
-	if (file_write(SELF_UPDATE_OUT_FN, arc_dl.data(), arc_dl.size())) {
-		return SELF_DISK_ERROR;
-	}
-	arc = zip_open(SELF_UPDATE_OUT_FN);
-	ret = self_replace(arc);
-	zip_close(arc);
-	if (ret != SELF_REPLACE_ERROR) {
-		DeleteFile(SELF_UPDATE_OUT_FN);
-	}
+	SetCurrentDirectoryU(cur_dir);
+	VLA_FREE(cur_dir);
+	smartdlg_close(&window);
 	return ret;
 }
 

@@ -146,36 +146,36 @@ static ConsoleDialog g_console_xxx{};
 static ConsoleDialog *g_console = &g_console_xxx;
 
 void ConsoleDialog::readQueue() {
-	PostMessage(hWnd, APP_READQUEUE, 0, 0L);
+	PostMessageW(hWnd, APP_READQUEUE, 0, 0L);
 }
 std::future<char> ConsoleDialog::askyn() {
 	std::promise<char> promise;
 	std::future<char> future = promise.get_future();
-	SendMessage(hWnd, APP_ASKYN, 0, (LPARAM)&promise);
+	SendMessageW(hWnd, APP_ASKYN, 0, (LPARAM)&promise);
 	return future;
 }
 std::future<std::wstring> ConsoleDialog::getInput() {
 	std::promise<std::wstring> promise;
 	std::future<std::wstring> future = promise.get_future();
-	SendMessage(hWnd, APP_GETINPUT, 0, (LPARAM)&promise);
+	SendMessageW(hWnd, APP_GETINPUT, 0, (LPARAM)&promise);
 	return future;
 }
 // Should be called after adding/appending bunch of lines
 void ConsoleDialog::update() {
-	PostMessage(hWnd, APP_UPDATE, 0, 0L);
+	PostMessageW(hWnd, APP_UPDATE, 0, 0L);
 }
 // Should be called before adding lines
 void ConsoleDialog::preupdate() {
-	PostMessage(hWnd, APP_PREUPDATE, 0, 0L);
+	PostMessageW(hWnd, APP_PREUPDATE, 0, 0L);
 }
 std::future<void> ConsoleDialog::pause() {
 	std::promise<void> promise;
 	std::future<void> future = promise.get_future();
-	SendMessage(hWnd, APP_PAUSE, 0, (LPARAM)&promise);
+	SendMessageW(hWnd, APP_PAUSE, 0, (LPARAM)&promise);
 	return future;
 }
 void ConsoleDialog::setProgress(int pc) {
-	PostMessage(hWnd, APP_PROGRESS, (WPARAM)(DWORD)pc, 0L);
+	PostMessageW(hWnd, APP_PROGRESS, (WPARAM)(DWORD)pc, 0L);
 }
 
 bool ConsoleDialog::popQueue(LineEntry &ent) {
@@ -187,7 +187,7 @@ bool ConsoleDialog::popQueue(LineEntry &ent) {
 	return true;
 }
 void ConsoleDialog::pushQueue(LineEntry &&ent) {
-	std::lock_guard<std::mutex> lock(mutex);
+	std::lock_guard lock(mutex);
 	queue.push(std::move(ent));
 	if (queue.size() > 10)
 		readQueue();
@@ -238,7 +238,7 @@ LRESULT CALLBACK ConsoleDialog::editProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 		origEditProc = getClassWindowProc(NULL, WC_EDITW);
 
 	if (uMsg == WM_KEYDOWN && wParam == VK_RETURN) {
-		SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON1, BN_CLICKED), (LPARAM)dlg->buttonNext);
+		SendMessageW(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON1, BN_CLICKED), (LPARAM)dlg->buttonNext);
 		return 0;
 	} else if (uMsg == WM_CHAR && wParam == L'\r') {
 		// ignoring this message prevents a beep
@@ -252,7 +252,7 @@ LRESULT CALLBACK ConsoleDialog::editProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 		return 0;
 	} else if ((uMsg == WM_KEYDOWN || uMsg == WM_KEYUP) && (wParam == VK_PRIOR || wParam == VK_NEXT)) {
 		// Switch focus to list on up/down arrows
-		SendMessage(dlg->list, uMsg, wParam, lParam);
+		SendMessageW(dlg->list, uMsg, wParam, lParam);
 		return 0;
 	}
 	return CallWindowProcW(origEditProc, hWnd, uMsg, wParam, lParam);
@@ -267,8 +267,8 @@ LRESULT CALLBACK ConsoleDialog::listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 	if (uMsg == WM_KEYDOWN && wParam == VK_RETURN) {
 		// if edit already has something in it, clicking on the button
 		// otherwise doubleclick the list
-		int len = GetWindowTextLength(dlg->edit);
-		SendMessage(dlg->hWnd, WM_COMMAND, len ? MAKELONG(IDC_BUTTON1, BN_CLICKED) : MAKELONG(IDC_LIST1, LBN_DBLCLK), (LPARAM)hWnd);
+		int len = GetWindowTextLengthW(dlg->edit);
+		SendMessageW(dlg->hWnd, WM_COMMAND, len ? MAKELONG(IDC_BUTTON1, BN_CLICKED) : MAKELONG(IDC_LIST1, LBN_DBLCLK), (LPARAM)hWnd);
 		return 0;
 	} else if (uMsg == WM_GETDLGCODE && wParam == VK_RETURN) {
 		// nescessary for control to recieve VK_RETURN
@@ -276,12 +276,12 @@ LRESULT CALLBACK ConsoleDialog::listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 	} else if (uMsg == WM_CHAR) {
 		if (dlg->currentMode == Mode::Input) {
 			SetFocus(dlg->edit);
-			SendMessage(dlg->edit, WM_CHAR, wParam, lParam);
+			SendMessageW(dlg->edit, WM_CHAR, wParam, lParam);
 		} else if (dlg->currentMode == Mode::AskYn) {
 			if (wParam == L'Y' || wParam == L'y')
-				SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON_YES, BN_CLICKED), (LPARAM)dlg->buttonYes);
+				SendMessageW(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON_YES, BN_CLICKED), (LPARAM)dlg->buttonYes);
 			else if (wParam == L'N' || wParam == L'n')
-				SendMessage(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON_NO, BN_CLICKED), (LPARAM)dlg->buttonNo);
+				SendMessageW(dlg->hWnd, WM_COMMAND, MAKEWPARAM(IDC_BUTTON_NO, BN_CLICKED), (LPARAM)dlg->buttonNo);
 		}
 		return 0;
 	}
@@ -289,20 +289,20 @@ LRESULT CALLBACK ConsoleDialog::listProc(HWND hWnd, UINT uMsg, WPARAM wParam, LP
 }
 
 void ConsoleDialog::setMarquee(BOOL fEnable) {
-	DWORD dwStyle = GetWindowLong(progress, GWL_STYLE);
+	DWORD dwStyle = GetWindowLongW(progress, GWL_STYLE);
 	if (!!(dwStyle & PBS_MARQUEE) != fEnable) {
 		if (fEnable)
 			dwStyle |= PBS_MARQUEE;
 		else
 			dwStyle &= ~PBS_MARQUEE;
-		SetWindowLong(progress, GWL_STYLE, dwStyle);
+		SetWindowLongW(progress, GWL_STYLE, dwStyle);
 		ProgressBar_SetMarquee(progress, fEnable, 0L);
 	}
 }
 
 bool con_can_close = false;
 HINSTANCE ConsoleDialog::getInstance() {
-	return GetModuleHandle(NULL);
+	return GetModuleHandleW(NULL);
 }
 LPCWSTR ConsoleDialog::getTemplate() {
 	return MAKEINTRESOURCEW(IDD_DIALOG1);
@@ -319,22 +319,22 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		buttonNo = GetDlgItem(hWnd, IDC_BUTTON_NO);
 
 		ProgressBar_SetRange(progress, 0, 100);
-		SetWindowLongPtr(edit, GWLP_WNDPROC, (LONG_PTR)editProc);
-		SetWindowLongPtr(list, GWLP_WNDPROC, (LONG_PTR)listProc);
+		SetWindowLongPtrW(edit, GWLP_WNDPROC, (LONG_PTR)editProc);
+		SetWindowLongPtrW(list, GWLP_WNDPROC, (LONG_PTR)listProc);
 
 		// set icon
-		hIconSm = (HICON)LoadImage(getInstance(), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
+		hIconSm = (HICON)LoadImageW(getInstance(), MAKEINTRESOURCEW(IDI_ICON1), IMAGE_ICON,
 			GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0);
-		hIcon = (HICON)LoadImage(getInstance(), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
+		hIcon = (HICON)LoadImageW(getInstance(), MAKEINTRESOURCEW(IDI_ICON1), IMAGE_ICON,
 			GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON), 0);
 		if (hIconSm)
-			SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
+			SendMessageW(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)hIconSm);
 		if (hIcon)
-			SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+			SendMessageW(hWnd, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
 		setMode(Mode::None);
 
 		RECT workarea, winrect;
-		SystemParametersInfo(SPI_GETWORKAREA, 0, (PVOID)&workarea, 0);
+		SystemParametersInfoW(SPI_GETWORKAREA, 0, (PVOID)&workarea, 0);
 		GetWindowRect(hWnd, &winrect);
 		int width = winrect.right - winrect.left;
 		MoveWindow(hWnd,
@@ -387,7 +387,7 @@ INT_PTR ConsoleDialog::dialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 		}
 		return FALSE;
 	case APP_READQUEUE: {
-		std::lock_guard<std::mutex> lock(mutex);
+		std::lock_guard lock(mutex);
 		LineEntry ent;
 		while (popQueue(ent)) {
 			switch (ent.type) {
@@ -638,7 +638,7 @@ void con_end(void) {
 	std::promise<void> promise;
 	std::future<void> future = promise.get_future();
 	g_exitguithreadevent = std::move(promise);
-	SendMessage(g_console->getHandle(), WM_CLOSE, 0, 0L);
+	SendMessageW(g_console->getHandle(), WM_CLOSE, 0, 0L);
 	future.get();
 }
 HWND con_hwnd(void) {

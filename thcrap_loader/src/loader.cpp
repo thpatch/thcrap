@@ -14,13 +14,13 @@
 #include <filesystem>
 #include <thcrap_update_wrapper.h>
 
-const char EXE_HELP[] =
-	"The executable can either be a game ID which is then looked up in "
-	"games.js, or simply the relative or absolute path to an .exe file.\n"
-	"It can either be given as a command line parameter, or through the "
-	"run configuration as a \"game\" value for a game ID or an \"exe\" "
-	"value for an .exe file path. If both are given, \"exe\" takes "
-	"precedence.";
+#define EXE_HELP \
+	"The executable can either be a game ID which is then looked up in " \
+	"games.js, or simply the relative or absolute path to an .exe file.\n" \
+	"It can either be given as a command line parameter, or through the " \
+	"run configuration as a \"game\" value for a game ID or an \"exe\" " \
+	"value for an .exe file path. If both are given, \"exe\" takes " \
+	"precedence."
 
 const char *game_missing = NULL;
 size_t current_dir_len = 0;
@@ -36,8 +36,9 @@ const char* game_lookup(const json_t *games_js, const char *game, const char *ba
 	}
 	const char *game_path_str = json_string_value(game_path);
 	if (PathIsRelativeA(game_path_str)) {
-		char* ret = (char*)malloc(strlen(base_dir) + strlen(game_path_str) + 1);
-		strcpy(ret, base_dir);
+		size_t base_dir_length = strlen(base_dir);
+		char* ret = (char*)malloc(base_dir_length + strlen(game_path_str) + 1);
+		memcpy(ret, base_dir, base_dir_length);
 		PathAppendA(ret, game_path_str);
 		return ret;
 	}
@@ -148,9 +149,6 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	const char *final_exe_fn = NULL;
 	size_t run_cfg_fn_len = 0;
 
-	char* cmdline = NULL;
-	
-
 	// If thcrap just updated itself, finalize the update by moving things around if needed.
 	// This can be done before parsing the command line.
 	// We can't call log_init before this because we might move some log files, but we still want to log things,
@@ -180,9 +178,9 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 			"\tthcrap_loader runconfig.js executable\n"
 			"\n"
 			"- The run configuration file must end in .js to be recognized as such.\n"
-			"- %s\n"
+			"- " EXE_HELP "\n"
 			"- Also, later command-line parameters take priority over earlier ones.\n",
-			PROJECT_NAME, EXE_HELP
+			PROJECT_NAME
 		);
 		ret = -1;
 		goto end;
@@ -255,8 +253,8 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 				game_missing
 			);
 		} else {
-			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"No target executable given.\n\n%s", EXE_HELP
+			log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"No target executable given.\n\n" EXE_HELP
 			);
 		}
 		ret = -3;
@@ -265,14 +263,15 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	runconfig_load(run_cfg, RUNCONFIG_NO_BINHACKS);
 
+	char* cmdline = NULL;
 	if (const char *temp_cmdline = runconfig_cmdline_get()) {
 		cmdline = strdup(temp_cmdline);
 	}
 
 	log_print("Command-line parsing finished\n");
 	ret = loader_update_with_UI_wrapper(final_exe_fn, cmdline);
+	free(cmdline);
 end:
-	SAFE_FREE(cmdline);
 	json_decref(games_js);
 	json_decref(run_cfg);
 	runconfig_free();

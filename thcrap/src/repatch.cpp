@@ -177,7 +177,7 @@ class RepatchWatcher {
 	inline void AddChangesToList(FILE_NOTIFY_INFORMATION* p) {
 
 		// Lock the changes list while items are added
-		const std::lock_guard<std::mutex> no_touchy_my_change_list(this->changed_files_mutex);
+		const std::lock_guard no_touchy_my_change_list(this->changed_files_mutex);
 
 		do {
 			AutoString filename_utf8((char*)malloc(p->FileNameLength * (UTF8_MUL / 2) + 1));
@@ -230,7 +230,7 @@ class RepatchWatcher {
 	inline void ApplyCollectedChanges(void) {
 
 		// Lock the changes list until repatching is complete
-		const std::lock_guard<std::mutex> no_its_my_change_list_now(this->changed_files_mutex);
+		const std::lock_guard no_its_my_change_list_now(this->changed_files_mutex);
 
 		log_print("Repatching...\n");
 

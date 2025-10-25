@@ -15,7 +15,7 @@
 // Lookup cache
 static std::vector<std::string> cache_array_spell_ids;
 
-static std::string spell_id_params_to_string(std::vector<patch_val_t>& spell_id_params, const char* sep) {
+static std::string spell_id_params_to_string(std::vector<patch_val_t>& spell_id_params, std::string_view sep) {
 	std::string str_spell_id;
 	for (size_t i = 0; i < spell_id_params.size(); i++) {
 		char a_num[DECIMAL_DIGITS_BOUND(uint64_t) + 1] = {};
@@ -32,10 +32,10 @@ static std::string spell_id_params_to_string(std::vector<patch_val_t>& spell_id_
 				_ui64toa(spell_id_params[i].q, a_num, 10);
 				break;
 		}
-		str_spell_id.append(append);
+		str_spell_id += append;
 
 		if ((i + 1) != spell_id_params.size()) {
-			str_spell_id.append(sep);
+			str_spell_id += sep;
 		}
 	}
 	return str_spell_id;
@@ -57,15 +57,16 @@ size_t BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 	if (json_is_array(spell_id)) {
 		std::vector<patch_val_t> spell_id_params;
 
-		const char* sep = json_object_get_string(bp_info, "separator");
-		if (!sep) sep = "+";
+		std::string_view sep = "+"sv;
+		const char* sep_str = json_object_get_string(bp_info, "separator");
+		if (sep_str) sep = sep_str;
 
 		size_t count_down_idx = -1;
 
 		json_t* val;
 		json_array_foreach_scoped(size_t, i, spell_id, val) {
 			auto it = json_object_get_typed(val, regs, "param", patch_parse_type(json_object_get_string(val, "type")));
-			spell_id_params.push_back(it);
+			spell_id_params.emplace_back(it);
 
 			bool count_down = json_object_get_eval_bool_default(val, "count_down", false, JEVAL_DEFAULT);
 
@@ -84,13 +85,13 @@ size_t BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 
 		cache_array_spell_ids = {};
 		if (count_down_idx == -1) {
-			cache_array_spell_ids.push_back(spell_id_params_to_string(spell_id_params, sep));
+			cache_array_spell_ids.emplace_back(spell_id_params_to_string(spell_id_params, sep));
 		}
 		else {
 			for (; spell_id_params[count_down_idx].q; spell_id_params[count_down_idx].q--) {
-				cache_array_spell_ids.push_back(spell_id_params_to_string(spell_id_params, sep));
+				cache_array_spell_ids.emplace_back(spell_id_params_to_string(spell_id_params, sep));
 			}
-			cache_array_spell_ids.push_back(spell_id_params_to_string(spell_id_params, sep));
+			cache_array_spell_ids.emplace_back(spell_id_params_to_string(spell_id_params, sep));
 		}
 	}
 	else if (patch_value_type_t type = patch_parse_type(json_string_value(spell_id_type)); type == PVT_STRING) {
@@ -124,7 +125,7 @@ size_t BP_spell_id(x86_reg_t *regs, json_t *bp_info)
 			while (int_spell_id_real >= int_spell_id) {
 				char str_spell_id[16] = {};
 				itoa(int_spell_id_real, str_spell_id, 10);
-				cache_array_spell_ids.push_back(str_spell_id);
+				cache_array_spell_ids.emplace_back(str_spell_id);
 				int_spell_id_real--;
 			}
 		}

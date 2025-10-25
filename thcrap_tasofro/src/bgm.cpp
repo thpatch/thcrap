@@ -73,7 +73,7 @@ json_t* bgm_generator(const jsonvfs_map& in_data, std::string_view out_fn, size_
 			json_t *comment_line;
 			json_flex_array_foreach_scoped(size_t, i, value, comment_line) {
 				if (i != 0) {
-					comment += "\n";
+					comment += '\n';
 				}
 				comment += json_string_value(comment_line);
 			}

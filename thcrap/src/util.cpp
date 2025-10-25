@@ -51,15 +51,17 @@ TH_NOINLINE int TH_VECTORCALL ascii_stricmp(const char* str1, const char* str2) 
 TH_NOINLINE int TH_VECTORCALL ascii_strnicmp(const char* str1, const char* str2, size_t count) {
 	unsigned char c1, c2;
 	TH_OPTIMIZING_ASSERT(count > 0);
-	for (size_t i = 0; i < count; ++i) {
-		c1 = ((unsigned char*)str1)[i];
+	do {
+		c1 = *(unsigned char*)str1;
 		c1 |= (c1 - 'A' < 26) << 5;
-		c2 = ((unsigned char*)str2)[i];
+		c2 = *(unsigned char*)str2;
 		c2 |= (c2 - 'A' < 26) << 5;
 		if ((c1 -= c2) || !c2) {
 			break;
 		}
-	}
+		++str1;
+		++str2;
+	} while (--count);
 	return (signed char)c1;
 }
 

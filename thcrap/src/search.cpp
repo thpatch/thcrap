@@ -183,7 +183,7 @@ static DWORD WINAPI SearchThread(void *param_)
 				if (!ent->is_regular_file())
 					continue;
 
-				std::uintmax_t size = ent->file_size();
+				uintmax_t size = ent->file_size();
 				if (size < state->size_min || size > state->size_max)
 					continue;
 

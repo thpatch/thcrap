@@ -5,8 +5,6 @@
 #include "server.h"
 #include "file.h"
 
-using namespace std::string_literals;
-
 File::File(std::list<DownloadUrl>&& urls,
            success_t successCallback,
            failure_t failureCallback,
@@ -14,7 +12,7 @@ File::File(std::list<DownloadUrl>&& urls,
     : status(Status::Todo), urls(urls),
     userSuccessCallback(successCallback), userFailureCallback(failureCallback), userProgressCallback(progressCallback)
 {
-    if (urls.empty()) {
+    if unexpected(urls.empty()) {
         throw new std::invalid_argument("Input URL list must not be empty");
     }
 }

@@ -119,7 +119,7 @@ static void patch_actnut_as_string(ActNut::Object *elem, json_t *json)
 
 	json_flex_array_foreach_scoped(size_t, i, json, line) {
 		if (text.length() > 0) {
-			text += "\n";
+			text += '\n';
 		}
 		text += arabic_convert_bidi(json_string_value(line));
 	}

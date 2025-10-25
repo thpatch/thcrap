@@ -10,11 +10,11 @@ WininetHandle::WininetHandle()
     // DWORD timeout = 500;
 
     // Format according to RFC 7231, section 5.5.3
-    std::string agent = std::string(PROJECT_NAME_SHORT) + "/" + PROJECT_VERSION_STRING + " (" + windows_version() + ")";
+    std::string agent = std::string(PROJECT_NAME_SHORT) + '/' + PROJECT_VERSION_STRING + " (" + windows_version() + ')';
 
     this->internet = InternetOpenU(agent.c_str(), INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
     if (this->internet == nullptr) {
-		log_printf("Could not initialize HTTP library. No internet access?\n");
+		log_print("Could not initialize HTTP library. No internet access?\n");
         return ;
     }
     /*
@@ -26,7 +26,7 @@ WininetHandle::WininetHandle()
     // This is necessary when Internet Explorer is set to "work offline"... which
     // will essentially block all wininet HTTP accesses on handles that do not
     // explicitly ignore this setting.
-    InternetSetOption(this->internet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
+    InternetSetOptionW(this->internet, INTERNET_OPTION_IGNORE_OFFLINE, &ignore, sizeof(DWORD));
 }
 
 WininetHandle::WininetHandle(WininetHandle&& other)
@@ -78,7 +78,7 @@ HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(
         // have been moved into another object.
         // But most probably the InternetOpen in the constructor failed,
         // so we already displayed an error and we just want to leave.
-        return HttpStatus::makeSystemError(0, "Wininet is not initialized");
+        return HttpStatus::makeSystemError(0, "Wininet is not initialized"s);
     }
 
 	ScopedHInternet hFile = InternetOpenUrlA(
@@ -112,7 +112,7 @@ HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(
 		return HttpStatus::makeSystemError(inet_ret, msg);
 	}
 
-	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_STATUS_CODE,
+	HttpQueryInfoW(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_STATUS_CODE,
 		&http_stat, &byte_ret, 0
 	);
 	if (http_stat != 200) {
@@ -120,7 +120,7 @@ HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(
 	}
 
 	DWORD file_size;
-	HttpQueryInfo(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_CONTENT_LENGTH,
+	HttpQueryInfoW(hFile, HTTP_QUERY_FLAG_NUMBER | HTTP_QUERY_CONTENT_LENGTH,
 		&file_size, &byte_ret, 0
 	);
 	std::vector<uint8_t> buffer;
@@ -135,18 +135,18 @@ HttpStatus WininetHandle::download(const std::string& url, std::function<size_t(
 			read_size = rem_size;
 		}
 		if (read_size == 0) {
-			return HttpStatus::makeSystemError(0, "disconnected");
+			return HttpStatus::makeSystemError(0, "disconnected"s);
 		}
 		buffer.resize(read_size);
 		if (InternetReadFile(hFile, buffer.data(), read_size, &byte_ret) == FALSE) {
-			return HttpStatus::makeSystemError(GetLastError(), "reading error");
+			return HttpStatus::makeSystemError(GetLastError(), "reading error"s);
 		}
 		rem_size -= byte_ret;
 		if (progressCallback(file_size - rem_size, file_size) == false) {
 			return HttpStatus::makeCancelled();
 		}
         if (writeCallback(buffer.data(), read_size) != read_size) {
-			return HttpStatus::makeSystemError(GetLastError(), "writing error");
+			return HttpStatus::makeSystemError(GetLastError(), "writing error"s);
 		}
 	}
 

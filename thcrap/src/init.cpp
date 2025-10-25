@@ -221,8 +221,9 @@ json_t* identify(const char *exe_fn)
 	log_printf("→ %s %s %s (codepage %d)\n", id->id, id->build, id->variety, id->codepage);
 
 	if(stricmp(PathFindExtensionA(id->id), ".js") != 0) {
-		std::string ver_fn = std::string(id->id) + ".js";
-		run_ver = stack_cfg_resolve(ver_fn.c_str(), NULL);
+		BUILD_VLA_STR(char, ver_fn, id->id, ".js");
+		run_ver = stack_cfg_resolve(ver_fn, NULL);
+		VLA_FREE(ver_fn);
 	} else {
 		run_ver = stack_cfg_resolve(id->id, NULL);
 	}

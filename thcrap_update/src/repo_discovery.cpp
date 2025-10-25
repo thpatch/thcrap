@@ -20,7 +20,7 @@ RepoDiscovery::~RepoDiscovery()
 void RepoDiscovery::addRepo(repo_t *repo)
 {
     {
-        std::scoped_lock<std::mutex> lock(this->mutex);
+        std::lock_guard lock(this->mutex);
         if (this->repos[repo->id] != nullptr) {
             // We already know this repo
             RepoFree(repo);
@@ -56,10 +56,10 @@ bool RepoDiscovery::addRepo(ScopedJson repo_js)
 
 void RepoDiscovery::addServer(std::string url)
 {
-    std::scoped_lock<std::mutex> lock(this->mutex);
+    std::lock_guard lock(this->mutex);
 
     if (url.back() != '/') {
-        url += "/";
+        url += '/';
     }
     if (this->urls.count(url) > 0) {
         // We already downloaded repo.js repo from this URL

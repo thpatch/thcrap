@@ -1116,6 +1116,7 @@ int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprite
 	std::filesystem::path img_path(patch.name);
 	std::filesystem::path anm_path(anm_fn);
 
+	// TODO: Replace std::filesystem::path here, this is allocating ~12 C++ string objects
 	char* thtk_fn = nullptr;
 	_asprintf(&thtk_fn, "%s/%s@%s@%d%s",
 		img_path.parent_path().u8string().c_str(),
@@ -1125,31 +1126,31 @@ int stack_game_png_apply(img_patch_t& patch, std::vector<sprite_local_t>& sprite
 		img_path.extension().u8string().c_str()
 	);
 
-	int ret = 0;
 	auto iterate_png = [&](const char* filename) {
 		char** chain = resolve_chain_game(filename);
 		stack_chain_iterate_t sci;
 		sci.fn = NULL;
 		log_printf("(PNG) Resolving %s... ", chain[0]);
+		bool found = false;
 		while (stack_chain_iterate(&sci, chain, SCI_FORWARDS)) {
 			if (!patch_png_apply(patch, sprites, sci.patch_info, sci.fn)) {
-				ret = 1;
+				found = true;
 			}
 		}
-		log_print(ret ? "\n" : "not found\n");
+		log_print(found ? "\n" : "not found\n");
 		chain_free(chain);
+		return found;
 	};
 
 	if (thtk_fn) {
-		iterate_png(thtk_fn);
+		bool found = iterate_png(thtk_fn);
 		free(thtk_fn);
-		if (ret) {
-			return ret;
+		if (found) {
+			return true;
 		}
 	}
 
-	iterate_png(patch.name);
-	return ret;
+	return iterate_png(patch.name);
 }
 
 img_patch_t img_get_patch(anm_entry_t& entry, thtx_header_t* thtx) {
@@ -1326,21 +1327,25 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 
 	(void)patch_size;
 
-	typedef void* __stdcall file_load_t(const char* filename, size_t* out_size);
-	typedef void __cdecl ingame_free_t(void* mem);
+	typedef void* TH_STDCALL file_load_t(const char* filename, size_t* out_size);
+	typedef void TH_CDECL ingame_free_t(void* mem);
 
 	const json_t* runcfg = runconfig_json_get();
-	const char* file_load_func_name = json_object_get_string(runcfg, "file_load_func");
-	const char* free_func_name = json_object_get_string(runcfg, "free_func");
 
-	if (!file_load_func_name || !free_func_name) {
+	const json_t* file_load_func = json_object_get(runcfg, "file_load_func");
+	if (!file_load_func) {
 		return 0;
 	}
-
-	auto* file_load = (file_load_t*)json_object_get_eval_addr_default(runcfg, "file_load_func", NULL, JEVAL_DEFAULT);
-	auto* _ingame_free = (ingame_free_t*)json_object_get_eval_addr_default(runcfg, "free_func", NULL, JEVAL_DEFAULT);
-
-	if (!file_load || !_ingame_free) {
+	const json_t* free_func = json_object_get(runcfg, "free_func");
+	if (!free_func) {
+		return 0;
+	}
+	auto* file_load = (file_load_t*)json_eval_addr_default(file_load_func, NULL, JEVAL_DEFAULT);
+	if (!file_load) {
+		return 0;
+	}
+	auto* ingame_free = (ingame_free_t*)json_eval_addr_default(free_func, NULL, JEVAL_DEFAULT);
+	if (!ingame_free) {
 		return 0;
 	}
 
@@ -1349,13 +1354,11 @@ size_t anm_get_size(const char* fn, json_t* patch, size_t patch_size) {
 	fr->disable = true;
 
 	size_t out_size;
-	void* anm_file;
-
-	anm_file = file_load(fn, &out_size);
+	void* anm_file = file_load(fn, &out_size);
 	fr->disable = false;
-	
+
 	size_t d_size = anm_get_imgsize_diff<anm_header11_t>(anm_file, out_size);
 
-	_ingame_free(anm_file);
+	ingame_free(anm_file);
 	return d_size;
 }

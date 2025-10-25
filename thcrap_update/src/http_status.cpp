@@ -3,7 +3,7 @@
 #include <sstream>
 #include "http_status.h"
 
-HttpStatus::HttpStatus(Status status, unsigned int code, std::string text)
+HttpStatus::HttpStatus(Status status, unsigned int code, const std::string& text)
     : status(status), code(code), text(text)
 {}
 
@@ -12,13 +12,37 @@ HttpStatus::~HttpStatus()
 
 HttpStatus HttpStatus::makeOk()
 {
-    return HttpStatus(Ok, 0, "success");
+    return HttpStatus(Ok, 0, "success"s);
 }
 
 HttpStatus HttpStatus::makeCancelled()
 {
-    return HttpStatus(Cancelled, 0, "cancelled");
+    return HttpStatus(Cancelled, 0, "cancelled"s);
 }
+
+static const std::map<unsigned int, const std::string_view> messages = {
+    { 301, "URL moved permanently"sv },
+    { 302, "URL moved temporarily"sv },
+    { 304, "HTTP cache error"sv }, // If this wasn't an error, the HTTP library would have handled it
+    { 307, "URL moved temporarily"sv },
+    { 308, "URL moved permanently"sv },
+    { 400, "bad request"sv },
+    { 401, "requires authentication"sv },
+    { 403, "forbidden"sv },
+    { 404, "not found"sv },
+    { 409, "request timeout"sv },
+    { 429, "too many requests"sv },
+    { 500, "internal server error"sv },
+    // As a user, I used to be really confused by these errors. I didn't know what a "gateway" or CDN is.
+    // If a server managed to send me an HTML page, the server must be available, right?
+    // So let's reword them, with hope that these will be more clear.
+    { 502, "server error (bad gateway)"sv },
+    { 503, "server unavailable"sv },
+    { 504, "server timed out"sv },
+    // All other codes are either illegal or uncommon, returning a description
+    // wouldn't help the user, and returning the error code number will be enough
+    // for more advanced users.
+};
 
 HttpStatus HttpStatus::makeNetworkError(unsigned int httpCode)
 {
@@ -30,42 +54,13 @@ HttpStatus HttpStatus::makeNetworkError(unsigned int httpCode)
         status = ServerError;
     }
 
-    std::map<unsigned int, const char*> messages = {
-        { 301, "URL moved permanently" },
-        { 302, "URL moved temporarily" },
-        { 304, "HTTP cache error" }, // If this wasn't an error, the HTTP library would have handled it
-        { 307, "URL moved temporarily" },
-        { 308, "URL moved permanently" },
-        { 400, "bad request" },
-        { 401, "requires authentication" },
-        { 403, "forbidden" },
-        { 404, "not found" },
-        { 409, "request timeout" },
-        { 429, "too many requests" },
-        { 500, "internal server error" },
-        // As a user, I used to be really confused by these errors. I didn't know what a "gateway" or CDN is.
-        // If a server managed to send me an HTML page, the server must be available, right?
-        // So let's reword them, with hope that these will be more clear.
-        { 502, "server error (bad gateway)" },
-        { 503, "server unavailable" },
-        { 504, "server timed out" },
-        // All other codes are either illegal or uncommon, returning a description
-        // wouldn't help the user, and returning the error code number will be enough
-        // for more advanced users.
-    };
-    std::string msg;
-    auto it = messages.find(httpCode);
-    if (it != messages.end()) {
-        msg = it->second;
-    }
-    else {
-        msg = "unknown HTTP error";
-    }
 
+    auto it = messages.find(httpCode);
+    std::string msg(it != messages.end() ? it->second : "unknown HTTP error"sv);
     return HttpStatus(status, httpCode, msg);
 }
 
-HttpStatus HttpStatus::makeSystemError(unsigned int systemCode, std::string text)
+HttpStatus HttpStatus::makeSystemError(unsigned int systemCode, const std::string& text)
 {
     return HttpStatus(SystemError, systemCode, text);
 }
@@ -96,7 +91,5 @@ std::string HttpStatus::toString() const
         return this->text;
     }
 
-    std::ostringstream ss;
-    ss << this->text << " (code " << this->code << ")";
-    return ss.str();
+    return this->text + " (code " + std::to_string(this->code) + ')';
 }

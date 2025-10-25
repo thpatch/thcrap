@@ -108,7 +108,7 @@ extern "C" size_t BP_th175_open_file(x86_reg_t *regs, json_t *bp_info)
 		return 1;
 	}
 
-	std::lock_guard<std::mutex> lock(open_files_mutex);
+	std::lock_guard lock(open_files_mutex);
 	Th175File& fr = open_files[reader];
 
 	fr.init(file_name);
@@ -184,7 +184,7 @@ extern "C" size_t BP_th175_replaceReadFile(x86_reg_t *regs, json_t *bp_info)
 	AVPackageReader *reader = current_reader;
 	current_reader = nullptr;
 
-	std::lock_guard<std::mutex> lock(open_files_mutex);
+	std::lock_guard lock(open_files_mutex);
 	auto it = open_files.find(reader);
 	if (it == open_files.end()) {
 		return 1;
@@ -215,12 +215,11 @@ extern "C" size_t BP_th175_close_file(x86_reg_t *regs, json_t *bp_info)
 {
 	AVPackageReader *reader = (AVPackageReader*)json_object_get_immediate(bp_info, regs, "file_reader");
 
-	std::lock_guard<std::mutex> lock(open_files_mutex);
+	std::lock_guard lock(open_files_mutex);
 	auto it = open_files.find(reader);
-	if (it == open_files.end()) {
-		return 1;
+	if (it != open_files.end()) {
+		open_files.erase(it);
 	}
 
-	open_files.erase(it);
 	return 1;
 }

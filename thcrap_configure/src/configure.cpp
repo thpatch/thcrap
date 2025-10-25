@@ -72,7 +72,7 @@ std::string run_cfg_fn_build(const patch_sel_stack_t& sel_stack)
 
 		if (strnicmp(sel.patch_id, "lang_", 5) == 0) {
 			patch_id = sel.patch_id + 5;
-			skip = false;;
+			skip = false;
 		}
 		else {
 			patch_id = sel.patch_id;
@@ -80,7 +80,7 @@ std::string run_cfg_fn_build(const patch_sel_stack_t& sel_stack)
 
 		if (!skip) {
 			if (!ret.empty()) {
-				ret += "-";
+				ret += '-';
 			}
 			ret += patch_id;
 		}
@@ -100,11 +100,12 @@ std::string EnterRunCfgFN(std::string& run_cfg_fn)
 		);
 
 		std::wstring run_cfg_fn_new = console_read();
-		if (run_cfg_fn_new[0])
+		if (run_cfg_fn_new[0]) {
 			run_cfg_fn = to_utf8(run_cfg_fn_new);
+		}
 
 		std::string run_cfg_fn_js = run_cfg_fn + ".js";
-		if (PathFileExists(run_cfg_fn_js.c_str())) {
+		if (PathFileExistsU(run_cfg_fn_js.c_str())) {
 			log_printf("\"%s\" already exists. ", run_cfg_fn_js.c_str());
 			ret = console_ask_yn("Overwrite?") == 'n';
 		} else {
@@ -125,7 +126,7 @@ bool progress_callback(progress_callback_status_t *status, void *param)
 {
     using namespace std::literals;
     progress_state_t *state = (progress_state_t*)param;
-    std::scoped_lock lock(state->mutex);
+    std::lock_guard lock(state->mutex);
 
     switch (status->status) {
         case GET_DOWNLOADING: {
@@ -318,7 +319,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	run_cfg_fn = run_cfg_fn_build(sel_stack);
 	run_cfg_fn = EnterRunCfgFN(run_cfg_fn);
-	run_cfg_fn_js = std::string("config/") + run_cfg_fn + ".js";
+	run_cfg_fn_js = "config/" + run_cfg_fn + ".js";
 
 
 	CreateDirectoryU("config", NULL);
