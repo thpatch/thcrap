@@ -143,7 +143,7 @@ int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t si
 		return -1;
 	}
 
-	BUILD_VLA_STR(char, fn, dir, "/", name);
+	BUILD_VLA_STR(char, fn, dir, '/', name);
 	if (overwrite_existing || !PathFileExistsU(fn)) {
 		file_write(fn, buffer, size);
 	}

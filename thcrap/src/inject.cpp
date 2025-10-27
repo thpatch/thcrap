@@ -447,7 +447,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 	
 	if (args) {
 		size_t args_len = strlen(args);
-		BUILD_VLA_STR(char, cmd, "\"", exe_fn_local, exe_fn_len, "\" ", args, args_len);
+		BUILD_VLA_STR(char, cmd, '"', exe_fn_local, exe_fn_len, "\" ", args, args_len);
 
 		ret = W32_ERR_WRAP(inject_CreateProcessU(
 			NULL, cmd, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
@@ -615,11 +615,12 @@ static inline void inject_CreateProcess_helper(
 	DWORD dwCreationFlags
 )
 {
+	std::wstring loader_pid_str = std::to_wstring(runconfig_loader_pid_get());
 	{
-		HANDLE hFileMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, (L"thcrap loader process list " + std::to_wstring(runconfig_loader_pid_get())).c_str());
-		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, (L"thcrap loader process list mutex " + std::to_wstring(runconfig_loader_pid_get())).c_str());
+		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, (L"thcrap loader process list mutex "sv + loader_pid_str).c_str());
 
 		if (hMutex) {
+			HANDLE hFileMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, (L"thcrap loader process list "sv + loader_pid_str).c_str());
 			DWORD* pid_list = (DWORD*)MapViewOfFile(hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 128 * sizeof(DWORD));
 
 			WaitForSingleObject(hMutex, INFINITE);
@@ -645,13 +646,13 @@ static inline void inject_CreateProcess_helper(
 		if (!id) id = identify_by_size(exe_size, versions_js);
 
 		if (id && id->id) {
-			std::wstring mailslotName = L"\\\\.\\mailslot\\thcrap_request_update_" + std::to_wstring(runconfig_loader_pid_get());
-			HANDLE hMail = CreateFileW(mailslotName.c_str(), GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+			HANDLE hMail = CreateFileW((L"\\\\.\\mailslot\\thcrap_request_update_"sv + loader_pid_str).c_str(), GENERIC_WRITE, 1, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 			if (hMail != INVALID_HANDLE_VALUE) {
 				char data_to_send[1024] = {};
-				const int data_to_send_len = snprintf(data_to_send, elementsof(data_to_send), "{\"event_name\":\"thcrap inject %u\",\"game_id\":\"%s\"}", GetCurrentProcessId(), id->id);
+				DWORD self_pid = GetCurrentProcessId();
+				const int data_to_send_len = snprintf(data_to_send, elementsof(data_to_send), "{\"event_name\":\"thcrap inject %u\",\"game_id\":\"%s\"}", self_pid, id->id);
 				if (int_in_range_exclusive(data_to_send_len, 0, elementsof(data_to_send))) {
-					HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, (L"thcrap inject " + std::to_wstring(GetCurrentProcessId())).c_str());
+					HANDLE hEvent = CreateEventW(NULL, FALSE, FALSE, (L"thcrap inject "sv + std::to_wstring(self_pid)).c_str());
 					DWORD byteRet;
 					WriteFile(hMail, data_to_send, data_to_send_len, &byteRet, NULL);
 

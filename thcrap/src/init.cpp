@@ -68,7 +68,7 @@ void oldbuild_show()
 		//   this older version, but others don't?
 		// • Stringlocs are also part of support. -.-
 		std::string_view build_str = runconfig_build_get_view();
-		BUILD_VLA_STR(char, build_js_fn, runconfig_game_get_view(), ".", build_str, ".js");
+		BUILD_VLA_STR(char, build_js_fn, runconfig_game_get_view(), '.', build_str, ".js");
 		char *build_js_chain[] = {
 			build_js_fn,
 			nullptr
@@ -467,13 +467,12 @@ void ExitDll()
 	log_exit();
 #endif
 	{
-		std::wstring shared_mem_name = L"thcrap loader process list " + std::to_wstring(runconfig_loader_pid_get());
-		std::wstring mutex_name = L"thcrap loader process list mutex " + std::to_wstring(runconfig_loader_pid_get());
-
-		HANDLE hFileMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, shared_mem_name.c_str());
-		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, mutex_name.c_str());
+		// Note: The loader PID is still valid after calling runconfig_free
+		std::wstring loader_pid_str = std::to_wstring(runconfig_loader_pid_get());
+		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, (L"thcrap loader process list mutex "sv + loader_pid_str).c_str());
 
 		if (hMutex) {
+			HANDLE hFileMapping = OpenFileMappingW(FILE_MAP_ALL_ACCESS, FALSE, (L"thcrap loader process list "sv + loader_pid_str).c_str());
 			DWORD* pid_list = (DWORD*)MapViewOfFile(hFileMapping, FILE_MAP_ALL_ACCESS, 0, 0, 128 * sizeof(DWORD));
 
 			WaitForSingleObject(hMutex, INFINITE);
