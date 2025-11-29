@@ -121,7 +121,7 @@ json_t* spell_player_generator(const jsonvfs_map& in_data, std::string_view out_
 	if (out_fn_ptr == NULL) {
 		return NULL;
 	}
-	if (strncmp(out_fn_ptr, "/data/csv/spellcard/", strlen("/data/csv/spellcard/")) == 0) {
+	if (strnicmp(out_fn_ptr, "/data/csv/spellcard/", strlen("/data/csv/spellcard/")) == 0) {
 		out_fn_ptr += strlen("/data/csv/spellcard/");
 	}
 	else {
