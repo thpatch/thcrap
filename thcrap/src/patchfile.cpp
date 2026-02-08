@@ -333,6 +333,19 @@ void patch_show_motd(const patch_t *patch_info)
 	}
 }
 
+int patch_game_supported(const patch_t *patch_info, const char *game_id)
+{
+	if (patch_info->supported_games) {
+		for (size_t i = 0; patch_info->supported_games[i]; i++) {
+			if (strcmp(game_id, patch_info->supported_games[i]) == 0) {
+				return 1;
+			}
+		}
+		return 0;
+	}
+	return 1;
+}
+
 patch_t patch_build(const patch_desc_t *desc)
 {
 	std::string_view repo_id = desc->repo_id;
@@ -449,6 +462,7 @@ patch_t patch_init(const char *patch_path, const json_t *patch_info, size_t leve
 
 	patch.title = json_object_get_string_copy(patch_js, "title");
 	patch.servers = json_object_get_string_array_copy(patch_js, "servers");
+	patch.supported_games = json_object_get_string_array_copy(patch_js, "supported_games");
 	patch.ignore = json_object_get_string_array_copy(patch_js, "ignore");
 	patch.motd = json_object_get_string_copy(patch_js, "motd");
 	patch.motd_title = json_object_get_string_copy(patch_js, "motd_title");
@@ -503,6 +517,12 @@ void patch_free(patch_t *patch)
 				free(patch->servers[i]);
 			}
 			free(patch->servers);
+		}
+		if (patch->supported_games) {
+			for (size_t i = 0; patch->supported_games[i]; i++) {
+				free(patch->supported_games[i]);
+			}
+			free(patch->supported_games);
 		}
 		if (patch->ignore) {
 			for (size_t i = 0; patch->ignore[i]; i++) {

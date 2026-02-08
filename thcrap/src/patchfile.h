@@ -76,6 +76,8 @@ typedef struct
 	char *title;
 	// Servers list (NULL-terminated) (from patch.js)
 	char **servers;
+	// List of supported games (NULL-terminated) (from patch.js)
+	char **supported_games;
 	// List of dependencies (from patch.js)
 	patch_desc_t *dependencies;
 	// List of font files to load (from patch.js)
@@ -199,6 +201,9 @@ THCRAP_API int patch_file_delete(const patch_t *patch_info, const char *fn);
 /// -----------
 // Shows the MOTD of the patch.
 void patch_show_motd(const patch_t *patch_info);
+
+// Returns 1 if the game id [game_id] is supported by [patch_info].
+int patch_game_supported(const patch_t *patch_info, const char *game_id);
 /// -----------
 
 /// Initialization
