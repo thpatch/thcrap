@@ -151,7 +151,10 @@ THCRAP_API void stack_foreach_cpp(std::function<void (const patch_t*)> callback)
 // patch ever as an explicit, upfront dependency of every stack ever.
 THCRAP_API int stack_remove_if_unneeded(const char *patch_id);
 
-THCRAP_API int stack_check_if_unneeded(const char* patch_id);
+THCRAP_API int stack_check_if_unneeded(const char *patch_id);
+
+// Remove all patches which do not support the current game_id
+THCRAP_API void stack_prune_patches(const char *game_id);
 
 // Clear the stack and free its patches
 THCRAP_API void stack_free();

@@ -381,6 +381,16 @@ void stack_print()
 				log_printf(" '%s'", patch.servers[i]);
 			}
 		}
+		bool print_supported_games = patch.supported_games != NULL;
+		log_print(print_supported_games ?
+			"\n  supported games:" :
+			"\n  supported games: all"
+		);
+		if (print_supported_games) {
+			for (size_t i = 0; patch.supported_games[i]; ++i) {
+				log_printf(" '%s'", patch.supported_games[i]);
+			}
+		}
 	}
 	log_print("\n");
 }
@@ -427,6 +437,16 @@ int stack_remove_if_unneeded(const char *patch_id)
 	int ret = stack_check_if_unneeded(patch_id);
 	if (ret) stack_remove_patch(patch_id);
 	return ret;
+}
+
+void stack_prune_patches(const char *game_id)
+{
+	auto game_supported = [game_id](const patch_t &patch) { return patch_game_supported(&patch, game_id); };
+	auto removed = std::partition(stack.begin(), stack.end(), game_supported);
+	for (auto it = removed; it != stack.end(); ++it) {
+		patch_free(&*it);
+	}
+	stack.erase(removed, stack.end());
 }
 
 void stack_free()
