@@ -442,7 +442,7 @@ int stack_remove_if_unneeded(const char *patch_id)
 void stack_prune_patches(const char *game_id)
 {
 	auto game_supported = [game_id](const patch_t &patch) { return patch_game_supported(&patch, game_id); };
-	auto removed = std::partition(stack.begin(), stack.end(), game_supported);
+	auto removed = std::stable_partition(stack.begin(), stack.end(), game_supported);
 	for (auto it = removed; it != stack.end(); ++it) {
 		patch_free(&*it);
 	}
