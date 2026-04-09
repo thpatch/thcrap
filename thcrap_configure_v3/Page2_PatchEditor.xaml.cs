@@ -174,9 +174,6 @@ namespace thcrap_configure_v3
 
                 private void Refresh(bool detectTypeFromUrl = true)
                 {
-                    // TODO: when switching from one repo to another, there seems to be some confusion
-                    // where the new repo sometimes gets the Type of another repo.
-                    // Putting a breakpoint here is a good idea to investigate this.
                     if (detectTypeFromUrl)
                     {
                         githubMatch = githubRegex.Match(Url);
@@ -206,6 +203,8 @@ namespace thcrap_configure_v3
             public List<Patch> patches { get; set; }
 
             public Git git { get; set; }
+
+            public bool IsNew { get; }
 
             public string IdOrNewText => id ?? "New...";
 
@@ -250,11 +249,19 @@ namespace thcrap_configure_v3
                 this.patches.Sort((x, y) => x.id.CompareTo(y.id));
                 this.patches.Add(new Patch());
 
+                this.IsNew = false;
                 this.git = Git.Open(path);
             }
             // Empty repo, used to create a new repo
             private Repo()
-            { }
+            {
+                this.servers = new Servers(this, new List<string>());
+                this.patches = new List<Patch>();
+                this.patches.Add(new Patch());
+
+                this.IsNew = true;
+                this.git = new Git();
+            }
 
             public static Repo Load(string path)
             {
@@ -303,7 +310,7 @@ namespace thcrap_configure_v3
             foreach (var repo in repos)
             {
                 if (repo.git.IsValid // If the user has a folder with a .git, it's likely a repo they're working on
-                    || repo.id == null) // We reached our "New..." item at the end of the list, pick that one
+                    || repo.IsNew) // We reached our "New..." item at the end of the list, pick that one
                 {
                     ComboBoxRepos.SelectedItem = repo;
                     break;
@@ -314,7 +321,10 @@ namespace thcrap_configure_v3
         private void ComboBoxPatches_ItemsSourceChanged(object sender, EventArgs e)
         {
             var patches = ComboBoxPatches.ItemsSource as IEnumerable<Patch>;
-            ComboBoxPatches.SelectedItem = patches.First();
+            if (patches != null)
+                ComboBoxPatches.SelectedItem = patches.First();
+            else
+                ComboBoxPatches.SelectedIndex = 0;
         }
 
         private void RefreshRepoStatus(object sender, RoutedEventArgs e)
@@ -326,7 +336,15 @@ namespace thcrap_configure_v3
         private void RepoIdChanged(object sender, TextChangedEventArgs e)
         {
             var repo = ComboBoxRepos.SelectedItem as Repo;
-            repo.servers.RefreshUrlForThpatchMirror();
+            // We only want to call this if type == thpatch mirror:
+            // - If type is Github repo, we forge the URL from the Github fields.
+            // - If type is other, this is manual input, we don't want to generate it from the repo id.
+            // And we don't allow changing the repo id for existing patches. Otherwise the naive behavior
+            // would be to create a new empty repo with the new name, which obviously isn't what the user
+            // wants, and even with a smarter behavior, renaming a repo requires server-side changes
+            // so we don't want to make it seem that easy.
+            if (repo.IsNew && repo.servers.IsThpatchMirror)
+                repo.servers.RefreshUrlForThpatchMirror();
         }
         private void GithubFieldChanged(object sender, TextChangedEventArgs e)
         {

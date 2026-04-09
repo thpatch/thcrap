@@ -40,7 +40,7 @@ namespace thcrap_configure_v3
             {
                 return Directory.Exists(path + "/.git") ? new GitImpl(path) : new Git();
             }
-            protected Git()
+            public Git()
             {
                 Status = new StatusResult();
             }

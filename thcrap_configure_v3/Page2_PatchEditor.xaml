@@ -62,7 +62,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,0,3,0">id:</TextBlock>
-                    <TextBox   Grid.Row="0" Grid.Column="1" Text="{Binding Path=id, UpdateSourceTrigger=PropertyChanged}" TextChanged="RepoIdChanged" />
+                    <TextBox   Grid.Row="0" Grid.Column="1" Text="{Binding Path=id, UpdateSourceTrigger=PropertyChanged}" TextChanged="RepoIdChanged" IsEnabled="{Binding Path=IsNew}" />
                     <TextBlock Grid.Row="0" Grid.Column="2" ToolTip="TODO write a description" Style="{StaticResource HelpTextBlock}">?</TextBlock>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,0,3,0">title:</TextBlock>
