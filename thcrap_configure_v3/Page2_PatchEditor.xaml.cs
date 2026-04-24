@@ -1,5 +1,6 @@
 // TODO use Newtonsoft.Json for every JSON parsing because I think Newtonsoft.Json supports most of JSON5 and System.Text.Json is designed to be very strict and supports none of JSON5.
 // TODO replace System.Text.Json with Newtonsoft.Json in the release script
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -16,7 +17,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using DamienG.Security.Cryptography;
 
 /**
  * Comment from Zero:
@@ -40,10 +41,12 @@ namespace thcrap_configure_v3
             public List<string> dependencies { get; set; }
             public string IdOrNewText => id ?? "New...";
 
+            private Repo repo;
             private JObject json;
 
-            private Patch(string path)
+            private Patch(Repo repo, string path)
             {
+                this.repo = repo;
                 this.json = JObject.Parse(File.ReadAllText(path + "/patch.js"));
                 this.id = (string)this.json["id"];
                 this.title = (string)this.json["title"];
@@ -63,12 +66,12 @@ namespace thcrap_configure_v3
             // Empty patch, used to create a new patch
             public Patch()
             { }
-            public static Patch Load(string path)
+            public static Patch Load(Repo repo, string path)
             {
                 if (File.Exists(path + "/patch.js"))
                     try
                     {
-                        return new Patch(path);
+                        return new Patch(repo, path);
                     }
                     catch
                     {
@@ -76,6 +79,60 @@ namespace thcrap_configure_v3
                     }
                 else
                     return null;
+            }
+
+            private string GetFilePath(string fn) => repo.GetFilePath(this.id + "/" + fn);
+
+            public void GenerateFilesJs(IEnumerable<string> gitFiles)
+            {
+                var filesIgnored = new List<string> { "files.js", "Thumbs.db", "thcrap_ignore.txt" };
+
+                JObject filesJs;
+                try
+                {
+                    using (StreamReader file = File.OpenText(GetFilePath("files.js")))
+                    using (JsonTextReader reader = new JsonTextReader(file))
+                        filesJs = (JObject)JToken.ReadFrom(reader);
+                    Console.WriteLine(filesJs.ToString());
+                    // Reset all old entries to a JSON null. This will delete any files on the
+                    // client side that no longer exist in the patch.
+                    foreach (var file in filesJs)
+                        filesJs[file.Key] = null;
+                    Console.WriteLine(filesJs.ToString());
+                }
+                catch (FileNotFoundException)
+                {
+                    filesJs = new JObject();
+                }
+
+                foreach (var it in repo.FilterIgnoredFiles(gitFiles
+                    .Where((it) => it.StartsWith(this.id + "/") && !filesIgnored.Contains(it))))
+                {
+                    string key = it.Substring(this.id.Length + 1).Replace("\\", "/");
+                    byte[] data = File.ReadAllBytes(repo.GetFilePath(it));
+
+                    // Ensure Unix line endings for JSON input
+                    if (it.EndsWith(".js") || it.EndsWith(".jdiff"))
+                    {
+                        data = data.Where((c, i) => !(c == '\r' && i + 1 < data.Length && data[i + 1] == '\n')).ToArray();
+                        File.WriteAllBytes(repo.GetFilePath(it), data);
+                    }
+
+                    Crc32 crc = new Crc32();
+                    byte[] crcArray = crc.ComputeHash(data);
+                    if (BitConverter.IsLittleEndian)
+                        Array.Reverse(crcArray);
+                    UInt32 hash = BitConverter.ToUInt32(crcArray, 0);
+                    filesJs[key] = hash;
+                }
+
+                using (StreamWriter file = File.CreateText(GetFilePath("files.js")))
+                using (JsonTextWriter writer = new JsonTextWriter(file))
+                {
+                    writer.Formatting = Formatting.Indented;
+                    writer.Indentation = 4;
+                    filesJs.WriteTo(writer);
+                }
             }
         }
 
@@ -241,7 +298,7 @@ namespace thcrap_configure_v3
                 {
                     foreach (var patchElem in (JObject)patches)
                     {
-                        var patch = Patch.Load(path + "/" + (string)patchElem.Key);
+                        var patch = Patch.Load(this, path + "/" + (string)patchElem.Key);
                         if (patch != null)
                             this.patches.Add(patch);
                     }
@@ -283,6 +340,51 @@ namespace thcrap_configure_v3
                 repos.Sort((x, y) => x.id.CompareTo(y.id));
                 repos.Add(new Repo());
                 return repos;
+            }
+
+            public string GetFilePath(string file) => Path.Combine(path, file);
+            private IEnumerable<string> ReadIgnoreList()
+            {
+                try
+                {
+                    return File.ReadAllLines(GetFilePath("thcrap_ignore.txt"));
+                }
+                catch (FileNotFoundException)
+                {
+                    return new List<string>();
+                }
+            }
+            public IEnumerable<string> FilterIgnoredFiles(IEnumerable<string> files)
+            {
+                IEnumerable<string> ignoreList = ReadIgnoreList();
+                return files.Where(it =>
+                {
+                    foreach (string ignore in ignoreList)
+                    {
+                        if (it.Contains(ignore)) // TODO glob
+                            return false;
+                    }
+                    return true;
+                });
+            }
+            public void PushToGithub()
+            {
+                // TODO `git add` before ListIndexedFiles / GenerateFilesJs
+                // (ListIndexedFiles lists indexed files and files which haven't been git added aren't in the index yet)
+
+                var git = (GitImpl)this.git; // Exception if null (the commit button should be greyed out)
+                IEnumerable<string> gitFiles = git.ListIndexedFiles();
+
+                // if (!this.servers.IsThpatchMirror) // TODO put back
+                    foreach (Patch patch in patches)
+                        if (patch.id != null) // "New..." entry
+                            patch.GenerateFilesJs(gitFiles);
+                /* TODO
+                 * git add for files.js
+                 * Popup for commit title (pre-filled) and message (optionnal)
+                 * git commit
+                 * git push
+                 */
             }
         }
 
@@ -350,6 +452,13 @@ namespace thcrap_configure_v3
         {
             var repo = ComboBoxRepos.SelectedItem as Repo;
             repo.servers.RefreshUrlForGithubRepo();
+        }
+
+        private void PushToGithub(object sender, RoutedEventArgs e)
+        {
+            var repo = ComboBoxRepos.SelectedItem as Repo;
+            // TOOD run on background thread and add progress indicator
+            repo.PushToGithub();
         }
     }
 }

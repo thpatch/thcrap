@@ -126,6 +126,13 @@ namespace thcrap_configure_v3
                 OnPropertyChanged(nameof(VisibleIfStatusIsGood));
                 OnPropertyChanged(nameof(VisibleIfStatusHasError));
             }
+            public List<string> ListIndexedFiles()
+            {
+                var result = new List<string>();
+                foreach (IndexEntry e in repo.Index)
+                    result.Add(e.Path);
+                return result;
+            }
             public override bool IsValid => true;
         }
     }

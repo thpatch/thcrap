@@ -67,6 +67,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Crc32.cs" />
     <Compile Include="Page2.xaml.cs">
       <DependentUpon>Page2.xaml</DependentUpon>
     </Compile>

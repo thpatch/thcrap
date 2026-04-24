@@ -148,6 +148,7 @@
                     <TextBox></TextBox>
                 </DockPanel>
                 <StackPanel Orientation="Horizontal">
+                    <!-- TODO -->
                     <TextBlock Margin="0,0,3,0">Github connection status:</TextBlock>
                     <TextBlock Margin="0,0,3,0" Foreground="red">KO</TextBlock>
                     <Button>Connect</Button>
@@ -176,7 +177,8 @@
                 * git commit
                 * git push
                 -->
-                <Button>Push changes to Github</Button>
+                <!-- TODO grey out if no valid git repo is found -->
+                <Button Click="PushToGithub">Push changes to Github</Button>
             </StackPanel>
         </Grid>
     </ScrollViewer>
