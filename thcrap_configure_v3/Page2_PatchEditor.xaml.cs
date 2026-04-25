@@ -81,7 +81,7 @@ namespace thcrap_configure_v3
                     return null;
             }
 
-            private string GetFilePath(string fn) => repo.GetFilePath(this.id + "/" + fn);
+            public string GetFilePath(string fn) => repo.GetFilePath(this.id + "/" + fn);
 
             public void GenerateFilesJs(IEnumerable<string> gitFiles)
             {
@@ -369,18 +369,21 @@ namespace thcrap_configure_v3
             }
             public void PushToGithub()
             {
-                // TODO `git add` before ListIndexedFiles / GenerateFilesJs
-                // (ListIndexedFiles lists indexed files and files which haven't been git added aren't in the index yet)
-
                 var git = (GitImpl)this.git; // Exception if null (the commit button should be greyed out)
-                IEnumerable<string> gitFiles = git.ListIndexedFiles();
 
-                // if (!this.servers.IsThpatchMirror) // TODO put back
+                // TODO test
+                git.AddAll();
+
+                IEnumerable<string> gitFiles = git.ListIndexedFiles();
+                if (!this.servers.IsThpatchMirror)
                     foreach (Patch patch in patches)
                         if (patch.id != null) // "New..." entry
+                        {
                             patch.GenerateFilesJs(gitFiles);
+                            git.Add(patch.GetFilePath("files.js")); // TODO test
+                        }
+
                 /* TODO
-                 * git add for files.js
                  * Popup for commit title (pre-filled) and message (optionnal)
                  * git commit
                  * git push

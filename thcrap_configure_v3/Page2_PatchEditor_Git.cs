@@ -133,6 +133,21 @@ namespace thcrap_configure_v3
                     result.Add(e.Path);
                 return result;
             }
+
+            public void Add(string path)
+            {
+                repo.Index.Add(path);
+                repo.Index.Write();
+            }
+            public void AddAll()
+            {
+                RefreshStatus();
+                foreach (string it in Status.filesToAdd)
+                    repo.Index.Add(it);
+                foreach (string it in Status.filesToRemove)
+                    repo.Index.Remove(it);
+                repo.Index.Write();
+            }
             public override bool IsValid => true;
         }
     }
