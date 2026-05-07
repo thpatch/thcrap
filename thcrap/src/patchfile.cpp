@@ -160,8 +160,20 @@ TH_CALLER_FREE char* fn_for_game(const char *fn)
 void patch_print_fn(const patch_t *patch_info, const char *fn)
 {
 	if (patch_info && fn) {
-		const char* archive = patch_info->archive;
-		char end_char = archive[patch_info->archive_length - 1];
+		char end_char = patch_info->archive[patch_info->archive_length - 1];
+
+		std::string_view& thcrap_dir = runconfig_thcrap_dir_get_view();
+
+		size_t out_len = 0;
+		const char* archive = find_path_substring(patch_info->archive, patch_info->archive_length, thcrap_dir.data(), thcrap_dir.length(), &out_len);
+
+		if (!archive) {
+			archive = patch_info->archive;
+		}
+		else {
+			archive += out_len;
+		}
+			
 		log_printf(
 			(end_char == '/') || (end_char == '\\') ? "\n%*s+ %s%s" : "\n%*s+ %s/%s"
 			, patch_info->level, "", archive, fn

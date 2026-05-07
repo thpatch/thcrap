@@ -347,7 +347,17 @@ void stack_print()
 	}
 	log_print("\n");
 
+	std::string_view& thcrap_dir = runconfig_thcrap_dir_get_view();
+
 	for (const patch_t& patch : stack) {
+		size_t out_len = 0;
+		const char* archive = find_path_substring(patch.archive, patch.archive_length, thcrap_dir.data(), thcrap_dir.length(), &out_len);
+		if (!archive) {
+			archive = patch.archive;
+		}
+		else {
+			archive += out_len;
+		}
 
 		log_printf(
 			"\n"
@@ -356,7 +366,7 @@ void stack_print()
 			"  title: %s\n"
 			"  update: %s\n"
 			, patch.level, patch.id
-			, patch.archive
+			, archive
 			, patch.title
 			, BoolStr(patch.update)
 		);
