@@ -1,0 +1,35 @@
+<Window x:Class="thcrap_configure_v3.Page2_PatchEditor_GitRemote"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:thcrap_configure_v3"
+        mc:Ignorable="d"
+        Title="Setting up git remote" Height="450" Width="800">
+    <StackPanel Orientation="Vertical" Margin="10">
+        <TextBlock>
+            If you know what you're doing, just go do a "git remote add origin (repo_url)" and then close this window.<LineBreak />
+            Note that we don't support prompting for a password yet, so we recommend authenticating with a passwordless ssh key.<LineBreak />
+            <LineBreak />
+            There are 3 steps to setting up a git remote:<LineBreak />
+            <LineBreak />
+            1. Create a Github account.<LineBreak />
+            Go to <Hyperlink RequestNavigate="OpenUri" NavigateUri="https://github.com/signup">https://github.com/signup</Hyperlink> and create an account.<LineBreak />
+            <LineBreak />
+            2. Create a git repo on Github.<LineBreak />
+            Go to <Hyperlink RequestNavigate="OpenUri" NavigateUri="https://github.com/new">https://github.com/new</Hyperlink> and create a new public repo (you can leave all the fields other than the<LineBreak />
+            repo name to their default values). When you're done, fill the repo name below and click on "add Github repo".<LineBreak />
+            Repo name: <TextBox Width="200" Margin="3,0,3,0"></TextBox><Button>Add Github repo</Button><LineBreak />
+        </TextBlock>
+        <TextBlock>
+            3. Set up an ssh key.<LineBreak />
+            <!-- TODO replace this whole block of text with a "done" after doing it -->
+            We can do it for you, or you can do it yourself.
+            If you want us to do it for you, go to <Hyperlink RequestNavigate="OpenUri" NavigateUri="{Binding Path=VerificationUri}"><Run Text="{Binding Mode=OneWay, Path=VerificationUri}" /></Hyperlink>,<LineBreak />
+            enter the code "<Run Text="{Binding Mode=OneWay, Path=UserCode}" />" <Button Click="CopyCode">Copy code</Button>, and allow "Thcrap configure Github helper" to access to your account.<LineBreak />
+            <!-- TODO save the ssh key in thcrap/repos/the_repo and add them to gitignore. Also, TODO at some point auto-pull and auto-merge the gitignore, especially if it's a new repo. -->
+            <!-- And use a git config (local to the repo) to tell git where the ssh keys are, so that using the default location for the manual step works fine. -->
+            Otherwise, please save your public and private SSH keys to TODO (ideally the default location).
+        </TextBlock>
+    </StackPanel>
+</Window>

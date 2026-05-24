@@ -457,6 +457,20 @@ namespace thcrap_configure_v3
             repo.servers.RefreshUrlForGithubRepo();
         }
 
+        private void GitRemoteSetUp(object sender, RoutedEventArgs e)
+        {
+            new Page2_PatchEditor_GitRemote().ShowDialog();
+            /* Note:
+             * The only things we need Github connection for is creating a new repo,
+             * and adding an ssh key.
+             * Both of these things only need to be done once.
+             * For this reason, we don't need to save the token to disk.
+             * We also don't need a "Github status" line in the UI, the Github status
+             * is useless outside of the short span of time you're itneracting with it
+             * (knowing whether there is a git remote is enough).
+             */
+        }
+
         private void PushToGithub(object sender, RoutedEventArgs e)
         {
             var repo = ComboBoxRepos.SelectedItem as Repo;
