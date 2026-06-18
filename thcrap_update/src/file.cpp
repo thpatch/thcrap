@@ -8,14 +8,14 @@
 using namespace std::string_literals;
 
 File::File(std::list<DownloadUrl>&& urls,
-           success_t successCallback,
-           failure_t failureCallback,
-           progress_t progressCallback)
+           SuccessCallback successCallback,
+           FailureCallback failureCallback,
+           ProgressCallback progressCallback)
     : status(Status::Todo), urls(urls),
     userSuccessCallback(successCallback), userFailureCallback(failureCallback), userProgressCallback(progressCallback)
 {
     if (urls.empty()) {
-        throw new std::invalid_argument("Input URL list must not be empty");
+        throw std::invalid_argument("Input URL list must not be empty");
     }
 }
 
@@ -108,7 +108,7 @@ extern "C" int download_single_file(const char* url, const char* fn) {
             return res.second.get();
         }
     }
-    catch (std::bad_alloc e) {
+    catch (const std::bad_alloc& e) {
         return HttpStatus::SystemError;
     }
 }

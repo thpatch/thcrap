@@ -7,7 +7,7 @@
 #include "strings_array.h"
 #include "3rdparty/crc32.h"
 
-Update::Update(Update::filter_t filterCallback,
+Update::Update(Update::FilterCallback filterCallback,
                progress_callback_t progressCallback, void *progressData)
     : filterCallback(filterCallback), progressCallback(progressCallback), progressData(progressData)
 {
