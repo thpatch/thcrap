@@ -677,7 +677,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 
 	state.update_at_exit = globalconfig_get_boolean("update_at_exit", false);
 	state.background_updates = globalconfig_get_boolean("background_updates", false);
-	state.time_between_updates = (int)globalconfig_get_integer("time_between_updates", 5);
+	state.time_between_updates = static_cast<int>(globalconfig_get_integer("time_between_updates", 5));
 	state.update_others = globalconfig_get_boolean("update_others", true);
 	
 	SetLastError(0);

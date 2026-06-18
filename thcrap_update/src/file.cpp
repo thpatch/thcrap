@@ -62,7 +62,7 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
         }
     );
     if (!status) {
-        if (status.get() == HttpStatus::ServerError || status.get() == HttpStatus::SystemError) {
+        if (status.get() == HttpStatus::Status::ServerError || status.get() == HttpStatus::Status::SystemError) {
             // If the server is dead, we don't want to continue using it.
             // If the library returned an error, future downloads to the
             // same server are also likely to fail.
@@ -105,10 +105,10 @@ extern "C" int download_single_file(const char* url, const char* fn) {
             return 0;
         }
         else {
-            return res.second.get();
+            return static_cast<int>(res.second.get());
         }
     }
     catch (const std::bad_alloc& e) {
-        return HttpStatus::SystemError;
+        return static_cast<int>(HttpStatus::Status::SystemError);
     }
 }

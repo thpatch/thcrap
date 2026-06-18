@@ -17,15 +17,15 @@ Update::Update(Update::FilterCallback filterCallback,
 get_status_t Update::httpStatusToGetStatus(HttpStatus status)
 {
     switch (status.get()) {
-        case HttpStatus::Ok:
+        case HttpStatus::Status::Ok:
             return GET_OK;
-        case HttpStatus::Cancelled:
+        case HttpStatus::Status::Cancelled:
             return GET_CANCELLED;
-        case HttpStatus::ClientError:
+        case HttpStatus::Status::ClientError:
             return GET_CLIENT_ERROR;
-        case HttpStatus::ServerError:
+        case HttpStatus::Status::ServerError:
             return GET_SERVER_ERROR;
-        case HttpStatus::SystemError:
+        case HttpStatus::Status::SystemError:
             return GET_SYSTEM_ERROR;
         default:
             throw std::invalid_argument("Invalid status");
@@ -236,7 +236,7 @@ void Update::startPatchUpdate(const patch_t *patch)
             this->onFilesJsComplete(patch, data);
         },
         [patch_id = std::string(patch->id)](const DownloadUrl& url, HttpStatus httpStatus) {
-            if (httpStatus.get() == HttpStatus::Cancelled) {
+            if (httpStatus.get() == HttpStatus::Status::Cancelled) {
                 // Another file finished before
                 return ;
             }

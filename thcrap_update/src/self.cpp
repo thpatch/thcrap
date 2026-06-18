@@ -81,7 +81,7 @@ LRESULT CALLBACK smartdlg_proc(
 		if (state && state->hProgress) {
 			std::lock_guard<std::mutex> lock(state->progress_mutex);
 			if (state->total_size > 0) {
-				int pos = (int)((state->current_progress * 100) / state->total_size);
+				int pos = static_cast<int>((state->current_progress * 100) / state->total_size);
 				SendMessage(state->hProgress, PBM_SETPOS, pos, 0);
 			}
 		}
