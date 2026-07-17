@@ -55,7 +55,7 @@ int globalconfig_dump(json_t* cfg)
 	return json_dump_file(cfg, "config/config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 }
 
-json_t* globalconfig_init(void)
+static json_t* globalconfig_init(void)
 {
 	json_decref(global_cfg);
 	json_t* cfg = json_load_file_report("config/config.js");
