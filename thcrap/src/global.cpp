@@ -10,7 +10,17 @@
 #include "thcrap.h"
 #include <functional>
 
-json_t* global_cfg = NULL;
+// Uncomment this to test updating from a dev version
+/*
+#undef PROJECT_VERSION_Y
+#define PROJECT_VERSION_Y 0001
+#undef PROJECT_VERSION_M
+#define PROJECT_VERSION_M 01
+#undef PROJECT_VERSION_D
+#define PROJECT_VERSION_D 01
+*/
+
+static json_t* global_cfg = NULL;
 
 #define QUOTE2(x) #x
 #define QUOTE(x) QUOTE2(x)
@@ -29,30 +39,86 @@ constexpr uint32_t PROJECT_VERSION = DateToVersion(TO_HEX(PROJECT_VERSION_Y), TO
 const char PROJECT_VERSION_STRING[] = QUOTE(PROJECT_VERSION_Y) "-" QUOTE(PROJECT_VERSION_M) "-" QUOTE(PROJECT_VERSION_D);
 const char PROJECT_BRANCH[] = BUILD_PROJECT_BRANCH;
 
-void globalconfig_init(void)
+enum ConfigVersion {
+	OLD_CONFIG = 0,
+	CONFIG_V1 = 1,
+};
+
+#if ENABLE_OVERHAULED_UPDATE_SETTINGS
+#define CONFIG_VERSION_CURRENT CONFIG_V1
+#else
+#define CONFIG_VERSION_CURRENT OLD_CONFIG
+#endif
+
+int globalconfig_dump(json_t* cfg)
 {
-	json_decref(global_cfg);
-	global_cfg = json_load_file_report("config/config.js");
-	if (!global_cfg) {
-		global_cfg = json_object();
-	}
+	return json_dump_file(cfg, "config/config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
 }
 
-int globalconfig_dump(void)
+json_t* globalconfig_init(void)
 {
-	return json_dump_file(global_cfg, "config/config.js", JSON_INDENT(2) | JSON_SORT_KEYS);
+	json_decref(global_cfg);
+	json_t* cfg = json_load_file_report("config/config.js");
+	bool write_to_disk = false;
+	if (cfg) {
+#if ENABLE_OVERHAULED_UPDATE_SETTINGS
+		// Config migrations
+		json_t* version_j = json_object_get(cfg, "config_version");
+		ConfigVersion version = version_j ? (ConfigVersion)json_integer_value(version_j) : OLD_CONFIG;
+		if (version != CONFIG_VERSION_CURRENT) {
+			switch (version) {
+				case OLD_CONFIG: {
+					update_type_t update_type;
+					loader_type_t loader_type;
+					if (json_is_true(json_object_get(cfg, "background_updates"))) {
+						update_type = UPDATE_IN_BACKGROUND;
+						loader_type = LOADER_PERSISTENT;
+					}
+					else if (json_is_true(json_object_get(cfg, "update_at_exit"))) {
+						update_type = UPDATE_AT_EXIT;
+						loader_type = LOADER_STARTUP_ONLY;
+					}
+					else {
+						update_type = UPDATE_AT_STARTUP;
+						loader_type = LOADER_STARTUP_ONLY;
+					}
+					json_object_set_new_nocheck(cfg, "update_type", json_integer(update_type));
+					json_object_set_new_nocheck(cfg, "loader_type", json_integer(loader_type));
+					json_object_del(cfg, "background_updates");
+					json_object_del(cfg, "update_at_exit");
+				}
+			}
+			json_object_set_new_nocheck(cfg, "config_version", json_integer(CONFIG_VERSION_CURRENT));
+			MoveFileExW(L"config/config.js", L"config/config_old.js", MOVEFILE_COPY_ALLOWED | MOVEFILE_WRITE_THROUGH);
+			write_to_disk = true;
+		}
+#endif
+	}
+	else {
+		cfg = json_object();
+#if ENABLE_OVERHAULED_UPDATE_SETTINGS
+		json_object_set_new_nocheck(cfg, "update_type", json_integer(DEFAULT_UPDATE_TYPE));
+		json_object_set_new_nocheck(cfg, "loader_type", json_integer(DEFAULT_LOADER_TYPE));
+		json_object_set_new_nocheck(cfg, "config_version", json_integer(CONFIG_V1));
+#endif
+		write_to_disk = true;
+	}
+	if (write_to_disk) {
+		globalconfig_dump(cfg);
+	}
+	global_cfg = cfg;
+	return cfg;
 }
 
 template<typename T, typename L>
-T globalconfig_get(const L& json_T_value, const char* key, const T default_value)
+inline T globalconfig_get(const L& json_T_value, const char* key, const T default_value)
 {
-	if (!global_cfg) {
-		globalconfig_init();
+	json_t* cfg = global_cfg;
+	if unexpected(!cfg) {
+		cfg = globalconfig_init();
 	}
-	errno = 0;
-	json_t* value_json = json_object_get(global_cfg, key);
+	json_t* value_json = json_object_get(cfg, key);
 	if (!value_json) {
-		errno = ENOENT;
 		return default_value;
 	}
 	return json_T_value(value_json);
@@ -61,16 +127,17 @@ T globalconfig_get(const L& json_T_value, const char* key, const T default_value
 template<typename T, typename L>
 int globalconfig_set(const L& json_T, const char* key, const T value)
 {
-	if (!global_cfg) {
-		globalconfig_init();
+	json_t* cfg = global_cfg;
+	if unexpected(!cfg) {
+		cfg = globalconfig_init();
 	}
 	json_t* j_value = json_T(value);
-	if (json_equal(j_value, json_object_get(global_cfg, key))) {
+	if (json_equal(j_value, json_object_get(cfg, key))) {
 		json_decref(j_value);
 		return 0;
 	}
-	json_object_set_new(global_cfg, key, j_value);
-	return globalconfig_dump();
+	json_object_set_new(cfg, key, j_value);
+	return globalconfig_dump(cfg);
 }
 
 BOOL globalconfig_get_boolean(const char* key, const BOOL default_value)

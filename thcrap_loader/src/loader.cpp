@@ -155,8 +155,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	// so we'll buffer the logs somewhere and display them a bit later.
 	std::vector<std::string> update_finalize_logs;
 	bool update_finalize_ret = update_finalize(update_finalize_logs);
-
-	globalconfig_init();
+	
 	log_init(globalconfig_get_boolean("console", false));
 
 	for (auto& it : update_finalize_logs) {

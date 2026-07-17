@@ -222,7 +222,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	strings_mod_init();
 
-	globalconfig_init();
+	
 	exception_load_config();
 
 	log_async = false;
