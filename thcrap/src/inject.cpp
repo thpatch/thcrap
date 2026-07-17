@@ -615,7 +615,8 @@ static inline void inject_CreateProcess_helper(
 	DWORD dwCreationFlags
 )
 {
-	std::wstring loader_pid_str = std::to_wstring(runconfig_loader_pid_get());
+	DWORD loader_pid = runconfig_loader_pid_get();
+	std::wstring loader_pid_str = std::to_wstring(loader_pid);
 	{
 		HANDLE hMutex = OpenMutexW(SYNCHRONIZE, FALSE, (L"thcrap loader process list mutex "sv + loader_pid_str).c_str());
 
@@ -639,7 +640,7 @@ static inline void inject_CreateProcess_helper(
 		}
 	}
 
-	if (GetCurrentProcessId() != runconfig_loader_pid_get()) {
+	if (GetCurrentProcessId() != loader_pid) {
 		json_t* versions_js = stack_json_resolve("versions" VERSIONS_SUFFIX ".js", NULL);
 		size_t exe_size;
 		game_version* id = identify_by_hash(lpAppName, &exe_size, versions_js);
@@ -656,7 +657,7 @@ static inline void inject_CreateProcess_helper(
 					DWORD byteRet;
 					WriteFile(hMail, data_to_send, data_to_send_len, &byteRet, NULL);
 
-					HANDLE hLoaderProcess = OpenProcess(SYNCHRONIZE, FALSE, runconfig_loader_pid_get());
+					HANDLE hLoaderProcess = OpenProcess(SYNCHRONIZE, FALSE, loader_pid);
 
 					if (hLoaderProcess) {
 						HANDLE handles[] = {

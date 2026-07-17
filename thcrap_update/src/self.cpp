@@ -125,11 +125,21 @@ DWORD WINAPI self_window_create_and_run(void* param)
 	LONG font_pad = 0;
 	const int PROGRESS_HEIGHT = 20;
 
+	// We don't need iPaddedBorderWidth and including it in the size apparently isn't good for XP.
+	// Rather than checking OS version at runtime we'll just report the version of the smaller
+	// structure unconditionally.
+	// https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-nonclientmetricsa#remarks
+#if WINVER >= 0x0600
+	constexpr DWORD NONCLIENTMETRICSW_SIZE = sizeof(NONCLIENTMETRICSW) - sizeof(NONCLIENTMETRICSW::iPaddedBorderWidth);
+#else
+	constexpr DWORD NONCLIENTMETRICSW_SIZE = sizeof(NONCLIENTMETRICSW);
+#endif
+
 	NONCLIENTMETRICSW nc_metrics = {};
-	nc_metrics.cbSize = sizeof(nc_metrics);
+	nc_metrics.cbSize = NONCLIENTMETRICSW_SIZE;
 
 	if (SystemParametersInfoW(
-		SPI_GETNONCLIENTMETRICS, sizeof(nc_metrics), &nc_metrics, 0
+		SPI_GETNONCLIENTMETRICS, NONCLIENTMETRICSW_SIZE, &nc_metrics, 0
 	)) {
 		int height = nc_metrics.lfMessageFont.lfHeight;
 		state->hFont = CreateFontIndirectW(&nc_metrics.lfMessageFont);
@@ -593,7 +603,7 @@ self_result_t self_update(const char* thcrap_dir)
 	// We are now trying an update
 	smartdlg_state_t window;
 
-	DWORD cur_dir_len = GetCurrentDirectoryU(0, NULL) + 1;
+	DWORD cur_dir_len = GetCurrentDirectoryU(0, NULL);
 	VLA(char, cur_dir, cur_dir_len);
 	GetCurrentDirectoryU(cur_dir_len, cur_dir);
 	SetCurrentDirectoryU(thcrap_dir);
