@@ -103,10 +103,10 @@ extern "C" int download_single_file(const char* url, const char* fn) {
             return 0;
         }
         else {
-            return static_cast<int>(res.second.get());
+            return (int)res.second.get();
         }
     }
     catch (const std::bad_alloc& e) {
-        return static_cast<int>(HttpStatus::Status::SystemError);
+        return (int)HttpStatus::Status::SystemError;
     }
 }
