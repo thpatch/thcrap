@@ -515,6 +515,9 @@ BOOL APIENTRY DllMain(HMODULE hDll, DWORD ulReasonForCall, LPVOID)
 				ExitDll();
 			}
 			break;
+		case DLL_THREAD_ATTACH:
+			mod_func_run_all("thread_init", NULL);
+			break;
 		case DLL_THREAD_DETACH:
 			mod_func_run_all("thread_exit", NULL);
 			break;

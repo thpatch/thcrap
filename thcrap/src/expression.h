@@ -280,6 +280,7 @@ bool CPU_Supports_SHA(void);
 bool CPU_FDP_ErrorOnly(void);
 bool CPU_FCS_FDS_Deprecated(void);
 THCRAP_API bool OS_is_wine(void);
+THCRAP_API bool OS_is_wow64(void);
 bool CPU_Supports_LMLSAHF(void);
 
 // Returns a mask of the vector features enabled on the CPU

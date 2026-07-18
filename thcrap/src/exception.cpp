@@ -27,6 +27,765 @@ enum ThExceptionDetailLevel : uint8_t {
 };
 
 static uint8_t exception_detail_level = ThExceptionDetailLevel::Basic;
+static bool last_branch_logging = false;
+
+#ifndef TH_X64
+extern "C" {
+	// These are referenced by last_branch_hook.asm
+	uint64_t original_prepare_addr = 0;
+	uint32_t exception_to_tls = 0;
+	uint32_t exception_from_tls = 0;
+	extern const uint8_t initialize_wow_exception_hooks;
+}
+
+#if COMPILER_IS_REAL_MSVC
+struct FarPointer {
+	void* addr;
+	uint16_t segment;
+};
+static const struct FarPointer INITIALIZE_THUNK = { (void*)&initialize_wow_exception_hooks, 0x33 };
+#endif
+TH_FORCEINLINE static int32_t initialize_wow_exception_hooks_thunk() {
+#if COMPILER_IS_REAL_MSVC
+	__asm {
+		// this works to specify clobbers
+		MOV ECX, ECX
+		MOV EDX, EDX
+		MOV EBX, EBX
+		MOV ESI, ESI
+		MOV EDI, EDI
+		CALL FWORD PTR [INITIALIZE_THUNK]
+	}
+#else
+	int32_t ret;
+	__asm__ volatile (
+		".byte 0x9A \n"
+		".int %c[Addr] \n"
+		".byte 0x33 \n"
+		".byte 0 \n"
+		: "=a"(ret), "=m"(original_prepare_addr)
+		: [Addr]"i"(&initialize_wow_exception_hooks)
+		: "ecx", "edx", "ebx", "esi", "edi", "flags"
+	);
+	return ret;
+#endif
+}
+
+#endif
+
+static bool last_branch_tracking_initialize() {
+	// Wine does not support the necessary undocumented behavior of DR7 bits
+	if (!OS_is_wine()) {
+#ifdef TH_X64
+		last_branch_logging = true;
+		return true;
+#else
+		if (OS_is_wow64()) {
+			// Set up TLS indices for storing 
+			uint32_t exception_to_tls_temp = TlsAlloc();
+			if (exception_to_tls_temp != TLS_OUT_OF_INDEXES) {
+				uint32_t exception_from_tls_temp = TlsAlloc();
+				if (exception_from_tls_temp != TLS_OUT_OF_INDEXES) {
+					if (initialize_wow_exception_hooks_thunk() > 0) {
+						exception_to_tls = exception_to_tls_temp;
+						exception_from_tls = exception_from_tls_temp;
+						last_branch_logging = true;
+						return true;
+					}
+					TlsFree(exception_from_tls_temp);
+				}
+			}
+			TlsFree(exception_to_tls_temp);
+		}
+#endif
+	}
+	return false;
+}
+
+static bool last_branch_tracking_start(HANDLE thread = CURRENT_THREAD_PSEUDO_HANDLE) {
+	if (last_branch_logging) {
+		CONTEXT context;
+		context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+		GetThreadContext(thread, &context);
+		context.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+		// x64 Windows repurposes this old bit of DR7 to let
+		// usermode programs toggle the LBR bit of IA32_DEBUGCTL
+		context.Dr7 |= 0x100;
+		SetThreadContext(thread, &context);
+		return true;
+	}
+	return false;
+}
+
+static void log_print_rva_and_module(HMODULE mod, void *addr)
+{
+	DWORD crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
+	VLA(char, crash_fn, crash_fn_len);
+	if (GetModuleFileNameU(mod, crash_fn, crash_fn_len)) {
+		log_printf(
+			" (Rx%zX) (%s)",
+			(uintptr_t)addr - (uintptr_t)mod,
+			PathFindFileNameU(crash_fn)
+		);
+	}
+	VLA_FREE(crash_fn);
+}
+
+static void log_print_error_source(HMODULE crash_mod, void* address) {
+	if (crash_mod) {
+		log_print_rva_and_module(crash_mod, address);
+	} else {
+		HackpointMemoryName hackpoint_location = locate_address_in_stage_pages(address);
+		if (hackpoint_location.name) {
+			log_printf(" (\"%s\" + 0x%zu Stage %zu)", hackpoint_location.name, hackpoint_location.offset, hackpoint_location.stage_num);
+		}
+	}
+}
+
+// This isn't something people are really *supposed* to be enabling,
+// so size optimizing it is fine
+#pragma optimize("ys", on)
+static void log_disassembled_branch_instr(uintptr_t addr) {
+	static constexpr const char* jump_suffixes[] = {
+		"O", "NO", "B", "AE",
+		"Z", "NZ", "BE", "A",
+		"S", "NS", "PE", "PO",
+		"L", "GE", "LE", "G"
+	};
+	static constexpr const char* loop_strings[] = {
+#ifdef TH_X64
+		"LOOPZQ", "LOOPNZQ", "LOOPQ", "JRCXZ",
+		"LOOPZD", "LOOPNZD", "LOOPD", "JECXZ"
+#else
+		"LOOPZD", "LOOPNZD", "LOOPD", "JECXZ",
+		"LOOPZW", "LOOPNZW", "LOOPW", "JCXZ",
+#endif
+	};
+	static constexpr const char* segment_strs[] = {
+		"ES:", "CS:", "SS:", "DS:", "FS:", "GS:"
+	};
+#ifndef TH_X64
+	static constexpr const char* mod_rm_16[] = {
+		"BX + SI", "BX + DI", "BP + SI", "BP + DI",
+		"SI", "DI", "BP", "BX"
+	};
+#endif
+	static constexpr const char* ret_strs[] = {
+		"RETW", "BND RETW", "REP RETW", NULL,
+		"RET", "BND RET", "REP RET", NULL
+	};
+	static constexpr const char* reg_strs_64[] = {
+		"RAX", "RCX", "RDX", "RBX", "RSP", "RBP", "RSI", "RDI",
+		"R8", "R9", "R10", "R12", "R13", "R14", "R15",
+		"R16", "R17", "R18", "R19", "R20", "R21", "R22", "R23",
+		"R24", "R25", "R26", "R27", "R28", "R29", "R30", "R31"
+	};
+	static constexpr const char* reg_strs_32[] = {
+		"EAX", "ECX", "EDX", "EBX", "ESP", "EBP", "ESI", "EDI",
+		"R8D", "R9D", "R10D", "R12D", "R13D", "R14D", "R15D",
+		"R16D", "R17D", "R18D", "R19D", "R20D", "R21D", "R22D", "R23D",
+		"R24D", "R25D", "R26D", "R27D", "R28D", "R29D", "R30D", "R31D"
+	};
+	static constexpr const char* reg_strs_16[] = {
+		"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI",
+		"R8W", "R9W", "R10W", "R11W", "R12W", "R13W", "R14W", "R15W",
+		"R16W", "R17W", "R18W", "R19W", "R20W", "R21W", "R22W", "R23W",
+		"R24W", "R25W", "R26W", "R27W", "R28W", "R29W", "R30W", "R31W"
+	};
+
+	uintptr_t branch_target;
+	uint8_t addrsize = 0;
+	int8_t segment = -1;
+	uint16_t rex_state = 0;
+	uint8_t rep_type = 0;
+
+	// Normally I wouldn't care about 16 bit junk,
+	// but this whole feature is intended to be for
+	// debugging bad binhacks where EIP is probably
+	// misaligned or executing junk.
+#define DATASIZE_64 ((bool)(rex_state & 8))
+#define DATASIZE_16_IGNORE_REX ((bool)(rex_state & 0x4000))
+#define DATASIZE_NOT_16 ((bool)((rex_state & 0x4008) != 0x4000))
+
+parsed_prefix:
+	uint8_t opcode = *(uint8_t*)addr++;
+	switch (opcode) {
+		default: unrecognized_opcode:
+			return log_print("\nOpcode: Unrecognized");
+		case 0x26: case 0x2E: case 0x36: case 0x3E: // ES:, CS:, SS:, ES:
+			rex_state = 0;
+			segment = opcode >> 3 & 3;
+			break;
+		case 0x64: case 0x65: // FS:, GS:
+			rex_state = 0;
+			segment = opcode & 0xF;
+			goto parsed_prefix;
+		case 0x66: // DATASIZE:
+			rex_state = 0x400;
+			goto parsed_prefix;
+		case 0x67: // ADDRSIZE:
+			rex_state = 0;
+			addrsize = 8;
+			goto parsed_prefix;
+		case 0xF2: // REPNE
+			rex_state = 0;
+			rep_type = 1;
+			goto parsed_prefix;
+		case 0xF3: // REP
+			rex_state = 0;
+			rep_type = 2;
+			goto parsed_prefix;
+			// REX
+		case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47: case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+			rex_state |= 0x100 | (opcode & 0x0F);
+			goto parsed_prefix;
+		case 0xD5: // REX2
+			opcode = *(uint8_t*)addr++;
+			rex_state |= 0x200 | opcode;
+			// just hope REX2.m isn't set I guess
+			goto parsed_prefix;
+		case 0x0F:
+			opcode = *(uint8_t*)addr++;
+			switch (opcode) {
+				default:
+					goto unrecognized_opcode;
+				// long conditional branches
+				case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x86: case 0x87: case 0x88: case 0x89: case 0x8A: case 0x8B: case 0x8C: case 0x8D: case 0x8E: case 0x8F:
+					if (DATASIZE_NOT_16) {
+						branch_target = addr + 4 + *(int32_t*)addr;
+					} else {
+						branch_target = addr + 2 + *(int16_t*)addr;
+					}
+					goto print_branch;
+			}
+			TH_UNREACHABLE;
+		// short conditional branches
+		case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x76: case 0x77: case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7E: case 0x7F:
+			branch_target = addr + 1 + *(int8_t*)addr;
+		print_branch:
+			log_print("\nOpcode: ");
+			if unexpected(rep_type == 1) log_print("BND ");
+			switch (segment) {
+				case -1: case 0: case 2: case 5: break;
+				case 1: log_print("-"); break; // Not taken hint
+				case 3: log_print("+"); break; // Taken hint
+				case 4: log_print("^"); break; // Alternating hint
+				default: TH_UNREACHABLE;
+			}
+			if (DATASIZE_NOT_16) {
+				log_printf(
+					"J%s %s 0x%p"
+					, jump_suffixes[opcode & 0xF]
+					, opcode & 0x80 ? "LONG" : "SHORT"
+					, (void*)branch_target
+				);
+		print_branch_target:
+				return log_print_error_source(GetModuleContaining((void*)branch_target), (void*)branch_target);
+			} else {
+				return log_printf(
+					"J%s WORD %s 0x%p"
+					, jump_suffixes[opcode & 0xF]
+					, opcode & 0x80 ? "LONG" : "SHORT"
+					, branch_target
+				);
+			}
+			TH_UNREACHABLE;
+		case 0x9A: // Direct far call
+			if (!DATASIZE_16_IGNORE_REX) {
+				branch_target = *(uint32_t*)addr;
+				log_printf(
+					"\nOpcode: CALL FAR %04hX:%08X"
+					, *(uint16_t*)(addr + 4), branch_target
+				);
+				goto print_branch_target;
+			} else {
+				branch_target = *(uint16_t*)addr;
+				return log_printf(
+					"\nOpcode: CALL FAR WORD %04hX:%04hX"
+					, *(uint16_t*)(addr + 2), branch_target
+				);
+			}
+			TH_UNREACHABLE;
+		case 0xA1: // JMPABS
+			if ((rex_state & 0x388) == 0x288) {
+#ifndef TH_X64
+				uint64_t branch_target;
+#endif
+				branch_target = *(uint64_t*)addr;
+				log_printf(
+					"\nOpcode: JMPABS 0x%llp"
+					, branch_target
+				);
+#ifdef TH_X64
+				goto print_branch_target;
+#else
+				return;
+#endif
+			}
+			goto unrecognized_opcode;
+		case 0xC2: // RET i16
+			return log_printf(
+				"\nOpcode: %s 0x%hX"
+				, ret_strs[DATASIZE_NOT_16 << 2 | rep_type]
+				, *(uint16_t*)addr
+			);
+		case 0xC3: // RET
+			return log_printf(
+				"\nOpcode: %s"
+				, ret_strs[DATASIZE_NOT_16 << 2 | rep_type]
+			);
+			// No BND/REP for RETF
+		case 0xCA: // RETF i16
+			return log_printf(
+				DATASIZE_64 ? "\nOpcode: RETFQ 0x%hX" : (DATASIZE_NOT_16 ? "\nOpcode: RETF 0x%hX" : "\nOpcode: RETFW 0x%hX")
+				, *(uint16_t*)addr
+			);
+		case 0xCB: // RETF
+			return log_print(DATASIZE_64 ? "\nOpcode: RETFQ" : (DATASIZE_NOT_16 ? "\nOpcode: RETF" : "\nOpcode: RETFW"));
+		case 0xCC: // INT3
+			return log_print("\nOpcode: INT3");
+		case 0xCD: // INT i8
+			return log_printf(
+				"\nOpcode: INT %hhu",
+				*(uint8_t*)addr
+			);
+		case 0xCE: // INTO
+			return log_print("\nOpcode: INTO");
+		case 0xCF: // IRET
+			return log_print(DATASIZE_64 ? "\nOpcode: IRETQ" : (DATASIZE_NOT_16 ? "\nOpcode: IRETD" : "\nOpcode: IRETW"));
+		case 0xE0: // LOOPNZ
+		case 0xE1: // LOOPZ
+		case 0xE2: // LOOP
+		case 0xE3: // JCXZ
+			branch_target = addr + 1 + *(int8_t*)addr;
+			log_print("\nOpcode: ");
+			switch (segment) {
+				case -1: case 0: case 2: case 5: break;
+				case 1: log_print("-"); break; // Not taken hint
+				case 3: log_print("+"); break; // Taken hint
+				case 4: log_print("^"); break; // Alternating hint
+				default: TH_UNREACHABLE;
+			}
+			if (DATASIZE_NOT_16) {
+				log_printf(
+					"%s 0x%p"
+					, loop_strings[opcode & 3 | addrsize]
+					, (void*)branch_target
+				);
+				goto print_branch_target;
+			} else {
+				return log_printf(
+					"%s WORD 0x%04hX"
+					, loop_strings[opcode & 3 | addrsize]
+					, branch_target
+				);
+			}
+			TH_UNREACHABLE;
+		case 0xE8: case 0xE9: // JMP, CALL
+			log_print("\nOpcode: ");
+			if unexpected(rep_type == 1) log_print("BND ");
+			if (DATASIZE_NOT_16) {
+				branch_target = addr + 4 + *(int32_t*)addr;
+				log_printf(
+					opcode & 1 ? "JMP 0x%p" : "CALL 0x%p"
+					, (void*)branch_target
+				);
+				goto print_branch_target;
+			} else {
+				branch_target = (addr + 2 + *(int16_t*)addr);
+				return log_printf(
+					opcode & 1 ? "JMP WORD 0x%04hX" : "CALL WORD 0x%04hX"
+					, branch_target
+				);
+			}
+			TH_UNREACHABLE;
+		case 0xEA:
+			if (!DATASIZE_16_IGNORE_REX) {
+				branch_target = *(uint32_t*)addr;
+				log_printf(
+					"\nOpcode: JMP FAR %04hX:%08X"
+					, *(uint16_t*)(addr + 4), branch_target
+				);
+				goto print_branch_target;
+			} else {
+				branch_target = *(uint16_t*)addr;
+				return log_printf(
+					"\nOpcode: JMP FAR WORD %04hX:%04hX"
+					, *(uint16_t*)(addr + 2), branch_target
+				);
+			}
+			TH_UNREACHABLE;
+		case 0xEB:
+			branch_target = addr + 1 + *(int8_t*)addr;
+			if (DATASIZE_NOT_16) {
+				log_printf(
+					"\nOpcode: JMP SHORT 0x%p"
+					, (void*)branch_target
+				);
+				goto print_branch_target;
+			} else {
+				return log_printf(
+					"\nOpcode: JMP WORD SHORT 0x%04hX"
+					, branch_target
+				);
+			}
+			TH_UNREACHABLE;
+		case 0xF1:
+			return log_print("\nOpcode: INT1");
+		case 0xFF:
+			opcode = *(uint8_t*)addr++;
+			uint8_t mod, reg;
+			switch (opcode >> 3 & 7) {
+				default:
+					goto unrecognized_opcode;
+				case 2: // CALL rm
+					log_print("\nOpcode: ");
+					if unexpected(rep_type == 1) log_print("BND ");
+					if unexpected(segment == 3) log_print("NOTRACK ");
+					log_print("CALL ");
+				print_indirect:
+					mod = opcode >> 6;
+					if (mod != 3) {
+#ifdef TH_X64
+						log_print(DATASIZE_NOT_16 ? "QWORD PTR " : "WORD PTR ");
+#else
+						log_print(DATASIZE_NOT_16 ? "DWORD PTR " : "WORD PTR ");
+#endif
+				print_indirect_mem:
+						uint8_t addr_type = 0;
+						uint8_t index = 4;
+						int32_t offset = 0;
+						reg = opcode & 7;
+						switch (mod) {
+							default: TH_UNREACHABLE;
+							case 0:
+#ifndef TH_X64
+								if (!addrsize)
+#endif
+								{
+									reg |= (rex_state & 0x10) | ((rex_state & 1) << 3);
+									switch (reg) {
+										default: TH_UNREACHABLE;
+										case 5: case 13: case 21: case 29:
+											offset = *(int32_t*)addr;
+#ifdef TH_X64
+											addr_type = 6;
+#else
+											addr_type = 5;
+#endif
+											TH_FALLTHROUGH;
+										case 0: case 1: case 2: case 3: case 6: case 7:
+										case 8: case 9: case 10: case 11: case 14: case 15:
+										case 16: case 17: case 18: case 19: case 22: case 23:
+										case 24: case 25: case 26: case 27: case 30: case 31:
+											goto default_data_seg;
+										case 4: case 12: case 20: case 28:
+											addr_type = 2;
+											goto sib_byte;
+									}
+								}
+#ifndef TH_X64
+								else {
+									switch (reg) {
+										default: TH_UNREACHABLE;
+										case 6:
+											offset = *(uint16_t*)addr;
+											addr_type = 2;
+											TH_FALLTHROUGH;
+										case 0: case 1: case 4: case 5: case 7:
+											goto default_data_seg;
+										case 2: case 3:
+											goto default_stack_seg;
+									}
+								}
+#endif
+								break;
+							case 1:
+								offset = *(int8_t*)addr;
+#ifndef TH_X64
+								if (!addrsize)
+#endif
+								{
+									goto modrm_not_16_offset;
+								}
+#ifndef TH_X64
+								else {
+									goto modrm_16_offset;
+								}
+#endif
+								TH_UNREACHABLE;
+							case 2:
+#ifndef TH_X64
+								if (!addrsize)
+#endif
+								{
+									offset = *(int32_t*)addr;
+							modrm_not_16_offset:
+									addr_type = 1;
+									reg |= (rex_state & 0x10) | ((rex_state & 1) << 3);
+									switch (reg) {
+										case 5:
+									default_stack_seg:
+											if (segment < 0) segment = 2;
+											break;
+										case 4: case 12: case 20: case 28:
+											addr_type = 3;
+									sib_byte:
+											opcode = *(uint8_t*)addr++;
+											index = ((rex_state & 0x20) >> 1) | ((rex_state & 2) << 2) | (opcode >> 3 & 7);
+											reg = (reg & ~7) | (opcode & 7);
+											switch (reg) {
+												default: TH_UNREACHABLE;
+												case 4:
+													goto default_stack_seg;
+												case 5:
+													switch (mod) {
+														case 0:
+															offset = *(int32_t*)addr;
+															addr_type = 4 + (index == 4);
+															goto default_data_seg;
+														case 1: case 2:
+															goto default_stack_seg;
+														default: TH_UNREACHABLE;
+													}
+												case 13: case 21: case 29:
+													switch (mod) {
+														default: TH_UNREACHABLE;
+														case 0:
+															offset = *(int32_t*)addr;
+															addr_type = 4 + (index == 4);
+														case 1: case 2:
+															break;
+													}
+													TH_FALLTHROUGH;
+												case 0: case 1: case 2: case 3: case 6: case 7:
+												case 8: case 9: case 10: case 11: case 12: case 14: case 15:
+												case 16: case 17: case 18: case 19: case 20: case 22: case 23:
+												case 24: case 25: case 26: case 27: case 28: case 30: case 31:
+													break;
+											}
+											TH_FALLTHROUGH;
+										case 0: case 1: case 2: case 3: case 6: case 7:
+										case 8: case 9: case 10: case 11: case 13: case 14: case 15:
+										case 16: case 17: case 18: case 19: case 21: case 22: case 23:
+										case 24: case 25: case 26: case 27: case 29: case 30: case 31:
+									default_data_seg:
+											if (segment < 0) segment = 3;
+											break;
+										default: TH_UNREACHABLE;
+									}
+								}
+#ifndef TH_X64
+								else {
+									offset = *(int16_t*)addr;
+							modrm_16_offset:
+									switch (reg) {
+										case 0: case 1: case 4: case 5: case 7:
+											goto default_data_seg;
+										case 2: case 3: case 6:
+											goto default_stack_seg;
+										default: TH_UNREACHABLE;
+									}
+								}
+#endif
+								break;
+						}
+						log_printf(
+							"%s["
+							, segment_strs[(uint32_t)segment]
+						);
+#ifndef TH_X64
+						if (!addrsize)
+#endif
+						{
+							const char* reg_str;
+							const char* index_str;
+#ifdef TH_X64
+							if (!addrsize) {
+								reg_str = reg_strs_64[reg];
+								index_str = index != 4 ? reg_strs_64[index] : "RIZ";
+							}
+							else
+#endif
+							{
+								reg_str = reg_strs_32[reg];
+								index_str = index != 4 ? reg_strs_32[index] : "EIZ";
+							}
+							uint8_t scale;
+							intptr_t final_addr;
+							switch (addr_type) {
+#ifdef TH_X64
+								case 6: // Relative addr
+									final_addr = addr + 4 + offset;
+									if unexpected(addrsize) final_addr = (uint32_t)final_addr;
+									if (offset >= 0) {
+										log_printf(
+											!addrsize ? "RIP + 0x%X] (0x%p)" : "EIP + 0x%X] (0x%08X)"
+											, offset
+											, final_addr
+										);
+									} else {
+										log_printf(
+											!addrsize ? "RIP - 0x%X] (0x%p)" : "EIP - 0x%X] (0x%08X)"
+											, -offset
+											, final_addr
+										);
+									}
+									goto print_final_addr_source;
+#endif
+								case 5: // Absolute addr
+									final_addr = offset;
+									if (!addrsize) {
+										log_printf(
+											"0x%p]"
+											, (void*)final_addr
+										);
+									}
+#ifdef TH_X64
+									else {
+										final_addr = (uint32_t)final_addr;
+										log_printf(
+											"0x%08X]"
+											, final_addr
+										);
+									}
+								print_final_addr_source:
+#endif
+									return log_print_error_source(GetModuleContaining((void*)final_addr), (void*)final_addr);
+								case 4: // SIB no reg
+									scale = opcode >> 6;
+									if (offset >= 0) {
+										return log_printf(
+											"%s*%d + 0x%X]"
+											, index_str
+											, 1 << scale
+											, offset
+										);
+									} else {
+										return log_printf(
+											"%s*%d - 0x%X]"
+											, index_str
+											, 1 << scale
+											, -offset
+										);
+									}
+									TH_UNREACHABLE;
+								case 3: // SIB offset
+									scale = opcode >> 6;
+									if (index != 4 || scale) {
+										log_printf(
+											"%s*%d + "
+											, index_str
+											, 1 << scale
+										);
+									}
+									TH_FALLTHROUGH;
+								case 1: // ModRM offset
+									if (offset >= 0) {
+										return log_printf(
+											"%s + 0x%X]"
+											, reg_str
+											, offset
+										);
+									} else {
+										return log_printf(
+											"%s - 0x%X]"
+											, reg_str
+											, -offset
+										);
+									}
+									TH_UNREACHABLE;
+								case 2: // SIB no offset
+									scale = opcode >> 6;
+									if (index != 4 || scale) {
+										log_printf(
+											"%s*%d + "
+											, index_str
+											, 1 << scale
+										);
+									}
+									TH_FALLTHROUGH;
+								case 0: // ModRM no offset
+									return log_printf(
+										"%s]"
+										, reg_str
+									);
+								default: TH_UNREACHABLE;
+							}
+						}
+#ifndef TH_X64
+						else {
+							switch (mod) {
+								case 0:
+									if (addr_type) {
+										return log_printf(
+											"0x%04hX]"
+											, offset
+										);
+									}
+									return log_printf(
+										"%s]"
+										, mod_rm_16[reg]
+									);
+								case 1: case 2:
+									if ((int16_t)offset >= 0) {
+										return log_printf(
+											"%s + 0x%4hX]"
+											, mod_rm_16[reg]
+											, offset
+										);
+									} else {
+										return log_printf(
+											"%s - 0x%4hX]"
+											, mod_rm_16[reg]
+											, -offset
+										);
+									}
+								default: TH_UNREACHABLE;
+							}
+						}
+#endif
+					} else {
+						reg = (rex_state & 0x10) | ((rex_state & 1) << 3) | (opcode & 7);
+						return log_print(
+#ifdef TH_X64
+							(DATASIZE_NOT_16 ? reg_strs_64 : reg_strs_16)[reg]
+#else
+							(DATASIZE_NOT_16 ? reg_strs_32 : reg_strs_16)[reg]
+#endif
+						);
+					}
+					TH_UNREACHABLE;
+				case 3: // CALL FAR m
+					mod = opcode >> 6;
+					if (mod != 3) {
+						log_print("\nOpcode: CALL FAR ");
+				print_indirect_mem_far:
+						log_print(DATASIZE_64 ? "TBYTE PTR " : (DATASIZE_16_IGNORE_REX ? "DWORD PTR " : "FWORD PTR "));
+						goto print_indirect_mem;
+					} else {
+						goto unrecognized_opcode;
+					}
+					TH_UNREACHABLE;
+				case 4: // JMP rm
+					log_print("\nOpcode: ");
+					if unexpected(rep_type == 1) log_print("BND ");
+					if unexpected(segment == 3) log_print("NOTRACK ");
+					log_print("JMP ");
+					goto print_indirect;
+				case 5: // JMP FAR m
+					mod = opcode >> 6;
+					if (mod != 3) {
+						log_print("\nOpcode: JMP FAR ");
+						goto print_indirect_mem_far;
+					} else {
+						goto unrecognized_opcode;
+					}
+					TH_UNREACHABLE;
+			}
+	}
+}
+#pragma optimize("", on)
 
 #pragma optimize("y", off)
 static void log_print_context(CONTEXT* ctx)
@@ -60,6 +819,37 @@ static void log_print_context(CONTEXT* ctx)
 				, ctx->Esp, ctx->Ebp, ctx->Esi, ctx->Edi
 			);
 #endif
+		}
+		if unexpected(last_branch_logging) {
+#ifdef TH_X64
+			uintptr_t exception_from = ctx->LastExceptionFromRip;
+#else
+			uintptr_t exception_from = (uintptr_t)CurrentTeb()->get_tls_slot(exception_from_tls);
+#endif
+			log_printf(
+				"\n"
+				"Most recent branch:\n"
+				"From:   0x%p"
+				, (void*)exception_from
+			);
+
+			log_print_error_source(GetModuleContaining((void*)exception_from), (void*)exception_from);
+			if (exception_from) {
+				log_disassembled_branch_instr(exception_from);
+			}
+
+#ifdef TH_X64
+			uintptr_t exception_to = ctx->LastExceptionToRip;
+#else
+			uintptr_t exception_to = (uintptr_t)CurrentTeb()->get_tls_slot(exception_to_tls);
+#endif
+			log_printf(
+				"\n"
+				"To:     0x%p"
+				, (void*)exception_to
+			);
+			log_print_error_source(GetModuleContaining((void*)exception_to), (void*)exception_to);
+			log_print("\n");
 		}
 		if (exception_detail_level & ThExceptionDetailLevel::Segments) {
 			static constexpr const char* segment_types[] = {
@@ -341,20 +1131,6 @@ static void log_print_context(CONTEXT* ctx)
 	}
 }
 
-static void log_print_rva_and_module(HMODULE mod, void *addr)
-{
-	DWORD crash_fn_len = GetModuleFileNameU(mod, NULL, 0) + 1;
-	VLA(char, crash_fn, crash_fn_len);
-	if (GetModuleFileNameU(mod, crash_fn, crash_fn_len)) {
-		log_printf(
-			" (Rx%zX) (%s)",
-			(uintptr_t)addr - (uintptr_t)mod,
-			PathFindFileNameU(crash_fn)
-		);
-	}
-	VLA_FREE(crash_fn);
-}
-
 // These defines are from internal CRT header ehdata.h
 // MSVC++ EH exception number
 #define EH_EXCEPTION_NUMBER 0xE06D7363 // ('msc' | 0xE0000000)
@@ -463,18 +1239,6 @@ static void log_print_windows_error_message(LPEXCEPTION_RECORD lpER) {
 	}
 	else {
 		log_print("No error description available.");
-	}
-}
-
-static void log_print_error_source(HMODULE crash_mod, void* address) {
-	if (crash_mod) {
-		log_print_rva_and_module(crash_mod, address);
-	}
-	else {
-		HackpointMemoryName hackpoint_location = locate_address_in_stage_pages(address);
-		if (hackpoint_location.name) {
-			log_printf(" (\"%s\" + 0x%zu Stage %zu)", hackpoint_location.name, hackpoint_location.offset, hackpoint_location.stage_num);
-		}
 	}
 }
 
@@ -1145,4 +1909,25 @@ void exception_init(void)
 void exception_load_config()
 {
 	exception_detail_level = (uint8_t)globalconfig_get_integer("exception_detail", ThExceptionDetailLevel::Basic);
+
+	if (globalconfig_get_boolean("last_branch_logging", false)) {
+		if (last_branch_tracking_initialize()) {
+			// The thread_init hook only applies to new threads,
+			// so this hack is here to apply to all existing threads too
+			HANDLE* threads = get_all_threads(THREAD_GET_CONTEXT | THREAD_SET_CONTEXT);
+			if (threads) {
+				for (size_t i = 0; HANDLE handle = threads[i]; ++i) {
+					last_branch_tracking_start(handle);
+					CloseHandle(handle);
+				}
+				free(threads);
+			}
+		}
+	}
+}
+
+extern "C" {
+TH_EXPORT void last_branch_track_mod_thread_init(void*) {
+	last_branch_tracking_start();
+}
 }

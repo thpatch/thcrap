@@ -11,7 +11,7 @@
 #if !TH_NO_NTDLL_DEFINITIONS
 
 typedef LONG NTSTATUS;
-typedef LONG_PTR KPRIORITY;
+typedef LONG KPRIORITY;
 
 #ifndef STATUS_SUCCESS
 #define STATUS_SUCCESS ((NTSTATUS)0L)
@@ -19,6 +19,15 @@ typedef LONG_PTR KPRIORITY;
 #ifndef STATUS_INVALID_INFO_CLASS
 #define STATUS_INVALID_INFO_CLASS ((NTSTATUS)0xC0000003L)
 #endif
+#ifndef STATUS_INFO_LENGTH_MISMATCH
+#define STATUS_INFO_LENGTH_MISMATCH ((NTSTATUS)0xC0000004L)
+#endif
+#ifndef STATUS_BUFFER_TOO_SMALL
+#define STATUS_BUFFER_TOO_SMALL ((NTSTATUS)0xC0000023L)
+#endif
+
+#define CURRENT_PROCESS_PSEUDO_HANDLE ((HANDLE)(intptr_t)-1)
+#define CURRENT_THREAD_PSEUDO_HANDLE ((HANDLE)(intptr_t)-2)
 
 // Tests whether or not a handle represents a "datafile" library load
 #define LDR_IS_DATAFILE(x)              (((ULONG_PTR)(x)) &  (ULONG_PTR)1)
@@ -27,15 +36,110 @@ typedef LONG_PTR KPRIORITY;
 // Unset the bit to convert the handle to the load address
 #define LDR_DATAFILE_TO_VIEW(x) ((PVOID)(((ULONG_PTR)(x)) & ~(ULONG_PTR)1))
 
+typedef struct _TEB TEB;
 typedef struct _PEB PEB;
 typedef struct _RTL_USER_PROCESS_PARAMETERS RTL_USER_PROCESS_PARAMETERS;
+
+typedef struct _CLIENT_ID {
+	HANDLE UniqueProcess;
+	HANDLE UniqueThread;
+} CLIENT_ID;
+
+typedef struct _UNICODE_STRING {
+	USHORT Length;
+	USHORT MaximumLength;
+	PWSTR  Buffer;
+} UNICODE_STRING, *PUNICODE_STRING;
+
+typedef struct _SYSTEM_THREAD_INFORMATION SYSTEM_THREAD_INFORMATION;
+struct _SYSTEM_THREAD_INFORMATION {
+	LARGE_INTEGER KernelTime;
+	LARGE_INTEGER UserTime;
+	LARGE_INTEGER CreateTime;
+	ULONG WaitTime;
+#ifdef TH_X64
+	UCHAR Padding0[4];
+#endif
+	PVOID StartAddress;
+	CLIENT_ID ClientId;
+	KPRIORITY Priority;
+	KPRIORITY BasePriority;
+	ULONG ContextSwitches;
+	ULONG ThreadState;
+	ULONG WaitReason;
+#ifdef TH_X64
+	UCHAR Padding1[4];
+#endif
+};
+
+typedef struct _SYSTEM_PROCESS_INFORMATION SYSTEM_PROCESS_INFORMATION;
+struct _SYSTEM_PROCESS_INFORMATION {
+	ULONG NextEntryOffset;
+	ULONG NumberOfThreads;
+	LARGE_INTEGER unreliable_member_1;
+	ULONG unreliable_member_2;
+	ULONG unreliable_member_3;
+	LARGE_INTEGER unreliable_member_4;
+	LARGE_INTEGER CreateTime;
+	LARGE_INTEGER UserTime;
+	LARGE_INTEGER KernelTime;
+	UNICODE_STRING ImageName;
+	KPRIORITY BasePriority;
+#ifdef TH_X64
+	UCHAR Padding0[4];
+#endif
+	ULONG_PTR UniqueProcessId;
+	ULONG_PTR InheritedFromUniqueProcessId;
+	ULONG unreliable_member_5;
+	ULONG SessionId;
+	ULONG_PTR unreliable_member_6;
+	ULONG_PTR PeakVirtualSize;
+	ULONG_PTR VirtualSize;
+	ULONG PageFaultCount;
+#ifdef TH_X64
+	UCHAR Padding1[4];
+#endif
+	ULONG_PTR PeakWorkingSetSize;
+	ULONG_PTR WorkingSetSize;
+	ULONG_PTR QuotaPeakPagedPoolUsage;
+	ULONG_PTR QuotaPagedPoolUsage;
+	ULONG_PTR QuotaPeakNonPagedPoolUsage;
+	ULONG_PTR QuotaNonPagedPoolUsage;
+	ULONG_PTR PagefileUsage;
+	ULONG_PTR PeakPagefileUsage;
+	ULONG_PTR PrivatePageCount;
+	LARGE_INTEGER ReadOperationCount;
+	LARGE_INTEGER WriteOperationCount;
+	LARGE_INTEGER OtherOperationCount;
+	LARGE_INTEGER ReadTransferCount;
+	LARGE_INTEGER WriteTransferCount;
+	LARGE_INTEGER OtherTransferCount;
+	SYSTEM_THREAD_INFORMATION threads[];
+};
+
+// https://learn.microsoft.com/en-us/windows/win32/sysinfo/zwquerysysteminformation
+typedef enum {
+	SystemBasicInformation = 0,
+	SystemProcessInformation = 6, // for some reason this kept returning 16 as a size and that's very wrong?
+	SystemExtendedProcessInformation = 57
+} SYSTEM_INFORMATION_CLASS;
+
+// NTSTATUS NTAPI NtQuerySystemInformation(SYSTEM_INFORMATION_CLASS SystemInformationClass, PVOID SystemInformation, ULONG SystemInformationLength, PULONG ReturnLength);
+func_ptr_typedef(NTSTATUS, NTAPI, NtQuerySystemInformationPtr)(SYSTEM_INFORMATION_CLASS, PVOID, ULONG, PULONG);
+extern NtQuerySystemInformationPtr NtQuerySystemInformation;
 
 typedef struct _PROCESS_BASIC_INFORMATION PROCESS_BASIC_INFORMATION;
 struct _PROCESS_BASIC_INFORMATION {
     NTSTATUS ExitStatus;
+#ifdef TH_X64
+	UCHAR Padding0[4];
+#endif
     PEB* PebBaseAddress;
     ULONG_PTR AffinityMask;
     KPRIORITY BasePriority;
+#ifdef TH_X64
+	UCHAR Padding1[4];
+#endif
     ULONG_PTR UniqueProcessId;
     ULONG_PTR InheritedFromUniqueProcessId;
 };
@@ -64,6 +168,38 @@ static TH_FORCEINLINE bool NtIsWow64Process(HANDLE ProcessHandle) {
     return STATUS_SUCCESS == NtQueryInformationProcess(ProcessHandle, ProcessWow64Information, &is_wow64, sizeof(ULONG_PTR), NULL) && is_wow64;
 }
 
+/*
+typedef struct _THREAD_BASIC_INFORMATION THREAD_BASIC_INFORMATION;
+struct _THREAD_BASIC_INFORMATION {
+	NTSTATUS ExitStatus;
+#ifdef TH_X64
+	UCHAR Padding0[4];
+#endif
+	TEB* TebBaseAddress;
+	CLIENT_ID ClientId;
+	ULONG_PTR AffinityMask;
+	KPRIORITY Priority;
+	KPRIORITY BasePriority;
+};
+
+// https://learn.microsoft.com/en-us/windows/win32/api/winternl/nf-winternl-ntqueryinformationthread
+typedef enum {
+	ThreadBasicInformation = 0,
+} THREADINFOCLASS;
+
+// NTSTATUS NTAPI NtQueryInformationThread(HANDLE ThreadHandle, THREADINFOCLASS ThreadInformationClass, PVOID ThreadInformation, ULONG ThreadInformationLength, PULONG ReturnLength);
+func_ptr_typedef(NTSTATUS, NTAPI, NtQueryInformationThreadPtr)(HANDLE, THREADINFOCLASS, PVOID, ULONG, PULONG);
+extern NtQueryInformationThreadPtr NtQueryInformationThread;
+
+#if __cplusplus
+extern "C++" {
+	static TH_FORCEINLINE bool NtGetThreadBasicInfomation(HANDLE ThreadHandle, THREAD_BASIC_INFORMATION& tbi) {
+		return STATUS_SUCCESS == NtQueryInformationThread(ThreadHandle, ThreadBasicInformation, &tbi, sizeof(THREAD_BASIC_INFORMATION), NULL);
+	}
+}
+#endif
+*/
+
 #if TH_X64
 // NTSTATUS NTAPI NtAllocateVirtualMemory(HANDLE ProcessHandle, PVOID* BaseAddress, ULONG_PTR ZeroBits, PSIZE_T RegionSize, ULONG AllocationType, ULONG Protect);
 func_ptr_typedef(NTSTATUS, NTAPI, NtAllocateVirtualMemoryPtr)(HANDLE, PVOID*, ULONG_PTR, PSIZE_T, ULONG, ULONG);
@@ -85,12 +221,6 @@ PEB: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/pe
 RTL_USER_PROCESS_PARAMETERS: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/rtl_user_process_parameters.htm
 CURDIR: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/pebteb/curdir.htm
 */
-
-typedef struct _UNICODE_STRING {
-	USHORT Length;
-	USHORT MaximumLength;
-	PWSTR  Buffer;
-} UNICODE_STRING, *PUNICODE_STRING;
 
 typedef struct _CURDIR {
 	UNICODE_STRING DosPath;
@@ -213,10 +343,6 @@ struct _PEB {
 	UCHAR Padding5[4];
 #endif
 };
-typedef struct _CLIENT_ID {
-	HANDLE UniqueProcess;
-	HANDLE UniqueThread;
-} CLIENT_ID;
 typedef struct _GDI_TEB_BATCH {
 	ULONG Offset;
 	ULONG_PTR HDC;
@@ -285,6 +411,43 @@ struct _TEB {
 	PVOID Vdm;
 	PVOID ReservedForNtRpc;
 	HANDLE DbgSsReserved[2];
+	ULONG HardErrorMode;
+	PVOID Instrumentation[9];
+	GUID ActivityId;
+	PVOID SubProcessTag;
+	PVOID EtwLocalData;
+	PVOID EtwTraceData;
+	PVOID WinSockData;
+	ULONG GdiBatchCount;
+	ULONG IdealProcessorValue;
+	ULONG GuaranteedStackBytes;
+	PVOID ReservedForPerf;
+	PVOID ReservedForOle;
+	ULONG WaitingOnLoaderLock;
+	PVOID SavedPriorityState;
+	ULONG_PTR SoftPatchPtr1;
+	PVOID ThreadPoolData;
+	PVOID* TlsExpansionSlots;
+
+#if __cplusplus
+	inline PVOID get_tls_slot(uint32_t slot) const {
+		uint32_t high_slot = slot - 64;
+		if (slot < high_slot) {
+			return this->TlsSlots[slot];
+		} else {
+			return this->TlsExpansionSlots[high_slot];
+		}
+	}
+
+	inline void set_tls_slot(uint32_t slot, void* value) {
+		uint32_t high_slot = slot - 64;
+		if (slot < high_slot) {
+			this->TlsSlots[slot] = value;
+		} else {
+			this->TlsExpansionSlots[high_slot] = value;
+		}
+	}
+#endif
 };
 
 #endif
@@ -492,3 +655,5 @@ struct _KUSER_SHARED_DATA {
 #define USER_SHARED_DATA (*(const KUSER_SHARED_DATA *const)MM_SHARED_USER_DATA_VA)
 
 #endif
+
+TH_CALLER_FREE HANDLE* get_all_threads(DWORD access);

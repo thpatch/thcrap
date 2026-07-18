@@ -520,6 +520,10 @@ THCRAP_API bool OS_is_wine(void) {
 	return wine_version != NULL;
 }
 
+THCRAP_API bool OS_is_wow64(void) {
+	return CPUID_Data.OSIsX64;
+}
+
 bool CPU_Supports_LMLSAHF(void) {
 	return CPUID_Data.HasLMLSAHF;
 }
