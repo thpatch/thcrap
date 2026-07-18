@@ -382,7 +382,11 @@ private:
                     is_char_type_v<std::remove_reference_t<std::tuple_element_t<idx + 1, TupleStrs2>>>
                 ),
                 std::basic_string_view<std::remove_cv_t<std::remove_pointer_t<std::remove_reference_t<std::tuple_element_t<idx, TupleStrs2>>>>>,
-                std::tuple_element_t<idx, TupleStrs>
+                std::conditional_t<
+                    is_compatible_string_view_v<T, std::remove_reference_t<std::tuple_element_t<idx, TupleStrs2>>>,
+                    std::remove_reference_t<std::tuple_element_t<idx, TupleStrs>>,
+                    std::tuple_element_t<idx, TupleStrs>
+                >
             >...
         >;
     };
@@ -527,10 +531,21 @@ TH_CALLER_FREE static constexpr TH_FORCEINLINE auto alloc_str(StrsT&&... strs) {
     VLA(type, name, name##_len); \
     memcpy(name, str, name##_len)
 
-#define FORMAT_VLA_STR(type, name, format, ...) \
-    size_t name##_len = snprintf(NULL, 0, (format), __VA_ARGS__); \
-    VLA(type, name, name##_len); \
-    (void)sprintf(name, (format), __VA_ARGS__)
+#define FORMAT_VLA_STR(name, format, ...) \
+    size_t name##_len; \
+    using name##_t = std::conditional_t<is_compatible_char_type_v<wchar_t, std::remove_cv_t<std::remove_pointer_t<std::decay_t<decltype(format)>>>>, wchar_t, char>; \
+    if constexpr (std::is_same_v<wchar_t, name##_t>) { \
+        name##_len = _scwprintf((const wchar_t*)(format), __VA_ARGS__); \
+    } else { \
+        name##_len = snprintf(NULL, 0, (const char*)(format), __VA_ARGS__); \
+    } \
+    VLA(name##_t, name, name##_len); \
+    if constexpr (std::is_same_v<wchar_t, name##_t>) { \
+        (void)swprintf((wchar_t *const)name, name##_len, (const wchar_t *const)(format), __VA_ARGS__); \
+    } else { \
+        (void)sprintf((char *const)name, (const char *const)(format), __VA_ARGS__); \
+    } \
+    do; while (0)
 
 }
 #endif

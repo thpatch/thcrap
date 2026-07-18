@@ -55,6 +55,10 @@ THCRAP_API bool func_remove(const char *name);
   *   need to be reloaded. [files_changed] contains the full path of each
   *   changed file and is terminated with an extra NULL pointer.
   *
+  * • "thread_init" (NULL)
+  *   Called whenever a thread in the process is created (DLL_THREAD_ATTACH in
+  *   DllMain()).
+  * 
   * • "thread_exit" (NULL)
   *   Called whenever a thread in the process exits (DLL_THREAD_DETACH in
   *   DllMain()).

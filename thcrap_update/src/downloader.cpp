@@ -26,7 +26,7 @@ void Downloader::addFile(const std::list<std::string>& serversUrl, std::string f
                          File::FailureCallback failureCallback,
                          File::ProgressCallback progressCallback)
 {
-    std::scoped_lock lock(this->mutex);
+    std::lock_guard lock(this->mutex);
 
     std::list<DownloadUrl> urls = this->serversListToDownloadUrlList(serversUrl, filePath);
     auto successLambda = [successCallback, &current_ = this->current_](const DownloadUrl& url, std::vector<uint8_t>& data) {
@@ -48,9 +48,10 @@ void Downloader::addFile(char** serversUrl, std::string filePath,
                          File::ProgressCallback progressCallback)
 {
     std::list<std::string> serversList;
-
-    for (size_t i = 0; serversUrl && serversUrl[i]; i++) {
-        serversList.push_back(serversUrl[i]);
+    if (serversUrl) {
+        for (size_t i = 0; serversUrl[i]; i++) {
+            serversList.emplace_back(serversUrl[i]);
+        }
     }
     this->addFile(serversList, filePath, successCallback, failureCallback, progressCallback);
 }

@@ -88,7 +88,7 @@ std::pair<ScopedJson, HttpStatus> Server::downloadJsonFile(const std::string& na
 
 BorrowedHttpHandle Server::borrowHandle()
 {
-    std::scoped_lock<std::mutex> lock(this->mutex);
+    std::lock_guard lock(this->mutex);
     if (!this->httpHandles.empty()) {
         BorrowedHttpHandle handle(std::move(this->httpHandles.front()), *this);
         this->httpHandles.pop_front();
@@ -100,7 +100,7 @@ BorrowedHttpHandle Server::borrowHandle()
 
 void Server::giveBackHandle(std::unique_ptr<IHttpHandle> handle)
 {
-    std::scoped_lock<std::mutex> lock(this->mutex);
+    std::lock_guard lock(this->mutex);
     this->httpHandles.push_back(std::move(handle));
 }
 
@@ -155,7 +155,7 @@ void ServerCache::clear()
 
 std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
 {
-    size_t pos = url.find("://");
+    size_t pos = url.find("://"sv);
     if (pos != std::string::npos) {
         pos += 3;
     }
@@ -177,7 +177,7 @@ std::pair<Server&, std::string> ServerCache::urlToServer(const std::string& url)
     }
 
     {
-        std::scoped_lock<std::mutex> lock(this->mutex);
+        std::lock_guard lock(this->mutex);
         auto it = this->cache.find(origin);
         if (it == this->cache.end()) {
             it = this->cache.emplace(std::piecewise_construct,

@@ -16,7 +16,7 @@ HMODULE thcrap_update_module(void)
 	static HMODULE hMod = (HMODULE)-1;
 
 	if (hMod == (HMODULE)-1) {
-		bool isWine = GetProcAddress(GetModuleHandleW(L"kernel32.dll"), "wine_get_unix_file_name");
+		bool isWine = GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "wine_get_version");
 		if (isWine) {
 			SetCurrentDirectoryW(L"bin");
 		}

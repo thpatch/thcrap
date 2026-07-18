@@ -112,7 +112,7 @@ static void patch_win_message(std::vector<std::string>& line, json_t *patch_row,
 			}));
 		texts.push_back(text);
 		auto begin = texts.begin();
-		text->patch(texts, begin, "", patch_lines);
+		text->patch(texts, begin, ""s, patch_lines);
 
 		size_t i = 0;
 		for (TasofroPl::ALine* it : texts) {
@@ -131,7 +131,7 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 	for (DWORD col = 0; col < nb_col; col++) {
 		DWORD field_size = *(DWORD*)in;
 		in += sizeof(DWORD);
-		line.push_back(std::string((const char*)in, field_size));
+		line.emplace_back((const char*)in, field_size);
 		in += field_size;
 	}
 
@@ -187,11 +187,11 @@ void patch_line(BYTE *&in, BYTE *&out, DWORD nb_col, json_t *patch_row)
 	}
 
 	// Write output
-	for (const std::string& col : line) {
+	for (std::string_view col : line) {
 		DWORD field_size = col.length();
 		*(DWORD*)out = field_size;
 		out += sizeof(DWORD);
-		memcpy(out, col.c_str(), field_size);
+		memcpy(out, col.data(), field_size);
 		out += field_size;
 	}
 }

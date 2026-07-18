@@ -201,39 +201,36 @@ size_t RepoPrintPatches(std::vector<patch_desc_t>& list_order, repo_t *repo, pat
 
 size_t PrintSelStack(std::vector<patch_desc_t>& list_order, repo_t **repo_list, patch_sel_stack_t& sel_stack)
 {
-	size_t list_count = list_order.size();
 
 	int width = console_width();
 	VLA(char, hr, width + 1);
-	memset(hr, '=', width);
 	hr[width] = '\0';
+	memset(hr, '=', width);
 
 	// After filling the entire width, the cursor will have already moved to
 	// the next line, so we don't need to add a separate \n after the string.
     con_printf("%s",hr);
 
-	if(sel_stack.empty()) {
-		goto end;
+	size_t list_count = list_order.size();
+	if (!sel_stack.empty()) {
+		con_printf(
+			"\n"
+			"Selected patches (in ascending order of priority):\n"
+			"\n"
+		);
+		for (patch_desc_t& sel : sel_stack) {
+			const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
+			const repo_patch_t *patch = find_patch_in_repo(repo, sel.patch_id);
+			std::string full_id = std::string(sel.repo_id) + '/' + sel.patch_id;
+
+			++list_count;
+			con_clickable(std::to_wstring(list_count),
+						  to_utf16(stringf("  %2zu. %-20s %s", list_count, full_id.c_str(), patch->title)));
+
+			list_order.push_back(sel);
+		}
+		con_printf("\n%s", hr);
 	}
-    con_printf(
-		"\n"
-		"Selected patches (in ascending order of priority):\n"
-		"\n"
-	);
-	for (patch_desc_t& sel : sel_stack) {
-		const repo_t *repo = find_repo_in_list(repo_list, sel.repo_id);
-		const repo_patch_t *patch = find_patch_in_repo(repo, sel.patch_id);
-		std::string full_id = std::string(sel.repo_id) + '/' + sel.patch_id;
-
-		++list_count;
-		con_clickable(std::to_wstring(list_count),
-			to_utf16(stringf("  %2zu. %-20s %s", list_count, full_id.c_str(), patch->title)));
-
-		list_order.push_back(sel);
-	}
-    con_printf("\n%s", hr);
-
-end:
 	VLA_FREE(hr);
 	return list_count;
 }

@@ -68,9 +68,9 @@ typedef struct {
 // If status is GET_START or GET_DOWNLOADING, this callbacks should
 // return true if the download is allowed to continue, or false to cancel it.
 // If status is GET_OK or a GET_ error code, the return value is ignored.
-typedef bool (*progress_callback_t)(progress_callback_status_t *status, void *param);
+func_ptr_typedef(bool, , progress_callback_t)(progress_callback_status_t *status, void *param);
 
-typedef int (*update_filter_func_t)(const char *fn, void *filter_data);
+func_ptr_typedef(int, , update_filter_func_t)(const char *fn, void *filter_data);
 
 // Returns 1 for all global file names, i.e. those without a slash.
 int update_filter_global(const char *fn, void*);

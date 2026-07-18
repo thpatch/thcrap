@@ -130,7 +130,7 @@ std::string Update::fnToUrl(const std::string& url, uint32_t crc32)
     }
 
     // Append CRC32 in order to get the correct version from the CDN
-    ss << "?crc32=" << std::setw(8) << crc32 << std::setw(0);
+    ss << "?crc32="sv << std::setw(8) << crc32 << std::setw(0);
     return ss.str();
 }
 
@@ -264,7 +264,7 @@ patch_t patch_bootstrap(const patch_desc_t *sel, const repo_t *repo)
 
     std::string url = repo->servers[0];
     url += sel->patch_id;
-    url += "/patch.js";
+    url += "/patch.js"sv;
     auto [patch_js, _] = ServerCache::get().downloadJsonFile(url);
 
     RepoWrite(repo);
@@ -306,7 +306,7 @@ int update_filter_games(const char *fn, void *param)
             fn_len > strlen(th105_prefix)
             && strcmp(games[i], "th123") == 0
             && strncmp(fn, th105_prefix, strlen(th105_prefix)) == 0
-            ) {
+        ) {
             return 1;
         }
     }
@@ -390,7 +390,7 @@ void global_update(progress_callback_t progress_callback, void *progress_param)
     if (std::filesystem::is_directory("config")) {
         for (auto& dir_entry : std::filesystem::directory_iterator("config")) {
             std::filesystem::path path = dir_entry.path();
-            if (path.extension() != ".js") {
+            if (path.extension() != ".js"sv) {
                 continue;
             }
 

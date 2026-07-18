@@ -5,8 +5,6 @@
 #include "server.h"
 #include "file.h"
 
-using namespace std::string_literals;
-
 File::File(std::list<DownloadUrl>&& urls,
            SuccessCallback successCallback,
            FailureCallback failureCallback,

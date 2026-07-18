@@ -283,7 +283,7 @@ size_t TasofroPl::Command::size() const
 
 bool TasofroPl::Command::isStaffroll() const
 {
-	return this->size() == 2 && this->get(0) == "Function" && this->unquote(this->get(1)) == "::story.BeginStaffroll();";
+	return this->size() == 2 && this->get(0) == "Function"sv && this->unquote(this->get(1)) == "::story.BeginStaffroll();"sv;
 }
 
 
@@ -360,7 +360,7 @@ void TasofroPl::AText::patch(std::list<ALine*>& file, std::list<ALine*>::iterato
 	this->nb_lines = 0;
 	this->is_first_balloon = true;
 
-	if (this->fields[0].length() >= 2 && this->fields[0].compare(this->fields[0].length() - 2, 2, "\\.") == 0)
+	if (this->fields[0].length() >= 2 && this->fields[0].compare(this->fields[0].length() - 2, 2, "\\."sv) == 0)
 		this->last_char = "\\."sv;
 	else if (this->fields[0].length() >= 1 && (this->fields[0].back() == '\\' || this->fields[0].back() == '@'))
 		this->last_char = this->fields[0].back();
@@ -482,11 +482,11 @@ bool TasofroPl::AText::parseCommand(json_t *patch, size_t json_line_num)
 		this->is_last_balloon = i >= array_size;
 
 		// If the balloon is too small for our text to fit, expand it automatically.
-		if (this->nb_lines > 1 && balloon_size == "05x2") {
-			this->balloonName.replace(1, 4, "11x2");
+		if (this->nb_lines > 1 && balloon_size == "05x2"sv) {
+			this->balloonName.replace(1, 4, "11x2"sv);
 		}
-		if (this->nb_lines > 2 && balloon_size == "11x2") {
-			this->balloonName.replace(1, 4, "15x3");
+		if (this->nb_lines > 2 && balloon_size == "11x2"sv) {
+			this->balloonName.replace(1, 4, "15x3"sv);
 		}
 	}
 
@@ -514,8 +514,8 @@ void TasofroPl::StoryText::beginLine(std::list<ALine*>& file, const std::list<AL
 {
 	if (this->is_first_balloon == false && this->cur_line == 1) {
 		file.insert(it, new Command(std::vector<std::string>({
-			"",
-			"ClearBalloon",
+			""s,
+			"ClearBalloon"s,
 			this->owner
 			})));
 	}
@@ -595,7 +595,7 @@ void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>&, co
 	}
 	if (this->is_staffroll) {
 		size_t break_pos;
-		while ((break_pos = text.find("\\.")) != std::string::npos) {
+		while ((break_pos = text.find("\\."sv)) != std::string::npos) {
 			text.erase(break_pos, 2);
 		}
 	}
@@ -603,8 +603,8 @@ void TasofroPl::EndingText::_patchLine(std::string& text, std::list<ALine*>&, co
 		// In th155 endings, pauses only work when they are at the end of a line.
 		// So we must split the line into 2 if we want to insert a pause.
 		size_t break_pos = 0;
-		while ((break_pos = text.find("@\\n", break_pos)) != std::string::npos) {
-			text.replace(break_pos, 3, "@\n");
+		while ((break_pos = text.find("@\\n"sv, break_pos)) != std::string::npos) {
+			text.replace(break_pos, 3, "@\n"sv);
 			break_pos += 2;
 		}
 	}
@@ -729,7 +729,7 @@ int patch_pl(void *file_inout, size_t size_out, size_t size_in, const char *, js
 		TasofroPl::ALine *line = *it;
 		if (line->getType() == TasofroPl::COMMAND) {
 			TasofroPl::Command& command = dynamic_cast<TasofroPl::Command&>(*line);
-			if (command[0] == "SetFocus") {
+			if (command[0] == "SetFocus"sv) {
 				balloonOwner = command[1];
 			}
 		}

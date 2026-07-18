@@ -502,7 +502,7 @@ int32_t tlnote_render(const stringref_t &note)
 {
 	const auto &env = tlnote_env();
 	if(!env.complete()) {
-		log_printf("(TL notes) No region defined\n");
+		log_print("(TL notes) No region defined\n");
 		return RENDERED_NONE;
 	}
 	for(int32_t i = 0; i < (int32_t)rendered.size(); i++) {

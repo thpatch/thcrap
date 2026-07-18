@@ -107,7 +107,7 @@ static std::string escape(const char *str)
 		 * through the C compiler and need to be escaped once more).
 		 */
 		if (*str == '"') {
-			out += "\\\"\"";
+			out += "\\\"\""sv;
 		}
 		else {
 			out += *str;
@@ -123,7 +123,7 @@ bool is_msg_empty(const std::vector<std::string>& msg)
 {
 	for (auto& it : msg) {
 		auto line_split = split(it, ',');
-		if (line_split.size() >= 3 && line_split[2].find_first_not_of(" \t\r\n\"") != std::string::npos) {
+		if (line_split.size() >= 3 && line_split[2].find_first_not_of(" \t\r\n\""sv) != std::string::npos) {
 			return false;
 		}
 	}
@@ -132,7 +132,7 @@ bool is_msg_empty(const std::vector<std::string>& msg)
 
 int patch_th175_pl_ed(void *file_inout, size_t, size_t size_in, const char *, json_t *patch)
 {
-	if (!patch) {
+	if unexpected(!patch) {
 		return 0;
 	}
 
@@ -152,7 +152,7 @@ int patch_th175_pl_ed(void *file_inout, size_t, size_t size_in, const char *, js
 
 		std::vector<std::string> msg;
 		while (is_ed_msg(file_in, file_in_end)) {
-			msg.push_back(read_line(file_in, file_in_end));
+			msg.emplace_back(read_line(file_in, file_in_end));
 		}
 		if (is_msg_empty(msg)) {
 			write_msg(msg, file_out);
@@ -170,7 +170,7 @@ int patch_th175_pl_ed(void *file_inout, size_t, size_t size_in, const char *, js
 		std::vector<std::string> rep_msg;
 		json_t *value;
 		json_flex_array_foreach_scoped(size_t, i, rep, value) {
-			rep_msg.push_back(escape(json_string_value(value)));
+			rep_msg.emplace_back(escape(json_string_value(value)));
 		}
 		patch_msg(msg, rep_msg, file_out);
 	}

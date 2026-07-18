@@ -809,7 +809,7 @@ int layout_mod_init(HMODULE hMod)
 	auto* runcfg = runconfig_json_get();
 	TH_ASSUME(runcfg);
 
-	json_object_get_eval_bool(runcfg, "ruby_shift_debug", &ruby_shift_debug, JEVAL_DEFAULT);
+	(void)json_object_get_eval_bool(runcfg, "ruby_shift_debug", &ruby_shift_debug, JEVAL_DEFAULT);
 
 	size_t col;
 	if unexpected(!json_object_get_eval_int(runcfg, "hdc_debug_color", &col, JEVAL_DEFAULT)) {

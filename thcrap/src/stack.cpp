@@ -250,26 +250,64 @@ json_t* stack_game_json_resolve(const char *fn, size_t *file_size)
 	return ret;
 }
 
+struct MissingPatchData {
+	std::string_view path;
+	const char* parent;
+
+	// emplace_back requires explicit constructors when using MSVC for some reason
+	constexpr inline MissingPatchData(const char* path, size_t path_length)
+		: path(path, path_length), parent()
+	{}
+	constexpr inline MissingPatchData(const char* path, size_t path_length, const char* parent)
+		: path(path, path_length), parent(parent)
+	{}
+};
+
 void stack_show_missing(void)
 {
-	std::vector<const patch_t*> rem_arcs;
+	std::vector<MissingPatchData> missing_patches;
 
 	for (const patch_t& patch : stack) {
-		if(patch.archive && !PathFileExists(patch.archive)) {
-			rem_arcs.push_back(&patch);
+		if (const char* path = patch.archive) {
+			if (!PathFileExistsU(path)) {
+				missing_patches.emplace_back(patch.archive, patch.archive_length);
+			}
+			else if (const patch_desc_t* dependencies = patch.dependencies) {
+				for (
+					const char* dep_id;
+					(dep_id = dependencies->patch_id);
+					++dependencies
+				) {
+					if (std::none_of(stack.cbegin(), stack.cend(), [=](const patch_t& patch) {
+						if (const char* patch_id = patch.id) {
+							return !strcmp(patch_id, dep_id);
+						}
+						return false;
+					})) {
+						missing_patches.emplace_back(dep_id, strlen(dep_id), patch.id);
+					}
+				}
+			}
 		}
 	}
 
-	if(!rem_arcs.empty()) {
+	if (!missing_patches.empty()) {
 		std::string rem_arcs_str;
 
-		for (const patch_t* it : rem_arcs) {
-			rem_arcs_str += "\t"s + it->archive + '\n';
+		for (const auto& patch : missing_patches) {
+			rem_arcs_str += "- "sv;
+			rem_arcs_str += patch.path;
+			if (patch.parent) {
+				rem_arcs_str += " (required by "sv;
+				rem_arcs_str += patch.parent;
+				rem_arcs_str += ')';
+			}
+			rem_arcs_str += '\n';
 		}
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 			"Some patches in your configuration could not be found:\n"
 			"\n"
-			"%s" // No extra newline here since there's an extra newline at the end of rem_arcs_str
+			"%s\n"
 			"Please reconfigure your patch stack - either by running the configuration tool, "
 			"or by simply editing your run configuration file (%s).",
 			rem_arcs_str.c_str(), runconfig_runcfg_fn_get()
@@ -306,12 +344,12 @@ void stack_remove_patch(const char *patch_id)
 {
 
 	auto check = [patch_id](const patch_t& patch) {
-		return strcmp(patch.id, patch_id) == 0;
+		return patch.id && strcmp(patch.id, patch_id) == 0;
 	};
 
-	std::vector<patch_t>::iterator patch = std::find_if(stack.begin(), stack.end(), check);
-	patch_free(&*patch);
-	stack.erase(patch);
+	auto patch_it = std::find_if(stack.begin(), stack.end(), check);
+	patch_free(&*patch_it);
+	stack.erase(patch_it);
 }
 
 size_t stack_get_size()
@@ -398,7 +436,10 @@ void stack_print()
 int stack_check_if_unneeded(const char *patch_id)
 {
 	const char *c_game = runconfig_game_get();
-	std::string game = c_game ? c_game : ""s;
+	std::string game;
+	if (c_game) {
+		game = c_game;
+	}
 
 	const char *build = runconfig_build_get();
 
@@ -417,16 +458,14 @@ int stack_check_if_unneeded(const char *patch_id)
 	if (!game.empty()) {
 
 		// <game>.js
-		std::string js = game + ".js";
-		game_found |= patch_file_exists(&patch, js.c_str());
+		game_found = patch_file_exists(&patch, (game + ".js"sv).c_str());
 
 		// <game>/ (directory)
 		game_found |= patch_file_exists(&patch, game.c_str());
 
 		if (build && !game_found) {
 			// <game>.<build>.js
-			std::string js = game + '.' + build + ".js";
-			game_found |= patch_file_exists(&patch, js.c_str());
+			game_found |= patch_file_exists(&patch, (game + '.' + build + ".js"sv).c_str());
 		}
 	}
 	return !game_found;

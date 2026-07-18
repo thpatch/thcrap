@@ -190,14 +190,14 @@ struct CPUID_Data_t {
 	CPUID_Data_t(void) {
 		// GetProcAddress is used to be compatible with XP SP1.
 		// https://docs.microsoft.com/en-us/windows/win32/api/wow64apiset/nf-wow64apiset-iswow64process
-		if (auto IsWow64ProcessVar = (decltype(&IsWow64Process))GetProcAddress(GetModuleHandleA("Kernel32.dll"), "IsWow64Process")) {
+		if (auto IsWow64ProcessVar = (decltype(&IsWow64Process))GetProcAddress(GetModuleHandleW(L"Kernel32.dll"), "IsWow64Process")) {
 			BOOL IsX64;
 			if (IsWow64ProcessVar(GetCurrentProcess(), &IsX64)) {
 				this->OSIsX64 = IsX64 == TRUE;
 			}
 		}
 
-		if (const char* (TH_CDECL * pwine_get_version)(void) = (decltype(pwine_get_version))GetProcAddress(GetModuleHandleA("ntdll.dll"), "wine_get_version")) {
+		if (const char* (TH_CDECL * pwine_get_version)(void) = (decltype(pwine_get_version))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "wine_get_version")) {
 			wine_version = pwine_get_version();
 		}
 
@@ -518,6 +518,10 @@ bool CPU_FCS_FDS_Deprecated(void) {
 
 THCRAP_API bool OS_is_wine(void) {
 	return wine_version != NULL;
+}
+
+THCRAP_API bool OS_is_wow64(void) {
+	return CPUID_Data.OSIsX64;
 }
 
 bool CPU_Supports_LMLSAHF(void) {

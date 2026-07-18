@@ -15,6 +15,8 @@
 #include <string.h>
 #include <jansson.h>
 
+using namespace std::literals::string_literals;
+
 namespace TasofroPl
 {
 	enum LineType
@@ -32,7 +34,7 @@ namespace TasofroPl
 		std::string comment;
 
 	public:
-		ALine(const std::vector<std::string>& fields, const std::string& comment = "");
+		ALine(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		virtual ~ALine() {}
 
 		virtual LineType getType() const = 0;
@@ -52,7 +54,7 @@ namespace TasofroPl
 	class Empty : public ALine
 	{
 	public:
-		Empty(const std::vector<std::string>& fields, const std::string& comment = "");
+		Empty(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~Empty() {}
 
 		LineType getType() const;
@@ -63,7 +65,7 @@ namespace TasofroPl
 	private:
 		std::string label;
 	public:
-		Label(const std::vector<std::string>& fields, const std::string& comment = "");
+		Label(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~Label() {}
 
 		LineType getType() const;
@@ -74,7 +76,7 @@ namespace TasofroPl
 	class Command : public ALine
 	{
 	public:
-		Command(const std::vector<std::string>& fields, const std::string& comment = "");
+		Command(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~Command() {}
 
 		LineType getType() const;
@@ -119,9 +121,9 @@ namespace TasofroPl
 		virtual void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it);
 
 	public:
-		static AText *createText(const std::vector<std::string>& fields, const std::string& comment = "", Syntax syntax = UNKNOWN);
+		static AText *createText(const std::vector<std::string>& fields, const std::string& comment = ""s, Syntax syntax = UNKNOWN);
 
-		AText(const std::vector<std::string>& fields, const std::string& comment = "");
+		AText(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~AText() {}
 
 		LineType getType() const;
@@ -138,7 +140,7 @@ namespace TasofroPl
 		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
 
 	public:
-		StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
+		StoryText(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~StoryText() {}
 	};
 
@@ -150,7 +152,7 @@ namespace TasofroPl
 		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
 
 	public:
-		Th155StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
+		Th155StoryText(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~Th155StoryText() {}
 	};
 
@@ -160,7 +162,7 @@ namespace TasofroPl
 		void beginLine(std::list<ALine*>& file, const std::list<ALine*>::iterator& it) override;
 
 	public:
-		Th155_110StoryText(const std::vector<std::string>& fields, const std::string& comment = "");
+		Th155_110StoryText(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~Th155_110StoryText() {}
 	};
 
@@ -177,7 +179,7 @@ namespace TasofroPl
 		void _patchExit(std::list<ALine*>& file, std::list<ALine*>::iterator& file_it) override;
 
 	public:
-		EndingText(const std::vector<std::string>& fields, const std::string& comment = "");
+		EndingText(const std::vector<std::string>& fields, const std::string& comment = ""s);
 		~EndingText() {}
 	};
 

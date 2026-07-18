@@ -89,7 +89,6 @@ EXPORTS
 	runconfig_latest_get
 	runconfig_stage_count
 	runconfig_stage_apply
-	globalconfig_init
 	globalconfig_get_boolean
 	globalconfig_set_boolean
 	globalconfig_get_integer
@@ -137,85 +136,85 @@ EXPORTS
 
 	; Jansson forwards
 	; ----------------
-	jansson_version_str=jansson_d.jansson_version_str
-	json_array=jansson_d.json_array
-	json_array_append_new=jansson_d.json_array_append_new
-	json_array_clear=jansson_d.json_array_clear
-	json_array_extend=jansson_d.json_array_extend
-	json_array_get=jansson_d.json_array_get
-	json_array_insert_new=jansson_d.json_array_insert_new
-	json_array_remove=jansson_d.json_array_remove
-	json_array_set_new=jansson_d.json_array_set_new
-	json_array_size=jansson_d.json_array_size
-	json_copy=jansson_d.json_copy
-	json_deep_copy=jansson_d.json_deep_copy
-	json_delete=jansson_d.json_delete
-	json_dump_callback=jansson_d.json_dump_callback
-	json_dump_file=jansson_d.json_dump_file
-	json_dumpb=jansson_d.json_dumpb
-	json_dumpf=jansson_d.json_dumpf
-	json_dumpfd=jansson_d.json_dumpfd
-	json_dumps=jansson_d.json_dumps
-	json_equal=jansson_d.json_equal
-	json_false=jansson_d.json_false
-	json_get_alloc_funcs=jansson_d.json_get_alloc_funcs
-	json_integer=jansson_d.json_integer
-	json_integer_set=jansson_d.json_integer_set
-	json_integer_value=jansson_d.json_integer_value
-	json_load_callback=jansson_d.json_load_callback
-	json_load_file=jansson_d.json_load_file
-	json_loadb=jansson_d.json_loadb
-	json_loadf=jansson_d.json_loadf
-	json_loadfd=jansson_d.json_loadfd
-	json_loads=jansson_d.json_loads
-	json_null=jansson_d.json_null
-	json_number_value=jansson_d.json_number_value
-	json_object=jansson_d.json_object
-	json_object_clear=jansson_d.json_object_clear
-	json_object_del=jansson_d.json_object_del
-	json_object_deln=jansson_d.json_object_deln
-	json_object_get=jansson_d.json_object_get
-	json_object_getn=jansson_d.json_object_getn
-	json_object_iter=jansson_d.json_object_iter
-	json_object_iter_at=jansson_d.json_object_iter_at
-	json_object_iter_key=jansson_d.json_object_iter_key
-	json_object_iter_key_len=jansson_d.json_object_iter_key_len
-	json_object_iter_next=jansson_d.json_object_iter_next
-	json_object_iter_set_new=jansson_d.json_object_iter_set_new
-	json_object_iter_value=jansson_d.json_object_iter_value
-	json_object_key_to_iter=jansson_d.json_object_key_to_iter
-	json_object_seed=jansson_d.json_object_seed
-	json_object_set_new=jansson_d.json_object_set_new
-	json_object_set_new_nocheck=jansson_d.json_object_set_new_nocheck
-	json_object_setn_new=jansson_d.json_object_setn_new
-	json_object_setn_new_nocheck=jansson_d.json_object_setn_new_nocheck
-	json_object_size=jansson_d.json_object_size
-	json_object_update=jansson_d.json_object_update
-	json_object_update_existing=jansson_d.json_object_update_existing
-	json_object_update_missing=jansson_d.json_object_update_missing
-	json_object_update_recursive=jansson_d.json_object_update_recursive
-	json_pack=jansson_d.json_pack
-	json_pack_ex=jansson_d.json_pack_ex
-	json_real=jansson_d.json_real
-	json_real_set=jansson_d.json_real_set
-	json_real_value=jansson_d.json_real_value
-	json_sprintf=jansson_d.json_sprintf
-	json_string=jansson_d.json_string
-	json_string_length=jansson_d.json_string_length
-	json_string_nocheck=jansson_d.json_string_nocheck
-	json_string_set=jansson_d.json_string_set
-	json_string_set_nocheck=jansson_d.json_string_set_nocheck
-	json_string_setn=jansson_d.json_string_setn
-	json_string_setn_nocheck=jansson_d.json_string_setn_nocheck
-	json_string_value=jansson_d.json_string_value
-	json_stringn=jansson_d.json_stringn
-	json_stringn_nocheck=jansson_d.json_stringn_nocheck
-	json_true=jansson_d.json_true
-	json_unpack=jansson_d.json_unpack
-	json_unpack_ex=jansson_d.json_unpack_ex
-	json_vpack_ex=jansson_d.json_vpack_ex
-	json_vsprintf=jansson_d.json_vsprintf
-	json_vunpack_ex=jansson_d.json_vunpack_ex
+	jansson_version_str=jansson_64_d.jansson_version_str
+	json_array=jansson_64_d.json_array
+	json_array_append_new=jansson_64_d.json_array_append_new
+	json_array_clear=jansson_64_d.json_array_clear
+	json_array_extend=jansson_64_d.json_array_extend
+	json_array_get=jansson_64_d.json_array_get
+	json_array_insert_new=jansson_64_d.json_array_insert_new
+	json_array_remove=jansson_64_d.json_array_remove
+	json_array_set_new=jansson_64_d.json_array_set_new
+	json_array_size=jansson_64_d.json_array_size
+	json_copy=jansson_64_d.json_copy
+	json_deep_copy=jansson_64_d.json_deep_copy
+	json_delete=jansson_64_d.json_delete
+	json_dump_callback=jansson_64_d.json_dump_callback
+	json_dump_file=jansson_64_d.json_dump_file
+	json_dumpb=jansson_64_d.json_dumpb
+	json_dumpf=jansson_64_d.json_dumpf
+	json_dumpfd=jansson_64_d.json_dumpfd
+	json_dumps=jansson_64_d.json_dumps
+	json_equal=jansson_64_d.json_equal
+	json_false=jansson_64_d.json_false
+	json_get_alloc_funcs=jansson_64_d.json_get_alloc_funcs
+	json_integer=jansson_64_d.json_integer
+	json_integer_set=jansson_64_d.json_integer_set
+	json_integer_value=jansson_64_d.json_integer_value
+	json_load_callback=jansson_64_d.json_load_callback
+	json_load_file=jansson_64_d.json_load_file
+	json_loadb=jansson_64_d.json_loadb
+	json_loadf=jansson_64_d.json_loadf
+	json_loadfd=jansson_64_d.json_loadfd
+	json_loads=jansson_64_d.json_loads
+	json_null=jansson_64_d.json_null
+	json_number_value=jansson_64_d.json_number_value
+	json_object=jansson_64_d.json_object
+	json_object_clear=jansson_64_d.json_object_clear
+	json_object_del=jansson_64_d.json_object_del
+	json_object_deln=jansson_64_d.json_object_deln
+	json_object_get=jansson_64_d.json_object_get
+	json_object_getn=jansson_64_d.json_object_getn
+	json_object_iter=jansson_64_d.json_object_iter
+	json_object_iter_at=jansson_64_d.json_object_iter_at
+	json_object_iter_key=jansson_64_d.json_object_iter_key
+	json_object_iter_key_len=jansson_64_d.json_object_iter_key_len
+	json_object_iter_next=jansson_64_d.json_object_iter_next
+	json_object_iter_set_new=jansson_64_d.json_object_iter_set_new
+	json_object_iter_value=jansson_64_d.json_object_iter_value
+	json_object_key_to_iter=jansson_64_d.json_object_key_to_iter
+	json_object_seed=jansson_64_d.json_object_seed
+	json_object_set_new=jansson_64_d.json_object_set_new
+	json_object_set_new_nocheck=jansson_64_d.json_object_set_new_nocheck
+	json_object_setn_new=jansson_64_d.json_object_setn_new
+	json_object_setn_new_nocheck=jansson_64_d.json_object_setn_new_nocheck
+	json_object_size=jansson_64_d.json_object_size
+	json_object_update=jansson_64_d.json_object_update
+	json_object_update_existing=jansson_64_d.json_object_update_existing
+	json_object_update_missing=jansson_64_d.json_object_update_missing
+	json_object_update_recursive=jansson_64_d.json_object_update_recursive
+	json_pack=jansson_64_d.json_pack
+	json_pack_ex=jansson_64_d.json_pack_ex
+	json_real=jansson_64_d.json_real
+	json_real_set=jansson_64_d.json_real_set
+	json_real_value=jansson_64_d.json_real_value
+	json_sprintf=jansson_64_d.json_sprintf
+	json_string=jansson_64_d.json_string
+	json_string_length=jansson_64_d.json_string_length
+	json_string_nocheck=jansson_64_d.json_string_nocheck
+	json_string_set=jansson_64_d.json_string_set
+	json_string_set_nocheck=jansson_64_d.json_string_set_nocheck
+	json_string_setn=jansson_64_d.json_string_setn
+	json_string_setn_nocheck=jansson_64_d.json_string_setn_nocheck
+	json_string_value=jansson_64_d.json_string_value
+	json_stringn=jansson_64_d.json_stringn
+	json_stringn_nocheck=jansson_64_d.json_stringn_nocheck
+	json_true=jansson_64_d.json_true
+	json_unpack=jansson_64_d.json_unpack
+	json_unpack_ex=jansson_64_d.json_unpack_ex
+	json_vpack_ex=jansson_64_d.json_vpack_ex
+	json_vsprintf=jansson_64_d.json_vsprintf
+	json_vunpack_ex=jansson_64_d.json_vunpack_ex
 
 	; JSON extensions
 	; ---------------
@@ -297,7 +296,7 @@ EXPORTS
 	log_mbox_set_owner
 	log_init
 	log_exit
-	
+
 	BP_log
 
 	log_async DATA

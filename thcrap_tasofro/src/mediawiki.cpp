@@ -16,11 +16,11 @@ std::string parse_mediawiki(const std::string& in, const MwDefinition& mwsyntax)
 	std::string out;
 
 	for (size_t i = 0; i < in.size(); ) {
-		if (in.compare(i, 7, "{{ruby|") == 0) {
+		if (in.compare(i, 7, "{{ruby|"sv) == 0) {
 			i += 7;
 
 			size_t middle = in.find('|', i);
-			size_t end    = in.find("}}", middle);
+			size_t end    = in.find("}}"sv, middle);
 			auto top = std::string_view(in.data() + middle + 1, end - middle - 1);
 			auto bot = std::string_view(in.data() + i, middle - i);
 
@@ -32,9 +32,9 @@ std::string parse_mediawiki(const std::string& in, const MwDefinition& mwsyntax)
 
 			i = end + 2;
 		}
-		else if (in.compare(i, 9, "{{tlnote|") == 0) {
+		else if (in.compare(i, 9, "{{tlnote|"sv) == 0) {
 			// tlnote isn't supported, ignore it
-			i = in.find("}}", i) + 2;
+			i = in.find("}}"sv, i) + 2;
 		}
 		else {
 			out += in[i];

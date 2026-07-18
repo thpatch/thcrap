@@ -40,7 +40,7 @@ private:
 		if (dat_dump) {
 			std::filesystem::path dir = std::filesystem::absolute(dat_dump);
 			std::filesystem::create_directories(dir);
-			this->fileslist_path = dir / "fileslist.js";
+			this->fileslist_path = dir / L"fileslist.js";
 
 			new std::thread([this]() { this->threadProc(); });
 		}
@@ -89,7 +89,7 @@ private:
 			return;
 		}
 
-		std::scoped_lock lock(this->mutex);
+		std::lock_guard lock(this->mutex);
 		auto it = this->files_list.find(fn);
 		if (it != this->files_list.end()) {
 			return;

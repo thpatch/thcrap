@@ -51,13 +51,10 @@ static char digit_to_hex(unsigned int digit)
 static std::string encode_UTF8_char(uint8_t c)
 {
     if (c & 0x80) {
-        std::string ret = "%";
-        ret += digit_to_hex(c >> 4);
-        ret += digit_to_hex(c & 0x0F);
-        return ret;
+        return std::string(1, '%') + digit_to_hex(c >> 4) + digit_to_hex(c & 0x0F);
     }
     else {
-        return std::string() + (char)c;
+        return std::string(1, c);
     }
 }
 
@@ -76,7 +73,7 @@ HttpStatus CurlHandle::download(const std::string& url, std::function<size_t(con
     curl_easy_setopt(this->curl, CURLOPT_FOLLOWLOCATION, 1);
 
     // Format according to RFC 7231, section 5.5.3
-    std::string userAgent = std::string(PROJECT_NAME_SHORT) + "/" + PROJECT_VERSION_STRING + " (" + windows_version() + ")";
+    std::string userAgent = std::string(PROJECT_NAME_SHORT) + '/' + PROJECT_VERSION_STRING + " ("sv + windows_version() + ')';
     curl_easy_setopt(this->curl, CURLOPT_USERAGENT, userAgent.c_str());
 
     curl_easy_setopt(this->curl, CURLOPT_WRITEFUNCTION, CurlHandle::writeCallbackStatic);

@@ -14,19 +14,34 @@
 #include "mediawiki.h"
 #include "act-nut.h"
 
-void json_object_numkeys_foreach(json_t *obj, std::function<void (int key, json_t *value)> function)
+struct json_numkey {
+	size_t key;
+	json_t* json;
+
+	inline json_numkey(size_t key, json_t* json)
+		: key(key), json(json)
+	{}
+
+	inline bool operator<(const json_numkey& rhs) const {
+		return this->key < rhs.key;
+	}
+};
+
+template<typename L>
+void json_object_numkeys_foreach(json_t *obj, L& lambda)
 {
-	std::vector<int> keys;
+	std::vector<json_numkey> elements;
 
 	const char* key;
-	json_object_foreach_key(obj, key) {
-		keys.push_back(atoi(key));
+	json_t* value;
+	json_object_foreach_fast(obj, key, value) {
+		elements.emplace_back(strtouz(key, NULL, 10), value);
 	}
 
-	std::sort(keys.begin(), keys.end());
-	for (int key : keys) {
-		std::string key_s = std::to_string(key);
-		function(key, json_object_get(obj, key_s.c_str()));
+	std::sort(elements.begin(), elements.end());
+
+	for (const auto& numkey : elements) {
+		lambda(numkey);
 	}
 }
 
@@ -84,10 +99,10 @@ static void patch_SQFunctionProto(Nut::SQFunctionProto *func, json_t *add_litera
 	if (insert_instructions) {
 		size_t offset_for_instructions = 0;
 
-		json_object_numkeys_foreach(insert_instructions, [func, &offset_for_instructions](int instruction_number, json_t *instruction_flexarray) {
+		json_object_numkeys_foreach(insert_instructions, [func, &offset_for_instructions](const json_numkey& numkey) {
 			json_t *instruction;
-			json_flex_array_foreach_scoped(size_t, i, instruction_flexarray, instruction) {
-				func->insertInstruction(instruction_number + offset_for_instructions, json_string_value(instruction));
+			json_flex_array_foreach_scoped(size_t, i, numkey.json, instruction) {
+				func->insertInstruction(numkey.key + offset_for_instructions, json_string_value(instruction));
 				offset_for_instructions++;
 			}
 		});
@@ -119,7 +134,7 @@ static void patch_actnut_as_string(ActNut::Object *elem, json_t *json)
 
 	json_flex_array_foreach_scoped(size_t, i, json, line) {
 		if (text.length() > 0) {
-			text += "\n";
+			text += '\n';
 		}
 		text += arabic_convert_bidi(json_string_value(line));
 	}
