@@ -5,6 +5,8 @@
 #include "server.h"
 #include "file.h"
 
+using HttpStatusOf = HttpStatus::Status;
+
 File::File(std::list<DownloadUrl>&& urls,
            SuccessCallback successCallback,
            FailureCallback failureCallback,
@@ -60,7 +62,7 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
         }
     );
     if (!status) {
-        if (status.get() == HttpStatus::Status::ServerError || status.get() == HttpStatus::Status::SystemError) {
+        if (status.get() == HttpStatusOf::ServerError || status.get() == HttpStatusOf::SystemError) {
             // If the server is dead, we don't want to continue using it.
             // If the library returned an error, future downloads to the
             // same server are also likely to fail.
@@ -107,6 +109,6 @@ extern "C" int download_single_file(const char* url, const char* fn) {
         }
     }
     catch (const std::bad_alloc& e) {
-        return (int)HttpStatus::Status::SystemError;
+        return (int)HttpStatusOf::SystemError;
     }
 }

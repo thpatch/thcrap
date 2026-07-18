@@ -7,6 +7,8 @@
 #include "strings_array.h"
 #include "3rdparty/crc32.h"
 
+using HttpStatusOf = HttpStatus::Status;
+
 Update::Update(Update::FilterCallback filterCallback,
                progress_callback_t progressCallback, void *progressData)
     : filterCallback(filterCallback), progressCallback(progressCallback), progressData(progressData)
@@ -17,19 +19,18 @@ Update::Update(Update::FilterCallback filterCallback,
 get_status_t Update::httpStatusToGetStatus(HttpStatus status)
 {
     switch (status.get()) {
-        case HttpStatus::Status::Ok:
+        case HttpStatusOf::Ok:
             return GET_OK;
-        case HttpStatus::Status::Cancelled:
+        case HttpStatusOf::Cancelled:
             return GET_CANCELLED;
-        case HttpStatus::Status::ClientError:
+        case HttpStatusOf::ClientError:
             return GET_CLIENT_ERROR;
-        case HttpStatus::Status::ServerError:
+        case HttpStatusOf::ServerError:
             return GET_SERVER_ERROR;
-        case HttpStatus::Status::SystemError:
+        case HttpStatusOf::SystemError:
             return GET_SYSTEM_ERROR;
-        default:
-            throw std::invalid_argument("Invalid status");
     }
+    throw std::invalid_argument("Invalid status");
 }
 
 bool Update::callProgressCallback(const patch_t *patch, const std::string& fn, const DownloadUrl& url, get_status_t getStatus, std::string error,
@@ -236,7 +237,7 @@ void Update::startPatchUpdate(const patch_t *patch)
             this->onFilesJsComplete(patch, data);
         },
         [patch_id = std::string(patch->id)](const DownloadUrl& url, HttpStatus httpStatus) {
-            if (httpStatus.get() == HttpStatus::Status::Cancelled) {
+            if (httpStatus.get() == HttpStatusOf::Cancelled) {
                 // Another file finished before
                 return ;
             }

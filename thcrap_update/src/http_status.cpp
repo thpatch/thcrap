@@ -46,7 +46,7 @@ static const std::map<unsigned int, const std::string_view> messages = {
 
 HttpStatus HttpStatus::makeNetworkError(unsigned int httpCode)
 {
-    HttpStatus::Status status;
+    Status status;
     if (300 <= httpCode && httpCode < 499) {
         status = Status::ClientError;
     }
@@ -65,7 +65,7 @@ HttpStatus HttpStatus::makeSystemError(unsigned int systemCode, const std::strin
     return HttpStatus(Status::SystemError, systemCode, text);
 }
 
-HttpStatus::Status HttpStatus::get() const
+Status HttpStatus::get() const
 {
     return this->status;
 }
