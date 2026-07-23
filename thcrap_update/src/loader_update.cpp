@@ -1007,9 +1007,9 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		}
 	}
 
-	UPDATE_STATE.event_wrapper_request_update = CreateEventW(NULL, false, false, NULL);
-	UPDATE_STATE.event_update_finished = CreateEventW(NULL, false, false, NULL);
-	UPDATE_STATE.event_update_wrapper_terminate = CreateEventW(NULL, false, false, NULL);
+	UPDATE_STATE.event_wrapper_request_update = CreateEventW(nullptr, false, false, nullptr);
+	UPDATE_STATE.event_update_finished = CreateEventW(nullptr, false, false, nullptr);
+	UPDATE_STATE.event_update_wrapper_terminate = CreateEventW(nullptr, false, false, nullptr);
 	UPDATE_STATE.exe_fn = exe_fn;
 	UPDATE_STATE.args = args;
 	UPDATE_STATE.state = STATE_SELF;
@@ -1030,14 +1030,14 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 	if (WINDOW_STATE.enabled()) {
 		log_print("Creating UI thread and main window... ");
 		// Reusing the request update event to signal for window creation
-		WINDOW_STATE.event_request_update = CreateEventW(NULL, FALSE, FALSE, NULL);
-		WINDOW_STATE.hThread = CreateThread(NULL, 0, loader_update_window_create_and_run, NULL, 0, NULL);
+		WINDOW_STATE.event_request_update = CreateEventW(nullptr, false, false, nullptr);
+		WINDOW_STATE.hThread = CreateThread(nullptr, 0, loader_update_window_create_and_run, nullptr, 0, nullptr);
 		WaitForSingleObject(WINDOW_STATE.event_request_update, INFINITE);
 		log_set_hook(log_callback, log_ncallback);
 		log_print("done.\n");
 	}
 
-	HANDLE hWrapperUpdateThread = CreateThread(NULL, 0, update_wrapper_patch, NULL, 0, NULL);
+	HANDLE hWrapperUpdateThread = CreateThread(nullptr, 0, update_wrapper_patch, nullptr, 0, nullptr);
 	if (UPDATE_STATE.update_at_exit) {
 		// We didn't enable the "start game" button yet, the game can't be running.
 		UPDATE_STATE.game_started = true;
@@ -1054,7 +1054,7 @@ BOOL loader_update_with_UI(const char *exe_fn, char *args)
 		HANDLE hMutex = CreateMutexW(nullptr, false, (L"thcrap loader process list mutex "sv + pid_wstr).c_str());
 
 		HANDLE hProcess1;
-		ret = thcrap_inject_into_new(exe_fn, args, &hProcess1, NULL);
+		ret = thcrap_inject_into_new(exe_fn, args, &hProcess1, nullptr);
 		log_printf("Waiting until %s is finished... ", exe_fn);
 		WaitForSingleObject(hProcess1, INFINITE);
 		CloseHandle(hProcess1);

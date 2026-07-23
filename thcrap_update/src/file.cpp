@@ -5,15 +5,17 @@
 #include "server.h"
 #include "file.h"
 
+using HttpStatusOf = HttpStatus::Status;
+
 File::File(std::list<DownloadUrl>&& urls,
-           success_t successCallback,
-           failure_t failureCallback,
-           progress_t progressCallback)
+           SuccessCallback successCallback,
+           FailureCallback failureCallback,
+           ProgressCallback progressCallback)
     : status(Status::Todo), urls(urls),
     userSuccessCallback(successCallback), userFailureCallback(failureCallback), userProgressCallback(progressCallback)
 {
-    if unexpected(urls.empty()) {
-        throw new std::invalid_argument("Input URL list must not be empty");
+    if (urls.empty()) {
+        throw std::invalid_argument("Input URL list must not be empty");
     }
 }
 
@@ -60,7 +62,7 @@ void File::download(IHttpHandle& http, const DownloadUrl& url)
         }
     );
     if (!status) {
-        if (status.get() == HttpStatus::ServerError || status.get() == HttpStatus::SystemError) {
+        if (status.get() == HttpStatusOf::ServerError || status.get() == HttpStatusOf::SystemError) {
             // If the server is dead, we don't want to continue using it.
             // If the library returned an error, future downloads to the
             // same server are also likely to fail.
@@ -103,10 +105,10 @@ extern "C" int download_single_file(const char* url, const char* fn) {
             return 0;
         }
         else {
-            return res.second.get();
+            return (int)res.second.get();
         }
     }
-    catch (std::bad_alloc e) {
-        return HttpStatus::SystemError;
+    catch (const std::bad_alloc& e) {
+        return (int)HttpStatusOf::SystemError;
     }
 }

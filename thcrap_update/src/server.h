@@ -30,7 +30,7 @@ public:
 class Server
 {
 public:
-    typedef std::function<std::unique_ptr<IHttpHandle>(void)> HttpHandleFactory;
+    using HttpHandleFactory = std::function<std::unique_ptr<IHttpHandle>(void)>;
 
 private:
     HttpHandleFactory handleFactory;
@@ -54,10 +54,10 @@ public:
     // Download a single file from this server.
     std::pair<std::vector<uint8_t>, HttpStatus> downloadFile(
         const std::string& name,
-        File::progress_t progress = File::defaultProgressFunction
+        File::ProgressCallback progress = File::defaultProgressFunction
     );
     // Download a single json file from this server.
-    std::pair<ScopedJson, HttpStatus> downloadJsonFile(const std::string& name, File::progress_t progress = File::defaultProgressFunction);
+    std::pair<ScopedJson, HttpStatus> downloadJsonFile(const std::string& name, File::ProgressCallback progress = File::defaultProgressFunction);
 
     // Borrow a HttpHandle from the server.
     // You own it until the BorrowedHttpHandle is destroyed.
@@ -102,8 +102,8 @@ public:
     // Find the server for url and call downloadFile on it
     std::pair<std::vector<uint8_t>, HttpStatus> downloadFile(
         const std::string& url,
-        File::progress_t progress = File::defaultProgressFunction
+        File::ProgressCallback progress = File::defaultProgressFunction
     );
     // Find the server for url and call downloadJsonFile on it
-    std::pair<ScopedJson, HttpStatus> downloadJsonFile(const std::string& url, File::progress_t progress = File::defaultProgressFunction);
+    std::pair<ScopedJson, HttpStatus> downloadJsonFile(const std::string& url, File::ProgressCallback progress = File::defaultProgressFunction);
 };

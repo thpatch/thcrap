@@ -8,7 +8,7 @@ using namespace std::literals::string_literals;
 class HttpStatus
 {
 public:
-    enum Status {
+    enum class Status {
         // 200 - success
         Ok,
         // Download cancelled by the progress callback, or another client
