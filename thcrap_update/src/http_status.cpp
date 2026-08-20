@@ -65,7 +65,7 @@ HttpStatus HttpStatus::makeSystemError(unsigned int systemCode, const std::strin
     return HttpStatus(Status::SystemError, systemCode, text);
 }
 
-Status HttpStatus::get() const
+HttpStatus::Status HttpStatus::get() const
 {
     return this->status;
 }
