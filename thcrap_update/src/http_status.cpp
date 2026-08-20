@@ -12,12 +12,12 @@ HttpStatus::~HttpStatus()
 
 HttpStatus HttpStatus::makeOk()
 {
-    return HttpStatus(Status::Ok, 0, "success");
+    return HttpStatus(Status::Ok, 0, "success"s);
 }
 
 HttpStatus HttpStatus::makeCancelled()
 {
-    return HttpStatus(Status::Cancelled, 0, "cancelled");
+    return HttpStatus(Status::Cancelled, 0, "cancelled"s);
 }
 
 static const std::map<unsigned int, const std::string_view> messages = {
