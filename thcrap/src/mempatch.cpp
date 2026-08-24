@@ -31,7 +31,7 @@ struct detour_func_map_t {
 
 			void* chain_ptr = (void*)emplace_result.first->second;
 
-			if unexpected(!chain_ptr) {
+			if condition_unlikely(!chain_ptr) {
 				// Detour is disabled
 				return;
 			}

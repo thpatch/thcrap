@@ -82,7 +82,7 @@ int th135_init()
 
 extern "C" size_t BP_th135_file_name(x86_reg_t *regs, json_t *bp_info)
 {
-	if unexpected(runconfig_dat_dump_get()) {
+	if condition_unlikely(runconfig_dat_dump_get()) {
 		if (const char *filename = (const char*)json_object_get_immediate(bp_info, regs, "file_name")) {
 			register_filename(filename);
 		}
@@ -186,7 +186,7 @@ bool th135_init_fr(Th135File *fr, std::filesystem::path& path)
 		// This write is safe because the string length is known and doesn't change
 		*(uint32_t*)&path_ptr[final_dot + 1] = TextInt('p', 'n', 'g', '\0');
 
-		if unexpected(runconfig_dat_dump_get()) {
+		if condition_unlikely(runconfig_dat_dump_get()) {
 			register_utf8_filename(path_ptr);
 		}
 
@@ -210,7 +210,7 @@ template<typename T>
 size_t th135_openFileCommon(const char *filename, T *file)
 {
 #if AoCF_PROFILING
-	if unexpected(!file_count++) {
+	if condition_unlikely(!file_count++) {
 		QueryPerformanceCounter(&qpc_start);
 	}
 #endif
@@ -278,7 +278,7 @@ extern "C" size_t BP_th135_replaceReadFile(x86_reg_t *regs, json_t*)
 		// exactly 610 files before reaching the main menu,
 		// so this can be used to roughly measure how much
 		// time is getting used just by the file replacement code.
-		if unexpected(file_count == 610) {
+		if condition_unlikely(file_count == 610) {
 			LARGE_INTEGER qpc_end;
 			QueryPerformanceCounter(&qpc_end);
 			LARGE_INTEGER perf_freq;

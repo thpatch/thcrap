@@ -12,7 +12,7 @@ File::File(std::list<DownloadUrl>&& urls,
     : status(Status::Todo), urls(urls),
     userSuccessCallback(successCallback), userFailureCallback(failureCallback), userProgressCallback(progressCallback)
 {
-    if unexpected(urls.empty()) {
+    if condition_unlikely(urls.empty()) {
         throw new std::invalid_argument("Input URL list must not be empty");
     }
 }

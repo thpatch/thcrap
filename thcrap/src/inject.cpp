@@ -353,7 +353,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 
 	if (dll_dir) {
 		HANDLE set_dir_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&SetCurrentDirectoryW, CodecaveAddress + dll_dir_offset, 0, NULL);
-		if unexpected(set_dir_thread == NULL) {
+		if condition_unlikely(set_dir_thread == NULL) {
 			goto fail;
 		}
 		WaitForSingleObject(set_dir_thread, INFINITE);
@@ -365,7 +365,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	set_pid_to_wait_for((HANDLE)process_info.UniqueProcessId);
 
 	HANDLE library_load_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&LoadLibraryW, CodecaveAddress + injector_dll_offset, 0, NULL);
-	if unexpected(library_load_thread == NULL) {
+	if condition_unlikely(library_load_thread == NULL) {
 		clear_pid_to_wait_for((HANDLE)process_info.UniqueProcessId);
 		goto fail;
 	}
@@ -376,7 +376,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 	CloseHandle(library_load_thread);
 
 	HANDLE init_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)init_addr, CodecaveAddress, 0, NULL);
-	if unexpected(init_thread == NULL) {
+	if condition_unlikely(init_thread == NULL) {
 		goto fail;
 	}
 	WaitForSingleObject(init_thread, INFINITE);
@@ -384,7 +384,7 @@ int Inject(const HANDLE hProcess, const wchar_t *const dll_dir, const wchar_t *c
 
 	if (dll_dir) {
 		HANDLE restore_dir_thread = CreateRemoteThread(hProcess, NULL, 0, (LPTHREAD_START_ROUTINE)&SetCurrentDirectoryW, CodecaveAddress + prev_current_directory_offset, 0, NULL);
-		if unexpected(restore_dir_thread == NULL) {
+		if condition_unlikely(restore_dir_thread == NULL) {
 			goto fail;
 		}
 		WaitForSingleObject(restore_dir_thread, INFINITE);

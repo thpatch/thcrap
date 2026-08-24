@@ -87,7 +87,7 @@ void* (file_read)(const char *fn, size_t *file_size)
 
 int file_write(const char *fn, const void *file_buffer, size_t file_size)
 {
-	if unexpected(!fn || !file_buffer || !file_size) {
+	if condition_unlikely(!fn || !file_buffer || !file_size) {
 		return ERROR_INVALID_PARAMETER;
 	}
 
@@ -97,7 +97,7 @@ int file_write(const char *fn, const void *file_buffer, size_t file_size)
 		fn, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, NULL
 	);
-	if unexpected(handle == INVALID_HANDLE_VALUE) {
+	if condition_unlikely(handle == INVALID_HANDLE_VALUE) {
 		return GetLastError();
 	}
 #ifndef TH_X64
@@ -107,7 +107,7 @@ int file_write(const char *fn, const void *file_buffer, size_t file_size)
 	DWORD idgaf;
 	int ret;
 	for (; file_size > UINT32_MAX; file_size -= UINT32_MAX) {
-		if unexpected(!WriteFile(handle, file_buffer_reader, UINT32_MAX, &idgaf, NULL)) {
+		if condition_unlikely(!WriteFile(handle, file_buffer_reader, UINT32_MAX, &idgaf, NULL)) {
 			goto get_error;
 		}
 		file_buffer_reader += UINT32_MAX;
@@ -187,7 +187,7 @@ int dir_create_for_fn(const char *fn)
 
 TH_CALLER_FREE char* fn_for_patch(const patch_t *patch_info, const char *fn)
 {
-	if unexpected(!patch_info || !patch_info->archive || !fn) {
+	if condition_unlikely(!patch_info || !patch_info->archive || !fn) {
 		return NULL;
 	}
 	/*if(char archive_end = patch_info->archive[patch_info->archive_length - 1];
@@ -203,7 +203,7 @@ TH_CALLER_FREE char* fn_for_patch(const patch_t *patch_info, const char *fn)
 
 int patch_file_exists(const patch_t *patch_info, const char *fn)
 {
-	if unexpected(patch_file_blacklisted(patch_info, fn)) {
+	if condition_unlikely(patch_file_blacklisted(patch_info, fn)) {
 		return false;
 	}
 	BOOL ret = FALSE;
@@ -216,7 +216,7 @@ int patch_file_exists(const patch_t *patch_info, const char *fn)
 
 int patch_file_blacklisted(const patch_t *patch_info, const char *fn)
 {
-	if unexpected(patch_info->ignore) {
+	if condition_unlikely(patch_info->ignore) {
 		for (size_t i = 0; patch_info->ignore[i]; i++) {
 			if (PathMatchSpecExU(fn, patch_info->ignore[i], PMSF_NORMAL) == S_OK) {
 				return 1;
@@ -295,7 +295,7 @@ size_t patch_json_merge(json_t **json_inout, const patch_t *patch_info, const ch
 
 int patch_json_store(const patch_t *patch_info, const char *fn, const json_t *json)
 {
-	if unexpected(!patch_info || !fn || !json) {
+	if condition_unlikely(!patch_info || !fn || !json) {
 		return -1;
 	}
 	int ret = -1;
@@ -366,7 +366,7 @@ patch_desc_t patch_dep_to_desc(const char *dep_str)
 {
 	patch_desc_t desc = {};
 
-	if unexpected(!dep_str) {
+	if condition_unlikely(!dep_str) {
 		return desc;
 	}
 
@@ -613,7 +613,7 @@ void patchhook_register(const char *wildcard, func_patch_t patch_func, func_patc
 
 patchhook_t *patchhooks_build(const char *fn)
 {
-	if unexpected(!fn) {
+	if condition_unlikely(!fn) {
 		return NULL;
 	}
 	WCHAR_T_DEC(fn);
@@ -664,7 +664,7 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 {
 	// We don't check [patch] here - hooks should be run even if there is no
 	// dedicated patch file.
-	if unexpected(!file_inout) {
+	if condition_unlikely(!file_inout) {
 		return -1;
 	}
 	int ret = 0;
@@ -674,7 +674,7 @@ int patchhooks_run(const patchhook_t *hook_array, void *file_inout, size_t size_
 			if (func) {
 				if (func(file_inout, size_out, size_in, fn, patch) > 0) {
 					const char *patched_files_dump = runconfig_patched_files_dump_get();
-					if unexpected(patched_files_dump) {
+					if condition_unlikely(patched_files_dump) {
 						DumpDatFile(patched_files_dump, fn, file_inout, size_out, true);
 					}
 					ret = 1;
@@ -701,7 +701,7 @@ void patch_opts_clear_all() {
 }
 
 patch_value_type_t TH_FASTCALL patch_parse_type(const char *type) {
-	if unexpected(!type) return PVT_UNKNOWN;
+	if condition_unlikely(!type) return PVT_UNKNOWN;
 	switch (const uint8_t type_char = type[0] | 0x20) {
 		case 's': case 'w':
 			size_t char_size;
@@ -874,23 +874,23 @@ void patch_opts_from_json(json_t *opts) {
 	const char *key;
 	json_t *j_val;
 	json_object_foreach_fast(opts, key, j_val) {
-		if unexpected(!json_is_object(j_val)) {
+		if condition_unlikely(!json_is_object(j_val)) {
 			log_printf("ERROR: invalid parameter for option %s\n", key);
 			continue;
 		}
 		json_t *j_val_val = json_object_get(j_val, "val");
-		if unexpected(!j_val_val) {
+		if condition_unlikely(!j_val_val) {
 			continue;
 		}
 		const char *tname = json_object_get_string(j_val, "type");
-		if unexpected(!tname) {
+		if condition_unlikely(!tname) {
 			continue;
 		}
 
 		patch_val_t entry;
 		switch (entry.type = patch_parse_type(tname)) {
 			case PVT_STRING: case PVT_STRING16: case PVT_STRING32: {
-				if unexpected(!json_is_string(j_val_val)) {
+				if condition_unlikely(!json_is_string(j_val_val)) {
 					log_printf("ERROR: invalid json type for string option %s\n", key);
 					continue;
 				}

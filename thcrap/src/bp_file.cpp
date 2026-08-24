@@ -61,7 +61,7 @@ THREAD_LOCAL(file_rep_t, fr_tls, NULL, file_rep_clear);
 size_t BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
-	if unexpected(fr->disable) {
+	if condition_unlikely(fr->disable) {
 		return 1;
 	}
 
@@ -78,7 +78,7 @@ size_t BP_file_buffer(x86_reg_t *regs, json_t *bp_info)
 size_t BP_file_load(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
-	if unexpected(fr->disable) {
+	if condition_unlikely(fr->disable) {
 		return 1;
 	}
 
@@ -139,7 +139,7 @@ size_t BP_file_load(x86_reg_t *regs, json_t *bp_info)
 // Cool function name.
 int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t size, bool overwrite_existing)
 {
-	if unexpected(!buffer || !name) {
+	if condition_unlikely(!buffer || !name) {
 		return -1;
 	}
 
@@ -155,7 +155,7 @@ int DumpDatFile(const char *dir, const char *name, const void *buffer, size_t si
 size_t BP_file_loaded(x86_reg_t *regs, json_t *bp_info)
 {
 	file_rep_t *fr = fr_tls_get();
-	if unexpected(fr->disable) {
+	if condition_unlikely(fr->disable) {
 		return 1;
 	}
 

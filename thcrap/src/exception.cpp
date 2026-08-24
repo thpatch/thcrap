@@ -264,7 +264,7 @@ parsed_prefix:
 			branch_target = addr + 1 + *(int8_t*)addr;
 		print_branch:
 			log_print("\nOpcode: ");
-			if unexpected(rep_type == 1) log_print("BND ");
+			if condition_unlikely(rep_type == 1) log_print("BND ");
 			switch (segment) {
 				case -1: case 0: case 2: case 5: break;
 				case 1: log_print("-"); break; // Not taken hint
@@ -383,7 +383,7 @@ parsed_prefix:
 			TH_UNREACHABLE;
 		case 0xE8: case 0xE9: // JMP, CALL
 			log_print("\nOpcode: ");
-			if unexpected(rep_type == 1) log_print("BND ");
+			if condition_unlikely(rep_type == 1) log_print("BND ");
 			if (DATASIZE_NOT_16) {
 				branch_target = addr + 4 + *(int32_t*)addr;
 				log_printf(
@@ -440,8 +440,8 @@ parsed_prefix:
 					goto unrecognized_opcode;
 				case 2: // CALL rm
 					log_print("\nOpcode: ");
-					if unexpected(rep_type == 1) log_print("BND ");
-					if unexpected(segment == 3) log_print("NOTRACK ");
+					if condition_unlikely(rep_type == 1) log_print("BND ");
+					if condition_unlikely(segment == 3) log_print("NOTRACK ");
 					log_print("CALL ");
 				print_indirect:
 					mod = opcode >> 6;
@@ -617,7 +617,7 @@ parsed_prefix:
 #ifdef TH_X64
 								case 6: // Relative addr
 									final_addr = addr + 4 + offset;
-									if unexpected(addrsize) final_addr = (uint32_t)final_addr;
+									if condition_unlikely(addrsize) final_addr = (uint32_t)final_addr;
 									if (offset >= 0) {
 										log_printf(
 											!addrsize ? "RIP + 0x%X] (0x%p)" : "EIP + 0x%X] (0x%08X)"
@@ -769,8 +769,8 @@ parsed_prefix:
 					TH_UNREACHABLE;
 				case 4: // JMP rm
 					log_print("\nOpcode: ");
-					if unexpected(rep_type == 1) log_print("BND ");
-					if unexpected(segment == 3) log_print("NOTRACK ");
+					if condition_unlikely(rep_type == 1) log_print("BND ");
+					if condition_unlikely(segment == 3) log_print("NOTRACK ");
 					log_print("JMP ");
 					goto print_indirect;
 				case 5: // JMP FAR m
@@ -820,7 +820,7 @@ static void log_print_context(CONTEXT* ctx)
 			);
 #endif
 		}
-		if unexpected(last_branch_logging) {
+		if condition_unlikely(last_branch_logging) {
 #ifdef TH_X64
 			uintptr_t exception_from = ctx->LastExceptionFromRip;
 #else
@@ -1180,7 +1180,7 @@ TH_CALLER_FREE static char* get_windows_error_message(DWORD ExceptionCode) {
 	HGLOBAL resource_handle = LoadResource(ntdll_handle, resource_info_handle);
 
 	MESSAGE_RESOURCE_DATA* resource_pointer = (MESSAGE_RESOURCE_DATA*)LockResource(resource_handle);
-	if unexpected(resource_pointer == NULL) {
+	if condition_unlikely(resource_pointer == NULL) {
 		// TODO Figure out why Wine isn't finding the message table resource in ntdll
 		return NULL;
 	}

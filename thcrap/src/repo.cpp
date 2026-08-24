@@ -23,7 +23,7 @@ repo_t *RepoLoadJson(json_t *repo_js)
 	}
 
 	char* id = json_object_get_string_copy(repo_js, "id");
-	if unexpected(!id) {
+	if condition_unlikely(!id) {
 		return nullptr;
 	}
 	repo_t *repo = (repo_t*)malloc(sizeof(repo_t));

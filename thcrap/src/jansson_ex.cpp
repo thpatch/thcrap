@@ -36,7 +36,7 @@ TH_CALLER_FREE char* json_string_copy(const json_t* object) {
 }
 
 TH_CALLER_FREE char* json_concat_string_array(const json_t* str_arr, const char *name) {
-	if unexpected(!str_arr) {
+	if condition_unlikely(!str_arr) {
 		return NULL;
 	}
 	switch (json_typeof(str_arr)) {
@@ -408,7 +408,7 @@ json_t* json_load_file_report_size(const char *json_fn, size_t* size_out)
 		size_t json_size;
 		uint8_t* heap_buffer = (uint8_t*)file_read(json_fn, &json_size);
 
-		if unexpected(!heap_buffer || !json_size) {
+		if condition_unlikely(!heap_buffer || !json_size) {
 			break;
 		}
 
@@ -537,7 +537,7 @@ static inline jeval_error_t json_evaluate(const json_t* json, uint8_t eval_confi
 				return JEVAL_SUCCESS;
 			}
 			case JSON_STRING: {
-				if unexpected(eval_config & JEVAL_NO_EXPRS) return JEVAL_ERROR_STRING_NO_EXPRS;
+				if condition_unlikely(eval_config & JEVAL_NO_EXPRS) return JEVAL_ERROR_STRING_NO_EXPRS;
 				if (strict & (eval_type == JEVAL_REAL)) return JEVAL_ERROR_STRICT_TYPE_MISMATCH;
 				const size_t expr_value = json_string_expression_value(json);
 				SetOutValues((bool)expr_value, (json_int_t)expr_value, (double)expr_value);

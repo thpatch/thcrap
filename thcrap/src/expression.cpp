@@ -327,7 +327,7 @@ struct CPUID_Data_t {
 				}
 			case 6: case 5: case 4: case 3: case 2:
 				__cpuid(data, 0x20000000);
-				if unexpected(data[0] > 0) {
+				if condition_unlikely(data[0] > 0) {
 					__cpuid(data, 0x20000001);
 					HasMVEX = bittest32(data[3], 4);
 				}
@@ -1207,7 +1207,7 @@ static size_t ApplyOperator(const size_t value, const size_t arg, const op_t op)
 static inline const patch_val_t* GetOptionValue(const char* name, size_t name_length) {
 	ExpressionLogging("Option: \"%.*s\"\n", name_length, name);
 	const patch_val_t* const option = patch_opt_get_len(name, name_length);
-	if unexpected(!option) {
+	if condition_unlikely(!option) {
 		OptionNotFoundErrorMessage(name, name_length);
 	}
 	return option;
@@ -1418,7 +1418,7 @@ static uintptr_t GetCodecaveAddress(const char *const name, const size_t name_le
 			switch ((bool)(user_offset_expr == user_offset_expr_next)) {
 				case true: {
 					// If a hex value doesn't work, try a subexpression
-					if unexpected(!eval_expr_impl(user_offset_expr, is_relative ? ']' : '>', &user_offset_value, StartNoOp, 0, data_refs)) {
+					if condition_unlikely(!eval_expr_impl(user_offset_expr, is_relative ? ']' : '>', &user_offset_value, StartNoOp, 0, data_refs)) {
 						ExpressionErrorMessage();
 						break;
 					}
@@ -1440,7 +1440,7 @@ static uintptr_t GetBPFuncOrRawAddress(const char *const name, const size_t name
 	uintptr_t addr = func_get_len(name, name_length);
 	switch (addr) {
 		case 0: {// Will be null if the name was not a BP function
-			if unexpected(!eval_expr_impl(name, is_relative ? ']' : '>', &addr, StartNoOp, 0, data_refs)) {
+			if condition_unlikely(!eval_expr_impl(name, is_relative ? ']' : '>', &addr, StartNoOp, 0, data_refs)) {
 				ExpressionErrorMessage();
 				break;
 			}
@@ -1553,7 +1553,7 @@ static TH_NOINLINE const char* get_patch_value_impl(const char* expr, patch_val_
 	ExpressionLogging("Patch value opening char: \"%hhX\"\n", expr[0]);
 	const char* patch_val_end = find_matching_end(expr, expr[0] == '[' ? TextInt('[', ']') : TextInt('<', '>'));
 	ExpressionLogging("Patch value end: \"%s\"\n", patch_val_end ? patch_val_end : "NULL");
-	if unexpected(!patch_val_end) {
+	if condition_unlikely(!patch_val_end) {
 		//Bracket error
 		return NULL;
 	}
@@ -1961,7 +1961,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			// Unary Operators
 			case '!': case '~': case '+': case '-': {
 				expr_next = consume_value_impl(expr + 1 + (expr[0] == expr[1]), out, data_refs);
-				if unexpected(!expr_next) goto InvalidValueError;
+				if condition_unlikely(!expr_next) goto InvalidValueError;
 				switch ((uint8_t)expr[0] << (uint8_t)(expr[0] == expr[1])) {
 					case '~': *out = ~*out; break;
 					case '!': *out = !*out; break;
@@ -1978,7 +1978,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '*': {
 				// expr + 1 is used to avoid creating a loop
 				expr_next = consume_value_impl(expr + 1, out, data_refs);
-				if unexpected(!expr_next) goto InvalidValueError;
+				if condition_unlikely(!expr_next) goto InvalidValueError;
 				goto SharedDeref;
 			}
 			// Casts and subexpression values
@@ -1998,7 +1998,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					*/
 					// Casts
 					expr_next = consume_value_impl(expr_next, out, data_refs);
-					if unexpected(!expr_next) goto InvalidValueError;
+					if condition_unlikely(!expr_next) goto InvalidValueError;
 					++expr_next;
 					if (cur_value.type != PVT_DEFAULT) {
 						switch (cur_value.type) {
@@ -2024,7 +2024,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 				else {
 					// Subexpressions
 					expr_next = eval_expr_impl(expr, ')', out, StartNoOp, 0, data_refs);
-					if unexpected(!expr_next) goto InvalidExpressionError;
+					if condition_unlikely(!expr_next) goto InvalidExpressionError;
 					++expr_next;
 				}
 				goto PostfixCheck;
@@ -2035,10 +2035,10 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 					// Dereference
 					// expr + 1 is used to avoid creating a loop
 					expr_next = eval_expr_impl(expr + 1, ']', out, StartNoOp, 0, data_refs);
-					if unexpected(!expr_next) goto InvalidExpressionError;
+					if condition_unlikely(!expr_next) goto InvalidExpressionError;
 					++expr_next;
 			SharedDeref:
-					if unexpected(!*out) goto NullDerefWarning;
+					if condition_unlikely(!*out) goto NullDerefWarning;
 					if (cur_value.type == PVT_DEFAULT) {
 						*out = *(size_t*)*out;
 					}
@@ -2075,7 +2075,7 @@ static const char* consume_value_impl(const char* expr, size_t *const out, const
 			case '<': {
 				// DON'T use expr + 1 since that kills get_patch_value
 				expr_next = get_patch_value_impl(expr, &cur_value, data_refs);
-				if unexpected(!expr_next) goto PatchValueBracketError;
+				if condition_unlikely(!expr_next) goto PatchValueBracketError;
 				switch (cur_value.type) {
 					case PVT_BYTE: *out = (size_t)cur_value.b; break;
 					case PVT_SBYTE: *out = (size_t)cur_value.sb; break;
@@ -2184,7 +2184,7 @@ static const char* eval_expr_impl(const char* expr, char end, size_t *const out,
 
 		if (ops_cur != NullOp) {
 			const char* expr_next_val = consume_value_impl(expr, &cur_value, data_refs);
-			if unexpected(!expr_next_val) goto InvalidValueError;
+			if condition_unlikely(!expr_next_val) goto InvalidValueError;
 			expr = expr_next_val;
 		}
 
@@ -2207,7 +2207,7 @@ static const char* eval_expr_impl(const char* expr, char end, size_t *const out,
 				switch (ops_next) {
 					default:
 						expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
-						if unexpected(!expr) goto InvalidExpressionError;
+						if condition_unlikely(!expr) goto InvalidExpressionError;
 						ExpressionLogging(
 							"\tRETURN FROM SUBEXPRESSION\n"
 							"\tRemaining: \"%s\"\n",
@@ -2222,11 +2222,11 @@ static const char* eval_expr_impl(const char* expr, char end, size_t *const out,
 								ExpressionLogging("Ternary TRUE compare: \"%s\"\n", expr);
 								if (expr[0] != ':') {
 									expr = eval_expr_impl(expr, ':', &cur_value, StartNoOp, 0, data_refs);
-									if unexpected(!expr) goto InvalidExpressionError;
+									if condition_unlikely(!expr) goto InvalidExpressionError;
 								}
 								ExpressionLogging("Skipping value until %hhX in \"%s\"...\n", end, expr);
 								expr = skip_value(expr, end);
-								if unexpected(!expr) goto InvalidExpressionError;
+								if condition_unlikely(!expr) goto InvalidExpressionError;
 								ExpressionLogging(
 									"Skipping completed\n"
 									"Ternary TRUE remaining: \"%s\" with end \"%hhX\"\n",
@@ -2242,7 +2242,7 @@ static const char* eval_expr_impl(const char* expr, char end, size_t *const out,
 								DisableCodecaveNotFound = true;
 								expr = eval_expr_impl(expr, ':', &dummy_cur_value, StartNoOp, 0, data_refs);
 								DisableCodecaveNotFound = false;
-								if unexpected(!expr) goto InvalidExpressionError;
+								if condition_unlikely(!expr) goto InvalidExpressionError;
 								while (*expr++ != ':');
 								ExpressionLogging(
 									"Skipping completed\n"
@@ -2269,17 +2269,17 @@ static const char* eval_expr_impl(const char* expr, char end, size_t *const out,
 				// is pretty terrible for a recursive function. Screw that.
 				if ((uint8_t)(cur_prec - OpData.Precedence[Assign]) <= (OpData.Precedence[TernaryConditional] - OpData.Precedence[Assign])) {
 					expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
-					if unexpected(!expr) goto InvalidExpressionError;
+					if condition_unlikely(!expr) goto InvalidExpressionError;
 				}
 				/*switch (cur_prec) {
 					case OpData.Precedence[TernaryConditional]:
 					case OpData.Precedence[Assign]:
 						expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
-						if unexpected(!expr) goto InvalidExpressionError;
+						if condition_unlikely(!expr) goto InvalidExpressionError;
 				}*/
 				/*if (OpData.Associativity[ops_cur] == RightAssociative) {
 					expr = eval_expr_impl(expr, end, &cur_value, ops_next, cur_value, data_refs);
-					if unexpected(!expr) goto InvalidExpressionError;
+					if condition_unlikely(!expr) goto InvalidExpressionError;
 				}*/
 				break;
 			case HigherThanNext:
