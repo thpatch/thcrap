@@ -22,6 +22,8 @@ typedef enum {
 	ALREADY_LOADED = 4
 } PluginValidation;
 
+THCRAP_INTERNAL_API int GetExeBits(const char* const path);
+
 // Checks if DLL located at [path] is a valid
 // thcrap plugin that needs to be initialized.
 PluginValidation validate_plugin_dll_for_load(const char* const path);

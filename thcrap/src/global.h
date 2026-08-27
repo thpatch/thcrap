@@ -58,38 +58,45 @@ THCRAP_INTERNAL_API void globalconfig_release(void);
 THCRAP_API void* TH_CDECL thcrap_alloc(size_t size);
 THCRAP_API void  TH_CDECL thcrap_free(void *mem);
 
-// Convenience macro for binary file names that differ between Debug and
-// Release builds.
-#ifdef _DEBUG
-# define DEBUG_OR_RELEASE "_d"
-# define DEBUG_OR_RELEASE_W L"_d"
-#else
-# define DEBUG_OR_RELEASE
-# define DEBUG_OR_RELEASE_W
-#endif
-
 #if TH_X86
 #define VERSIONS_SUFFIX
 #define VERSIONS_SUFFIX_ALT "64"
+#define CURRENT_ARCH_BITS 32
+#define ALT_ARCH_BITS 64
 #else
 #define VERSIONS_SUFFIX "64"
 #define VERSIONS_SUFFIX_ALT
+#define CURRENT_ARCH_BITS 64
+#define ALT_ARCH_BITS 32
 #endif
 
+// Convenience macros for binary file names that differ between builds.
 #if NDEBUG
+#define DEBUG_OR_RELEASE
+#define DEBUG_OR_RELEASE_W
 #if TH_X86
 #define FILE_SUFFIX
 #define FILE_SUFFIX_W
+#define ALT_FILE_SUFFIX "_64"
+#define ALT_FILE_SUFFIX_W L"_64"
 #else
 #define FILE_SUFFIX "_64"
 #define FILE_SUFFIX_W L"_64"
+#define ALT_FILE_SUFFIX
+#define ALT_FILE_SUFFIX_W
 #endif
 #else
+#define DEBUG_OR_RELEASE "_d"
+#define DEBUG_OR_RELEASE_W L"_d"
 #if TH_X86
 #define FILE_SUFFIX "_d"
 #define FILE_SUFFIX_W L"_d"
+#define ALT_FILE_SUFFIX "_64_d"
+#define ALT_FILE_SUFFIX_W L"_64_d"
 #else
 #define FILE_SUFFIX "_64_d"
 #define FILE_SUFFIX_W L"_64_d"
+#define ALT_FILE_SUFFIX "_d"
+#define ALT_FILE_SUFFIX_W L"_d"
 #endif
 #endif

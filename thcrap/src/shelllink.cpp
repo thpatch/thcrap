@@ -325,9 +325,16 @@ ShortcutsType DecideAutoShortcutType(ShortcutsDestination destination)
 
 int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination, ShortcutsType shortcut_type)
 {
-#define LOADER_EXE L"thcrap_loader" FILE_SUFFIX_W L".exe"
+#define LOADER_EXE_32 L"thcrap_loader" DEBUG_OR_RELEASE_W L".exe"
+#define LOADER_EXE_64 L"thcrap_loader_64" DEBUG_OR_RELEASE_W L".exe"
+
 	auto thcrap_dir = GetThcrapDir();
-	auto self_path = thcrap_dir / L"bin/" LOADER_EXE;
+
+	auto self_path_32 = (thcrap_dir / L"bin/" LOADER_EXE_32).wstring();
+	auto self_path_64 = (thcrap_dir / L"bin/" LOADER_EXE_64).wstring();
+	auto args_base_32 = std::wstring(LOADER_EXE_32 L" ");
+	auto args_base_64 = std::wstring(LOADER_EXE_64 L" ");
+
 	auto link_dir = get_link_dir(destination, thcrap_dir);
 	int ret = 0;
 	// Yay, COM.
@@ -350,7 +357,10 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 			link_dir = std::filesystem::absolute(std::filesystem::u8path(games[i].path)).remove_filename();
 		}
 
-		auto icon_path = GetIconPath(games[i].path, games[i].id);
+		int bits = GetExeBits(games[i].path);
+#define BITS_BASED(val) (bits != 64 ? val##_32 : val##_64)
+
+		auto icon_path = GetIconPath(games[i].path, games[i].id).wstring();
 		auto link_path = link_dir / (std::string(games[i].id) + " ("sv + run_cfg_fn + ").ext"sv);
 		std::string link_args = std::string(1, '"') + run_cfg_fn + ".js\" "sv + games[i].id;
 		auto link_args_w = std::make_unique<wchar_t[]>(link_args.length() + 1);
@@ -366,14 +376,14 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 				com_init_succeeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 			}
 			link_path.replace_extension(L"lnk");
-			if (CreateLink(link_path.wstring().c_str(), self_path.wstring().c_str(), link_args_w.get(), thcrap_dir.wstring().c_str(), icon_path.wstring().c_str())) {
+			if (CreateLink(link_path.wstring().c_str(), BITS_BASED(self_path).c_str(), link_args_w.get(), thcrap_dir.wstring().c_str(), icon_path.c_str())) {
 				ret = 1;
 			}
 		}
 		else if (local_shortcut_type == SHTYPE_WRAPPER_ABSPATH || local_shortcut_type == SHTYPE_WRAPPER_RELPATH) {
 			link_path.replace_extension(L"exe");
-			auto exe_args = std::wstring(LOADER_EXE L" ") + link_args_w.get();
-			if (!CreateWrapper(link_path, thcrap_dir, LOADER_EXE, exe_args, icon_path.wstring().c_str(), local_shortcut_type)) {
+			auto exe_args = BITS_BASED(args_base) + link_args_w.get();
+			if (!CreateWrapper(link_path, thcrap_dir, BITS_BASED(LOADER_EXE), exe_args, icon_path.c_str(), local_shortcut_type)) {
 				ret = 1;
 			}
 		}

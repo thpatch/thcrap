@@ -260,6 +260,34 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 
+	if (GetExeBits(final_exe_fn) == ALT_ARCH_BITS) {
+		log_print("Swapping to thcrap_loader" ALT_FILE_SUFFIX ".exe\n");
+		wchar_t* args = GetCommandLineW();
+		if (args[0] == L'"') {
+			while (*++args != L'"' || args[-1] == L'\\');
+			++args;
+		} else {
+			while (*++args != L' ');
+		}
+		++args;
+		BUILD_VLA_STR(wchar_t, new_args, L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", L" ", args);
+		STARTUPINFOW si = {};
+		PROCESS_INFORMATION pi = {};
+		BOOL success = CreateProcessW(L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", new_args, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+		VLA_FREE(new_args);
+		if (!success) {
+			ret = -5;
+			goto end;
+		}
+		CloseHandle(pi.hThread);
+		WaitForSingleObject(pi.hProcess, INFINITE);
+		DWORD exit_code;
+		GetExitCodeProcess(pi.hProcess, &exit_code);
+		CloseHandle(pi.hProcess);
+		ret = exit_code;
+		goto end;
+	}
+
 	runconfig_load(run_cfg, RUNCONFIG_NO_BINHACKS);
 
 	char* cmdline = NULL;

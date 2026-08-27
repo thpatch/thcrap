@@ -16,7 +16,11 @@
     <TargetPath>$(OutDir)$(TargetName)$(TargetExt)</TargetPath>
   </PropertyGroup>
   <ItemGroup>
-    <ResourceCompile Include="thcrap_loader_wrapper.rc">
+    <ResourceCompile Condition="'$(Platform)'=='Win32'" Include="thcrap_loader_wrapper.rc">
+      <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">DEBUG_OR_RELEASE_W=L\"_d\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)'!='Debug'">DEBUG_OR_RELEASE_W=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ResourceCompile>
+    <ResourceCompile Condition="'$(Platform)'=='x64'" Include="thcrap_loader_wrapper_64.rc">
       <PreprocessorDefinitions Condition="'$(Configuration)'=='Debug'">DEBUG_OR_RELEASE_W=L\"_d\";%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)'!='Debug'">DEBUG_OR_RELEASE_W=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>

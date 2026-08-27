@@ -1,0 +1,5 @@
+STRINGTABLE
+BEGIN
+	1 L"[self]"
+	2 L"thcrap_loader_64" DEBUG_OR_RELEASE_W L".exe"
+END

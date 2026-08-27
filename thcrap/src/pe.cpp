@@ -53,6 +53,24 @@ int find_export_in_headers(void* buffer, const char* const func_name) {
 	return EXPORT_NOT_FOUND;
 }
 
+int GetExeBits(const char* const path) {
+	int ret = 0;
+	if (HMODULE exe = LoadLibraryExU(path, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE | LOAD_WITH_ALTERED_SEARCH_PATH)) {
+		if (PIMAGE_NT_HEADERS pNtHeader = GetNtHeader((HMODULE)LDR_DATAFILE_TO_VIEW(exe))) {
+			switch (pNtHeader->FileHeader.Machine) {
+				case IMAGE_FILE_MACHINE_I386:
+					ret = 32;
+					break;
+				case IMAGE_FILE_MACHINE_AMD64:
+					ret = 64;
+					break;
+			}
+		}
+		FreeLibrary(exe);
+	}
+	return ret;
+}
+
 PluginValidation validate_plugin_dll_for_load(const char* const path) {
 	HMODULE dll = LoadLibraryExU(path, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE | LOAD_WITH_ALTERED_SEARCH_PATH);
 	if unexpected(!dll) {
@@ -74,23 +92,22 @@ PluginValidation validate_plugin_dll_for_load(const char* const path) {
 
 bool CheckDLLFunction(const char* const path, const char* const func_name)
 {
+	bool ret = false;
 	HANDLE hFile = CreateFileU(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFile == INVALID_HANDLE_VALUE)
-		return false;
-	defer(CloseHandle(hFile));
-	DWORD fileSize = GetFileSize(hFile, NULL);
-	if (fileSize > (1 << 23) || fileSize < 128)
-		return false;
-	HANDLE hFileMap = CreateFileMappingW(hFile, NULL, PAGE_READONLY, 0, fileSize, NULL);
-	if (!hFileMap)
-		return false;
-	defer(CloseHandle(hFileMap));
-	void* pFileMapView = MapViewOfFile(hFileMap, FILE_MAP_READ, 0, 0, fileSize);
-	if (!pFileMapView)
-		return false;
-	defer(UnmapViewOfFile(pFileMapView));
-
-	return find_export_in_headers(pFileMapView, func_name) == EXPORT_FOUND;
+	if (hFile != INVALID_HANDLE_VALUE) {
+		DWORD fileSize = GetFileSize(hFile, NULL);
+		if (fileSize <= (1 << 23) && fileSize >= 128) {
+			if (HANDLE hFileMap = CreateFileMappingW(hFile, NULL, PAGE_READONLY, 0, fileSize, NULL)) {
+				if (void* pFileMapView = MapViewOfFile(hFileMap, FILE_MAP_READ, 0, 0, fileSize)) {
+					ret = find_export_in_headers(pFileMapView, func_name) == EXPORT_FOUND;
+					UnmapViewOfFile(pFileMapView);
+				}
+				CloseHandle(hFileMap);
+			}
+		}
+		CloseHandle(hFile);
+	}
+	return ret;
 }
 
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)

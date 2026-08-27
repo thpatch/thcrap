@@ -22,7 +22,11 @@ static InstallStatus_t CheckCRTStatus()
 
 	status = RegOpenKeyW(
 		HKEY_LOCAL_MACHINE,
+#ifdef _M_X64
+		L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64",
+#else
 		L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86",
+#endif
 		&Key
 	);
 
@@ -198,7 +202,7 @@ DWORD WINAPI NETDownloadThread(LPVOID lpParam) {
 	wchar_t current_dir[MAX_PATH];
 	GetCurrentDirectoryW(MAX_PATH, current_dir);
 	SetCurrentDirectoryW(ApplicationPath);
-	HMODULE hUpdate = LoadLibraryW(L"thcrap_update" DEBUG_OR_RELEASE L".dll");
+	HMODULE hUpdate = LoadLibraryW(L"thcrap_update" FILE_SUFFIX_W L".dll");
 	SetCurrentDirectoryW(current_dir);
 	if (!hUpdate)
 		ExitThread(HttpLibLoadError);
@@ -316,9 +320,9 @@ int installDotNET(LPWSTR ApplicationPath) {
 	DWORD waitStatus;
 
 	while (1) {
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) && msg.message != WM_QUIT) {
+		while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE) && msg.message != WM_QUIT) {
 			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			DispatchMessageW(&msg);
 		}
 		if (msg.message == WM_QUIT) {
 			PostQuitMessage((int)msg.wParam);
@@ -371,9 +375,9 @@ int installDotNET(LPWSTR ApplicationPath) {
 
 	my_memset(&msg, 0, sizeof(msg));
 	while (1) {
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) && msg.message != WM_QUIT) {
+		while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE) && msg.message != WM_QUIT) {
 			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			DispatchMessageW(&msg);
 		}
 		if (msg.message == WM_QUIT) {
 			PostQuitMessage((int)msg.wParam);
@@ -413,13 +417,19 @@ void installCrt(LPWSTR ApplicationPath)
 	si.cb = sizeof(si);
 	my_memset(&pi, 0, sizeof(pi));
 
-	LPWSTR RtPath = my_alloc(my_wcslen(ApplicationPath) + my_wcslen(L"\"vc_redist.x86.exe\" /install /quiet /norestart") + 1, sizeof(wchar_t));
+#if _M_X64
+#define VC_REDIST_INSTALLER L"vc_redist.x64.exe"
+#else
+#define VC_REDIST_INSTALLER L"vc_redist.x86.exe"
+#endif
+
+	LPWSTR RtPath = my_alloc(my_wcslen(ApplicationPath) + my_wcslen(L"\"" VC_REDIST_INSTALLER L"\" /install /quiet /norestart") + 1, sizeof(wchar_t));
 	LPWSTR p = RtPath;
 	p = my_strcpy(p, L"\"");
 	p = my_strcpy(p, ApplicationPath);
-	p = my_strcpy(p, L"vc_redist.x86.exe");
+	p = my_strcpy(p, VC_REDIST_INSTALLER);
 	p = my_strcpy(p, L"\" /install /quiet /norestart");
-	BOOL ret = CreateProcess(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+	BOOL ret = CreateProcessW(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 	my_free(RtPath);
 	CloseHandle(pi.hThread);
 
@@ -434,9 +444,9 @@ void installCrt(LPWSTR ApplicationPath)
 	MSG msg;
 	my_memset(&msg, 0, sizeof(msg));
 	while (1) {
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) && msg.message != WM_QUIT) {
+		while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE) && msg.message != WM_QUIT) {
 			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			DispatchMessageW(&msg);
 		}
 		if (msg.message == WM_QUIT) {
 			PostQuitMessage((int)msg.wParam);
