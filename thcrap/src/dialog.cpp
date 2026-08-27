@@ -128,10 +128,8 @@ typedef struct {
 	DLGTEMPLATEEX_FONT font;
 */
 } DLGTEMPLATEEX_START;
-#pragma pack(pop)
 
 // Font definition structure.
-#pragma pack(push, 1)
 typedef struct {
 	WORD pointsize;
 	WORD weight;
@@ -143,10 +141,8 @@ typedef struct {
 	wchar_t typeface[];
 */
 } DLGTEMPLATEEX_FONT;
-#pragma pack(pop)
 
 // Constant-width part of the dialog item structure
-#pragma pack(push, 1)
 typedef struct {
 	DWORD helpID;
 	DWORD exStyle;
@@ -166,6 +162,9 @@ typedef struct {
 */
 } DLGITEMTEMPLATEEX_START;
 #pragma pack(pop)
+TH_ASSERT_TYPE_SIZE(0x1A, DLGTEMPLATEEX_START);
+TH_ASSERT_TYPE_SIZE(0x6, DLGTEMPLATEEX_FONT);
+TH_ASSERT_TYPE_SIZE(0x18, DLGITEMTEMPLATEEX_START);
 
 // Size adjustment state.
 typedef struct {
@@ -234,17 +233,16 @@ void dialog_adjust_init(
 	const DLGTEMPLATEEX_FONT *dst_font
 )
 {
-	int font_height;
-	const sz_Or_Ord *typeface = NULL;
-	if(!adj || !dst_header || !dst_font) {
+	if unexpected(!adj || !dst_header || !dst_font) {
 		return;
 	}
 	ZeroMemory(adj, sizeof(*adj));
-	typeface = (sz_Or_Ord*)((BYTE*)dst_font + sizeof(DLGTEMPLATEEX_FONT));
 
 	adj->dst_header = dst_header;
 	adj->hDC = GetDC(0);
-	font_height = -MulDiv(dst_font->pointsize, GetDeviceCaps(adj->hDC, LOGPIXELSY), 72);
+	int font_height = -MulDiv(dst_font->pointsize, GetDeviceCaps(adj->hDC, LOGPIXELSY), 72);
+
+	const sz_Or_Ord* typeface = (sz_Or_Ord*)((BYTE*)dst_font + sizeof(DLGTEMPLATEEX_FONT));
 
 	adj->hFont = CreateFontW(
 		font_height, 0, 0, 0, dst_font->weight, dst_font->italic, FALSE, FALSE,
@@ -268,23 +266,20 @@ void dialog_adjust(
 	const stringref_t rep
 )
 {
-	RECT rect = {};
-	UINT draw_flags;
-	BYTE button_style;
-
-	if(!adj || !adj->hDC || !item || !rep.data()) {
+	if unexpected(!adj || !adj->hDC || !item || !rep.data()) {
 		return;
 	}
-	rect.right = item->cx;
-	draw_flags = DT_CALCRECT | (strchr(rep.data(), '\n') ? DT_WORDBREAK : 0);
-	DrawText(adj->hDC, rep.data(), rep.length(), &rect, draw_flags | DT_CALCRECT);
+	RECT rect = { 0, 0, item->cx, 0 };
+	UINT draw_flags = DT_CALCRECT | (strchr(rep.data(), '\n') ? DT_WORDBREAK : 0);
+	
+	DrawTextU(adj->hDC, rep.data(), rep.length(), &rect, draw_flags | DT_CALCRECT);
 
 	// Convert pixels back to dialog units
 	// (see http://msdn.microsoft.com/library/windows/desktop/ms645475%28v=vs.85%29.aspx)
 	rect.right = MulDiv(rect.right, 4, adj->base_w);
 	rect.bottom = MulDiv(rect.bottom, 8, adj->base_h);
 
-	button_style = item->style & 0xff;
+	BYTE button_style = item->style & 0xff;
 	/**
 	  * Why, Microsoft. Why.
 	  * There seems to be *no way* to determine this programmatically.
@@ -292,8 +287,8 @@ void dialog_adjust(
 	  * depend on that graphic being 13 + base_w pixels wide, so...
 	  */
 	if(
-		(button_style == BS_CHECKBOX || button_style == BS_AUTOCHECKBOX ||
-		 button_style == BS_RADIOBUTTON || button_style == BS_AUTORADIOBUTTON)
+		button_style == BS_CHECKBOX || button_style == BS_AUTOCHECKBOX ||
+		button_style == BS_RADIOBUTTON || button_style == BS_AUTORADIOBUTTON
 	) {
 		rect.right += MulDiv(13 + adj->base_w, 4, adj->base_w);
 	} else if(button_style == BS_PUSHBUTTON || button_style == BS_DEFPUSHBUTTON) {
@@ -307,7 +302,7 @@ void dialog_adjust(
 
 void dialog_adjust_clear(dialog_adjust_t *adj)
 {
-	if(!adj) {
+	if unexpected(!adj) {
 		return;
 	}
 	DeleteObject(adj->hFont);
@@ -331,9 +326,8 @@ size_t sz_or_ord_size(const BYTE **src)
 		}
 		*src += ret;
 		return ret;
-	} else {
-		return 0;
 	}
+	return 0;
 }
 
 size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const stringref_t *rep)
@@ -350,9 +344,8 @@ size_t sz_or_ord_build(BYTE *dst, const BYTE **src, const stringref_t *rep)
 			memcpy(dst, &src_sz->sz, dst_len);
 		}
 		return dst_len;
-	} else {
-		return 0;
 	}
+	return 0;
 }
 /// ---------
 
@@ -364,9 +357,9 @@ size_t dialog_template_ex_size(json_t *trans)
 	size_t ret = 0;
 
 	const json_t *trans_title = strings_get(json_object_get_string(trans, "title"));
-	const json_t *trans_font = strings_get(json_object_get_string(trans, "font"));
-
 	ret += json_string_length(trans_title) + 1;
+
+	const json_t *trans_font = strings_get(json_object_get_string(trans, "font"));
 	ret += json_string_length(trans_font) + 1;
 
 	ret *= sizeof(wchar_t);
@@ -415,9 +408,8 @@ size_t dialog_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_t *ad
 		}
 		*src = ptr_dword_align(*src);
 		return ptr_dword_align(dst) - dst_start;
-	} else {
-		return 0;
 	}
+	return 0;
 }
 /// -------------
 
@@ -454,9 +446,8 @@ size_t dialog_item_template_ex_build(BYTE *dst, const BYTE **src, dialog_adjust_
 
 		*src = ptr_dword_align(*src);
 		return ptr_dword_align(dst) - dst_start;
-	} else {
-		return 0;
 	}
+	return 0;
 }
 /// -----------------
 
@@ -468,7 +459,7 @@ DLGTEMPLATE* dialog_translate_internal(LPCSTR lpTemplateName, HGLOBAL hDlg, size
 	const char *dlg_format = NULL;
 	HGLOBAL hDlg_rep = NULL;
 
-	if (!lpTemplateName || !hDlg) {
+	if unexpected(!lpTemplateName || !hDlg) {
 		return NULL;
 	}
 
@@ -476,7 +467,7 @@ DLGTEMPLATE* dialog_translate_internal(LPCSTR lpTemplateName, HGLOBAL hDlg, size
 		dlg_name_len = strlen(lpTemplateName) + 1;
 		dlg_format = "%s%s%s";
 	} else  {
-		dlg_name_len = str_num_digits(LOWORD(lpTemplateName)) + 1;
+		dlg_name_len = DECIMAL_DIGITS_BOUND(LOWORD(lpTemplateName)) + 1;
 		dlg_format = "%s%u%s";
 	}
 	{
@@ -542,18 +533,18 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 	HGLOBAL hDlg = NULL;
 	size_t hDlg_len;
 
-	if(!lpTemplateName) {
+	if unexpected(!lpTemplateName) {
 		return NULL;
 	}
 
 	// MAKEINTRESOURCE(5) == RT_DIALOG.
 	hrsrc = FindResourceA(hInstance, lpTemplateName, MAKEINTRESOURCEA(5));
 	hDlg = LoadResource(hInstance, hrsrc);
-	hDlg_len = SizeofResource(hInstance, hrsrc);
-
-	if(!hDlg) {
+	if unexpected(!hDlg) {
 		return NULL;
 	}
+
+	hDlg_len = SizeofResource(hInstance, hrsrc);
 
 	return dialog_translate_internal(lpTemplateName, hDlg, hDlg_len);
 }
@@ -565,18 +556,18 @@ DLGTEMPLATE* dialog_translatew(HINSTANCE hInstance, LPCWSTR lpTemplateName)
 	size_t hDlg_len;
 	DLGTEMPLATE *dlg_out = NULL;
 
-	if(!lpTemplateName) {
+	if unexpected(!lpTemplateName) {
 		return NULL;
 	}
 
 	// MAKEINTRESOURCE(5) == RT_DIALOG.
 	hrsrc = FindResourceW(hInstance, lpTemplateName, MAKEINTRESOURCEW(5));
 	hDlg = LoadResource(hInstance, hrsrc);
-	hDlg_len = SizeofResource(hInstance, hrsrc);
-
-	if(!hDlg) {
+	if unexpected(!hDlg) {
 		return NULL;
 	}
+
+	hDlg_len = SizeofResource(hInstance, hrsrc);
 
 	if (!IS_INTRESOURCE(lpTemplateName)) {
 		UTF8_DEC(lpTemplateName);

@@ -565,6 +565,10 @@ inline int8_t hex_value_inline(char c) {
 
 #ifdef __cplusplus
 
+#ifndef sfinae_enable
+#define sfinae_enable(...) std::enable_if_t<(__VA_ARGS__), bool> = true
+#endif
+
 extern "C++" {
 	template <int size>
 	using int_width_type = std::conditional_t<std::is_same_v<std::integral_constant<int, size>, std::integral_constant<int, sizeof(int8_t)>>, int8_t,

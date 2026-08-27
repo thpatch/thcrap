@@ -30,7 +30,9 @@ extern "C++" {
 template <typename T>
 inline constexpr bool is_valid_x87_type = std::is_same_v<T, LongDouble80> || std::is_arithmetic_v<T>;
 
+#ifndef sfinae_enable
 #define sfinae_enable(...) std::enable_if_t<(__VA_ARGS__), bool> = true
+#endif
 
 #define ValidFPValue(T) \
 	(std::is_same_v<T, LongDouble80> || std::is_arithmetic_v<T>)

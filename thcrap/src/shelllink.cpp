@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <array>
 
 #include <shobjidl.h>
 #include <objbase.h>
@@ -15,28 +16,27 @@
 #include <shlguid.h>
 #include <filesystem>
 
-HRESULT CreateLink(
-	const std::filesystem::path& link_fn,
-	const std::filesystem::path& target_cmd,
-	const std::wstring& target_args,
-	const std::filesystem::path& work_path,
-	const std::filesystem::path& icon_fn
+static HRESULT CreateLink(
+	const wchar_t* link_fn,
+	const wchar_t* target_cmd,
+	const wchar_t* target_args,
+	const wchar_t* work_path,
+	const wchar_t* icon_fn
 )
 {
-	HRESULT hres;
 	IShellLinkW* psl;
 
 	// Get a pointer to the IShellLink interface. It is assumed that CoInitialize
 	// has already been called.
-	hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (LPVOID*)&psl);
+	HRESULT hres = CoCreateInstance(CLSID_ShellLink, NULL, CLSCTX_INPROC_SERVER, IID_IShellLinkW, (LPVOID*)&psl);
 	if (SUCCEEDED(hres)) {
 		IPersistFile* ppf;
 
 		// Set the path to the shortcut target and add the description.
-		psl->SetPath(target_cmd.wstring().c_str());
-		psl->SetArguments(target_args.c_str());
-		psl->SetWorkingDirectory(work_path.wstring().c_str());
-		psl->SetIconLocation(icon_fn.wstring().c_str(), 0);
+		psl->SetPath(target_cmd);
+		psl->SetArguments(target_args);
+		psl->SetWorkingDirectory(work_path);
+		psl->SetIconLocation(icon_fn, 0);
 
 		// Query IShellLink for the IPersistFile interface, used for saving the
 		// shortcut in persistent storage.
@@ -44,7 +44,7 @@ HRESULT CreateLink(
 
 		if (SUCCEEDED(hres)) {
 			// Save the link by calling IPersistFile::Save.
-			hres = ppf->Save(link_fn.wstring().c_str(), FALSE);
+			hres = ppf->Save(link_fn, FALSE);
 			if (FAILED(hres)) {
 				hres = GetLastError();
 			}
@@ -55,12 +55,9 @@ HRESULT CreateLink(
 	return hres;
 }
 
-void ReplaceStringTable(HANDLE hUpdate, std::vector<std::wstring> strings)
+template<size_t N, sfinae_enable(N <= 16)> // "ReplaceStringTable supports at most 16 strings"
+static void ReplaceStringTable(HANDLE hUpdate, std::array<std::wstring_view, N> strings)
 {
-	if (strings.size() > 16) {
-		throw std::runtime_error("ReplaceStringTable supports at most 16 strings");
-	}
-
 	std::vector<wchar_t> newStringTable;
 	for (auto& str : strings) {
 		size_t pos = newStringTable.size();
@@ -69,15 +66,17 @@ void ReplaceStringTable(HANDLE hUpdate, std::vector<std::wstring> strings)
 		std::copy(str.begin(), str.end(), newStringTable.begin() + pos + 1);
 	}
 
-	for (size_t i = strings.size(); i < 16; i++) {
-		newStringTable.push_back(0);
+	if constexpr (N < 16) {
+		for (size_t i = N; i != 16; i++) {
+			newStringTable.push_back(L'\0');
+		}
 	}
 
 	UpdateResourceW(hUpdate, RT_STRING, MAKEINTRESOURCEW(1),
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), newStringTable.data(), newStringTable.size() * sizeof(wchar_t));
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), newStringTable.data(), (DWORD)(newStringTable.size() * sizeof(wchar_t)));
 }
 
-std::pair<LPVOID, DWORD> GetResource(HMODULE hMod, LPCWSTR resourceId, LPCWSTR resourceType)
+static std::pair<LPVOID, DWORD> GetResource(HMODULE hMod, LPCWSTR resourceId, LPCWSTR resourceType)
 {
 	HRSRC hRes = FindResourceW(hMod, resourceId, resourceType);
 	if (hRes == nullptr) {
@@ -122,6 +121,8 @@ typedef struct GRPICONDIRENTRY
 	WORD  nId;
 } GRPICONDIRENTRY;
 #pragma pack(pop)
+TH_ASSERT_TYPE_SIZE(0x6, GRPICONDIR);
+TH_ASSERT_TYPE_SIZE(0xE, GRPICONDIRENTRY);
 
 static BOOL CALLBACK CopyIconGroupCallback(HMODULE hModule, LPCWSTR lpType, LPWSTR lpName, LONG_PTR lParam)
 {
@@ -142,51 +143,43 @@ LPWSTR GetIconGroupResourceId(HMODULE hModule)
 	return iconGroupId;
 }
 
-void CopyIconGroup(HANDLE hUpdate, const std::filesystem::path& icon_path)
+static void CopyIconGroup(HANDLE hUpdate, const wchar_t* icon_path)
 {
-	HMODULE hIconExe = LoadLibraryExW(icon_path.wstring().c_str(), nullptr, LOAD_LIBRARY_AS_DATAFILE);
-	if (hIconExe == nullptr) {
-		return;
-	}
-	defer(FreeLibrary(hIconExe));
+	if (HMODULE hIconExe = LoadLibraryExW(icon_path, NULL, LOAD_LIBRARY_AS_DATAFILE)) {
+		if (LPWSTR iconGroupId = GetIconGroupResourceId(hIconExe)) {
+			auto [iconGroupData, iconGroupSize] = GetResource(hIconExe, iconGroupId, RT_GROUP_ICON);
+			if (iconGroupData && iconGroupSize >= sizeof(GRPICONDIR)) {
+				size_t id_count = ((GRPICONDIR*)iconGroupData)->idCount;
+				if (iconGroupSize >= sizeof(GRPICONDIR) + id_count * sizeof(GRPICONDIRENTRY)) {
 
-	LPWSTR iconGroupId = GetIconGroupResourceId(hIconExe);
-	if (!iconGroupId) {
-		return;
-	}
-	defer(if (!IS_INTRESOURCE(iconGroupId)) {
-		free(iconGroupId);
-	});
+					UpdateResourceW(hUpdate, RT_GROUP_ICON, iconGroupId,
+									MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconGroupData, iconGroupSize);
 
-	auto [iconGroupData, iconGroupSize] = GetResource(hIconExe, iconGroupId, RT_GROUP_ICON);
-	if (!iconGroupData || iconGroupSize < sizeof(GRPICONDIR)) {
-		return;
-	}
+					const GRPICONDIRENTRY *groupIconDirEntries = (GRPICONDIRENTRY*)((uint8_t*)iconGroupData + sizeof(GRPICONDIR));
 
-	const GRPICONDIR *groupIconDir = (GRPICONDIR*)iconGroupData;
-	if (iconGroupSize < sizeof(GRPICONDIR) + groupIconDir->idCount * sizeof(GRPICONDIRENTRY)) {
-		return;
-	}
-	const GRPICONDIRENTRY *groupIconDirEntries = (GRPICONDIRENTRY*)((uint8_t*)iconGroupData + sizeof(GRPICONDIR));
-
-	UpdateResourceW(hUpdate, RT_GROUP_ICON, iconGroupId,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconGroupData, iconGroupSize);
-
-	for (size_t i = 0; i < groupIconDir->idCount; i++) {
-		auto [iconData, iconSize] = GetResource(hIconExe, MAKEINTRESOURCEW(groupIconDirEntries[i].nId), RT_ICON);
-		if (iconData && iconSize) {
-			UpdateResourceW(hUpdate, RT_ICON, MAKEINTRESOURCEW(groupIconDirEntries[i].nId),
-				MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconData, iconSize);
+					for (size_t i = 0; i < id_count; ++i) {
+						auto [iconData, iconSize] = GetResource(hIconExe, MAKEINTRESOURCEW(groupIconDirEntries[i].nId), RT_ICON);
+						if (iconData && iconSize) {
+							UpdateResourceW(hUpdate, RT_ICON, MAKEINTRESOURCEW(groupIconDirEntries[i].nId),
+											MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL), iconData, iconSize);
+						}
+					}
+				}
+			}
+			if (!IS_INTRESOURCE(iconGroupId)) {
+				free(iconGroupId);
+			}
 		}
+		FreeLibrary(hIconExe);
 	}
 }
 
-bool CreateWrapper(
+static bool CreateWrapper(
 	const std::filesystem::path& link_path,
 	const std::filesystem::path& thcrap_dir,
-	const std::wstring& loader_exe,
-	const std::wstring& target_args,
-	const std::filesystem::path& icon_path,
+	std::wstring_view loader_exe,
+	std::wstring_view target_args,
+	const wchar_t* icon_path,
 	ShortcutsType shortcut_type
 )
 {
@@ -209,8 +202,8 @@ bool CreateWrapper(
 		link_dir.remove_filename();
 		target_dir = target_dir.lexically_proximate(link_dir);
 	}
-	ReplaceStringTable(hUpdate, {
-		target_dir.wstring(),
+	ReplaceStringTable(hUpdate, std::array{
+		(std::wstring_view)target_dir.wstring(),
 		target_args,
 		loader_exe
 	});
@@ -275,7 +268,7 @@ std::filesystem::path get_link_dir(ShortcutsDestination destination, const std::
 	}
 }
 
-std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
+static std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
 {
 	auto icon_path = std::filesystem::u8path(icon_path_);
 	if (!icon_path.is_absolute()) {
@@ -301,7 +294,7 @@ std::filesystem::path GetIconPath(const char *icon_path_, const char *game_id)
 	return icon_path;
 }
 
-ShortcutsType DecideAutoShortcutType(ShortcutsDestination destination, const std::filesystem::path& link_dir, const std::filesystem::path& thcrap_dir_relative)
+ShortcutsType DecideAutoShortcutType(ShortcutsDestination destination)
 {
 	if (destination == SHDESTINATION_DESKTOP || destination == SHDESTINATION_START_MENU) {
 		// Assume thcrap and the shortcut are in completely different emplacements.
@@ -332,9 +325,9 @@ ShortcutsType DecideAutoShortcutType(ShortcutsDestination destination, const std
 
 int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDestination destination, ShortcutsType shortcut_type)
 {
-	LPCWSTR loader_exe = L"thcrap_loader" FILE_SUFFIX_W L".exe";
+#define LOADER_EXE L"thcrap_loader" FILE_SUFFIX_W L".exe"
 	auto thcrap_dir = GetThcrapDir();
-	auto self_path = thcrap_dir / L"bin" / loader_exe;
+	auto self_path = thcrap_dir / L"bin/" LOADER_EXE;
 	auto link_dir = get_link_dir(destination, thcrap_dir);
 	int ret = 0;
 	// Yay, COM.
@@ -365,7 +358,7 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 
 		ShortcutsType local_shortcut_type = shortcut_type;
 		if (local_shortcut_type == SHTYPE_AUTO) {
-			local_shortcut_type = DecideAutoShortcutType(destination, link_dir, thcrap_dir);
+			local_shortcut_type = DecideAutoShortcutType(destination);
 		}
 
 		if (local_shortcut_type == SHTYPE_SHORTCUT) {
@@ -373,14 +366,14 @@ int CreateShortcuts(const char *run_cfg_fn, games_js_entry *games, ShortcutsDest
 				com_init_succeeded = CoInitializeEx(NULL, COINIT_MULTITHREADED);
 			}
 			link_path.replace_extension(L"lnk");
-			if (CreateLink(link_path, self_path, link_args_w.get(), thcrap_dir, icon_path)) {
+			if (CreateLink(link_path.wstring().c_str(), self_path.wstring().c_str(), link_args_w.get(), thcrap_dir.wstring().c_str(), icon_path.wstring().c_str())) {
 				ret = 1;
 			}
 		}
 		else if (local_shortcut_type == SHTYPE_WRAPPER_ABSPATH || local_shortcut_type == SHTYPE_WRAPPER_RELPATH) {
 			link_path.replace_extension(L"exe");
-			auto exe_args = std::wstring(loader_exe) + L' ' + link_args_w.get();
-			if (!CreateWrapper(link_path, thcrap_dir, loader_exe, exe_args, icon_path, local_shortcut_type)) {
+			auto exe_args = std::wstring(LOADER_EXE L" ") + link_args_w.get();
+			if (!CreateWrapper(link_path, thcrap_dir, LOADER_EXE, exe_args, icon_path.wstring().c_str(), local_shortcut_type)) {
 				ret = 1;
 			}
 		}
