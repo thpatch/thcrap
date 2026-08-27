@@ -120,7 +120,7 @@ struct _SYSTEM_PROCESS_INFORMATION {
 // https://learn.microsoft.com/en-us/windows/win32/sysinfo/zwquerysysteminformation
 typedef enum {
 	SystemBasicInformation = 0,
-	SystemProcessInformation = 6, // for some reason this kept returning 16 as a size and that's very wrong?
+	SystemProcessInformation = 5,
 	SystemExtendedProcessInformation = 57
 } SYSTEM_INFORMATION_CLASS;
 

@@ -71,12 +71,12 @@ TH_CALLER_FREE HANDLE* get_all_threads(DWORD access) {
 
 		ULONG process_list_size;
 
-		NTSTATUS status = NtQuerySystemInformation(SystemExtendedProcessInformation, NULL, 0, &process_list_size);
+		NTSTATUS status = NtQuerySystemInformation(SystemProcessInformation, NULL, 0, &process_list_size);
 		if (status == STATUS_INFO_LENGTH_MISMATCH || status == STATUS_BUFFER_TOO_SMALL) {
 			SYSTEM_PROCESS_INFORMATION* processes = (SYSTEM_PROCESS_INFORMATION*)malloc(process_list_size);
 			if (processes) {
 		retry:
-				status = NtQuerySystemInformation(SystemExtendedProcessInformation, processes, process_list_size, &process_list_size);
+				status = NtQuerySystemInformation(SystemProcessInformation, processes, process_list_size, &process_list_size);
 				if (status == STATUS_SUCCESS) {
 					SYSTEM_PROCESS_INFORMATION* process = processes;
 					for (;;) {
@@ -91,6 +91,7 @@ TH_CALLER_FREE HANDLE* get_all_threads(DWORD access) {
 							if (handles) {
 								size_t handles_opened = 0;
 								for (size_t i = 0; i != thread_count; ++i) {
+#pragma warning(suppress : 4311 4302) // Truncating HANDLE to DWORD is not an error here
 									HANDLE handle = OpenThread(access, false, (DWORD)process->threads[i].ClientId.UniqueThread);
 									if (handle) {
 										handles[handles_opened++] = handle;
