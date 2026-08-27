@@ -25,9 +25,7 @@ typedef struct {
 	uint8_t length;
 	uint8_t data[];
 } th06_msg_t;
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 typedef struct {
 	uint16_t time;
 	uint8_t type;
@@ -35,15 +33,16 @@ typedef struct {
 	float x;
 	float y;
 } th128_bubble_pos_t;
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 typedef struct {
 	uint16_t side;
 	uint16_t linenum;
 	char str[];
 } hard_line_data_t;
 #pragma pack(pop)
+TH_ASSERT_TYPE_SIZE(0x4, th06_msg_t);
+TH_ASSERT_TYPE_SIZE(0xC, th128_bubble_pos_t);
+TH_ASSERT_TYPE_SIZE(0x4, hard_line_data_t);
 
 typedef uint32_t th14_bubble_shape_data_t;
 

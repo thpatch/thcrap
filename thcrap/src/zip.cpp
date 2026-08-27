@@ -64,23 +64,17 @@ typedef struct {
 	uint16_t fn_len;
 	uint16_t extra_len;
 } zip_file_shared_t;
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 typedef struct {
 	uint32_t sig; // = ZIP_MAGIC_FILE
 	zip_file_shared_t s;
 } zip_file_t;
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 typedef struct {
 	uint16_t id;
 	uint16_t len;
 } zip_extra_t;
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 typedef struct {
 	uint32_t reserved;
 	uint16_t tag; // == ZIP_EXTRA_NTFS_TAG
@@ -89,9 +83,7 @@ typedef struct {
 	FILETIME atime;
 	FILETIME ctime;
 } zip_extra_ntfs1_t;
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 typedef struct {
 	uint32_t sig; // = ZIP_MAGIC_DIR
 	uint16_t made_by;
@@ -102,9 +94,7 @@ typedef struct {
 	uint32_t attrib_extern;
 	uint32_t offset_header;
 } zip_dir_t;
-#pragma pack(pop)
 
-#pragma pack(push, 1)
 typedef struct {
 	uint32_t sig; // = ZIP_MAGIC_DIR_END
 	uint16_t disk_num;
@@ -116,6 +106,12 @@ typedef struct {
 	uint16_t cmt_len;
 } zip_dir_end_t;
 #pragma pack(pop)
+TH_ASSERT_TYPE_SIZE(0x1A, zip_file_shared_t);
+TH_ASSERT_TYPE_SIZE(0x1E, zip_file_t);
+TH_ASSERT_TYPE_SIZE(0x4, zip_extra_t);
+TH_ASSERT_TYPE_SIZE(0x20, zip_extra_ntfs1_t);
+TH_ASSERT_TYPE_SIZE(0x2E, zip_dir_t);
+TH_ASSERT_TYPE_SIZE(0x16, zip_dir_end_t);
 /// --------------
 
 // All the file information *we* care about

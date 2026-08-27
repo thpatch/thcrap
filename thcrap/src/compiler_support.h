@@ -130,6 +130,8 @@
 #define TH_OPT_COMMA(...) , ##__VA_ARGS__
 #endif
 
+#define TH_VA_ARGS_STR(...) #__VA_ARGS__
+
 // - Attribute Detection
 // Intentionally doesn't use C/C++ version macros
 // to take advantage of compilers that define attribute
@@ -248,6 +250,9 @@
 #else
 #define TH_STATIC_ASSERT(cond, message) typedef char TH_MACRO_CONCAT(static_assertion_, __LINE__)[(cond)?1:-1]
 #endif
+
+#define TH_ASSERT_TYPE_SIZE(size, ...) \
+TH_STATIC_ASSERT((size) == sizeof(__VA_ARGS__), "Incorrect type size! Size of " TH_VA_ARGS_STR(__VA_ARGS__) " is not "#size)
 
 // Utility macro to require otherwise "empty" statement
 // macros to still end with a semicolon so that a syntax
