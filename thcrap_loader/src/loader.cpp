@@ -37,9 +37,10 @@ const char* game_lookup(const json_t *games_js, const char *game, const char *ba
 	const char *game_path_str = json_string_value(game_path);
 	if (PathIsRelativeA(game_path_str)) {
 		size_t base_dir_length = strlen(base_dir);
-		char* ret = (char*)malloc(base_dir_length + strlen(game_path_str) + 1);
+		size_t game_path_length = strlen(game_path_str);
+		char* ret = (char*)malloc(base_dir_length + game_path_length + 1);
 		memcpy(ret, base_dir, base_dir_length);
-		PathAppendA(ret, game_path_str);
+		memcpy(ret + base_dir_length, game_path_str, game_path_length + 1);
 		return ret;
 	}
 	return game_path_str;
