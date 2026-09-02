@@ -71,7 +71,9 @@ struct CPUID_Data_t {
 	// Apparently individual cores have unique CPUID values,
 	// but that hasn't mattered before since all cores have been the same.
 	bool hybrid_architecture = false;
-	bool OSIsX64 = false;
+#if !TH_X64
+	bool OSIsWow64 = false;
+#endif
 	struct {
 		bool HasTSC = false;
 		bool HasCMPXCHG8 = false;
@@ -188,14 +190,16 @@ struct CPUID_Data_t {
 		bool HasMVEX = false;
 	};
 	CPUID_Data_t(void) {
+#if !TH_X64
 		// GetProcAddress is used to be compatible with XP SP1.
 		// https://docs.microsoft.com/en-us/windows/win32/api/wow64apiset/nf-wow64apiset-iswow64process
 		if (auto IsWow64ProcessVar = (decltype(&IsWow64Process))GetProcAddress(GetModuleHandleW(L"Kernel32.dll"), "IsWow64Process")) {
 			BOOL IsX64;
 			if (IsWow64ProcessVar(GetCurrentProcess(), &IsX64)) {
-				this->OSIsX64 = IsX64 == TRUE;
+				this->OSIsWow64 = IsX64 == TRUE;
 			}
 		}
+#endif
 
 		if (const char* (TH_CDECL * pwine_get_version)(void) = (decltype(pwine_get_version))GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "wine_get_version")) {
 			wine_version = pwine_get_version();
@@ -408,7 +412,12 @@ struct CPUID_Data_t {
 				// Oh, and Intel sets the SYSCALL CPUID bit to 0 outside of 64 bit mode,
 				// but AMD leaves the SYSENTER bit set in all modes. And that's why this
 				// if statement is here.
-				if (OSIsX64 && Manufacturer == AMD) {
+				if (
+#if !TH_X64
+					OSIsWow64 &&
+#endif
+					Manufacturer == AMD
+				) {
 					HasSYSENTER = false;
 				}
 
@@ -521,7 +530,11 @@ THCRAP_API bool OS_is_wine(void) {
 }
 
 THCRAP_API bool OS_is_wow64(void) {
-	return CPUID_Data.OSIsX64;
+#if !TH_X64
+	return CPUID_Data.OSIsWow64;
+#else
+	return false;
+#endif
 }
 
 bool CPU_Supports_LMLSAHF(void) {
@@ -1326,7 +1339,7 @@ static TH_NOINLINE size_t GetCPUFeatureTest(const char* name, size_t name_length
 			else	goto InvalidCPUFeatureError;
 			break;
 		case 5:
-			if      (strnicmp(name, "intel", name_length) == 0) return CPUID_Data.Manufacturer == Intel;
+			if (strnicmp(name, "intel", name_length) == 0) return CPUID_Data.Manufacturer == Intel;
 			else if (strnicmp(name, "ssse3", name_length) == 0) return CPUID_Data.HasSSSE3;
 			else if (strnicmp(name, "sse41", name_length) == 0) return CPUID_Data.HasSSE41;
 			else if (strnicmp(name, "sse42", name_length) == 0) return CPUID_Data.HasSSE42;
@@ -1339,7 +1352,11 @@ static TH_NOINLINE size_t GetCPUFeatureTest(const char* name, size_t name_length
 			else if (strnicmp(name, "3dnow", name_length) == 0) return CPUID_Data.Has3DNOW;
 			else if (strnicmp(name, "frmb0", name_length) == 0) return CPUID_Data.HasFRMB0;
 			else if (strnicmp(name, "frcsb", name_length) == 0) return CPUID_Data.HasFRCSB;
-			else if (strnicmp(name, "win64", name_length) == 0) return CPUID_Data.OSIsX64;
+#if !TH_X64
+			else if (strnicmp(name, "win64", name_length) == 0) return CPUID_Data.OSIsWow64;
+#else
+			else if (strnicmp(name, "win64", name_length) == 0) return true;
+#endif
 			else if (strnicmp(name, "rdpid", name_length) == 0) return CPUID_Data.HasRDPID;
 			else if (strnicmp(name, "uintr", name_length) == 0) return CPUID_Data.HasUINTR;
 			else if (strnicmp(name, "rdpru", name_length) == 0) return CPUID_Data.HasRDPRU;
@@ -1364,7 +1381,7 @@ static TH_NOINLINE size_t GetCPUFeatureTest(const char* name, size_t name_length
 			else if (strnicmp(name, "clwb", name_length) == 0) return CPUID_Data.HasCLWB;
 			else if (strnicmp(name, "mvex", name_length) == 0) return CPUID_Data.HasMVEX;
 			// A build compiled without SSE could theoretically run on PC98 hardware, so why not?
-#if !TH_X86 || _M_IX86_FP == 0
+#if TH_X86 && _M_IX86_FP == 0
 			else if (strnicmp(name, "pc98", name_length) == 0) return USER_SHARED_DATA.AlternativeArchitecture == NEC98x86;
 #endif
 			else	goto InvalidCPUFeatureError;

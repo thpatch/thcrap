@@ -261,32 +261,51 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 		goto end;
 	}
 
-	if (GetExeBits(final_exe_fn) == ALT_ARCH_BITS) {
-		log_print("Swapping to thcrap_loader" ALT_FILE_SUFFIX ".exe\n");
-		wchar_t* args = GetCommandLineW();
-		if (args[0] == L'"') {
-			while (*++args != L'"' || args[-1] == L'\\');
+	switch (GetExeBits(final_exe_fn)) {
+		default: // failed to LoadLibrary
+			log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"Could not identify architecture of target executable.\n"
+			);
+			ret = -6;
+			goto end;
+		case ALT_ARCH_BITS: {
+#if !TH_X64
+			if unexpected(!OS_is_wow64()) {
+				log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
+					"Cannot run a 64 bit executable on a 32 bit OS.\n"
+				);
+				ret = -7;
+				goto end;
+			}
+#endif
+			log_print("Swapping to thcrap_loader" ALT_FILE_SUFFIX ".exe\n");
+			wchar_t* args = GetCommandLineW();
+			if (args[0] == L'"') {
+				while (*++args != L'"' || args[-1] == L'\\');
+				++args;
+			} else {
+				while (*++args != L' ');
+			}
 			++args;
-		} else {
-			while (*++args != L' ');
-		}
-		++args;
-		BUILD_VLA_STR(wchar_t, new_args, L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", L" ", args);
-		STARTUPINFOW si = {};
-		PROCESS_INFORMATION pi = {};
-		BOOL success = CreateProcessW(L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", new_args, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
-		VLA_FREE(new_args);
-		if (!success) {
-			ret = -5;
+			BUILD_VLA_STR(wchar_t, new_args, L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", L" ", args);
+			STARTUPINFOW si = {};
+			PROCESS_INFORMATION pi = {};
+			BOOL success = CreateProcessW(L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", new_args, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+			VLA_FREE(new_args);
+			if (!success) {
+				ret = -5;
+				goto end;
+			}
+			CloseHandle(pi.hThread);
+			WaitForSingleObject(pi.hProcess, INFINITE);
+			DWORD exit_code;
+			GetExitCodeProcess(pi.hProcess, &exit_code);
+			CloseHandle(pi.hProcess);
+			ret = exit_code;
 			goto end;
 		}
-		CloseHandle(pi.hThread);
-		WaitForSingleObject(pi.hProcess, INFINITE);
-		DWORD exit_code;
-		GetExitCodeProcess(pi.hProcess, &exit_code);
-		CloseHandle(pi.hProcess);
-		ret = exit_code;
-		goto end;
+		case CURRENT_ARCH_BITS:
+			break;
 	}
 
 	runconfig_load(run_cfg, RUNCONFIG_NO_BINHACKS);
