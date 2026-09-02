@@ -2,60 +2,61 @@
 
 void printError(LPCWSTR path)
 {
-    LPCWSTR format = L"Could not run %s: %s";
-    LPWSTR lpMsgBuf;
-    LPWSTR lpDisplayBuf;
-    DWORD dw = GetLastError();
+	LPCWSTR format = L"Could not run %s: %s";
+	LPWSTR lpMsgBuf;
+	LPWSTR lpDisplayBuf;
+	DWORD dw = GetLastError();
 
 	if (path == NULL) {
 		path = L"(null)";
 	}
 
-    FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+	FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 	NULL, dw, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&lpMsgBuf, 0, NULL);
 
-    lpDisplayBuf = my_alloc(my_wcslen(format) + my_wcslen(path) + my_wcslen(lpMsgBuf) + 1, sizeof(WCHAR));
+	lpDisplayBuf = my_alloc(my_wcslen(format) + my_wcslen(path) + my_wcslen(lpMsgBuf) + 1, sizeof(WCHAR));
 	LPWSTR ptr = lpDisplayBuf;
 	ptr = my_strcpy(ptr, L"Could not run ");
 	ptr = my_strcpy(ptr, path);
 	ptr = my_strcpy(ptr, L": ");
 	ptr = my_strcpy(ptr, lpMsgBuf);
-    //StringCchPrintf(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(WCHAR), format, path, lpMsgBuf);
-    MessageBoxW(NULL, lpDisplayBuf, L"Touhou Community Reliant Automatic Patcher", MB_OK);
+	//StringCchPrintf(lpDisplayBuf, LocalSize(lpDisplayBuf) / sizeof(WCHAR), format, path, lpMsgBuf);
+	MessageBoxW(NULL, lpDisplayBuf, L"Touhou Community Reliant Automatic Patcher", MB_OK);
 
-    my_free(lpDisplayBuf);
-    LocalFree(lpMsgBuf);
+	my_free(lpDisplayBuf);
+	LocalFree(lpMsgBuf);
 }
 
 LPWSTR getStringResource(UINT id)
 {
-    LPWSTR resource = NULL;
-    size_t count = LoadStringW(GetModuleHandleW(NULL), id, (LPWSTR)&resource, 0);
-    if (count == 0 || resource == NULL)
-        return NULL;
+	LPWSTR resource = NULL;
+	size_t count = LoadStringW(GetModuleHandleW(NULL), id, (LPWSTR)&resource, 0);
+	if (count == 0 || resource == NULL)
+		return NULL;
 
-    LPWSTR buffer = my_alloc(count + 1, sizeof(WCHAR));
-    if (buffer == NULL)
-        return NULL;
+	LPWSTR buffer = my_alloc(count + 1, sizeof(WCHAR));
+	if (buffer == NULL)
+		return NULL;
 
-    my_memcpy(buffer, resource, count * sizeof(WCHAR));
-    buffer[count] = L'\0';
-    return buffer;
+	my_memcpy(buffer, resource, count * sizeof(WCHAR));
+	buffer[count] = L'\0';
+	return buffer;
 }
+
+#ifndef _M_X64
+typedef BOOL(WINAPI *IsWow64Process_t)(HANDLE hProcess, PBOOL Wow64Process);
+#endif
 
 int main()
 {
-    UINT exitCode = 0;
-    STARTUPINFOW si;
-    PROCESS_INFORMATION pi;
-    LPWSTR rcApplicationPath;
-    LPWSTR rcCommandLine;
-    LPWSTR commandLineUsed;
-	LPWSTR rcApplicationName;
+	UINT exitCode = 0;
+	STARTUPINFOW si;
+	PROCESS_INFORMATION pi;
+	LPWSTR commandLineUsed;
 
-	rcApplicationPath = getStringResource(0);
-	rcCommandLine = getStringResource(1);
-	rcApplicationName = getStringResource(2);
+	LPWSTR rcApplicationPath = getStringResource(0);
+	LPWSTR rcCommandLine = getStringResource(1);
+	LPWSTR rcApplicationName = getStringResource(2);
 
 	LPWSTR ApplicationPath = my_alloc(MAX_PATH, sizeof(WCHAR));
 
@@ -72,12 +73,25 @@ int main()
 		PathAppendW(ApplicationPath, rcApplicationPath);
 	}
 
-	installCrt(ApplicationPath);
+	installCrt(ApplicationPath, FALSE); // install 32 bit CRT
 
-    if (my_wcscmp(rcApplicationName, L"thcrap_configure_v3" DEBUG_OR_RELEASE_W L".exe") == 0) {
-        if (installDotNET(ApplicationPath))
-            ExitProcess(0);
-    }
+#ifndef _M_X64
+	// GetProcAddress is used to be compatible with XP SP1.
+	IsWow64Process_t IsWow64ProcessVar = (IsWow64Process_t)GetProcAddress(GetModuleHandleW(L"Kernel32.dll"), "IsWow64Process");
+	if (IsWow64ProcessVar) {
+		BOOL IsX64;
+		if (IsWow64ProcessVar(GetCurrentProcess(), &IsX64)) {
+#endif
+			installCrt(ApplicationPath, TRUE); // install 64 bit CRT
+#ifndef _M_X64
+		}
+	}
+#endif
+
+	if (my_wcscmp(rcApplicationName, L"thcrap_configure_v3" DEBUG_OR_RELEASE_W L".exe") == 0) {
+		if (installDotNET(ApplicationPath))
+			ExitProcess(0);
+	}
 
 	PathAppendW(ApplicationPath, rcApplicationName);
 
@@ -88,21 +102,21 @@ int main()
 		commandLineUsed = rcCommandLine;
 	}
 
-    my_memset(&si, 0, sizeof(si));
+	my_memset(&si, 0, sizeof(si));
 	si.cb = sizeof(si);
-    my_memset(&pi, 0, sizeof(pi));
+	my_memset(&pi, 0, sizeof(pi));
 
 	if (CreateProcessW(ApplicationPath, commandLineUsed, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi) == 0) {
-        printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
-        exitCode = 1;
-    } else {
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-    }
+		printError(rcApplicationPath ? rcApplicationPath : commandLineUsed);
+		exitCode = 1;
+	} else {
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
+	}
 
-    my_free(rcApplicationPath);
-    my_free(rcCommandLine);
-    my_free(rcApplicationName);
-    my_free(ApplicationPath);
-    ExitProcess(exitCode);
+	my_free(rcApplicationPath);
+	my_free(rcCommandLine);
+	my_free(rcApplicationName);
+	my_free(ApplicationPath);
+	ExitProcess(exitCode);
 }

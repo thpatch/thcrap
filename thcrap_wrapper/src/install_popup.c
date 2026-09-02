@@ -28,14 +28,14 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 				// See the remarks in https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-nonclientmetricsw
 				ncMetrics.cbSize = sizeof(ncMetrics) - 4;
 			}
-			SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncMetrics), &ncMetrics, 0);
-			hFont = CreateFontIndirect(&ncMetrics.lfMessageFont);
+			SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncMetrics), &ncMetrics, 0);
+			hFont = CreateFontIndirectW(&ncMetrics.lfMessageFont);
 		}
 
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
 		HGDIOBJ hOldFont = SelectObject(hdc, hFont);
-		TextOut(hdc, BORDER_W, BORDER_H, install_message, my_wcslen(install_message));
+		TextOutW(hdc, BORDER_W, BORDER_H, install_message, my_wcslen(install_message));
 		SelectObject(hdc, hOldFont);
 		EndPaint(hwnd, &ps);
 		break;
@@ -48,7 +48,7 @@ static LRESULT CALLBACK wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 		break;
 
 	default:
-		return DefWindowProc(hwnd, msg, wParam, lParam);
+		return DefWindowProcW(hwnd, msg, wParam, lParam);
 	}
 	return 0;
 }
@@ -61,15 +61,15 @@ static void registerClass()
 	wc.cbSize = sizeof(wc);
 	wc.style = CS_NOCLOSE;
 	wc.lpfnWndProc = wndProc;
-	wc.hInstance = GetModuleHandle(NULL);
-	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.hInstance = GetModuleHandleW(NULL);
+	wc.hIcon = LoadIconW(NULL, IDI_APPLICATION);
+	wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
 	wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
 	wc.lpszMenuName = NULL;
 	wc.lpszClassName = L"thcrap module install popup";
 	wc.hIconSm = NULL;
 
-	RegisterClassEx(&wc);
+	RegisterClassExW(&wc);
 }
 
 static void addNonClientArea(DWORD dwStyle, int* w, int* h)
@@ -88,7 +88,7 @@ static void centerWindow(int w, int h, int* x, int* y)
 	HMONITOR monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
 	MONITORINFO mi;
 	mi.cbSize = sizeof(mi);
-	GetMonitorInfo(monitor, &mi);
+	GetMonitorInfoW(monitor, &mi);
 
 	*x = mi.rcWork.left + (mi.rcWork.right - mi.rcWork.left) / 2 - w / 2;
 	*y = mi.rcWork.top + (mi.rcWork.bottom - mi.rcWork.top) / 2 - h / 2;
@@ -108,12 +108,12 @@ HWND createInstallPopup(LPWSTR install_message)
 	addNonClientArea(WS_POPUPWINDOW | WS_CAPTION, &w, &h);
 	centerWindow(w, h, &x, &y);
 
-	hwnd = CreateWindow(
+	hwnd = CreateWindowW(
 		L"thcrap module install popup",
 		L"Touhou Community Reliant Automatic Patcher",
 		WS_POPUPWINDOW | WS_CAPTION,
 		x, y, w, h,
-		NULL, NULL, GetModuleHandle(NULL), install_message);
+		NULL, NULL, GetModuleHandleW(NULL), install_message);
 
 	ShowWindow(hwnd, SW_SHOWDEFAULT);
 	UpdateWindow(hwnd);

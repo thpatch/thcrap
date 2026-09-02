@@ -14,19 +14,18 @@ typedef enum {
 	IsNotInstallable
 } InstallStatus_t;
 
-static InstallStatus_t CheckCRTStatus()
+static InstallStatus_t CheckCRTStatus(BOOL is_x64_crt)
 {
 	// Look in the registry
 	HKEY Key;
 	LSTATUS status;
 
+#define CRT_RUNTIMES_KEY_32_BIT L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86"
+#define CRT_RUNTIMES_KEY_64_BIT L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64"
+
 	status = RegOpenKeyW(
 		HKEY_LOCAL_MACHINE,
-#ifdef _M_X64
-		L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64",
-#else
-		L"SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X86",
-#endif
+		is_x64_crt ? CRT_RUNTIMES_KEY_64_BIT : CRT_RUNTIMES_KEY_32_BIT,
 		&Key
 	);
 
@@ -395,10 +394,10 @@ int installDotNET(LPWSTR ApplicationPath) {
 	return 0;
 }
 
-void installCrt(LPWSTR ApplicationPath)
+void installCrt(LPWSTR ApplicationPath, BOOL is_x64_crt)
 {
 	LPWSTR crt_install_message = L"";
-	switch (CheckCRTStatus()) {
+	switch (CheckCRTStatus(is_x64_crt)) {
 		case IsCurrent:
 			return;
 		case NotInstalled:
@@ -417,17 +416,16 @@ void installCrt(LPWSTR ApplicationPath)
 	si.cb = sizeof(si);
 	my_memset(&pi, 0, sizeof(pi));
 
-#if _M_X64
-#define VC_REDIST_INSTALLER L"vc_redist.x64.exe"
-#else
-#define VC_REDIST_INSTALLER L"vc_redist.x86.exe"
-#endif
+#define VC_REDIST_INSTALLER_32_BIT L"vc_redist.x86.exe"
+#define VC_REDIST_INSTALLER_64_BIT L"vc_redist.x64.exe"
+#define VC_REDIST_INSTALLER_COMMAND_32_BIT L"\"" VC_REDIST_INSTALLER_32_BIT L"\" /install /quiet /norestart"
+#define VC_REDIST_INSTALLER_COMMAND_64_BIT L"\"" VC_REDIST_INSTALLER_64_BIT L"\" /install /quiet /norestart"
 
-	LPWSTR RtPath = my_alloc(my_wcslen(ApplicationPath) + my_wcslen(L"\"" VC_REDIST_INSTALLER L"\" /install /quiet /norestart") + 1, sizeof(wchar_t));
+	LPWSTR RtPath = my_alloc(my_wcslen(ApplicationPath) + my_wcslen(is_x64_crt ? VC_REDIST_INSTALLER_COMMAND_64_BIT : VC_REDIST_INSTALLER_COMMAND_32_BIT) + 1, sizeof(wchar_t));
 	LPWSTR p = RtPath;
 	p = my_strcpy(p, L"\"");
 	p = my_strcpy(p, ApplicationPath);
-	p = my_strcpy(p, VC_REDIST_INSTALLER);
+	p = my_strcpy(p, is_x64_crt ? VC_REDIST_INSTALLER_64_BIT : VC_REDIST_INSTALLER_32_BIT);
 	p = my_strcpy(p, L"\" /install /quiet /norestart");
 	BOOL ret = CreateProcessW(NULL, RtPath, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 	my_free(RtPath);

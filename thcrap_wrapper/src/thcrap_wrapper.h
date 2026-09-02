@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <shlwapi.h>
 
-void installCrt(LPWSTR ApplicationPath);
+void installCrt(LPWSTR ApplicationPath, BOOL is_x64_crt);
 int installDotNET(LPWSTR ApplicationPath);
 
 HWND createInstallPopup(LPWSTR install_message);
