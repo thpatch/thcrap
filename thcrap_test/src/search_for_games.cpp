@@ -65,7 +65,7 @@ protected:
         json_object_set(sizes, size_s.c_str(), version);
         json_decref(version);
 
-        json_dump_file(versions, "testdir/versions.js", JSON_INDENT(2));
+        json_dump_file(versions, "testdir/versions" VERSIONS_SUFFIX ".js", JSON_INDENT(2));
     }
 };
 

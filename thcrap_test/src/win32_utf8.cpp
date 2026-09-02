@@ -13,7 +13,7 @@ std::filesystem::path get_dll_source_path()
 	// we don't link statically to it, and it doesn't run any code
 	// from DllMain, so it's a nice target for a quick DLL that
 	// we just want to load.
-	exe_path /= "act_nut_lib" DEBUG_OR_RELEASE ".dll";
+	exe_path /= "act_nut_lib" FILE_SUFFIX ".dll";
 
 	return exe_path;
 }
@@ -26,7 +26,7 @@ TEST(Win32Utf8Test, GetModuleHandleEx)
 
 	// A mix of characters from a western locale and from a Japanese locale.
 	// Can't be represented with a single code page.
-	std::filesystem::path dll_dir = "tmp";
+	std::filesystem::path dll_dir = L"tmp";
 	std::filesystem::path dll_fn = L"東方_éè.dll";
 	std::filesystem::path dll_path = std::filesystem::absolute(dll_dir / dll_fn);
 
@@ -35,14 +35,20 @@ TEST(Win32Utf8Test, GetModuleHandleEx)
 	}
 	std::filesystem::copy_file(get_dll_source_path(), dll_path);
 
+	BOOL false_match = TRUE;
+	BOOL true_match = FALSE;
 	HMODULE hMod = LoadLibraryW(dll_path.native().c_str());
-	ASSERT_NE(hMod, nullptr);
+	if (hMod) {
+		HMODULE dummy;
+		false_match = GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, dll_fn.u8string().c_str(), &dummy);
+		true_match = GetModuleHandleExU(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, dll_fn.u8string().c_str(), &dummy);
 
-	HMODULE dummy;
-	EXPECT_FALSE(GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, dll_fn.u8string().c_str(), &dummy));
-	EXPECT_TRUE( GetModuleHandleExU(GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, dll_fn.u8string().c_str(), &dummy));
-
-	FreeLibrary(hMod);
+		FreeLibrary(hMod);
+	}
 	std::filesystem::remove(dll_path);
 	std::filesystem::remove(dll_dir);
+
+	ASSERT_NE(hMod, nullptr);
+	EXPECT_FALSE(false_match);
+	EXPECT_TRUE(true_match);
 }

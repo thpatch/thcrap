@@ -286,7 +286,7 @@ TEST(ExpressionTest, ExpressionTesting16A) {
 		expr_ret = 0;
 		eval_expr("100**-1", '\0', &expr_ret, NULL, NULL, NULL);
 	}
-	EXPECT_EQ(expr_ret, UINT_MAX);
+	EXPECT_EQ(expr_ret, SIZE_MAX);
 }
 
 TEST(ExpressionTest, ExpressionTesting16B) {
@@ -295,7 +295,7 @@ TEST(ExpressionTest, ExpressionTesting16B) {
 		expr_ret = 0;
 		eval_expr("100**-1", '\0', &expr_ret, &DummyRegs, NULL, NULL);
 	}
-	EXPECT_EQ(expr_ret, UINT_MAX);
+	EXPECT_EQ(expr_ret, SIZE_MAX);
 }
 
 TEST(ExpressionTest, ExpressionTesting17) {
