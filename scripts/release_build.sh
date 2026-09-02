@@ -1,15 +1,24 @@
 #!/bin/bash
 
 # Have to be in the same order as the output of `ls *.exe bin/*.exe bin/*.dll bin/*.json`
-FILES_LIST="bin/act_nut_lib.dll \
+FILES_LIST="bin/act_nut_lib_64.dll \
+    bin/act_nut_lib.dll \
+    bin/bmpfont_create_gdi_64.dll \
     bin/bmpfont_create_gdi.dll \
+    bin/bmpfont_create_gdiplus_64.dll \
     bin/bmpfont_create_gdiplus.dll \
     bin/cacert.pem \
+    bin/fribidi_64.dll \
     bin/fribidi.dll \
+    bin/jansson_64.dll \
     bin/jansson.dll \
+    bin/libcrypto-3_64.dll \
     bin/libcrypto-3.dll \
+    bin/libcurl_64.dll \
     bin/libcurl.dll \
+    bin/libpng16_64.dll \
     bin/libpng16.dll \
+    bin/libssl-3_64.dll \
     bin/libssl-3.dll \
     bin/Microsoft.Bcl.AsyncInterfaces.dll \
     bin/Microsoft.WindowsAPICodePack.dll \
@@ -27,25 +36,35 @@ FILES_LIST="bin/act_nut_lib.dll \
     bin/System.Text.Json.dll \
     bin/System.Threading.Tasks.Extensions.dll \
     bin/System.ValueTuple.dll \
+    bin/thcrap_64.dll \
     bin/thcrap_configure.exe \
     bin/thcrap_configure_v3.exe \
     bin/thcrap_configure_v3.exe.config \
     bin/thcrap_cs_lib.dll \
     bin/thcrap.dll \
     bin/thcrap_i18n.dll \
+    bin/thcrap_loader_64.exe \
     bin/thcrap_loader.exe \
+    bin/thcrap_tasofro_64.dll \
     bin/thcrap_tasofro.dll \
+    bin/thcrap_test_64.exe \
     bin/thcrap_test.exe \
+    bin/thcrap_tsa_64.dll \
     bin/thcrap_tsa.dll \
+    bin/thcrap_update_64.dll \
     bin/thcrap_update.dll \
+    bin/thcrap_x64_injector.dll \
     bin/update.json \
+    bin/vc_redist.x64.exe \
     bin/vc_redist.x86.exe \
+    bin/win32_utf8_64.dll \
     bin/win32_utf8.dll \
     bin/Xceed.Wpf.AvalonDock.dll \
     bin/Xceed.Wpf.AvalonDock.Themes.Aero.dll \
     bin/Xceed.Wpf.AvalonDock.Themes.Metro.dll \
     bin/Xceed.Wpf.AvalonDock.Themes.VS2010.dll \
     bin/Xceed.Wpf.Toolkit.dll \
+    bin/zlib-ng_64.dll \
     bin/zlib-ng.dll \
     thcrap.exe \
     thcrap_loader.exe"
@@ -141,21 +160,32 @@ cd ..
 # build
 cd git_thcrap
 "$MSBUILD_PATH" -t:restore /verbosity:minimal
-"$MSBUILD_PATH" /target:Rebuild /property:USERNAME=$MSBUILD_USER /property:Configuration=Release /verbosity:minimal \
+echo "Running Win32 build..."
+"$MSBUILD_PATH" /target:Rebuild /property:USERNAME=$MSBUILD_USER /property:Platform=Win32 /property:Configuration=Release /verbosity:minimal \
+    /property:ThcrapVersionY=$(date -d "$DATE" +%Y) /property:ThcrapVersionM=$(date -d "$DATE" +%m) /property:ThcrapVersionD=$(date -d "$DATE" +%d) \
+    | grep -e warning -e error \
+    | grep -v -e 'Number of'
+echo "Running x64 build..."
+"$MSBUILD_PATH" /target:Rebuild /property:USERNAME=$MSBUILD_USER /property:Platform=x64   /property:Configuration=Release /verbosity:minimal \
     /property:ThcrapVersionY=$(date -d "$DATE" +%Y) /property:ThcrapVersionM=$(date -d "$DATE" +%m) /property:ThcrapVersionD=$(date -d "$DATE" +%d) \
     | grep -e warning -e error \
     | grep -v -e 'Number of'
 cd ..
 
 # Run unit tests
-rm -rf "tmp_$DATE"
-mkdir "tmp_$DATE"
-cd "tmp_$DATE"
-../git_thcrap/bin/bin/thcrap_test.exe
-UNITTEST_STATUS=$?
-cd ..
-rm -rf "tmp_$DATE"
-test $UNITTEST_STATUS -eq 0 || confirm 'Unit tests failed! Continue anyway?'
+function run_unit_tests()
+{
+    rm -rf "tmp_$DATE"
+    mkdir "tmp_$DATE"
+    cd "tmp_$DATE"
+    ../git_thcrap/bin/bin/thcrap_test$1.exe
+    UNITTEST_STATUS=$?
+    cd ..
+    rm -rf "tmp_$DATE"
+    test $UNITTEST_STATUS -eq 0 || confirm 'Unit tests failed! Continue anyway?'
+}
+run_unit_tests ''
+run_unit_tests '_64'
 
 # Prepare the release directory
 BUILD_FILES_LIST=$(cd git_thcrap/bin && echo $(ls \
