@@ -1138,22 +1138,18 @@ static void log_print_context(CONTEXT* ctx)
 
 static const char *get_cxx_eh_typename(LPEXCEPTION_RECORD lpER)
 {
-	// https://bytepointer.com/resources/old_new_thing/20100730_217_decoding_the_parameters_of_a_thrown_c_exception_0xe06d7363.htm
+	// https://devblogs.microsoft.com/oldnewthing/20100730-00/?p=13273
 	// https://www.geoffchappell.com/studies/msvc/language/predefined/
 	// http://www.openrce.org/articles/full_view/21
-
-	uintptr_t base;
 
 #ifdef TH_X64
 	if (lpER->NumberParameters < 4) {
 		return nullptr;
 	}
-	base = lpER->ExceptionInformation[3];
 #else
 	if (lpER->NumberParameters < 3) {
 		return nullptr;
 	}
-	base = 0;
 #endif
 
 	if (lpER->ExceptionCode != EH_EXCEPTION_NUMBER ||
@@ -1161,17 +1157,28 @@ static const char *get_cxx_eh_typename(LPEXCEPTION_RECORD lpER)
 		return nullptr;
 	}
 
-	DWORD *throwInfo = (DWORD*)(base + lpER->ExceptionInformation[2]);
+	// throw info is always a full pointer and not an RVA, contrary to old new thing docs about x64
+	DWORD* throwInfo = (DWORD*)lpER->ExceptionInformation[2];
 	if (throwInfo == nullptr) {
 		return nullptr;
 	}
-	DWORD *catchableTypeArray = (DWORD*)(base + throwInfo[3]);
+
+#ifdef TH_X64
+	uintptr_t base = lpER->ExceptionInformation[3];
+#define MODULE_BASED_OFFSET(off) (base + off)
+#else
+#define MODULE_BASED_OFFSET(off) (off)
+#endif
+
+	DWORD* catchableTypeArray = (DWORD*)MODULE_BASED_OFFSET(throwInfo[3]);
 	if (catchableTypeArray[0] < 1) { // array size
 		return nullptr;
 	}
-	DWORD *catchableType = (DWORD*)(base + catchableTypeArray[1]);
-	void **typeDescriptor = (void**)(base + catchableType[1]);
-	return (const char*)(&typeDescriptor[2]);
+	DWORD* catchableType = (DWORD*)MODULE_BASED_OFFSET(catchableTypeArray[1]);
+	void** typeDescriptor = (void**)MODULE_BASED_OFFSET(catchableType[1]);
+	return (const char*)&typeDescriptor[2];
+
+#undef MODULE_BASED_OFFSET
 }
 
 TH_CALLER_FREE static char* get_windows_error_message(DWORD ExceptionCode) {
