@@ -262,19 +262,31 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	}
 
 	switch (GetExeBits(final_exe_fn)) {
+		case -1: // Path does not exist
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"The target path does not exist.\n"
+				"\"%s\"\n"
+				, final_exe_fn
+			);
+			ret = -7;
+			goto end;
 		default: // failed to LoadLibrary
-			log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"Could not identify architecture of target executable.\n"
+				"\"%s\"\n"
+				, final_exe_fn
 			);
 			ret = -6;
 			goto end;
 		case ALT_ARCH_BITS: {
 #if !TH_X64
 			if unexpected(!OS_is_wow64()) {
-				log_mbox(NULL, MB_OK | MB_ICONEXCLAMATION,
+				log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 					"Cannot run a 64 bit executable on a 32 bit OS.\n"
+					"\"%s\"\n"
+					, final_exe_fn
 				);
-				ret = -7;
+				ret = -8;
 				goto end;
 			}
 #endif
@@ -292,7 +304,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 			PROCESS_INFORMATION pi = {};
 			BOOL success = CreateProcessW(L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", new_args, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 			VLA_FREE(new_args);
-			if (!success) {
+			if unexpected(!success) {
 				ret = -5;
 				goto end;
 			}

@@ -54,8 +54,12 @@ int find_export_in_headers(void* buffer, const char* const func_name) {
 }
 
 int GetExeBits(const char* const path) {
+	DWORD attr = GetFileAttributesU(path);
+	if unexpected(attr == INVALID_FILE_ATTRIBUTES) {
+		return -1;
+	}
 	int ret = 0;
-	if (HMODULE exe = LoadLibraryExU(path, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE | LOAD_WITH_ALTERED_SEARCH_PATH)) {
+	if (HMODULE exe = LoadLibraryExU(path, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE)) {
 		if (PIMAGE_NT_HEADERS pNtHeader = GetNtHeader((HMODULE)LDR_DATAFILE_TO_VIEW(exe))) {
 			switch (pNtHeader->FileHeader.Machine) {
 				case IMAGE_FILE_MACHINE_I386:
