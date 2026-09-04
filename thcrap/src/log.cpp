@@ -8,6 +8,7 @@
   */
 
 #include "thcrap.h"
+#include <userenv.h>
 #include <queue>
 #include <array>
 
@@ -101,13 +102,74 @@ void log_rotate(void)
 }
 // --------
 
-static void log_print_real(const char* str, uint32_t n, bool is_n) {
-	static DWORD byteRet;
+const char* user_home_win = 0;
+uint32_t user_home_win_len = 0;
+//const char* user_home_unx = "C:\\Users\\thc";
+//uint32_t user_home_unx_len = strlen(user_home_unx);
+
+void log_write(const char* str, uint32_t n) {
+	DWORD byteRet;
 	if unexpected(console_open) {
 		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
 	}
 	if (HANDLE file = log_file) {
 		WriteFile(file, str, n, &byteRet, NULL);
+	}
+}
+
+void log_write_filtered(const char* str, uint32_t n) {
+	const char* p = str;
+
+	uint32_t len_to_use;
+
+	for (;;) {
+		//const char* p_new = nullptr;
+		//
+		//size_t p_new_win_len = 0;
+		//size_t p_new_unx_len = 0;
+		//
+		//const char* p_new_win = find_path_substring(p, n - (p - str), user_home_win, user_home_win_len, &p_new_win_len);
+		//const char* p_new_unx = find_path_substring(p, n - (p - str), user_home_unx, user_home_unx_len, &p_new_unx_len);
+		//
+		//if(p_new_win < p_new_unx) {
+		//	if (p_new_unx == nullptr) {
+		//		p_new = p_new_win;
+		//		len_to_use = p_new_win_len;
+		//	} else {
+		//		p_new = p_new_unx;
+		//		len_to_use = p_new_unx_len;
+		//	}
+		//} else if (p_new_win > p_new_unx) {
+		//	if (p_new_unx == nullptr) {
+		//		p_new = p_new_win;
+		//		len_to_use = p_new_win_len;
+		//	} else {
+		//		p_new = p_new_unx;
+		//		len_to_use = p_new_unx_len;
+		//	}
+		//}
+
+		size_t p_new_len = 0;
+		const char* p_new = find_path_substring(p, n - (p - str), user_home_win, user_home_win_len, &p_new_len);
+
+		if (p_new) {
+			log_write(p, p_new - p);
+			log_write("%USERPROFILE%", strlen("%USERPROFILE%"));
+			p = p_new + p_new_len;
+		}
+		else {
+		no_filtering_needed:
+			log_write(p, n - (p - str));
+			return;
+		}
+	}
+}
+
+static void log_print_real(const char* str, uint32_t n, bool is_n) {
+	if (user_home_win) {
+		log_write_filtered(str, n);
+	} else {
+		log_write(str, n);
 	}
 	if (!is_n) {
 		if (auto func = log_print_hook) {
@@ -367,6 +429,28 @@ void log_init(int console)
 			memcpy(&line[i], DashUChar.data(), DashUChar.length());
 		}
 #endif
+
+
+
+		// Figure out user's home
+		HANDLE hToken;
+		// GetCurrentProcess is just { return 0xFFFFFFFF } because 0xFFFFFFFF is a pseudo handle to the current process
+		OpenProcessToken(INVALID_HANDLE_VALUE, TOKEN_QUERY, &hToken);
+
+		DWORD profLen_w;
+		GetUserProfileDirectoryW(hToken, nullptr, &profLen_w);
+		VLA(wchar_t, profDir_w, profLen_w);
+		GetUserProfileDirectoryW(hToken, profDir_w, &profLen_w);
+
+		size_t profLen_u = StringToUTF8(nullptr, profDir_w, 0);
+
+		char* profDir_u = (char*)malloc(profLen_u + 1);
+		StringToUTF8(profDir_u, profDir_w, profLen_u + 1);
+
+		user_home_win = profDir_u;
+		user_home_win_len = profLen_u;
+
+		CloseHandle(hToken);
 
 		log_printf(
 			"%s\n"
