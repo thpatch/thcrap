@@ -397,7 +397,7 @@ void log_init(int console)
 			SYSTEMTIME time;
 			GetSystemTime(&time);
 			if (time.wMonth > 12) time.wMonth = 0;
-			log_printf("Current time: %s %d %d %d:%02d:%02d\n",
+			log_printf("Current time: %s %2d %4d %.2d:%.2d:%.2d\n",
 				months[time.wMonth], time.wDay, time.wYear,
 				time.wHour, time.wMinute, time.wSecond);
 		}
