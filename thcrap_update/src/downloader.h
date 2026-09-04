@@ -22,13 +22,13 @@ public:
     Downloader();
     ~Downloader();
     void addFile(const std::list<std::string>& servers, std::string filename,
-                 File::success_t successCallback = File::defaultSuccessFunction,
-                 File::failure_t failureCallback = File::defaultFailureFunction,
-                 File::progress_t progressCallback = File::defaultProgressFunction);
+                 File::SuccessCallback successCallback = File::defaultSuccessFunction,
+                 File::FailureCallback failureCallback = File::defaultFailureFunction,
+                 File::ProgressCallback progressCallback = File::defaultProgressFunction);
     void addFile(char** servers, std::string filename,
-                 File::success_t successCallback = File::defaultSuccessFunction,
-                 File::failure_t failureCallback = File::defaultFailureFunction,
-                 File::progress_t progressCallback = File::defaultProgressFunction);
+                 File::SuccessCallback successCallback = File::defaultSuccessFunction,
+                 File::FailureCallback failureCallback = File::defaultFailureFunction,
+                 File::ProgressCallback progressCallback = File::defaultProgressFunction);
     size_t current() const;
     size_t total() const;
     void wait();

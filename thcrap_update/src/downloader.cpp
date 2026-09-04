@@ -22,7 +22,9 @@ std::list<DownloadUrl> Downloader::serversListToDownloadUrlList(const std::list<
 }
 
 void Downloader::addFile(const std::list<std::string>& serversUrl, std::string filePath,
-                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
+                         File::SuccessCallback successCallback,
+                         File::FailureCallback failureCallback,
+                         File::ProgressCallback progressCallback)
 {
     std::lock_guard lock(this->mutex);
 
@@ -41,7 +43,9 @@ void Downloader::addFile(const std::list<std::string>& serversUrl, std::string f
 }
 
 void Downloader::addFile(char** serversUrl, std::string filePath,
-                         File::success_t successCallback, File::failure_t failureCallback, File::progress_t progressCallback)
+                         File::SuccessCallback successCallback,
+                         File::FailureCallback failureCallback,
+                         File::ProgressCallback progressCallback)
 {
     std::list<std::string> serversList;
     if (serversUrl) {

@@ -11,9 +11,9 @@
 class File
 {
 public:
-    typedef std::function<void (const DownloadUrl& url, std::vector<uint8_t>& data)> success_t;
-    typedef std::function<void (const DownloadUrl& url, HttpStatus status)> failure_t;
-    typedef std::function<bool (const DownloadUrl& url, size_t file_progress, size_t file_size)> progress_t;
+    using SuccessCallback = std::function<void (const DownloadUrl& url, std::vector<uint8_t>& data)>;
+    using FailureCallback = std::function<void (const DownloadUrl& url, HttpStatus status)>;
+    using ProgressCallback = std::function<bool (const DownloadUrl& url, size_t file_progress, size_t file_size)>;
     static void defaultSuccessFunction(const DownloadUrl&, std::vector<uint8_t>&) {}
     static void defaultFailureFunction(const DownloadUrl&, HttpStatus) {}
     static bool defaultProgressFunction(const DownloadUrl&, size_t, size_t) { return true; }
@@ -35,9 +35,9 @@ private:
     std::list<DownloadUrl> urls;
 
     // User-provided callbacks
-    success_t userSuccessCallback;
-    failure_t userFailureCallback;
-    progress_t userProgressCallback;
+    SuccessCallback userSuccessCallback;
+    FailureCallback userFailureCallback;
+    ProgressCallback userProgressCallback;
 
     size_t writeCallback(std::vector<uint8_t>& buffer, const uint8_t *data, size_t size);
     bool progressCallback(const DownloadUrl& url, size_t dlnow, size_t dltotal);
@@ -46,9 +46,9 @@ private:
 
 public:
     File(std::list<DownloadUrl>&& urls,
-         success_t successCallback = defaultSuccessFunction,
-         failure_t failureCallback = defaultFailureFunction,
-         progress_t progressCallback = defaultProgressFunction);
+         SuccessCallback successCallback = defaultSuccessFunction,
+         FailureCallback failureCallback = defaultFailureFunction,
+         ProgressCallback progressCallback = defaultProgressFunction);
     File(const File&) = delete;
     File(File&&) = delete;
     File& operator=(const File&) = delete;

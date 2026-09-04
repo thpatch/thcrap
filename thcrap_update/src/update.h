@@ -96,7 +96,7 @@ void thcrap_update_exit(void);
 class Update
 {
 private:
-    typedef std::function<bool(const std::string&)> filter_t;
+    using FilterCallback = std::function<bool(const std::string&)>;
 
     // Downloader used for the files.js downloads
     Downloader filesJsDownloader;
@@ -106,7 +106,7 @@ private:
     // files.js is downloaded.
     Downloader mainDownloader;
 
-    filter_t filterCallback;
+    FilterCallback filterCallback;
     progress_callback_t progressCallback;
     void *progressData;
 
@@ -121,7 +121,7 @@ private:
     std::string fnToUrl(const std::string& url, uint32_t crc32);
 
 public:
-    Update(filter_t filterCallback, progress_callback_t progressCallback, void *progressData);
+    Update(FilterCallback filterCallback, progress_callback_t progressCallback, void *progressData);
     void run(const std::list<const patch_t*>& patchs);
 };
 /// ---------------------------------------

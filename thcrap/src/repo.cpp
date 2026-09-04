@@ -104,7 +104,7 @@ bool RepoWrite(const repo_t *repo)
 	try {
 		std::filesystem::create_directories(repo_dir);
 	}
-	catch (std::filesystem::filesystem_error e) {
+	catch (const std::filesystem::filesystem_error& e) {
 		log_printf("Failed to create repo folder %s.\nError %d: %s\n", (const char*)repo_dir.u8string().c_str(), e.code().value(), e.what());
 		return false;
 	}
