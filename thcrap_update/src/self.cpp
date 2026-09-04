@@ -273,7 +273,7 @@ static int self_pubkey_from_signer(PCCERT_CONTEXT* context)
 	DWORD param_len;
 	DWORD signer_num;
 
-	if unexpected(!context || !self_mod) {
+	if condition_unlikely(!context || !self_mod) {
 		return -1;
 	}
 	{

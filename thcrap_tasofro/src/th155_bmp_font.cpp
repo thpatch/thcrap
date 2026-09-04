@@ -140,17 +140,17 @@ void fill_chars_list_from_font(char *TH_RESTRICT chars_list, const void *file_in
 	};
 	static_assert(sizeof(Metadata) == 4);
 
-	if unexpected(size_in < sizeof(BITMAPFILEHEADER)) {
+	if condition_unlikely(size_in < sizeof(BITMAPFILEHEADER)) {
 		return ;
 	}
 	const BITMAPFILEHEADER *bpFile = (const BITMAPFILEHEADER*)file_inout;
 
-	if unexpected(size_in < bpFile->bfSize + sizeof(Metadata)) {
+	if condition_unlikely(size_in < bpFile->bfSize + sizeof(Metadata)) {
 		return ;
 	}
 	const Metadata *metadata = (const Metadata*)((const BYTE*)file_inout + bpFile->bfSize);
 
-	if unexpected(size_in < bpFile->bfSize + sizeof(Metadata) + (metadata->nb_chars * 2)) {
+	if condition_unlikely(size_in < bpFile->bfSize + sizeof(Metadata) + (metadata->nb_chars * 2)) {
 		return ;
 	}
 
@@ -189,7 +189,7 @@ void TH_CDECL fill_chars_list_from_all_files_impl(const patch_t* patch, void*) {
 }
 
 void fill_chars_list_from_all_files(char *TH_RESTRICT chars_list) {
-	if unexpected(!all_files_list_initialized) {
+	if condition_unlikely(!all_files_list_initialized) {
 		log_print("(Font) Searching in every js file for characters...\n");
 		stack_foreach(fill_chars_list_from_all_files_impl, NULL);
 		all_files_list_initialized = true;
@@ -321,7 +321,7 @@ BYTE *read_bmpfont_from_cache(const char* fn, char *TH_RESTRICT chars_list, size
 					B = _mm_slli_epi16(B, 3);
 					B = _mm_add_epi8(B, A);
 					B = _mm_add_epi8(B, text_conv);
-					if unexpected(_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((__m128i*)(cached_chars_list + i)), B)) != 0xFFFF) {
+					if condition_unlikely(_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_loadu_si128((__m128i*)(cached_chars_list + i)), B)) != 0xFFFF) {
 						goto fail;
 					}
 				}
@@ -361,7 +361,7 @@ int bmpfont_add_option_color(void *bmpfont, const char *name, json_t *value)
 
 bool generate_bitmap_font(void *bmpfont, char *TH_RESTRICT chars_list, json_t *patch, BYTE **buffer, size_t *buffer_size)
 {
-	if unexpected(bmpfont == nullptr) {
+	if condition_unlikely(bmpfont == nullptr) {
 		return false;
 	}
 
@@ -374,7 +374,7 @@ bool generate_bitmap_font(void *bmpfont, char *TH_RESTRICT chars_list, json_t *p
 	// Plugin
 	const char *thcrap_dir = runconfig_thcrap_dir_get();
 	const char *plugin     = json_object_get_string(patch, "plugin");
-	if unexpected(plugin == nullptr) {
+	if condition_unlikely(plugin == nullptr) {
 		log_print("[Bmpfont] Jdiff file must have a 'plugin' entry\n");
 		return false;
 	}
@@ -429,7 +429,7 @@ bool generate_bitmap_font(void *bmpfont, char *TH_RESTRICT chars_list, json_t *p
 	ret &= bmpfont_add_option_binary(bmpfont, "--out-size", buffer_size, sizeof(size_t));
 	ret &= bmpfont_add_option_binary(bmpfont, "--chars-list", chars_list, sizeof(char[MAX_CHARS]));
 
-	if unexpected(!ret) {
+	if condition_unlikely(!ret) {
 		return false;
 	}
 
@@ -469,12 +469,12 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 			}
 		}
 		free(chars_list);
-		if unexpected(!buffer) {
+		if condition_unlikely(!buffer) {
 			log_print("Bitmap font creation failed\n");
 			bmpfont_free(bmpfont);
 			return -1;
 		}
-		if unexpected(buffer_size > size_out) {
+		if condition_unlikely(buffer_size > size_out) {
 			log_print("Bitmap font too big\n");
 			if (bmpfont) {
 				bmpfont_free(bmpfont);
@@ -507,7 +507,7 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 	BYTE** row_pointers = png_image_read(fn_buf, &width, &height, &bpp, false);
 
 	if (row_pointers) {
-		if unexpected(!row_pointers || size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height) {
+		if condition_unlikely(!row_pointers || size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + width * height) {
 			VLA_FREE(fn_buf);
 			log_print("Destination buffer too small!\n");
 			free(row_pointers);
@@ -547,7 +547,7 @@ int patch_bmp_font(void *file_inout, size_t size_out, size_t size_in, const char
 	VLA_FREE(fn_buf);
 
 	if (bin_data) {
-		if unexpected(size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + bpInfo->biWidth * 4 * bpInfo->biHeight + bin_size) {
+		if condition_unlikely(size_out < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + bpInfo->biWidth * 4 * bpInfo->biHeight + bin_size) {
 			log_print("Destination buffer too small!\n");
 			free(bin_data);
 			return -1;

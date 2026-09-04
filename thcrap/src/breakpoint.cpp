@@ -90,7 +90,7 @@ patch_val_t json_typed_value(json_t *val, x86_reg_t *regs, patch_value_type_t ty
 	patch_val_t ret;
 
 	void* value = json_pointer_value(val, regs);
-	if unexpected(!value) {
+	if condition_unlikely(!value) {
 		ret.type = PVT_UNKNOWN;
 		return ret;
 	}

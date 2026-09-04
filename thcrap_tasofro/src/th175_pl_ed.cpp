@@ -132,7 +132,7 @@ bool is_msg_empty(const std::vector<std::string>& msg)
 
 int patch_th175_pl_ed(void *file_inout, size_t, size_t size_in, const char *, json_t *patch)
 {
-	if unexpected(!patch) {
+	if condition_unlikely(!patch) {
 		return 0;
 	}
 

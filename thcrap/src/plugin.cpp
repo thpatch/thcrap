@@ -337,7 +337,7 @@ void plugin_load(const char *const fn_abs, const char *fn) {
 		return;
 	}
 #else
-	if unexpected(is_debug_plugin) {
+	if condition_unlikely(is_debug_plugin) {
 		log_printf("[Plugin] %s: debug plugin ignored in release mode\n", fn);
 		return;
 	}

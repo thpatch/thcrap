@@ -114,7 +114,7 @@ template<typename T, typename L>
 inline T globalconfig_get(const L& json_T_value, const char* key, const T default_value)
 {
 	json_t* cfg = global_cfg;
-	if unexpected(!cfg) {
+	if condition_unlikely(!cfg) {
 		cfg = globalconfig_init();
 	}
 	json_t* value_json = json_object_get(cfg, key);
@@ -128,7 +128,7 @@ template<typename T, typename L>
 int globalconfig_set(const L& json_T, const char* key, const T value)
 {
 	json_t* cfg = global_cfg;
-	if unexpected(!cfg) {
+	if condition_unlikely(!cfg) {
 		cfg = globalconfig_init();
 	}
 	json_t* j_value = json_T(value);

@@ -17,7 +17,7 @@ static std::vector<patch_t> stack;
 TH_CALLER_CLEANUP(chain_free)
 static char **resolve_chain_default(const char *fn)
 {
-	if unexpected(!fn) {
+	if condition_unlikely(!fn) {
 		return nullptr;
 	}
 	char **chain = (char**)malloc(sizeof(char*[3]));
@@ -98,7 +98,7 @@ bool TH_FASTCALL stack_chain_iterate(stack_chain_iterate_t *sci, char **chain, s
 		#define is_reverse (bool)(direction < 0)
 		{
 			const size_t stack_size = stack.size();
-			if unexpected(!stack_size) {
+			if condition_unlikely(!stack_size) {
 				// Failsafe for when there are no patches
 				return false;
 			}

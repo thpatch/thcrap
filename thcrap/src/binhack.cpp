@@ -144,12 +144,12 @@ static TH_NOINLINE const char* consume_float_value(const char *const expr, patch
 	char* expr_next;
 	errno = 0;
 	double result = _strtod_l(expr, &expr_next, lc_neutral.locale);
-	if unexpected(expr == expr_next) {
+	if condition_unlikely(expr == expr_next) {
 		// Not actually a floating-point number, keep going though
 		val->type = PVT_NONE;
 		return expr + 1;
 	}
-	if unexpected(fabs(result) == HUGE_VAL && errno == ERANGE) {
+	if condition_unlikely(fabs(result) == HUGE_VAL && errno == ERANGE) {
 		log_printf("ERROR: Floating point constant \"%.*s\" out of range!\n", expr_next - expr, expr);
 		return NULL;
 	}
@@ -296,7 +296,7 @@ static constexpr size_t patch_val_sizes[] = {
 #pragma warning(disable : 4307 4146)
 void constpool_apply(HackpointMemoryPage* page_array) {
 
-	if unexpected(constpool_prerenders.empty()) {
+	if condition_unlikely(constpool_prerenders.empty()) {
 		return;
 	}
 
@@ -378,7 +378,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 					}
 				}
 				element_pos = end_element + 1;
-				if unexpected(filled_value_size + per_element_size >= current_value_alloc_size) {
+				if condition_unlikely(filled_value_size + per_element_size >= current_value_alloc_size) {
 					current_value = (uint8_t*)realloc(current_value, current_value_alloc_size += BINHACK_BUFSIZE_MIN);
 				}
 				switch (per_element_size) {
@@ -581,7 +581,7 @@ void constpool_apply(HackpointMemoryPage* page_array) {
 		}
 		// These are brand new values, so expand the allocation
 		overaligned_value_size = AlignUpToMultipleOf2(aligned_value_size, sizeof(__m128i));
-		if unexpected(constpool_memory_size + overaligned_value_size >= rendered_values_alloc_size) {
+		if condition_unlikely(constpool_memory_size + overaligned_value_size >= rendered_values_alloc_size) {
 			size_t new_alloc_size = rendered_values_alloc_size + overaligned_value_size + BINHACK_BUFSIZE_MIN;
 			rendered_values = (uint8_t*)realloc(rendered_values, new_alloc_size);
 			padding_tracking = (uint8_t*)realloc(padding_tracking, new_alloc_size);
@@ -914,7 +914,7 @@ size_t code_string_calc_size(const char* code_str) {
 		}
 
 		// Check for errors
-		if unexpected(!code_str) {
+		if condition_unlikely(!code_str) {
 			// Code string calc size error
 			return 0;
 		}
@@ -1006,7 +1006,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 			case '(': // Expression
 				code_str = check_for_code_string_cast(++code_str, &val);
 				code_str = eval_expr(code_str, ')', &val.z, NULL, target_addr, hMod);
-				if unexpected(!code_str) {
+				if condition_unlikely(!code_str) {
 					break; // Error
 				}
 				switch (val.type) {
@@ -1097,7 +1097,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 		}
 
 		// Check for errors
-		if unexpected(!code_str) {
+		if condition_unlikely(!code_str) {
 			log_print("Code string render error!\n");
 			return CodeStringErrorRet;
 		}
@@ -1198,7 +1198,7 @@ int code_string_render(uint8_t* output_buffer, uintptr_t target_addr, const char
 				break;
 			case PVT_CODE: {
 				while (val.code.count--) {
-					if unexpected(code_string_render(output_buffer, target_addr, val.code.ptr, hMod)) {
+					if condition_unlikely(code_string_render(output_buffer, target_addr, val.code.ptr, hMod)) {
 						return CodeStringErrorRet;
 					}
 					output_buffer += val.code.len;
@@ -1499,7 +1499,7 @@ bool codecave_from_json(const char *name, json_t *in, codecave_t *out) {
 				} else {
 					align_val = 1u;
 				}
-				if unexpected(align_val > 4096) {
+				if condition_unlikely(align_val > 4096) {
 					log_printf("ERROR: invalid alignment specified for codecave %s, must be <=4096\n", name);
 					return false;
 				}
@@ -1637,7 +1637,7 @@ size_t codecaves_apply(codecave_t *codecaves, size_t codecaves_count, HMODULE hM
 
 		// This doesn't make good use of padding bytes
 		size_t align_offset = codecaves_alloc_size[access] & align - 1;
-		if unexpected(align_offset) {
+		if condition_unlikely(align_offset) {
 			align_offset = align - align_offset;
 			codecaves_full_size[last_written_index[access]] += align_offset;
 		}

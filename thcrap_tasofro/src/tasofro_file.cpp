@@ -74,7 +74,7 @@ bool TasofroFile::need_replace() const
 {
 	// If dat_dump is enabled, we always want to run the patching code
 	// so that we can dump the files in it
-	if unexpected(runconfig_dat_dump_get()) {
+	if condition_unlikely(runconfig_dat_dump_get()) {
 		return true;
 	}
 
@@ -125,7 +125,7 @@ void TasofroFile::replace_ReadFile_init(ReadFileStack *stack,
 	// Return true if we need to read the original file, false otherwise.
 	auto need_orig_file = [=]() {
 		// If dat_dump is enabled, we *always* need the original buffer
-		if unexpected(dat_dump) {
+		if condition_unlikely(dat_dump) {
 			return true;
 		}
 		// We have a replacement file, no need to read the original one (even if we have
@@ -152,7 +152,7 @@ void TasofroFile::replace_ReadFile_init(ReadFileStack *stack,
 
 		decrypt(this, (BYTE*)game_buffer, pre_json_size);
 
-		if unexpected(dat_dump) {
+		if condition_unlikely(dat_dump) {
 			DumpDatFile(dat_dump, this->name, game_buffer, pre_json_size, false);
 		}
 		// If there are hooks and no replacement file
@@ -209,7 +209,7 @@ int TasofroFile::replace_ReadFile(x86_reg_t *regs,
 {
 	ReadFileStack *stack = (ReadFileStack*)(regs->esp + sizeof(void*));
 
-	if unexpected(stack->lpOverlapped) {
+	if condition_unlikely(stack->lpOverlapped) {
 		// Overlapped operations are not supported.
 		// We'd better leave that file alone rather than ignoring that.
 		return 1;
@@ -219,7 +219,7 @@ int TasofroFile::replace_ReadFile(x86_reg_t *regs,
 		this->replace_ReadFile_init(stack, decrypt, crypt);
 	}
 
-	if unexpected(this->rep_buffer) {
+	if condition_unlikely(this->rep_buffer) {
 		return this->replace_ReadFile_write(regs, stack);
 	}
 	return 1;

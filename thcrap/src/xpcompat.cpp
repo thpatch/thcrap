@@ -86,7 +86,7 @@ HRESULT STDAPICALLTYPE PathMatchSpecExU_xp(LPCSTR pszFile, LPCSTR pszSpec, DWORD
 
 static void initialize_path_match_spec_ex() {
 	HMODULE shlwapi_module = GetModuleHandleW(L"shlwapi.dll");
-	if unexpected(!shlwapi_module) {
+	if condition_unlikely(!shlwapi_module) {
 		shlwapi_module = LoadLibraryW(L"shlwapi.dll");
 	}
 	if (void* func_ex_w = (void*)GetProcAddress(shlwapi_module, "PathMatchSpecExW")) {

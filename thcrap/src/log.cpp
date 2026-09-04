@@ -103,7 +103,7 @@ void log_rotate(void)
 
 static void log_print_real(const char* str, uint32_t n, bool is_n) {
 	static DWORD byteRet;
-	if unexpected(console_open) {
+	if condition_unlikely(console_open) {
 		WriteFile(GetStdHandle(STD_OUTPUT_HANDLE), str, n, &byteRet, NULL);
 	}
 	if (HANDLE file = log_file) {

@@ -107,7 +107,7 @@ json_t *jsonvfs_get(const char* fn, size_t* size)
 
 static json_t *json_map_resolve(json_t *obj, const char *path)
 {
-	if unexpected(!path) {
+	if condition_unlikely(!path) {
 		return NULL;
 	}
 	for (const char* cur_start = path;; ++path) {
