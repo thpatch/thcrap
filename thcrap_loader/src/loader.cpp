@@ -280,7 +280,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 			goto end;
 		case ALT_ARCH_BITS: {
 #if !TH_X64
-			if unexpected(!OS_is_wow64()) {
+			if UNEXPECTED(!OS_is_wow64()) {
 				log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 					"Cannot run a 64 bit executable on a 32 bit OS.\n"
 					"\"%s\"\n"
@@ -304,7 +304,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 			PROCESS_INFORMATION pi = {};
 			BOOL success = CreateProcessW(L"bin/thcrap_loader" ALT_FILE_SUFFIX_W L".exe", new_args, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
 			VLA_FREE(new_args);
-			if unexpected(!success) {
+			if UNEXPECTED(!success) {
 				ret = -5;
 				goto end;
 			}

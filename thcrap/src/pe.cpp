@@ -15,19 +15,19 @@
 
 int find_export_in_headers(void* buffer, const char* const func_name) {
 	PIMAGE_DOS_HEADER pDosHeader = (PIMAGE_DOS_HEADER)buffer;
-	if unexpected(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
+	if UNEXPECTED(pDosHeader->e_magic != IMAGE_DOS_SIGNATURE) {
 		return INVALID_FILE;
 	}
 	PIMAGE_NT_HEADERS pNtHeader = (PIMAGE_NT_HEADERS)((UINT_PTR)buffer + pDosHeader->e_lfanew);
-	if unexpected(pNtHeader->Signature != IMAGE_NT_SIGNATURE) {
+	if UNEXPECTED(pNtHeader->Signature != IMAGE_NT_SIGNATURE) {
 		return INVALID_FILE;
 	}
 #if TH_X86
-	if unexpected(pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_I386) {
+	if UNEXPECTED(pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_I386) {
 		return INVALID_FILE;
 	}
 #else
-	if unexpected(pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64) {
+	if UNEXPECTED(pNtHeader->FileHeader.Machine != IMAGE_FILE_MACHINE_AMD64) {
 		return INVALID_FILE;
 	}
 #endif
@@ -55,7 +55,7 @@ int find_export_in_headers(void* buffer, const char* const func_name) {
 
 int GetExeBits(const char* const path) {
 	DWORD attr = GetFileAttributesU(path);
-	if unexpected(attr == INVALID_FILE_ATTRIBUTES) {
+	if UNEXPECTED(attr == INVALID_FILE_ATTRIBUTES) {
 		return -1;
 	}
 	int ret = 0;
@@ -77,7 +77,7 @@ int GetExeBits(const char* const path) {
 
 PluginValidation validate_plugin_dll_for_load(const char* const path) {
 	HMODULE dll = LoadLibraryExU(path, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE | LOAD_WITH_ALTERED_SEARCH_PATH);
-	if unexpected(!dll) {
+	if UNEXPECTED(!dll) {
 		// Loading completely failed
 		return NOT_A_DLL;
 	}
@@ -116,7 +116,7 @@ bool CheckDLLFunction(const char* const path, const char* const func_name)
 
 PIMAGE_NT_HEADERS GetNtHeader(HMODULE hMod)
 {
-	if unexpected(!hMod) {
+	if UNEXPECTED(!hMod) {
 		return 0;
 	}
 
@@ -155,7 +155,7 @@ void *GetNtDataDirectory(HMODULE hMod, BYTE directory)
 PIMAGE_IMPORT_DESCRIPTOR GetDllImportDesc(HMODULE hMod, const char *dll_name)
 {
 	PIMAGE_IMPORT_DESCRIPTOR pImportDesc = (PIMAGE_IMPORT_DESCRIPTOR)GetNtDataDirectory(hMod, IMAGE_DIRECTORY_ENTRY_IMPORT);
-	if unexpected(!pImportDesc) {
+	if UNEXPECTED(!pImportDesc) {
 		return NULL;
 	}
 	while(pImportDesc->Name) {
@@ -175,7 +175,7 @@ PIMAGE_EXPORT_DIRECTORY GetDllExportDesc(HMODULE hMod)
 
 PIMAGE_SECTION_HEADER GetSectionHeader(HMODULE hMod, const char *section_name)
 {
-	if unexpected(!hMod || !section_name) {
+	if UNEXPECTED(!hMod || !section_name) {
 		return 0;
 	}
 	PIMAGE_NT_HEADERS pNTH = GetNtHeader(hMod);
@@ -322,7 +322,7 @@ void* GetRemoteModuleEntryPoint(HANDLE hProcess, HMODULE hMod)
 
 HMODULE GetRemoteModuleHandle(HANDLE hProcess, const char *search_module)
 {
-	if unexpected(!search_module) {
+	if UNEXPECTED(!search_module) {
 		return NULL;
 	}
 
@@ -363,22 +363,22 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 {
 	BYTE *addr = (BYTE*)hMod;
 
-	if unexpected(!lpProcName) {
+	if UNEXPECTED(!lpProcName) {
 		return NULL;
 	}
 
 	IMAGE_NT_HEADERS NTH;
-	if unexpected(GetRemoteModuleNtHeader(&NTH, hProcess, hMod)) {
+	if UNEXPECTED(GetRemoteModuleNtHeader(&NTH, hProcess, hMod)) {
 		return NULL;
 	}
-	if unexpected(NTH.OptionalHeader.NumberOfRvaAndSizes < IMAGE_DIRECTORY_ENTRY_EXPORT + 1) {
+	if UNEXPECTED(NTH.OptionalHeader.NumberOfRvaAndSizes < IMAGE_DIRECTORY_ENTRY_EXPORT + 1) {
 		return NULL;
 	}
 
 	PIMAGE_DATA_DIRECTORY pExportPos = &NTH.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
 
 	IMAGE_EXPORT_DIRECTORY ExportDesc;
-	if unexpected(!ReadProcessMemory(hProcess, addr + pExportPos->VirtualAddress, &ExportDesc, sizeof(ExportDesc), NULL)) {
+	if UNEXPECTED(!ReadProcessMemory(hProcess, addr + pExportPos->VirtualAddress, &ExportDesc, sizeof(ExportDesc), NULL)) {
 		return NULL;
 	}
 
@@ -390,7 +390,7 @@ FARPROC GetRemoteProcAddress(HANDLE hProcess, HMODULE hMod, LPCSTR lpProcName)
 	size_t name_indices_size = ExportDesc.NumberOfNames * sizeof(WORD);
 
 	uint8_t* buffer = (uint8_t*)malloc(func_ptrs_size + name_ptrs_size + name_indices_size);
-	if unexpected(!buffer) {
+	if UNEXPECTED(!buffer) {
 		return NULL;
 	}
 

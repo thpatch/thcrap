@@ -56,10 +56,6 @@ CFLAGS += -Wno-unused-but-set-variable -Wno-sign-compare
 CXXFLAGS = $(CFLAGS) -std=c++17
 # For rand_s
 CXXFLAGS += -D_CRT_RAND_S
-# std::unexpected, which is removed in C++17, conflicts with our unexpected() macro.
-# This define tells the glibc to remove the deprecated functions.
-# ... until std::unexpected comes back as another thing in C++23.
-CXXFLAGS += -D_GLIBCXX_USE_DEPRECATED=0
 
 LDFLAGS += -o $@ -Lbin/bin -Llibs/external_deps/bin
 

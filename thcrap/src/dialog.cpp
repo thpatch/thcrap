@@ -233,7 +233,7 @@ void dialog_adjust_init(
 	const DLGTEMPLATEEX_FONT *dst_font
 )
 {
-	if unexpected(!adj || !dst_header || !dst_font) {
+	if UNEXPECTED(!adj || !dst_header || !dst_font) {
 		return;
 	}
 	ZeroMemory(adj, sizeof(*adj));
@@ -266,7 +266,7 @@ void dialog_adjust(
 	const stringref_t rep
 )
 {
-	if unexpected(!adj || !adj->hDC || !item || !rep.data()) {
+	if UNEXPECTED(!adj || !adj->hDC || !item || !rep.data()) {
 		return;
 	}
 	RECT rect = { 0, 0, item->cx, 0 };
@@ -302,7 +302,7 @@ void dialog_adjust(
 
 void dialog_adjust_clear(dialog_adjust_t *adj)
 {
-	if unexpected(!adj) {
+	if UNEXPECTED(!adj) {
 		return;
 	}
 	DeleteObject(adj->hFont);
@@ -459,7 +459,7 @@ DLGTEMPLATE* dialog_translate_internal(LPCSTR lpTemplateName, HGLOBAL hDlg, size
 	const char *dlg_format = NULL;
 	HGLOBAL hDlg_rep = NULL;
 
-	if unexpected(!lpTemplateName || !hDlg) {
+	if UNEXPECTED(!lpTemplateName || !hDlg) {
 		return NULL;
 	}
 
@@ -533,14 +533,14 @@ DLGTEMPLATE* dialog_translate(HINSTANCE hInstance, LPCSTR lpTemplateName)
 	HGLOBAL hDlg = NULL;
 	size_t hDlg_len;
 
-	if unexpected(!lpTemplateName) {
+	if UNEXPECTED(!lpTemplateName) {
 		return NULL;
 	}
 
 	// MAKEINTRESOURCE(5) == RT_DIALOG.
 	hrsrc = FindResourceA(hInstance, lpTemplateName, MAKEINTRESOURCEA(5));
 	hDlg = LoadResource(hInstance, hrsrc);
-	if unexpected(!hDlg) {
+	if UNEXPECTED(!hDlg) {
 		return NULL;
 	}
 
@@ -556,14 +556,14 @@ DLGTEMPLATE* dialog_translatew(HINSTANCE hInstance, LPCWSTR lpTemplateName)
 	size_t hDlg_len;
 	DLGTEMPLATE *dlg_out = NULL;
 
-	if unexpected(!lpTemplateName) {
+	if UNEXPECTED(!lpTemplateName) {
 		return NULL;
 	}
 
 	// MAKEINTRESOURCE(5) == RT_DIALOG.
 	hrsrc = FindResourceW(hInstance, lpTemplateName, MAKEINTRESOURCEW(5));
 	hDlg = LoadResource(hInstance, hrsrc);
-	if unexpected(!hDlg) {
+	if UNEXPECTED(!hDlg) {
 		return NULL;
 	}
 
