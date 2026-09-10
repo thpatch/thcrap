@@ -364,7 +364,7 @@ json_t *json5_loadb(const void *buffer, size_t size, char **error)
 		json5pp::impl::imemstream istream(buffer, size);
 		json5 = json5pp::parse5(istream, false);
 	}
-	catch (json5pp::syntax_error e) {
+	catch (const json5pp::syntax_error& e) {
 		if (error) {
 			*error = strdup(e.what());
 		}
