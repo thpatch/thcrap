@@ -335,10 +335,10 @@ fi
 
 if [ "$BETA" != 1 ]; then
     # Push update
-    scp root@kosuzu.thpatch.net:/var/www/thcrap_update.js .
+    scp root@shion.thpatch.net:/var/www/thcrap_update.js .
     jq --arg version "0x$(date -d "$DATE" +%Y%m%d)" --arg zip_fn "stable/thcrap.zip" '.stable.version = $version | .stable.latest = $zip_fn' thcrap_update.js > tmp.js
     mv tmp.js thcrap_update.js
-    scp thcrap_update.js root@kosuzu.thpatch.net:/var/www/thcrap_update.js
+    scp thcrap_update.js root@shion.thpatch.net:/var/www/thcrap_update.js
 fi
 
 echo "Releasing finished!"
