@@ -94,10 +94,8 @@ using strpbrk_ptr = const char*(__cdecl*)(const char*, const char*);
 using wcschr_ptr = const wchar_t*(__cdecl*)(const wchar_t*, wchar_t);
 using wcsstr_ptr = const wchar_t*(__cdecl*)(const wchar_t*, const wchar_t*);
 using wcspbrk_ptr = const wchar_t*(__cdecl*)(const wchar_t*, const wchar_t*);
-using swprintf_ptr = int(__cdecl*)(wchar_t*, const wchar_t*, ...);
-using vswprintf_ptr = int(__cdecl*)(wchar_t*, const wchar_t*, va_list);
-using snwprintf_ptr = int(__cdecl*)(wchar_t*, size_t, const wchar_t*, ...);
-using vsnwprintf_ptr = int(__cdecl*)(wchar_t*, size_t, const wchar_t*, va_list);
+using swprintf_ptr = int(__cdecl*)(wchar_t*, size_t, const wchar_t*, ...);
+using vswprintf_ptr = int(__cdecl*)(wchar_t*, size_t, const wchar_t*, va_list);
 
 // Pointer casting is used to select the C style overload
 static std::unordered_map<std::string_view, uintptr_t> funcs = {
@@ -114,15 +112,15 @@ static std::unordered_map<std::string_view, uintptr_t> funcs = {
 	{ "th_aligned_msize", (uintptr_t)&_aligned_msize },
 
 	// Memory functions
-	{ "th_memcpy", (uintptr_t)&memcpy },
-	{ "th_memmove", (uintptr_t)&memmove },
+	{ "th_memcpy", (uintptr_t)&memcpy }, { "th_wmemcpy", (uintptr_t)&wmemcpy },
+	{ "th_memmove", (uintptr_t)&memmove }, { "th_wmemmove", (uintptr_t)&wmemmove },
 	{ "th_memcmp", (uintptr_t)&memcmp }, { "th_wmemcmp", (uintptr_t)&wmemcmp },
-	{ "th_memset", (uintptr_t)&memset },
-	{ "th_memccpy", (uintptr_t)&memccpy },
+	{ "th_memset", (uintptr_t)&memset }, { "th_wmemset", (uintptr_t)&wmemset },
+	{ "th_memccpy", (uintptr_t)&memccpy }, { "th_wmemccpy", (uintptr_t)&wmemccpy },
 	{ "th_memchr", (uintptr_t)static_cast<memchr_ptr>(&memchr) }, { "th_wmemchr", (uintptr_t)static_cast<wmemchr_ptr>(&wmemchr) },
 	{ "th_strdup", (uintptr_t)&strdup }, { "th_wcsdup", (uintptr_t)&wcsdup },
-	{ "th_strndup", (uintptr_t)&strndup },
-	{ "th_strdup_size", (uintptr_t)&strdup_size },
+	{ "th_strndup", (uintptr_t)&strndup }, { "th_wcsndup", (uintptr_t)&wcsndup },
+	{ "th_strdup_size", (uintptr_t)&strdup_size }, { "th_wcsdup_size", (uintptr_t)&wcsdup_size },
 
 	// String functions
 	{ "th_strcmp", (uintptr_t)&strcmp }, { "th_wcscmp", (uintptr_t)&wcscmp },
@@ -150,18 +148,28 @@ static std::unordered_map<std::string_view, uintptr_t> funcs = {
 	{ "th_strtod", (uintptr_t)&strtod }, { "th_wcstod", (uintptr_t)&wcstod },
 
 	// Formatting functions
-	{ "th_sprintf", (uintptr_t)&sprintf }, //{ "th_swprintf", (uintptr_t)&_swprintf },
-	{ "th_vsprintf", (uintptr_t)&vsprintf }, //{ "th_vswprintf", (uintptr_t)&_vswprintf },
-	{ "th_snprintf", (uintptr_t)&snprintf }, //{ "th_snwprintf", (uintptr_t)static_cast<snwprintf_ptr>(&swprintf) },
-	{ "th_vsnprintf", (uintptr_t)&vsnprintf }, //{ "th_vsnwprintf", (uintptr_t)static_cast<vsnwprintf_ptr>(&vswprintf) },
+	{ "th_sprintf", (uintptr_t)&sprintf },
+	{ "th_vsprintf", (uintptr_t)&vsprintf },
+	{ "th_snprintf", (uintptr_t)&snprintf }, { "th_swprintf", (uintptr_t)static_cast<swprintf_ptr>(&swprintf) },
+	{ "th_vsnprintf", (uintptr_t)&vsnprintf }, { "th_vswprintf", (uintptr_t)static_cast<vswprintf_ptr>(&vswprintf) },
+	{ "th_scprintf", (uintptr_t)&_scprintf }, { "th_scwprintf", (uintptr_t)&_scwprintf },
 	{ "th_sscanf", (uintptr_t)&sscanf }, { "th_swscanf", (uintptr_t)&swscanf },
 	{ "th_vsscanf", (uintptr_t)&vsscanf }, { "th_vswscanf", (uintptr_t)&vswscanf },
-	{ "th_strftime", (uintptr_t)&strftime },
+
+	// Time functions
+	{ "th_strftime", (uintptr_t)&strftime }, { "th_wcsftime", (uintptr_t)&wcsftime },
+	{ "th_time", (uintptr_t)&time },
+	{ "th_difftime", (uintptr_t)&difftime },
+	{ "th_timespec_get", (uintptr_t)&timespec_get },
+	{ "th_asctime", (uintptr_t)&asctime },
+	{ "th_gmtime", (uintptr_t)&gmtime },
+	{ "th_localtime", (uintptr_t)&localtime },
+	{ "th_mktime", (uintptr_t)&mktime },
 
 	// Console IO functions
 	{ "th_printf", (uintptr_t)&printf }, { "th_wprintf", (uintptr_t)&wprintf },
 	{ "th_vprintf", (uintptr_t)&vprintf }, { "th_vwprintf", (uintptr_t)&vwprintf },
-	{ "th_puts", (uintptr_t)&puts },
+	{ "th_puts", (uintptr_t)&puts }, { "th_putws", (uintptr_t)&_putws },
 	{ "th_getchar", (uintptr_t)&getchar }, { "th_getwchar", (uintptr_t)&getwchar },
 	{ "th_putchar", (uintptr_t)&putchar }, { "th_putwchar", (uintptr_t)&putwchar },
 

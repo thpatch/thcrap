@@ -30,6 +30,7 @@ typedef uint8_t loader_type_t;
 
 // Project stats
 THCRAP_API extern const char PROJECT_NAME[];
+extern const wchar_t PROJECT_NAMEW[];
 THCRAP_API extern const char PROJECT_NAME_SHORT[];
 THCRAP_API extern const char PROJECT_URL[];
 THCRAP_API extern const uint32_t PROJECT_VERSION;

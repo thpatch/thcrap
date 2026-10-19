@@ -240,6 +240,10 @@ TH_CALLER_FREE THCRAP_EXPORT_API inline char16_t* utf8_to_utf16(const char* utf8
 		free(utf16_str);
 	}
 	return NULL;
+#undef BitMask
+#undef BitMaskAndReset
+#undef BitMaskAndSet
+#undef BitMaskAndComplement
 }
 
 TH_CALLER_FREE THCRAP_EXPORT_API inline char32_t* utf8_to_utf32(const char* utf8_str) {
@@ -288,6 +292,10 @@ TH_CALLER_FREE THCRAP_EXPORT_API inline char32_t* utf8_to_utf32(const char* utf8
 		free(utf32_str);
 	}
 	return NULL;
+#undef BitMask
+#undef BitMaskAndReset
+#undef BitMaskAndSet
+#undef BitMaskAndComplement
 }
 
 inline bool bittest32(uint32_t value, uint32_t bit) {
@@ -361,6 +369,16 @@ TH_FORCEINLINE void str_ascii_replace(char* str, const char from, const char to)
 	} while (c);
 }
 
+TH_FORCEINLINE void strn_ascii_replace(char* str, size_t len, const char from, const char to)
+{
+	char c;
+	do {
+		c = *str;
+		if (c == from) *str = to;
+		++str;
+	} while (c && --len);
+}
+
 TH_FORCEINLINE void wstr_ascii_replace(wchar_t* str, const wchar_t from, const wchar_t to)
 {
 	wchar_t c;
@@ -369,6 +387,16 @@ TH_FORCEINLINE void wstr_ascii_replace(wchar_t* str, const wchar_t from, const w
 		if (c == from) *str = to;
 		++str;
 	} while (c);
+}
+
+TH_FORCEINLINE void wstrn_ascii_replace(wchar_t* str, size_t len, const wchar_t from, const wchar_t to)
+{
+	wchar_t c;
+	do {
+		c = *str;
+		if (c == from) *str = to;
+		++str;
+	} while (c && --len);
 }
 
 // Changes directory slashes in [str] to '/'.
@@ -405,14 +433,21 @@ TH_FORCEINLINE void wstr_slash_normalize(wchar_t* str) {
   */
 TH_DEPRECATED_EXPORT void (str_slash_normalize_win)(char *str);
 
-inline void str_slash_normalize_win_inline(char* str) {
+TH_FORCEINLINE void str_slash_normalize_win_inline(char* str) {
 	str_ascii_replace(str, '/', '\\');
 }
 
 #define str_slash_normalize_win(str) str_slash_normalize_win_inline(str)
 
-inline void wstr_slash_normalize_win(wchar_t* str) {
+TH_FORCEINLINE void strn_slash_normalize_win(char* str, size_t len) {
+	strn_ascii_replace(str, len, '/', '\\');
+}
+
+TH_FORCEINLINE void wstr_slash_normalize_win(wchar_t* str) {
 	wstr_ascii_replace(str, L'/', L'\\');
+}
+TH_FORCEINLINE void wstrn_slash_normalize_win(wchar_t* str, size_t len) {
+	wstrn_ascii_replace(str, len, L'/', L'\\');
 }
 
 // Counts the number of digits in [number]
@@ -456,6 +491,11 @@ inline void str_hexdate_format_inline(char buffer[11], uint32_t date) {
 
 /// -------
 
+extern inline wchar_t* wmemccpy(wchar_t *TH_RESTRICT dst, const wchar_t *TH_RESTRICT src, wchar_t c, size_t count) {
+	while (count-- && (*dst++ = (uint16_t)*src++) != (uint16_t)c);
+	return (wchar_t*)dst;
+}
+
 // Custom strndup variant that returns (size + 1) bytes.
 //
 // Note: This needs to be marked extern when
@@ -468,11 +508,21 @@ TH_CALLER_FREE extern inline char* strdup_size(const char* src, size_t size) {
 	}
 	return ret;
 }
+TH_CALLER_FREE extern inline wchar_t* wcsdup_size(const wchar_t* src, size_t size) {
+	wchar_t* ret = (wchar_t*)malloc((size + 1) * sizeof(wchar_t));
+	if (ret && !wmemccpy(ret, src, L'\0', size)) {
+		ret[size] = L'\0';
+	}
+	return ret;
+}
 
 // C23 compliant implementation of strndup
 // Allocates a buffer of (strnlen(s, size) + 1) bytes.
 TH_CALLER_FREE extern inline char* strndup(const char* src, size_t size) {
 	return strdup_size(src, strnlen(src, size));
+}
+TH_CALLER_FREE extern inline wchar_t* wcsndup(const wchar_t* src, size_t size) {
+	return wcsdup_size(src, wcsnlen(src, size));
 }
 
 TH_NOINLINE int TH_VECTORCALL ascii_stricmp(const char* str1, const char* str2);
@@ -526,6 +576,8 @@ TH_CALLER_FREE inline char* strdup_cat(std::string_view str1, std::string_view s
 #define _BitScanReverseZ(index, mask) _BitScanReverse64((index), (mask))
 #endif
 
+#define is_valid_ascii_upper(c) ((uint8_t)((c) - 'A') < 26)
+#define is_valid_ascii_lower(c) ((uint8_t)((c) - 'a') < 26)
 #define is_valid_decimal(c) ((uint8_t)((c) - '0') < 10)
 
 // Returns whether [c] is a valid hexadecimal character

@@ -569,11 +569,11 @@ static void FindInstalledGamesDirFromRegistry(std::vector<wchar_t*>& dirlist /* 
 			continue;
 		}
 		std::wstring location = GetValueFromSubkey(uninstallKeysIt.getRegHandle(), subkeyName, L"InstallLocation");
-		log_print("Found ");
-		log_printw(subkeyName);
-		log_print(" at ");
-		log_printw(location.c_str());
-		log_print("\n");
+		log_wprintf(
+			L"Found %ls at %ls\n"
+			, subkeyName
+			, location.c_str()
+		);
 		dirlist.push_back(wcsdup(location.c_str()));
 	}
 }
@@ -598,9 +598,10 @@ static void FindInstalledGamesDirFromDefaultPaths(std::vector<wchar_t*>& dirlist
 
 	for (size_t i = 0; !defaultPaths[i].empty(); i++) {
 		if (PathIsDirectoryW(defaultPaths[i].c_str())) {
-			log_print("Found ");
-			log_printw(defaultPaths[i].c_str());
-			log_print("\n");
+			log_wprintf(
+				L"Found %ls\n"
+				, defaultPaths[i].c_str()
+			);
 			dirlist.push_back(wcsdup(defaultPaths[i].c_str()));
 		}
 	}

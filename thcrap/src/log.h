@@ -21,19 +21,22 @@ THCRAP_API const char* lasterror_str_for(DWORD err);
 // Calls GetLastError() itself.
 THCRAP_API const char* lasterror_str();
 
-THCRAP_API void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*, size_t));
+THCRAP_API void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*, uint32_t));
 
 /// ---------------
 /// Standard output
 /// ---------------
 // Basic
 THCRAP_API void log_print(const char *text);
-THCRAP_API void log_printw(const wchar_t *text);
+THCRAP_API void log_wprint(const wchar_t *text);
 // Specific length
-THCRAP_API void log_nprint(const char *text, size_t n);
+THCRAP_API void log_nprint(const char *text, uint32_t n);
+THCRAP_API void log_wnprint(const wchar_t *text, uint32_t n);
 // Formatted
 THCRAP_API void log_vprintf(const char *format, va_list va);
+THCRAP_API void log_vwprintf(const wchar_t *format, va_list va);
 THCRAP_API void log_printf(const char *format, ...);
+THCRAP_API void log_wprintf(const wchar_t *format, ...);
 #ifdef NDEBUG
 // Using __noop makes the compiler check the validity of the
 // macro contents for syntax errors without actually compiling them.
@@ -66,9 +69,12 @@ THCRAP_API void log_flush();
 /// -------------
 // Basic
 THCRAP_API int log_mbox(const char *caption, const UINT type, const char *text);
+THCRAP_API int log_wmbox(const wchar_t *caption, const UINT type, const wchar_t *text);
 // Formatted
 THCRAP_API int log_vmboxf(const char *caption, const UINT type, const char *format, va_list va);
+THCRAP_API int log_vwmboxf(const wchar_t *caption, const UINT type, const wchar_t *format, va_list va);
 THCRAP_API int log_mboxf(const char *caption, const UINT type, const char *format, ...);
+THCRAP_API int log_wmboxf(const wchar_t *caption, const UINT type, const wchar_t *format, ...);
 // Set the owner hwnd for the log_mbox* functions
 THCRAP_API void log_mbox_set_owner(HWND hwnd);
 

@@ -41,7 +41,7 @@ static constexpr char LOG[] = "logs/thcrap_log.txt";
 static constexpr char LOG_ROTATED[] = "logs/thcrap_log.%d.txt";
 static constexpr int ROTATIONS = 5; // Number of backups to keep
 static void (*log_print_hook)(const char*) = NULL;
-static void(*log_nprint_hook)(const char*, size_t) = NULL;
+static void(*log_nprint_hook)(const char*, uint32_t) = NULL;
 static HWND mbox_owner_hwnd = NULL; // Set by log_mbox_set_owner
 // -----------------------
 
@@ -75,7 +75,7 @@ const char* lasterror_str()
 	return lasterror_str_for(GetLastError());
 }
 
-void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*,size_t)){
+void log_set_hook(void(*print_hook)(const char*), void(*nprint_hook)(const char*,uint32_t)){
 	log_print_hook = print_hook;
 	log_nprint_hook = nprint_hook;
 }
@@ -161,11 +161,20 @@ void log_print(const char *str) {
 	log_push(str, (uint32_t)strlen(str), false);
 }
 
-void log_printw(const wchar_t *wstr) {
+void log_wnprint(const wchar_t *wstr, uint32_t n) {
+	size_t buffer_size = (wcsnlen(wstr, n) + 1) * UTF8_MUL;
+	VLA(char, str, buffer_size);
+	size_t written = StringToUTF8(str, wstr, buffer_size);
+	log_nprint(str, written);
+	VLA_FREE(str);
+}
+
+void log_wprint(const wchar_t *wstr) {
 	size_t buffer_size = (wcslen(wstr) + 1) * UTF8_MUL;
 	VLA(char, str, buffer_size);
 	StringToUTF8(str, wstr, buffer_size);
 	log_print(str);
+	VLA_FREE(str);
 }
 
 inline void log_vprintf(const char *format, va_list va) {
@@ -181,10 +190,34 @@ inline void log_vprintf(const char *format, va_list va) {
 	}
 }
 
+inline void log_vwprintf(const wchar_t *format, va_list va) {
+	va_list va2;
+	va_copy(va2, va);
+	const int total_size = _vscwprintf(format, va2);
+	va_end(va2);
+	if (total_size > 0) {
+		VLA(wchar_t, wstr, total_size + 1);
+		vswprintf(wstr, SIZE_MAX, format, va);
+		size_t buffer_size = (total_size + 1) * UTF8_MUL;
+		VLA(char, str, buffer_size);
+		size_t written = StringToUTF8(str, wstr, buffer_size);
+		log_push(str, written, false);
+		VLA_FREE(wstr);
+		VLA_FREE(str);
+	}
+}
+
 void log_printf(const char *format, ...) {
 	va_list va;
 	va_start(va, format);
 	log_vprintf(format, va);
+	va_end(va);
+}
+
+void log_wprintf(const wchar_t *format, ...) {
+	va_list va;
+	va_start(va, format);
+	log_vwprintf(format, va);
 	va_end(va);
 }
 
@@ -274,7 +307,18 @@ int log_mbox(const char *caption, const UINT type, const char *text)
 		"---------------------------\n"
 		, text
 	);
-	return MessageBox(guess_mbox_owner(), text, (caption ? caption : PROJECT_NAME), type);
+	return MessageBoxU(guess_mbox_owner(), text, (caption ? caption : PROJECT_NAME), type);
+}
+
+int log_wmbox(const wchar_t *caption, const UINT type, const wchar_t *text)
+{
+	log_wprintf(
+		L"---------------------------\n"
+		L"%ls\n"
+		L"---------------------------\n"
+		, text
+	);
+	return MessageBoxW(guess_mbox_owner(), text, (caption ? caption : PROJECT_NAMEW), type);
 }
 
 int log_vmboxf(const char *caption, const UINT type, const char *format, va_list va)
@@ -295,11 +339,37 @@ int log_vmboxf(const char *caption, const UINT type, const char *format, va_list
 	return ret;
 }
 
+int log_vwmboxf(const wchar_t *caption, const UINT type, const wchar_t *format, va_list va)
+{
+	int ret = 0;
+	if(format) {
+		va_list va2;
+		va_copy(va2, va);
+		const int total_size = _scwprintf(format, va2);
+		va_end(va2);
+		if (total_size > 0) {
+			VLA(wchar_t, formatted_str, total_size + 1);
+			vswprintf(formatted_str, SIZE_MAX, format, va);
+			ret = log_wmbox(caption, type, formatted_str);
+			VLA_FREE(formatted_str);
+		}
+	}
+	return ret;
+}
+
 int log_mboxf(const char *caption, const UINT type, const char *format, ...)
 {
 	va_list va;
 	va_start(va, format);
 	int ret = log_vmboxf(caption, type, format, va);
+	va_end(va);
+	return ret;
+}
+
+int log_wmboxf(const wchar_t *caption, const UINT type, const wchar_t *format, ...) {
+	va_list va;
+	va_start(va, format);
+	int ret = log_vwmboxf(caption, type, format, va);
 	va_end(va);
 	return ret;
 }

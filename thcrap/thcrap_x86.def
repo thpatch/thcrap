@@ -285,13 +285,20 @@ EXPORTS
 
 	log_set_hook
 	log_print
+	log_wprint
 	log_nprint
+	log_wnprint
 	log_vprintf
+	log_vwprintf
 	log_printf
+	log_wprintf
 	log_flush
 	log_mbox
+	log_wmbox
 	log_vmboxf
+	log_vwmboxf
 	log_mboxf
+	log_wmboxf
 	log_mbox_set_owner
 	log_init
 	log_exit

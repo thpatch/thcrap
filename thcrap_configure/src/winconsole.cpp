@@ -547,7 +547,7 @@ void log_windows(std::wstring_view text) {
 	}
 }
 
-void log_nwindows(const char* text, size_t len) {
+void log_nwindows(const char* text, uint32_t len) {
 	log_windows(to_utf16({text, len}));
 }
 void log_windows(const char* text) {
