@@ -444,13 +444,13 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 	char* exe_dir = strdup_size(exe_fn_local, PtrDiffStrlen(strrchr(exe_fn_local, '\\') + 1, exe_fn_local));
 	STARTUPINFOA si = {};
 	PROCESS_INFORMATION pi = {};
+	si.cb = sizeof(si);
 	
 	if (args) {
 		size_t args_len = strlen(args);
 		BUILD_VLA_STR(char, cmd, '"', exe_fn_local, exe_fn_len, "\" ", args, args_len);
-
 		ret = W32_ERR_WRAP(inject_CreateProcessU(
-			NULL, cmd, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
+			exe_fn_local, cmd, NULL, NULL, TRUE, 0, NULL, exe_dir, &si, &pi
 		));
 		VLA_FREE(cmd);
 	} else {
@@ -479,7 +479,7 @@ BOOL thcrap_inject_into_new(const char *exe_fn, char *args, HANDLE *hProcess, HA
 		);
 
 		log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-			"Failed to start %s\n"
+			"Failed to start \"%s\"\n"
 			"%s"
 			, exe_fn_local, (msg_str ? msg_str : "")
 		);

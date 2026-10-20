@@ -58,6 +58,9 @@ int GetExeBits(const char* const path) {
 	if UNEXPECTED(attr == INVALID_FILE_ATTRIBUTES) {
 		return -1;
 	}
+	if UNEXPECTED(attr & FILE_ATTRIBUTE_DIRECTORY) {
+		return -2;
+	}
 	int ret = 0;
 	if (HMODULE exe = LoadLibraryExU(path, NULL, DONT_RESOLVE_DLL_REFERENCES | LOAD_LIBRARY_AS_DATAFILE)) {
 		if (PIMAGE_NT_HEADERS pNtHeader = GetNtHeader((HMODULE)LDR_DATAFILE_TO_VIEW(exe))) {

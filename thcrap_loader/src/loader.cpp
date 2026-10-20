@@ -150,7 +150,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	const char *final_exe_fn = NULL;
 	size_t run_cfg_fn_len = 0;
 	bool exe_path_is_trimmed = false;
-	const char* trimmed_exe_path = NULL;
+	const char* games_js_cmdline = NULL;
 
 	// If thcrap just updated itself, finalize the update by moving things around if needed.
 	// This can be done before parsing the command line.
@@ -266,52 +266,68 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	// GetExeBits cannot handle arguments, so trim any args from
 	// the games.js entry before passing the string in.
 	// Try to be forgiving of bad formatting if possible.
-	trimmed_exe_path = final_exe_fn;
-	if (trimmed_exe_path[0] == '"') {
+	if (final_exe_fn[0] == '"') {
 		// Quoted exe path in games.js
-		if (const char* end_quote = strchr(trimmed_exe_path + 1, '"')) {
-			trimmed_exe_path = strdup_size(trimmed_exe_path + 1, PtrDiffStrlen(end_quote, trimmed_exe_path + 1));
+		if (const char* end_quote = strchr(final_exe_fn + 1, '"')) {
+			// Strip quotes from path
+			final_exe_fn = strdup_size(final_exe_fn + 1, PtrDiffStrlen(end_quote, final_exe_fn + 1));
 			exe_path_is_trimmed = true;
-		}
-	}
-	else {
-		for (
-			const char* exe_scan = trimmed_exe_path;
-			const char* extension_check = strchr(exe_scan, '.');
-			exe_scan = extension_check
-		) {
-		next_char:
-			switch (*++extension_check) {
-				default:
-					goto next_char;
-				case ' ':
-					trimmed_exe_path = strdup_size(trimmed_exe_path, PtrDiffStrlen(extension_check, trimmed_exe_path));
-					exe_path_is_trimmed = true;
-				case '\0':
-					goto break_extension_check;
-				case '/': case '\\':
-					break;
+			// Add args to command line
+			if (end_quote[1] != '\0') {
+				games_js_cmdline = end_quote + 1;
 			}
 		}
-	break_extension_check:;
+	}
+	// Can't be any args if the path doesn't have any spaces
+	else if (const char* first_space = strchr(final_exe_fn, ' ')) {
+		char* temp_buffer = strdup(final_exe_fn);
+		char* space_scan = temp_buffer + PtrDiffStrlen(first_space, final_exe_fn);
+		do {
+			// No good way to tell the difference between a path
+			// and args without just iterating the whole thing
+			// and checking if it's a file or not...
+			// https://devblogs.microsoft.com/oldnewthing/20030827-00/?p=42763/
+			*space_scan = L'\0';
+			DWORD attr = GetFileAttributesU(temp_buffer);
+			if (attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+				// Add args to command line
+				if (space_scan[1] != '\0') {
+					games_js_cmdline = final_exe_fn + PtrDiffStrlen(space_scan + 1, temp_buffer);
+				}
+				final_exe_fn = temp_buffer;
+				exe_path_is_trimmed = true;
+				goto break_path_check;
+			}
+			*space_scan++ = ' ';
+		} while (space_scan = strchr(space_scan, ' '));
+		free(temp_buffer);
+	break_path_check:;
 	}
 
-	switch (GetExeBits(trimmed_exe_path)) {
-		case -1: // Path does not exist
-			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
-				"The target path does not exist.\n"
-				"\"%s\"\n"
-				, trimmed_exe_path
-			);
-			ret = -7;
-			goto end;
+	switch (GetExeBits(final_exe_fn)) {
 		default: // failed to LoadLibrary
 			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 				"Could not identify architecture of target executable.\n"
 				"\"%s\"\n"
-				, trimmed_exe_path
+				, final_exe_fn
 			);
 			ret = -6;
+			goto end;
+		case -1: // Path does not exist
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"The target path does not exist.\n"
+				"\"%s\"\n"
+				, final_exe_fn
+			);
+			ret = -7;
+			goto end;
+		case -2: // Path is a folder
+			log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
+				"The target path is a folder.\n"
+				"\"%s\"\n"
+				, final_exe_fn
+			);
+			ret = -8;
 			goto end;
 		case ALT_ARCH_BITS: {
 #if !TH_X64
@@ -319,9 +335,9 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 				log_mboxf(NULL, MB_OK | MB_ICONEXCLAMATION,
 					"Cannot run a 64 bit executable on a 32 bit OS.\n"
 					"\"%s\"\n"
-					, trimmed_exe_path
+					, final_exe_fn
 				);
-				ret = -8;
+				ret = -9;
 				goto end;
 			}
 #endif
@@ -360,7 +376,13 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 
 	char* cmdline = NULL;
 	if (const char *temp_cmdline = runconfig_cmdline_get()) {
-		cmdline = strdup(temp_cmdline);
+		if (!games_js_cmdline) {
+			cmdline = strdup(temp_cmdline);
+		} else {
+			cmdline = strdup_cat(games_js_cmdline, ' ', temp_cmdline);
+		}
+	} else if (games_js_cmdline) {
+		cmdline = strdup(games_js_cmdline);
 	}
 
 	log_print("Command-line parsing finished\n");
@@ -368,7 +390,7 @@ int TH_CDECL win32_utf8_main(int argc, const char *argv[])
 	free(cmdline);
 end:
 	if (exe_path_is_trimmed) {
-		free((void*)trimmed_exe_path);
+		free((void*)final_exe_fn);
 	}
 	json_decref(games_js);
 	json_decref(run_cfg);
