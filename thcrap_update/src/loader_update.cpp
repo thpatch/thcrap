@@ -777,7 +777,7 @@ void log_callback(const char* text)
 	SendMessageW(WINDOW_STATE.hwnd[LOG_OUTPUT], EM_SCROLLCARET, 0, 0);
 }
 
-void log_ncallback(const char* text, size_t len)
+void log_ncallback(const char* text, uint32_t len)
 {
 	VLA(char, ntext, len + 1);
 	ntext[len] = '\0';
