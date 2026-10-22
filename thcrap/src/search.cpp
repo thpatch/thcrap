@@ -190,9 +190,9 @@ static DWORD WINAPI SearchThread(void *param_)
 				if (ent->path().extension() == L".exe")
 					SearchCheckExe(*state, *ent);
 			}
-			catch (std::system_error &) {}
+			catch (const std::system_error&) {}
 		}
-	} catch (std::system_error &) {}
+	} catch (const std::system_error&) {}
 
 	return 0;
 }

@@ -12,12 +12,12 @@ HttpStatus::~HttpStatus()
 
 HttpStatus HttpStatus::makeOk()
 {
-    return HttpStatus(Ok, 0, "success"s);
+    return HttpStatus(Status::Ok, 0, "success"s);
 }
 
 HttpStatus HttpStatus::makeCancelled()
 {
-    return HttpStatus(Cancelled, 0, "cancelled"s);
+    return HttpStatus(Status::Cancelled, 0, "cancelled"s);
 }
 
 static const std::map<unsigned int, const std::string_view> messages = {
@@ -46,12 +46,12 @@ static const std::map<unsigned int, const std::string_view> messages = {
 
 HttpStatus HttpStatus::makeNetworkError(unsigned int httpCode)
 {
-    HttpStatus::Status status;
+    Status status;
     if (300 <= httpCode && httpCode < 499) {
-        status = ClientError;
+        status = Status::ClientError;
     }
     else {
-        status = ServerError;
+        status = Status::ServerError;
     }
 
 
@@ -62,7 +62,7 @@ HttpStatus HttpStatus::makeNetworkError(unsigned int httpCode)
 
 HttpStatus HttpStatus::makeSystemError(unsigned int systemCode, const std::string& text)
 {
-    return HttpStatus(SystemError, systemCode, text);
+    return HttpStatus(Status::SystemError, systemCode, text);
 }
 
 HttpStatus::Status HttpStatus::get() const
@@ -72,7 +72,7 @@ HttpStatus::Status HttpStatus::get() const
 
 HttpStatus::operator bool() const
 {
-    return this->status == Ok;
+    return this->status == Status::Ok;
 }
 
 bool HttpStatus::operator==(Status status) const
